@@ -73,6 +73,19 @@ function cutout(aoi::String, lsw::Int)
     end
 end
 
+"Write graph to a WKT file that can be loaded in QGIS"
+function write_lswrouting(path, graph, lswlocs)
+    open(path, "w") do io
+        println(io, "routing")
+        for edge in edges(graph)
+            p1 = lswlocs[src(edge)]
+            p2 = lswlocs[dst(edge)]
+            line = string("LINESTRING (", p1[1], ' ', p1[2], ", ", p2[1], ' ', p2[2], ')')
+            println(io, line)
+        end
+    end
+end
+
 graph = lswrouting_graph(lsw, lswrouting)
 sgraph, connected_nodes = subgraph(graph, node_idx(lsw_hupsel, lsws))
 lswlocs = lsw_centers(joinpath(coupling_dir, "lsws.dbf"), lsws)
@@ -82,6 +95,8 @@ node_sgraph = node_idx(lsw_hupsel, lsws[connected_nodes])
 
 cutout("hupsel", lsw_hupsel)
 cutout("tol", lsw_tol)
+
+write_lswrouting("lswrouting.wkt", graph, lswlocs)
 
 @subset(vadvalue, :lsw == lsw_hupsel)
 # the lsws connected with Hupsel are not only connected with district 24 but also 99
