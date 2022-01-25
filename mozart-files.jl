@@ -1,10 +1,10 @@
-# Read Mozart input files into DataFrames. This can be used as a starting point to load the
-# data into Bach, or to analyze the model data.
+# Functions to read Mozart input files into DataFrames, or derived structures like graphs.
 
 using DataFrames
 using CSV
 using Dates
 
+"Parse a Mozart style date string"
 function datestring(s)
     # uslswdem once has "20100000.000000", parse as Jan 1st
     if s == "20100000.000000"
@@ -14,10 +14,13 @@ function datestring(s)
     end
 end
 
+"Write a table to a Tab Separated Value"
+tsv(path, table) = CSV.write(path, table; delim = '\t')
+
 "Read local surface water value"
 function read_lswvalue(path)
     names = [
-        "local_surface_water_code",
+        "lsw",
         "time_start",
         "time_end",
         "concentration",
@@ -49,12 +52,7 @@ end
 
 "Read lsw routing"
 function read_lswrouting(path)
-    names = [
-        "local_surface_water_code_to",
-        "local_surface_water_code_from",
-        "usercode",
-        "fraction",
-    ]
+    names = ["lsw_from", "lsw_to", "usercode", "fraction"]
     return CSV.read(
         path,
         DataFrame;
@@ -68,12 +66,7 @@ end
 
 "Read lsw routing dbc"
 function read_lswrouting_dbc(path)
-    names = [
-        "local_surface_water_code_to",
-        "local_surface_water_code_from",
-        "usercode",
-        "fraction",
-    ]
+    names = ["lsw_from", "lsw_to", "usercode", "fraction"]
     return CSV.read(
         path,
         DataFrame;
@@ -89,8 +82,8 @@ end
 function read_lsw(path)
     # no name given and last 3 columns are missing
     names = [
-        "local_surface_water_code",
-        "local_surface_water_code_exchanges",
+        "lsw",
+        "lsw_exchanges",
         "districtwatercode",
         "districtwatercode_exchanges",
         "meteostationcode",
@@ -159,7 +152,7 @@ end
 
 "Read weir area"
 function read_weirarea(path)
-    names = ["weir_area_code", "local_surface_water_code"]
+    names = ["weirarea", "lsw"]
     return CSV.read(
         path,
         DataFrame;
@@ -173,7 +166,7 @@ end
 
 "Read level area discharge value"
 function read_ladvalue(path)
-    names = ["level", "local_surface_water_code", "area", "discharge"]
+    names = ["level", "lsw", "area", "discharge"]
     return CSV.read(
         path,
         DataFrame;
@@ -187,7 +180,7 @@ end
 
 "Read volume area discharge"
 function read_vadvalue(path)
-    names = ["local_surface_water_code", "volume", "area", "discharge"]
+    names = ["lsw", "volume", "area", "discharge"]
     return CSV.read(
         path,
         DataFrame;
@@ -201,8 +194,7 @@ end
 
 "Read volume level"
 function read_vlvalue(path)
-    names =
-        ["local_surface_water_code", "weir_area_code", "volume_lsw", "level", "level_slope"]
+    names = ["lsw", "weirarea", "volume_lsw", "level", "level_slope"]
     return CSV.read(
         path,
         DataFrame;
@@ -370,7 +362,7 @@ function read_plvalue(path)
         "time_start",
         "time_end",
         "x1",
-        "x1",
+        "x2",
         "x3",
         "x4",
         "x5",
@@ -407,7 +399,7 @@ end
 
 "Read user per lsw"
 function read_uslsw(path)
-    names = ["local_surface_water_code", "usercode"]
+    names = ["lsw", "usercode"]
     return CSV.read(
         path,
         DataFrame;
@@ -422,7 +414,7 @@ end
 "Read user demand per lsw"
 function read_uslswdem(path)
     names = [
-        "local_surface_water_code",
+        "lsw",
         "time_start",
         "usercode",
         "time_end",
@@ -455,13 +447,21 @@ function read_lswattr(path)
     # TODO find names of columns
     # 10020, 517, 149642, 30, 10020, 7976
     # 10037, 3146, 58335, 49, 10037, 27017
-    names = ["local_surface_water_code", "x1", "x2", "x3", "x4", "x5"]
+    names = ["lsw", "x1", "x2", "x3", "x4", "x5"]
     return CSV.read(path, DataFrame; header = names, stringtype = String, strict = true)
 end
 
 "Read MODFLOW LSW coupling"
 function read_mftolsw(path)
-    return CSV.read(path, DataFrame; stringtype = String, strict = true)
+    names = ["col", "row", "lsw", "weirarea", "oppw_correctie"]
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        skipto = 2,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read plot LSW coupling"
@@ -474,7 +474,7 @@ function read_waattr(path)
     # TODO find name of last column
     # 111002,100003,602
     # 111002,100015,839
-    names = ["local_surface_water_code", "weir_area_code", "x1"]
+    names = ["lsw", "weirarea", "x1"]
     return CSV.read(path, DataFrame; header = names, stringtype = String, strict = true)
 end
 
@@ -482,25 +482,29 @@ coupling_dir = joinpath(@__DIR__, "data", "lhm-input", "coupling")
 mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
 tot_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "tot")
 
-drpl = read_drpl(joinpath(tot_dir, "drpl.dik"))
-drplval = read_drplval(joinpath(tot_dir, "drplval.dik"))
+mftolsw = read_mftolsw(joinpath(coupling_dir, "MFtoLSW.csv"))
+plottolsw = read_plottolsw(joinpath(coupling_dir, "PlottoLSW.csv"))
+
 dw = read_dw(joinpath(mozartin_dir, "dw.dik"))
 dwvalue = read_dwvalue(joinpath(mozartin_dir, "dwvalue.dik"))
 ladvalue = read_ladvalue(joinpath(mozartin_dir, "ladvalue.dik"))
-lsw = read_lsw(joinpath(mozartin_dir, "lsw.dik"))
+lswdik = read_lsw(joinpath(mozartin_dir, "lsw.dik"))
 lswrouting = read_lswrouting(joinpath(mozartin_dir, "lswrouting.dik"))
 lswrouting_dbc = read_lswrouting_dbc(joinpath(mozartin_dir, "lswrouting_dbc.dik"))
 lswvalue = read_lswvalue(joinpath(mozartin_dir, "lswvalue.dik"))
-plbound = read_plbound(joinpath(tot_dir, "plbound.dik"))
-plot = read_plot(joinpath(tot_dir, "plot.dik"))
-plsgval = read_plsgval(joinpath(tot_dir, "plsgval.dik"))
-plvalue = read_plvalue(joinpath(tot_dir, "plvalue.dik"))
 uslsw = read_uslsw(joinpath(mozartin_dir, "uslsw.dik"))
 uslswdem = read_uslswdem(joinpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = read_vadvalue(joinpath(mozartin_dir, "vadvalue.dik"))
 vlvalue = read_vlvalue(joinpath(mozartin_dir, "vlvalue.dik"))
 weirarea = read_weirarea(joinpath(mozartin_dir, "weirarea.dik"))
 lswattr = read_lswattr(joinpath(mozartin_dir, "lswattr.csv"))
-mftolsw = read_mftolsw(joinpath(coupling_dir, "MFtoLSW.csv"))
-plottolsw = read_plottolsw(joinpath(coupling_dir, "PlottoLSW.csv"))
 waattr = read_waattr(joinpath(mozartin_dir, "waattr.csv"))
+
+drpl = read_drpl(joinpath(tot_dir, "drpl.dik"))
+drplval = read_drplval(joinpath(tot_dir, "drplval.dik"))
+plbound = read_plbound(joinpath(tot_dir, "plbound.dik"))
+plot = read_plot(joinpath(tot_dir, "plot.dik"))
+plsgval = read_plsgval(joinpath(tot_dir, "plsgval.dik"))
+plvalue = read_plvalue(joinpath(tot_dir, "plvalue.dik"))
+
+nothing
