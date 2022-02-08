@@ -478,9 +478,38 @@ function read_waattr(path)
     return CSV.read(path, DataFrame; header = names, stringtype = String, strict = true)
 end
 
+"Read meteo input timeseries"
+function read_meteo(path)
+    # type 1 is evaporation, 2 is precipitation
+    names = ["type", "lsw", "time_start", "time_end", "value"]
+    types = Dict("time_start" => String, "time_end" => String)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
+    df[!, "time_start"] = datestring.(df.time_start)
+    df[!, "time_end"] = datestring.(df.time_end)
+    return df
+end
+
 coupling_dir = joinpath(@__DIR__, "data", "lhm-input", "coupling")
 mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
 tot_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "tot")
+meteo_dir = joinpath(
+    @__DIR__,
+    "data",
+    "lhm-input",
+    "control",
+    "control_LHM4_2_2019_2020",
+    "meteo",
+    "mozart",
+)
 
 mftolsw = read_mftolsw(joinpath(coupling_dir, "MFtoLSW.csv"))
 plottolsw = read_plottolsw(joinpath(coupling_dir, "PlottoLSW.csv"))
@@ -503,8 +532,10 @@ waattr = read_waattr(joinpath(mozartin_dir, "waattr.csv"))
 drpl = read_drpl(joinpath(tot_dir, "drpl.dik"))
 drplval = read_drplval(joinpath(tot_dir, "drplval.dik"))
 plbound = read_plbound(joinpath(tot_dir, "plbound.dik"))
-plot = read_plot(joinpath(tot_dir, "plot.dik"))
+plotdik = read_plot(joinpath(tot_dir, "plot.dik"))
 plsgval = read_plsgval(joinpath(tot_dir, "plsgval.dik"))
 plvalue = read_plvalue(joinpath(tot_dir, "plvalue.dik"))
+
+meteo = read_meteo(joinpath(meteo_dir, "metocoef.ext"))
 
 nothing

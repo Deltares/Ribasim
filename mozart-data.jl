@@ -5,12 +5,14 @@ using DataFrameMacros
 using Revise
 using Graphs
 using DBFTables
+using GeometryBasics: Point2f
+using Statistics: mean
 
 includet("mozart-files.jl")
 
 lsw_hupsel = 151358
 lsw_tol = 200164
-lsws = collect(lswdik.local_surface_water_code)
+lsws = collect(lswdik.lsw)
 
 "Get the node index from an LSW code"
 node_idx(lsw, lsws) = findfirst(==(lsw), lsws)
@@ -21,10 +23,7 @@ function lswrouting_graph(lsws, lswrouting)
     graph = DiGraph(n)
     # loop over lswrouting, adding
     # around 1600 lsws are not in lswrouting
-    for (lsw_from, lsw_to) in zip(
-        lswrouting.local_surface_water_code_from,
-        lswrouting.local_surface_water_code_to,
-    )
+    for (lsw_from, lsw_to) in zip(lswrouting.lsw_from, lswrouting.lsw_to)
         node_from = findfirst(==(lsw_from), lsws)
         node_to = findfirst(==(lsw_to), lsws)
         add_edge!(graph, node_from, node_to)
@@ -86,7 +85,8 @@ function write_lswrouting(path, graph, lswlocs)
     end
 end
 
-graph = lswrouting_graph(lsw, lswrouting)
+
+graph = lswrouting_graph(lsws, lswrouting)
 sgraph, connected_nodes = subgraph(graph, node_idx(lsw_hupsel, lsws))
 lswlocs = lsw_centers(joinpath(coupling_dir, "lsws.dbf"), lsws)
 
