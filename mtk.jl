@@ -34,8 +34,7 @@ end
 
 prec = hupsel_prec(meteo)
 # prec.value .*= 26400 # get a more sizable inflow to see some volume change
-times = @. Float64(Dates.value(prec.time_start - prec.time_start[1]))
-
+times = @. Float64(Dates.value(Second(prec.time_start - prec.time_start[1])))
 
 name = :hupsel
 volumes = [1463.5, 1606.8, 2212.9, 2519.7, 2647, 2763, 2970.7, 7244.2]
@@ -93,7 +92,7 @@ inflow(t) = inflow_interp(t)
 @register inflow(t)
 res = reservoir(; name, Δstorage, inflow)
 res.q
-prob = ODEProblem(structural_simplify(res), [res.q => 0.0], extrema(times))
+prob = ODEProblem(structural_simplify(res), [res.q => 0.0], (times[begin], times[end]))
 sol = solve(prob);
 
 # confirm it empties: ok
@@ -116,5 +115,5 @@ volume(vad,1e-6)
 
 plot(sol.t, v)
 
-plot(sol(1:20))
+plot(sol(1:864000))
 scatter!(times[1:3], inflow.(times[1:3]))
