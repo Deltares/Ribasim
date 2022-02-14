@@ -6,6 +6,7 @@ using DifferentialEquations: solve
 using ModelingToolkit
 using GLMakie
 using Revise
+import Plots
 
 includet("mozart-files.jl")
 includet("lib.jl")
@@ -14,10 +15,11 @@ includet("plot.jl")
 const lsw_hupsel::Int = 151358
 
 # define the runtime and timestep
-times::StepRange{DateTime, Day} = range(DateTime(2019), DateTime(2021), step = Day(1))
+times::StepRange{DateTime,Day} = range(DateTime(2019), DateTime(2021), step = Day(1))
 # MTK needs Float64 time, use Unix time inside model
-unixperiod::Tuple{Float64, Float64} = (datetime2unix(times[begin]), datetime2unix(times[end]))
-timeperiod::Tuple{DateTime, DateTime} = (times[begin], times[end])
+period::Tuple{DateTime,DateTime} = (times[begin], times[end])
+unix_period::Tuple{Float64,Float64} =
+    (datetime2unix(times[begin]), datetime2unix(times[end]))
 
 function load_input(meteo)
     # evap = @subset(meteo, :lsw == lsw_hupsel, :type == 1)
@@ -39,13 +41,25 @@ function load_input(meteo)
     return df, vad, inflow_interp
 end
 
-function reservoir(; name, Δstorage, inflow)
+"Single reservoir"
+function single_reservoir(; name, Δstorage, net_prec)
     @variables t q(t)
-    D = Differential(t) # define an operator for the differentiation w.r.t. time
+    D = Differential(t)
     return ODESystem(
-        D(q) ~ (1 / Δstorage(q)) * inflow(t) - (1 / Δstorage(q)) * q;
+        D(q) ~ (1 / Δstorage(q)) * net_prec(t) - (1 / Δstorage(q)) * q;
         name,
         defaults = Dict(q => 0.0),
+    )
+end
+
+"Coupled reservoir"
+function reservoir(; name, Δstorage, net_prec)
+    @variables t q(t) q_upstream(t)
+    D = Differential(t)
+    return ODESystem(
+        D(q) ~ (1 / Δstorage(q)) * (q_upstream + net_prec(t)) - (1 / Δstorage(q)) * q;
+        name,
+        defaults = Dict(q => 0.0, q_upstream => 0.0),
     )
 end
 
@@ -54,14 +68,34 @@ end
 prec, vad, inflow_interp = load_input(meteo)
 vad.volume .*= 300
 vad.dvdq .*= 300
-inflow(t) = inflow_interp(t) * 2e4
+
+net_prec(t) = inflow_interp(t) * 2e4
 Δstorage(q) = decay(vad, q)
 @register Δstorage(q)
-@register inflow(t)
-res = reservoir(; name = :hupsel, Δstorage, inflow)
+@register net_prec(t)
+
+res = single_reservoir(; name = :hupsel, Δstorage, net_prec)
 
 # solve the system
-prob = ODEProblem(structural_simplify(res), [res.q => 0.0], unixperiod)
+prob = ODEProblem(structural_simplify(res), [], unix_period)
 sol = solve(prob);
 
-plot_reservoir(sol, prec, vad; combine_flows=true)
+plot_reservoir(sol, prec, vad; combine_flows = true)
+
+
+## combined system
+
+hupsel = reservoir(; name = :hupsel, Δstorage, net_prec)
+vecht = reservoir(; name = :vecht, Δstorage, net_prec)
+connections = [hupsel.q_upstream ~ 0.0, vecht.q_upstream ~ hupsel.q]
+
+dwsys_raw = compose(ODESystem(connections, name = :district), hupsel, vecht)
+dwsys = structural_simplify(dwsys_raw)
+
+equations(dwsys_raw)
+equations(dwsys)
+
+dwprob = ODEProblem(dwsys, [], unix_period)
+dwsol = solve(dwprob)
+
+Plots.plot(dwsol)

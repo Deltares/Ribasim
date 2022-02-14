@@ -14,13 +14,13 @@ function time!(ax, time)
 end
 
 "Plot the results of a single reservoir"
-function plot_reservoir(sol, prec, vad; combine_flows=false)
+function plot_reservoir(sol, prec, vad; combine_flows = false)
 
     outflow_m3s = first.(sol.u)
     volumes = volume.(Ref(vad), outflow_m3s)
 
     # convert [m³/s] to [m³/day]
-    inflows = inflow.(prec.unixtime) .* 86400
+    inflows = net_prec.(prec.unixtime) .* 86400
     vad_discharge = vad.discharge .* 86400
     outflow = outflow_m3s .* 86400
 
@@ -45,8 +45,8 @@ function plot_reservoir(sol, prec, vad; combine_flows=false)
     end
     stairs!(ax_i, prec.unixtime, inflows, color = :black, step = :post, label = "inflow")
 
-    time!(ax_q, timeperiod)
-    time!(ax_i, timeperiod)
+    time!(ax_q, period)
+    time!(ax_i, period)
     hidexdecorations!(ax_q, grid = false)
     hidexdecorations!(ax_i, grid = false)
     axislegend(ax_q)
@@ -65,7 +65,7 @@ function plot_reservoir(sol, prec, vad; combine_flows=false)
     )
     axislegend(ax_v)
 
-    time!(ax_v, timeperiod)
+    time!(ax_v, period)
     linkxaxes!(ax_q, ax_i, ax_v)
 
     # discharge-volume relation
