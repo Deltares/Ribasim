@@ -8,9 +8,9 @@ using Dates
 function datestring(s)
     # uslswdem once has "20100000.000000", parse as Jan 1st
     if s == "20100000.000000"
-        Date(2010, 1, 1)
+        DateTime(2010, 1, 1)
     else
-        Date(s, dateformat"yyyymmdd.000000")
+        DateTime(s, dateformat"yyyymmdd.000000")
     end
 end
 

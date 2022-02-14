@@ -23,7 +23,8 @@ function VolumeAreaDischarge(vol, area, q)
     VolumeAreaDischarge(vol, area, q, dvdq)
 end
 
-function Δvolume(vad::VolumeAreaDischarge, q)
+function decay(vad::VolumeAreaDischarge, q)
+    # output is in [s] == [m3 / (m3s⁻¹)]
     (; discharge, dvdq) = vad
     i = searchsortedlast(discharge, q)
     # constant extrapolation
@@ -32,11 +33,15 @@ function Δvolume(vad::VolumeAreaDischarge, q)
 end
 
 function volume(vad::VolumeAreaDischarge, q)
-    (; volume, discharge) = vad
-    i = searchsortedlast(discharge, q)
-    # constant extrapolation
-    i = clamp(i, 1, length(volume))
-    return volume[i]
+    i = searchsortedlast(vad.discharge, q)
+    # linear extrapolation
+    i = clamp(i, 1, length(vad.volume))
+    slope = decay(vad, q)
+    v0 = vad.volume[i]
+    q0 = vad.discharge[i]
+    v = v0 + (q - q0) * slope
+    # TODO add the empty reservoir condition to the calculation
+    return max(v, 0.0)
 end
 
 nothing
