@@ -64,4 +64,4 @@ res = reservoir(; name = :hupsel, Δstorage, inflow)
 prob = ODEProblem(structural_simplify(res), [res.q => 0.0], unixperiod)
 sol = solve(prob);
 
-plot_reservoir(sol, prec, vad)
+plot_reservoir(sol, prec, vad; combine_flows=true)

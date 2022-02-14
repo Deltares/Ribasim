@@ -14,7 +14,7 @@ function time!(ax, time)
 end
 
 "Plot the results of a single reservoir"
-function plot_reservoir(sol, prec, vad)
+function plot_reservoir(sol, prec, vad; combine_flows=false)
 
     outflow_m3s = first.(sol.u)
     volumes = volume.(Ref(vad), outflow_m3s)
@@ -37,15 +37,19 @@ function plot_reservoir(sol, prec, vad)
         markercolor = :black,
         markersize = 3,
     )
-    time!(ax_q, timeperiod)
-    hidexdecorations!(ax_q, grid = false)
-    axislegend(ax_q)
 
     # inflow
     ax_i = Axis(fig[2, 1], height = 200, ylabel = "[m³/day]")
+    if combine_flows
+        stairs!(ax_q, prec.unixtime, inflows, color = :blue, step = :post, label = "inflow")
+    end
     stairs!(ax_i, prec.unixtime, inflows, color = :black, step = :post, label = "inflow")
+
+    time!(ax_q, timeperiod)
     time!(ax_i, timeperiod)
+    hidexdecorations!(ax_q, grid = false)
     hidexdecorations!(ax_i, grid = false)
+    axislegend(ax_q)
     axislegend(ax_i)
 
     # volume
