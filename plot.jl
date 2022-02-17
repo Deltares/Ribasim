@@ -14,14 +14,14 @@ function time!(ax, time)
 end
 
 "Plot the results of a single reservoir"
-function plot_reservoir(sol, prec, vad; combine_flows = false)
+function plot_reservoir(sol, prec, curve; combine_flows = false)
 
-    outflow_m3s = first.(sol.u)
-    volumes = volume.(Ref(vad), outflow_m3s)
+    storage = first.(sol.u)
+    outflow_m3s = discharge.(Ref(curve), storage)
 
     # convert [m³/s] to [m³/day]
     inflows = net_prec.(prec.unixtime) .* 86400
-    vad_discharge = vad.discharge .* 86400
+    vad_discharge_m3d = curve.q .* 86400
     outflow = outflow_m3s .* 86400
 
     fig = Figure(resolution = (1900, 1000))
@@ -52,13 +52,13 @@ function plot_reservoir(sol, prec, vad; combine_flows = false)
     axislegend(ax_q)
     axislegend(ax_i)
 
-    # volume
+    # storage
     ax_v = Axis(fig[3, 1], height = 200, ylabel = "[m³]")
     scatterlines!(
         ax_v,
         sol.t,
-        volumes,
-        label = "volume",
+        storage,
+        label = "storage",
         color = :black,
         markercolor = :black,
         markersize = 3,
@@ -68,11 +68,11 @@ function plot_reservoir(sol, prec, vad; combine_flows = false)
     time!(ax_v, period)
     linkxaxes!(ax_q, ax_i, ax_v)
 
-    # discharge-volume relation
+    # discharge-storage relation
     ax_qv =
-        Axis(fig[3, 2], width = 400, xlabel = "discharge [m³/day]", ylabel = "volume [m³]")
-    scatterlines!(ax_qv, vad_discharge, vad.volume)
-    linkyaxes!(ax_v, ax_qv)
+        Axis(fig[1, 2], width = 400, xlabel = "storage [m³]", ylabel = "discharge [m³/day]")
+    scatterlines!(ax_qv, curve.s, vad_discharge_m3d)
+    linkyaxes!(ax_q, ax_qv)
 
     DataInspector(fig)
     return fig
