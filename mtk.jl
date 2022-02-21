@@ -63,10 +63,10 @@ function reservoir(; name, discharge, net_prec, s0, s0_upstream)
 end
 
 ## create a reservoir component
+
 # load and modify data to get prettier results
 prec, curve, inflow_interp = load_input(meteo)
 curve.q ./= 300
-
 net_prec(t) = inflow_interp(t) * 200
 discharge(q) = discharge(curve, q)
 @register discharge(q)
@@ -78,21 +78,18 @@ res = single_reservoir(; name = :hupsel, discharge, net_prec, s0)
 # solve the system
 prob = ODEProblem(structural_simplify(res), [], unix_period)
 sol = solve(prob);
-first.(sol.u)
 
-# TODO ensure outflow does not become negative
-# below 1463.5
+# Plots.plot(sol)
+# Plots.savefig("data/fig/QS/mkt1-s-plots3.png")
+
 fig = plot_reservoir(sol, prec, curve; combine_flows = true)
-save("data/fig/QS/mkt1-s.png", fig)
-
-Plots.plot(sol)
-Plots.savefig("data/fig/QS/mkt1-s-plots.png")
+# save("data/fig/QS/mkt1-s.png", fig)
 
 
 ## combined system
 
-hupsel = reservoir(; name = :hupsel, discharge, net_prec, s0=s0, s0_upstream=s0)
-vecht = reservoir(; name = :vecht, discharge, net_prec, s0=s0, s0_upstream=s0)
+hupsel = reservoir(; name = :hupsel, discharge, net_prec, s0 = s0, s0_upstream = s0)
+vecht = reservoir(; name = :vecht, discharge, net_prec, s0 = s0, s0_upstream = s0)
 connections = [hupsel.s_upstream ~ 0.0, vecht.s_upstream ~ hupsel.s]
 
 dwsys_raw = compose(ODESystem(connections, name = :district), [hupsel, vecht])
