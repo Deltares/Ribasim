@@ -68,8 +68,8 @@ end
 prec, curve, inflow_interp = load_input(meteo)
 curve.q ./= 300
 net_prec(t) = inflow_interp(t) * 200
-discharge(q) = discharge(curve, q)
-@register discharge(q)
+discharge(s) = discharge(curve, s)
+@register discharge(s)
 @register net_prec(t)
 
 s0 = minimum(curve.s)
