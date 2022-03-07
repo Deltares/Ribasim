@@ -12,13 +12,17 @@ using Test
 
 includet("components.jl")
 
-@named inflow = ConstantFlux(Q0 = [0.0, -5.0])
-@named bucket1 = Bucket(C = 0.15, h0 = [3.0, 0.0])
-@named bucket2 = Bucket(C = 0.15, h0 = [4.0, 0.0])
-@named bucket3 = Bucket(C = 0.15, h0 = [5.0, 0.0])
-@named darcy = Darcy(K = 0.7, A = 1.0, L = 1.0)
-@named head_in = ConstantHead(h0 = [1.0, 2.0])
-@named head = ConstantHead(h0 = [3.0, 3.5])
+watnames = [:precip, :storage1, :storage2, :storage3]
+labels = permutedims(String.(watnames))
+nwat = length(watnames)
+
+@named inflow = ConstantFlux(Q0 = [-5.0, 0, 0, 0])
+@named bucket1 = Bucket(C = 0.15, h0 = [0.0, 3, 0, 0])
+@named bucket2 = Bucket(C = 0.15, h0 = [0.0, 0, 4, 0])
+@named bucket3 = Bucket(C = 0.15, h0 = [0.0, 0, 0, 5])
+@named darcy = Darcy(; nwat, K = 0.7, A = 1.0, L = 1.0)
+@named head_in = ConstantHead(h0 = [1.0, 2, 2, 2])
+@named head = ConstantHead(h0 = [3.0, 3.5, 3.5, 3.5])
 
 eqs = [
     # connect(head_in.o, darcy.a)
@@ -46,39 +50,13 @@ observed(sim)
 
 prob = ODEProblem(sim, [], (0, 1.0))
 sol = solve(prob)
-# Plots.plot(sol)
-
-# component outflows per bucket
-Plots.plot(sol, yflip = true, vars = [bucket1.o.Q..., bucket2.o.Q..., bucket3.o.Q...])
-# total outflows per bucket
-Plots.plot(
-    sol,
-    yflip = true,
-    legend = false,
-    vars = [sum(bucket1.o.Q), sum(bucket2.o.Q), sum(bucket3.o.Q)],
-)
-# TODO stack the components
-# Plots.areaplot
-Plots.areaplot(
-    1:3,
-    [1 2 3; 7 8 9; 4 5 6],
-    seriescolor = [:red :green :blue],
-    fillalpha = [0.2 0.3 0.4],
-)
-Plots.areaplot([1 2 3; 7 8 9; 4 5 6])
-Plots.areaplot(-1 .* [1 2 3; 7 8 9; 4 5 6])
-
-propertynames(sol)
-sol[bucket1.o.Q[1]]
 
 # stacked Q, outflow is negative so flipped axis
-Plots.areaplot(VectorOfArray(sol[bucket1.o.Q]), yflip = true, legend = false)
-Plots.areaplot(VectorOfArray(sol[bucket2.o.Q]), yflip = true, legend = false)
-Plots.areaplot(VectorOfArray(sol[bucket3.o.Q]), yflip = true, legend = false)
+Plots.areaplot(VectorOfArray(sol[bucket1.o.Q]), yflip = true; labels)
+Plots.areaplot(VectorOfArray(sol[bucket2.o.Q]), yflip = true; labels)
+Plots.areaplot(VectorOfArray(sol[bucket3.o.Q]), yflip = true; labels)
 
 # stacked h
-Plots.areaplot(VectorOfArray(sol[bucket1.o.h]), legend = false)
-Plots.areaplot(VectorOfArray(sol[bucket2.o.h]), legend = false)
-Plots.areaplot(VectorOfArray(sol[bucket3.o.h]), legend = false)
-
-# Plots.plot(sol,vars=[bucket1.o.Q[1], bucket1.o.Q[2]])
+Plots.areaplot(VectorOfArray(sol[bucket1.o.h]); labels)
+Plots.areaplot(VectorOfArray(sol[bucket2.o.h]); labels)
+Plots.areaplot(VectorOfArray(sol[bucket3.o.h]); labels)
