@@ -5,54 +5,50 @@ using Symbolics: Symbolics, scalarize
 
 @parameters t
 
-
-# @connector function FP1(; name, nwat, h0 = [0.0, 0.0], Q0 = [0.0, 0.0])
-#     @variables h[1:2](t) = h0 Q[1:2](t) = Q0 [connect = Flow]
-#     ODESystem(Equation[], t, [h..., Q...], []; name)
-# end
-
-# FP1(name=:t, nwat=2, h0 = [0.0, 0.0], Q0 = [0.0, 0.0])
-# @variables h[1:2](t) = [0.0, 0.0] Q[1:2](t) = [0.0, 0.0] [connect = Flow]
-# @variables h[1:2](t) = 0.0 Q[1:2](t) = [0.0, 0.0] [connect = Flow]
-# @variables h[1:2](t) = 0.0
-# @variables h[1:2](t) = [1.0,2.0]
-# @variables h[1:2](t) = (2.0,3.0)
-# @variables h[1:2](t) = (a=2.0,b=3.0)
-
 @connector function FluidPort(; name, nwat = nothing, h0 = 0.0, Q0 = 0.0)
     if isnothing(nwat)
         nwat = max(length(h0), length(Q0))
     end
     length(h0) in (1, nwat) || DimensionMismatch("h0 should be length 1 or nwat")
     length(Q0) in (1, nwat) || DimensionMismatch("Q0 should be length 1 or nwat")
+    # h [m]: hydraulic head
+    # Q [m3 s⁻¹]: volumetric flux
     @variables h[1:nwat](t) = h0 Q[1:nwat](t) = Q0 [connect = Flow]
     ODESystem(Equation[], t, [h..., Q...], []; name)
 end
 
-function Bucket(; name, h0, C)
-    @named i = FluidPort(; h0)
-    @named o = FluidPort(; h0)
-    nwat = length(i.Q)
-    # TODO add proper parameters / storage
-    pars = @parameters C = C
+function Bucket(; name, s0, α, β, bottom, k)
+    # do we need h0 here, given s0?
+    nwat = length(s0)
+    @named i = FluidPort(;nwat)
+    @named o = FluidPort(;nwat)
+    pars = @parameters α = α β = β bottom = bottom
+    # h [m]: hydraulic head above (s=0 and Q=0) bottom
+    # s [m3]: storage
+    @variables s[1:nwat](t) = s0 h(t)
     D = Differential(t)
 
     # scalarizing sums is not needed, but nicely writes them out
     eqs = Equation[
-        # rating curve
-        scalarize(sum(o.Q) ~ sum(-o.h))
-        # full mixing (what about dividing by 0?)
-        [scalarize(o.Q[w] / sum(o.Q) ~ o.h[w] / sum(o.h)) for w = 1:nwat-1]...
+        scalarize(h ~ sum(o.h) - bottom)
+        # Q(h) rating curve
+        scalarize(-sum(o.Q) ~ α * h ^ β)
+        # s(h) volume level
+        scalarize(sum(s) ~ k * h)
+        # full mixing of storage (what about dividing by 0?)
+        [scalarize(o.Q[w] / sum(o.Q) ~ s[w] / sum(s)) for w = 1:nwat-1]...
+        [scalarize(o.h[w] / sum(o.h) ~ s[w] / sum(s)) for w = 1:nwat-1]...
         # storage / balance, per water type
-        # scalarize(C .* D.(o.h) .~ i.Q .+ o.Q)...  # needs https://github.com/JuliaSymbolics/Symbolics.jl/pull/486
-        [C * D(o.h[w]) ~ i.Q[w] + o.Q[w] for w = 1:nwat]...
+        # scalarize(D.(s) .~ i.Q .+ o.Q)...  # needs https://github.com/JuliaSymbolics/Symbolics.jl/pull/486
+        [D(s[w]) ~ i.Q[w] + o.Q[w] for w = 1:nwat]...
     ]
-    compose(ODESystem(eqs, t, [], pars; name), i, o)
+    compose(ODESystem(eqs, t, [s...], pars; name), i, o)
 end
 
 function Darcy(; name, nwat, K, A, L)
     @named a = FluidPort(; nwat)
     @named b = FluidPort(; nwat)
+    # aggregated h and Q
     vars = @variables h(t) Q(t)
     pars = @parameters K = K A = A L = L
 
