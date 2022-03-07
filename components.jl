@@ -20,8 +20,8 @@ end
 function Bucket(; name, s0, α, β, bottom, k)
     # do we need h0 here, given s0?
     nwat = length(s0)
-    @named i = FluidPort(;nwat)
-    @named o = FluidPort(;nwat)
+    @named i = FluidPort(; nwat)
+    @named o = FluidPort(; nwat)
     pars = @parameters α = α β = β bottom = bottom
     # h [m]: hydraulic head above (s=0 and Q=0) bottom
     # s [m3]: storage
@@ -32,7 +32,7 @@ function Bucket(; name, s0, α, β, bottom, k)
     eqs = Equation[
         scalarize(h ~ sum(o.h) - bottom)
         # Q(h) rating curve
-        scalarize(-sum(o.Q) ~ α * h ^ β)
+        scalarize(-sum(o.Q) ~ α * h^β)
         # s(h) volume level
         scalarize(sum(s) ~ k * h)
         # full mixing of storage (what about dividing by 0?)

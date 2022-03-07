@@ -1,25 +1,34 @@
 # connect components into a model
 
-using DifferentialEquations: solve, Tsit5
+import DifferentialEquations as DE
+using DifferentialEquations: solve
 using Graphs
 using ModelingToolkit
-using ModelingToolkit: ModelingToolkit as MTK
+import ModelingToolkit as MTK
 using Plots: Plots
 using RecursiveArrayTools: VectorOfArray
 using Revise
 using Symbolics: Symbolics, scalarize
 using Test
+using Random
+import Distributions
 
 includet("components.jl")
+# plot stacked storage
+function splot(x, y; labels = nothing, title = "", yflip = false)
+    Plots.areaplot(x, VectorOfArray(y); yflip, labels, title)
+end
+# plot stacked discharge, outflow is negative so flipped axis
+qplot(x, y; labels = nothing, title = "", yflip = true) = splot(x, y; labels, title, yflip)
 
 watnames = [:precip, :storage1, :storage2, :storage3]
 labels = permutedims(String.(watnames))
 nwat = length(watnames)
 
 @named inflow = ConstantFlux(Q0 = [-5.0, 0, 0, 0])
-@named bucket1 = Bucket(k = 20.0, α=1.0e3, β=1.5, bottom=0.0, s0 = [0.0, 0.3, 0, 0])
-@named bucket2 = Bucket(k = 20.0, α=1.0e3, β=1.5, bottom=0.0, s0 = [0.0, 0, 0.4, 0])
-@named bucket3 = Bucket(k = 20.0, α=1.0e3, β=1.5, bottom=0.0, s0 = [0.0, 0, 0, 0.5])
+@named bucket1 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, bottom = 0.0, s0 = [0.0, 0.3, 0, 0])
+@named bucket2 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, bottom = 0.0, s0 = [0.0, 0, 0.4, 0])
+@named bucket3 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, bottom = 0.0, s0 = [0.0, 0, 0, 0.5])
 @named darcy = Darcy(; nwat, K = 0.7, A = 1.0, L = 1.0)
 @named head_in = ConstantHead(h0 = [1.0, 2, 2, 2])
 @named head = ConstantHead(h0 = [3.0, 3.5, 3.5, 3.5])
@@ -48,15 +57,15 @@ equations(sim)
 states(sim)
 observed(sim)
 
-prob = ODEProblem(sim, [], (0, 1.0))
+prob = ODEProblem(sim, [], (0, 1e0))
 sol = solve(prob)
 
-# stacked Q, outflow is negative so flipped axis
-Plots.areaplot(VectorOfArray(sol[bucket1.o.Q]), yflip = true; labels, title="bucket 1 discharge")
-Plots.areaplot(VectorOfArray(sol[bucket2.o.Q]), yflip = true; labels, title="bucket 2 discharge")
-Plots.areaplot(VectorOfArray(sol[bucket3.o.Q]), yflip = true; labels, title="bucket 3 discharge")
+qplot(sol.t, sol[inflow.o.Q]; labels, title = "inflow")
+qplot(sol.t, sol[bucket1.o.Q]; labels, title = "bucket 1 discharge")
+qplot(sol.t, sol[bucket2.o.Q]; labels, title = "bucket 2 discharge")
+qplot(sol.t, sol[bucket3.o.Q]; labels, title = "bucket 3 discharge")
 
-# stacked s
-Plots.areaplot(VectorOfArray(sol[bucket1.s]); labels, title="bucket 1 storage")
-Plots.areaplot(VectorOfArray(sol[bucket2.s]); labels, title="bucket 2 storage")
-Plots.areaplot(VectorOfArray(sol[bucket3.s]); labels, title="bucket 3 storage")
+splot(sol.t, sol[bucket1.s]; labels, title = "bucket 1 storage")
+splot(sol.t, sol[bucket2.s]; labels, title = "bucket 2 storage")
+splot(sol.t, sol[bucket3.s]; labels, title = "bucket 3 storage")
+
