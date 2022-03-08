@@ -1,7 +1,8 @@
 # components that can be combined into a connected system
 
 using ModelingToolkit
-using Symbolics: Symbolics, scalarize
+using Symbolics: Symbolics
+import IfElse
 
 @parameters t
 
@@ -58,9 +59,24 @@ end
 
 function ConstantFlux(; name, Q0)
     @named x = Discharge(; Q0)
-    nwat = length(x.Q)
-    @parameters Q0[1:nwat] = Q0
+    @parameters Q0 = Q0
 
-    eqs = Equation[scalarize(x.Q .~ Q0)...]
+    eqs = Equation[x.Q ~ Q0]
     compose(ODESystem(eqs, t, [], [Q0...]; name), x)
+end
+
+function User(; name, rate)
+    @named storage = Storage()
+    @named x = Discharge()
+    @parameters rate = rate
+    (;S) = storage
+    (;Q) = x
+
+    eqs = Equation[
+        # https://mtk.sciml.ai/dev/basics/FAQ/#How-do-I-handle-if-statements-in-my-symbolic-forms?
+        # both methods work and give the same results
+        # Q ~ IfElse.ifelse(S > 0, rate, 0)
+        Q ~ (S > 0) * rate
+    ]
+    compose(ODESystem(eqs, t, [], [rate]; name), x, storage)
 end

@@ -19,7 +19,8 @@ includet("components.jl")
 # but not when removing water
 @named inflow = ConstantFlux(Q0 = -5.0)
 # TODO make a user that is connected to S and/or h, which prevents negative storage
-@named user = ConstantFlux(Q0 = 4.0)
+# @named user = ConstantFlux(Q0 = 4.0)
+@named user = User(rate = 4.0)
 @named bucket1 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, S0 = 0.3)
 @named bucket2 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, S0 = 0.4)
 @named bucket3 = Bucket(k = 20.0, α = 1.0e2, β = 1.5, S0 = 0.5)
@@ -32,6 +33,7 @@ eqs = [
     connect(inflow.x, bucket1.x)
     connect(bucket1.o, bucket2.x)
     connect(user.x, bucket3.x)
+    connect(user.storage, bucket3.storage)
     connect(bucket2.o, bucket3.x)
 ]
 
@@ -55,6 +57,10 @@ prob = ODEProblem(sim, [], (0, 1e0))
 sol = solve(prob)
 
 Plots.plot(sol)
+# flippin'
+# Plots.plot(sol, vars=[user.x.Q])
+
 # Plots.plot(sol, vars=[inflow.x.Q, bucket3.x.Q])
+# TODO check signs here
 # Plots.plot(sol, vars=[user.x.Q, bucket2.o.Q, bucket3.x.Q])
 # Plots.plot(sol, vars=[user.x.Q + bucket2.o.Q + bucket3.x.Q])
