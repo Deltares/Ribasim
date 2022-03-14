@@ -9,5 +9,5 @@ create_app(
     # map from binary name to julia function name
     executables = ["rc_model" => "julia_main", "rc_deserialize" => "julia_deserialize"],
     precompile_execution_file = "precompile.jl",
-    filter_stdlibs = false  # safer, makes only a tiny difference
+    filter_stdlibs = false,  # safer, makes only a tiny difference
 )

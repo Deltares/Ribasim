@@ -1,67 +1,59 @@
 using ModelingToolkit, OrdinaryDiffEq
 
 @parameters t
-@connector function Pin(;name)
-    sts = @variables v(t)=1.0 i(t)=1.0 [connect = Flow]
-    ODESystem(Equation[], t, sts, []; name=name)
+@connector function Pin(; name)
+    sts = @variables v(t) = 1.0 i(t) = 1.0 [connect = Flow]
+    ODESystem(Equation[], t, sts, []; name = name)
 end
 
-function Ground(;name)
+function Ground(; name)
     @named g = Pin()
     eqs = [g.v ~ 0]
-    compose(ODESystem(eqs, t, [], []; name=name), g)
+    compose(ODESystem(eqs, t, [], []; name = name), g)
 end
 
-function OnePort(;name)
+function OnePort(; name)
     @named p = Pin()
     @named n = Pin()
-    sts = @variables v(t)=1.0 i(t)=1.0
+    sts = @variables v(t) = 1.0 i(t) = 1.0
     eqs = [
-           v ~ p.v - n.v
-           0 ~ p.i + n.i
-           i ~ p.i
-          ]
-    compose(ODESystem(eqs, t, sts, []; name=name), p, n)
+        v ~ p.v - n.v
+        0 ~ p.i + n.i
+        i ~ p.i
+    ]
+    compose(ODESystem(eqs, t, sts, []; name = name), p, n)
 end
 
-function Resistor(;name, R = 1.0)
+function Resistor(; name, R = 1.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
-    ps = @parameters R=R
-    eqs = [
-           v ~ i * R
-          ]
-    extend(ODESystem(eqs, t, [], ps; name=name), oneport)
+    ps = @parameters R = R
+    eqs = [v ~ i * R]
+    extend(ODESystem(eqs, t, [], ps; name = name), oneport)
 end
 
-function Capacitor(;name, C = 1.0)
+function Capacitor(; name, C = 1.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
-    ps = @parameters C=C
+    ps = @parameters C = C
     D = Differential(t)
-    eqs = [
-           D(v) ~ i / C
-          ]
-    extend(ODESystem(eqs, t, [], ps; name=name), oneport)
+    eqs = [D(v) ~ i / C]
+    extend(ODESystem(eqs, t, [], ps; name = name), oneport)
 end
 
-function ConstantVoltage(;name, V = 1.0)
+function ConstantVoltage(; name, V = 1.0)
     @named oneport = OnePort()
     @unpack v = oneport
-    ps = @parameters V=V
-    eqs = [
-           V ~ v
-          ]
-    extend(ODESystem(eqs, t, [], ps; name=name), oneport)
+    ps = @parameters V = V
+    eqs = [V ~ v]
+    extend(ODESystem(eqs, t, [], ps; name = name), oneport)
 end
 
 function Inductor(; name, L = 1.0)
     @named oneport = OnePort()
     @unpack v, i = oneport
-    ps = @parameters L=L
+    ps = @parameters L = L
     D = Differential(t)
-    eqs = [
-           D(i) ~ v / L
-          ]
-    extend(ODESystem(eqs, t, [], ps; name=name), oneport)
+    eqs = [D(i) ~ v / L]
+    extend(ODESystem(eqs, t, [], ps; name = name), oneport)
 end
