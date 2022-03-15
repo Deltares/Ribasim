@@ -88,10 +88,11 @@ end
 
 graph = lswrouting_graph(lsws, lswrouting)
 sgraph, connected_nodes = subgraph(graph, node_idx(lsw_hupsel, lsws))
+slsws = lsws[connected_nodes]
 lswlocs = lsw_centers(joinpath(coupling_dir, "lsws.dbf"), lsws)
 
 # get the node index for hupsel in the subgraph
-node_sgraph = node_idx(lsw_hupsel, lsws[connected_nodes])
+node_sgraph = node_idx(lsw_hupsel, slsws)
 
 cutout("hupsel", lsw_hupsel)
 cutout("tol", lsw_tol)
@@ -108,3 +109,5 @@ write_lswrouting("lswrouting.wkt", graph, lswlocs)
 # using Colors
 # node_color = [v == node_sgraph ? colorant"red" : colorant"black" for v = 1:nv(sgraph)]
 # graphplot(sgraph; node_color, layout = (g -> lswlocs[connected_nodes]))
+
+nothing

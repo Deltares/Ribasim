@@ -125,3 +125,95 @@ sol = solve(prob, alg_hints = [:stiff], callback = cb)
 Plots.plot(sol, vars = [bucket1.x.Q])
 Plots.plot(sol, vars = [user.x.C, bucket1.conc.C])
 Plots.plot(sol, vars = [bucket1.storage.S, user.x.Q])
+
+## graph
+
+includet("mozart-data.jl")
+g = sgraph
+n = nv(g)
+
+# make a plot of the lswrouting, with the node of interest in red, and the actual locations
+# using GraphMakie
+# using CairoMakie
+# using Colors
+# node_color = [v == node_sgraph ? colorant"red" : colorant"black" for v = 1:nv(g)]
+# graphplot(g; node_color, layout = (g -> lswlocs[connected_nodes]))
+
+# create all the components
+precips = ODESystem[]
+buckets = ODESystem[]
+for lsw in slsws
+    name = Symbol("precip_lsw", lsw)
+    precip = Precipitation(; name, Q0 = 0.0)
+    name = Symbol("bucket_lsw", lsw)
+    bucket = Bucket(; name, α = 6.0, S0 = 3.0, C0 = 100.0)
+    push!(precips, precip)
+    push!(buckets, bucket)
+end
+
+# connect the components
+eqs = Equation[]
+for v = 1:nv(g)
+    precip = precips[v]
+    bucket = buckets[v]
+
+    outs = outneighbors(g, v)
+    outbuckets = buckets[outs]
+
+    push!(eqs, connect(precip.x, bucket.x))
+    # there is 1 node with two outneighbors
+    # for now we just send the full outflow to both downstream neighbors
+    for outbucket in outbuckets
+        push!(eqs, connect(bucket.o, outbucket.x))
+    end
+end
+
+@named _sys = ODESystem(eqs, t, [], [ix])
+@named sys = compose(_sys, vcat(precips, buckets))
+sim = structural_simplify(sys)
+
+equations(sys)
+states(sys)
+observed(sys)
+
+equations(sim)
+states(sim)
+observed(sim)
+
+prob = ODAEProblem(sim, [], tspan)
+
+function is_precip(s)
+    sym = String(s.metadata[Symbolics.VariableSource][2])
+    return startswith(sym, "precip_lsw")
+end
+
+# all indices to the precipitation fluxes
+precip_idxs = findall(is_precip, states(sim))
+
+function periodic_update!(integrator)
+    # exchange with Modflow and Metaswap here
+    # update all precipitation fluxes at once
+    (; u, p) = integrator
+    ipx = parameter(ix, sim)
+    ixval = round(Int, p[ipx])
+    u[precip_idxs] .= -precipitation[ixval]
+    p[ipx] += 1  # update exchange number
+    return nothing
+end
+
+cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+
+sol = solve(prob, alg_hints = [:stiff], callback = cb_exchange)
+
+toposort = topological_sort_by_dfs(g)
+top = toposort[1]
+mid = toposort[n÷2]
+out = toposort[end]
+
+Plots.plot(sol, vars = [-precips[top].x.Q, -precips[mid].x.Q, -precips[out].x.Q])
+Plots.plot(sol, vars = [buckets[top].x.Q, buckets[mid].x.Q, buckets[out].x.Q])
+Plots.plot(sol, vars = [buckets[top].x.C, buckets[mid].x.C, buckets[out].x.C])
+Plots.plot(
+    sol,
+    vars = [buckets[top].storage.S, buckets[mid].storage.S, buckets[out].storage.S],
+)
