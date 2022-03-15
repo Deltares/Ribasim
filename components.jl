@@ -2,7 +2,7 @@
 
 using ModelingToolkit
 
-@parameters t
+@variables t
 
 "h [m]: hydraulic head above reference level"
 @connector function Head(; name, h0 = 0.0)
@@ -75,18 +75,17 @@ function Inflow(; name, Q0, C0)
 end
 
 "Extract water if there is storage left"
-function User(; name, Q0)
-    @assert Q0 >= 0 "Extraction rate must be positive"
-    @named storage = Storage()
-    @named x = Discharge()
-    @parameters Q0 = Q0
-    (; S) = storage
+function User(; name, demand)
+    @named x = Discharge(Q0 = demand)
+    pars = @parameters demand = demand
+    vars = @variables shortage(t) = 0
     (; Q, C) = x
+    D = Differential(t)
 
     eqs = Equation[
-        # S > 1 instead of 0 to avoid D(C) ~ f(1 / S) issues
-        Q ~ ifelse(S > 1, Q0, 0)
+        D(Q) ~ 0
         C ~ 0  # not used
+        shortage ~ demand - Q
     ]
-    compose(ODESystem(eqs, t, [], [Q0]; name), x, storage)
+    compose(ODESystem(eqs, t, vars, pars; name), x)
 end
