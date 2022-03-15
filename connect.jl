@@ -132,11 +132,27 @@ includet("mozart-data.jl")
 g = sgraph
 n = nv(g)
 
+toposort = topological_sort_by_dfs(g)
+top = toposort[1]
+mid = toposort[n÷5]
+out = toposort[end-10]
+
 # make a plot of the lswrouting, with the node of interest in red, and the actual locations
 # using GraphMakie
 # using CairoMakie
 # using Colors
-# node_color = [v == node_sgraph ? colorant"red" : colorant"black" for v = 1:nv(g)]
+# using FixedPointNumbers
+# node_color = RGB{N0f8}[]
+# for v = 1:nv(g)
+#     if v == node_sgraph
+#         color = colorant"red"
+#     elseif v in (top, mid, out)
+#         color = colorant"blue"
+#     else
+#         color = colorant"black"
+#     end
+#     push!(node_color, color)
+# end
 # graphplot(g; node_color, layout = (g -> lswlocs[connected_nodes]))
 
 # create all the components
@@ -204,11 +220,6 @@ end
 cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
 sol = solve(prob, alg_hints = [:stiff], callback = cb_exchange)
-
-toposort = topological_sort_by_dfs(g)
-top = toposort[1]
-mid = toposort[n÷2]
-out = toposort[end]
 
 Plots.plot(sol, vars = [-precips[top].x.Q, -precips[mid].x.Q, -precips[out].x.Q])
 Plots.plot(sol, vars = [buckets[top].x.Q, buckets[mid].x.Q, buckets[out].x.Q])
