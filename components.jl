@@ -3,6 +3,8 @@
 using ModelingToolkit
 
 @variables t
+# count the exchanges (value will still be Float64)
+@parameters ix::Int = 1
 
 "h [m]: hydraulic head above reference level"
 @connector function Head(; name, h0 = 0.0)
@@ -61,7 +63,7 @@ function ConstantHead(; name, h0)
 end
 
 "Add a discharge to the system"
-function Inflow(; name, Q0, C0)
+function FixedInflow(; name, Q0, C0)
     @assert Q0 <= 0 "Supply Q0 must be negative"
     @named x = Discharge()
     @parameters Q0 = Q0 C0 = C0
@@ -72,6 +74,19 @@ function Inflow(; name, Q0, C0)
         C ~ C0
     ]
     compose(ODESystem(eqs, t, [], [Q0, C0]; name), x)
+end
+
+function Precipitation(; name, Q0)
+    @assert Q0 <= 0 "Precipitation Q0 must be negative"
+    @named x = Discharge(; Q0)
+    (; Q, C) = x
+    D = Differential(t)
+
+    eqs = Equation[
+        D(Q) ~ 0
+        C ~ 0
+    ]
+    compose(ODESystem(eqs, t, [], []; name), x)
 end
 
 "Extract water if there is storage left"
