@@ -213,7 +213,13 @@ function periodic_update!(integrator)
     ipx = parameter(ix, sim)
     ixval = round(Int, p[ipx])
     u[precip_idxs] .= -precipitation[ixval]
-    p[ipx] += 1  # update exchange number
+    # update exchange number
+    # make it safe to run twice without re-creating the problem
+    if ixval >= nx
+        p[ipx] = 1
+    else
+        p[ipx] += 1
+    end
     return nothing
 end
 
