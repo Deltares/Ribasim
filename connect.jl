@@ -28,7 +28,7 @@ precipitation = vec(readdlm("data/precipitation.csv"))
 
 @named inflow = FixedInflow(Q0 = -1.0, C0 = 70.0)
 @named precip = Precipitation(Q0 = 0.0)
-@named user = User(demand = 2.0)
+@named user = User(demand = 3.0)
 @named user2 = User(demand = 1.0)
 @named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 @named bucket2 = Bucket(α = 1.0e1, S0 = 3.0, C0 = 200.0)
@@ -38,9 +38,10 @@ eqs = [
     # connect(inflow.x, bucket1.x)
     connect(precip.x, bucket1.x)
     connect(user.x, bucket1.x)
-    connect(user2.x, bucket3.x)
-    connect(bucket1.o, bucket2.x)
-    connect(bucket2.o, bucket3.x)
+    connect(user.storage, bucket1.storage)
+    # connect(user2.x, bucket3.x)
+    # connect(bucket1.o, bucket2.x)
+    # connect(bucket2.o, bucket3.x)
 ]
 
 @named _sys = ODESystem(eqs, t, [], [ix])
@@ -61,7 +62,12 @@ prob = ODAEProblem(sim, [], tspan)
 
 # helper functions to get the index of states and parameters based on their symbol
 # also do this for observed
-state(sym, sim) = findfirst(isequal(sym), states(sim))
+function state(sym, sim)
+    i = findfirst(isequal(sym), states(sim))
+    i === nothing && error("state $sym not found, might be observed")
+    return i
+end
+
 parameter(sym, sim) = findfirst(isequal(sym), parameters(sim))
 
 # callback condition: amount of storage
@@ -72,16 +78,17 @@ end
 
 # callback affect: stop pumping
 function stop_pumping!(integrator)
-    i = state(user.x.Q, sim)
-    integrator.u[i] = 0
+    i = parameter(user.xfactor, sim)
+    integrator.p[i] = 0
+    @info "set xfactor to 0 at t $(integrator.t)"
     return nothing
 end
 
 # call affect: resume pumping
 function pump!(integrator)
-    iq = state(user.x.Q, sim)
-    id = parameter(user.demand, sim)
-    integrator.u[iq] = integrator.p[id]
+    i = parameter(user.xfactor, sim)
+    integrator.p[i] = 1
+    @info "set xfactor to 1 at t $(integrator.t)"
     return nothing
 end
 
@@ -90,14 +97,11 @@ end
 # start pumping an empty reservoir, if those are the initial conditions.
 function init_rate(cb, u, t, integrator)
     is = state(bucket1.storage.S, sim)
-    iq = state(user.x.Q, sim)
-    id = parameter(user.demand, sim)
-
-    if u[is] > 1
-        u[iq] = integrator.p[id]
-    else
-        u[iq] = 0
-    end
+    ixf = parameter(user.xfactor, sim)
+    xfactor = u[is] > 1.5 ? 1 : 0
+    integrator.p[ixf] = xfactor
+    @info "initialize callback" xfactor t
+    return nothing
 end
 
 # stop pumping when storage is low
@@ -118,7 +122,7 @@ end
 cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
 cb = CallbackSet(cb_pump, cb_exchange)
-# cb = nothing
+# cb = cb_exchange
 
 sol = solve(prob, alg_hints = [:stiff], callback = cb)
 

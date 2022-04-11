@@ -92,15 +92,18 @@ end
 "Extract water if there is storage left"
 function User(; name, demand)
     @named x = Discharge(Q0 = demand)
-    pars = @parameters demand = demand
+    @named storage = Storage()
+    pars = @parameters demand = demand xfactor = 1.0
     vars = @variables shortage(t) = 0
     (; Q, C) = x
-    D = Differential(t)
+    (; S) = storage
 
     eqs = Equation[
-        D(Q) ~ 0
+        # smoothly reduce demand to 0 around S=1 with smoothness 0.1
+        Q ~ xfactor * demand * (0.5 * tanh((S - 1.0) / 0.01) + 0.5)
         C ~ 0  # not used
         shortage ~ demand - Q
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), x)
+    compose(ODESystem(eqs, t, vars, pars; name), x, storage)
+end
 end
