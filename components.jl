@@ -99,6 +99,7 @@ function User(; name, demand)
     (; S) = storage
 
     eqs = Equation[
+        # xfactor is extraction factor, can be used to reduce the intake
         # smoothly reduce demand to 0 around S=1 with smoothness 0.1
         Q ~ xfactor * demand * (0.5 * tanh((S - 1.0) / 0.01) + 0.5)
         C ~ 0  # not used

@@ -15,6 +15,7 @@ using Test
 using Random
 import Distributions
 using DiffEqCallbacks
+using DataFrames
 
 includet("components.jl")
 
@@ -57,6 +58,10 @@ observed(sys)
 equations(sim)
 states(sim)
 observed(sim)
+
+# create DataFrame to store daily output
+terms = vcat(states(sys), Symbol.(parameters(sys)))
+df = DataFrame(vcat(:time=>Float64[], [Symbol(name) => Float64[] for name in terms]))
 
 prob = ODAEProblem(sim, [], tspan)
 
@@ -110,12 +115,28 @@ cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_
 function periodic_update!(integrator)
     # exchange with Modflow and Metaswap here
     # update precipitation
-    (; u, p) = integrator
+    (; t, u, p) = integrator
     ipx = parameter(ix, sim)
     ixval = round(Int, p[ipx])
     ip = state(precip.x.Q, sim)
     u[ip] = -precipitation[ixval]
     p[ipx] += 1  # update exchange number
+
+    # saving daily output
+    push!(df, vcat(t, [last(integrator.sol[term]) for term in terms]))
+    # see if we can refactor this to not rely on saved data?
+    # https://github.com/SciML/ModelingToolkit.jl/issues/1396
+    # sol.prob.f.observed(user.x.Q, u, p, t)
+    # if observed
+    #     prob.f.observed(user.x.Q, u, p, t)
+    # if state
+    #     ip = state(precip.x.Q, sim)
+    #     u[ip]
+    # if parameter
+    #     ip = parameter(precip.x.Q, sim)
+    #     p[ip]
+    # end
+
     return nothing
 end
 
@@ -124,7 +145,7 @@ cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 cb = CallbackSet(cb_pump, cb_exchange)
 # cb = cb_exchange
 
-sol = solve(prob, alg_hints = [:stiff], callback = cb)
+sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
 
 Plots.plot(sol, vars = [bucket1.x.Q])
 Plots.plot(sol, vars = [user.x.C, bucket1.conc.C])
