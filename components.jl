@@ -107,4 +107,3 @@ function User(; name, demand)
     ]
     compose(ODESystem(eqs, t, vars, pars; name), x, storage)
 end
-end
