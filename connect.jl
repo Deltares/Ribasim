@@ -1,5 +1,8 @@
 # connect components into a model
 
+using AlgebraOfGraphics
+using CairoMakie
+using Dictionaries
 using DelimitedFiles
 import DifferentialEquations as DE
 using DiffEqBase
@@ -19,137 +22,195 @@ using DataFrames
 
 includet("components.jl")
 
-tspan = (0.0, 1.0)
-Δt = 0.1
-# number of exchanges
-nx = Int(cld(tspan[end] - tspan[begin], Δt))
-# precipitation is updated at every exchange
-precipitation = vec(readdlm("data/precipitation.csv"))
-@assert length(precipitation) >= nx
+function main()
+    tspan = (0.0, 1.0)
+    Δt = 0.1
+    # number of exchanges
+    nx = Int(cld(tspan[end] - tspan[begin], Δt))
+    # precipitation is updated at every exchange
+    precipitation = vec(readdlm("data/precipitation.csv"))
+    @assert length(precipitation) >= nx
 
-@named inflow = FixedInflow(Q0 = -1.0, C0 = 70.0)
-@named precip = Precipitation(Q0 = 0.0)
-@named user = User(demand = 3.0)
-@named user2 = User(demand = 1.0)
-@named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
-@named bucket2 = Bucket(α = 1.0e1, S0 = 3.0, C0 = 200.0)
-@named bucket3 = Bucket(α = 1.0e1, S0 = 3.0, C0 = 200.0)
+    @named precip = Precipitation(Q0 = 0.0)
+    @named user = User(demand = 3.0)
+    @named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 
-eqs = [
-    # connect(inflow.x, bucket1.x)
-    connect(precip.x, bucket1.x)
-    connect(user.x, bucket1.x)
-    connect(user.storage, bucket1.storage)
-    # connect(user2.x, bucket3.x)
-    # connect(bucket1.o, bucket2.x)
-    # connect(bucket2.o, bucket3.x)
-]
+    eqs = [
+        connect(precip.x, bucket1.x)
+        connect(user.x, bucket1.x)
+        connect(user.storage, bucket1.storage)
+    ]
 
-@named _sys = ODESystem(eqs, t, [], [ix])
-# @named sys = compose(_sys, [inflow, user, user2, bucket1, bucket2, bucket3])
-# @named sys = compose(_sys, [inflow, user, bucket1])
-@named sys = compose(_sys, [precip, user, bucket1])
-sim = structural_simplify(sys)
+    @named _sys = ODESystem(eqs, t, [], [ix])
+    @named sys = compose(_sys, [precip, user, bucket1])
+    sim = structural_simplify(sys)
 
-equations(sys)
-states(sys)
-observed(sys)
+    @debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(sim) observed(sim)
 
-equations(sim)
-states(sim)
-observed(sim)
+    # get all states, parameters and observed in the system as Term or, for parameters, Sym
+    simstates = states(sim)
+    simpars = parameters(sim)
+    simobs = [obs.lhs for obs in observed(sim)]
+    # as Symbols
+    symstates = Symbolics.getname.(simstates)
+    sympars = Symbolics.getname.(simpars)
+    symobs = Symbolics.getname.(simobs)
+    syms = vcat(symstates, symobs, sympars)
 
-# create DataFrame to store daily output
-terms = vcat(states(sys), Symbol.(parameters(sys)))
-df = DataFrame(vcat(:time=>Float64[], [Symbol(name) => Float64[] for name in terms]))
+    # create DataFrame to store daily output
+    df = DataFrame(vcat(:time => Float64[], [sym => Float64[] for sym in syms]))
 
-prob = ODAEProblem(sim, [], tspan)
+    prob = ODAEProblem(sim, [], tspan)
 
-# helper functions to get the index of states and parameters based on their symbol
-# also do this for observed
-function state(sym, sim)
-    i = findfirst(isequal(sym), states(sim))
-    i === nothing && error("state $sym not found, might be observed")
-    return i
+    # callback condition: amount of storage
+    function condition(u, t, integrator)
+        return val(bucket1.storage.S) - 1.5
+    end
+
+    # callback affect: stop pumping
+    function stop_pumping!(integrator)
+        set(user.xfactor, 0.0)
+        @info "set xfactor to 0 at t $(integrator.t)"
+        return nothing
+    end
+
+    # call affect: resume pumping
+    function pump!(integrator)
+        set(user.xfactor, 1.0)
+        @info "set xfactor to 1 at t $(integrator.t)"
+        return nothing
+    end
+
+    # Initialize the callback based on if we are above or below the threshold,
+    # since the callback is only triggered when crossing it. This ensure we don't
+    # start pumping an empty reservoir, if those are the initial conditions.
+    function init_rate(cb, u, t, integrator)
+        # these need to be set for val()
+        u_named = Dictionary(symstates, u)
+        p_named = Dictionary(sympars, integrator.p)
+
+        xfactor = val(bucket1.storage.S) > 1.5 ? 1 : 0
+        set(user.xfactor, xfactor)
+        @info "initialize callback" xfactor t
+        return nothing
+    end
+
+    # stop pumping when storage is low
+    cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_rate)
+
+    function periodic_update!(integrator)
+        # exchange with Modflow and Metaswap here
+        # update precipitation
+        (; t, u, p) = integrator
+        if t == tspan[1]  # for initial_affect to work, these need to be set for val()
+            u_named = Dictionary(symstates, u)
+            p_named = Dictionary(sympars, p)
+        end
+        exnr = val(ix)
+        set(ix, exnr + 1)
+        ixval = round(Int, exnr)
+        set(precip.x.Q, -precipitation[ixval])
+
+        # saving daily output
+        push!(df, vcat(t, [val(sym) for sym in syms]))
+        return nothing
+    end
+
+    cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+
+    cb = CallbackSet(cb_pump, cb_exchange)
+    # cb = cb_exchange
+
+    # functions to get and set values, whether it is a state, parameter or observed
+    function val(s)::Real
+        sym = Symbolics.getname(s)::Symbol
+        if haskey(u_named, sym)
+            u_named[sym]
+        elseif haskey(p_named, sym)
+            p_named[sym]
+        else
+            # the observed function requires a Term
+            if isa(s, Symbol)
+                i = findfirst(==(s), symobs)
+                s = simobs[i]
+            end
+            prob.f.observed(s, u, p, t)
+        end
+    end
+
+    function set(s, x::Real)::Real
+        sym = Symbolics.getname(s)::Symbol
+        if haskey(u_named, sym)
+            u_named[sym] = x
+        elseif haskey(p_named, sym)
+            p_named[sym] = x
+        else
+            error("cannot set observed variable")
+        end
+    end
+
+    # since we periodically ourselves, values don't need to be saved by MTK
+    # but during development we leave this on for debugging
+    # TODO alg_hints should be available for init as well?
+    integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
+    # integrator = init(prob, alg_hints = [:stiff], callback = cb, save_on = true)
+    # sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
+
+    (; u, p) = integrator
+
+    # use dicts to make it easier to look up states and parameters in val()
+    u_named = Dictionary(symstates, u)
+    p_named = Dictionary(sympars, p)
+
+    solve!(integrator)  # solve it until the end
+
+    return integrator, sim, df
 end
 
-parameter(sym, sim) = findfirst(isequal(sym), parameters(sim))
+integrator, sim, df = main();
+(; sol) = integrator
+df
 
-# callback condition: amount of storage
-function condition(u, t, integrator)
-    i = state(bucket1.storage.S, sim)
-    return u[i] - 1.5
+# only states can be reliably plotted this way, parameters will show the last value only,
+# which also affects observed variables that depend on parameters
+Plots.plot(sol, vars = [sim.bucket1₊x₊Q])
+Plots.plot(sol, vars = [sim.user₊x₊C, sim.bucket1₊conc₊C])
+Plots.plot(sol, vars = [sim.bucket1₊storage₊S, sim.user₊x₊Q])
+
+
+begin
+    fig = Figure()
+
+    q = Axis(fig[1, 1], ylabel = "Q [m³s⁻¹]")
+    scatterlines!(q, df.time, -df.precip₊x₊Q, label = "precip₊x₊Q")
+    scatterlines!(q, df.time, -df.bucket1₊o₊Q, label = "bucket1₊o₊Q")
+    scatterlines!(q, df.time, df.user₊x₊Q, label = "user₊x₊Q")
+    hidexdecorations!(q, grid = false)
+    axislegend()
+
+    s = Axis(fig[2, 1], ylabel = "S [m³]")
+    scatterlines!(s, df.time, df.bucket1₊storage₊S, label = "bucket1₊storage₊S")
+    hidexdecorations!(s, grid = false)
+    axislegend()
+
+    c = Axis(fig[3, 1], ylabel = "C [kg m⁻³]")
+    scatterlines!(c, df.time, df.bucket1₊conc₊C, label = "bucket1₊conc₊C")
+    scatterlines!(c, df.time, df.precip₊x₊C, label = "precip₊x₊C")
+    hidexdecorations!(c, grid = false)
+    axislegend()
+
+    # TODO dodge and stack https://makie.juliaplots.org/v0.15.2/examples/plotting_functions/barplot/index.html
+    # seems to require groups / long format
+    bar = Axis(fig[4, 1], xlabel = "time [s]", ylabel = "Q [m³s⁻¹]")
+    barplot!(bar, df.time, -df.precip₊x₊Q, label = "precip₊x₊Q")
+    axislegend()
+
+    linkxaxes!(q, s, c, bar)
+
+    fig
 end
 
-# callback affect: stop pumping
-function stop_pumping!(integrator)
-    i = parameter(user.xfactor, sim)
-    integrator.p[i] = 0
-    @info "set xfactor to 0 at t $(integrator.t)"
-    return nothing
-end
-
-# call affect: resume pumping
-function pump!(integrator)
-    i = parameter(user.xfactor, sim)
-    integrator.p[i] = 1
-    @info "set xfactor to 1 at t $(integrator.t)"
-    return nothing
-end
-
-# Initialize the callback based on if we are above or below the threshold,
-# since the callback is only triggered when crossing it. This ensure we don't
-# start pumping an empty reservoir, if those are the initial conditions.
-function init_rate(cb, u, t, integrator)
-    is = state(bucket1.storage.S, sim)
-    ixf = parameter(user.xfactor, sim)
-    xfactor = u[is] > 1.5 ? 1 : 0
-    integrator.p[ixf] = xfactor
-    @info "initialize callback" xfactor t
-    return nothing
-end
-
-# stop pumping when storage is low
-cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_rate)
-
-function periodic_update!(integrator)
-    # exchange with Modflow and Metaswap here
-    # update precipitation
-    (; t, u, p) = integrator
-    ipx = parameter(ix, sim)
-    ixval = round(Int, p[ipx])
-    ip = state(precip.x.Q, sim)
-    u[ip] = -precipitation[ixval]
-    p[ipx] += 1  # update exchange number
-
-    # saving daily output
-    push!(df, vcat(t, [last(integrator.sol[term]) for term in terms]))
-    # see if we can refactor this to not rely on saved data?
-    # https://github.com/SciML/ModelingToolkit.jl/issues/1396
-    # sol.prob.f.observed(user.x.Q, u, p, t)
-    # if observed
-    #     prob.f.observed(user.x.Q, u, p, t)
-    # if state
-    #     ip = state(precip.x.Q, sim)
-    #     u[ip]
-    # if parameter
-    #     ip = parameter(precip.x.Q, sim)
-    #     p[ip]
-    # end
-
-    return nothing
-end
-
-cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
-
-cb = CallbackSet(cb_pump, cb_exchange)
-# cb = cb_exchange
-
-sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
-
-Plots.plot(sol, vars = [bucket1.x.Q])
-Plots.plot(sol, vars = [user.x.C, bucket1.conc.C])
-Plots.plot(sol, vars = [bucket1.storage.S, user.x.Q])
+nothing
 
 ## graph
 
