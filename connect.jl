@@ -1,8 +1,6 @@
 # connect components into a model
 
-using AlgebraOfGraphics
 using CairoMakie
-using Dictionaries
 using DelimitedFiles
 import DifferentialEquations as DE
 using DiffEqBase
@@ -13,7 +11,7 @@ import ModelingToolkit as MTK
 using Plots: Plots
 using RecursiveArrayTools: VectorOfArray
 using Revise
-using Symbolics: Symbolics
+using Symbolics: Symbolics, getname
 using Test
 using Random
 import Distributions
@@ -28,7 +26,7 @@ function main()
     # number of exchanges
     nx = Int(cld(tspan[end] - tspan[begin], Δt))
     # precipitation is updated at every exchange
-    precipitation = vec(readdlm("data/precipitation.csv"))
+    precipitation = [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0]
     @assert length(precipitation) >= nx
 
     @named precip = Precipitation(Q0 = 0.0)
@@ -45,16 +43,17 @@ function main()
     @named sys = compose(_sys, [precip, user, bucket1])
     sim = structural_simplify(sys)
 
-    @debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(sim) observed(sim)
+    @debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(
+        sim,
+    ) observed(sim)
 
-    # get all states, parameters and observed in the system as Term or, for parameters, Sym
-    simstates = states(sim)
-    simpars = parameters(sim)
+    # get all states, parameters and observed in the system
+    # for observed we also need the symbolic terms later
+    # some values are duplicated, e.g. the same stream as observed from connected components
+    symstates = Symbol[getname(s) for s in states(sim)]
+    sympars = Symbol[getname(s) for s in parameters(sim)]
     simobs = [obs.lhs for obs in observed(sim)]
-    # as Symbols
-    symstates = Symbolics.getname.(simstates)
-    sympars = Symbolics.getname.(simpars)
-    symobs = Symbolics.getname.(simobs)
+    symobs = Symbol[getname(s) for s in simobs]
     syms = vcat(symstates, symobs, sympars)
 
     # create DataFrame to store daily output
@@ -64,19 +63,19 @@ function main()
 
     # callback condition: amount of storage
     function condition(u, t, integrator)
-        return val(bucket1.storage.S) - 1.5
+        return val(integrator, bucket1.storage.S) - 1.5
     end
 
     # callback affect: stop pumping
     function stop_pumping!(integrator)
-        set(user.xfactor, 0.0)
+        set(integrator, user.xfactor, 0.0)
         @info "set xfactor to 0 at t $(integrator.t)"
         return nothing
     end
 
     # call affect: resume pumping
     function pump!(integrator)
-        set(user.xfactor, 1.0)
+        set(integrator, user.xfactor, 1.0)
         @info "set xfactor to 1 at t $(integrator.t)"
         return nothing
     end
@@ -85,12 +84,8 @@ function main()
     # since the callback is only triggered when crossing it. This ensure we don't
     # start pumping an empty reservoir, if those are the initial conditions.
     function init_rate(cb, u, t, integrator)
-        # these need to be set for val()
-        u_named = Dictionary(symstates, u)
-        p_named = Dictionary(sympars, integrator.p)
-
-        xfactor = val(bucket1.storage.S) > 1.5 ? 1 : 0
-        set(user.xfactor, xfactor)
+        xfactor = val(integrator, bucket1.storage.S) > 1.5 ? 1 : 0
+        set(integrator, user.xfactor, xfactor)
         @info "initialize callback" xfactor t
         return nothing
     end
@@ -101,18 +96,14 @@ function main()
     function periodic_update!(integrator)
         # exchange with Modflow and Metaswap here
         # update precipitation
-        (; t, u, p) = integrator
-        if t == tspan[1]  # for initial_affect to work, these need to be set for val()
-            u_named = Dictionary(symstates, u)
-            p_named = Dictionary(sympars, p)
-        end
-        exnr = val(ix)
-        set(ix, exnr + 1)
+        (; t) = integrator
+        exnr = val(integrator, ix)
+        set(integrator, ix, exnr + 1)
         ixval = round(Int, exnr)
-        set(precip.x.Q, -precipitation[ixval])
+        set(integrator, precip.x.Q, -precipitation[ixval])
 
         # saving daily output
-        push!(df, vcat(t, [val(sym) for sym in syms]))
+        push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
         return nothing
     end
 
@@ -122,28 +113,34 @@ function main()
     # cb = cb_exchange
 
     # functions to get and set values, whether it is a state, parameter or observed
-    function val(s)::Real
+    function val(integrator, s)::Real
+        (; u, t, p) = integrator
         sym = Symbolics.getname(s)::Symbol
-        if haskey(u_named, sym)
-            u_named[sym]
-        elseif haskey(p_named, sym)
-            p_named[sym]
+        if sym in symstates
+            i = findfirst(==(sym), symstates)
+            return u[i]
+        elseif sym in sympars
+            i = findfirst(==(sym), sympars)
+            return p[i]
         else
             # the observed function requires a Term
             if isa(s, Symbol)
                 i = findfirst(==(s), symobs)
                 s = simobs[i]
             end
-            prob.f.observed(s, u, p, t)
+            return prob.f.observed(s, u, p, t)
         end
     end
 
-    function set(s, x::Real)::Real
+    function set(integrator, s, x::Real)::Real
+        (; u, p) = integrator
         sym = Symbolics.getname(s)::Symbol
-        if haskey(u_named, sym)
-            u_named[sym] = x
-        elseif haskey(p_named, sym)
-            p_named[sym] = x
+        if sym in symstates
+            i = findfirst(==(sym), symstates)
+            return u[i] = x
+        elseif sym in sympars
+            i = findfirst(==(sym), sympars)
+            return p[i] = x
         else
             error("cannot set observed variable")
         end
@@ -153,14 +150,7 @@ function main()
     # but during development we leave this on for debugging
     # TODO alg_hints should be available for init as well?
     integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
-    # integrator = init(prob, alg_hints = [:stiff], callback = cb, save_on = true)
     # sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
-
-    (; u, p) = integrator
-
-    # use dicts to make it easier to look up states and parameters in val()
-    u_named = Dictionary(symstates, u)
-    p_named = Dictionary(sympars, p)
 
     solve!(integrator)  # solve it until the end
 
