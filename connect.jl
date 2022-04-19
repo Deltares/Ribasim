@@ -14,6 +14,7 @@ using Revise: includet
 using SciMLBase
 using Symbolics: Symbolics, getname
 using Test
+using CSV
 
 includet("components.jl")
 
@@ -32,7 +33,6 @@ precipitation = [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0]
 eqs = [
     connect(precip.x, bucket1.x)
     connect(user.x, bucket1.x)
-    connect(user.storage, bucket1.storage)
 ]
 
 @named _sys = ODESystem(eqs, t, [], [ix])
@@ -59,7 +59,7 @@ prob = ODAEProblem(sim, [], tspan)
 
 # callback condition: amount of storage
 function condition(u, t, integrator)
-    return val(integrator, bucket1.storage.S) - 1.5
+    return val(integrator, bucket1.S) - 1.5
 end
 
 # callback affect: stop pumping
@@ -80,7 +80,7 @@ end
 # since the callback is only triggered when crossing it. This ensure we don't
 # start pumping an empty reservoir, if those are the initial conditions.
 function init_rate(cb, u, t, integrator)
-    xfactor = val(integrator, bucket1.storage.S) > 1.5 ? 1 : 0
+    xfactor = val(integrator, bucket1.S) > 1.5 ? 1 : 0
     set(integrator, user.xfactor, xfactor)
     @info "initialize callback" xfactor t
     return nothing
@@ -96,7 +96,7 @@ function periodic_update!(integrator)
     exnr = val(integrator, ix)
     set(integrator, ix, exnr + 1)
     ixval = round(Int, exnr)
-    set(integrator, precip.x.Q, -precipitation[ixval])
+    set(integrator, precip.Q, -precipitation[ixval])
 
     # saving daily output
     push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
@@ -155,36 +155,35 @@ df
 
 # only states can be reliably plotted this way, parameters will show the last value only,
 # which also affects observed variables that depend on parameters
-Plots.plot(sol, vars = [sim.bucket1₊x₊Q])
-Plots.plot(sol, vars = [sim.user₊x₊C, sim.bucket1₊conc₊C])
-Plots.plot(sol, vars = [sim.bucket1₊storage₊S, sim.user₊x₊Q])
+# Plots.plot(sol, vars = [sim.bucket1₊x₊Q, sim.bucket1₊o₊Q])
+# Plots.plot(sol, vars = [sim.bucket1₊C])
+# Plots.plot(sol, vars = [sim.bucket1₊S, sim.user₊Q])
 
 
 begin
     fig = Figure()
 
     q = Axis(fig[1, 1], ylabel = "Q [m³s⁻¹]")
-    scatterlines!(q, df.time, -df.precip₊x₊Q, label = "precip₊x₊Q")
+    scatterlines!(q, df.time, -df.precip₊Q, label = "precip₊Q")
     scatterlines!(q, df.time, -df.bucket1₊o₊Q, label = "bucket1₊o₊Q")
-    scatterlines!(q, df.time, df.user₊x₊Q, label = "user₊x₊Q")
+    scatterlines!(q, df.time, df.user₊Q, label = "user₊Q")
     hidexdecorations!(q, grid = false)
     axislegend()
 
     s = Axis(fig[2, 1], ylabel = "S [m³]")
-    scatterlines!(s, df.time, df.bucket1₊storage₊S, label = "bucket1₊storage₊S")
+    scatterlines!(s, df.time, df.bucket1₊S, label = "bucket1₊S")
     hidexdecorations!(s, grid = false)
     axislegend()
 
     c = Axis(fig[3, 1], ylabel = "C [kg m⁻³]")
-    scatterlines!(c, df.time, df.bucket1₊conc₊C, label = "bucket1₊conc₊C")
-    scatterlines!(c, df.time, df.precip₊x₊C, label = "precip₊x₊C")
+    scatterlines!(c, df.time, df.bucket1₊C, label = "bucket1₊C")
     hidexdecorations!(c, grid = false)
     axislegend()
 
     # TODO dodge and stack https://makie.juliaplots.org/v0.15.2/examples/plotting_functions/barplot/index.html
     # seems to require groups / long format
     bar = Axis(fig[4, 1], xlabel = "time [s]", ylabel = "Q [m³s⁻¹]")
-    barplot!(bar, df.time, -df.precip₊x₊Q, label = "precip₊x₊Q")
+    barplot!(bar, df.time, -df.precip₊Q, label = "precip₊Q")
     axislegend()
 
     linkxaxes!(q, s, c, bar)
@@ -192,6 +191,8 @@ begin
     fig
 end
 
+# foreach(println, names(df))
+# CSV.write("df.tsv", df; delim = '\t', bom=true)
 nothing
 
 ## graph
