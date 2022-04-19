@@ -54,12 +54,18 @@ function Bucket(; name, S0, C0, α)
     compose(ODESystem(eqs, t, [], pars; name), conc, storage, x, o)
 end
 
-function ConstantHead(; name, h0)
+function ConstantHead(; name, h0, C0)
     @named head = Head(; h0)
-    @parameters h0 = h0
+    @named x = Discharge()
+    (; h) = head
+    (; C) = x
+    pars = @parameters h0 = h0 C0 = C0
 
-    eqs = Equation[head.h~h0]
-    compose(ODESystem(eqs, t, [], [h0]; name), head)
+    eqs = Equation[
+        h ~ h0
+        C ~ C0
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), head, x)
 end
 
 "Add a discharge to the system"
