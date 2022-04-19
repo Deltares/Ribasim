@@ -1,163 +1,155 @@
 # connect components into a model
 
-using CairoMakie
-using DelimitedFiles
 import DifferentialEquations as DE
+import ModelingToolkit as MTK
+using CairoMakie
+using DataFrames: DataFrame
 using DiffEqBase
-using SciMLBase
+using DiffEqCallbacks: PeriodicCallback
 using Graphs
 using ModelingToolkit
-import ModelingToolkit as MTK
 using Plots: Plots
-using RecursiveArrayTools: VectorOfArray
-using Revise
+using Random
+using Revise: includet
+using SciMLBase
 using Symbolics: Symbolics, getname
 using Test
-using Random
-import Distributions
-using DiffEqCallbacks
-using DataFrames
 
 includet("components.jl")
 
-function main()
-    tspan = (0.0, 1.0)
-    Δt = 0.1
-    # number of exchanges
-    nx = Int(cld(tspan[end] - tspan[begin], Δt))
-    # precipitation is updated at every exchange
-    precipitation = [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0]
-    @assert length(precipitation) >= nx
+tspan = (0.0, 1.0)
+Δt = 0.1
+# number of exchanges
+nx = Int(cld(tspan[end] - tspan[begin], Δt))
+# precipitation is updated at every exchange
+precipitation = [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0]
+@assert length(precipitation) >= nx
 
-    @named precip = Precipitation(Q0 = 0.0)
-    @named user = User(demand = 3.0)
-    @named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named precip = Precipitation(Q0 = 0.0)
+@named user = User(demand = 3.0)
+@named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 
-    eqs = [
-        connect(precip.x, bucket1.x)
-        connect(user.x, bucket1.x)
-        connect(user.storage, bucket1.storage)
-    ]
+eqs = [
+    connect(precip.x, bucket1.x)
+    connect(user.x, bucket1.x)
+    connect(user.storage, bucket1.storage)
+]
 
-    @named _sys = ODESystem(eqs, t, [], [ix])
-    @named sys = compose(_sys, [precip, user, bucket1])
-    sim = structural_simplify(sys)
+@named _sys = ODESystem(eqs, t, [], [ix])
+@named sys = compose(_sys, [precip, user, bucket1])
+sim = structural_simplify(sys)
 
-    @debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(
-        sim,
-    ) observed(sim)
+@debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(
+    sim,
+) observed(sim)
 
-    # get all states, parameters and observed in the system
-    # for observed we also need the symbolic terms later
-    # some values are duplicated, e.g. the same stream as observed from connected components
-    symstates = Symbol[getname(s) for s in states(sim)]
-    sympars = Symbol[getname(s) for s in parameters(sim)]
-    simobs = [obs.lhs for obs in observed(sim)]
-    symobs = Symbol[getname(s) for s in simobs]
-    syms = vcat(symstates, symobs, sympars)
+# get all states, parameters and observed in the system
+# for observed we also need the symbolic terms later
+# some values are duplicated, e.g. the same stream as observed from connected components
+symstates = Symbol[getname(s) for s in states(sim)]
+sympars = Symbol[getname(s) for s in parameters(sim)]
+simobs = [obs.lhs for obs in observed(sim)]
+symobs = Symbol[getname(s) for s in simobs]
+syms = vcat(symstates, symobs, sympars)
 
-    # create DataFrame to store daily output
-    df = DataFrame(vcat(:time => Float64[], [sym => Float64[] for sym in syms]))
+# create DataFrame to store daily output
+df = DataFrame(vcat(:time => Float64[], [sym => Float64[] for sym in syms]))
 
-    prob = ODAEProblem(sim, [], tspan)
+prob = ODAEProblem(sim, [], tspan)
 
-    # callback condition: amount of storage
-    function condition(u, t, integrator)
-        return val(integrator, bucket1.storage.S) - 1.5
-    end
-
-    # callback affect: stop pumping
-    function stop_pumping!(integrator)
-        set(integrator, user.xfactor, 0.0)
-        @info "set xfactor to 0 at t $(integrator.t)"
-        return nothing
-    end
-
-    # call affect: resume pumping
-    function pump!(integrator)
-        set(integrator, user.xfactor, 1.0)
-        @info "set xfactor to 1 at t $(integrator.t)"
-        return nothing
-    end
-
-    # Initialize the callback based on if we are above or below the threshold,
-    # since the callback is only triggered when crossing it. This ensure we don't
-    # start pumping an empty reservoir, if those are the initial conditions.
-    function init_rate(cb, u, t, integrator)
-        xfactor = val(integrator, bucket1.storage.S) > 1.5 ? 1 : 0
-        set(integrator, user.xfactor, xfactor)
-        @info "initialize callback" xfactor t
-        return nothing
-    end
-
-    # stop pumping when storage is low
-    cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_rate)
-
-    function periodic_update!(integrator)
-        # exchange with Modflow and Metaswap here
-        # update precipitation
-        (; t) = integrator
-        exnr = val(integrator, ix)
-        set(integrator, ix, exnr + 1)
-        ixval = round(Int, exnr)
-        set(integrator, precip.x.Q, -precipitation[ixval])
-
-        # saving daily output
-        push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
-        return nothing
-    end
-
-    cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
-
-    cb = CallbackSet(cb_pump, cb_exchange)
-    # cb = cb_exchange
-
-    # functions to get and set values, whether it is a state, parameter or observed
-    function val(integrator, s)::Real
-        (; u, t, p) = integrator
-        sym = Symbolics.getname(s)::Symbol
-        if sym in symstates
-            i = findfirst(==(sym), symstates)
-            return u[i]
-        elseif sym in sympars
-            i = findfirst(==(sym), sympars)
-            return p[i]
-        else
-            # the observed function requires a Term
-            if isa(s, Symbol)
-                i = findfirst(==(s), symobs)
-                s = simobs[i]
-            end
-            return prob.f.observed(s, u, p, t)
-        end
-    end
-
-    function set(integrator, s, x::Real)::Real
-        (; u, p) = integrator
-        sym = Symbolics.getname(s)::Symbol
-        if sym in symstates
-            i = findfirst(==(sym), symstates)
-            return u[i] = x
-        elseif sym in sympars
-            i = findfirst(==(sym), sympars)
-            return p[i] = x
-        else
-            error("cannot set observed variable")
-        end
-    end
-
-    # since we periodically ourselves, values don't need to be saved by MTK
-    # but during development we leave this on for debugging
-    # TODO alg_hints should be available for init as well?
-    integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
-    # sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
-
-    solve!(integrator)  # solve it until the end
-
-    return integrator, sim, df
+# callback condition: amount of storage
+function condition(u, t, integrator)
+    return val(integrator, bucket1.storage.S) - 1.5
 end
 
-integrator, sim, df = main();
+# callback affect: stop pumping
+function stop_pumping!(integrator)
+    set(integrator, user.xfactor, 0.0)
+    @info "set xfactor to 0 at t $(integrator.t)"
+    return nothing
+end
+
+# call affect: resume pumping
+function pump!(integrator)
+    set(integrator, user.xfactor, 1.0)
+    @info "set xfactor to 1 at t $(integrator.t)"
+    return nothing
+end
+
+# Initialize the callback based on if we are above or below the threshold,
+# since the callback is only triggered when crossing it. This ensure we don't
+# start pumping an empty reservoir, if those are the initial conditions.
+function init_rate(cb, u, t, integrator)
+    xfactor = val(integrator, bucket1.storage.S) > 1.5 ? 1 : 0
+    set(integrator, user.xfactor, xfactor)
+    @info "initialize callback" xfactor t
+    return nothing
+end
+
+# stop pumping when storage is low
+cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_rate)
+
+function periodic_update!(integrator)
+    # exchange with Modflow and Metaswap here
+    # update precipitation
+    (; t) = integrator
+    exnr = val(integrator, ix)
+    set(integrator, ix, exnr + 1)
+    ixval = round(Int, exnr)
+    set(integrator, precip.x.Q, -precipitation[ixval])
+
+    # saving daily output
+    push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
+    return nothing
+end
+
+cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+
+cb = CallbackSet(cb_pump, cb_exchange)
+# cb = cb_exchange
+
+# functions to get and set values, whether it is a state, parameter or observed
+function val(integrator, s)::Real
+    (; u, t, p) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    if sym in symstates
+        i = findfirst(==(sym), symstates)
+        return u[i]
+    elseif sym in sympars
+        i = findfirst(==(sym), sympars)
+        return p[i]
+    else
+        # the observed function requires a Term
+        if isa(s, Symbol)
+            i = findfirst(==(s), symobs)
+            s = simobs[i]
+        end
+        return prob.f.observed(s, u, p, t)
+    end
+end
+
+function set(integrator, s, x::Real)::Real
+    (; u, p) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    if sym in symstates
+        i = findfirst(==(sym), symstates)
+        return u[i] = x
+    elseif sym in sympars
+        i = findfirst(==(sym), sympars)
+        return p[i] = x
+    else
+        error("cannot set observed variable")
+    end
+end
+
+# since we periodically ourselves, values don't need to be saved by MTK
+# but during development we leave this on for debugging
+# TODO alg_hints should be available for init as well?
+integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
+# sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
+
+solve!(integrator)  # solve it until the end
+
 (; sol) = integrator
 df
 
