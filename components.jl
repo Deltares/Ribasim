@@ -47,16 +47,13 @@ end
 
 function ConstantHead(; name, h0, C0)
     @named x = FluidPort(; h0, C0)
-    vars = @variables h(t) = h0 C(t) = C0
-    pars = @parameters h0 = h0 C0 = C0
+    pars = @parameters h = h0 C = C0
 
     eqs = Equation[
-        h ~ h0
-        C ~ C0
-        h ~ x.h
-        C ~ x.C
+        x.h ~ h
+        x.C ~ C
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), x)
+    compose(ODESystem(eqs, t, [], pars; name), x)
 end
 
 "Add a discharge to the system"
