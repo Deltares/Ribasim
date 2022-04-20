@@ -78,15 +78,13 @@ end
 function Precipitation(; name, Q0)
     @assert Q0 <= 0 "Precipitation Q0 must be negative"
     @named x = FluidPort(; Q0)
-    vars = @variables Q(t) = Q0
-    D = Differential(t)
+    pars = @parameters Q = Q0
 
     eqs = Equation[
-        D(Q) ~ 0
+        x.Q ~ Q
         x.C ~ 0
-        Q ~ x.Q
     ]
-    compose(ODESystem(eqs, t, vars, []; name), x)
+    compose(ODESystem(eqs, t, [], pars; name), x)
 end
 
 "Extract water if there is storage left"

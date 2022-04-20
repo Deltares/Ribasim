@@ -48,6 +48,7 @@ sim = structural_simplify(sys)
 symstates = Symbol[getname(s) for s in states(sim)]
 sympars = Symbol[getname(s) for s in parameters(sim)]
 simobs = [obs.lhs for obs in observed(sim)]
+# TODO this list contains duplicates, e.g. we want user₊Q and bucket₊o₊Q but not user₊x₊Q
 symobs = Symbol[getname(s) for s in simobs]
 syms = vcat(symstates, symobs, sympars)
 
@@ -249,7 +250,7 @@ for v = 1:nv(g)
     end
 end
 
-@named _sys = ODESystem(eqs, t, [], [ix])
+@named _sys = ODESystem(eqs, t, [], [])
 @named sys = compose(_sys, vcat(precips, buckets))
 sim = structural_simplify(sys)
 
