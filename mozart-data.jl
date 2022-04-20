@@ -4,7 +4,7 @@ using Chain
 using DataFrameMacros
 using Revise
 using Graphs
-using DBFTables
+import DBFTables
 using GeometryBasics: Point2f
 using Statistics: mean
 

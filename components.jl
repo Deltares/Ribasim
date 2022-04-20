@@ -3,8 +3,6 @@
 using ModelingToolkit
 
 @variables t
-# count the exchanges (value will still be Float64)
-@parameters ix::Int = 1
 
 """
     FluidPort(; name, h0 = 0.0, S0 = 0.0, Q0 = 0.0, C0 = 0.0)

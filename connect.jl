@@ -16,15 +16,14 @@ using Symbolics: Symbolics, getname
 using Test
 using CSV
 
+includet("lib.jl")
 includet("components.jl")
 
 tspan = (0.0, 1.0)
 Δt = 0.1
-# number of exchanges
-nx = Int(cld(tspan[end] - tspan[begin], Δt))
-# precipitation is updated at every exchange
-precipitation = [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0]
-@assert length(precipitation) >= nx
+# tspan[2] is the end time, not the start of the last timestep, so no forcing needed there
+times = range(start=tspan[1], step=Δt, stop=tspan[2] - Δt)
+precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0])
 
 @named precip = Precipitation(Q0 = 0.0)
 @named user = User(demand = 3.0)
@@ -93,10 +92,7 @@ function periodic_update!(integrator)
     # exchange with Modflow and Metaswap here
     # update precipitation
     (; t) = integrator
-    exnr = val(integrator, ix)
-    set(integrator, ix, exnr + 1)
-    ixval = round(Int, exnr)
-    set(integrator, precip.Q, -precipitation[ixval])
+    set(integrator, precip.Q, -precipitation(t))
 
     # saving daily output
     push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
@@ -138,7 +134,7 @@ function set(integrator, s, x::Real)::Real
         i = findfirst(==(sym), sympars)
         return p[i] = x
     else
-        error("cannot set observed variable")
+        error(lazy"cannot set $s; not found in states or parameters")
     end
 end
 
@@ -278,17 +274,8 @@ precip_idxs = findall(is_precip, states(sim))
 function periodic_update!(integrator)
     # exchange with Modflow and Metaswap here
     # update all precipitation fluxes at once
-    (; u, p) = integrator
-    ipx = parameter(ix, sim)
-    ixval = round(Int, p[ipx])
-    u[precip_idxs] .= -precipitation[ixval]
-    # update exchange number
-    # make it safe to run twice without re-creating the problem
-    if ixval >= nx
-        p[ipx] = 1
-    else
-        p[ipx] += 1
-    end
+    (; u, t) = integrator
+    u[precip_idxs] .= -precipitation(t)
     return nothing
 end
 
@@ -296,10 +283,10 @@ cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
 sol = solve(prob, alg_hints = [:stiff], callback = cb_exchange)
 
-Plots.plot(sol, vars = [-precips[top].x.Q, -precips[mid].x.Q, -precips[out].x.Q])
-Plots.plot(sol, vars = [buckets[top].x.Q, buckets[mid].x.Q, buckets[out].x.Q])
-Plots.plot(sol, vars = [buckets[top].x.C, buckets[mid].x.C, buckets[out].x.C])
+Plots.plot(sol, vars = [-precips[top].Q, -precips[mid].Q, -precips[out].Q])
+Plots.plot(sol, vars = [buckets[top].Q, buckets[mid].Q, buckets[out].Q])
+Plots.plot(sol, vars = [buckets[top].C, buckets[mid].C, buckets[out].C])
 Plots.plot(
     sol,
-    vars = [buckets[top].storage.S, buckets[mid].storage.S, buckets[out].storage.S],
+    vars = [buckets[top].S, buckets[mid].S, buckets[out].S],
 )
