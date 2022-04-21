@@ -17,6 +17,27 @@ using ModelingToolkit
     ODESystem(Equation[], t, vars, []; name)
 end
 
+"""
+    DischargeLink(; name)
+
+Connect the flow with corresponding concentration between two FluidPorts. Compared to
+directly connecting them, this does not enforce h and S equality, making it suitable for
+connecting two water bodies connected with a weir.
+"""
+function DischargeLink(; name)
+    @named a = FluidPort()
+    @named b = FluidPort()
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        # concentration follows flow
+        b.C ~ instream(a.C)
+        a.C ~ instream(b.C)
+    ]
+    compose(ODESystem(eqs, t, [], []; name), a, b)
+end
+
 function Bucket(; name, S0, C0, α)
     @named x = FluidPort(; S0, C0)
     @named o = FluidPort(; S0, C0)

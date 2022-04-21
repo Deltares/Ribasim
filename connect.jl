@@ -28,19 +28,30 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named precip = Precipitation(Q0 = 0.0)
 @named user = User(demand = 3.0)
 @named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named dischargelink = DischargeLink()
+@named bucket2 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named terminal = FluidPort()
 
-eqs = [
+eqs = Equation[
     connect(precip.x, bucket1.x)
-    connect(user.x, bucket1.x)
+    connect(bucket1.o, dischargelink.a)
+    connect(dischargelink.b, bucket2.x)
+    connect(bucket2.o, terminal)
 ]
 
-@named _sys = ODESystem(eqs, t, [], [ix])
-@named sys = compose(_sys, [precip, user, bucket1])
+@named _sys = ODESystem(eqs, t, [], [])
+@named sys = compose(_sys, [precip, bucket1, dischargelink, bucket2, terminal])
+
 sim = structural_simplify(sys)
 
-@debug "structural_simplify" equations(sys) states(sys) observed(sys) equations(sim) states(
-    sim,
-) observed(sim)
+# for debugging bad systems
+sys = expand_connections(sys)
+sys = alias_elimination(sys)
+state = TearingState(sys);
+check_consistency(state)
+equations(sys)
+states(sys)
+observed(sys)
 
 # get all states, parameters and observed in the system
 # for observed we also need the symbolic terms later
@@ -102,8 +113,8 @@ end
 
 cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
-cb = CallbackSet(cb_pump, cb_exchange)
-# cb = cb_exchange
+# cb = CallbackSet(cb_pump, cb_exchange)
+cb = cb_exchange
 
 # functions to get and set values, whether it is a state, parameter or observed
 function val(integrator, s)::Real
@@ -157,7 +168,7 @@ df
 # Plots.plot(sol, vars = [sim.bucket1₊S, sim.user₊Q])
 
 
-begin
+if false
     fig = Figure()
 
     q = Axis(fig[1, 1], ylabel = "Q [m³s⁻¹]")
@@ -189,8 +200,9 @@ begin
 end
 
 # foreach(println, names(df))
-# CSV.write("df.tsv", df; delim = '\t', bom=true)
+# CSV.write("df.csv", df; bom=true)  # add Byte Order Mark for Excel UTF-8 detection
 nothing
+df
 
 ## graph
 
