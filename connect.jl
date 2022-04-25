@@ -31,9 +31,11 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named dischargelink = DischargeLink()
 @named levellink = LevelLink(; cond = 2.0)
 @named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
-@named terminal = FluidPort()
+@named terminal = Terminal()
+@named terminal2 = Terminal()
 @named constanthead = ConstantHead(; h0 = 1.3, C0 = 43.0)
 @named bucket2 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named bifurcation = Bifurcation(; fraction_b = 2/3)
 
 eqs = Equation[]
 systems = Set{ODESystem}()
@@ -42,12 +44,18 @@ function join!(sys1, connector1, sys2, connector2)
 end
 
 # define the connections between components
+# join!(precip, :x, ratedbucket1, :x)
+# join!(ratedbucket1, :o, dischargelink, :a)
+# join!(dischargelink, :b, bucket1, :x)
+# join!(bucket1, :x, user, :x)
+# join!(bucket1, :x, levellink, :a)
+# join!(levellink, :b, constanthead, :x)
+
 join!(precip, :x, ratedbucket1, :x)
-join!(ratedbucket1, :o, dischargelink, :a)
-join!(dischargelink, :b, bucket1, :x)
-join!(bucket1, :x, user, :x)
-join!(bucket1, :x, levellink, :a)
-join!(levellink, :b, constanthead, :x)
+join!(ratedbucket1, :o, bifurcation, :a)
+join!(bifurcation, :b, terminal2, :x)
+join!(bifurcation, :c, terminal, :x)
+
 
 @named _sys = ODESystem(eqs, t, [], [])
 @named sys = compose(_sys, collect(systems))
@@ -220,7 +228,7 @@ if false
 end
 
 # foreach(println, names(df))
-# CSV.write("df.csv", df; bom=true)  # add Byte Order Mark for Excel UTF-8 detection
+CSV.write("df.csv", df; bom=true)  # add Byte Order Mark for Excel UTF-8 detection
 nothing
 df
 

@@ -19,6 +19,13 @@ using ModelingToolkit
     ODESystem(Equation[], t, vars, []; name)
 end
 
+# empty component with no extra equations, could be a bare connector as well
+function Terminal(; name)
+    @named x = FluidPort()
+    eqs = Equation[]
+    compose(ODESystem(eqs, t, [], []; name), x)
+end
+
 """
     DischargeLink(; name)
 
@@ -54,6 +61,25 @@ function LevelLink(; name, cond)
         a.C ~ instream(b.C)
     ]
     compose(ODESystem(eqs, t, [], pars; name), a, b)
+end
+
+# TODO only made for flow from a to b and c
+function Bifurcation(; name, fraction_b)
+    @named a = FluidPort()
+    @named b = FluidPort()
+    @named c = FluidPort()
+
+    pars = @parameters fraction_b = fraction_b
+
+    eqs = Equation[
+        # conservation of flow
+        # a.Q + b.Q + c.Q ~ 0
+        b.Q ~ fraction_b * a.Q
+        c.Q ~ (1 - fraction_b) * a.Q
+        b.C ~ instream(a.C)
+        c.C ~ instream(a.C)
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end
 
 function Bucket(; name, S0, C0, α)
