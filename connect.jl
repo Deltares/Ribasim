@@ -42,7 +42,10 @@ function join!(sys1, connector1, sys2, connector2)
 end
 
 # define the connections between components
-join!(precip, :x, bucket1, :x)
+join!(precip, :x, ratedbucket1, :x)
+join!(ratedbucket1, :o, dischargelink, :a)
+join!(dischargelink, :b, bucket1, :x)
+join!(bucket1, :x, user, :x)
 join!(bucket1, :x, levellink, :a)
 join!(levellink, :b, constanthead, :x)
 
@@ -175,34 +178,43 @@ df
 # Plots.plot(sol, vars = [sim.bucket1₊C])
 # Plots.plot(sol, vars = [sim.bucket1₊S, sim.user₊Q])
 
-
 if false
-    fig = Figure()
+    fig = Figure(resolution = (800, 800))
 
     q = Axis(fig[1, 1], ylabel = "Q [m³s⁻¹]")
     scatterlines!(q, df.time, -df.precip₊Q, label = "precip₊Q")
-    scatterlines!(q, df.time, -df.bucket1₊o₊Q, label = "bucket1₊o₊Q")
+    scatterlines!(q, df.time, -df.ratedbucket1₊o₊Q, label = "ratedbucket1₊o₊Q")
     scatterlines!(q, df.time, df.user₊Q, label = "user₊Q")
+    scatterlines!(q, df.time, df.dischargelink₊a₊Q, label = "dischargelink₊Q")
+    scatterlines!(q, df.time, df.levellink₊a₊Q, label = "levellink₊Q")
     hidexdecorations!(q, grid = false)
     axislegend()
 
     s = Axis(fig[2, 1], ylabel = "S [m³]")
+    scatterlines!(s, df.time, df.ratedbucket1₊S, label = "ratedbucket1₊S")
     scatterlines!(s, df.time, df.bucket1₊S, label = "bucket1₊S")
     hidexdecorations!(s, grid = false)
     axislegend()
 
-    c = Axis(fig[3, 1], ylabel = "C [kg m⁻³]")
+    h = Axis(fig[3, 1], ylabel = "h [m]")
+    scatterlines!(h, df.time, df.bucket1₊h, label = "bucket1₊h")
+    scatterlines!(h, df.time, df.constanthead₊h, label = "constanthead₊h")
+    hidexdecorations!(h, grid = false)
+    axislegend()
+
+    c = Axis(fig[4, 1], ylabel = "C [kg m⁻³]")
+    scatterlines!(c, df.time, df.ratedbucket1₊C, label = "ratedbucket1₊C")
     scatterlines!(c, df.time, df.bucket1₊C, label = "bucket1₊C")
     hidexdecorations!(c, grid = false)
     axislegend()
 
     # TODO dodge and stack https://makie.juliaplots.org/v0.15.2/examples/plotting_functions/barplot/index.html
     # seems to require groups / long format
-    bar = Axis(fig[4, 1], xlabel = "time [s]", ylabel = "Q [m³s⁻¹]")
+    bar = Axis(fig[5, 1], xlabel = "time [s]", ylabel = "Q [m³s⁻¹]")
     barplot!(bar, df.time, -df.precip₊Q, label = "precip₊Q")
     axislegend()
 
-    linkxaxes!(q, s, c, bar)
+    linkxaxes!(q, s, h, c, bar)
 
     fig
 end

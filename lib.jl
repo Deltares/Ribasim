@@ -49,10 +49,10 @@ There is a tolerance of 1e-4 for t to avoid narrowly missing the next timestep.
     ff(0.1 - 1e-5) == v[2]
     ff(0.1 - 1e-3) == v[1]
 """
-struct ForwardFill{T, V}
+struct ForwardFill{T,V}
     t::T
     v::V
-    function ForwardFill(t::T, v::V) where {T, V}
+    function ForwardFill(t::T, v::V) where {T,V}
         n = length(t)
         n <= 1 && error("ForwardFill needs at least one point")
         if n != length(v)
@@ -61,11 +61,11 @@ struct ForwardFill{T, V}
         if !issorted(t)
             error("ForwardFill t is not sorted")
         end
-        new{T, V}(t, v)
+        new{T,V}(t, v)
     end
 end
 
-function (ff::ForwardFill{T, V})(t)::eltype(V) where {T, V}
+function (ff::ForwardFill{T,V})(t)::eltype(V) where {T,V}
     # Subtract a small amount to avoid e.g. t = 2.999999s not picking up the t = 3s value.
     # This can occur due to floating point issues with the calculated t::Float64
     # The offset is larger than the eps of 1 My in seconds, and smaller than the periodic
@@ -73,6 +73,22 @@ function (ff::ForwardFill{T, V})(t)::eltype(V) where {T, V}
     i = searchsortedlast(ff.t, t + 1e-4)
     i == 0 && throw(DomainError(t, "Requesting t before start of series."))
     return ff.v[i]
+end
+
+"""ModelingToolkit.connect, but save both the equations and systems
+to avoid errors when forgetting to match the eqs and systems manually."""
+function join!(
+    eqs::Vector{Equation},
+    systems::Set{ODESystem},
+    sys1::ODESystem,
+    connector1::Symbol,
+    sys2::ODESystem,
+    connector2::Symbol,
+)
+    eq = connect(getproperty(sys1, connector1), getproperty(sys2, connector2))
+    push!(eqs, eq)
+    push!(systems, sys1, sys2)
+    return nothing
 end
 
 nothing
