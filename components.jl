@@ -13,7 +13,9 @@ using ModelingToolkit
 - C [kg m⁻³]: mass concentration
 """
 @connector function FluidPort(; name, h0 = 0.0, S0 = 0.0, Q0 = 0.0, C0 = 0.0)
-    vars = @variables h(t) = h0 S(t) = S0 Q(t) = Q0 [connect = Flow] C(t) = C0 [connect = Stream]
+    vars = @variables h(t) = h0 S(t) = S0 Q(t) = Q0 [connect = Flow] C(t) = C0 [
+        connect = Stream,
+    ]
     ODESystem(Equation[], t, vars, []; name)
 end
 
@@ -38,7 +40,47 @@ function DischargeLink(; name)
     compose(ODESystem(eqs, t, [], []; name), a, b)
 end
 
+function LevelLink(; name, cond)
+    @named a = FluidPort()
+    @named b = FluidPort()
+
+    pars = @parameters cond = cond
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        a.Q ~ cond * (a.h - b.h)
+        b.C ~ instream(a.C)
+        a.C ~ instream(b.C)
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), a, b)
+end
+
 function Bucket(; name, S0, C0, α)
+    @named x = FluidPort(; S0, C0)
+
+    vars = @variables h(t) S(t) = S0 Q(t) C(t) = C0
+    pars = @parameters α = α
+    D = Differential(t)
+
+    eqs = Equation[
+        # assume bottoms are all 0 and area 1
+        # h ~ bottom + S / area
+        h ~ S
+        # storage / balance
+        D(S) ~ Q
+        # mass balance for concentration
+        D(C) ~ ifelse(Q > 0, (instream(x.C) - C) * Q / S, 0)
+        h ~ x.h
+        S ~ x.S
+        Q ~ x.Q
+        C ~ x.C
+    ]
+    compose(ODESystem(eqs, t, vars, pars; name), x)
+end
+
+# like Bucket, but with separate outflow port defined by a rating curve
+function RatedBucket(; name, S0, C0, α)
     @named x = FluidPort(; S0, C0)
     @named o = FluidPort(; S0, C0)
 

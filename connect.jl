@@ -22,25 +22,32 @@ includet("components.jl")
 tspan = (0.0, 1.0)
 Δt = 0.1
 # tspan[2] is the end time, not the start of the last timestep, so no forcing needed there
-times = range(start=tspan[1], step=Δt, stop=tspan[2] - Δt)
+times = range(start = tspan[1], step = Δt, stop = tspan[2] - Δt)
 precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0])
 
-@named precip = Precipitation(Q0 = 0.0)
+@named precip = Precipitation(Q0 = -0.5)
 @named user = User(demand = 3.0)
-@named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named ratedbucket1 = RatedBucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 @named dischargelink = DischargeLink()
-@named bucket2 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named levellink = LevelLink(; cond = 2.0)
+@named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 @named terminal = FluidPort()
+@named constanthead = ConstantHead(; h0 = 1.3, C0 = 43.0)
+@named bucket2 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
 
-eqs = Equation[
-    connect(precip.x, bucket1.x)
-    connect(bucket1.o, dischargelink.a)
-    connect(dischargelink.b, bucket2.x)
-    connect(bucket2.o, terminal)
-]
+eqs = Equation[]
+systems = Set{ODESystem}()
+function join!(sys1, connector1, sys2, connector2)
+    join!(eqs, systems, sys1, connector1, sys2, connector2)
+end
+
+# define the connections between components
+join!(precip, :x, bucket1, :x)
+join!(bucket1, :x, levellink, :a)
+join!(levellink, :b, constanthead, :x)
 
 @named _sys = ODESystem(eqs, t, [], [])
-@named sys = compose(_sys, [precip, bucket1, dischargelink, bucket2, terminal])
+@named sys = compose(_sys, collect(systems))
 
 sim = structural_simplify(sys)
 
@@ -113,8 +120,9 @@ end
 
 cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
-# cb = CallbackSet(cb_pump, cb_exchange)
-cb = cb_exchange
+# some callbacks require certain nodes to be present, set automatically for easy testing
+cb = precip in systems ? cb_exchange : nothing
+cb = user in systems ? CallbackSet(cb_pump, cb_exchange) : cb_exchange
 
 # functions to get and set values, whether it is a state, parameter or observed
 function val(integrator, s)::Real
@@ -299,7 +307,4 @@ sol = solve(prob, alg_hints = [:stiff], callback = cb_exchange)
 Plots.plot(sol, vars = [-precips[top].Q, -precips[mid].Q, -precips[out].Q])
 Plots.plot(sol, vars = [buckets[top].Q, buckets[mid].Q, buckets[out].Q])
 Plots.plot(sol, vars = [buckets[top].C, buckets[mid].C, buckets[out].C])
-Plots.plot(
-    sol,
-    vars = [buckets[top].S, buckets[mid].S, buckets[out].S],
-)
+Plots.plot(sol, vars = [buckets[top].S, buckets[mid].S, buckets[out].S])
