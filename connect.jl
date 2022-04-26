@@ -25,16 +25,16 @@ tspan = (0.0, 1.0)
 times = range(start = tspan[1], step = Δt, stop = tspan[2] - Δt)
 precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0])
 
-@named precip = Precipitation(Q0 = -0.5)
+@named precip = Precipitation(Q = -0.5)
 @named user = User(demand = 3.0)
-@named ratedbucket1 = RatedBucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named ratedbucket1 = RatedBucket(α = 2.0, S = 3.0, C = 100.0)
 @named dischargelink = DischargeLink()
 @named levellink = LevelLink(; cond = 2.0)
-@named bucket1 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named bucket1 = Bucket(α = 2.0, S = 3.0, C = 100.0)
 @named terminal = Terminal()
 @named terminal2 = Terminal()
-@named constanthead = ConstantHead(; h0 = 1.3, C0 = 43.0)
-@named bucket2 = Bucket(α = 2.0, S0 = 3.0, C0 = 100.0)
+@named constanthead = ConstantHead(; h = 1.3, C = 43.0)
+@named bucket2 = Bucket(α = 2.0, S = 3.0, C = 100.0)
 @named bifurcation = Bifurcation(; fraction_b = 2/3)
 
 eqs = Equation[]
@@ -266,9 +266,9 @@ precips = ODESystem[]
 buckets = ODESystem[]
 for lsw in slsws
     name = Symbol("precip_lsw", lsw)
-    precip = Precipitation(; name, Q0 = 0.0)
+    precip = Precipitation(; name, Q = 0.0)
     name = Symbol("bucket_lsw", lsw)
-    bucket = Bucket(; name, α = 6.0, S0 = 3.0, C0 = 100.0)
+    bucket = Bucket(; name, α = 6.0, S = 3.0, C = 100.0)
     push!(precips, precip)
     push!(buckets, bucket)
 end

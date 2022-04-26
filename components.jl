@@ -5,15 +5,15 @@ using ModelingToolkit
 @variables t
 
 """
-    FluidPort(; name, h0 = 0.0, S0 = 0.0, Q0 = 0.0, C0 = 0.0)
+    FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
 
 - h [m]: hydraulic head above reference level
 - S [m³]: storage
 - Q [m3 s⁻¹]: volumetric flux
 - C [kg m⁻³]: mass concentration
 """
-@connector function FluidPort(; name, h0 = 0.0, S0 = 0.0, Q0 = 0.0, C0 = 0.0)
-    vars = @variables h(t) = h0 S(t) = S0 Q(t) = Q0 [connect = Flow] C(t) = C0 [
+@connector function FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
+    vars = @variables h(t) = h S(t) = S Q(t) = Q [connect = Flow] C(t) = C [
         connect = Stream,
     ]
     ODESystem(Equation[], t, vars, []; name)
@@ -73,7 +73,6 @@ function Bifurcation(; name, fraction_b)
 
     eqs = Equation[
         # conservation of flow
-        # a.Q + b.Q + c.Q ~ 0
         b.Q ~ fraction_b * a.Q
         c.Q ~ (1 - fraction_b) * a.Q
         b.C ~ instream(a.C)
@@ -82,10 +81,10 @@ function Bifurcation(; name, fraction_b)
     compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end
 
-function Bucket(; name, S0, C0, α)
-    @named x = FluidPort(; S0, C0)
+function Bucket(; name, S, C, α)
+    @named x = FluidPort(; S, C)
 
-    vars = @variables h(t) S(t) = S0 Q(t) C(t) = C0
+    vars = @variables h(t) S(t) = S Q(t) C(t) = C
     pars = @parameters α = α
     D = Differential(t)
 
@@ -106,11 +105,11 @@ function Bucket(; name, S0, C0, α)
 end
 
 # like Bucket, but with separate outflow port defined by a rating curve
-function RatedBucket(; name, S0, C0, α)
-    @named x = FluidPort(; S0, C0)
-    @named o = FluidPort(; S0, C0)
+function RatedBucket(; name, S, C, α)
+    @named x = FluidPort(; S, C)
+    @named o = FluidPort(; S, C)
 
-    vars = @variables h(t) S(t) = S0 C(t) = C0
+    vars = @variables h(t) S(t) = S C(t) = C
     pars = @parameters α = α
     D = Differential(t)
 
@@ -134,9 +133,9 @@ function RatedBucket(; name, S0, C0, α)
     compose(ODESystem(eqs, t, vars, pars; name), x, o)
 end
 
-function ConstantHead(; name, h0, C0)
-    @named x = FluidPort(; h0, C0)
-    pars = @parameters h = h0 C = C0
+function ConstantHead(; name, h, C)
+    @named x = FluidPort(; h, C)
+    pars = @parameters h = h C = C
 
     eqs = Equation[
         x.h ~ h
@@ -146,25 +145,22 @@ function ConstantHead(; name, h0, C0)
 end
 
 "Add a discharge to the system"
-function FixedInflow(; name, Q0, C0)
-    @assert Q0 <= 0 "Supply Q0 must be negative"
-    @named x = FluidPort(; Q0, C0)
-    vars = @variables Q(t) = Q0 C(t) = C0
-    pars = @parameters Q0 = Q0 C0 = C0
+function FixedInflow(; name, Q, C)
+    @assert Q <= 0 "Supply Q must be negative"
+    @named x = FluidPort(; Q, C)
+    pars = @parameters Q = Q C = C
 
     eqs = Equation[
-        Q ~ Q0
-        C ~ C0
-        Q ~ x.Q
-        C ~ x.C
+        x.Q ~ Q
+        x.C ~ C
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), x)
+    compose(ODESystem(eqs, t, [], pars; name), x)
 end
 
-function Precipitation(; name, Q0)
-    @assert Q0 <= 0 "Precipitation Q0 must be negative"
-    @named x = FluidPort(; Q0)
-    pars = @parameters Q = Q0
+function Precipitation(; name, Q)
+    @assert Q <= 0 "Precipitation Q must be negative"
+    @named x = FluidPort(; Q)
+    pars = @parameters Q = Q
 
     eqs = Equation[
         x.Q ~ Q
@@ -175,7 +171,7 @@ end
 
 "Extract water if there is storage left"
 function User(; name, demand)
-    @named x = FluidPort(Q0 = demand)
+    @named x = FluidPort(Q = demand)
     pars = @parameters demand = demand xfactor = 1.0
     vars = @variables Q(t) shortage(t) = 0
 
