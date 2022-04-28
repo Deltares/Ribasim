@@ -99,11 +99,10 @@ function Bifurcation(; name, fraction_b)
     compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end
 
-function Bucket(; name, S, C, α)
+function Bucket(; name, S, C)
     @named x = FluidPort(; S, C)
 
     vars = @variables h(t) S(t) = S Q(t) C(t) = C
-    pars = @parameters α = α
     D = Differential(t)
 
     eqs = Equation[
@@ -119,7 +118,7 @@ function Bucket(; name, S, C, α)
         Q ~ x.Q
         C ~ x.C
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), x)
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
 function ConstantHead(; name, h, C)
