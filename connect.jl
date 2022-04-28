@@ -27,15 +27,17 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 
 @named precip = Precipitation(Q = -0.5)
 @named user = User(demand = 3.0)
-@named ratedbucket1 = RatedBucket(α = 2.0, S = 3.0, C = 100.0)
 @named dischargelink = DischargeLink()
 @named levellink = LevelLink(; cond = 2.0)
 @named bucket1 = Bucket(α = 2.0, S = 3.0, C = 100.0)
 @named terminal = Terminal()
 @named terminal2 = Terminal()
 @named constanthead = ConstantHead(; h = 1.3, C = 43.0)
+@named constantstorage = ConstantStorage(; S = 1.3, C = 43.0)
+@named constantconcentration = ConstantConcentration(; C = 43.0)
 @named bucket2 = Bucket(α = 2.0, S = 3.0, C = 100.0)
-@named bifurcation = Bifurcation(; fraction_b = 2/3)
+@named bifurcation = Bifurcation(; fraction_b = 2 / 3)
+@named weir = Weir(; α = 2.0)
 
 eqs = Equation[]
 systems = Set{ODESystem}()
@@ -43,19 +45,10 @@ function join!(sys1, connector1, sys2, connector2)
     join!(eqs, systems, sys1, connector1, sys2, connector2)
 end
 
-# define the connections between components
-# join!(precip, :x, ratedbucket1, :x)
-# join!(ratedbucket1, :o, dischargelink, :a)
-# join!(dischargelink, :b, bucket1, :x)
-# join!(bucket1, :x, user, :x)
-# join!(bucket1, :x, levellink, :a)
-# join!(levellink, :b, constanthead, :x)
-
-join!(precip, :x, ratedbucket1, :x)
-join!(ratedbucket1, :o, bifurcation, :a)
-join!(bifurcation, :b, terminal2, :x)
-join!(bifurcation, :c, terminal, :x)
-
+join!(precip, :x, bucket1, :x)
+join!(user, :x, bucket1, :x)
+join!(bucket1, :x, weir, :a)
+join!(weir, :b, constantconcentration, :x)
 
 @named _sys = ODESystem(eqs, t, [], [])
 @named sys = compose(_sys, collect(systems))
@@ -132,8 +125,15 @@ end
 cb_exchange = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
 # some callbacks require certain nodes to be present, set automatically for easy testing
-cb = precip in systems ? cb_exchange : nothing
-cb = user in systems ? CallbackSet(cb_pump, cb_exchange) : cb_exchange
+cb = if (precip in systems) && (user in systems)
+    CallbackSet(cb_pump, cb_exchange)
+elseif precip in systems
+    cb_exchange
+elseif user in systems
+    cb_pump
+else
+    nothing
+end
 
 # functions to get and set values, whether it is a state, parameter or observed
 function val(integrator, s)::Real
@@ -228,7 +228,7 @@ if false
 end
 
 # foreach(println, names(df))
-CSV.write("df.csv", df; bom=true)  # add Byte Order Mark for Excel UTF-8 detection
+CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
 nothing
 df
 

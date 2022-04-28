@@ -13,9 +13,8 @@ using ModelingToolkit
 - C [kg m⁻³]: mass concentration
 """
 @connector function FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
-    vars = @variables h(t) = h S(t) = S Q(t) = Q [connect = Flow] C(t) = C [
-        connect = Stream,
-    ]
+    vars =
+        @variables h(t) = h S(t) = S Q(t) = Q [connect = Flow] C(t) = C [connect = Stream]
     ODESystem(Equation[], t, vars, []; name)
 end
 
@@ -63,6 +62,25 @@ function LevelLink(; name, cond)
     compose(ODESystem(eqs, t, [], pars; name), a, b)
 end
 
+function Weir(; name, α)
+    @named a = FluidPort()
+    @named b = FluidPort()
+
+    vars = @variables Q(t)
+    pars = @parameters α = α
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        # Q(S) rating curve
+        Q ~ α * a.S
+        Q ~ a.Q
+        b.C ~ instream(a.C)
+        a.C ~ instream(b.C)
+    ]
+    compose(ODESystem(eqs, t, vars, pars; name), a, b)
+end
+
 # TODO only made for flow from a to b and c
 function Bifurcation(; name, fraction_b)
     @named a = FluidPort()
@@ -104,35 +122,6 @@ function Bucket(; name, S, C, α)
     compose(ODESystem(eqs, t, vars, pars; name), x)
 end
 
-# like Bucket, but with separate outflow port defined by a rating curve
-function RatedBucket(; name, S, C, α)
-    @named x = FluidPort(; S, C)
-    @named o = FluidPort(; S, C)
-
-    vars = @variables h(t) S(t) = S C(t) = C
-    pars = @parameters α = α
-    D = Differential(t)
-
-    eqs = Equation[
-        # assume bottoms are all 0 and area 1
-        # h ~ bottom + S / area
-        h ~ S
-        # Q(S) rating curve
-        -o.Q ~ α * S
-        # storage / balance
-        D(S) ~ x.Q + o.Q
-        # mass balance for concentration
-        D(C) ~ ifelse(x.Q > 0, (instream(x.C) - C) * x.Q / S, 0)
-        h ~ x.h
-        h ~ o.h
-        S ~ x.S
-        S ~ o.S
-        C ~ x.C
-        C ~ o.C
-    ]
-    compose(ODESystem(eqs, t, vars, pars; name), x, o)
-end
-
 function ConstantHead(; name, h, C)
     @named x = FluidPort(; h, C)
     pars = @parameters h = h C = C
@@ -141,6 +130,25 @@ function ConstantHead(; name, h, C)
         x.h ~ h
         x.C ~ C
     ]
+    compose(ODESystem(eqs, t, [], pars; name), x)
+end
+
+function ConstantStorage(; name, S, C)
+    @named x = FluidPort(; S, C)
+    pars = @parameters S = S C = C
+
+    eqs = Equation[
+        x.S ~ S
+        x.C ~ C
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), x)
+end
+
+function ConstantConcentration(; name, C)
+    @named x = FluidPort(; C)
+    pars = @parameters C = C
+
+    eqs = Equation[x.C~C]
     compose(ODESystem(eqs, t, [], pars; name), x)
 end
 
