@@ -81,7 +81,7 @@ function Weir(; name, α)
     compose(ODESystem(eqs, t, vars, pars; name), a, b)
 end
 
-# TODO only made for flow from a to b and c
+# Fractional bifurcation, only made for flow from a to b and c
 function Bifurcation(; name, fraction_b)
     @named a = FluidPort()
     @named b = FluidPort()
@@ -95,6 +95,7 @@ function Bifurcation(; name, fraction_b)
         c.Q ~ (1 - fraction_b) * a.Q
         b.C ~ instream(a.C)
         c.C ~ instream(a.C)
+        a.C ~ 0
     ]
     compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end

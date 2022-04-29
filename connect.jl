@@ -28,14 +28,21 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named precip = Precipitation(Q = -0.5)
 @named user = User(demand = 3.0)
 @named dischargelink = DischargeLink()
-@named levellink = LevelLink(; cond = 2.0)
-@named bucket1 = Bucket(α = 2.0, S = 3.0, C = 100.0)
+@named levellink1 = LevelLink(; cond = 2.0)
+@named levellink2 = LevelLink(; cond = 2.0)
+@named levellink3 = LevelLink(; cond = 2.0)
+@named bucket1 = Bucket(S = 3.0, C = 100.0)
+@named bucket2 = Bucket(S = 3.0, C = 100.0)
+@named bucket3 = Bucket(S = 3.0, C = 100.0)
 @named terminal = Terminal()
 @named terminal2 = Terminal()
 @named constanthead = ConstantHead(; h = 1.3, C = 43.0)
+@named constanthead2 = ConstantHead(; h = 1.3, C = 43.0)
 @named constantstorage = ConstantStorage(; S = 1.3, C = 43.0)
+@named constantstorage2 = ConstantStorage(; S = 1.3, C = 43.0)
 @named constantconcentration = ConstantConcentration(; C = 43.0)
-@named bucket2 = Bucket(α = 2.0, S = 3.0, C = 100.0)
+@named constantconcentration2 = ConstantConcentration(; C = 43.0)
+@named fixedinflow = FixedInflow(; Q = -2.0, C = 100.0)
 @named bifurcation = Bifurcation(; fraction_b = 2 / 3)
 @named weir = Weir(; α = 2.0)
 
@@ -45,10 +52,30 @@ function join!(sys1, connector1, sys2, connector2)
     join!(eqs, systems, sys1, connector1, sys2, connector2)
 end
 
+# join!(precip, :x, bucket1, :x)
+# join!(bucket1, :x, bifurcation, :a)
+# join!(fixedinflow, :x, bifurcation, :a)  # works, but no ODE (use a capacitance instead)
+# join!(capacitance, :x, bifurcation, :a)
+# join!(bifurcation, :b, constantconcentration, :x)
+# join!(bifurcation, :c, constantconcentration2, :x)
+# join!(bifurcation, :b, constantstorage, :x)
+# join!(bifurcation, :c, constantstorage2, :x)
+
 join!(precip, :x, bucket1, :x)
 join!(user, :x, bucket1, :x)
 join!(bucket1, :x, weir, :a)
-join!(weir, :b, constantconcentration, :x)
+join!(weir, :b, bifurcation, :a)
+join!(bifurcation, :b, constantconcentration2, :x)
+join!(bifurcation, :c, constantconcentration, :x)
+
+# join!(precip, :x, bucket1, :x)
+# join!(bucket1, :x, weir, :a)
+# join!(weir, :b, levellink1, :a)
+# join!(levellink1, :b, levellink2, :b)
+# join!(levellink2, :b, levellink3, :b)
+# join!(constanthead, :x, levellink2, :a)
+# join!(constanthead2, :x, levellink3, :a)
+
 
 @named _sys = ODESystem(eqs, t, [], [])
 @named sys = compose(_sys, collect(systems))
@@ -56,13 +83,13 @@ join!(weir, :b, constantconcentration, :x)
 sim = structural_simplify(sys)
 
 # for debugging bad systems
-sys = expand_connections(sys)
-sys = alias_elimination(sys)
-state = TearingState(sys);
+sys_check = expand_connections(sys)
+sys_check = alias_elimination(sys_check)
+state = TearingState(sys_check);
 check_consistency(state)
-equations(sys)
-states(sys)
-observed(sys)
+equations(sys_check)
+states(sys_check)
+observed(sys_check)
 
 # get all states, parameters and observed in the system
 # for observed we also need the symbolic terms later
