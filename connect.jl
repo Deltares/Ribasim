@@ -17,6 +17,7 @@ using Test
 using CSV
 
 includet("lib.jl")
+includet("graphplot.jl")
 includet("components.jl")
 
 tspan = (0.0, 1.0)
@@ -258,6 +259,7 @@ end
 CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
 nothing
 df
+graph_system(systems, eqs)
 
 ## graph
 
