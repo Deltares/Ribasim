@@ -88,6 +88,40 @@ df = DataFrame(vcat(:time => Float64[], [sym => Float64[] for sym in syms]))
 
 prob = ODAEProblem(sim, [], tspan)
 
+# functions to get and set values, whether it is a state, parameter or observed
+function val(integrator, s)::Real
+    (; u, t, p) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    if sym in symstates
+        i = findfirst(==(sym), symstates)
+        return u[i]
+    elseif sym in sympars
+        i = findfirst(==(sym), sympars)
+        return p[i]
+    else
+        # the observed function requires a Term
+        if isa(s, Symbol)
+            i = findfirst(==(s), symobs)
+            s = simobs[i]
+        end
+        return prob.f.observed(s, u, p, t)
+    end
+end
+
+function set(integrator, s, x::Real)::Real
+    (; u, p) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    if sym in symstates
+        i = findfirst(==(sym), symstates)
+        return u[i] = x
+    elseif sym in sympars
+        i = findfirst(==(sym), sympars)
+        return p[i] = x
+    else
+        error(lazy"cannot set $s; not found in states or parameters")
+    end
+end
+
 # callback condition: amount of storage
 function condition(u, t, integrator)
     return val(integrator, bucket1.S) - 1.5

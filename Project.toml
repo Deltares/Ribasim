@@ -26,6 +26,7 @@ PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [extras]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
