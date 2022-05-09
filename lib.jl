@@ -1,5 +1,7 @@
 # reusable components that can be included in application scripts
 
+import ModelingToolkit as MTK
+
 struct StorageCurve
     s::Vector{Float64}
     a::Vector{Float64}
@@ -54,7 +56,6 @@ struct ForwardFill{T,V}
     v::V
     function ForwardFill(t::T, v::V) where {T,V}
         n = length(t)
-        n <= 1 && error("ForwardFill needs at least one point")
         if n != length(v)
             error("ForwardFill vectors are not of equal length")
         end
@@ -65,6 +66,7 @@ struct ForwardFill{T,V}
     end
 end
 
+"Interpolate into a forward filled timeseries at t"
 function (ff::ForwardFill{T,V})(t)::eltype(V) where {T,V}
     # Subtract a small amount to avoid e.g. t = 2.999999s not picking up the t = 3s value.
     # This can occur due to floating point issues with the calculated t::Float64
@@ -73,6 +75,23 @@ function (ff::ForwardFill{T,V})(t)::eltype(V) where {T,V}
     i = searchsortedlast(ff.t, t + 1e-4)
     i == 0 && throw(DomainError(t, "Requesting t before start of series."))
     return ff.v[i]
+end
+
+"Interpolate and get the index j of the result, useful for V=Vector{Vector{Float64}}"
+function (ff::ForwardFill{T,V})(t, j)::eltype(eltype(V)) where {T,V}
+    i = searchsortedlast(ff.t, t + 1e-4)
+    i == 0 && throw(DomainError(t, "Requesting t before start of series."))
+    return ff.v[i][j]
+end
+
+function Base.show(io::IO, ff::ForwardFill)
+    println(io, typeof(ff))
+end
+
+function save!(param_hist::ForwardFill, t::Float64, p::Vector{Float64})
+    push!(param_hist.t, t)
+    push!(param_hist.v, copy(p))
+    return param_hist
 end
 
 """ModelingToolkit.connect, but save both the equations and systems
@@ -92,5 +111,130 @@ function join!(
 end
 
 parentname(s::Symbol) = Symbol(first(eachsplit(String(s), "₊")))
+
+# SymbolicUtils.Sym{Real} and Term{Real} with MTK Metadata
+const SymReal = Sym{Real,Base.ImmutableDict{DataType,Any}}
+const TermReal = Term{Real,Base.ImmutableDict{DataType,Any}}
+
+"""
+    Names(sys::MTK.AbstractODESystem)
+
+Collection of names of the system, used for looking up values.
+"""
+struct Names
+    u_syms::Vector{TermReal}  # states(sys)
+    p_syms::Vector{SymReal}  # parameters(sys)
+    obs_eqs::Vector{Equation}  # observed(sys)
+    obs_syms::Vector{TermReal}  # lhs of observed(sys)
+    u_symbol::Vector{Symbol}  # Symbol versions, used as names...
+    p_symbol::Vector{Symbol}
+    obs_symbol::Vector{Symbol}
+    function Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
+        @assert length(u_syms) == length(u_symbol)
+        @assert length(p_syms) == length(p_symbol)
+        @assert length(obs_syms) == length(obs_eqs) == length(obs_symbol)
+        @assert length(obs_eqs) == length(obs_symbol)
+        new(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
+    end
+end
+
+function Names(sys::MTK.AbstractODESystem)
+    # some values are duplicated, e.g. the same stream as observed from connected components
+    # obs terms contains duplicates, e.g. we want user₊Q and bucket₊o₊Q but not user₊x₊Q
+    u_syms = states(sys)
+    p_syms = parameters(sys)
+    obs_eqs = observed(sys)
+    obs_syms = [obs.lhs for obs in obs_eqs]
+    u_symbol = Symbol[getname(s) for s in u_syms]
+    p_symbol = Symbol[getname(s) for s in p_syms]
+    obs_symbol = Symbol[getname(s) for s in obs_syms]
+    return Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
+end
+
+"""
+    Register(sys::MTK.AbstractODESystem, integrator::SciMLBase.AbstractODEIntegrator)
+
+Struct that combines data from the System and Integrator that we will need during and after
+model construction.
+
+The integrator also has the saved data in the integrator.sol field. We update parameters in
+callbacks, and these are not saved, so in this struct we save those ourselves, ref:
+https://discourse.julialang.org/t/update-parameters-in-modelingtoolkit-using-callbacks/63770
+"""
+struct Register{T}
+    integrator::T  # SciMLBase.AbstractODEIntegrator
+    param_hist::ForwardFill
+    sysnames::Names
+    function Register(
+        integrator::T,
+        param_hist,
+        sysnames,
+    ) where {T<:SciMLBase.AbstractODEIntegrator}
+        @assert length(integrator.u) == length(sysnames.u_syms)
+        @assert length(integrator.p) == length(sysnames.p_syms)
+        new{T}(integrator, param_hist, sysnames)
+    end
+end
+
+function Base.show(io::IO, reg::Register)
+    t = reg.integrator.t
+    nsaved = length(reg.integrator.sol.t)
+    println(io, "Register(ts: $nsaved, t: $t)")
+end
+
+"""
+    timeseries(reg::Register, sym)::Vector{Float64}
+
+Return a vector of the complete saved timeseries of the given symbol or symbolic term.
+"""
+function timeseries(reg::Register, sym)::Vector{Float64}
+    (; sysnames, integrator, param_hist) = reg
+    sol = integrator.sol
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        # sym must be symbolic here
+        if sym isa Symbol
+            i = findfirst(==(sym), sysnames.u_symbol)
+            sym = sysnames.u_syms[i]
+        end
+        # use solution as normal
+        sol[sym]
+    elseif s in sysnames.p_symbol
+        # use param_hist
+        i = findfirst(==(s), sysnames.p_symbol)
+        param_hist.(A.t, i)
+    elseif s in sysnames.obs_symbol
+        # combine solution and param_hist
+        f = SciMLBase.getobserved(sol)  # generated function
+        # get the correct parameter values for each saved timestep
+        # p can be quite big, perhaps we should save it
+        p = param_hist.(sol.t)
+        # sym must be symbolic here
+        if sym isa Symbol
+            i = findfirst(==(sym), sysnames.obs_symbol)
+            sym = sysnames.obs_syms[i]
+        end
+        f.((sym,), sol.u, p, sol.t)
+    else
+        error(lazy"Symbol $s not found in system.")
+    end
+end
+
+timeseries(reg::Register)::Vector{Float64} = reg.integrator.sol.t
+
+function identify(sysnames::Names, sym)::Symbol
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        :states
+    elseif s in sysnames.p_symbol
+        :parameters
+    elseif s in sysnames.obs_symbol
+        :observed
+    else
+        error(lazy"Symbol $s not found in system.")
+    end
+end
+
+identify(reg::Register, sym)::Symbol = identify(reg.sysnames, sym)
 
 nothing

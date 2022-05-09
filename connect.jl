@@ -73,69 +73,80 @@ equations(sys_check)
 states(sys_check)
 observed(sys_check)
 
-# get all states, parameters and observed in the system
-# for observed we also need the symbolic terms later
-# some values are duplicated, e.g. the same stream as observed from connected components
-symstates = Symbol[getname(s) for s in states(sim)]
-sympars = Symbol[getname(s) for s in parameters(sim)]
-simobs = [obs.lhs for obs in observed(sim)]
-# TODO this list contains duplicates, e.g. we want user₊Q and bucket₊o₊Q but not user₊x₊Q
-symobs = Symbol[getname(s) for s in simobs]
-syms = vcat(symstates, symobs, sympars)
-
-# create DataFrame to store daily output
-df = DataFrame(vcat(:time => Float64[], [sym => Float64[] for sym in syms]))
-
+sysnames = Names(sim)
+# A place to store the parameter values over time. The default solution object does not track
+# these, and will only show the latest value. To be able to plot observed states that depend
+# on parameters correctly, we need to save them over time. We can only save them after
+# updating them, so the timesteps don't match the saved timestamps in the solution.
+param_hist = ForwardFill(Float64[], Vector{Float64}[])
 prob = ODAEProblem(sim, [], tspan)
 
 # functions to get and set values, whether it is a state, parameter or observed
 function val(integrator, s)::Real
     (; u, t, p) = integrator
     sym = Symbolics.getname(s)::Symbol
-    if sym in symstates
-        i = findfirst(==(sym), symstates)
+    @debug "val" t
+    if sym in sysnames.u_symbol
+        i = findfirst(==(sym), sysnames.u_symbol)
         return u[i]
-    elseif sym in sympars
-        i = findfirst(==(sym), sympars)
-        return p[i]
     else
         # the observed function requires a Term
         if isa(s, Symbol)
-            i = findfirst(==(s), symobs)
-            s = simobs[i]
+            i = findfirst(==(s), sysnames.obs_symbol)
+            s = sysnames.obs_syms[i]
         end
         return prob.f.observed(s, u, p, t)
     end
 end
 
-function set(integrator, s, x::Real)::Real
-    (; u, p) = integrator
+function param(integrator, s)::Real
+    (; p) = integrator
     sym = Symbolics.getname(s)::Symbol
-    if sym in symstates
-        i = findfirst(==(sym), symstates)
+    @debug "param" integrator.t
+    i = findfirst(==(sym), sysnames.p_symbol)
+    return p[i]
+end
+
+function param!(integrator, s, x::Real)::Real
+    (; p) = integrator
+    @debug "param!" integrator.t
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), sysnames.p_symbol)
+    return p[i] = x
+end
+
+# Currently we cannot set observed states, so we have to rely that the states we are
+# interested in modifying don't get moved there. It might be possible to find the state
+# connected to the observed variable, and modify that instead: `x ~ 2 * u1` to `u1 <- x / 2`
+function set(integrator, s, x::Real)::Real
+    (; u) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    @debug "set" integrator.t
+    if sym in sysnames.u_symbol
+        i = findfirst(==(sym), sysnames.u_symbol)
         return u[i] = x
-    elseif sym in sympars
-        i = findfirst(==(sym), sympars)
-        return p[i] = x
     else
-        error(lazy"cannot set $s; not found in states or parameters")
+        error(lazy"cannot set $s; not found in states")
     end
 end
 
 # callback condition: amount of storage
 function condition(u, t, integrator)
+    @debug "condition" t
     return val(integrator, bucket1.S) - 1.5
 end
 
 # callback affect: stop pumping
 function stop_pumping!(integrator)
-    set(integrator, user.xfactor, 0.0)
+    @debug "stop_pumping!" integrator.t
+    param!(integrator, user.xfactor, 0.0)
     return nothing
 end
 
 # call affect: resume pumping
 function pump!(integrator)
-    set(integrator, user.xfactor, 1.0)
+    @debug "pump!" integrator.t
+    param!(integrator, user.xfactor, 1.0)
     return nothing
 end
 
@@ -143,9 +154,9 @@ end
 # since the callback is only triggered when crossing it. This ensure we don't
 # start pumping an empty reservoir, if those are the initial conditions.
 function init_rate(cb, u, t, integrator)
+    @debug "init_rate" t
     xfactor = val(integrator, bucket1.S) > 1.5 ? 1 : 0
-    set(integrator, user.xfactor, xfactor)
-    @info "initialize callback" xfactor t
+    param!(integrator, user.xfactor, xfactor)
     return nothing
 end
 
@@ -155,11 +166,10 @@ cb_pump = ContinuousCallback(condition, pump!, stop_pumping!; initialize = init_
 function periodic_update!(integrator)
     # exchange with Modflow and Metaswap here
     # update precipitation
-    (; t) = integrator
-    set(integrator, precip.Q, -precipitation(t))
+    (; t, p) = integrator
 
-    # saving daily output
-    push!(df, vcat(t, [val(integrator, sym) for sym in syms]))
+    param!(integrator, precip.Q, -precipitation(t))
+    save!(param_hist, t, p)
     return nothing
 end
 
@@ -179,7 +189,26 @@ end
 # since we save periodically ourselves, values don't need to be saved by MTK
 # but during development we leave this on for debugging
 # TODO alg_hints should be available for init as well?
-sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
+# sol = solve(prob, alg_hints = [:stiff], callback = cb, save_on = true)
+integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
+reg = Register(integrator, param_hist, sysnames)
 
-CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
-graph_system(systems, eqs)
+solve!(integrator)  # solve it until the end
+(; sol) = integrator
+
+# CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
+# graph_system(systems, eqs)  # TODO rewrite based on sysnames
+
+import Plots
+
+# flippin'
+# TODO we are missing the interpolation
+identify(reg, user.x.Q)
+Plots.plot(sol, vars = [user.x.Q])
+Plots.scatter!(timeseries(reg), timeseries(reg, user.x.Q))
+
+# this wrongly shows no rain, because there was none at the end
+# precip₊x₊Q is observed: precip₊x₊Q(t) ~ precip₊Q, so good example
+Plots.plot(sol, vars = [precip.x.Q])
+# this works
+Plots.scatter!(timeseries(reg), -timeseries(reg, precip.x.Q))
