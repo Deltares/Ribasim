@@ -72,7 +72,7 @@ end
 Based on a list of systems and their connections, create an interactive graph plot
 that shows the components and their values over time.
 """
-function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
+function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Register)
     g, component_names, connector_names = reconstruct_graph(systems, eqs)
     n_component = length(component_names)
     n_connector = length(connector_names)
@@ -92,7 +92,12 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
 
     vars = ["h", "S", "Q", "C"]
     var = "Q"
-    ts = lastindex(df.time)
+
+    times = timeseries(reg)  # TODO remove
+    starttime = first(times)
+    endtime = last(times)
+    t = starttime .. endtime
+    ts = lastindex(times)  # TODO remove
     fig = Figure()
 
     layout_graph = fig[1, 1]
@@ -103,9 +108,9 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
     ls = labelslider!(
         fig,
         "time:",
-        df.time;
+        times;
         format = x -> @sprintf("%.1f s", x),
-        sliderkw = Dict(:startvalue => df.time[end]),
+        sliderkw = Dict(:startvalue => times[end]),
     )
 
     layout_graph[1, 1] = menu
@@ -115,11 +120,17 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
     # create labels for each node
     labelnames = String.(vcat(component_names, connector_names))
     # not all states have all variables
-    dfval(ts, col) = col in names(df) ? df[ts, col] : NaN
 
+    # TODO pre calculate all interpolation functions?
+    # TODO rename col (no dataframe columns)
+    # ts does not need to interpolate perhaps, do that only for the time plots?
+    # e.g. labels don't need to be interpolated
     function create_nlabels(var, ts)
         labelvars = string.(labelnames, "₊$var")
-        return [string(col, @sprintf(": %.2f", dfval(ts, col))) for col in labelvars]
+        return [
+            string(col, @sprintf(": %.2f", savedvalue(reg, Symbol(col), ts))) for
+            col in labelvars
+        ]
     end
 
     nlabels = create_nlabels(var, ts)
@@ -146,23 +157,15 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
 
     # right column: timeseries
     h = Axis(layout_time[1, 1], ylabel = "h [m]")
-    # scatterlines!(h, df.time, df.bucket1₊h, label = "bucket1₊h")
     hidexdecorations!(h, grid = false)
     # axislegend()
-
     s = Axis(layout_time[2, 1], ylabel = "S [m³]")
-    # scatterlines!(s, df.time, df.bucket1₊S, label = "bucket1₊S")
     hidexdecorations!(s, grid = false)
     # axislegend()
-
     q = Axis(layout_time[3, 1], ylabel = "Q [m³s⁻¹]")
-    # scatterlines!(q, df.time, -df.precip₊Q, label = "precip₊Q")
-    # scatterlines!(q, df.time, df.user₊Q, label = "user₊Q")
     hidexdecorations!(q, grid = false)
     # axislegend()
-
     c = Axis(layout_time[4, 1], ylabel = "C [kg m⁻³]")
-    # scatterlines!(c, df.time, df.bucket1₊C, label = "bucket1₊C")
     hidexdecorations!(c, grid = false)
     # axislegend()
 
@@ -193,21 +196,20 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
         empty!(c)
         for label_sel in label_sels
             col = string(label_sel, "₊h")
-            if col in names(df)
-                scatterlines!(h, df.time, df[!, col], label = label_sel)
-            end
+            ifunc = interpolator(reg, Symbol(col))
+            scatterlines!(h, t, ifunc, label = label_sel)
+
             col = string(label_sel, "₊S")
-            if col in names(df)
-                scatterlines!(s, df.time, df[!, col], label = label_sel)
-            end
+            ifunc = interpolator(reg, Symbol(col))
+            scatterlines!(s, t, ifunc, label = label_sel)
+
             col = string(label_sel, "₊Q")
-            if col in names(df)
-                scatterlines!(q, df.time, df[!, col], label = label_sel)
-            end
+            ifunc = interpolator(reg, Symbol(col))
+            scatterlines!(q, t, ifunc, label = label_sel)
+
             col = string(label_sel, "₊C")
-            if col in names(df)
-                scatterlines!(c, df.time, df[!, col], label = label_sel)
-            end
+            ifunc = interpolator(reg, Symbol(col))
+            scatterlines!(c, t, ifunc, label = label_sel)
         end
 
         # TODO remove the old lines
@@ -221,7 +223,7 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation})
     end
 
     lift(ls.slider.value) do t
-        ts = searchsortedlast(df.time, t)
+        ts = searchsortedlast(times, t)
         p.nlabels[] = create_nlabels(var, ts)
         p.nlabels_distance[] = p.nlabels_distance[]
     end

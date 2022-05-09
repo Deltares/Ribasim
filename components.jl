@@ -9,7 +9,7 @@ using ModelingToolkit
 
 - h [m]: hydraulic head above reference level
 - S [m³]: storage
-- Q [m3 s⁻¹]: volumetric flux
+- Q [m³ s⁻¹]: volumetric flux
 - C [kg m⁻³]: mass concentration
 """
 @connector function FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
@@ -186,6 +186,12 @@ function User(; name, demand)
     eqs = Equation[
         # xfactor is extraction factor, can be used to reduce the intake
         # smoothly reduce demand to 0 around S=1 with smoothness 0.1
+        # TODO can we use the smooth reduced peilbeheer (parametrize the 1.0)
+        # peilbeheer ~ (0.5 * tanh((x.S - min_level) / 0.01) + 0.5)
+        # priorities are local to the Bucket/LSW,
+        # and aggregated per priority to the district to be routed to the inlet/outlet
+        # in Mozart per LSW per user priorities can be set
+        # peilbeheer could be a separate component that sets the xfactor
         Q ~ xfactor * demand * (0.5 * tanh((x.S - 1.0) / 0.01) + 0.5)
         x.C ~ 0  # not used
         shortage ~ demand - Q

@@ -197,18 +197,33 @@ solve!(integrator)  # solve it until the end
 (; sol) = integrator
 
 # CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
-# graph_system(systems, eqs)  # TODO rewrite based on sysnames
+graph_system(systems, eqs, reg)  # TODO rewrite based on sysnames
 
+error("ok")
 import Plots
 
 # flippin'
 # TODO we are missing the interpolation
+# observed plot
 identify(reg, user.x.Q)
+savedvalue(reg, user.x.Q, 2)
 Plots.plot(sol, vars = [user.x.Q])
 Plots.scatter!(timeseries(reg), timeseries(reg, user.x.Q))
+# Plots.scatter!([0.3,0.35,0.4], [1.5,1.5,1.5])
+ifunc = interpolator(reg, user.x.Q)
+Plots.plot!(ifunc, 0.0, 1.0)
 
-# this wrongly shows no rain, because there was none at the end
-# precip₊x₊Q is observed: precip₊x₊Q(t) ~ precip₊Q, so good example
-Plots.plot(sol, vars = [precip.x.Q])
-# this works
-Plots.scatter!(timeseries(reg), -timeseries(reg, precip.x.Q))
+# state plot
+u_sym = sysnames.u_syms[1]
+identify(reg, u_sym)
+savedvalue(reg, u_sym, 2)
+Plots.plot(sol, vars = [u_sym])
+Plots.scatter!(timeseries(reg), timeseries(reg, u_sym))
+# Plots.scatter!([0.3,0.35,0.4], [1.0,1.0,1.0])
+ifunc = interpolator(reg, u_sym)
+Plots.plot!(ifunc, 0.0, 1.0)
+
+# parameter plot
+savedvalue(reg, precip.Q, 2)
+ifunc = interpolator(reg, precip.Q)
+Plots.plot(ifunc, 0.0, 1.0)

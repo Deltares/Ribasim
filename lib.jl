@@ -222,6 +222,71 @@ end
 
 timeseries(reg::Register)::Vector{Float64} = reg.integrator.sol.t
 
+"""
+    interpolator(reg::Register, sym)::Function
+
+Return a time interpolating function for the given symbol or symbolic term.
+Similar to timeseries(reg, sym), but returns a function instead of all timesteps.
+"""
+function interpolator(reg::Register, sym)::Function
+    (; sysnames, integrator, param_hist) = reg
+    sol = integrator.sol
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        i = findfirst(==(s), sysnames.u_symbol)
+        # use solution as normal
+        t -> sol(t, idxs = i)
+    elseif s in sysnames.p_symbol
+        # use param_hist
+        i = findfirst(==(s), sysnames.p_symbol)
+        t -> param_hist(t, i)
+    elseif s in sysnames.obs_symbol
+        # combine solution and param_hist
+        f = SciMLBase.getobserved(sol)  # generated function
+        # sym must be symbolic here
+        if sym isa Symbol
+            i = findfirst(==(sym), sysnames.obs_symbol)
+            sym = sysnames.obs_syms[i]
+        end
+        # the observed will be interpolated if the state it gets is interpolated
+        # and the parameters are current
+        t -> f(sym, sol(t), param_hist(t), t)
+    else
+        error(lazy"Symbol $s not found in system.")
+    end
+end
+
+"Give the results on saved timesteps."
+function savedvalue(reg::Register, sym, ts::Int)::Float64
+    (; sysnames, integrator, param_hist) = reg
+    sol = integrator.sol
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        i = findfirst(==(s), sysnames.u_symbol)
+        # use solution as normal
+        sol[ts, i]
+    elseif s in sysnames.p_symbol
+        # use param_hist
+        t = sol.t[ts]
+        i = findfirst(==(s), sysnames.p_symbol)
+        param_hist(t, i)
+    elseif s in sysnames.obs_symbol
+        # combine solution and param_hist
+        f = SciMLBase.getobserved(sol)  # generated function
+        # sym must be symbolic here
+        if sym isa Symbol
+            i = findfirst(==(sym), sysnames.obs_symbol)
+            sym = sysnames.obs_syms[i]
+        end
+        # the observed will be interpolated if the state it gets is interpolated
+        # and the parameters are current
+        t = sol.t[ts]
+        f(sym, sol[ts], param_hist(t), t)
+    else
+        error(lazy"Symbol $s not found in system.")
+    end
+end
+
 function identify(sysnames::Names, sym)::Symbol
     s = getname(sym)
     return if s in sysnames.u_symbol
