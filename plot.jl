@@ -67,7 +67,7 @@ function reconstruct_graph(systems::Set{ODESystem}, eqs::Vector{Equation})
 end
 
 """
-    reconstruct_graph(systems::Set{ODESystem}, eqs::Vector{Equation})
+    graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Register)
 
 Based on a list of systems and their connections, create an interactive graph plot
 that shows the components and their values over time.
@@ -128,7 +128,7 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
     function create_nlabels(var, ts)
         labelvars = string.(labelnames, "₊$var")
         return [
-            string(col, @sprintf(": %.2f", savedvalue(reg, Symbol(col), ts))) for
+            string(col, @sprintf(": %.2f", savedvalue_nan(reg, Symbol(col), ts))) for
             col in labelvars
         ]
     end
@@ -137,7 +137,7 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
     nlabels_textsize = 15.0
 
     # needed for hover interactions to work
-    node_size = fill(10.0, nv(g))
+    node_size = fill(14.0, nv(g))
     edge_width = fill(2.0, ne(g))
     # layout of the graph (replace with geolocation when they have one)
     # layout = NetworkLayout.Spring() # ok
@@ -197,19 +197,19 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
         for label_sel in label_sels
             col = string(label_sel, "₊h")
             ifunc = interpolator(reg, Symbol(col))
-            scatterlines!(h, t, ifunc, label = label_sel)
+            lines!(h, t, ifunc, label = label_sel)
 
             col = string(label_sel, "₊S")
             ifunc = interpolator(reg, Symbol(col))
-            scatterlines!(s, t, ifunc, label = label_sel)
+            lines!(s, t, ifunc, label = label_sel)
 
             col = string(label_sel, "₊Q")
             ifunc = interpolator(reg, Symbol(col))
-            scatterlines!(q, t, ifunc, label = label_sel)
+            lines!(q, t, ifunc, label = label_sel)
 
             col = string(label_sel, "₊C")
             ifunc = interpolator(reg, Symbol(col))
-            scatterlines!(c, t, ifunc, label = label_sel)
+            lines!(c, t, ifunc, label = label_sel)
         end
 
         # TODO remove the old lines
@@ -223,16 +223,17 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
     end
 
     lift(ls.slider.value) do t
+        # TODO slider resets to initial var
         ts = searchsortedlast(times, t)
         p.nlabels[] = create_nlabels(var, ts)
         p.nlabels_distance[] = p.nlabels_distance[]
     end
 
     deregister_interaction!(ax, :rectanglezoom)
-    register_interaction!(ax, :nhover, NodeHoverHighlight(p))
-    register_interaction!(ax, :ehover, EdgeHoverHighlight(p))
-    register_interaction!(ax, :ndrag, NodeDrag(p))
-    register_interaction!(ax, :edrag, EdgeDrag(p))
+    # register_interaction!(ax, :nhover, NodeHoverHighlight(p))
+    # register_interaction!(ax, :ehover, EdgeHoverHighlight(p))
+    # register_interaction!(ax, :ndrag, NodeDrag(p))
+    # register_interaction!(ax, :edrag, EdgeDrag(p))
     register_interaction!(ax, :nclick, NodeClickHandler(node_click_action))
 
     return fig

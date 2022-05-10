@@ -182,6 +182,9 @@ function Base.show(io::IO, reg::Register)
     println(io, "Register(ts: $nsaved, t: $t)")
 end
 
+# TODO timeseries conflicts with Makie
+# Maybe we should just remove it.
+
 """
     timeseries(reg::Register, sym)::Vector{Float64}
 
@@ -284,6 +287,17 @@ function savedvalue(reg::Register, sym, ts::Int)::Float64
         f(sym, sol[ts], param_hist(t), t)
     else
         error(lazy"Symbol $s not found in system.")
+    end
+end
+
+# avoid error Symbol constantconcentration₊Q not found in system
+# not yet fully understood why this value is not present
+# in observables, it is not needed
+function savedvalue_nan(reg::Register, sym, ts::Int)::Float64
+    try
+        savedvalue(reg, sym, ts)
+    catch
+        NaN
     end
 end
 

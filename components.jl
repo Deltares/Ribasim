@@ -95,7 +95,7 @@ function Bifurcation(; name, fraction_b)
         c.Q ~ (1 - fraction_b) * a.Q
         b.C ~ instream(a.C)
         c.C ~ instream(a.C)
-        a.C ~ 0
+        a.C ~ instream(a.C)
     ]
     compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end
