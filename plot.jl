@@ -32,8 +32,8 @@ function reconstruct_graph(systems::Set{ODESystem}, eqs::Vector{Equation})
     # get the names and number of connectors
     connector_names_set = Set{Symbol}()
     for eq in eqs
-        for inner in eq.rhs.inners
-            push!(connector_names_set, nameof(inner))
+        for connector in eq.rhs.systems
+            push!(connector_names_set, nameof(connector))
         end
     end
     connector_names = collect(connector_names_set)
@@ -45,7 +45,7 @@ function reconstruct_graph(systems::Set{ODESystem}, eqs::Vector{Equation})
     g = Graph(n_component + n_connector)
     # add edges of the connetions
     for eq in eqs
-        from, tos = Iterators.peel(eq.rhs.inners)
+        from, tos = Iterators.peel(eq.rhs.systems)
         i_from = findfirst(==(nameof(from)), connector_names) + n_component
         for to in tos
             i_to = findfirst(==(nameof(to)), connector_names) + n_component
@@ -105,16 +105,29 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
 
     # left column: graph
     menu = Menu(fig, options = vars)
-    ls = labelslider!(
+    # TODO labelslider! is deprecated for SliderGrid (below)
+    # however that doesn't seem to layout well
+    sg = labelslider!(
         fig,
         "time:",
         times;
         format = x -> @sprintf("%.1f s", x),
         sliderkw = Dict(:startvalue => times[end]),
     )
+    # sg = SliderGrid(
+    #     fig,
+    #     (
+    #         label = "time:", range = times,
+    #         format=x -> @sprintf("%.1f s", x), startvalue=times[end]
+    #     )
+    # )
 
+    # GridLayout[1:1, 1:3] with 3 children
+    # ┣━ [1, 1] Label
+    # ┣━ [1, 2] Slider
+    # ┗━ [1, 3] Label
     layout_graph[1, 1] = menu
-    layout_graph[2, 1] = ls.layout
+    layout_graph[2, 1] = sg.layout
     ax = Axis(layout_graph[3, 1])
 
     # create labels for each node
@@ -222,7 +235,8 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
         p.nlabels_distance[] = p.nlabels_distance[]
     end
 
-    lift(ls.slider.value) do t
+    # lift(only(sg.sliders).value) do t
+    lift(sg.slider.value) do t
         # TODO slider resets to initial var
         ts = searchsortedlast(times, t)
         p.nlabels[] = create_nlabels(var, ts)
