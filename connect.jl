@@ -63,6 +63,8 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named bifurcation = Bifurcation(; fraction_b = 2 / 3)
 @named weir = Weir(; α = 2.0)
 
+# TODO add storage connectors between Bucket, User and ConstantStorage automatically.
+
 eqs = Equation[]
 systems = Set{ODESystem}()
 function join!(sys1, connector1, sys2, connector2)
@@ -71,6 +73,7 @@ end
 
 join!(precip, :x, bucket1, :x)
 join!(user, :x, bucket1, :x)
+join!(user, :s, bucket1, :s)
 join!(bucket1, :x, weir, :a)
 join!(weir, :b, bifurcation, :a)
 join!(bifurcation, :b, constantconcentration2, :x)

@@ -5,16 +5,24 @@ using ModelingToolkit
 @variables t
 
 """
-    FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
+    FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
 
 - h [m]: hydraulic head above reference level
-- S [m³]: storage
 - Q [m³ s⁻¹]: volumetric flux
 - C [kg m⁻³]: mass concentration
 """
-@connector function FluidPort(; name, h = 0.0, S = 0.0, Q = 0.0, C = 0.0)
-    vars =
-        @variables h(t) = h S(t) = S Q(t) = Q [connect = Flow] C(t) = C [connect = Stream]
+@connector function FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
+    vars = @variables h(t) = h Q(t) = Q [connect = Flow] C(t) = C [connect = Stream]
+    ODESystem(Equation[], t, vars, []; name)
+end
+
+"""
+    Storage(; name, S = 0.0)
+
+Storage S [m³] is an output variable that can be a function of the hydraulic head.
+"""
+@connector function Storage(; name, S = 0.0)
+    vars = @variables S(t) = S [output = true]
     ODESystem(Equation[], t, vars, []; name)
 end
 
@@ -29,8 +37,7 @@ end
     DischargeLink(; name)
 
 Connect the flow with corresponding concentration between two FluidPorts. Compared to
-directly connecting them, this does not enforce h and S equality, making it suitable for
-connecting two water bodies connected with a weir.
+directly connecting them, this does not enforce h equality.
 """
 function DischargeLink(; name)
     @named a = FluidPort()
@@ -72,8 +79,8 @@ function Weir(; name, α)
     eqs = Equation[
         # conservation of flow
         a.Q + b.Q ~ 0
-        # Q(S) rating curve
-        Q ~ α * a.S
+        # Q(h) rating curve
+        Q ~ α * a.h
         Q ~ a.Q
         b.C ~ instream(a.C)
         a.C ~ instream(b.C)
@@ -101,7 +108,8 @@ function Bifurcation(; name, fraction_b)
 end
 
 function Bucket(; name, S, C)
-    @named x = FluidPort(; S, C)
+    @named x = FluidPort(; C)
+    @named s = Storage(; S)
 
     vars = @variables h(t) S(t) = S Q(t) C(t) = C
     D = Differential(t)
@@ -115,11 +123,11 @@ function Bucket(; name, S, C)
         # mass balance for concentration
         D(C) ~ ifelse(Q > 0, (instream(x.C) - C) * Q / S, 0)
         h ~ x.h
-        S ~ x.S
+        S ~ s.S
         Q ~ x.Q
         C ~ x.C
     ]
-    compose(ODESystem(eqs, t, vars, []; name), x)
+    compose(ODESystem(eqs, t, vars, []; name), x, s)
 end
 
 function ConstantHead(; name, h, C)
@@ -134,14 +142,15 @@ function ConstantHead(; name, h, C)
 end
 
 function ConstantStorage(; name, S, C)
-    @named x = FluidPort(; S, C)
+    @named x = FluidPort(; C)
+    @named s = Storage(; S)
     pars = @parameters S = S C = C
 
     eqs = Equation[
-        x.S ~ S
+        s.S ~ S
         x.C ~ C
     ]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+    compose(ODESystem(eqs, t, [], pars; name), x, s)
 end
 
 function ConstantConcentration(; name, C)
@@ -180,6 +189,7 @@ end
 "Extract water if there is storage left"
 function User(; name, demand)
     @named x = FluidPort(Q = demand)
+    @named s = Storage()
     pars = @parameters demand = demand xfactor = 1.0
     vars = @variables Q(t) shortage(t) = 0
 
@@ -187,15 +197,15 @@ function User(; name, demand)
         # xfactor is extraction factor, can be used to reduce the intake
         # smoothly reduce demand to 0 around S=1 with smoothness 0.1
         # TODO can we use the smooth reduced peilbeheer (parametrize the 1.0)
-        # peilbeheer ~ (0.5 * tanh((x.S - min_level) / 0.01) + 0.5)
+        # peilbeheer ~ (0.5 * tanh((s.S - min_level) / 0.01) + 0.5)
         # priorities are local to the Bucket/LSW,
         # and aggregated per priority to the district to be routed to the inlet/outlet
         # in Mozart per LSW per user priorities can be set
         # peilbeheer could be a separate component that sets the xfactor
-        Q ~ xfactor * demand * (0.5 * tanh((x.S - 1.0) / 0.01) + 0.5)
+        Q ~ xfactor * demand * (0.5 * tanh((s.S - 1.0) / 0.01) + 0.5)
         x.C ~ 0  # not used
         shortage ~ demand - Q
         Q ~ x.Q
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), x)
+    compose(ODESystem(eqs, t, vars, pars; name), x, s)
 end
