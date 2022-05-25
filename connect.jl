@@ -1,5 +1,22 @@
 # connect components into a model, used for trying out things
 
+# ┌ Warning: x contains 1 variables, yet 2 regular
+#   (non-flow, non-stream, non-input, non-output) variables.
+#   This could lead to imbalanced model that are difficult to debug.
+#   Consider marking some of the regular variables as input/output variables.
+# └ @ ModelingToolkit d:\visser_mn\.julia\packages\ModelingToolkit\57XKa\src\systems\connectors.jl:51
+# also a and b
+
+# https://github.com/SciML/ModelingToolkit.jl/issues/1577#issuecomment-1129401271
+# input=true forces a variable to be a state is intended. Otherwise users won't be able to change it in a callback.
+# https://github.com/SciML/ModelingToolkitStandardLibrary.jl/blob/f8bdbb9f91eadcf274c54dfcd5df94f189ffbd15/src/Blocks/continuous.jl
+
+# https://github.com/SciML/ModelingToolkitStandardLibrary.jl/pull/55
+# It could be related. I recommend to not set flow variables to 0, since zero flow rate is often the singular case.
+
+# https://github.com/SciML/ModelingToolkit.jl/issues/1585
+# do we use this for quick symbol access?
+
 import DifferentialEquations as DE
 import ModelingToolkit as MTK
 using CSV
@@ -198,34 +215,3 @@ solve!(integrator)  # solve it until the end
 
 # CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
 graph_system(systems, eqs, reg)  # TODO rewrite based on sysnames
-
-##
-
-error("ok")
-import Plots
-
-# flippin'
-# TODO we are missing the interpolation
-# observed plot
-identify(reg, user.x.Q)
-savedvalue(reg, user.x.Q, 2)
-Plots.plot(sol, vars = [user.x.Q])
-Plots.scatter!(timeseries(reg), timeseries(reg, user.x.Q))
-# Plots.scatter!([0.3,0.35,0.4], [1.5,1.5,1.5])
-ifunc = interpolator(reg, user.x.Q)
-Plots.plot!(ifunc, 0.0, 1.0)
-
-# state plot
-u_sym = sysnames.u_syms[1]
-identify(reg, u_sym)
-savedvalue(reg, u_sym, 2)
-Plots.plot(sol, vars = [u_sym])
-Plots.scatter!(timeseries(reg), timeseries(reg, u_sym))
-# Plots.scatter!([0.3,0.35,0.4], [1.0,1.0,1.0])
-ifunc = interpolator(reg, u_sym)
-Plots.plot!(ifunc, 0.0, 1.0)
-
-# parameter plot
-savedvalue(reg, precip.Q, 2)
-ifunc = interpolator(reg, precip.Q)
-Plots.plot(ifunc, 0.0, 1.0)

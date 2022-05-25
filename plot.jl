@@ -93,7 +93,7 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
     vars = ["h", "S", "Q", "C"]
     var = "Q"
 
-    times = timeseries(reg)  # TODO remove
+    times = reg.integrator.sol.t  # TODO remove
     starttime = first(times)
     endtime = last(times)
     t = starttime .. endtime

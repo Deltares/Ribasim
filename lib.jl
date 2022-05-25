@@ -182,54 +182,10 @@ function Base.show(io::IO, reg::Register)
     println(io, "Register(ts: $nsaved, t: $t)")
 end
 
-# TODO timeseries conflicts with Makie
-# Maybe we should just remove it.
-
-"""
-    timeseries(reg::Register, sym)::Vector{Float64}
-
-Return a vector of the complete saved timeseries of the given symbol or symbolic term.
-"""
-function timeseries(reg::Register, sym)::Vector{Float64}
-    (; sysnames, integrator, param_hist) = reg
-    sol = integrator.sol
-    s = getname(sym)
-    return if s in sysnames.u_symbol
-        # sym must be symbolic here
-        if sym isa Symbol
-            i = findfirst(==(sym), sysnames.u_symbol)
-            sym = sysnames.u_syms[i]
-        end
-        # use solution as normal
-        sol[sym]
-    elseif s in sysnames.p_symbol
-        # use param_hist
-        i = findfirst(==(s), sysnames.p_symbol)
-        param_hist.(A.t, i)
-    elseif s in sysnames.obs_symbol
-        # combine solution and param_hist
-        f = SciMLBase.getobserved(sol)  # generated function
-        # get the correct parameter values for each saved timestep
-        # p can be quite big, perhaps we should save it
-        p = param_hist.(sol.t)
-        # sym must be symbolic here
-        if sym isa Symbol
-            i = findfirst(==(sym), sysnames.obs_symbol)
-            sym = sysnames.obs_syms[i]
-        end
-        f.((sym,), sol.u, p, sol.t)
-    else
-        error(lazy"Symbol $s not found in system.")
-    end
-end
-
-timeseries(reg::Register)::Vector{Float64} = reg.integrator.sol.t
-
 """
     interpolator(reg::Register, sym)::Function
 
 Return a time interpolating function for the given symbol or symbolic term.
-Similar to timeseries(reg, sym), but returns a function instead of all timesteps.
 """
 function interpolator(reg::Register, sym)::Function
     (; sysnames, integrator, param_hist) = reg
