@@ -1,21 +1,5 @@
 # connect components into a model, used for trying out things
 
-# ┌ Warning: x contains 1 variables, yet 2 regular
-#   (non-flow, non-stream, non-input, non-output) variables.
-#   This could lead to imbalanced model that are difficult to debug.
-#   Consider marking some of the regular variables as input/output variables.
-# └ @ ModelingToolkit d:\visser_mn\.julia\packages\ModelingToolkit\57XKa\src\systems\connectors.jl:51
-# also a and b
-
-# https://github.com/SciML/ModelingToolkit.jl/issues/1577#issuecomment-1129401271
-# input=true forces a variable to be a state is intended. Otherwise users won't be able to change it in a callback.
-# https://github.com/SciML/ModelingToolkitStandardLibrary.jl/blob/f8bdbb9f91eadcf274c54dfcd5df94f189ffbd15/src/Blocks/continuous.jl
-
-# https://github.com/SciML/ModelingToolkitStandardLibrary.jl/pull/55
-# It could be related. I recommend to not set flow variables to 0, since zero flow rate is often the singular case.
-
-# https://github.com/SciML/ModelingToolkit.jl/issues/1585
-# do we use this for quick symbol access?
 
 import DifferentialEquations as DE
 import ModelingToolkit as MTK
@@ -38,7 +22,6 @@ includet("components.jl")
 
 tspan = (0.0, 1.0)
 Δt = 0.1
-# tspan[2] is the end time, not the start of the last timestep, so no forcing needed there
 times = range(start = tspan[1], step = Δt, stop = tspan[2] - Δt)
 precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0])
 
@@ -53,17 +36,13 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named bucket3 = Bucket(S = 3.0, C = 100.0)
 @named terminal = Terminal()
 @named terminal2 = Terminal()
-@named constanthead = ConstantHead(; h = 1.3, C = 43.0)
-@named constanthead2 = ConstantHead(; h = 1.3, C = 43.0)
-@named constantstorage = ConstantStorage(; S = 1.3, C = 43.0)
-@named constantstorage2 = ConstantStorage(; S = 1.3, C = 43.0)
-@named constantconcentration = ConstantConcentration(; C = 43.0)
-@named constantconcentration2 = ConstantConcentration(; C = 43.0)
-@named fixedinflow = FixedInflow(; Q = -2.0, C = 100.0)
+@named headboundary = HeadBoundary(; h = 1.3, C = 43.0)
+@named headboundary2 = HeadBoundary(; h = 1.3, C = 43.0)
+@named concentrationboundary = ConcentrationBoundary(; C = 43.0)
+@named concentrationboundary2 = ConcentrationBoundary(; C = 43.0)
+@named flowboundary = FlowBoundary(; Q = -2.0, C = 100.0)
 @named bifurcation = Bifurcation(; fraction_b = 2 / 3)
 @named weir = Weir(; α = 2.0)
-
-# TODO add storage connectors between Bucket, User and ConstantStorage automatically.
 
 eqs = Equation[]
 systems = Set{ODESystem}()
@@ -76,28 +55,33 @@ join!(user, :x, bucket1, :x)
 join!(user, :s, bucket1, :s)
 join!(bucket1, :x, weir, :a)
 join!(weir, :b, bifurcation, :a)
-join!(bifurcation, :b, constantconcentration2, :x)
-join!(bifurcation, :c, constantconcentration, :x)
+join!(bifurcation, :b, concentrationboundary2, :x)
+join!(bifurcation, :c, concentrationboundary, :x)
 
 @named _sys = ODESystem(eqs, t, [], [])
 @named sys = compose(_sys, collect(systems))
 
 sim = structural_simplify(sys)
 
-# for debugging bad systems
+# for debugging bad systems (parts of structural_simplify)
 sys_check = expand_connections(sys)
 sys_check = alias_elimination(sys_check)
 state = TearingState(sys_check);
+state = MTK.inputs_to_parameters!(state)
+sys_check = state.sys
 check_consistency(state)
+if sys_check isa ODESystem
+    sys_check = dae_order_lowering(dummy_derivative(sys_check, state))
+end
 equations(sys_check)
 states(sys_check)
 observed(sys_check)
 
 sysnames = Names(sim)
-# A place to store the parameter values over time. The default solution object does not track
-# these, and will only show the latest value. To be able to plot observed states that depend
-# on parameters correctly, we need to save them over time. We can only save them after
-# updating them, so the timesteps don't match the saved timestamps in the solution.
+# A place to store the parameter values over time. The default solution object does not
+# track these, and will only show the latest value. To be able to plot observed states that
+# depend on parameters correctly, we need to save them over time. We can only save them
+# after updating them, so the timesteps don't match the saved timestamps in the solution.
 param_hist = ForwardFill(Float64[], Vector{Float64}[])
 prob = ODAEProblem(sim, [], tspan)
 

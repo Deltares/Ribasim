@@ -123,7 +123,8 @@ Collection of names of the system, used for looking up values.
 """
 struct Names
     u_syms::Vector{TermReal}  # states(sys)
-    p_syms::Vector{SymReal}  # parameters(sys)
+    # parameters are normally SymReal, but TermReal if moved by inputs_to_parameters!
+    p_syms::Vector{Union{SymReal, TermReal}}  # parameters(sys)
     obs_eqs::Vector{Equation}  # observed(sys)
     obs_syms::Vector{TermReal}  # lhs of observed(sys)
     u_symbol::Vector{Symbol}  # Symbol versions, used as names...
@@ -149,6 +150,19 @@ function Names(sys::MTK.AbstractODESystem)
     p_symbol = Symbol[getname(s) for s in p_syms]
     obs_symbol = Symbol[getname(s) for s in obs_syms]
     return Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
+end
+
+function Base.haskey(sysnames::Names, sym)::Bool
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        true
+    elseif s in sysnames.p_symbol
+        true
+    elseif s in sysnames.obs_symbol
+        true
+    else
+        false
+    end
 end
 
 """
@@ -181,6 +195,8 @@ function Base.show(io::IO, reg::Register)
     nsaved = length(reg.integrator.sol.t)
     println(io, "Register(ts: $nsaved, t: $t)")
 end
+
+Base.haskey(reg::Register, sym) = haskey(reg.sysnames, sym)
 
 """
     interpolator(reg::Register, sym)::Function

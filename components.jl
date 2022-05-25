@@ -130,60 +130,48 @@ function Bucket(; name, S, C)
     compose(ODESystem(eqs, t, vars, []; name), x, s)
 end
 
-function ConstantHead(; name, h, C)
+function HeadBoundary(; name, h, C)
     @named x = FluidPort(; h, C)
-    pars = @parameters h = h C = C
+    vars = @variables h(t) = h [input = true] C(t) = C [input = true]
 
     eqs = Equation[
         x.h ~ h
         x.C ~ C
     ]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
-function ConstantStorage(; name, S, C)
+function ConcentrationBoundary(; name, C)
     @named x = FluidPort(; C)
-    @named s = Storage(; S)
-    pars = @parameters S = S C = C
+    vars = @variables C(t) = C [input = true]
 
-    eqs = Equation[
-        s.S ~ S
-        x.C ~ C
-    ]
-    compose(ODESystem(eqs, t, [], pars; name), x, s)
-end
-
-function ConstantConcentration(; name, C)
-    @named x = FluidPort(; C)
-    pars = @parameters C = C
-
-    eqs = Equation[x.C~C]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+    eqs = Equation[x.C ~ C]
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
 "Add a discharge to the system"
-function FixedInflow(; name, Q, C)
+function FlowBoundary(; name, Q, C)
     @assert Q <= 0 "Supply Q must be negative"
     @named x = FluidPort(; Q, C)
-    pars = @parameters Q = Q C = C
+    vars = @variables Q(t) = Q [input = true] C(t) = C [input = true]
 
     eqs = Equation[
         x.Q ~ Q
         x.C ~ C
     ]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
 function Precipitation(; name, Q)
     @assert Q <= 0 "Precipitation Q must be negative"
     @named x = FluidPort(; Q)
-    pars = @parameters Q = Q
+    vars = @variables Q(t) = Q [input = true]
 
     eqs = Equation[
         x.Q ~ Q
         x.C ~ 0
     ]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
 "Extract water if there is storage left"
@@ -191,7 +179,7 @@ function User(; name, demand)
     @named x = FluidPort(Q = demand)
     @named s = Storage()
     pars = @parameters demand = demand xfactor = 1.0
-    vars = @variables Q(t) shortage(t) = 0
+    vars = @variables Q(t) = demand shortage(t) = 0 [output = true]
 
     eqs = Equation[
         # xfactor is extraction factor, can be used to reduce the intake

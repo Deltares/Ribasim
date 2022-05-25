@@ -59,7 +59,7 @@ function hupsel(graph)
         n_out = length(outs)
         if n_out == 0
             name = Symbol("terminal_node_", v)
-            terminal = ConstantConcentration(; name, C = 43.0)
+            terminal = ConcentrationBoundary(; name, C = 43.0)
             push!(terminals, terminal)
             push!(eqs, connect(weir.b, terminal.x))
         elseif n_out == 1

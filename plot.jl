@@ -208,20 +208,23 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
         empty!(q)
         empty!(c)
         for label_sel in label_sels
-            col = string(label_sel, "₊h")
-            ifunc = interpolator(reg, Symbol(col))
+            col = Symbol(string(label_sel, "₊h"))
+            ifunc = interpolator(reg, col)
             lines!(h, t, ifunc, label = label_sel)
 
-            col = string(label_sel, "₊S")
-            ifunc = interpolator(reg, Symbol(col))
-            lines!(s, t, ifunc, label = label_sel)
+            # storage is not always defined
+            col = Symbol(string(label_sel, "₊S"))
+            if haskey(reg, col)
+                ifunc = interpolator(reg, col)
+                lines!(s, t, ifunc, label = label_sel)
+            end
 
-            col = string(label_sel, "₊Q")
-            ifunc = interpolator(reg, Symbol(col))
+            col = Symbol(string(label_sel, "₊Q"))
+            ifunc = interpolator(reg, col)
             lines!(q, t, ifunc, label = label_sel)
 
-            col = string(label_sel, "₊C")
-            ifunc = interpolator(reg, Symbol(col))
+            col = Symbol(string(label_sel, "₊C"))
+            ifunc = interpolator(reg, col)
             lines!(c, t, ifunc, label = label_sel)
         end
 
