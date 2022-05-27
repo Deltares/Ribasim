@@ -83,7 +83,7 @@ function Weir(; name, α)
         Q ~ α * a.h
         Q ~ a.Q
         b.C ~ instream(a.C)
-        a.C ~ instream(b.C)
+        a.C ~ instream(a.C)
     ]
     compose(ODESystem(eqs, t, vars, pars; name), a, b)
 end
