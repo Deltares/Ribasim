@@ -149,6 +149,12 @@ function ConcentrationBoundary(; name, C)
     compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
+function OpenBoundary(; name)
+    @named x = FluidPort()
+    eqs = Equation[]
+    compose(ODESystem(eqs, t, [], []; name), x)
+end
+
 "Add a discharge to the system"
 function FlowBoundary(; name, Q, C)
     @assert Q <= 0 "Supply Q must be negative"
