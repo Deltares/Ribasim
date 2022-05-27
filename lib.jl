@@ -124,7 +124,7 @@ Collection of names of the system, used for looking up values.
 struct Names
     u_syms::Vector{TermReal}  # states(sys)
     # parameters are normally SymReal, but TermReal if moved by inputs_to_parameters!
-    p_syms::Vector{Union{SymReal, TermReal}}  # parameters(sys)
+    p_syms::Vector{Union{SymReal,TermReal}}  # parameters(sys)
     obs_eqs::Vector{Equation}  # observed(sys)
     obs_syms::Vector{TermReal}  # lhs of observed(sys)
     u_symbol::Vector{Symbol}  # Symbol versions, used as names...

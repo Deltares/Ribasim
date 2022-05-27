@@ -26,6 +26,8 @@ times = range(start = tspan[1], step = Δt, stop = tspan[2] - Δt)
 precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0, 0.0])
 
 @named precip = Precipitation(Q = -0.5)
+@named precip2 = Precipitation(Q = -0.5)
+@named precip3 = Precipitation(Q = -0.5)
 @named user = User(demand = 3.0)
 @named dischargelink = DischargeLink()
 @named levellink1 = LevelLink(; cond = 2.0)
@@ -43,6 +45,8 @@ precipitation = ForwardFill(times, [0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 9.0, 0.0,
 @named flowboundary = FlowBoundary(; Q = -2.0, C = 100.0)
 @named bifurcation = Bifurcation(; fraction_b = 2 / 3)
 @named weir = Weir(; α = 2.0)
+@named weir2 = Weir(; α = 2.0)
+@named weir3 = Weir(; α = 2.0)
 
 eqs = Equation[]
 systems = Set{ODESystem}()
@@ -76,6 +80,7 @@ end
 equations(sys_check)
 states(sys_check)
 observed(sys_check)
+parameters(sys_check)
 
 sysnames = Names(sim)
 # A place to store the parameter values over time. The default solution object does not
@@ -201,4 +206,4 @@ solve!(integrator)  # solve it until the end
 (; sol) = integrator
 
 # CSV.write("df.csv", df; bom = true)  # add Byte Order Mark for Excel UTF-8 detection
-graph_system(systems, eqs, reg)  # TODO rewrite based on sysnames
+graph_system(systems, eqs, reg)

@@ -145,7 +145,7 @@ function ConcentrationBoundary(; name, C)
     @named x = FluidPort(; C)
     vars = @variables C(t) = C [input = true]
 
-    eqs = Equation[x.C ~ C]
+    eqs = Equation[x.C~C]
     compose(ODESystem(eqs, t, vars, []; name), x)
 end
 

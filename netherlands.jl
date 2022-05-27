@@ -79,7 +79,8 @@ function hupsel(graph)
     end
 
     @named _sys = ODESystem(eqs, t, [], [])
-    @named sys = compose(_sys, vcat(precips, buckets, weirs, terminals, bifurcations))
+    systems = vcat(precips, buckets, weirs, terminals, bifurcations)
+    @named sys = compose(_sys, systems)
 
     sim = structural_simplify(sys)
 
@@ -157,8 +158,8 @@ function hupsel(graph)
     reg = Register(integrator, param_hist, sysnames)
     solve!(integrator)
 
-    return reg
+    return Set(systems), eqs, reg
 end
 
-reg = hupsel(sgraph)
-reg
+systems, eqs, reg = hupsel(sgraph)
+# graph_system(systems, eqs, reg)
