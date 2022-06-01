@@ -7,6 +7,8 @@ using Symbolics: Symbolics, getname
 using SciMLBase
 import DifferentialEquations as DE
 using Dates: now
+using Revise: includet
+
 
 includet("lib.jl")
 includet("plot.jl")
