@@ -105,29 +105,14 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
 
     # left column: graph
     menu = Menu(fig, options = vars)
-    # TODO labelslider! is deprecated for SliderGrid (below)
-    # however that doesn't seem to layout well
-    sg = labelslider!(
-        fig,
-        "time:",
-        times;
-        format = x -> @sprintf("%.1f s", x),
-        sliderkw = Dict(:startvalue => times[end]),
-    )
-    # sg = SliderGrid(
-    #     fig,
-    #     (
-    #         label = "time:", range = times,
-    #         format=x -> @sprintf("%.1f s", x), startvalue=times[end]
-    #     )
-    # )
-
-    # GridLayout[1:1, 1:3] with 3 children
-    # ┣━ [1, 1] Label
-    # ┣━ [1, 2] Slider
-    # ┗━ [1, 3] Label
     layout_graph[1, 1] = menu
-    layout_graph[2, 1] = sg.layout
+    sg = SliderGrid(
+        layout_graph[2, 1],
+        (
+            label = "time:", range = times,
+            format=x -> @sprintf("%.1f s", x), startvalue=times[end]
+        )
+    )
     ax = Axis(layout_graph[3, 1])
 
     # create labels for each node
@@ -238,8 +223,7 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
         p.nlabels_distance[] = p.nlabels_distance[]
     end
 
-    # lift(only(sg.sliders).value) do t
-    lift(sg.slider.value) do t
+    lift(only(sg.sliders).value) do t
         # TODO slider resets to initial var
         ts = searchsortedlast(times, t)
         p.nlabels[] = create_nlabels(var, ts)
