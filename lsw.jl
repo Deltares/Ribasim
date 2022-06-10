@@ -12,14 +12,14 @@ meteo_path = joinpath(simdir, "config/meteo/mozart/metocoef.ext")
 lsw_hupsel = 151358
 lsw_tol = 200164
 
-function lsw_meteo(lsw_sel::Integer)
+function lsw_meteo(meteo_path, lsw_sel::Integer)
     times = Float64[]
     evap = Float64[]
     prec = Float64[]
     for line in eachline(meteo_path)
-        is_evap = line[2] == '1'  # if not, precipitation
         id = parse(Int, line[4:9])
         if id == lsw_sel
+            is_evap = line[2] == '1'  # if not, precipitation
             t = datetime2unix(DateTime(line[11:18], dateformat"yyyymmdd"))
             v = parse(Float64, line[43:end])
             if is_evap
