@@ -3,20 +3,23 @@
 using Dates
 using Revise: includet
 
+includet("components.jl")
 includet("lib.jl")
+includet("mozart-data.jl")
 
-simdir = "data/lhm-daily/LHM41_dagsom/"
+simdir = "data/lhm-daily/LHM41_dagsom"
+mozart_dir = normpath(simdir, "work/mozart")
 
-meteo_path = joinpath(simdir, "config/meteo/mozart/metocoef.ext")
+meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 
 lsw_hupsel = 151358
 lsw_tol = 200164
 
-function lsw_meteo(meteo_path, lsw_sel::Integer)
+function lsw_meteo(path, lsw_sel::Integer)
     times = Float64[]
     evap = Float64[]
     prec = Float64[]
-    for line in eachline(meteo_path)
+    for line in eachline(path)
         id = parse(Int, line[4:9])
         if id == lsw_sel
             is_evap = line[2] == '1'  # if not, precipitation
@@ -35,4 +38,24 @@ function lsw_meteo(meteo_path, lsw_sel::Integer)
     return prec_series, evap_series
 end
 
-prec_series, evap_series = lsw_meteo(lsw_hupsel)
+prec_series, evap_series = lsw_meteo(meteo_path, lsw_hupsel)
+
+mozart_dir
+
+startdate = DateTime("2022-06-06")
+enddate = DateTime("2023-02-06")
+dates = Date(startdate):Day(1):Date(enddate)
+times = datetime2unix.(DateTime.(dates))
+
+date = dates[1]
+datestr = Dates.format(date, dateformat"yyyymmdd")
+path = normpath(mozart_dir, "output", string("mms_dmnds_", datestr, ".000000.mz"))
+# TODO go over files and read
+isfile(path)
+
+line = "    151358, 0.27210E-01,-0.87781E-03, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.10766E-01, 0.00000E+00"
+header = " ixLSW,cufldr,cuflif,cufldr2,cuflif2,cuflroff,cuflron,cuflsp,cuNaCl,cuNaCl2"
+
+function lsw_mms(path, lsw_sel::Integer)
+
+end
