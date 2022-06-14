@@ -46,17 +46,52 @@ end
 
 prec_series, evap_series = lsw_meteo(meteo_path, lsw_hupsel)
 
-mozart_dir
 
-date = dates[1]
-datestr = Dates.format(date, dateformat"yyyymmdd")
-path = normpath(mozart_dir, "output", string("mms_dmnds_", datestr, ".000000.mz"))
-# TODO go over files and read
-isfile(path)
+function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
 
-line = "    151358, 0.27210E-01,-0.87781E-03, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.00000E+00, 0.10766E-01, 0.00000E+00"
-header = " ixLSW,cufldr,cuflif,cufldr2,cuflif2,cuflroff,cuflron,cuflsp,cuNaCl,cuNaCl2"
+    cufldr = Float64[]
+    cuflif = Float64[]
+    cuflroff = Float64[]
+    cuflron = Float64[]
+    cuflsp = Float64[]
 
-function lsw_mms(path, lsw_sel::Integer)
+    dates = Date(startdate):Day(1):Date(enddate)
+    times = datetime2unix.(DateTime.(dates))
 
+    pattern =  "mms_dmnds_"
+    allfiles = readdir(path)
+    allfiles = filter(x ->  occursin(pattern,x), allfiles)
+
+    for file in allfiles
+
+        df = CSV.read(
+            normpath(path,file),
+            DataFrame;
+            delim = ',',
+            ignorerepeated = false,
+            stringtype = String,
+            strict = true,
+        )
+        df = df[in([lsw_sel]).(df." ixLSW"), :]
+
+        i_cufldr =  df.cufldr+ df.cufldr2
+        i_cuflif = df.cuflif+ df.cuflif2
+
+        push!(cufldr,i_cufldr[1,1])
+        push!(cuflif,i_cuflif[1,1])
+        push!(cuflroff,df.cuflroff[1,1])
+        push!(cuflron,df.cuflron[1,1])
+        push!(cuflsp,df.cuflsp[1,1])
+
+    end
+    
+    cufldr_series = ForwardFill(times, cufldr)
+    cuflif_series = ForwardFill(times, cuflif)
+    cuflroff_series = ForwardFill(times, cuflroff)
+    cuflron_series = ForwardFill(times, cuflron)
+    cuflsp_series = ForwardFill(times, cuflsp)
+
+    return cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series
 end
+
+cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(normpath(mozart_dir, "output"), lsw_hupsel, DateTime("2022-06-06"),  DateTime("2023-02-06") )
