@@ -1,8 +1,10 @@
 # components that can be combined into a connected system
 
 using ModelingToolkit
+using LogExpFunctions
 
 @variables t
+@register_symbolic LogExpFunctions.log1pexp(x::Num)
 
 """
     FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
@@ -128,6 +130,42 @@ function Bucket(; name, S, C)
         C ~ x.C
     ]
     compose(ODESystem(eqs, t, vars, []; name), x, s)
+end
+
+"""
+ODESystem focused on Mozart LSW compatibility, not on composability.
+
+- P [m s⁻¹]: precipitation
+- Q_prec [m³ s⁻¹]: precipitation inflow
+- Q_out [m³ s⁻¹]: outflow
+- area [m²]: open water surface area
+"""
+function FreeFlowLSW(; name, S, area)
+    vars = @variables(
+        area(t) = area,
+        P(t) = 0, [input=true],
+        E_pot(t) = 0, [input=true],
+        Q_prec(t) = 0,
+        Q_eact(t) = 0,
+        Q_out(t) = 0,
+        S(t) = S,
+    )
+
+    D = Differential(t)
+
+    eqs = Equation[
+        # outflow
+        Q_out ~ 0.0004 * log1pexp(S - 1463.5)
+        # open water precipitation flux
+        Q_prec ~ area * P
+        # area depends on the storage
+        area ~ S
+        # evaporation flux
+        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        # storage / balance
+        D(S) ~ Q_prec - Q_eact - Q_out
+    ]
+    ODESystem(eqs, t, vars, []; name)
 end
 
 function HeadBoundary(; name, h, C)

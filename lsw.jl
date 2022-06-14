@@ -15,6 +15,12 @@ meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 lsw_hupsel = 151358
 lsw_tol = 200164
 
+startdate = DateTime("2022-06-06")
+enddate = DateTime("2023-02-06")
+dates = Date(startdate):Day(1):Date(enddate)
+times = datetime2unix.(DateTime.(dates))
+Δt = 86400.0
+
 function lsw_meteo(path, lsw_sel::Integer)
     times = Float64[]
     evap = Float64[]
@@ -24,7 +30,7 @@ function lsw_meteo(path, lsw_sel::Integer)
         if id == lsw_sel
             is_evap = line[2] == '1'  # if not, precipitation
             t = datetime2unix(DateTime(line[11:18], dateformat"yyyymmdd"))
-            v = parse(Float64, line[43:end])
+            v = parse(Float64, line[43:end]) * 0.001 / 86400  # [mm d⁻¹] to [m s⁻¹]
             if is_evap
                 push!(times, t)
                 push!(evap, v)
@@ -41,11 +47,6 @@ end
 prec_series, evap_series = lsw_meteo(meteo_path, lsw_hupsel)
 
 mozart_dir
-
-startdate = DateTime("2022-06-06")
-enddate = DateTime("2023-02-06")
-dates = Date(startdate):Day(1):Date(enddate)
-times = datetime2unix.(DateTime.(dates))
 
 date = dates[1]
 datestr = Dates.format(date, dateformat"yyyymmdd")

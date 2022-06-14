@@ -1,6 +1,11 @@
 # reusable components that can be included in application scripts
 
+using SciMLBase
 import ModelingToolkit as MTK
+using ModelingToolkit
+using Symbolics: Symbolics, getname
+using DataFrames
+using DataFrameMacros
 
 struct StorageCurve
     s::Vector{Float64}
@@ -22,20 +27,31 @@ struct StorageCurve
     end
 end
 
-function discharge(curve, s)
+function StorageCurve(vadvalue::DataFrame, lsw::Integer)
+    df = @subset(vadvalue, :lsw == lsw)
+    # fix an apparent digit cutoff issue in the Hupsel LSW table
+    if lsw == 151358
+        df.volume[end] += 10_000
+        df.area[end] += 10_000
+    end
+    return StorageCurve(df.volume[1:end-1], df.area[1:end-1], df.discharge[1:end-1])
+end
+
+function lookup(curve::StorageCurve, sym::Symbol, s::Real)
+    y = getproperty(curve, sym)
     if s <= first(curve.s)
-        return first(curve.q)
+        return first(y)
     elseif s >= last(curve.s)
-        return last(curve.q)
+        return last(y)
     else
         i = searchsortedlast(curve.s, s)
         s0 = curve.s[i]
         s1 = curve.s[i+1]
-        q0 = curve.q[i]
-        q1 = curve.q[i+1]
-        slope = (q1 - q0) / (s1 - s0)
-        q = q0 + slope * (s - s0)
-        return q
+        y0 = y[i]
+        y1 = y[i+1]
+        slope = (y1 - y0) / (s1 - s0)
+        y = y0 + slope * (s - s0)
+        return y
     end
 end
 

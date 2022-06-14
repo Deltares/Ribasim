@@ -8,6 +8,7 @@ using FixedPointNumbers
 using Graphs
 import NetworkLayout
 using Printf
+using GeometryBasics: Point2f
 
 "Create a time axis"
 function time!(ax, time)
@@ -239,5 +240,17 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
 
     return fig
 end
+
+"""
+    node_coords(topology)
+
+Get the location of the nodes of a UGRID topology.
+Useful for plotting the graph using the example below:
+
+    GraphMakie.graphplot(; layout = g -> node_coords(topology))
+    hidespines!(ax)
+    ax.aspect = DataAspect()
+"""
+node_coords(topology) = Point2f.(zip(topology.node_x, topology.node_y))
 
 nothing
