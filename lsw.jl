@@ -99,26 +99,19 @@ cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = l
 
 function read_mzwaterbalance(path, lsw_sel::Integer)
 
-    names = ["LSWNR", "DW",  "T", "TIMESTART","TIMEEND","PRECIP", "DRAINAGE_SH",  "DRAINAGE_DP",  "URBAN_RUNOFF", "UPSTREAM", "FROM_DW",
-             "ALLOC_AGRIC",  "ALLOC_WM", "ALLOC_FLUSH",  "ALLOC_FLUSHR", "ALLOC_PUBWAT",
-            "ALLOC_INDUS", "ALLOC_GRHOUS", "EVAPORATION",  "INFILTR_SH", "INFILTR_DP",
-            "TODOWNSTREAM", "TO_DW", "STORAGE_DIFF", "BALANCECHECK", "DEM_AGRIC", "DEM_WM",
-            "DEM_FLUSH" ,"DEM_FLUSHRET" ,"DEM_PUBWAT",   "DEM_INDUS" , "DEM_GRHOUSE"  ,"DEM_WMTOTAL",
-            "DEM_WM_TODW",  "ALLOC_WM_DW" ]
-
     types = Dict("TIMESTART" => String, "TIMEEND" => String)
-   
+
     df = CSV.read(
-            path,
-            DataFrame;
-            delim = ' ',
-            strict = true,
-            header = names,
-            skipto =3,
-            types = types
+        path,
+        DataFrame;
+        header = 2,
+        delim = ' ',
+        ignorerepeated = true,
+        strict = true,
+        types = types,
     )
 
-    df = df[in([lsw_sel]).(df."LSWNR"), :]
+    df = @subset(df, :LSWNR == lsw_sel)
     df[!, "TIMESTART"] = datestring.(df.TIMESTART)
     df[!, "TIMEEND"] = datestring.(df.TIMEEND)
 
@@ -126,5 +119,5 @@ function read_mzwaterbalance(path, lsw_sel::Integer)
 
 end
 
-mzwaterbalance_path = joinpath(@__DIR__, "data", "lhm-daily", "LHM41_dagsom", "work", "mozart", "lswwaterbalans.out")
+mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
 mz_wb = read_mzwaterbalance(mzwaterbalance_path, lsw_hupsel)
