@@ -110,9 +110,11 @@ function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Regis
     sg = SliderGrid(
         layout_graph[2, 1],
         (
-            label = "time:", range = times,
-            format=x -> @sprintf("%.1f s", x), startvalue=times[end]
-        )
+            label = "time:",
+            range = times,
+            format = x -> @sprintf("%.1f s", x),
+            startvalue = times[end],
+        ),
     )
     ax = Axis(layout_graph[3, 1])
 

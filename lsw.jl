@@ -58,14 +58,14 @@ function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
     dates = Date(startdate):Day(1):Date(enddate)
     times = datetime2unix.(DateTime.(dates))
 
-    pattern =  "mms_dmnds_"
+    pattern = "mms_dmnds_"
     allfiles = readdir(path)
-    allfiles = filter(x ->  occursin(pattern,x), allfiles)
+    allfiles = filter(x -> occursin(pattern, x), allfiles)
 
     for file in allfiles
 
         df = CSV.read(
-            normpath(path,file),
+            normpath(path, file),
             DataFrame;
             delim = ',',
             ignorerepeated = false,
@@ -74,17 +74,17 @@ function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
         )
         df = df[in([lsw_sel]).(df." ixLSW"), :]
 
-        i_cufldr =  df.cufldr+ df.cufldr2
-        i_cuflif = df.cuflif+ df.cuflif2
+        i_cufldr = df.cufldr + df.cufldr2
+        i_cuflif = df.cuflif + df.cuflif2
 
-        push!(cufldr,i_cufldr[1,1])
-        push!(cuflif,i_cuflif[1,1])
-        push!(cuflroff,df.cuflroff[1,1])
-        push!(cuflron,df.cuflron[1,1])
-        push!(cuflsp,df.cuflsp[1,1])
+        push!(cufldr, i_cufldr[1, 1])
+        push!(cuflif, i_cuflif[1, 1])
+        push!(cuflroff, df.cuflroff[1, 1])
+        push!(cuflron, df.cuflron[1, 1])
+        push!(cuflsp, df.cuflsp[1, 1])
 
     end
-    
+
     cufldr_series = ForwardFill(times, cufldr)
     cuflif_series = ForwardFill(times, cuflif)
     cuflroff_series = ForwardFill(times, cuflroff)
@@ -94,7 +94,12 @@ function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
     return cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series
 end
 
-cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(normpath(mozart_dir, "output"), lsw_hupsel, DateTime("2022-06-06"),  DateTime("2023-02-06") )
+cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(
+    normpath(mozart_dir, "output"),
+    lsw_hupsel,
+    DateTime("2022-06-06"),
+    DateTime("2023-02-06"),
+)
 
 
 function read_mzwaterbalance(path, lsw_sel::Integer)

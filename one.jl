@@ -14,7 +14,7 @@ includet("mozart-data.jl")
 includet("lsw.jl")
 
 # increase area 10x to increase open water meteo flux
-@named sys = FreeFlowLSW(S = 1463.5+1, area= 2000.0*10)
+@named sys = FreeFlowLSW(S = 1463.5 + 1, area = 2000.0 * 10)
 
 
 sim = structural_simplify(sys)
@@ -88,23 +88,23 @@ end
 
 ##
 
-lines(0..20, S -> (0.5 * tanh((S - 10.0) / 2.0) + 0.5))
-lines(0..100, S -> (0.5 * tanh((S - 50.0) / 10.0) + 0.5))
-lines(1400..1500, S -> max(0.0004 * (S - 1463.5), 0))
+lines(0 .. 20, S -> (0.5 * tanh((S - 10.0) / 2.0) + 0.5))
+lines(0 .. 100, S -> (0.5 * tanh((S - 50.0) / 10.0) + 0.5))
+lines(1400 .. 1500, S -> max(0.0004 * (S - 1463.5), 0))
 k = 10
 
 # min approximation from
 # https://discourse.julialang.org/t/handling-instability-when-solving-ode-problems/9019/5
 begin
-    f(x) = min(1.,1.0+x)
-    function g(x,k)
+    f(x) = min(1.0, 1.0 + x)
+    function g(x, k)
         ex = exp(-k)
-        ey = exp(-k*(1.0+x))
-        (ex + (1.0+x)*ey)/(ex+ey)
+        ey = exp(-k * (1.0 + x))
+        (ex + (1.0 + x) * ey) / (ex + ey)
     end
     pts = -2.0 .. 2.0
-    lines(pts, f, label="min")
-    lines!(pts, x->g(x,10), label="k=10")
+    lines(pts, f, label = "min")
+    lines!(pts, x -> g(x, 10), label = "k=10")
     axislegend()
     current_figure()
 end
@@ -113,14 +113,14 @@ end
 # https://juliastats.org/LogExpFunctions.jl/stable/#LogExpFunctions.log1pexp
 using LogExpFunctions
 begin
-    f(S) =  max(0, 0.0004 * (S - 1463.5))
+    f(S) = max(0, 0.0004 * (S - 1463.5))
     # g(S) = 0.0004 * log(1 + exp(S - 1463.5))
     g(S) = 0.0004 * log1pexp(S - 1463.5)
 
     # pts = 1460 .. 1470
     pts = 0 .. 3000
-    lines(pts, f, label="min")
-    lines!(pts, g, label="k=10")
+    lines(pts, f, label = "min")
+    lines!(pts, g, label = "k=10")
     axislegend()
     current_figure()
 end
@@ -143,7 +143,7 @@ a = lookup(curve, :a, 2000.0)
 
 # fit the StorageCurve with equations
 let
-    f(x) = 0.0004 * (x-1463.5)
+    f(x) = 0.0004 * (x - 1463.5)
     lines(curve.s, curve.q)
     lines!(curve.s, f)
     lines!(curve.s, g)

@@ -143,8 +143,10 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 function FreeFlowLSW(; name, S, area)
     vars = @variables(
         area(t) = area,
-        P(t) = 0, [input=true],
-        E_pot(t) = 0, [input=true],
+        P(t) = 0,
+        [input = true],
+        E_pot(t) = 0,
+        [input = true],
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         Q_out(t) = 0,
