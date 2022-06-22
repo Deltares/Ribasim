@@ -7,9 +7,6 @@ includet("components.jl")
 includet("lib.jl")
 includet("mozart-data.jl")
 
-simdir = "data/lhm-daily/LHM41_dagsom"
-mozart_dir = normpath(simdir, "work/mozart")
-
 meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 
 lsw_hupsel = 151358
@@ -94,35 +91,81 @@ function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
     return cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series
 end
 
-cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(
-    normpath(mozart_dir, "output"),
-    lsw_hupsel,
-    DateTime("2022-06-06"),
-    DateTime("2023-02-06"),
-)
-
-
 function read_mzwaterbalance(path, lsw_sel::Integer)
-
     types = Dict("TIMESTART" => String, "TIMEEND" => String)
 
     df = CSV.read(
         path,
         DataFrame;
         header = 2,
+        stringtype = String,
         delim = ' ',
         ignorerepeated = true,
         strict = true,
         types = types,
     )
 
-    df = @subset(df, :LSWNR == lsw_sel)
-    df[!, "TIMESTART"] = datestring.(df.TIMESTART)
-    df[!, "TIMEEND"] = datestring.(df.TIMEEND)
+    # change some column names to be more in line with the other tables
+    rename!(lowercase, df)
+    rename!(
+        df,
+        [
+            "lswnr" => "lsw",
+            "dw" => "districtwatercode",
+            "t" => "type",
+            "timestart" => "time_start",
+            "timeend" => "time_end",
+        ],
+    )
 
+    df = @subset(df, :lsw == lsw_sel)
+    df[!, "time_start"] = datestring.(df.time_start)
+    df[!, "time_end"] = datestring.(df.time_end)
     return df
-
 end
 
+function remove_zero_cols(df)
+    # remove all columns that have only zeros
+    allzeros = Symbol[]
+    for (n, v) in zip(propertynames(df), eachcol(df))
+        if eltype(v) <: Real && all(iszero, v)
+            push!(allzeros, n)
+        end
+    end
+    return df[!, Not(allzeros)]
+end
+
+# TODO add these methods to mozart-files.jl
+"Read local surface water value output"
+function read_lswvalue(path, lsw_sel::Integer)
+    df = read_lswvalue(path)
+    df = @subset(df, :lsw == lsw_sel)
+    return df
+end
+
+
+cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(
+    normpath(mozart_dir, "output"),
+    lsw_hupsel,
+    DateTime("2022-06-06"),
+    DateTime("2023-02-06"),
+)
 mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
-mz_wb = read_mzwaterbalance(mzwaterbalance_path, lsw_hupsel)
+mzwb = remove_zero_cols(read_mzwaterbalance(mzwaterbalance_path, lsw_hupsel))
+mzwb[!, "model"] .= "mozart"
+
+mz_lswval = read_lswvalue(joinpath(mozart_dir, "lswvalue.out"), lsw_hupsel)
+
+
+curve = StorageCurve(vadvalue, lsw_hupsel)
+q = lookup_discharge(curve, 174_000.0)
+a = lookup_area(curve, 174_000.0)
+
+# TODO how to do this for many LSWs? can we register a function
+# that also takes the lsw id, and use that as a parameter?
+# otherwise the component will be LSW specific
+hupsel_area(s) = lookup_area(curve, s)
+hupsel_discharge(s) = lookup_discharge(curve, s)
+
+@register_symbolic hupsel_area(s::Num)
+@register_symbolic hupsel_discharge(s::Num)

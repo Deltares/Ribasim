@@ -22,10 +22,17 @@ function lswrouting_graph(lsws, lswrouting)
     n = length(lsws)
     graph = DiGraph(n)
     # loop over lswrouting, adding
-    # around 1600 lsws are not in lswrouting
+    # 1701 lsws from lsw.dik are not in lswrouting.dik
+    # this may be just unconnected lsws
+    # 16 lsws from lswrouting.dik are not in lsw.dik
+    # reason is unknown, the model is the same, these are skipped now
+    # setdiff(lsws, collect(vcat(lswrouting.lsw_from, lswrouting.lsw_to)))
     for (lsw_from, lsw_to) in zip(lswrouting.lsw_from, lswrouting.lsw_to)
         node_from = findfirst(==(lsw_from), lsws)
         node_to = findfirst(==(lsw_to), lsws)
+        if node_from === nothing || node_to === nothing
+            continue
+        end
         add_edge!(graph, node_from, node_to)
     end
     @assert !is_cyclic(graph)

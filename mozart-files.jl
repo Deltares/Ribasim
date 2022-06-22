@@ -498,8 +498,13 @@ function read_meteo(path)
     return df
 end
 
+simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
+mozart_dir = normpath(simdir, "work/mozart")
 coupling_dir = joinpath(@__DIR__, "data", "lhm-input", "coupling")
-mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
+# this must be after mozartin has run, or the VAD relations are not correct
+mozartin_dir = normpath(simdir, "tmp")
+unsafe_mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
+
 tot_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "tot")
 meteo_dir = joinpath(
     @__DIR__,
@@ -519,15 +524,18 @@ dwvalue = read_dwvalue(joinpath(mozartin_dir, "dwvalue.dik"))
 ladvalue = read_ladvalue(joinpath(mozartin_dir, "ladvalue.dik"))
 lswdik = read_lsw(joinpath(mozartin_dir, "lsw.dik"))
 lswrouting = read_lswrouting(joinpath(mozartin_dir, "lswrouting.dik"))
-lswrouting_dbc = read_lswrouting_dbc(joinpath(mozartin_dir, "lswrouting_dbc.dik"))
 lswvalue = read_lswvalue(joinpath(mozartin_dir, "lswvalue.dik"))
 uslsw = read_uslsw(joinpath(mozartin_dir, "uslsw.dik"))
 uslswdem = read_uslswdem(joinpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = read_vadvalue(joinpath(mozartin_dir, "vadvalue.dik"))
 vlvalue = read_vlvalue(joinpath(mozartin_dir, "vlvalue.dik"))
 weirarea = read_weirarea(joinpath(mozartin_dir, "weirarea.dik"))
-lswattr = read_lswattr(joinpath(mozartin_dir, "lswattr.csv"))
-waattr = read_waattr(joinpath(mozartin_dir, "waattr.csv"))
+# wavalue.dik is missing
+
+# these are not in mozartin_dir
+lswrouting_dbc = read_lswrouting_dbc(joinpath(mozart_dir, "LswRouting_dbc.dik"))
+lswattr = read_lswattr(joinpath(unsafe_mozartin_dir, "lswattr.csv"))
+waattr = read_waattr(joinpath(unsafe_mozartin_dir, "waattr.csv"))
 
 drpl = read_drpl(joinpath(tot_dir, "drpl.dik"))
 drplval = read_drplval(joinpath(tot_dir, "drplval.dik"))

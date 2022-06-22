@@ -140,9 +140,9 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 - Q_out [m³ s⁻¹]: outflow
 - area [m²]: open water surface area
 """
-function FreeFlowLSW(; name, S, area)
+function FreeFlowLSW(; name, S)
     vars = @variables(
-        area(t) = area,
+        area(t),
         P(t) = 0,
         [input = true],
         E_pot(t) = 0,
@@ -157,13 +157,15 @@ function FreeFlowLSW(; name, S, area)
 
     eqs = Equation[
         # outflow
-        Q_out ~ 0.0004 * log1pexp(S - 1463.5)
+        # Q_out ~ 0.0004 * log1pexp(S - 1463.5)
+        Q_out ~ hupsel_discharge(S)
         # open water precipitation flux
         Q_prec ~ area * P
         # area depends on the storage
-        area ~ S
-        # evaporation flux
-        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        # area ~ S
+        area ~ hupsel_area(S)
+        # evaporation flux (1.3 to be replaced with Mozart's time dependent factor)
+        Q_eact ~ area * 1.3 * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # storage / balance
         D(S) ~ Q_prec - Q_eact - Q_out
     ]
