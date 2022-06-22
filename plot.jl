@@ -255,4 +255,16 @@ Useful for plotting the graph using the example below:
 """
 node_coords(topology) = Point2f.(zip(topology.node_x, topology.node_y))
 
+# 8 color palette by Wong (Makie.wong_colors() doesn't have black)
+wong_colors = [
+    colorant"rgb(0,114,178)",
+    colorant"rgb(230,159,0)",
+    colorant"rgb(0,158,115)",
+    colorant"rgb(204,121,167)",
+    colorant"rgb(86,180,233)",
+    colorant"rgb(213,94,0)",
+    colorant"rgb(240,228,66)",
+    colorant"black",
+]
+
 nothing
