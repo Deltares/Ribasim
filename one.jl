@@ -8,8 +8,8 @@ using DiffEqCallbacks: PeriodicCallback
 import DifferentialEquations as DE
 using QuadGK
 
-includet("components.jl")
 includet("lib.jl")
+includet("components.jl")
 includet("plot.jl")
 includet("mozart-data.jl")
 includet("lsw.jl")
@@ -59,7 +59,7 @@ function periodic_update!(integrator)
     # update precipitation
     (; t, p) = integrator
     param!(integrator, :P, prec_series(t))
-    param!(integrator, :E_pot, evap_series(t))
+    param!(integrator, :E_pot, evap_series(t) * open_water_factor(t))
     save!(param_hist, t, p)
     return nothing
 end

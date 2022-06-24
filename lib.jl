@@ -61,6 +61,40 @@ end
 lookup_area(curve::StorageCurve, s) = lookup(curve.s, curve.a, s)
 lookup_discharge(curve::StorageCurve, s) = lookup(curve.s, curve.q, s)
 
+# see open_water_factor(t)
+const evap_factor = [
+    0.00 0.50 0.70
+    0.80 1.00 1.00
+    1.20 1.30 1.30
+    1.30 1.30 1.30
+    1.31 1.31 1.31
+    1.30 1.30 1.30
+    1.29 1.27 1.24
+    1.21 1.19 1.18
+    1.17 1.17 1.17
+    1.00 0.90 0.80
+    0.80 0.70 0.60
+    0.00 0.00 0.00
+]
+
+# Makkink to open water evaporation factor, depending on the month of the year (rows)
+# and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
+function open_water_factor(dt::Union{Date, DateTime})
+    i = month(dt)
+    d = day(dt)
+    j = if d < 11
+        1
+    elseif d < 21
+        2
+    else
+        3
+    end
+    return evap_factor[i, j]
+end
+
+open_water_factor(t::Real) = open_water_factor(unix2datetime(t))
+
+
 """
     ForwardFill(t, v)
 

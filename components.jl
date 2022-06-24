@@ -165,7 +165,7 @@ function FreeFlowLSW(; name, S)
         # area ~ S
         area ~ hupsel_area(S)
         # evaporation flux (1.3 to be replaced with Mozart's time dependent factor)
-        Q_eact ~ area * 1.3 * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # storage / balance
         D(S) ~ Q_prec - Q_eact - Q_out
     ]
