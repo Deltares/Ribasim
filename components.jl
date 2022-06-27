@@ -153,6 +153,8 @@ function FreeFlowLSW(; name, S)
         [input = true],
         urban_runoff(t) = 0,
         [input = true],
+        upstream(t) = 0,
+        [input = true],
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         Q_out(t) = 0,
@@ -173,7 +175,8 @@ function FreeFlowLSW(; name, S)
         # evaporation flux (1.3 to be replaced with Mozart's time dependent factor)
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # storage / balance
-        D(S) ~ Q_prec + drainage + infiltration + urban_runoff - Q_eact - Q_out
+        D(S) ~
+            Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact - Q_out
     ]
     ODESystem(eqs, t, vars, []; name)
 end

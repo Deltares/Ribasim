@@ -63,6 +63,7 @@ function periodic_update!(integrator)
     param!(integrator, :drainage, drainage_series(t))
     param!(integrator, :infiltration, infiltration_series(t))
     param!(integrator, :urban_runoff, urban_runoff_series(t))
+    param!(integrator, :upstream, upstream_series(t))
     save!(param_hist, t, p)
     return nothing
 end
@@ -83,6 +84,8 @@ begin
     lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "Q_prec")
     lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "Q_eact")
     lines!(ax1, timespan, interpolator(reg, :Q_out), label = "Q_out")
+    lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
+    lines!(ax1, timespan, interpolator(reg, :upstream), label = "upstream")
     axislegend(ax1)
     lines!(ax2, timespan, interpolator(reg, :S), label = "S")
     axislegend(ax2)
@@ -115,6 +118,7 @@ Q_out_itp = interpolator(reg, :Q_out)
 drainage_itp = interpolator(reg, :drainage)
 infiltration_itp = interpolator(reg, :infiltration)
 urban_runoff_itp = interpolator(reg, :urban_runoff)
+upstream_itp = interpolator(reg, :upstream)
 S_itp = interpolator(reg, :S)
 
 Q_eact_sum = sum_fluxes(Q_eact_itp, times[1:n])
@@ -123,6 +127,7 @@ Q_out_sum = sum_fluxes(Q_out_itp, times[1:n])
 drainage_sum = sum_fluxes(drainage_itp, times[1:n])
 infiltration_sum = sum_fluxes(infiltration_itp, times[1:n])
 urban_runoff_sum = sum_fluxes(urban_runoff_itp, times[1:n])
+upstream_sum = sum_fluxes(upstream_itp, times[1:n])
 # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
 S_diff = diff(S_itp.(times[1:n] .+ 1e-6))
 
@@ -140,13 +145,11 @@ bachwb = DataFrame(
     drainage_sh = drainage_sum,
     infiltr_sh = infiltration_sum,
     urban_runoff = urban_runoff_sum,
+    upstream = upstream_sum,
     storage_diff = -S_diff,
 )
 # add the balancecheck
-metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
-bachvars = setdiff(names(bachwb), metacols)
-bachwb = transform(bachwb, bachvars => (+) => :balancecheck)
-
+bachwb = transform(bachwb, vars => (+) => :balancecheck)
 
 "long format daily waterbalance dataframe for comparing mozart and bach"
 function combine_waterbalance(mzwb, bachwb)
@@ -155,6 +158,7 @@ function combine_waterbalance(mzwb, bachwb)
     bachwb = @subset(bachwb, :time_start in time_start)
 
     wb = vcat(stack(bachwb), stack(mzwb))
+    wb = @subset(wb, :variable != "balancecheck")
     return wb
 end
 
@@ -162,15 +166,6 @@ function plot_waterbalance(mzwb, bachwb)
     # plot only dates we have for both
     wb = combine_waterbalance(mzwb, bachwb)
     n = nrow(mzwb)
-
-    # long format daily waterbalance dataframe for comparing mozart and bach
-    wb = vcat(stack(bachwb), stack(mzwb))
-
-    # Find all the water balance components that we have we need to use the same names for
-    # the same components in the two input dataframes. If there are more, cycle the
-    # color palette.
-    metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
-    vars = setdiff(union(names(mzwb), names(bachwb)), metacols)
 
     # use days since start as x
     x = Dates.value.(Day.(wb.time_start .- minimum(wb.time_start)))
@@ -211,13 +206,6 @@ plot_waterbalance(mzwb, bachwb)
 # In Bach the balancecheck is ~1e-5 m3 per day. Could be diffeq or integration tolerance.
 
 wb = combine_waterbalance(mzwb, bachwb)
-extrema(mzwb.balancecheck[1:n-1])
-
-bachwb
-
-metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
-bachvars = setdiff(names(bachwb), metacols)
-mzvars = setdiff(names(mzwb), metacols)
 
 # mzwb = transform(mzwb, mzvars => (+) => :balancecheck_recalc)
 

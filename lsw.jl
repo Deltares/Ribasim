@@ -9,9 +9,11 @@ includet("mozart-data.jl")
 
 meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 
-lsw_hupsel = 151358
-lsw_tol = 200164
-lsw_id = lsw_hupsel
+lsw_hupsel = 151358  # V, no upstream, no agric
+lsw_haarlo = 150016  # V, upstream
+lsw_naar = 121438  # V, upstream
+lsw_tol = 200164  # P
+lsw_id = 150016
 
 startdate = DateTime("2022-06-06")
 enddate = DateTime("2023-02-06")
@@ -92,7 +94,7 @@ function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
     return cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series
 end
 
-function read_mzwaterbalance(path, lsw_sel::Integer)
+function read_mzwaterbalance(path, lsw_sel::Union{Integer,Nothing} = nothing)
     types = Dict("TIMESTART" => String, "TIMEEND" => String)
 
     df = CSV.read(
@@ -119,7 +121,9 @@ function read_mzwaterbalance(path, lsw_sel::Integer)
         ],
     )
 
-    df = @subset(df, :lsw == lsw_sel)
+    if lsw_sel !== nothing
+        df = @subset(df, :lsw == lsw_sel)
+    end
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -151,14 +155,33 @@ cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = l
     DateTime("2022-06-06"),
     DateTime("2023-02-06"),
 )
+
+# both the mozart and bach waterbalance dataframes have these columns
+metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
+vars = [
+    "precip",
+    "evaporation",
+    "upstream",
+    "todownstream",
+    "drainage_sh",
+    "infiltr_sh",
+    "urban_runoff",
+    "storage_diff",
+]
+cols = vcat(metacols, vars)
+
 mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
-mzwb = remove_zero_cols(read_mzwaterbalance(mzwaterbalance_path, lsw_id))
+mzwb = read_mzwaterbalance(mzwaterbalance_path, lsw_id)
 mzwb[!, "model"] .= "mozart"
+# since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
+mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
+mzwb = mzwb[!, cols]
 
 drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ 86400)
 infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ 86400)
 urban_runoff_series =
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ 86400)
+upstream_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ 86400)
 
 mz_lswval = read_lswvalue(joinpath(mozart_dir, "lswvalue.out"), lsw_id)
 
