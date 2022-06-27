@@ -164,12 +164,12 @@ function FreeFlowLSW(; name, S)
     eqs = Equation[
         # outflow
         # Q_out ~ 0.0004 * log1pexp(S - 1463.5)
-        Q_out ~ hupsel_discharge(S)
+        Q_out ~ lsw_discharge(S)
         # open water precipitation flux
         Q_prec ~ area * P
         # area depends on the storage
         # area ~ S
-        area ~ hupsel_area(S)
+        area ~ lsw_area(S)
         # evaporation flux (1.3 to be replaced with Mozart's time dependent factor)
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # storage / balance

@@ -11,6 +11,7 @@ meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 
 lsw_hupsel = 151358
 lsw_tol = 200164
+lsw_id = lsw_hupsel
 
 startdate = DateTime("2022-06-06")
 enddate = DateTime("2023-02-06")
@@ -41,7 +42,7 @@ function lsw_meteo(path, lsw_sel::Integer)
     return prec_series, evap_series
 end
 
-prec_series, evap_series = lsw_meteo(meteo_path, lsw_hupsel)
+prec_series, evap_series = lsw_meteo(meteo_path, lsw_id)
 
 
 function lsw_mms(path, lsw_sel::Integer, startdate, enddate)
@@ -146,12 +147,12 @@ end
 
 cufldr_series, cuflif_series, cuflroff_series, cuflron_series, cuflsp_series = lsw_mms(
     normpath(mozart_dir, "output"),
-    lsw_hupsel,
+    lsw_id,
     DateTime("2022-06-06"),
     DateTime("2023-02-06"),
 )
 mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
-mzwb = remove_zero_cols(read_mzwaterbalance(mzwaterbalance_path, lsw_hupsel))
+mzwb = remove_zero_cols(read_mzwaterbalance(mzwaterbalance_path, lsw_id))
 mzwb[!, "model"] .= "mozart"
 
 drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ 86400)
@@ -159,18 +160,18 @@ infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_
 urban_runoff_series =
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ 86400)
 
-mz_lswval = read_lswvalue(joinpath(mozart_dir, "lswvalue.out"), lsw_hupsel)
+mz_lswval = read_lswvalue(joinpath(mozart_dir, "lswvalue.out"), lsw_id)
 
 
-curve = StorageCurve(vadvalue, lsw_hupsel)
+curve = StorageCurve(vadvalue, lsw_id)
 q = lookup_discharge(curve, 174_000.0)
 a = lookup_area(curve, 174_000.0)
 
 # TODO how to do this for many LSWs? can we register a function
 # that also takes the lsw id, and use that as a parameter?
 # otherwise the component will be LSW specific
-hupsel_area(s) = lookup_area(curve, s)
-hupsel_discharge(s) = lookup_discharge(curve, s)
+lsw_area(s) = lookup_area(curve, s)
+lsw_discharge(s) = lookup_discharge(curve, s)
 
-@register_symbolic hupsel_area(s::Num)
-@register_symbolic hupsel_discharge(s::Num)
+@register_symbolic lsw_area(s::Num)
+@register_symbolic lsw_discharge(s::Num)

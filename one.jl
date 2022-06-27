@@ -74,7 +74,7 @@ reg = Register(integrator, param_hist, sysnames)
 
 solve!(integrator)  # solve it until the end
 
-
+# interpolated timeseries of bach results
 begin
     timespan = tspan[1] .. tspan[2]
     fig = Figure()
@@ -129,7 +129,7 @@ S_diff = diff(S_itp.(times[1:n] .+ 1e-6))
 # create a dataframe with the same names and sign conventions as lswwaterbalans.out
 bachwb = DataFrame(
     model = "bach",
-    lsw = lsw_hupsel,
+    lsw = lsw_id,
     districtwatercode = 24,
     type = "V",
     time_start = DateTime.(dates[1:n-1]),
