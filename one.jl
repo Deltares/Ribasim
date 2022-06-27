@@ -60,6 +60,9 @@ function periodic_update!(integrator)
     (; t, p) = integrator
     param!(integrator, :P, prec_series(t))
     param!(integrator, :E_pot, evap_series(t) * open_water_factor(t))
+    param!(integrator, :drainage, drainage_series(t))
+    param!(integrator, :infiltration, infiltration_series(t))
+    param!(integrator, :urban_runoff, urban_runoff_series(t))
     save!(param_hist, t, p)
     return nothing
 end
@@ -109,12 +112,17 @@ end
 Q_eact_itp = interpolator(reg, :Q_eact)
 Q_prec_itp = interpolator(reg, :Q_prec)
 Q_out_itp = interpolator(reg, :Q_out)
+drainage_itp = interpolator(reg, :drainage)
+infiltration_itp = interpolator(reg, :infiltration)
+urban_runoff_itp = interpolator(reg, :urban_runoff)
 S_itp = interpolator(reg, :S)
-
 
 Q_eact_sum = sum_fluxes(Q_eact_itp, times[1:n])
 Q_prec_sum = sum_fluxes(Q_prec_itp, times[1:n])
 Q_out_sum = sum_fluxes(Q_out_itp, times[1:n])
+drainage_sum = sum_fluxes(drainage_itp, times[1:n])
+infiltration_sum = sum_fluxes(infiltration_itp, times[1:n])
+urban_runoff_sum = sum_fluxes(urban_runoff_itp, times[1:n])
 # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
 S_diff = diff(S_itp.(times[1:n] .+ 1e-6))
 
@@ -129,14 +137,30 @@ bachwb = DataFrame(
     precip = Q_prec_sum,
     evaporation = -Q_eact_sum,
     todownstream = -Q_out_sum,
+    drainage_sh = drainage_sum,
+    infiltr_sh = infiltration_sum,
+    urban_runoff = urban_runoff_sum,
     storage_diff = -S_diff,
 )
+# add the balancecheck
+metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
+bachvars = setdiff(names(bachwb), metacols)
+bachwb = transform(bachwb, bachvars => (+) => :balancecheck)
 
-function plot_waterbalance(mzwb, bachwb)
-    # plot only dates we have for both
+
+"long format daily waterbalance dataframe for comparing mozart and bach"
+function combine_waterbalance(mzwb, bachwb)
     time_start = intersect(mzwb.time_start, bachwb.time_start)
     mzwb = @subset(mzwb, :time_start in time_start)
     bachwb = @subset(bachwb, :time_start in time_start)
+
+    wb = vcat(stack(bachwb), stack(mzwb))
+    return wb
+end
+
+function plot_waterbalance(mzwb, bachwb)
+    # plot only dates we have for both
+    wb = combine_waterbalance(mzwb, bachwb)
     n = nrow(mzwb)
 
     # long format daily waterbalance dataframe for comparing mozart and bach
@@ -181,6 +205,50 @@ end
 
 plot_waterbalance(mzwb, bachwb)
 
+## compare the balancecheck
+# In Mozart the balancecheck is ~1e-11 m3 per day, except for the first timestep (0.05),
+# but if we recalculate it is ~1e-7 m3 per day. Perhaps due to limited decimals in wb.out
+# In Bach the balancecheck is ~1e-5 m3 per day. Could be diffeq or integration tolerance.
+
+wb = combine_waterbalance(mzwb, bachwb)
+extrema(mzwb.balancecheck[1:n-1])
+
+bachwb
+
+metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
+bachvars = setdiff(names(bachwb), metacols)
+mzvars = setdiff(names(mzwb), metacols)
+
+# mzwb = transform(mzwb, mzvars => (+) => :balancecheck_recalc)
+
+sum(abs, bachwb.balancecheck[2:n-1])
+sum(abs, mzwb.balancecheck[2:n-1])
+# sum(abs, mzwb.balancecheck_recalc[2:n-1])
+
+begin
+    fig = Figure()
+    ax1 = Axis(fig[1, 1])
+    ax2 = Axis(fig[2, 1])
+    scatter!(
+        ax1,
+        times[1:n-1],
+        bachwb.balancecheck;
+        color = :blue,
+        label = "bach balancecheck",
+    )
+    # first step is 0.05, leave it out
+    scatter!(
+        ax2,
+        times[2:n-1],
+        mzwb.balancecheck[2:n-1];
+        color = :black,
+        label = "mozart balancecheck",
+    )
+    # scatter!(ax2, times[2:n-1], mzwb.balancecheck_recalc[2:n-1]; color=:grey, label="mozart balancecheck_recalc")
+    axislegend(ax1)
+    axislegend(ax2)
+    current_figure()
+end
 
 ##
 # compare individual component timeseries
@@ -188,22 +256,36 @@ begin
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), dates[1:n])
 
-    # stairs!(ax, times[1:n-1], Q_eact_sum; step=:post, label="evap bach")
-    # stairs!(ax, times[1:n-1], -mz_wb.evaporation[1:n-1]; step=:post, label="evap mozart")
+    # stairs!(ax, times[1:n-1], Q_eact_sum; color=:blue, step=:post, label="evap bach")
+    # stairs!(ax, times[1:n-1], -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
 
-    # stairs!(ax, times[1:n-1], Q_prec_sum; step=:post, label="prec bach")
-    # stairs!(ax, times[1:n-1], mz_wb.precip[1:n-1]; step=:post, label="prec mozart")
+    # stairs!(ax, times[1:n-1], Q_prec_sum; color=:blue, step=:post, label="prec bach")
+    # stairs!(ax, times[1:n-1], mzwb.precip[1:n-1]; color=:black, step=:post, label="prec mozart")
 
-    # stairs!(ax, times[1:n-1], S_diff; step=:post, label="ΔS bach")
-    # stairs!(ax, times[1:n-1], -mz_wb.storage_diff[1:n-1]; step=:post, label="ΔS mozart")
+    # stairs!(ax, times[1:n-1], S_diff; color=:blue, step=:post, label="ΔS bach")
+    # stairs!(ax, times[1:n-1], -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")
 
-    stairs!(ax, timespan, S_itp; step = :post, label = "S bach")
-    stairs!(ax, times[1:n-1], mz_lswval.volume[1:n-1]; step = :post, label = "S mozart")
+    # lines!(ax, timespan, S_itp; color=:blue, label = "S bach")
+    # stairs!(ax, times[1:n], mz_lswval.volume[1:n]; color=:black, step = :post, label = "S mozart")
+
+    lines!(ax, timespan, Q_out_itp; color = :blue, label = "todownstream bach")
+    stairs!(
+        ax,
+        times[1:n],
+        (-mzwb.todownstream./86400)[1:n];
+        color = :black,
+        step = :post,
+        label = "todownstream mozart",
+    )
 
     axislegend(ax)
     fig
 end
 
+# total outflow in bach is 1.008x that of mozart, less than 1% difference
+mz = sum(Q_out_sum)
+ba = sum((-mzwb.todownstream)[1:n-1])
+ba / mz  # 1.008
 
 ##
 # plot water balance histogram over time

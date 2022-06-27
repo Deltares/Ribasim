@@ -79,7 +79,7 @@ const evap_factor = [
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
-function open_water_factor(dt::Union{Date, DateTime})
+function open_water_factor(dt::Union{Date,DateTime})
     i = month(dt)
     d = day(dt)
     j = if d < 11

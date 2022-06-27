@@ -154,6 +154,11 @@ mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
 mzwb = remove_zero_cols(read_mzwaterbalance(mzwaterbalance_path, lsw_hupsel))
 mzwb[!, "model"] .= "mozart"
 
+drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ 86400)
+infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ 86400)
+urban_runoff_series =
+    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ 86400)
+
 mz_lswval = read_lswvalue(joinpath(mozart_dir, "lswvalue.out"), lsw_hupsel)
 
 
