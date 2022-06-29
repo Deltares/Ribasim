@@ -498,11 +498,24 @@ function read_meteo(path)
     return df
 end
 
-simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
-mozart_dir = normpath(simdir, "work/mozart")
+reference_model = "decadal"
+if reference_model == "daily"
+    simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
+    mozart_dir = normpath(simdir, "work/mozart")
+    mozartout_dir = mozart_dir
+    # this must be after mozartin has run, or the VAD relations are not correct
+    mozartin_dir = normpath(simdir, "tmp")
+elseif reference_model == "decadal"
+    simdir = normpath(@__DIR__, "data/lhm-input/")
+    mozart_dir = normpath(@__DIR__, "data/lhm-input/mozart/mozartin") # duplicate of mozartin now
+    mozartout_dir = normpath(@__DIR__, "data/lhm-output/mozart")
+    # this must be after mozartin has run, or the VAD relations are not correct
+    mozartin_dir = normpath(simdir, "mozart", "mozartin")
+else
+    error("unknown reference model")
+end
 coupling_dir = joinpath(@__DIR__, "data", "lhm-input", "coupling")
 # this must be after mozartin has run, or the VAD relations are not correct
-mozartin_dir = normpath(simdir, "tmp")
 unsafe_mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
 
 tot_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "tot")

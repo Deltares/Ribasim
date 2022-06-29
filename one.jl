@@ -42,8 +42,7 @@ parameters(sim)
 
 sysnames = Names(sim)
 param_hist = ForwardFill(Float64[], Vector{Float64}[])
-n = 10
-tspan = (times[1], times[n])
+tspan = (times[1], times[end])
 prob = ODAEProblem(sim, [], tspan)
 
 function param!(integrator, s, x::Real)::Real
@@ -133,15 +132,15 @@ urban_runoff_itp = interpolator(reg, :urban_runoff)
 upstream_itp = interpolator(reg, :upstream)
 S_itp = interpolator(reg, :S)
 
-Q_eact_sum = sum_fluxes(Q_eact_itp, times[1:n])
-Q_prec_sum = sum_fluxes(Q_prec_itp, times[1:n])
-Q_out_sum = sum_fluxes(Q_out_itp, times[1:n])
-drainage_sum = sum_fluxes(drainage_itp, times[1:n])
-infiltration_sum = sum_fluxes(infiltration_itp, times[1:n])
-urban_runoff_sum = sum_fluxes(urban_runoff_itp, times[1:n])
-upstream_sum = sum_fluxes(upstream_itp, times[1:n])
+Q_eact_sum = sum_fluxes(Q_eact_itp, times)
+Q_prec_sum = sum_fluxes(Q_prec_itp, times)
+Q_out_sum = sum_fluxes(Q_out_itp, times)
+drainage_sum = sum_fluxes(drainage_itp, times)
+infiltration_sum = sum_fluxes(infiltration_itp, times)
+urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
+upstream_sum = sum_fluxes(upstream_itp, times)
 # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
-S_diff = diff(S_itp.(times[1:n] .+ 1e-6))
+S_diff = diff(S_itp.(times .+ 1e-6))
 
 # create a dataframe with the same names and sign conventions as lswwaterbalans.out
 bachwb = DataFrame(
@@ -149,8 +148,8 @@ bachwb = DataFrame(
     lsw = lsw_id,
     districtwatercode = 24,
     type = "V",
-    time_start = DateTime.(dates[1:n-1]),
-    time_end = DateTime.(dates[2:n]),
+    time_start = DateTime.(dates[1:end-1]),
+    time_end = DateTime.(dates[2:end]),
     precip = Q_prec_sum,
     evaporation = -Q_eact_sum,
     todownstream = -Q_out_sum,
@@ -194,7 +193,7 @@ function plot_waterbalance(mzwb, bachwb)
     ax = Axis(
         fig[1, 1],
         # label the first and last day
-        xticks = (collect(extrema(x)), string.(dates[[1, n - 1]])),
+        xticks = (collect(extrema(x)), string.(dates[[1, end]])),
         xlabel = "time / s",
         ylabel = "volume / m³",
         title = "Mozart and Bach daily water balance",
@@ -218,36 +217,36 @@ plot_waterbalance(mzwb, bachwb)
 
 begin
     fig = Figure()
-    ax = time!(Axis(fig[1, 1]), dates[1:n])
+    ax = time!(Axis(fig[1, 1]), dates)
 
-    # stairs!(ax, times[1:n-1], Q_eact_sum; color=:blue, step=:post, label="evap bach")
-    # stairs!(ax, times[1:n-1], -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
+    # stairs!(ax, starttimes, Q_eact_sum; color=:blue, step=:post, label="evap bach")
+    # stairs!(ax, starttimes, -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
 
-    # stairs!(ax, times[1:n-1], Q_prec_sum; color=:blue, step=:post, label="prec bach")
-    # stairs!(ax, times[1:n-1], mzwb.precip[1:n-1]; color=:black, step=:post, label="prec mozart")
+     stairs!(ax, starttimes, Q_prec_sum; color=:blue, step=:post, label="prec bach")
+     stairs!(ax, starttimes, mzwb.precip; color=:black, step=:post, label="prec mozart")
 
-    # stairs!(ax, times[1:n-1], S_diff; color=:blue, step=:post, label="ΔS bach")
-    # stairs!(ax, times[1:n-1], -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")
+    # stairs!(ax, starttimes, S_diff; color=:blue, step=:post, label="ΔS bach")
+    # stairs!(ax, starttimes, -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")
 
     # lines!(ax, timespan, S_itp; color=:blue, label = "S bach")
-    # stairs!(ax, times[1:n], mz_lswval.volume[1:n]; color=:black, step = :post, label = "S mozart")
+    # stairs!(ax, times, mz_lswval.volume[1:n]; color=:black, step = :post, label = "S mozart")
 
-    stairs!(
-        ax,
-        times[1:n],
-        (-mzwb.todownstream./86400)[1:n];
-        color = :black,
-        step = :post,
-        label = "todownstream mozart",
-    )
-    scatter!(
-        ax,
-        timespan,
-        Q_out_itp;
-        markersize = 5,
-        color = :blue,
-        label = "todownstream bach",
-    )
+    # stairs!(
+    #     ax,
+    #     times,
+    #     (-mzwb.todownstream./864000);
+    #     color = :black,
+    #     step = :post,
+    #     label = "todownstream mozart",
+    # )
+    # scatter!(
+    #     ax,
+    #     timespan,
+    #     Q_out_itp;
+    #     markersize = 5,
+    #     color = :blue,
+    #     label = "todownstream bach",
+    # )
 
     axislegend(ax)
     fig
