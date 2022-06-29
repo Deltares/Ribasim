@@ -11,9 +11,9 @@ meteo_path = normpath(simdir, "config/meteo/mozart/metocoef.ext")
 
 lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
-lsw_naar = 121438  # V, upstream
+lsw_neer = 121438  # V, upstream, some initial state difference
 lsw_tol = 200164  # P
-lsw_id = 150016
+lsw_id = hupsel
 
 startdate = DateTime("2022-06-06")
 enddate = DateTime("2023-02-06")

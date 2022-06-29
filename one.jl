@@ -70,10 +70,20 @@ end
 
 cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
-integrator = init(prob, DE.Rodas5(), callback = cb, save_on = true)
+integrator = init(
+    prob,
+    DE.Rosenbrock23();
+    callback = cb,
+    save_on = true,
+    abstol = 1e-9,
+    reltol = 1e-9,
+)
 reg = Register(integrator, param_hist, sysnames)
 
 solve!(integrator)  # solve it until the end
+
+nsteps = length(reg.integrator.sol.t)
+@show nsteps
 
 # interpolated timeseries of bach results
 begin
@@ -87,6 +97,8 @@ begin
     lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
     lines!(ax1, timespan, interpolator(reg, :upstream), label = "upstream")
     axislegend(ax1)
+    # add horizontal lines of the data points (discontinuities) in the StorageCurve
+    hlines!(ax2, curve.s; color = :grey)
     lines!(ax2, timespan, interpolator(reg, :S), label = "S")
     axislegend(ax2)
     fig
@@ -148,6 +160,7 @@ bachwb = DataFrame(
     upstream = upstream_sum,
     storage_diff = -S_diff,
 )
+
 # add the balancecheck
 bachwb = transform(bachwb, vars => (+) => :balancecheck)
 
@@ -200,6 +213,47 @@ end
 
 plot_waterbalance(mzwb, bachwb)
 
+##
+# compare individual component timeseries
+
+begin
+    fig = Figure()
+    ax = time!(Axis(fig[1, 1]), dates[1:n])
+
+    # stairs!(ax, times[1:n-1], Q_eact_sum; color=:blue, step=:post, label="evap bach")
+    # stairs!(ax, times[1:n-1], -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
+
+    # stairs!(ax, times[1:n-1], Q_prec_sum; color=:blue, step=:post, label="prec bach")
+    # stairs!(ax, times[1:n-1], mzwb.precip[1:n-1]; color=:black, step=:post, label="prec mozart")
+
+    # stairs!(ax, times[1:n-1], S_diff; color=:blue, step=:post, label="ΔS bach")
+    # stairs!(ax, times[1:n-1], -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")
+
+    # lines!(ax, timespan, S_itp; color=:blue, label = "S bach")
+    # stairs!(ax, times[1:n], mz_lswval.volume[1:n]; color=:black, step = :post, label = "S mozart")
+
+    stairs!(
+        ax,
+        times[1:n],
+        (-mzwb.todownstream./86400)[1:n];
+        color = :black,
+        step = :post,
+        label = "todownstream mozart",
+    )
+    scatter!(
+        ax,
+        timespan,
+        Q_out_itp;
+        markersize = 5,
+        color = :blue,
+        label = "todownstream bach",
+    )
+
+    axislegend(ax)
+    fig
+end
+
+
 ## compare the balancecheck
 # In Mozart the balancecheck is ~1e-11 m3 per day, except for the first timestep (0.05),
 # but if we recalculate it is ~1e-7 m3 per day. Perhaps due to limited decimals in wb.out
@@ -237,51 +291,6 @@ begin
     axislegend(ax2)
     current_figure()
 end
-
-##
-# compare individual component timeseries
-begin
-    fig = Figure()
-    ax = time!(Axis(fig[1, 1]), dates[1:n])
-
-    # stairs!(ax, times[1:n-1], Q_eact_sum; color=:blue, step=:post, label="evap bach")
-    # stairs!(ax, times[1:n-1], -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
-
-    # stairs!(ax, times[1:n-1], Q_prec_sum; color=:blue, step=:post, label="prec bach")
-    # stairs!(ax, times[1:n-1], mzwb.precip[1:n-1]; color=:black, step=:post, label="prec mozart")
-
-    # stairs!(ax, times[1:n-1], S_diff; color=:blue, step=:post, label="ΔS bach")
-    # stairs!(ax, times[1:n-1], -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")
-
-    # lines!(ax, timespan, S_itp; color=:blue, label = "S bach")
-    # stairs!(ax, times[1:n], mz_lswval.volume[1:n]; color=:black, step = :post, label = "S mozart")
-
-    lines!(ax, timespan, Q_out_itp; color = :blue, label = "todownstream bach")
-    stairs!(
-        ax,
-        times[1:n],
-        (-mzwb.todownstream./86400)[1:n];
-        color = :black,
-        step = :post,
-        label = "todownstream mozart",
-    )
-
-    axislegend(ax)
-    fig
-end
-
-# total outflow in bach is 1.008x that of mozart, less than 1% difference
-mz = sum(Q_out_sum)
-ba = sum((-mzwb.todownstream)[1:n-1])
-ba / mz  # 1.008
-
-##
-# plot water balance histogram over time
-
-
-
-Q_eact_sum
-
 
 ##
 
