@@ -1,20 +1,16 @@
 # Trying to get to feature completion using Mozart schematisation for only the Hupsel LSW
 # lsw.jl focuses on preparing the data, one.jl on running the model
 
+using Bach
+using Mozart
+using Orchestra
 using Dates
-using Revise: includet
 using CairoMakie
 using DiffEqCallbacks: PeriodicCallback
 import DifferentialEquations as DE
 using QuadGK
 
-includet("lib.jl")
-includet("components.jl")
-includet("plot.jl")
-includet("mozart-data.jl")
-includet("lsw.jl")
-
-@named sys = FreeFlowLSW(S = mz_lswval.volume[1])
+@named sys = Bach.FreeFlowLSW(S = mz_lswval.volume[1])
 
 sim = structural_simplify(sys)
 
@@ -222,8 +218,15 @@ begin
     # stairs!(ax, starttimes, Q_eact_sum; color=:blue, step=:post, label="evap bach")
     # stairs!(ax, starttimes, -mzwb.evaporation[1:n-1]; color=:black, step=:post, label="evap mozart")
 
-     stairs!(ax, starttimes, Q_prec_sum; color=:blue, step=:post, label="prec bach")
-     stairs!(ax, starttimes, mzwb.precip; color=:black, step=:post, label="prec mozart")
+    stairs!(ax, starttimes, Q_prec_sum; color = :blue, step = :post, label = "prec bach")
+    stairs!(
+        ax,
+        starttimes,
+        mzwb.precip;
+        color = :black,
+        step = :post,
+        label = "prec mozart",
+    )
 
     # stairs!(ax, starttimes, S_diff; color=:blue, step=:post, label="ΔS bach")
     # stairs!(ax, starttimes, -mzwb.storage_diff[1:n-1]; color=:black, step=:post, label="ΔS mozart")

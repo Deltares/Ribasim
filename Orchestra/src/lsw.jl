@@ -1,13 +1,4 @@
-# Trying to get to feature completion using Mozart schematisation for only the Hupsel LSW
-
-using Dates
-using Revise: includet
-
-includet("components.jl")
-includet("lib.jl")
-includet("mozart-data.jl")
-
-meteo_path = normpath(simdir, "control/control_LHM4_2_2019_2020/meteo/mozart/metocoef.ext")
+# Read data for a Bach-Mozart reference run
 
 lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
@@ -37,56 +28,22 @@ function lsw_meteo(path, lsw_sel::Integer)
     end
 
 
-    evap_series = ForwardFill(times, evap)
-    prec_series = ForwardFill(times, prec)
+    evap_series = Bach.ForwardFill(times, evap)
+    prec_series = Bach.ForwardFill(times, prec)
     return prec_series, evap_series
 end
 
+meteo_path = normpath(Mozart.meteo_dir, "metocoef.ext")
 prec_series, evap_series = lsw_meteo(meteo_path, lsw_id)
 
 # set bach runtimes equal to the mozart reference run
-startdate = Date(unix2datetime(prec_series.t[1])) 
+startdate = Date(unix2datetime(prec_series.t[1]))
 enddate = Date(unix2datetime(prec_series.t[end]))
 dates = Date.(unix2datetime.(prec_series.t))
 times = datetime2unix.(DateTime.(dates))
 # n-1 water balance periods
 starttimes = times[1:end-1]
 Δt = 86400.0
-
-function read_mzwaterbalance(path, lsw_sel::Union{Integer,Nothing} = nothing)
-    types = Dict("TIMESTART" => String, "TIMEEND" => String)
-
-    df = CSV.read(
-        path,
-        DataFrame;
-        header = 2,
-        stringtype = String,
-        delim = ' ',
-        ignorerepeated = true,
-        strict = true,
-        types = types,
-    )
-
-    # change some column names to be more in line with the other tables
-    rename!(lowercase, df)
-    rename!(
-        df,
-        [
-            "lswnr" => "lsw",
-            "dw" => "districtwatercode",
-            "t" => "type",
-            "timestart" => "time_start",
-            "timeend" => "time_end",
-        ],
-    )
-
-    if lsw_sel !== nothing
-        df = @subset(df, :lsw == lsw_sel)
-    end
-    df[!, "time_start"] = datestring.(df.time_start)
-    df[!, "time_end"] = datestring.(df.time_end)
-    return df
-end
 
 function remove_zero_cols(df)
     # remove all columns that have only zeros
@@ -97,14 +54,6 @@ function remove_zero_cols(df)
         end
     end
     return df[!, Not(allzeros)]
-end
-
-# TODO add these methods to mozart-files.jl
-"Read local surface water value output"
-function read_lswvalue(path, lsw_sel::Integer)
-    df = read_lswvalue(path)
-    df = @subset(df, :lsw == lsw_sel)
-    return df
 end
 
 # both the mozart and bach waterbalance dataframes have these columns
@@ -121,10 +70,9 @@ vars = [
 ]
 cols = vcat(metacols, vars)
 
-#mzwaterbalance_path = joinpath(mozart_dir, "lswwaterbalans.out")
-mzwaterbalance_path = joinpath(@__DIR__, "data", "lhm-output", "mozart", "lswwaterbalans.out")
+mzwaterbalance_path = joinpath(Mozart.mozartout_dir, "lswwaterbalans.out")
 
-mzwb = read_mzwaterbalance(mzwaterbalance_path, lsw_id)
+mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path, lsw_id)
 mzwb[!, "model"] .= "mozart"
 # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
 mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
@@ -134,24 +82,27 @@ mzwb = mzwb[1:end-1, cols]
 mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
 
 # convert m3/timestep to m3/s for bach
-drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
-infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ mzwb.period)
+drainage_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
+infiltration_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ mzwb.period)
 urban_runoff_series =
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ mzwb.period)
-upstream_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ mzwb.period)
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ mzwb.period)
+upstream_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ mzwb.period)
 
-mz_lswval = read_lswvalue(joinpath(mozartout_dir, "lswvalue.out"), lsw_id)
+mz_lswval = Mozart.read_lswvalue(joinpath(Mozart.mozartout_dir, "lswvalue.out"), lsw_id)
 
 
-curve = StorageCurve(vadvalue, lsw_id)
-q = lookup_discharge(curve, 174_000.0)
-a = lookup_area(curve, 174_000.0)
+curve = Bach.StorageCurve(Mozart.vadvalue, lsw_id)
+q = Bach.lookup_discharge(curve, 174_000.0)
+a = Bach.lookup_area(curve, 174_000.0)
 
 # TODO how to do this for many LSWs? can we register a function
 # that also takes the lsw id, and use that as a parameter?
 # otherwise the component will be LSW specific
-lsw_area(s) = lookup_area(curve, s)
-lsw_discharge(s) = lookup_discharge(curve, s)
+lsw_area(s) = Bach.lookup_area(curve, s)
+lsw_discharge(s) = Bach.lookup_discharge(curve, s)
 
 @register_symbolic lsw_area(s::Num)
 @register_symbolic lsw_discharge(s::Num)

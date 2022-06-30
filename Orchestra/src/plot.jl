@@ -1,15 +1,5 @@
 # Plotting functions
 
-using PlotUtils
-using Makie
-using GraphMakie
-using Colors
-using FixedPointNumbers
-using Graphs
-import NetworkLayout
-using Printf
-using GeometryBasics: Point2f
-
 "Create a time axis"
 function time!(ax, time)
     # note that the used x values must also be in unix time
@@ -73,7 +63,7 @@ end
 Based on a list of systems and their connections, create an interactive graph plot
 that shows the components and their values over time.
 """
-function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Register)
+function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Bach.Register)
     g, component_names, connector_names = reconstruct_graph(systems, eqs)
     n_component = length(component_names)
     n_connector = length(connector_names)

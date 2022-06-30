@@ -1,9 +1,5 @@
 # Functions to read Mozart input files into DataFrames, or derived structures like graphs.
 
-using DataFrames
-using CSV
-using Dates
-
 "Parse a Mozart style date string"
 function datestring(s)
     # uslswdem once has "20100000.000000", parse as Jan 1st
@@ -498,36 +494,82 @@ function read_meteo(path)
     return df
 end
 
+function read_mzwaterbalance(path, lsw_sel::Union{Integer,Nothing} = nothing)
+    types = Dict("TIMESTART" => String, "TIMEEND" => String)
+
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = 2,
+        stringtype = String,
+        delim = ' ',
+        ignorerepeated = true,
+        strict = true,
+        types = types,
+    )
+
+    # change some column names to be more in line with the other tables
+    rename!(lowercase, df)
+    rename!(
+        df,
+        [
+            "lswnr" => "lsw",
+            "dw" => "districtwatercode",
+            "t" => "type",
+            "timestart" => "time_start",
+            "timeend" => "time_end",
+        ],
+    )
+
+    if lsw_sel !== nothing
+        df = @subset(df, :lsw == lsw_sel)
+    end
+    df[!, "time_start"] = Mozart.datestring.(df.time_start)
+    df[!, "time_end"] = Mozart.datestring.(df.time_end)
+    return df
+end
+
+# directly filter on the LSW
+
+"Read local surface water value output"
+function read_lswvalue(path, lsw_sel::Integer)
+    df = read_lswvalue(path)
+    df = @subset(df, :lsw == lsw_sel)
+    return df
+end
+
+
 reference_model = "decadal"
 if reference_model == "daily"
-    simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
+    simdir = normpath(@__DIR__, "../../data/lhm-daily/LHM41_dagsom")
     mozart_dir = normpath(simdir, "work/mozart")
     mozartout_dir = mozart_dir
     # this must be after mozartin has run, or the VAD relations are not correct
     mozartin_dir = normpath(simdir, "tmp")
+    meteo_dir = joinpath(simdir, "config", "meteo", "mozart")
 elseif reference_model == "decadal"
-    simdir = normpath(@__DIR__, "data/lhm-input/")
-    mozart_dir = normpath(@__DIR__, "data/lhm-input/mozart/mozartin") # duplicate of mozartin now
-    mozartout_dir = normpath(@__DIR__, "data/lhm-output/mozart")
+    simdir = normpath(@__DIR__, "../../data/lhm-input/")
+    mozart_dir = normpath(@__DIR__, "../../data/lhm-input/mozart/mozartin") # duplicate of mozartin now
+    mozartout_dir = normpath(@__DIR__, "../../data/lhm-output/mozart")
     # this must be after mozartin has run, or the VAD relations are not correct
     mozartin_dir = normpath(simdir, "mozart", "mozartin")
+    meteo_dir = joinpath(
+        @__DIR__,
+        "../../data",
+        "lhm-input",
+        "control",
+        "control_LHM4_2_2019_2020",
+        "meteo",
+        "mozart",
+    )
 else
     error("unknown reference model")
 end
-coupling_dir = joinpath(@__DIR__, "data", "lhm-input", "coupling")
+coupling_dir = joinpath(@__DIR__, "../../data", "lhm-input", "coupling")
 # this must be after mozartin has run, or the VAD relations are not correct
-unsafe_mozartin_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
+unsafe_mozartin_dir = joinpath(@__DIR__, "../../data", "lhm-input", "mozart", "mozartin")
 
-tot_dir = joinpath(@__DIR__, "data", "lhm-input", "mozart", "tot")
-meteo_dir = joinpath(
-    @__DIR__,
-    "data",
-    "lhm-input",
-    "control",
-    "control_LHM4_2_2019_2020",
-    "meteo",
-    "mozart",
-)
+tot_dir = joinpath(@__DIR__, "../../data", "lhm-input", "mozart", "tot")
 
 mftolsw = read_mftolsw(joinpath(coupling_dir, "MFtoLSW.csv"))
 plottolsw = read_plottolsw(joinpath(coupling_dir, "PlottoLSW.csv"))

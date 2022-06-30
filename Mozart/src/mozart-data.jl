@@ -1,15 +1,5 @@
 # Read Mozart input and extract data for specific areas.
 
-using Chain
-using DataFrameMacros
-using Revise
-using Graphs
-import DBFTables
-using GeometryBasics: Point2f
-using Statistics: mean
-
-includet("mozart-files.jl")
-
 lsw_hupsel = 151358
 lsw_tol = 200164
 lsws = collect(lswdik.lsw)
@@ -101,8 +91,8 @@ lswlocs = lsw_centers(joinpath(coupling_dir, "lsws.dbf"), lsws)
 # get the node index for hupsel in the subgraph
 node_sgraph = node_idx(lsw_hupsel, slsws)
 
-cutout("hupsel", lsw_hupsel)
-cutout("tol", lsw_tol)
+# cutout("hupsel", lsw_hupsel)
+# cutout("tol", lsw_tol)
 
 # write_lswrouting("lswrouting.wkt", graph, lswlocs)
 

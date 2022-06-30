@@ -132,53 +132,6 @@ function Bucket(; name, S, C)
     compose(ODESystem(eqs, t, vars, []; name), x, s)
 end
 
-"""
-ODESystem focused on Mozart LSW compatibility, not on composability.
-
-- P [m s⁻¹]: precipitation
-- Q_prec [m³ s⁻¹]: precipitation inflow
-- Q_out [m³ s⁻¹]: outflow
-- area [m²]: open water surface area
-"""
-function FreeFlowLSW(; name, S)
-    vars = @variables(
-        area(t),
-        P(t) = 0,
-        [input = true],
-        E_pot(t) = 0,
-        [input = true],
-        drainage(t) = 0,
-        [input = true],
-        infiltration(t) = 0,
-        [input = true],
-        urban_runoff(t) = 0,
-        [input = true],
-        upstream(t) = 0,
-        [input = true],
-        Q_prec(t) = 0,
-        Q_eact(t) = 0,
-        Q_out(t) = 0,
-        S(t) = S,
-    )
-
-    D = Differential(t)
-
-    eqs = Equation[
-        # outflow
-        Q_out ~ lsw_discharge(S)
-        # open water precipitation flux
-        Q_prec ~ area * P
-        # area depends on the storage
-        area ~ lsw_area(S)
-        # evaporation flux
-        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        # storage / balance
-        D(S) ~
-            Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact - Q_out
-    ]
-    ODESystem(eqs, t, vars, []; name)
-end
-
 function HeadBoundary(; name, h, C)
     @named x = FluidPort(; h, C)
     vars = @variables h(t) = h [input = true] C(t) = C [input = true]
