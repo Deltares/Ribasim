@@ -104,7 +104,7 @@ node_sgraph = node_idx(lsw_hupsel, slsws)
 cutout("hupsel", lsw_hupsel)
 cutout("tol", lsw_tol)
 
-write_lswrouting("lswrouting.wkt", graph, lswlocs)
+# write_lswrouting("lswrouting.wkt", graph, lswlocs)
 
 @subset(vadvalue, :lsw == lsw_hupsel)
 # the lsws connected with Hupsel are not only connected with district 24 but also 99
