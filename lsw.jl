@@ -128,10 +128,10 @@ mzwb = read_mzwaterbalance(mzwaterbalance_path, lsw_id)
 mzwb[!, "model"] .= "mozart"
 # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
 mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
-# add a column with timestep length in seconds
-mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
 # remove the last period, since bach doesn't have it
 mzwb = mzwb[1:end-1, cols]
+# add a column with timestep length in seconds
+mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
 
 # convert m3/timestep to m3/s for bach
 drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
