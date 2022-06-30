@@ -128,14 +128,17 @@ mzwb = read_mzwaterbalance(mzwaterbalance_path, lsw_id)
 mzwb[!, "model"] .= "mozart"
 # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
 mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
+# add a column with timestep length in seconds
+mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
 # remove the last period, since bach doesn't have it
 mzwb = mzwb[1:end-1, cols]
 
-drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ 86400)
-infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ 86400)
+# convert m3/timestep to m3/s for bach
+drainage_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
+infiltration_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ mzwb.period)
 urban_runoff_series =
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ 86400)
-upstream_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ 86400)
+    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ mzwb.period)
+upstream_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ mzwb.period)
 
 mz_lswval = read_lswvalue(joinpath(mozartout_dir, "lswvalue.out"), lsw_id)
 

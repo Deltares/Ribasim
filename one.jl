@@ -234,7 +234,7 @@ begin
     # stairs!(
     #     ax,
     #     times,
-    #     (-mzwb.todownstream./864000);
+    #     (-mzwb.todownstream./mzwb.period);
     #     color = :black,
     #     step = :post,
     #     label = "todownstream mozart",
