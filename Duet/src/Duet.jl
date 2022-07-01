@@ -1,4 +1,4 @@
-module Orchestra
+module Duet
 
 using Bach
 using Mozart
@@ -22,4 +22,4 @@ include("lsw.jl")
 include("plot.jl")
 include("system.jl")
 
-end # module Orchestra
+end # module Duet

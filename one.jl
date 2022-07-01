@@ -3,7 +3,7 @@
 
 using Bach
 using Mozart
-using Orchestra
+using Duet
 using Dates
 using CairoMakie
 using DiffEqCallbacks: PeriodicCallback
