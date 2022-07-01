@@ -1,3 +1,6 @@
+# time; Unix time, number of seconds since 1970-01-01
+# convert units with unix2datetime and datetime2unix
+@variables t
 
 """
 ODESystem focused on Mozart LSW compatibility, not on composability.

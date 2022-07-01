@@ -10,6 +10,8 @@ using DataFrames
 using DataFrameMacros
 using Dates
 
+export interpolator, Register, ForwardFill
+
 include("lib.jl")
 
 end # module Bach
