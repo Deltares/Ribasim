@@ -10,6 +10,142 @@ using DiffEqCallbacks: PeriodicCallback
 import DifferentialEquations as DE
 using QuadGK
 
+# read data from Mozart
+
+reference_model = "decadal"
+if reference_model == "daily"
+    simdir = normpath(@__DIR__, "../../data/lhm-daily/LHM41_dagsom")
+    mozart_dir = normpath(simdir, "work/mozart")
+    mozartout_dir = mozart_dir
+    # this must be after mozartin has run, or the VAD relations are not correct
+    mozartin_dir = normpath(simdir, "tmp")
+    meteo_dir = joinpath(simdir, "config", "meteo", "mozart")
+elseif reference_model == "decadal"
+    simdir = normpath(@__DIR__, "../../data/lhm-input/")
+    mozart_dir = normpath(@__DIR__, "../../data/lhm-input/mozart/mozartin") # duplicate of mozartin now
+    mozartout_dir = normpath(@__DIR__, "../../data/lhm-output/mozart")
+    # this must be after mozartin has run, or the VAD relations are not correct
+    mozartin_dir = normpath(simdir, "mozart", "mozartin")
+    meteo_dir = joinpath(
+        @__DIR__,
+        "../../data",
+        "lhm-input",
+        "control",
+        "control_LHM4_2_2019_2020",
+        "meteo",
+        "mozart",
+    )
+else
+    error("unknown reference model")
+end
+
+# some data is only in the decadal set, but should be the same for both
+coupling_dir = joinpath(@__DIR__, "../../data", "lhm-input", "coupling")
+# this must be after mozartin has run, or the VAD relations are not correct
+unsafe_mozartin_dir = joinpath(@__DIR__, "../../data", "lhm-input", "mozart", "mozartin")
+tot_dir = joinpath(@__DIR__, "../../data", "lhm-input", "mozart", "tot")
+
+mftolsw = Mozart.read_mftolsw(joinpath(coupling_dir, "MFtoLSW.csv"))
+plottolsw = Mozart.read_plottolsw(joinpath(coupling_dir, "PlottoLSW.csv"))
+
+dw = Mozart.read_dw(joinpath(mozartin_dir, "dw.dik"))
+dwvalue = Mozart.read_dwvalue(joinpath(mozartin_dir, "dwvalue.dik"))
+ladvalue = Mozart.read_ladvalue(joinpath(mozartin_dir, "ladvalue.dik"))
+lswdik = Mozart.read_lsw(joinpath(mozartin_dir, "lsw.dik"))
+lswrouting = Mozart.read_lswrouting(joinpath(mozartin_dir, "lswrouting.dik"))
+lswvalue = Mozart.read_lswvalue(joinpath(mozartin_dir, "lswvalue.dik"))
+uslsw = Mozart.read_uslsw(joinpath(mozartin_dir, "uslsw.dik"))
+uslswdem = Mozart.read_uslswdem(joinpath(mozartin_dir, "uslswdem.dik"))
+vadvalue = Mozart.read_vadvalue(joinpath(mozartin_dir, "vadvalue.dik"))
+vlvalue = Mozart.read_vlvalue(joinpath(mozartin_dir, "vlvalue.dik"))
+weirarea = Mozart.read_weirarea(joinpath(mozartin_dir, "weirarea.dik"))
+# wavalue.dik is missing
+
+# these are not in mozartin_dir
+lswrouting_dbc = Mozart.read_lswrouting_dbc(joinpath(mozart_dir, "LswRouting_dbc.dik"))
+lswattr = Mozart.read_lswattr(joinpath(unsafe_mozartin_dir, "lswattr.csv"))
+waattr = Mozart.read_waattr(joinpath(unsafe_mozartin_dir, "waattr.csv"))
+
+drpl = Mozart.read_drpl(joinpath(tot_dir, "drpl.dik"))
+drplval = Mozart.read_drplval(joinpath(tot_dir, "drplval.dik"))
+plbound = Mozart.read_plbound(joinpath(tot_dir, "plbound.dik"))
+plotdik = Mozart.read_plot(joinpath(tot_dir, "plot.dik"))
+plsgval = Mozart.read_plsgval(joinpath(tot_dir, "plsgval.dik"))
+plvalue = Mozart.read_plvalue(joinpath(tot_dir, "plvalue.dik"))
+
+meteo = Mozart.read_meteo(joinpath(meteo_dir, "metocoef.ext"))
+
+lsws = collect(lswdik.lsw)
+
+lsw_hupsel = 151358  # V, no upstream, no agric
+lsw_haarlo = 150016  # V, upstream
+lsw_neer = 121438  # V, upstream, some initial state difference
+lsw_tol = 200164  # P
+lsw_id = lsw_hupsel
+
+meteo_path = normpath(Mozart.meteo_dir, "metocoef.ext")
+prec_series, evap_series = Duet.lsw_meteo(meteo_path, lsw_id)
+
+# set bach runtimes equal to the mozart reference run
+startdate = Date(unix2datetime(prec_series.t[1]))
+enddate = Date(unix2datetime(prec_series.t[end]))
+dates = Date.(unix2datetime.(prec_series.t))
+times = datetime2unix.(DateTime.(dates))
+# n-1 water balance periods
+starttimes = times[1:end-1]
+Δt = 86400.0
+
+# both the mozart and bach waterbalance dataframes have these columns
+metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
+vars = [
+    "precip",
+    "evaporation",
+    "upstream",
+    "todownstream",
+    "drainage_sh",
+    "infiltr_sh",
+    "urban_runoff",
+    "storage_diff",
+]
+cols = vcat(metacols, vars)
+
+mzwaterbalance_path = joinpath(Mozart.mozartout_dir, "lswwaterbalans.out")
+
+mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path, lsw_id)
+mzwb[!, "model"] .= "mozart"
+# since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
+mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
+# remove the last period, since bach doesn't have it
+mzwb = mzwb[1:end-1, cols]
+# add a column with timestep length in seconds
+mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
+
+# convert m3/timestep to m3/s for bach
+drainage_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
+infiltration_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ mzwb.period)
+urban_runoff_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ mzwb.period)
+upstream_series =
+    Bach.ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ mzwb.period)
+
+mz_lswval = Mozart.read_lswvalue(joinpath(Mozart.mozartout_dir, "lswvalue.out"), lsw_id)
+
+
+curve = Bach.StorageCurve(Mozart.vadvalue, lsw_id)
+q = Bach.lookup_discharge(curve, 174_000.0)
+a = Bach.lookup_area(curve, 174_000.0)
+
+# TODO how to do this for many LSWs? can we register a function
+# that also takes the lsw id, and use that as a parameter?
+# otherwise the component will be LSW specific
+lsw_area(s) = Bach.lookup_area(curve, s)
+lsw_discharge(s) = Bach.lookup_discharge(curve, s)
+
+@register_symbolic lsw_area(s::Num)
+@register_symbolic lsw_discharge(s::Num)
+
 @named sys = Bach.FreeFlowLSW(S = mz_lswval.volume[1])
 
 sim = structural_simplify(sys)
