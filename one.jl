@@ -19,7 +19,7 @@ using Chain
 
 # read data from Mozart
 
-reference_model = "decadal"
+reference_model = "daily"
 if reference_model == "daily"
     simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
     mozart_dir = normpath(simdir, "work/mozart")
@@ -102,42 +102,25 @@ times = datetime2unix.(DateTime.(dates))
 starttimes = times[1:end-1]
 Δt = 86400.0
 
-# both the mozart and bach waterbalance dataframes have these columns
-metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
-vars = [
-    "precip",
-    "evaporation",
-    "upstream",
-    "todownstream",
-    "drainage_sh",
-    "infiltr_sh",
-    "urban_runoff",
-    "storage_diff",
-]
-cols = vcat(metacols, vars)
-
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 
-mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path, lsw_id)
-mzwb[!, "model"] .= "mozart"
-# since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
-mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
-# remove the last period, since bach doesn't have it
-mzwb = mzwb[1:end-1, cols]
-# add a column with timestep length in seconds
-mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
+mzwb = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
 
-# convert m3/timestep to m3/s for bach
-drainage_series =
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.drainage_sh ./ mzwb.period)
-infiltration_series =
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.infiltr_sh ./ mzwb.period)
-urban_runoff_series =
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb.urban_runoff ./ mzwb.period)
-upstream_series = ForwardFill(datetime2unix.(mzwb.time_start), mzwb.upstream ./ mzwb.period)
+drainage_series = Duet.create_series(mzwb, :drainage_sh)
+infiltration_series = Duet.create_series(mzwb, :infiltr_sh)
+urban_runoff_series = Duet.create_series(mzwb, :urban_runoff)
+upstream_series = Duet.create_series(mzwb, :upstream)
 
+# TODO mz_lswval is longer, could that be the initial state issue?
+# the water balance begins later, so we could use the second timestep here
+mz_lswval
+mzwb
+# TODO check the timing here, why do we need to start from 2 in mz_lswval?
+# are all our forcings off by one?
+# scatter(mzwb.todownstream, mz_lswval.discharge[2:end-1])
+# lines(-mzwb.todownstream)
+# lines(mz_lswval.discharge)
 mz_lswval = Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id)
-
 
 curve = Bach.StorageCurve(vadvalue, lsw_id)
 q = Bach.lookup_discharge(curve, 174_000.0)
@@ -147,13 +130,16 @@ a = Bach.lookup_area(curve, 174_000.0)
 # TODO how to do this for many LSWs? can we register a function
 # that also takes the lsw id, and use that as a parameter?
 # otherwise the component will be LSW specific
-Duet.curve = curve
-@eval Duet lsw_area(s) = Bach.lookup_area(curve, s)
-@eval Duet lsw_discharge(s) = Bach.lookup_discharge(curve, s)
-@register_symbolic Duet.lsw_area(s::Num)
-@register_symbolic Duet.lsw_discharge(s::Num)
+Bach.curve = curve
+@eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
+@eval Bach lsw_discharge(s) = Bach.lookup_discharge(curve, s)
+@register_symbolic Bach.lsw_area(s::Num)
+@register_symbolic Bach.lsw_discharge(s::Num)
 
-@named sys = Duet.FreeFlowLSW(S = mz_lswval.volume[1])
+mz_lswval
+start_index = 2
+@assert mz_lswval[start_index, :time_start] == startdate
+@named sys = Bach.FreeFlowLSW(S = mz_lswval.volume[start_index])
 
 sim = structural_simplify(sys)
 

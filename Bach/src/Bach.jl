@@ -13,5 +13,6 @@ using Dates
 export interpolator, Register, ForwardFill
 
 include("lib.jl")
+include("system.jl")
 
 end # module Bach

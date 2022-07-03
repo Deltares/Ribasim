@@ -20,6 +20,5 @@ using CSV
 
 include("lsw.jl")
 include("plot.jl")
-include("system.jl")
 
 end # module Duet
