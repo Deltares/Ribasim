@@ -17,6 +17,7 @@ using Chain
 using DataFrameMacros
 using DataFrames
 using CSV
+using IntervalSets
 
 include("lsw.jl")
 include("plot.jl")

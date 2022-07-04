@@ -1,13 +1,20 @@
 # Plotting functions
 
-"Create a time axis"
-function time!(ax, time)
+"Create a time axis with Unix time values and date formatted labels"
+function time!(ax, xmin::DateTime, xmax::DateTime)
     # note that the used x values must also be in unix time
-    dateticks = optimize_ticks(time[begin], time[end])[1]
+    dateticks = optimize_ticks(xmin, xmax)[1]
     ax.xticks[] = (datetime2unix.(dateticks), Dates.format.(dateticks, "yyyy-mm-dd"))
     ax.xlabel = "time"
     ax.xticklabelrotation = π / 4
     return ax
+end
+
+time!(ax, xmin::Real, xmax::Real) = time!(ax, unix2datetime(xmin), unix2datetime(xmax))
+
+unixtimespan(timespan::ClosedInterval{Float64}) = timespan
+function unixtimespan(timespan::ClosedInterval{DateTime})
+    datetime2unix(timespan.left) .. datetime2unix(timespan.right)
 end
 
 """
@@ -257,4 +264,126 @@ wong_colors = [
     colorant"black",
 ]
 
-nothing
+"Plot timeseries of several key variables."
+function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1]), timespan.left, timespan.right)
+    lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "Q_prec")
+    lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "Q_eact")
+    lines!(ax1, timespan, interpolator(reg, :Q_out), label = "Q_out")
+    lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
+    lines!(ax1, timespan, interpolator(reg, :upstream), label = "upstream")
+    axislegend(ax1)
+    lines!(ax2, timespan, interpolator(reg, :S), label = "S")
+    axislegend(ax2)
+    return fig
+end
+
+function plot_series(reg::Bach.Register)
+    plot_series(reg, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
+end
+
+function plot_series(reg::Bach.Register, timespan::ClosedInterval{DateTime})
+    plot_series(reg, unixtimespan(timespan))
+end
+
+"long format daily waterbalance dataframe for comparing mozart and bach"
+function combine_waterbalance(mzwb, bachwb)
+    time_start = intersect(mzwb.time_start, bachwb.time_start)
+    mzwb = @subset(mzwb, :time_start in time_start)
+    bachwb = @subset(bachwb, :time_start in time_start)
+
+    wb = vcat(stack(bachwb), stack(mzwb))
+    wb = @subset(wb, :variable != "balancecheck")
+    return wb
+end
+
+function plot_waterbalance_comparison(wb::DataFrame)
+    # use days since start as x
+    startdate, enddate = extrema(wb.time_start)
+    x = Dates.value.(Day.(wb.time_start .- startdate))
+    # map each variable to an integer
+    stacks = [findfirst(==(v), vars) for v in wb.variable]
+
+    if any(isnothing, stacks)
+        error("nothing found")
+    end
+    dodge = [x == "mozart" ? 1 : 2 for x in wb.model]
+
+    fig = Figure()
+    ax = Axis(
+        fig[1, 1],
+        # label the first and last day
+        xticks = (collect(extrema(x)), string.([startdate, enddate])),
+        xlabel = "time / s",
+        ylabel = "volume / m³",
+        title = "Mozart and Bach daily water balance",
+    )
+
+    barplot!(
+        ax,
+        x,
+        wb.value;
+        dodge,
+        stack = stacks,
+        color = stacks,
+        colormap = Duet.wong_colors,
+    )
+
+    elements = vcat(
+        [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
+        [PolyElement(polycolor = Duet.wong_colors[i]) for i = 1:length(vars)],
+    )
+    Legend(fig[1, 2], elements, vcat("mozart", "bach", vars))
+
+    return fig
+end
+
+function plot_series_comparison(
+    reg::Bach.Register,
+    mz_lswval::DataFrame,
+    timespan::ClosedInterval{Float64},
+)
+    fig = Figure()
+    ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
+
+    lines!(ax, timespan, interpolator(reg, :S); color = :blue, label = "S bach")
+    stairs!(
+        ax,
+        datetime2unix.(mz_lswval.time_start[1:end-1]),
+        mz_lswval.volume[1:end-1];
+        color = :black,
+        step = :post,
+        label = "S mozart",
+    )
+
+    # stairs!(
+    #     ax,
+    #     times,
+    #     (-mzwb.todownstream./mzwb.period);
+    #     color = :black,
+    #     step = :post,
+    #     label = "todownstream mozart",
+    # )
+    # scatter!(
+    #     ax,
+    #     timespan,
+    #     Q_out_itp;
+    #     markersize = 5,
+    #     color = :blue,
+    #     label = "todownstream bach",
+    # )
+
+    axislegend(ax)
+    return fig
+end
+
+
+function plot_series_comparison(reg::Bach.Register)
+    plot_series_comparison(reg, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
+end
+
+function plot_series_comparison(reg::Bach.Register, timespan::ClosedInterval{DateTime})
+    plot_series_comparison(reg, unixtimespan(timespan))
+end

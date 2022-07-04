@@ -79,7 +79,7 @@ const evap_factor = [
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
-function open_water_factor(dt::Union{Date,DateTime})
+function open_water_factor(dt::DateTime)
     i = month(dt)
     d = day(dt)
     j = if d < 11
@@ -247,7 +247,7 @@ struct Register{T}
 end
 
 function Base.show(io::IO, reg::Register)
-    t = reg.integrator.t
+    t = unix2datetime(reg.integrator.t)
     nsaved = length(reg.integrator.sol.t)
     println(io, "Register(ts: $nsaved, t: $t)")
 end
@@ -344,4 +344,65 @@ end
 
 identify(reg::Register, sym)::Symbol = identify(reg.sysnames, sym)
 
-nothing
+
+"""
+    sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
+
+Integrate a function `f(t)` between every successive two times in `times`.
+For a `f` that gives a flux in m³ s⁻¹, and a daily `times` vector, this will
+give the daily total in m³, which can be used in a water balance.
+"""
+function sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
+    n = length(times)
+    integrals = Array{Float64}(undef, n - 1)
+    for i = 1:n-1
+        integral, err = quadgk(f, times[i], times[i+1])
+        integrals[i] = integral
+    end
+    return integrals
+end
+
+function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
+    Q_eact_itp = interpolator(reg, :Q_eact)
+    Q_prec_itp = interpolator(reg, :Q_prec)
+    Q_out_itp = interpolator(reg, :Q_out)
+    drainage_itp = interpolator(reg, :drainage)
+    infiltration_itp = interpolator(reg, :infiltration)
+    urban_runoff_itp = interpolator(reg, :urban_runoff)
+    upstream_itp = interpolator(reg, :upstream)
+    S_itp = interpolator(reg, :S)
+
+    Q_eact_sum = sum_fluxes(Q_eact_itp, times)
+    Q_prec_sum = sum_fluxes(Q_prec_itp, times)
+    Q_out_sum = sum_fluxes(Q_out_itp, times)
+    drainage_sum = sum_fluxes(drainage_itp, times)
+    infiltration_sum = sum_fluxes(infiltration_itp, times)
+    urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
+    upstream_sum = sum_fluxes(upstream_itp, times)
+    # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
+    S_diff = diff(S_itp.(times .+ 1e-6))
+
+    # create a dataframe with the same names and sign conventions as lswwaterbalans.out
+    bachwb = DataFrame(
+        model = "bach",
+        lsw = lsw_id,
+        districtwatercode = 24,
+        type = "V",
+        time_start = unix2datetime.(times[1:end-1]),
+        time_end = unix2datetime.(times[2:end]),
+        precip = Q_prec_sum,
+        evaporation = -Q_eact_sum,
+        todownstream = -Q_out_sum,
+        drainage_sh = drainage_sum,
+        infiltr_sh = infiltration_sum,
+        urban_runoff = urban_runoff_sum,
+        upstream = upstream_sum,
+        storage_diff = -S_diff,
+    )
+
+    # TODO add the balancecheck
+    # bachwb = transform(bachwb, vars => (+) => :balancecheck)
+    bachwb[!, :balancecheck] .= 0.0
+    bachwb[!, :period] = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
+    return bachwb
+end

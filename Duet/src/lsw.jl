@@ -64,7 +64,7 @@ function read_mzwaterbalance_compare(path, lsw_sel::Union{Integer,Nothing} = not
 end
 
 # create a bach timeseries input from the mozart water balance output
-function create_series(mzwb::DataFrame, col::Union{Symbol, String})
+function create_series(mzwb::DataFrame, col::Union{Symbol,String})
     # convert m3/timestep to m3/s for bach
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb[!, col] ./ mzwb.period)
 end
