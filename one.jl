@@ -35,7 +35,7 @@ elseif reference_model == "decadal"
     mozart_dir = normpath(@__DIR__, "data/lhm-input/mozart/mozartin") # duplicate of mozartin now
     mozartout_dir = normpath(@__DIR__, "data/lhm-output/mozart")
     # this must be after mozartin has run, or the VAD relations are not correct
-    mozartin_dir = normpath(simdir, "mozart", "mozartin")
+    mozartin_dir = mozartout_dir
     meteo_dir = normpath(
         @__DIR__,
         "data",
@@ -49,52 +49,23 @@ else
     error("unknown reference model")
 end
 
-# some data is only in the decadal set, but should be the same for both
-coupling_dir = normpath(@__DIR__, "data", "lhm-input", "coupling")
-# this must be after mozartin has run, or the VAD relations are not correct
-unsafe_mozartin_dir = normpath(@__DIR__, "data", "lhm-input", "mozart", "mozartin")
-tot_dir = normpath(@__DIR__, "data", "lhm-input", "mozart", "tot")
-
-mftolsw = Mozart.read_mftolsw(normpath(coupling_dir, "MFtoLSW.csv"))
-plottolsw = Mozart.read_plottolsw(normpath(coupling_dir, "PlottoLSW.csv"))
-
-dw = Mozart.read_dw(normpath(mozartin_dir, "dw.dik"))
-dwvalue = Mozart.read_dwvalue(normpath(mozartin_dir, "dwvalue.dik"))
-ladvalue = Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik"))
-lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
-lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
-lswvalue = Mozart.read_lswvalue(normpath(mozartin_dir, "lswvalue.dik"))
-uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
-uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
+# uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
+# uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
-vlvalue = Mozart.read_vlvalue(normpath(mozartin_dir, "vlvalue.dik"))
-weirarea = Mozart.read_weirarea(normpath(mozartin_dir, "weirarea.dik"))
-# wavalue.dik is missing
 
-# these are not in mozartin_dir
-lswrouting_dbc = Mozart.read_lswrouting_dbc(normpath(mozart_dir, "LswRouting_dbc.dik"))
-lswattr = Mozart.read_lswattr(normpath(unsafe_mozartin_dir, "lswattr.csv"))
-waattr = Mozart.read_waattr(normpath(unsafe_mozartin_dir, "waattr.csv"))
 
-drpl = Mozart.read_drpl(normpath(tot_dir, "drpl.dik"))
-drplval = Mozart.read_drplval(normpath(tot_dir, "drplval.dik"))
-plbound = Mozart.read_plbound(normpath(tot_dir, "plbound.dik"))
-plotdik = Mozart.read_plot(normpath(tot_dir, "plot.dik"))
-plsgval = Mozart.read_plsgval(normpath(tot_dir, "plsgval.dik"))
-plvalue = Mozart.read_plvalue(normpath(tot_dir, "plvalue.dik"))
 
-meteo = Mozart.read_meteo(normpath(meteo_dir, "metocoef.ext"))
-
-lsws = collect(lswdik.lsw)
 
 lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
-lsw_neer = 121438  # V, upstream, some initial state difference
+lsw_neer = 121438  # V, upstream
 lsw_tol = 200164  # P
 lsw_id = lsw_hupsel
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_series, evap_series = Duet.lsw_meteo(meteo_path, lsw_id)
+
+mz_lswval = @subset(Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id), startdate <= :time_start < enddate)
 
 # set bach runtimes equal to the mozart reference run
 times = prec_series.t
@@ -102,6 +73,7 @@ startdate = unix2datetime(times[begin])
 enddate = unix2datetime(times[end])
 dates = unix2datetime.(times)
 timespan = times[begin] .. times[end]
+datespan = dates[begin] .. dates[end]
 # n-1 water balance periods
 starttimes = times[1:end-1]
 Δt = 86400.0
@@ -114,17 +86,6 @@ drainage_series = Duet.create_series(mzwb, :drainage_sh)
 infiltration_series = Duet.create_series(mzwb, :infiltr_sh)
 urban_runoff_series = Duet.create_series(mzwb, :urban_runoff)
 upstream_series = Duet.create_series(mzwb, :upstream)
-
-# TODO mz_lswval is longer, could that be the initial state issue?
-# the water balance begins later, so we could use the second timestep here
-# mz_lswval
-# mzwb
-# TODO check the timing here, why do we need to start from 2 in mz_lswval?
-# are all our forcings off by one?
-# scatter(mzwb.todownstream, mz_lswval.discharge[2:end-1])
-# lines(-mzwb.todownstream)
-# lines(mz_lswval.discharge)
-mz_lswval = Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id)
 
 curve = Bach.StorageCurve(vadvalue, lsw_id)
 q = Bach.lookup_discharge(curve, 174_000.0)
@@ -140,10 +101,8 @@ Bach.curve = curve
 @register_symbolic Bach.lsw_area(s::Num)
 @register_symbolic Bach.lsw_discharge(s::Num)
 
-mz_lswval
-start_index = 2
-@assert mz_lswval[start_index, :time_start] == startdate
-@named sys = Bach.FreeFlowLSW(S = mz_lswval.volume[start_index])
+S0 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
+@named sys = Bach.FreeFlowLSW(S = S0)
 
 sim = structural_simplify(sys)
 
@@ -196,18 +155,24 @@ solve!(integrator)  # solve it until the end
 
 println(reg)
 
+##
+
 # interpolated timeseries of bach results
 # Duet.plot_series(reg, DateTime("2022-07")..DateTime("2022-08"))
-Duet.plot_series(reg)
+fig_s = Duet.plot_series(reg)
 
 ##
 # plotting the water balance
 
 bachwb = Bach.waterbalance(reg, times, lsw_id)
 wb = Duet.combine_waterbalance(mzwb, bachwb)
-Duet.plot_waterbalance_comparison(wb)
+
+fig_wb = Duet.plot_waterbalance_comparison(wb)
+# fig_wb = Duet.plot_waterbalance_comparison(@subset(wb, :time_start < DateTime(2019,3)))
 
 ##
 # compare individual component timeseries
 
-Duet.plot_series_comparison(reg, mz_lswval, timespan)
+fig_c = Duet.plot_series_comparison(reg, mz_lswval, :S, :volume, timespan)
+# fig_c = Duet.plot_series_comparison(reg, mz_lswval, :area, :area, timespan)
+# fig_c = Duet.plot_series_comparison(reg, mz_lswval, :Q_out, :discharge, timespan)

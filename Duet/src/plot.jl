@@ -277,6 +277,7 @@ function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     axislegend(ax1)
     lines!(ax2, timespan, interpolator(reg, :S), label = "S")
     axislegend(ax2)
+    linkxaxes!(ax1, ax2)
     return fig
 end
 
@@ -343,38 +344,30 @@ end
 function plot_series_comparison(
     reg::Bach.Register,
     mz_lswval::DataFrame,
+    bachvar::Symbol,
+    mzvar::Symbol,
     timespan::ClosedInterval{Float64},
 )
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
 
-    lines!(ax, timespan, interpolator(reg, :S); color = :blue, label = "S bach")
+    # plot all the calculated data points
+    scatter!(
+        ax,
+        Bach.timesteps(reg),
+        Bach.savedvalues(reg, bachvar);
+        markersize = 4,
+        color = :blue,
+        label = "$bachvar bach",
+    )
     stairs!(
         ax,
-        datetime2unix.(mz_lswval.time_start[1:end-1]),
-        mz_lswval.volume[1:end-1];
+        datetime2unix.(mz_lswval.time_start),
+        mz_lswval[!, mzvar];
         color = :black,
         step = :post,
-        label = "S mozart",
+        label = "$mzvar mozart",
     )
-
-    # stairs!(
-    #     ax,
-    #     times,
-    #     (-mzwb.todownstream./mzwb.period);
-    #     color = :black,
-    #     step = :post,
-    #     label = "todownstream mozart",
-    # )
-    # scatter!(
-    #     ax,
-    #     timespan,
-    #     Q_out_itp;
-    #     markersize = 5,
-    #     color = :blue,
-    #     label = "todownstream bach",
-    # )
-
     axislegend(ax)
     return fig
 end

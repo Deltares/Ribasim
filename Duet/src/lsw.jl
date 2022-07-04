@@ -9,7 +9,9 @@ function lsw_meteo(path, lsw_sel::Integer)
         if id == lsw_sel
             is_evap = line[2] == '1'  # if not, precipitation
             t = datetime2unix(DateTime(line[11:18], dateformat"yyyymmdd"))
-            v = parse(Float64, line[43:end]) * 0.001 / 86400  # [mm d⁻¹] to [m s⁻¹]
+            t_end = datetime2unix(DateTime(line[27:34], dateformat"yyyymmdd"))
+            period_s = t_end - t
+            v = parse(Float64, line[43:end]) * 0.001 / period_s  # [mm timestep⁻¹] to [m s⁻¹]
             if is_evap
                 push!(times, t)
                 push!(evap, v)

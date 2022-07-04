@@ -246,6 +246,8 @@ struct Register{T}
     end
 end
 
+timesteps(reg::Register) = reg.integrator.sol.t
+
 function Base.show(io::IO, reg::Register)
     t = unix2datetime(reg.integrator.t)
     nsaved = length(reg.integrator.sol.t)
@@ -326,6 +328,35 @@ function savedvalue_nan(reg::Register, sym, ts::Int)::Float64
         savedvalue(reg, sym, ts)
     catch
         NaN
+    end
+end
+
+"Give the results on all saved timesteps."
+function savedvalues(reg::Register, sym)::Vector{Float64}
+    (; sysnames, integrator, param_hist) = reg
+    sol = integrator.sol
+    s = getname(sym)
+    return if s in sysnames.u_symbol
+        i = findfirst(==(s), sysnames.u_symbol)
+        getindex.(reg.integrator.sol.u, i)
+    elseif s in sysnames.p_symbol
+        # use param_hist
+        i = findfirst(==(s), sysnames.p_symbol)
+        param_hist.(sol.t, i)
+    elseif s in sysnames.obs_symbol
+        # combine solution and param_hist
+        f = SciMLBase.getobserved(sol)  # generated function
+        # sym must be symbolic here
+        if sym isa Symbol
+            i = findfirst(==(sym), sysnames.obs_symbol)
+            sym = sysnames.obs_syms[i]
+        end
+        # the observed will be interpolated if the state it gets is interpolated
+        # and the parameters are current
+        n = length(sol.t)
+        [f(sym, sol[i], param_hist(sol.t[i]), sol.t[i]) for i = 1:n]
+    else
+        error(lazy"Symbol $s not found in system.")
     end
 end
 
