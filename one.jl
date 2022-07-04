@@ -52,6 +52,7 @@ end
 # uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
 # uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
+ladvalue = @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
 
 
 
@@ -60,12 +61,10 @@ lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
 lsw_neer = 121438  # V, upstream
 lsw_tol = 200164  # P
-lsw_id = lsw_hupsel
+lsw_id = lsw_tol
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_series, evap_series = Duet.lsw_meteo(meteo_path, lsw_id)
-
-mz_lswval = @subset(Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id), startdate <= :time_start < enddate)
 
 # set bach runtimes equal to the mozart reference run
 times = prec_series.t
@@ -82,27 +81,36 @@ mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 
 mzwb = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
 
+mz_lswval = @subset(Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id), startdate <= :time_start < enddate)
 drainage_series = Duet.create_series(mzwb, :drainage_sh)
 infiltration_series = Duet.create_series(mzwb, :infiltr_sh)
 urban_runoff_series = Duet.create_series(mzwb, :urban_runoff)
 upstream_series = Duet.create_series(mzwb, :upstream)
 
-curve = Bach.StorageCurve(vadvalue, lsw_id)
-q = Bach.lookup_discharge(curve, 174_000.0)
-a = Bach.lookup_area(curve, 174_000.0)
-
-
-# TODO how to do this for many LSWs? can we register a function
-# that also takes the lsw id, and use that as a parameter?
-# otherwise the component will be LSW specific
-Bach.curve = curve
-@eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
-@eval Bach lsw_discharge(s) = Bach.lookup_discharge(curve, s)
-@register_symbolic Bach.lsw_area(s::Num)
-@register_symbolic Bach.lsw_discharge(s::Num)
-
 S0 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
-@named sys = Bach.FreeFlowLSW(S = S0)
+lsw_type = mzwb.type[1]
+
+if lsw_type == "V"
+    # use storage to look up area and discharge
+    curve = Bach.StorageCurve(vadvalue, lsw_id)
+    Bach.curve = curve
+    @eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
+    @eval Bach lsw_discharge(s) = Bach.lookup_discharge(curve, s)
+    @register_symbolic Bach.lsw_area(s::Num)
+    @register_symbolic Bach.lsw_discharge(s::Num)
+    @named sys = Bach.FreeFlowLSW(S = S0)
+elseif mzwb.type[1] == "P"
+    # use level to look up area, discharge is 0
+    curve = Bach.StorageCurve(ladvalue.level, ladvalue.area, ladvalue.discharge)
+    Bach.curve = curve
+    @eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
+    @register_symbolic Bach.lsw_area(s::Num)
+    @named sys = Bach.ControlledLSW(S = S0)
+else
+    # O is for other; flood plains, dunes, harbour
+    error("Unsupported LSW type $lsw_type")
+end
+
 
 sim = structural_simplify(sys)
 
