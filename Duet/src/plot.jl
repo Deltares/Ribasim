@@ -273,7 +273,8 @@ function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
     lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "precipitation")
     lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "evaporation")
-    lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
+    haskey(reg, :Q_out) && lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
+    haskey(reg, :Q_wm) && lines!(ax1, timespan, interpolator(reg, :Q_wm), label = "watermanagement")
     lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
     lines!(ax1, timespan, interpolator(reg, :upstream), label = "inflow")
     axislegend(ax1)
@@ -307,7 +308,9 @@ function plot_waterbalance_comparison(wb::DataFrame)
     startdate, enddate = extrema(wb.time_start)
     x = Dates.value.(Day.(wb.time_start .- startdate))
     # map each variable to an integer
-    stacks = [findfirst(==(v), vars) for v in wb.variable]
+    type = wb[1, :type]
+    allvars = type == "V" ? vcat(vars, "todownstream") : vcat(vars, "watermanagement")
+    stacks = [findfirst(==(v), allvars) for v in wb.variable]
 
     if any(isnothing, stacks)
         error("nothing found")
@@ -336,9 +339,9 @@ function plot_waterbalance_comparison(wb::DataFrame)
 
     elements = vcat(
         [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
-        [PolyElement(polycolor = Duet.wong_colors[i]) for i = 1:length(vars)],
+        [PolyElement(polycolor = Duet.wong_colors[i]) for i = 1:length(allvars)],
     )
-    Legend(fig[1, 2], elements, vcat("mozart", "bach", vars))
+    Legend(fig[1, 2], elements, vcat("mozart", "bach", allvars))
 
     return fig
 end

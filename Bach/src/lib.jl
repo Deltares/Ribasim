@@ -396,7 +396,6 @@ end
 function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
     Q_eact_itp = interpolator(reg, :Q_eact)
     Q_prec_itp = interpolator(reg, :Q_prec)
-    Q_out_itp = interpolator(reg, :Q_out)
     drainage_itp = interpolator(reg, :drainage)
     infiltration_itp = interpolator(reg, :infiltration)
     urban_runoff_itp = interpolator(reg, :urban_runoff)
@@ -405,7 +404,6 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
 
     Q_eact_sum = sum_fluxes(Q_eact_itp, times)
     Q_prec_sum = sum_fluxes(Q_prec_itp, times)
-    Q_out_sum = sum_fluxes(Q_out_itp, times)
     drainage_sum = sum_fluxes(drainage_itp, times)
     infiltration_sum = sum_fluxes(infiltration_itp, times)
     urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
@@ -413,23 +411,38 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
     # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
     S_diff = diff(S_itp.(times .+ 1e-6))
 
+    if haskey(reg, :Q_out)
+        Q_out_itp = interpolator(reg, :Q_out)
+        Q_out_sum = sum_fluxes(Q_out_itp, times)
+        type = "V"
+    else
+        @assert haskey(reg, :Q_wm)
+        Q_wm_itp = interpolator(reg, :Q_wm)
+        Q_wm_sum = sum_fluxes(Q_wm_itp, times)
+        type = "P"
+    end
+
     # create a dataframe with the same names and sign conventions as lswwaterbalans.out
-    bachwb = DataFrame(
+    bachwb = DataFrame(;
         model = "bach",
         lsw = lsw_id,
         districtwatercode = 24,
-        type = "V",
+        type,
         time_start = unix2datetime.(times[1:end-1]),
         time_end = unix2datetime.(times[2:end]),
         precip = Q_prec_sum,
         evaporation = -Q_eact_sum,
-        todownstream = -Q_out_sum,
         drainage_sh = drainage_sum,
         infiltr_sh = infiltration_sum,
         urban_runoff = urban_runoff_sum,
         upstream = upstream_sum,
         storage_diff = -S_diff,
     )
+    if type == "V"
+        bachwb[!, :todownstream] = -Q_out_sum
+    else
+        bachwb[!, :watermanagement] = Q_wm_sum
+    end
 
     # TODO add the balancecheck
     # bachwb = transform(bachwb, vars => (+) => :balancecheck)

@@ -40,11 +40,11 @@ end
 
 # both the mozart and bach waterbalance dataframes have these columns
 metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
+# does not include the type dependent columns "todownstream" and "watermanagement"
 vars = [
     "precip",
     "evaporation",
     "upstream",
-    "todownstream",
     "drainage_sh",
     "infiltr_sh",
     "urban_runoff",
@@ -53,13 +53,17 @@ vars = [
 cols = vcat(metacols, vars)
 
 # read_mzwaterbalance with extra columns for comparing to bach
-function read_mzwaterbalance_compare(path, lsw_sel::Union{Integer,Nothing} = nothing)
+function read_mzwaterbalance_compare(path, lsw_sel::Int)
     mzwb = Mozart.read_mzwaterbalance(path, lsw_sel)
+    type = mzwb[1, :type]
     mzwb[!, "model"] .= "mozart"
     # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
     mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
+    # similarly create a single watermanagement column
+    mzwb.watermanagement = mzwb.alloc_wm_dw .- mzwb.alloc_wm
     # remove the last period, since bach doesn't have it
-    mzwb = mzwb[1:end-1, cols]
+    allcols = type == "V" ? vcat(cols, "todownstream") : vcat(cols, "watermanagement")
+    mzwb = mzwb[1:end-1, allcols]
     # add a column with timestep length in seconds
     mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
     return mzwb

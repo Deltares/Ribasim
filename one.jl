@@ -105,7 +105,7 @@ elseif mzwb.type[1] == "P"
     @eval Bach lsw_area(s) = Bach.lookup(Main.volumes, Main.ladvalue.area, s)
     @register_symbolic Bach.lsw_level(s::Num)
     @register_symbolic Bach.lsw_area(s::Num)
-    @named sys = Bach.ControlledLSW(;S = S0, h = h0, Δt)
+    @named sys = Bach.ControlledLSW(;S = S0, h = h0, Δt, target_volume)
 else
     # O is for other; flood plains, dunes, harbour
     error("Unsupported LSW type $lsw_type")
