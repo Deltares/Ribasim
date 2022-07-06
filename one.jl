@@ -24,6 +24,7 @@ lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
 lsw_neer = 121438  # V, upstream
 lsw_tol = 200164  # P
+lsw_agric = 131183  # V
 lsw_id::Int = lsw_tol
 
 # read data from Mozart
@@ -57,7 +58,8 @@ end
 # uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
 # uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
-ladvalue = @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
+ladvalue =
+    @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
 lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 lswinfo = only(@subset(lswdik, :lsw == lsw_id))
 (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
@@ -77,9 +79,12 @@ datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 
-mzwb = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
+mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path, lsw_id)
 
-mz_lswval = @subset(Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id), startdate <= :time_start < enddate)
+mz_lswval = @subset(
+    Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id),
+    startdate <= :time_start < enddate
+)
 drainage_series = Duet.create_series(mzwb, :drainage_sh)
 infiltration_series = Duet.create_series(mzwb, :infiltr_sh)
 urban_runoff_series = Duet.create_series(mzwb, :urban_runoff)
@@ -87,9 +92,89 @@ upstream_series = Duet.create_series(mzwb, :upstream)
 
 S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
 h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
-lsw_type::String = mzwb.type[1]
+type::Char = only(mzwb.type[1])
 
-if lsw_type == "V"
+function param(integrator, s)::Real
+    (; p) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), sysnames.p_symbol)
+    return p[i]
+end
+
+function param!(integrator, s, x::Real)::Real
+    (; p) = integrator
+    @debug "param!" integrator.t
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), sysnames.p_symbol)
+    return p[i] = x
+end
+
+function periodic_update_v!(integrator)
+    # update all forcing
+    # exchange with Modflow and Metaswap here
+    (; t, p) = integrator
+    tₜ = t  # the value, not the symbolic
+    P = prec_series(t)
+    E_pot = evap_series(t) * Bach.open_water_factor(t)
+    drainage = drainage_series(t)
+    infiltration = infiltration_series(t)
+    urban_runoff = urban_runoff_series(t)
+    upstream = upstream_series(t)
+
+    param!(integrator, :P, P)
+    param!(integrator, :E_pot, E_pot)
+    param!(integrator, :drainage, drainage)
+    param!(integrator, :infiltration, infiltration)
+    param!(integrator, :urban_runoff, urban_runoff)
+    param!(integrator, :upstream, upstream)
+
+    Bach.save!(param_hist, tₜ, p)
+    return nothing
+end
+
+function periodic_update_p!(integrator)
+    # update all forcing
+    # exchange with Modflow and Metaswap here
+    (; u, t, p, sol) = integrator
+    tₜ = t  # the value, not the symbolic
+    P = prec_series(t)
+    E_pot = evap_series(t) * Bach.open_water_factor(t)
+    drainage = drainage_series(t)
+    infiltration = infiltration_series(t)
+    urban_runoff = urban_runoff_series(t)
+    upstream = upstream_series(t)
+
+    # set the Q_wm for the coming day based on the expected storage
+    S = only(u)
+    target_volume = param(integrator, :target_volume)
+    Δt = param(integrator, :Δt)
+
+    @variables t
+    vars = @variables area(t)
+    var = only(vars)
+    f = SciMLBase.getobserved(sol)  # generated function
+    areaₜ = f(var, sol(tₜ), p, tₜ)
+
+    # what is the expected storage difference at the end of the period if there is no watermanagement?
+    # this assumes a constant area during the period
+    ΔS =
+        Δt *
+        ((areaₜ * P) + upstream + drainage + infiltration + urban_runoff - (areaₜ * E_pot))
+    Q_wm = -(S + ΔS - target_volume) / Δt
+
+    param!(integrator, :P, P)
+    param!(integrator, :E_pot, E_pot)
+    param!(integrator, :drainage, drainage)
+    param!(integrator, :infiltration, infiltration)
+    param!(integrator, :urban_runoff, urban_runoff)
+    param!(integrator, :upstream, upstream)
+    param!(integrator, :Q_wm, Q_wm)
+
+    Bach.save!(param_hist, tₜ, p)
+    return nothing
+end
+
+if type == 'V'
     # use storage to look up area and discharge
     curve = Bach.StorageCurve(vadvalue, lsw_id)
     @eval Bach lsw_area(s) = Bach.lookup_area(Main.curve, s)
@@ -97,7 +182,8 @@ if lsw_type == "V"
     @register_symbolic Bach.lsw_area(s::Num)
     @register_symbolic Bach.lsw_discharge(s::Num)
     @named sys = Bach.FreeFlowLSW(S = S0)
-elseif mzwb.type[1] == "P"
+    periodic_update_type! = periodic_update_v!
+elseif type == 'P'
     # use level to look up area, discharge is 0
     volumes = Duet.tabulate_volumes(ladvalue, target_volume, target_level)
     curve = Bach.StorageCurve(volumes, ladvalue.area, ladvalue.discharge)
@@ -105,10 +191,11 @@ elseif mzwb.type[1] == "P"
     @eval Bach lsw_area(s) = Bach.lookup(Main.volumes, Main.ladvalue.area, s)
     @register_symbolic Bach.lsw_level(s::Num)
     @register_symbolic Bach.lsw_area(s::Num)
-    @named sys = Bach.ControlledLSW(;S = S0, h = h0, Δt, target_volume)
+    @named sys = Bach.ControlledLSW(; S = S0, h = h0, Δt, target_volume)
+    periodic_update_type! = periodic_update_p!
 else
     # O is for other; flood plains, dunes, harbour
-    error("Unsupported LSW type $lsw_type")
+    error("Unsupported LSW type $type")
 end
 
 
@@ -125,29 +212,7 @@ param_hist = ForwardFill(Float64[], Vector{Float64}[])
 tspan = (times[1], times[end])
 prob = ODAEProblem(sim, [], tspan)
 
-function param!(integrator, s, x::Real)::Real
-    (; p) = integrator
-    @debug "param!" integrator.t
-    sym = Symbolics.getname(s)::Symbol
-    i = findfirst(==(sym), sysnames.p_symbol)
-    return p[i] = x
-end
-
-function periodic_update!(integrator)
-    # update all forcing
-    # exchange with Modflow and Metaswap here
-    (; t, p) = integrator
-    param!(integrator, :P, prec_series(t))
-    param!(integrator, :E_pot, evap_series(t) * Bach.open_water_factor(t))
-    param!(integrator, :drainage, drainage_series(t))
-    param!(integrator, :infiltration, infiltration_series(t))
-    param!(integrator, :urban_runoff, urban_runoff_series(t))
-    param!(integrator, :upstream, upstream_series(t))
-    Bach.save!(param_hist, t, p)
-    return nothing
-end
-
-cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+cb = PeriodicCallback(periodic_update_type!, Δt; initial_affect = true)
 
 integrator = init(
     prob,
@@ -167,20 +232,21 @@ println(reg)
 
 # interpolated timeseries of bach results
 # Duet.plot_series(reg, DateTime("2022-07")..DateTime("2022-08"))
-fig_s = Duet.plot_series(reg)
+fig_s = Duet.plot_series(reg, type)
 
 ##
 # plotting the water balance
 
 bachwb = Bach.waterbalance(reg, times, lsw_id)
-wb = Duet.combine_waterbalance(mzwb, bachwb)
+mzwb_compare = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
+wb = Duet.combine_waterbalance(mzwb_compare, bachwb)
 
 fig_wb = Duet.plot_waterbalance_comparison(wb)
-# fig_wb = Duet.plot_waterbalance_comparison(@subset(wb, :time_start < DateTime(2019,3)))
 
 ##
 # compare individual component timeseries
 
-fig_c = Duet.plot_series_comparison(reg, mz_lswval, :S, :volume, timespan)
+fig_c = Duet.plot_series_comparison(reg, mz_lswval, :S, :volume, timespan, target_volume)
+fig_c = Duet.plot_series_comparison(reg, mz_lswval, :h, :level, timespan, target_level)
 # fig_c = Duet.plot_series_comparison(reg, mz_lswval, :area, :area, timespan)
 # fig_c = Duet.plot_series_comparison(reg, mz_lswval, :Q_out, :discharge, timespan)

@@ -265,7 +265,7 @@ wong_colors = [
 ]
 
 "Plot timeseries of several key variables."
-function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
+function plot_series(reg::Bach.Register, type::Char, timespan::ClosedInterval{Float64})
     fig = Figure()
     ylabel = "flow rate / m³ s⁻¹"
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
@@ -273,19 +273,26 @@ function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
     lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "precipitation")
     lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "evaporation")
-    haskey(reg, :Q_out) && lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
-    haskey(reg, :Q_wm) && lines!(ax1, timespan, interpolator(reg, :Q_wm), label = "watermanagement")
+    haskey(reg, :Q_out) &&
+        lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
+    haskey(reg, :Q_wm) &&
+        lines!(ax1, timespan, interpolator(reg, :Q_wm), label = "watermanagement")
     lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
     lines!(ax1, timespan, interpolator(reg, :upstream), label = "inflow")
     axislegend(ax1)
-    hidexdecorations!(ax1, grid=false)
-    lines!(ax2, timespan, interpolator(reg, :S))
+    hidexdecorations!(ax1, grid = false)
+    # TODO make a plot with the daily mean h as part of plot_series_comparison
+    if type == 'P'
+        lines!(ax2, timespan, interpolator(reg, :h))
+    else
+        lines!(ax2, timespan, interpolator(reg, :S))
+    end
     linkxaxes!(ax1, ax2)
     return fig
 end
 
-function plot_series(reg::Bach.Register)
-    plot_series(reg, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
+function plot_series(reg::Bach.Register, type::Char)
+    plot_series(reg, type, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
 end
 
 function plot_series(reg::Bach.Register, timespan::ClosedInterval{DateTime})
@@ -308,12 +315,17 @@ function plot_waterbalance_comparison(wb::DataFrame)
     startdate, enddate = extrema(wb.time_start)
     x = Dates.value.(Day.(wb.time_start .- startdate))
     # map each variable to an integer
-    type = wb[1, :type]
-    allvars = type == "V" ? vcat(vars, "todownstream") : vcat(vars, "watermanagement")
+    type = only(wb[1, :type])::Char
+    allvars = type == 'V' ? vcat(vars, "todownstream") : vcat(vars, "watermanagement")
     stacks = [findfirst(==(v), allvars) for v in wb.variable]
 
     if any(isnothing, stacks)
-        error("nothing found")
+        for v in wb.variable
+            if !(v in allvars)
+                @error "nothing found" v allvars
+                error("nothing found")
+            end
+        end
     end
     dodge = [x == "mozart" ? 1 : 2 for x in wb.model]
 
@@ -352,7 +364,7 @@ function plot_series_comparison(
     bachvar::Symbol,
     mzvar::Symbol,
     timespan::ClosedInterval{Float64},
-    target_volume=nothing,
+    target_volume = nothing,
 )
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
@@ -375,7 +387,7 @@ function plot_series_comparison(
         label = "$mzvar mozart",
     )
     if target_volume !== nothing
-        hlines!(ax, target_volume, label="target volume")
+        hlines!(ax, target_volume, label = "target volume")
     end
     axislegend(ax)
     return fig

@@ -81,7 +81,6 @@ function ControlledLSW(; name, S, h, Δt, target_volume)
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         Q_wm(t) = 0,
-        target_volume(t) = target_volume,
         [input = true],
         P(t) = 0,
         [input = true],
@@ -95,15 +94,14 @@ function ControlledLSW(; name, S, h, Δt, target_volume)
         [input = true],
         upstream(t) = 0,
         [input = true],
-        Δt(t) = Δt,
-        [input = true],
     )
-
+    pars = @parameters target_volume = target_volume Δt = Δt
     D = Differential(t)
 
     eqs = Equation[
         # positive is inflow from districtwater, negative is discharging excess water
-        Q_wm ~ -(S - target_volume) / Δt
+        # Q_wm ~ -(S - target_volume) / Δt
+        # Q_wm_act ~ Q_wm
         Q_prec ~ area * P
         area ~ lsw_area(S)
         h ~ lsw_level(S)
@@ -111,5 +109,5 @@ function ControlledLSW(; name, S, h, Δt, target_volume)
         D(S) ~
             Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact + Q_wm
     ]
-    ODESystem(eqs, t, vars, []; name)
+    ODESystem(eqs, t, vars, pars; name)
 end

@@ -55,17 +55,17 @@ cols = vcat(metacols, vars)
 # read_mzwaterbalance with extra columns for comparing to bach
 function read_mzwaterbalance_compare(path, lsw_sel::Int)
     mzwb = Mozart.read_mzwaterbalance(path, lsw_sel)
-    type = mzwb[1, :type]
+    type = only(mzwb[1, :type])::Char
     mzwb[!, "model"] .= "mozart"
     # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
     mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
     # similarly create a single watermanagement column
-    mzwb.watermanagement = mzwb.alloc_wm_dw .- mzwb.alloc_wm
+    mzwb.watermanagement = mzwb.alloc_wm_dw + mzwb.to_dw
     # remove the last period, since bach doesn't have it
-    allcols = type == "V" ? vcat(cols, "todownstream") : vcat(cols, "watermanagement")
+    allcols = type == 'V' ? vcat(cols, "todownstream") : vcat(cols, "watermanagement")
     mzwb = mzwb[1:end-1, allcols]
     # add a column with timestep length in seconds
-    mzwb[!, :period] = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
+    mzwb.period = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
     return mzwb
 end
 
@@ -87,7 +87,7 @@ function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
 
     # calculate ΔS per segment in the LAD
     n = nrow(ladvalue)
-    ΔS = zeros(n-1)
+    ΔS = zeros(n - 1)
     for i in eachindex(ΔS)
         h1, h2 = ladvalue.level[i], ladvalue.level[i+1]
         area1, area2 = ladvalue.area[i], ladvalue.area[i+1]
@@ -99,12 +99,12 @@ function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
     # calculate S based on target_volume and ΔS
     S = zeros(n)
     S[i] = target_volume
-    if i+1 <= n
+    if i + 1 <= n
         for j = (i+1):n
             S[j] = S[j-1] + ΔS[j-1]
         end
     end
-    if i-1 >= 1
+    if i - 1 >= 1
         for j = (i-1):-1:1
             S[j] = S[j+1] - ΔS[j]
         end

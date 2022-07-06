@@ -414,12 +414,12 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
     if haskey(reg, :Q_out)
         Q_out_itp = interpolator(reg, :Q_out)
         Q_out_sum = sum_fluxes(Q_out_itp, times)
-        type = "V"
+        type = 'V'
     else
         @assert haskey(reg, :Q_wm)
         Q_wm_itp = interpolator(reg, :Q_wm)
         Q_wm_sum = sum_fluxes(Q_wm_itp, times)
-        type = "P"
+        type = 'P'
     end
 
     # create a dataframe with the same names and sign conventions as lswwaterbalans.out
@@ -438,15 +438,15 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
         upstream = upstream_sum,
         storage_diff = -S_diff,
     )
-    if type == "V"
-        bachwb[!, :todownstream] = -Q_out_sum
+    if type == 'V'
+        bachwb.todownstream = -Q_out_sum
     else
-        bachwb[!, :watermanagement] = Q_wm_sum
+        bachwb.watermanagement = Q_wm_sum
     end
 
     # TODO add the balancecheck
     # bachwb = transform(bachwb, vars => (+) => :balancecheck)
-    bachwb[!, :balancecheck] .= 0.0
-    bachwb[!, :period] = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
+    bachwb.balancecheck .= 0.0
+    bachwb.period = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
     return bachwb
 end
