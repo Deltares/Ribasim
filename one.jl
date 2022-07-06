@@ -20,8 +20,13 @@ using IntervalSets
 
 GLMakie.activate!()
 
-# read data from Mozart
+lsw_hupsel = 151358  # V, no upstream, no agric
+lsw_haarlo = 150016  # V, upstream
+lsw_neer = 121438  # V, upstream
+lsw_tol = 200164  # P
+lsw_id::Int = lsw_tol
 
+# read data from Mozart
 reference_model = "daily"
 if reference_model == "daily"
     simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
@@ -53,29 +58,22 @@ end
 # uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
 ladvalue = @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
-
-
-
-
-lsw_hupsel = 151358  # V, no upstream, no agric
-lsw_haarlo = 150016  # V, upstream
-lsw_neer = 121438  # V, upstream
-lsw_tol = 200164  # P
-lsw_id = lsw_tol
+lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
+lswinfo = only(@subset(lswdik, :lsw == lsw_id))
+(; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_series, evap_series = Duet.lsw_meteo(meteo_path, lsw_id)
 
 # set bach runtimes equal to the mozart reference run
-times = prec_series.t
-startdate = unix2datetime(times[begin])
-enddate = unix2datetime(times[end])
-dates = unix2datetime.(times)
-timespan = times[begin] .. times[end]
-datespan = dates[begin] .. dates[end]
-# n-1 water balance periods
-starttimes = times[1:end-1]
-Δt = 86400.0
+times::Vector{Float64} = prec_series.t
+startdate::DateTime = unix2datetime(times[begin])
+enddate::DateTime = unix2datetime(times[end])
+dates::Vector{DateTime} = unix2datetime.(times)
+timespan::ClosedInterval{Float64} = times[begin] .. times[end]
+datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
+# Δt for periodic update frequency and setting the ControlledLSW output rate
+Δt::Float64 = 86400.0
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 
@@ -87,25 +85,27 @@ infiltration_series = Duet.create_series(mzwb, :infiltr_sh)
 urban_runoff_series = Duet.create_series(mzwb, :urban_runoff)
 upstream_series = Duet.create_series(mzwb, :upstream)
 
-S0 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
-lsw_type = mzwb.type[1]
+S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
+h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
+lsw_type::String = mzwb.type[1]
 
 if lsw_type == "V"
     # use storage to look up area and discharge
     curve = Bach.StorageCurve(vadvalue, lsw_id)
-    Bach.curve = curve
-    @eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
-    @eval Bach lsw_discharge(s) = Bach.lookup_discharge(curve, s)
+    @eval Bach lsw_area(s) = Bach.lookup_area(Main.curve, s)
+    @eval Bach lsw_discharge(s) = Bach.lookup_discharge(Main.curve, s)
     @register_symbolic Bach.lsw_area(s::Num)
     @register_symbolic Bach.lsw_discharge(s::Num)
     @named sys = Bach.FreeFlowLSW(S = S0)
 elseif mzwb.type[1] == "P"
     # use level to look up area, discharge is 0
-    curve = Bach.StorageCurve(ladvalue.level, ladvalue.area, ladvalue.discharge)
-    Bach.curve = curve
-    @eval Bach lsw_area(s) = Bach.lookup_area(curve, s)
+    volumes = Duet.tabulate_volumes(ladvalue, target_volume, target_level)
+    curve = Bach.StorageCurve(volumes, ladvalue.area, ladvalue.discharge)
+    @eval Bach lsw_level(s) = Bach.lookup(Main.volumes, Main.ladvalue.level, s)
+    @eval Bach lsw_area(s) = Bach.lookup(Main.volumes, Main.ladvalue.area, s)
+    @register_symbolic Bach.lsw_level(s::Num)
     @register_symbolic Bach.lsw_area(s::Num)
-    @named sys = Bach.ControlledLSW(S = S0)
+    @named sys = Bach.ControlledLSW(;S = S0, h = h0, Δt)
 else
     # O is for other; flood plains, dunes, harbour
     error("Unsupported LSW type $lsw_type")
@@ -134,8 +134,8 @@ function param!(integrator, s, x::Real)::Real
 end
 
 function periodic_update!(integrator)
+    # update all forcing
     # exchange with Modflow and Metaswap here
-    # update precipitation
     (; t, p) = integrator
     param!(integrator, :P, prec_series(t))
     param!(integrator, :E_pot, evap_series(t) * Bach.open_water_factor(t))

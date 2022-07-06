@@ -70,3 +70,41 @@ function create_series(mzwb::DataFrame, col::Union{Symbol,String})
     # convert m3/timestep to m3/s for bach
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb[!, col] ./ mzwb.period)
 end
+
+# add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
+# this way the level or area can be looked up from the volume
+function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
+    @assert issorted(ladvalue.area)
+    @assert issorted(ladvalue.level)
+
+    # check assumption on other LSWs: is the target level always in the LAD?
+    i = findfirst(≈(target_level), ladvalue.level)
+    @assert i !== nothing
+
+    # calculate ΔS per segment in the LAD
+    n = nrow(ladvalue)
+    ΔS = zeros(n-1)
+    for i in eachindex(ΔS)
+        h1, h2 = ladvalue.level[i], ladvalue.level[i+1]
+        area1, area2 = ladvalue.area[i], ladvalue.area[i+1]
+        Δh = h2 - h1
+        avg_area = area2 + area1 / 2
+        ΔS[i] = Δh * avg_area
+    end
+
+    # calculate S based on target_volume and ΔS
+    S = zeros(n)
+    S[i] = target_volume
+    if i+1 <= n
+        for j = (i+1):n
+            S[j] = S[j-1] + ΔS[j-1]
+        end
+    end
+    if i-1 >= 1
+        for j = (i-1):-1:1
+            S[j] = S[j+1] - ΔS[j]
+        end
+    end
+
+    return S
+end

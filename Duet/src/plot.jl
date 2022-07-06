@@ -267,16 +267,18 @@ wong_colors = [
 "Plot timeseries of several key variables."
 function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     fig = Figure()
-    ax1 = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
-    ax2 = time!(Axis(fig[2, 1]), timespan.left, timespan.right)
-    lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "Q_prec")
-    lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "Q_eact")
-    lines!(ax1, timespan, interpolator(reg, :Q_out), label = "Q_out")
+    ylabel = "flow rate / m³ s⁻¹"
+    ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
+    ylabel = "storage volume / m³"
+    ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
+    lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "precipitation")
+    lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "evaporation")
+    lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
     lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
-    lines!(ax1, timespan, interpolator(reg, :upstream), label = "upstream")
+    lines!(ax1, timespan, interpolator(reg, :upstream), label = "inflow")
     axislegend(ax1)
-    lines!(ax2, timespan, interpolator(reg, :S), label = "S")
-    axislegend(ax2)
+    hidexdecorations!(ax1, grid=false)
+    lines!(ax2, timespan, interpolator(reg, :S))
     linkxaxes!(ax1, ax2)
     return fig
 end
@@ -317,7 +319,7 @@ function plot_waterbalance_comparison(wb::DataFrame)
         fig[1, 1],
         # label the first and last day
         xticks = (collect(extrema(x)), string.([startdate, enddate])),
-        xlabel = "time / s",
+        xlabel = "time / day",
         ylabel = "volume / m³",
         title = "Mozart and Bach daily water balance",
     )
@@ -347,6 +349,7 @@ function plot_series_comparison(
     bachvar::Symbol,
     mzvar::Symbol,
     timespan::ClosedInterval{Float64},
+    target_volume=nothing,
 )
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
@@ -368,6 +371,9 @@ function plot_series_comparison(
         step = :post,
         label = "$mzvar mozart",
     )
+    if target_volume !== nothing
+        hlines!(ax, target_volume, label="target volume")
+    end
     axislegend(ax)
     return fig
 end

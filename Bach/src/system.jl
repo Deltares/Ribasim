@@ -71,10 +71,12 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 - upstream [m³ s⁻¹]: inflow from upstream LSWs
+- Δt [s]: period over which to spread to excess volume for outflow
 """
-function ControlledLSW(; name, S)
+function ControlledLSW(; name, S, h, Δt)
     vars = @variables(
         S(t) = S,
+        h(t) = h,
         area(t),
         Q_prec(t) = 0,
         Q_eact(t) = 0,
@@ -93,15 +95,18 @@ function ControlledLSW(; name, S)
         [input = true],
         upstream(t) = 0,
         [input = true],
+        Δt(t) = Δt,
+        [input = true],
     )
 
     D = Differential(t)
 
     eqs = Equation[
-        # how to set the right rate to get rid of excess water?
-        Q_out ~ 0.02 * (0.5 * tanh((S - target_volume) / 10.0) + 0.5)
+        # Q_out ~ (0.5 * tanh((S - target_volume) / 10.0) + 0.5) / Δt
+        Q_out ~ ifelse(S > target_volume, (S - target_volume) / Δt, 0.0)
         Q_prec ~ area * P
         area ~ lsw_area(S)
+        h ~ lsw_level(S)
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         D(S) ~
             Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact - Q_out
