@@ -401,6 +401,8 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
     infiltration_itp = interpolator(reg, :infiltration)
     urban_runoff_itp = interpolator(reg, :urban_runoff)
     upstream_itp = interpolator(reg, :upstream)
+    alloc_agric_itp = interpolator(reg, :alloc_agric)
+    alloc_wm_itp = interpolator(reg, :alloc_wm)
     S_itp = interpolator(reg, :S)
 
     Q_eact_sum = sum_fluxes(Q_eact_itp, times)
@@ -410,6 +412,8 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
     infiltration_sum = sum_fluxes(infiltration_itp, times)
     urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
     upstream_sum = sum_fluxes(upstream_itp, times)
+    alloc_agric_sum = sum_fluxes(alloc_agric_itp, times)
+    alloc_wm_sum = sum_fluxes(alloc_wm_itp, times)
     # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
     S_diff = diff(S_itp.(times .+ 1e-6))
 
@@ -429,11 +433,13 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
         urban_runoff = urban_runoff_sum,
         upstream = upstream_sum,
         storage_diff = -S_diff,
+        alloc_agric = -alloc_agric_sum,
+        alloc_wm = -alloc_wm_sum,
     )
 
     # TODO add the balancecheck
     # bachwb = transform(bachwb, vars => (+) => :balancecheck)
-    bachwb[!, :balancecheck] .= 0.0
+    # bachwb[!, :balancecheck] .= 0.0
     bachwb[!, :period] = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
     return bachwb
 end

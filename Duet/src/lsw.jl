@@ -49,6 +49,8 @@ vars = [
     "infiltr_sh",
     "urban_runoff",
     "storage_diff",
+    "alloc_agric",
+    "alloc_wm"
 ]
 cols = vcat(metacols, vars)
 

@@ -252,7 +252,7 @@ Useful for plotting the graph using the example below:
 """
 node_coords(topology) = Point2f.(zip(topology.node_x, topology.node_y))
 
-# 8 color palette by Wong (Makie.wong_colors() doesn't have black)
+# 10 color palette by Wong (Makie.wong_colors() doesn't have black)
 wong_colors = [
     colorant"rgb(0,114,178)",
     colorant"rgb(230,159,0)",
@@ -262,6 +262,9 @@ wong_colors = [
     colorant"rgb(213,94,0)",
     colorant"rgb(240,228,66)",
     colorant"black",
+    colorant"rgb(255,160,122)", 
+    colorant"rgb(192,192,192)",
+
 ]
 
 "Plot timeseries of several key variables."
@@ -274,6 +277,8 @@ function plot_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     lines!(ax1, timespan, interpolator(reg, :Q_out), label = "Q_out")
     lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
     lines!(ax1, timespan, interpolator(reg, :upstream), label = "upstream")
+    lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Agric_use")
+    lines!(ax1, timespan, interpolator(reg, :abs_wm), label = "WM_use")
     axislegend(ax1)
     lines!(ax2, timespan, interpolator(reg, :S), label = "S")
     axislegend(ax2)
@@ -306,7 +311,11 @@ function plot_waterbalance_comparison(wb::DataFrame)
     x = Dates.value.(Day.(wb.time_start .- startdate))
     # map each variable to an integer
     stacks = [findfirst(==(v), vars) for v in wb.variable]
-
+    # for v in wb.variable
+    #     if !(v in vars)
+    #         @info v vars
+    #     end
+    # end
     if any(isnothing, stacks)
         error("nothing found")
     end
@@ -351,6 +360,7 @@ function plot_series_comparison(
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
 
+<<<<<<< Updated upstream
     # plot all the calculated data points
     scatter!(
         ax,
@@ -364,6 +374,13 @@ function plot_series_comparison(
         ax,
         datetime2unix.(mz_lswval.time_start),
         mz_lswval[!, mzvar];
+=======
+    lines!(ax, timespan, interpolator(reg, :area); color = :blue, label = "S bach")
+    stairs!(
+        ax,
+        datetime2unix.(mz_lswval.time_start[1:end-1]),
+        mz_lswval.area[1:end-1];
+>>>>>>> Stashed changes
         color = :black,
         step = :post,
         label = "$mzvar mozart",
@@ -380,3 +397,64 @@ end
 function plot_series_comparison(reg::Bach.Register, timespan::ClosedInterval{DateTime})
     plot_series_comparison(reg, unixtimespan(timespan))
 end
+
+"Plot timeseries of key variables related to user allocation and demand"
+function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Float64}, mzwb)
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+
+
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Bach Agric_use")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :dem_agric), label="Mz Agric_demand")
+
+
+     stairs!(
+         ax2,
+         timespan,
+         mzwb.dem_agric / 864000;
+         color = :black,
+         step = :post,
+         label = "Mz Agric_demamd",
+     )
+     stairs!(
+        ax2,
+        timespan,
+        mzwb.alloc_agric /864000;
+        color = :red,
+        step = :post,
+        label = "Mz Agric_alloc",
+    )
+    
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+
+    lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Bach Infiltration")
+    lines!(ax3, timespan, interpolator(reg, :drainage), label = "Bach Drainage")
+    lines!(ax3, timespan, interpolator(reg, :urban_runoff), label = "Bach runoff")
+
+    lines!(ax4, timespan, interpolator(reg, :P), label = "Bach Precip")
+    lines!(ax4, timespan, interpolator(reg, :E_pot), label = "Bach Evap")
+
+
+    axislegend(ax1)
+    axislegend(ax2)
+    axislegend(ax3)
+    axislegend(ax4)
+
+
+
+    return fig
+end
+
+function plot_Qavailable_series(reg::Bach.Register)
+    plot_series(reg, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
+end
+
+function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{DateTime})
+    plot_series(reg, unixtimespan(timespan))
+end
+
