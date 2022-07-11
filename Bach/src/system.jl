@@ -20,7 +20,7 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 - upstream [m³ s⁻¹]: inflow from upstream LSWs
 """
-function FreeFlowLSW(; name, S)
+function FreeFlowLSW(; name, S, Δt, lsw, district)
     vars = @variables(
         S(t) = S,
         area(t),
@@ -40,7 +40,7 @@ function FreeFlowLSW(; name, S)
         upstream(t) = 0,
         [input = true],
     )
-
+    pars = @parameters Δt = Δt lsw = lsw district = district
     D = Differential(t)
 
     eqs = Equation[
@@ -51,7 +51,7 @@ function FreeFlowLSW(; name, S)
         D(S) ~
             Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact - Q_out
     ]
-    ODESystem(eqs, t, vars, []; name)
+    ODESystem(eqs, t, vars, pars; name)
 end
 
 """
@@ -73,7 +73,7 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 - upstream [m³ s⁻¹]: inflow from upstream LSWs
 - Δt [s]: period over which to spread to excess volume for outflow
 """
-function ControlledLSW(; name, S, h, Δt, target_volume)
+function ControlledLSW(; name, S, h, Δt, target_volume, lsw, district)
     vars = @variables(
         S(t) = S,
         h(t) = h,
@@ -95,7 +95,7 @@ function ControlledLSW(; name, S, h, Δt, target_volume)
         upstream(t) = 0,
         [input = true],
     )
-    pars = @parameters target_volume = target_volume Δt = Δt
+    pars = @parameters target_volume = target_volume Δt = Δt lsw = lsw district = district
     D = Differential(t)
 
     eqs = Equation[

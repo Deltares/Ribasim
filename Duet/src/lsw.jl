@@ -27,6 +27,45 @@ function lsw_meteo(path, lsw_sel::Integer)
     return prec_series, evap_series
 end
 
+function parse_meteo_line!(times, prec, evap, line)
+    is_evap = line[2] == '1'  # if not, precipitation
+    t = datetime2unix(DateTime(line[11:18], dateformat"yyyymmdd"))
+    t_end = datetime2unix(DateTime(line[27:34], dateformat"yyyymmdd"))
+    period_s = t_end - t
+    v = parse(Float64, line[43:end]) * 0.001 / period_s  # [mm timestep⁻¹] to [m s⁻¹]
+    if is_evap
+        push!(times, t)
+        push!(evap, v)
+    else
+        push!(prec, v)
+    end
+    return nothing
+end
+
+function lsws_meteo(path, lsws::Vector{Int})
+    # prepare empty dictionaries
+    prec_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    evap_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    for lsw in lsws
+        # prec and evap share the same vector for times
+        times = Float64[]
+        prec_dict[lsw] = Bach.ForwardFill(times, Float64[])
+        evap_dict[lsw] = Bach.ForwardFill(times, Float64[])
+    end
+
+    # fill them with data, going over each line once
+    for line in eachline(path)
+        id = parse(Int, line[4:9])
+        if id in lsws
+            prec_series = prec_dict[id]
+            evap_series = evap_dict[id]
+            parse_meteo_line!(prec_series.t, prec_series.v, evap_series.v, line)
+        end
+    end
+
+    return prec_dict, evap_dict
+end
+
 function remove_zero_cols(df)
     # remove all columns that have only zeros
     allzeros = Symbol[]
@@ -70,9 +109,18 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
 end
 
 # create a bach timeseries input from the mozart water balance output
-function create_series(mzwb::DataFrame, col::Union{Symbol,String})
+function create_series(mzwb::AbstractDataFrame, col::Union{Symbol,String})
     # convert m3/timestep to m3/s for bach
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb[!, col] ./ mzwb.period)
+end
+
+function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
+    dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    for (key, df) in pairs(groupby(mzwb, :lsw))
+        series = create_series(df, col)
+        dict[key.lsw] = series
+    end
+    return dict
 end
 
 # add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
