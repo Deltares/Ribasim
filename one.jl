@@ -30,12 +30,6 @@ lsw_id::Int = lsw_hupsel
 dw_hupsel = 24  # Berkel / Slinge
 dw_id::Int = dw_hupsel
 
-# if you want to run the entire district
-lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
-lsws = lswdik_district.lsw
-# if testing a single lsw
-# lsws = [lsw_id]
-
 # read data from Mozart
 reference_model = "daily"
 if reference_model == "daily"
@@ -72,6 +66,12 @@ ladvalue =
 lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 lswinfo = only(@subset(lswdik, :lsw == lsw_id))
 (; local_surface_water_type, target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
+
+# if you want to run the entire district
+# lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
+# lsws = lswdik_district.lsw
+# if testing a single lsw
+lsws = [lsw_id]
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_dict, evap_dict = Duet.lsws_meteo(meteo_path, lsws)
