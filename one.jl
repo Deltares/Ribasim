@@ -65,7 +65,13 @@ ladvalue =
     @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
 lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 lswinfo = only(@subset(lswdik, :lsw == lsw_id))
-(; local_surface_water_type, target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
+(;
+    local_surface_water_type,
+    target_volume,
+    target_level,
+    depth_surface_water,
+    maximum_level,
+) = lswinfo
 
 # if you want to run the entire district
 # lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
@@ -204,7 +210,15 @@ elseif type == 'P'
     @eval Bach lsw_area(s) = Bach.lookup(Main.volumes, Main.ladvalue.area, s)
     @register_symbolic Bach.lsw_level(s::Num)
     @register_symbolic Bach.lsw_area(s::Num)
-    sys = Bach.ControlledLSW(; name, S = S0, h = h0, Δt, target_volume, lsw = lsw_id, district = dw_id)
+    sys = Bach.ControlledLSW(;
+        name,
+        S = S0,
+        h = h0,
+        Δt,
+        target_volume,
+        lsw = lsw_id,
+        district = dw_id,
+    )
     periodic_update_type! = periodic_update_p!
 else
     # O is for other; flood plains, dunes, harbour
