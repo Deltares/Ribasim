@@ -1,16 +1,14 @@
-##
+
 import BasicModelInterface as BMI
 import ModflowInterface as MF
 
-##
-
-function get_var_ptr(
-    model::MF.ModflowModel,
-    modelname,
-    component;
-    subcomponent_name="",
-)
-    tag = MF.get_var_address(model, component, modelname, subcomponent_name=subcomponent_name)
+function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
+    tag = MF.get_var_address(
+        model,
+        component,
+        modelname,
+        subcomponent_name = subcomponent_name,
+    )
     return BMI.get_value_ptr(model, tag)
 end
 
@@ -27,11 +25,12 @@ function solve_to_convergence(model, maxiter)
     end
 
     println("converged")
-    return iteration
+    return iteration - 1
 end
 
 
-const BoundView = SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
+const BoundView =
+    SubArray{Float64,1,Matrix{Float64},Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}
 
 """
 Memory views on a single MODFLOW6 Drainage package.
@@ -53,16 +52,12 @@ struct ModflowDrainagePackage
 end
 
 
-function ModflowDrainagePackage(
-    model::MF.ModflowModel,
-    modelname,
-    subcomponent,
-)
-    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name=subcomponent)
-    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name="DRN_SYS1")
-    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name=subcomponent)
-    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name=subcomponent)
-    
+function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
+    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
+    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = "DRN_SYS1")
+    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name = subcomponent)
+    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name = subcomponent)
+
     elevation = view(bound, 1, :)
     conductance = view(bound, 2, :)
     budget = zeros(size(hcof))
@@ -91,23 +86,25 @@ struct ModflowRiverPackage
 end
 
 
-function ModflowRiverPackage(
-    model::MF.ModflowModel,
-    modelname,
-    subcomponent,
-)
-    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name=subcomponent)
-    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name=subcomponent)
-    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name=subcomponent)
-    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name=subcomponent)
-    
+function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
+    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
+    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
+    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name = subcomponent)
+    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name = subcomponent)
+
     stage = view(bound, 1, :)
     conductance = view(bound, 2, :)
     bottom_elevation = view(bound, 3, :)
     budget = zeros(size(hcof))
 
     return ModflowRiverPackage(
-        nodelist, hcof, rhs, conductance, stage, bottom_elevation, budget
+        nodelist,
+        hcof,
+        rhs,
+        conductance,
+        stage,
+        bottom_elevation,
+        budget,
     )
 end
 
@@ -158,7 +155,7 @@ end
 """
 function set_stage!(boundary::ModflowRiverDrainagePackage, Δstage)
     n = length(boundary.river.nodelist)
-    for i=1:n
+    for i = 1:n
         # Stage should not fall below bottom!
         newstage = max(boundary.river.stage[i] + Δstage, boundary.river.bottom_elevation[i])
         boundary.river.stage[i] = newstage
@@ -169,12 +166,13 @@ end
 
 ##
 
-directory = "LHM-de-tol"
+directory = "..\\data\\modflow\\LHM-de-Tol"
 modelname = "GWF"
 cd(directory)
 model = BMI.initialize(MF.ModflowModel)
 BMI.get_component_name(model)
 
+component_id = 1
 
 headtag = MF.get_var_address(model, "X", modelname)
 head = BMI.get_value_ptr(model, headtag)
@@ -183,9 +181,11 @@ riv_sys1 = ModflowRiverDrainagePackage(model, modelname, "TOL_RIV_SYS1", "TOL_DR
 riv_sys2 = ModflowRiverDrainagePackage(model, modelname, "TOL_RIV_SYS2", "TOL_DRN_SYS5")
 
 MF.prepare_time_step(model, 0.0)
+MF.prepare_solve(model, component_id)
 solve_to_convergence(model, maxiter)
 # This should write the heads to the output file.
 MF.finalize_time_step(model)
+MF.finalize_solve(model, component_id)
 
 budget!(riv_sys1, head)
 budget!(riv_sys2, head)
@@ -194,3 +194,6 @@ budget!(riv_sys2, head)
 # Compute the stage change, call set_stage!
 # You could use a while loop until the end time for MODFLOW6 is reached, or just loop the NPER...
 
+# destroys the model, and deallocates the data, don't use it anymore after this
+# if you need data to be separate from modflow, copy it, which is what `BMI.get_value` does
+BMI.finalize(model)

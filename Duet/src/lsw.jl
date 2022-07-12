@@ -44,8 +44,8 @@ end
 
 function lsws_meteo(path, lsws::Vector{Int})
     # prepare empty dictionaries
-    prec_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
-    evap_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    prec_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    evap_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
     for lsw in lsws
         # prec and evap share the same vector for times
         times = Float64[]
@@ -115,7 +115,7 @@ function create_series(mzwb::AbstractDataFrame, col::Union{Symbol,String})
 end
 
 function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
-    dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
     for (key, df) in pairs(groupby(mzwb, :lsw))
         series = create_series(df, col)
         dict[key.lsw] = series

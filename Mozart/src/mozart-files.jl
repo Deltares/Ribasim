@@ -11,7 +11,7 @@ function datestring(s)
 end
 
 "Write a table to a Tab Separated Value"
-tsv(path, table) = CSV.write(path, table; delim = '\t', quotestrings=true)
+tsv(path, table) = CSV.write(path, table; delim = '\t', quotestrings = true)
 
 "Read local surface water value"
 function read_lswvalue(path)
