@@ -268,38 +268,65 @@ wong_colors = [
 ]
 
 "Plot timeseries of several key variables."
-function plot_series(reg::Bach.Register, type::Char, timespan::ClosedInterval{Float64})
+function plot_series(
+    reg::Bach.Register,
+    lsw_id::Int,
+    timespan::ClosedInterval{Float64};
+    level = true,
+)
     fig = Figure()
     ylabel = "flow rate / m³ s⁻¹"
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
-    ylabel = "storage volume / m³"
+    ylabel = level ? "water level / m + NAP" : "storage volume / m³"
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
-    lines!(ax1, timespan, interpolator(reg, :Q_prec), label = "precipitation")
-    lines!(ax1, timespan, interpolator(reg, :Q_eact), label = "evaporation")
-    haskey(reg, :Q_out) &&
-        lines!(ax1, timespan, interpolator(reg, :Q_out), label = "outflow")
-    haskey(reg, :Q_wm) &&
-        lines!(ax1, timespan, interpolator(reg, :Q_wm), label = "watermanagement")
-    lines!(ax1, timespan, interpolator(reg, :drainage), label = "drainage")
-    lines!(ax1, timespan, interpolator(reg, :upstream), label = "inflow")
+
+    name = Symbol(:sys_, lsw_id, :₊lsw₊)
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)), label = "precipitation")
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_eact)), label = "evaporation")
+    haskey(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)),
+        label = "outflow",
+    )
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)),
+        label = "watermanagement",
+    )
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
+    lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(name, :infiltration)),
+        label = "infiltration",
+    )
+    lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(name, :urban_runoff)),
+        label = "urban_runoff",
+    )
     axislegend(ax1)
     hidexdecorations!(ax1, grid = false)
     # TODO make a plot with the daily mean h as part of plot_series_comparison
-    if type == 'P'
-        lines!(ax2, timespan, interpolator(reg, :h))
+    if level
+        lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
     else
-        lines!(ax2, timespan, interpolator(reg, :S))
+        lines!(ax2, timespan, interpolator(reg, Symbol(name, :S)))
     end
     linkxaxes!(ax1, ax2)
     return fig
 end
 
-function plot_series(reg::Bach.Register, type::Char)
-    plot_series(reg, type, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
-end
-
-function plot_series(reg::Bach.Register, timespan::ClosedInterval{DateTime})
-    plot_series(reg, unixtimespan(timespan))
+function plot_series(reg::Bach.Register, lsw_id::Int; level = false)
+    plot_series(
+        reg,
+        lsw_id,
+        reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
+        level,
+    )
 end
 
 "long format daily waterbalance dataframe for comparing mozart and bach"
@@ -309,7 +336,7 @@ function combine_waterbalance(mzwb, bachwb)
     bachwb = @subset(bachwb, :time_start in time_start)
 
     wb = vcat(stack(bachwb), stack(mzwb))
-    wb = @subset(wb, :variable != "balancecheck")
+    wb = @subset(wb, !(:variable in ("balancecheck", "upstream")))
     return wb
 end
 
@@ -365,11 +392,12 @@ end
 
 function plot_series_comparison(
     reg::Bach.Register,
+    type::Char,
     mz_lswval::DataFrame,
     bachvar::Symbol,
     mzvar::Symbol,
     timespan::ClosedInterval{Float64},
-    target_volume = nothing,
+    target = nothing,
 )
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
@@ -391,8 +419,8 @@ function plot_series_comparison(
         step = :post,
         label = "$mzvar mozart",
     )
-    if target_volume !== nothing
-        hlines!(ax, target_volume, label = "target volume")
+    if type == 'P' && target !== nothing
+        hlines!(ax, target, label = "target")
     end
     axislegend(ax)
     return fig

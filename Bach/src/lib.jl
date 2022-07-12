@@ -11,33 +11,27 @@ struct StorageCurve
     s::Vector{Float64}
     a::Vector{Float64}
     q::Vector{Float64}
-    function StorageCurve(s, a, q)
+    h::Vector{Float64}
+    function StorageCurve(s, a, q, h)
         n = length(s)
         n <= 1 && error("StorageCurve needs at least two data points")
-        if n != length(a) || n != length(q)
+        if n != length(a) || n != length(q) || n != length(h)
             error("StorageCurve vectors are not of equal length")
         end
-        if !issorted(s) || !issorted(a) || !issorted(q)
+        if !issorted(s) || !issorted(a) || !issorted(q) || !issorted(h)
             error("StorageCurve vectors are not sorted")
         end
         if first(q) != 0.0
             error("StorageCurve discharge needs to start at 0")
         end
-        new(s, a, q)
+        new(s, a, q, h)
     end
 end
 
-function StorageCurve(vadvalue::DataFrame, lsw::Integer)
-    df = @subset(vadvalue, :lsw == lsw)
-    # fix an apparent digit cutoff issue in the Hupsel LSW table
-    if lsw == 151358
-        df.volume[end] += 1e6
-        df.area[end] += 1e6
-    end
-    return StorageCurve(df.volume, df.area, df.discharge)
+function StorageCurve(df::DataFrame)
+    return StorageCurve(df.volume, df.area, df.discharge, df.level)
 end
 
-# TODO build in transitions, or look into DataInterpolations
 function lookup(X, Y, x)
     if x <= first(X)
         return first(Y)
@@ -60,6 +54,7 @@ end
 
 lookup_area(curve::StorageCurve, s) = lookup(curve.s, curve.a, s)
 lookup_discharge(curve::StorageCurve, s) = lookup(curve.s, curve.q, s)
+lookup_level(curve::StorageCurve, s) = lookup(curve.s, curve.h, s)
 
 # see open_water_factor(t)
 const evap_factor = [
@@ -394,36 +389,35 @@ function sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
 end
 
 function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
-    Q_eact_itp = interpolator(reg, :Q_eact)
-    Q_prec_itp = interpolator(reg, :Q_prec)
-    drainage_itp = interpolator(reg, :drainage)
-    infiltration_itp = interpolator(reg, :infiltration)
-    urban_runoff_itp = interpolator(reg, :urban_runoff)
-    upstream_itp = interpolator(reg, :upstream)
-    alloc_agric_itp = interpolator(reg, :alloc_agric)
-    alloc_indus_itp = interpolator(reg, :alloc_indus)
-
-    S_itp = interpolator(reg, :S)
+    # TODO include upstream inflow
+    name = Symbol(:sys_, lsw_id, :₊lsw₊)
+    Q_eact_itp = interpolator(reg, Symbol(name, :Q_eact))
+    Q_prec_itp = interpolator(reg, Symbol(name, :Q_prec))
+    drainage_itp = interpolator(reg, Symbol(name, :drainage))
+    infiltration_itp = interpolator(reg, Symbol(name, :infiltration))
+    urban_runoff_itp = interpolator(reg, Symbol(name, :urban_runoff))
+    alloc_agric_itp = interpolator(reg, Symbol(name, :alloc_agric))
+    alloc_indus_itp = interpolator(reg, Symbol(name, :alloc_indus))
+    S_itp = interpolator(reg, Symbol(name, :S))
 
     Q_eact_sum = sum_fluxes(Q_eact_itp, times)
     Q_prec_sum = sum_fluxes(Q_prec_itp, times)
     drainage_sum = sum_fluxes(drainage_itp, times)
     infiltration_sum = sum_fluxes(infiltration_itp, times)
     urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
-    upstream_sum = sum_fluxes(upstream_itp, times)
     alloc_agric_sum = sum_fluxes(alloc_agric_itp, times)
     alloc_indus_sum = sum_fluxes(alloc_indus_itp, times)
 
     # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
     S_diff = diff(S_itp.(times .+ 1e-6))
 
-    if haskey(reg, :Q_out)
-        Q_out_itp = interpolator(reg, :Q_out)
+    if haskey(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q))
+        Q_out_itp = interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q))
         Q_out_sum = sum_fluxes(Q_out_itp, times)
         type = 'V'
     else
-        @assert haskey(reg, :Q_wm)
-        Q_wm_itp = interpolator(reg, :Q_wm)
+        @assert haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q))
+        Q_wm_itp = interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q))
         Q_wm_sum = sum_fluxes(Q_wm_itp, times)
         type = 'P'
     end
@@ -437,11 +431,10 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
         time_start = unix2datetime.(times[1:end-1]),
         time_end = unix2datetime.(times[2:end]),
         precip = Q_prec_sum,
-        evaporation = -Q_eact_sum,
+        evaporation = Q_eact_sum,
         drainage_sh = drainage_sum,
         infiltr_sh = infiltration_sum,
         urban_runoff = urban_runoff_sum,
-        upstream = upstream_sum,
         storage_diff = -S_diff,
         alloc_agric = -alloc_agric_sum,
         alloc_indus = -alloc_indus_sum,
@@ -455,7 +448,6 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
 
     # TODO add the balancecheck
     # bachwb = transform(bachwb, vars => (+) => :balancecheck)
-    bachwb.balancecheck .= 0.0
     bachwb.period = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
     return bachwb
 end

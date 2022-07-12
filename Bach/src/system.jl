@@ -3,91 +3,79 @@
 @variables t
 
 """
-ODESystem focused on Mozart LSW compatibility, not on composability.
+    FluidQuantityPort(; name, h = 0.0, Q = 0.0)
 
-# State or observed variables
-- S [m³]: storage volume
-- area [m²]: open water surface area
-- Q_prec [m³ s⁻¹]: precipitation inflow
-- Q_eact [m³ s⁻¹]: evaporation outflow
-- Q_out [m³ s⁻¹]: outflow
-- abs_agric [m³ s⁻¹]: actual allocated demand to agricultural user
-- abs_indus [m³ s⁻¹]: actual allocated demand to industry user
+Similar to FluidPort, but leaving out concentration for now.
 
-
-# Input parameters
-- P [m s⁻¹]: precipitation rate
-- E_pot [m s⁻¹]: evaporation rate
-- drainage [m³ s⁻¹]: drainage from Modflow
-- infiltration [m³ s⁻¹]: infiltration to Modflow
-- urban_runoff [m³ s⁻¹]: runoff from Metaswap
-- upstream [m³ s⁻¹]: inflow from upstream LSWs
-- dem_agric [m³ s⁻¹]: demand for agricultural user
-- dem_wm  [m³ s⁻¹]: demand for water management user
-- prio_agric : priority of allocation for agriculture w.r.t other users
-- prio_indus : priority of allocation for industry w.r.t. other users
-
+- h [m]: hydraulic head above reference level
+- Q [m³ s⁻¹]: volumetric flux
 """
-function FreeFlowLSW(; name, S, Δt, lsw, district)
-    vars = @variables(
-        S(t) = S,
-        area(t),
-        Q_prec(t) = 0,
-        Q_eact(t) = 0,
-        Q_out(t) = 0,
-        P(t) = 0,
-        [input = true],
-        E_pot(t) = 0,
-        [input = true],
-        drainage(t) = 0,
-        [input = true],
-        infiltration(t) = 0,
-        [input = true],
-        urban_runoff(t) = 0,
-        [input = true],
-        upstream(t) = 0,
-        [input = true],
-        alloc_agric(t) =0,
-        [input = true],
-        alloc_indus(t) =0,
-        [input=true],
-        abs_agric(t) =0,
-        abs_indus(t) =0
-
-    )
-    pars = @parameters(
-        dem_agric = 0,
-        dem_wm =0,
-        dem_indus =0,
-        prio_agric=0,
-        prio_indus =0,
-        Q_avail_vol =0
-    )
-    D = Differential(t)
-
-    eqs = Equation[
-        Q_out ~ lsw_discharge(S)
-        Q_prec ~ area * P
-        area ~ lsw_area(S)
-        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        abs_agric ~  alloc_agric *(0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        abs_indus ~  alloc_indus *(0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-
-        D(S) ~
-            Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact - Q_out - abs_agric - alloc_indus
-    ]
-    ODESystem(eqs, t, vars, pars; name)
+@connector function FluidQuantityPort(; name, h = 0.0, Q = 0.0)
+    vars = @variables h(t) = h Q(t) = Q [connect = Flow]
+    ODESystem(Equation[], t, vars, []; name)
 end
 
 """
-ODESystem focused on Mozart LSW compatibility, not on composability.
+    Storage(; name, S = 0.0)
+
+Storage S [m³] is an output variable that can be a function of the hydraulic head.
+"""
+@connector function Storage(; name, S = 0.0)
+    vars = @variables S(t) = S [output = true]
+    ODESystem(Equation[], t, vars, []; name)
+end
+
+
+function Weir(; name, lsw_id)
+    @named a = FluidQuantityPort()  # upstream
+    @named b = FluidQuantityPort()  # downstream
+    @named s = Storage()  # upstream storage
+
+    vars = @variables Q(t)
+    pars = @parameters lsw_id = lsw_id
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        # Q(S) rating curve
+        Q ~ lsw_discharge(s.S, lsw_id)
+        # connectors
+        Q ~ a.Q
+    ]
+    compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
+end
+
+# TODO user watermanagement (wm)
+function LevelControl(; name, lsw_id, target_volume, target_level)
+    @named a = FluidPort()  # lsw
+    @named b = FluidPort()  # district water
+    @named s = Storage()  # lsw storage
+
+    vars = @variables Q(t)
+    pars = @parameters lsw_id = lsw_id
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        # in callback set the flow rate
+        # connectors
+        Q ~ a.Q
+    ]
+    compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
+end
+
+"""
+Local surface water storage.
+
+This includes the generic parts of the LSW, the storage, level, meteo,
+constant input fluxes. Dynamic exchange fluxes can be defined in
+connected components.
 
 # State or observed variables
 - S [m³]: storage volume
 - area [m²]: open water surface area
 - Q_prec [m³ s⁻¹]: precipitation inflow
 - Q_eact [m³ s⁻¹]: evaporation outflow
-- Q_out [m³ s⁻¹]: outflow
 
 # Input parameters
 - P [m s⁻¹]: precipitation rate
@@ -95,18 +83,18 @@ ODESystem focused on Mozart LSW compatibility, not on composability.
 - drainage [m³ s⁻¹]: drainage from Modflow
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
-- upstream [m³ s⁻¹]: inflow from upstream LSWs
-- Δt [s]: period over which to spread to excess volume for outflow
 """
-function ControlledLSW(; name, S, h, Δt, target_volume, lsw, district)
+function LSW(; name, S, Δt, lsw_id, dw_id)
+    @named x = FluidQuantityPort()
+    @named s = Storage(; S)
+
     vars = @variables(
+        h(t),
         S(t) = S,
-        h(t) = h,
-        area(t),
+        Q_ex(t),  # upstream, downstream, users
         Q_prec(t) = 0,
         Q_eact(t) = 0,
-        Q_wm(t) = 0,
-        [input = true],
+        area(t),
         P(t) = 0,
         [input = true],
         E_pot(t) = 0,
@@ -117,22 +105,32 @@ function ControlledLSW(; name, S, h, Δt, target_volume, lsw, district)
         [input = true],
         urban_runoff(t) = 0,
         [input = true],
-        upstream(t) = 0,
-        [input = true],
     )
-    pars = @parameters target_volume = target_volume Δt = Δt lsw = lsw district = district
+    pars = @parameters(Δt = Δt, lsw_id = lsw_id, dw_id = dw_id)
+
     D = Differential(t)
 
     eqs = Equation[
-        # positive is inflow from districtwater, negative is discharging excess water
-        # Q_wm ~ -(S - target_volume) / Δt
-        # Q_wm_act ~ Q_wm
+        # lookups
+        h ~ lsw_level(S, lsw_id)
+        area ~ lsw_area(S, lsw_id)
+        # meteo fluxes are area dependent
         Q_prec ~ area * P
-        area ~ lsw_area(S)
-        h ~ lsw_level(S)
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        D(S) ~
-            Q_prec + upstream + drainage + infiltration + urban_runoff - Q_eact + Q_wm
+        # storage / balance
+        D(S) ~ Q_ex + Q_prec + Q_eact + drainage + infiltration + urban_runoff
+        # connectors
+        h ~ x.h
+        S ~ s.S
+        Q_ex ~ x.Q
     ]
-    ODESystem(eqs, t, vars, pars; name)
+    compose(ODESystem(eqs, t, vars, pars; name), x, s)
+end
+
+function HeadBoundary(; name, h)
+    @named x = FluidQuantityPort(; h)
+    vars = @variables h(t) = h [input = true]
+
+    eqs = Equation[x.h~h]
+    compose(ODESystem(eqs, t, vars, []; name), x)
 end
