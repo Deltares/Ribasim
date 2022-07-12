@@ -50,7 +50,8 @@ vars = [
     "urban_runoff",
     "storage_diff",
     "alloc_agric",
-    "alloc_wm"
+    "alloc_wm",
+    "alloc_indus"
 ]
 cols = vcat(metacols, vars)
 

@@ -350,6 +350,7 @@ function plot_waterbalance_comparison(wb::DataFrame)
     return fig
 end
 
+
 function plot_series_comparison(
     reg::Bach.Register,
     mz_lswval::DataFrame,
@@ -360,26 +361,19 @@ function plot_series_comparison(
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
 
-# <<<<<<< Updated upstream
-#     # plot all the calculated data points
-#     scatter!(
-#         ax,
-#         Bach.timesteps(reg),
-#         Bach.savedvalues(reg, bachvar);
-#         markersize = 4,
-#         color = :blue,
-#         label = "$bachvar bach",
-#     )
-#     stairs!(
-#         ax,
-#         datetime2unix.(mz_lswval.time_start),
-#         mz_lswval[!, mzvar];
-# =======
-    lines!(ax, timespan, interpolator(reg, :area); color = :blue, label = "S bach")
+    # plot all the calculated data points
+    scatter!(
+        ax,
+        Bach.timesteps(reg),
+        Bach.savedvalues(reg, bachvar);
+        markersize = 4,
+        color = :blue,
+        label = "$bachvar bach",
+    )
     stairs!(
         ax,
-        datetime2unix.(mz_lswval.time_start[1:end-1]),
-        mz_lswval.area[1:end-1];
+        datetime2unix.(mz_lswval.time_start),
+        mz_lswval[!, mzvar];
         color = :black,
         step = :post,
         label = "$mzvar mozart",
@@ -444,3 +438,27 @@ function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Flo
     return fig
 end
 
+"Plot timeseries of key variables related to user allocation and demand -- to check if multiple users can be modelled correctly
+Industry data is made up"
+function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+
+
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label="Bach Indus_alloc")
+
+    lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
+    lines!(ax2, timespan, interpolator(reg, :dem_indus), label="Bach Indus_dem")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
+
+
+    axislegend(ax1)
+    axislegend(ax2)
+
+
+    return fig
+end
