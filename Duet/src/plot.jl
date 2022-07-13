@@ -479,100 +479,107 @@ function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterv
     return fig
 end
 
-# "Plot user total demand and shortage"
-# function plot_user_demand(bachwb::DataFrame, mzwb::DataFrame)
-#     "long format daily waterbalance dataframe for comparing mozart and bach"
-#     mzwblsw = @subset(mzwb, :lsw == lsw_id)
-#     time_start = intersect(mzwblsw.time_start, bachwb.time_start)
-#     mzwblsw = @subset(mzwblsw, :time_start in time_start)
-#     bachwb = @subset(bachwb, :time_start in time_start)
-#     bachwb.dem_agric = mzwblsw.dem_agric
-#     bachwb.dem_indus = mzwblsw.dem_indus
-#     wb = vcat(stack(bachwb))
-#     wb = @subset(wb, :variable != "balancecheck")
+"Plot user total demand and shortage"
+function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},bachwb::DataFrame, mzwb::DataFrame, lsw_id)
 
-#     # use days since start as x
-#     startdate, enddate = extrema(wb.time_start)
-#     x = Dates.value.(Day.(wb.time_start .- startdate))
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
+    lines!(ax1, timespan, interpolator(reg, :dem_indus), label="Bach Indus_dem")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
 
-#     vars_user = [
-#         "dem_agric",
-#         "alloc_agric",
-#         "dem_wm",
-#         "alloc_indus"
-#         ]
-#     @chain wb begin
-#         @subset @byrow begin
-#             (:variable =="dem_agric")|(:variable==="alloc_agric")|| (:variable==="dem_agric") ||(:variable==="dem_agric") 
-#         end
-#     end
+    axislegend(ax1)
 
-#     stacks = [findfirst(==(v), vars_user) for v in wb.variable]
+    # long format daily waterbalance dataframe for bach
+    mzwblsw = @subset(mzwb, :lsw == lsw_id)
+    time_start = intersect(mzwblsw.time_start, bachwb.time_start)
+    mzwblsw = @subset(mzwblsw, :time_start in time_start)
+    bachwb = @subset(bachwb, :time_start in time_start)
+    bachwb.dem_agric = mzwblsw.dem_agric
+    bachwb.dem_indus = mzwblsw.dem_agric * 1.3 # as in one.jl. needs updating
+    wb = vcat(stack(bachwb))
+    wb = @subset(wb, :variable != "balancecheck")
 
-#     if any(isnothing, stacks)
-#         for v in wb.variable
+    vars_user = [
+        "alloc_agric",
+        "alloc_indus",
+        "dem_agric",
+        "dem_indus"
+        ]
+
+    for v in wb.variable
             
-#             if !(v in vars_user)
-#                 wb = @subset(wb, :variable != v)
-#                 #@error "nothing found" v vars_user
-#                 #error("nothing found")
-#             end
-#             i=i+1
-#         end
-#     end
-#     stacks = [findfirst(==(v), vars_user) for v in wb.variable]
+            if !(v in vars_user)
+                wb = @subset(wb, :variable != v)
 
-#     wbsubset.shortage .= ""
-#     for i in 1:nrow(wbsubset)
-#         if wbsubset.variable == "alloc_agric"  wbsubset.variable == "alloc_dem"
-#             wbsubset.shortage[i] == "supply"
-#         elseif wbsubset.variable == "alloc_dem"
-#             wbsubset.shortage[i] == "supply"
-#         else
-#             wbsubset.shortage[i] == "demand"
-#         end
-#     end
+            end
+        
+    end
 
-#     dodge = [x == "supply" ? 1 : 2 for x in wbsubset.shortage]
+    wb.shortage .= ""
+    wb.user .= ""
+    for i in 1:nrow(wb)
+        if wb.variable[i] == "alloc_agric"  
+            wb.shortage[i] = "supply"
+            wb.user[i] = "agri"
+        elseif wb.variable[i] == "alloc_indus"
+            wb.shortage[i] = "supply"
+            wb.user[i] = "indus"
+        elseif wb.variable[i] == "dem_indus"
+            wb.shortage[i] = "demand"
+            wb.user[i] = "indus"
+        else
+            wb.shortage[i] = "demand"
+            wb.user[i] = "agri"
+        end
+    end
+    users = ["agri", "indus"]
+    stacks = [findfirst(==(v), users) for v in wb.user]
 
-#     fig = Figure()
+    if any(isnothing, stacks)
+        for v in wb.variable
+            if !(v in user)
+                @error "nothing found" v users
+                error("nothing found")
+            end
+        end
+    end
 
-#     ax = Axis(
-#         fig[1, 1],
-#         # label the first and last day
-#         xticks = (collect(extrema(x)), string.([startdate, enddate])),
-#         xlabel = "time / day",
-#         ylabel = "volume / m³",
-#         title = "Bach user supply-demand water balance",
-#     )
+    startdate, enddate = extrema(wb.time_start)
+    x = Dates.value.(Day.(wb.time_start .- startdate))
+    dodge = [x == "demand" ? 1 : 2 for x in wb.shortage]
+    # use days since start as x
+    wb.value = wb.value .* -1
 
-#     barplot!(
-#         ax,
-#         x,
-#         wbsubset.value;
-#         dodge,
-#         stack = stacks,
-#         color = stacks,
-#         colormap = Duet.wong_colors,
-#     )
+    ax2 = Axis(
+        fig[2, 1],
+        # label the first and last day
+        xticks = (collect(extrema(x)), string.([startdate, enddate])),
+        xlabel = "time / day",
+        ylabel = "volume / m³",
+        title = "Bach user supply-demand water balance",
+    )
+    # TO DO - fix x axis time
+    cols = Duet.wong_colors[1:2]
 
-#     elements = vcat(
-#         [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
-#         [PolyElement(polycolor = Duet.wong_colors[i]) for i = 1:length(allvars)],
-#     )
-#     Legend(fig[1, 2], elements, vcat("Demand", "Supply", allvars))
+    barplot!(
+        ax2,
+        x,
+        wb.value;
+        dodge,
+        stack = stacks,
+        color = stacks,
+        colormap =  cols
+    )
+    elements = vcat(
+        [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
+        [PolyElement(polycolor = cols[i]) for i = 1:length(users)],
+    )
+    Legend(fig[2, 2], elements, vcat("Demand", "Supply", users))
 
-#     barplot!(
-#         ax,
-#         x,
-#         wb.value;
-#         dodge,
-#         stack = stacks,
-#         color = stacks,
-#         colormap = Duet.wong_colors,
-#     )
+    return fig
+end
 
-#     axislegend(ax1)
 
-#     return fig
-# end
+

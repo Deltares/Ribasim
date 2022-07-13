@@ -114,11 +114,14 @@ S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
 h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
 type::Char = only(local_surface_water_type)
 
-mzwb.dem_agric = mzwb.dem_agric .* -1 #keep all positive
-mzwb.alloc_agric = mzwb.alloc_agric .* -1 # only needed for plots
-dem_agric_series = Duet.create_series(mzwb, :dem_agric) 
-mzwb.dem_indus = mzwb.dem_agric * 1.3
-dem_indus_series = Duet.create_series(mzwb, :dem_indus)  # dummy value for testing prioritisation
+#TODO update as dictionaries 
+mzwblsw = @subset(mzwb, :lsw == lsw_id)
+uslswdem = @subset(uslswdem, :lsw == lsw_id)
+mzwblsw.dem_agric = mzwblsw.dem_agric .* -1 #keep all positive
+mzwblsw.alloc_agric = mzwblsw.alloc_agric .* -1 # only needed for plots
+dem_agric_series = Duet.create_series(mzwblsw, :dem_agric) 
+mzwblsw.dem_indus = mzwblsw.dem_agric * 1.3
+dem_indus_series = Duet.create_series(mzwblsw, :dem_indus)  # dummy value for testing prioritisation
 prio_agric_series = Bach.ForwardFill([times[begin]],uslswdem_agri.priority)
 prio_indus_series = Bach.ForwardFill([times[begin]],3) # a dummy value for testing prioritisation
 
@@ -369,5 +372,7 @@ Duet.plot_Qavailable_series(reg, timespan, mzwb)
 # plot for multiple demand allocation
 Duet.plot_Qavailable_dummy_series(reg, timespan)
 
+# plot for multiple demand allocation a supply-demand stack (currently using for dummy data in free flowing lsw)
+Duet.plot_user_demand(reg, timespan,bachwb, mzwb, lsw_id)
 
 
