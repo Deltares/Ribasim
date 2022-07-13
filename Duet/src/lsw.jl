@@ -286,7 +286,7 @@ function create_district(
     for (v, lsw_id) in enumerate(lsw_ids)
         lsw_sys = sys_dict[lsw_id]
 
-        out_vertices = outneighbors(graph, 1)
+        out_vertices = outneighbors(graph, v)
         out_lsw_ids = [lsw_ids[v] for v in out_vertices]
         out_lsws = [sys_dict[out_lsw_id] for out_lsw_id in out_lsw_ids]
 
@@ -335,7 +335,8 @@ function create_district(
     end
 
     @named district = ODESystem(eqs, t, [], [])
+    lsw_systems = [k for k in values(sys_dict)]
     district =
-        compose(district, vcat(collect(values(sys_dict)), headboundaries, bifurcations))
+        compose(district, vcat(lsw_systems, headboundaries, bifurcations))
     return district
 end
