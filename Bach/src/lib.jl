@@ -440,10 +440,11 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
         alloc_indus = -alloc_indus_sum,
 
     )
+    # flip signs since these come from a connected component, not the LSW itself
     if type == 'V'
         bachwb.todownstream = -Q_out_sum
     else
-        bachwb.watermanagement = Q_wm_sum
+        bachwb.watermanagement = -Q_wm_sum
     end
 
     # TODO add the balancecheck

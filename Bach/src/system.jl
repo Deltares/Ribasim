@@ -45,15 +45,16 @@ function Weir(; name, lsw_id)
     compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
 end
 
-# TODO user watermanagement (wm)
 function LevelControl(; name, lsw_id, target_volume, target_level)
-    @named a = FluidPort()  # lsw
-    @named b = FluidPort()  # district water
-    @named s = Storage()  # lsw storage
+    @named a = FluidQuantityPort()  # lsw
+    @named b = FluidQuantityPort()  # district water
 
-    vars = @variables Q(t)
-    pars = @parameters lsw_id = lsw_id
-
+    pars = @parameters(
+        Q = 0.0,
+        lsw_id = lsw_id,
+        target_volume = target_volume,
+        target_level = target_level,
+    )
     eqs = Equation[
         # conservation of flow
         a.Q + b.Q ~ 0
@@ -61,7 +62,7 @@ function LevelControl(; name, lsw_id, target_volume, target_level)
         # connectors
         Q ~ a.Q
     ]
-    compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
+    compose(ODESystem(eqs, t, [], pars; name), a, b)
 end
 
 """
@@ -133,4 +134,20 @@ function HeadBoundary(; name, h)
 
     eqs = Equation[x.h~h]
     compose(ODESystem(eqs, t, vars, []; name), x)
+end
+
+# Fractional bifurcation, only made for flow from a to b and c
+function Bifurcation(; name, fraction_b)
+    @named a = FluidQuantityPort()
+    @named b = FluidQuantityPort()
+    @named c = FluidQuantityPort()
+
+    pars = @parameters fraction_b = fraction_b
+
+    eqs = Equation[
+        # conservation of flow
+        b.Q ~ fraction_b * a.Q
+        c.Q ~ (1 - fraction_b) * a.Q
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end

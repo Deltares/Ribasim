@@ -17,25 +17,30 @@ using DataFrames
 using DataFrameMacros
 using Chain
 using IntervalSets
+using Graphs
 
 GLMakie.activate!()
 
 # Δt for periodic update frequency and setting the ControlledLSW output rate
 Δt::Float64 = 86400.0
+vars = @variables t
 
+lsw_hupselwest = 151309  # V, 2 upstream (hupsel & hupselzuid)
+lsw_hupselzuid = 151371  # V, no upstream
 lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
 lsw_neer = 121438  # V, upstream
-lsw_tol = 200164  # P
+lsw_kockengen = 200165  # P, no upstream
+lsw_tol = 200164  # P only kockengen upstream
 lsw_agric = 131183  # V
-lsw_id::Int = lsw_agric
+lsw_id::Int = lsw_tol
 
 dw_hupsel = 24  # Berkel / Slinge
-dw_agric = 12
-dw_id::Int = dw_agric
+dw_tol = 42  # around Tol
+dw_id::Int = dw_tol
 
 # read data from Mozart for all lsws
-reference_model = "daily"
+reference_model = "decadal"
 if reference_model == "daily"
     simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
     mozart_dir = normpath(simdir, "work/mozart")
@@ -70,12 +75,15 @@ ladvalue = Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik"))
 lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 lswvalue = Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"))
 uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
+lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 
-# if you want to run the entire district
-# lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
+# choose to run a district, subset or single lsw
+lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
 # lsw_ids = lswdik_district.lsw
-# if testing a single lsw
-lsw_ids = [lsw_id]
+# lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
+lsw_ids = [lsw_kockengen, lsw_tol]
+
+graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 mzwb = @subset(Mozart.read_mzwaterbalance(mzwaterbalance_path), :districtwatercode == dw_id)
@@ -86,7 +94,6 @@ drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 upstream_dict = Duet.create_dict(mzwb, :upstream)
-curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue)
 
 # TODO turn into a user demand dict
 uslswdem_lsw = @subset(uslswdem, :lsw == lsw_id)
@@ -103,6 +110,8 @@ enddate::DateTime = unix2datetime(times[end])
 dates::Vector{DateTime} = unix2datetime.(times)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
+
+curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, lswdik)
 
 # register lookup functions
 @eval Bach lsw_area(s, lsw_id) = Bach.lookup_area(Main.curve_dict[lsw_id], s)
@@ -128,6 +137,12 @@ prio_indus_series = Bach.ForwardFill([times[begin]],3) # a dummy value for testi
 curve = Bach.StorageCurve(vadvalue, lsw_id)
 q = Bach.lookup_discharge(curve, 1e6)
 a = Bach.lookup_area(curve, 1e6)
+function getstate(integrator, s)::Real
+    (; u) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), sysnames.u_symbol)
+    return u[i]
+end
 
 function param(integrator, s)::Real
     (; p) = integrator
@@ -165,10 +180,33 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :drainage), drainage)
         param!(integrator, Symbol(name, :infiltration), infiltration)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
+
+        if type == 'P'
+            # set the Q_wm for the coming day based on the expected storage
+            S = getstate(integrator, Symbol(name, :S))
+            outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
+            target_volume = param(integrator, Symbol(outname, :target_volume))
+            Δt = param(integrator, Symbol(name, :Δt))
+
+            f = SciMLBase.getobserved(sol)  # generated function
+            # first arg to f must be symbolic
+            area_symbol = Symbol(name, :area)
+            i = findfirst(==(area_symbol), sysnames.obs_symbol)
+            area_sym = sysnames.obs_syms[i]
+            area = f(area_sym, sol(t), p, t)
+
+            # what is the expected storage difference at the end of the period
+            # if there is no watermanagement?
+            # this assumes a constant area during the period
+            # TODO add upstream to ΔS calculation
+            ΔS = Δt * ((area * P) + drainage + infiltration + urban_runoff + (area * E_pot))
+            Q_wm = (S + ΔS - target_volume) / Δt
+
+            param!(integrator, Symbol(outname, :Q), Q_wm)
+        end
     end
 
-
-    Bach.save!(param_hist, tₜ, p)
+    Bach.save!(param_hist, t, p)
     return nothing
 
 
@@ -212,15 +250,8 @@ end
 
 sys_dict =
     Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt)
-sys_dict
 
-# this still needs a downstream boundary for weir.b
-lsw_sys = sys_dict[lsw_id]
-@variables t
-@named terminal = Bach.HeadBoundary(; h = 12.3)
-eqs = [connect(lsw_sys.weir.b, terminal.x)]
-@named sys_ = ODESystem(eqs, t)
-sys = compose(sys_, [lsw_sys, terminal])
+sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
 
 sim = structural_simplify(sys)
 

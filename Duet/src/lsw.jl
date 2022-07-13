@@ -170,6 +170,7 @@ function create_curve(
     vadvalue::DataFrame,
     vlvalue::DataFrame,
     ladvalue::DataFrame,
+    lswdik::DataFrame,
 )::Bach.StorageCurve
     if type == 'V'
         # for type V, add level based on the lowest weirearea (lowest level in vlvalue)
@@ -195,10 +196,12 @@ function create_curve(
         level = sort(vlvalue_lsw_weirarea.level)
     elseif type == 'P'
         ladvalue_lsw = @subset(ladvalue, :lsw == lsw_id)
+        lswinfo = only(@subset(lswdik, :lsw == lsw_id))
+        (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
 
         # use level to look up area, discharge is 0
         volume = Duet.tabulate_volumes(ladvalue_lsw, target_volume, target_level)
-        (; level, area, discharge) = ladvalue
+        (; level, area, discharge) = ladvalue_lsw
     else
         # O is for other; flood plains, dunes, harbour
         error("Unsupported LSW type $type")
@@ -215,10 +218,11 @@ function create_curve_dict(
     vadvalue::DataFrame,
     vlvalue::DataFrame,
     ladvalue::DataFrame,
+    lswdik::DataFrame,
 )::Dict{Int,Bach.StorageCurve}
     curve_dict = Dict{Int,Bach.StorageCurve}()
     for lsw_id in lsw_ids
-        curve = create_curve(lsw_id, type, vadvalue, vlvalue, ladvalue)
+        curve = create_curve(lsw_id, type, vadvalue, vlvalue, ladvalue, lswdik)
         curve_dict[lsw_id] = curve
     end
     return curve_dict
@@ -235,7 +239,7 @@ function create_sys_dict(
     Δt::Float64,
 )
     sys_dict = Dict{Int,ODESystem}()
-    @variables t
+
     for lsw_id in lsw_ids
         lswinfo = only(@subset(lswdik, :lsw == lsw_id))
         (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
@@ -246,14 +250,91 @@ function create_sys_dict(
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
-        # create and connect Weir
-        @assert type == 'V'  # TODO LevelControl
-        @named weir = Bach.Weir(; lsw_id)
-        eqs = [connect(lsw.x, weir.a), connect(lsw.s, weir.s)]
-        lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
-        lsw_sys = compose(lsw_sys, lsw, weir)
+        # create and connect Weir or LevelControl
+        if type == 'V'
+            @named weir = Bach.Weir(; lsw_id)
+            eqs = [connect(lsw.x, weir.a), connect(lsw.s, weir.s)]
+            lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
+            lsw_sys = compose(lsw_sys, lsw, weir)
+        else
+            @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
+            eqs = [connect(lsw.x, levelcontrol.a)]
+            lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
+            lsw_sys = compose(lsw_sys, lsw, levelcontrol)
+        end
 
         sys_dict[lsw_id] = lsw_sys
     end
     return sys_dict
+end
+
+# connect the LSW systems with each other, with boundaries at the end
+# and bifurcations when needed
+function create_district(
+    lsw_ids::Vector{Int},
+    type::Char,
+    graph::DiGraph,
+    lswrouting::DataFrame,
+    sys_dict::Dict{Int,ODESystem},
+)::ODESystem
+
+    eqs = Equation[]
+    headboundaries = ODESystem[]
+    bifurcations = ODESystem[]
+    @assert nv(graph) == length(sys_dict) == length(lsw_ids)
+
+    for (v, lsw_id) in enumerate(lsw_ids)
+        lsw_sys = sys_dict[lsw_id]
+
+        out_vertices = outneighbors(graph, 1)
+        out_lsw_ids = [lsw_ids[v] for v in out_vertices]
+        out_lsws = [sys_dict[out_lsw_id] for out_lsw_id in out_lsw_ids]
+
+        n_out = length(out_vertices)
+        if n_out == 0
+            name = Symbol("headboundary_", lsw_id)
+            headboundary = Bach.HeadBoundary(; name, h = 12.3)
+            push!(headboundaries, headboundary)
+            if type == 'V'
+                push!(eqs, connect(lsw_sys.weir.b, headboundary.x))
+            else
+                push!(eqs, connect(lsw_sys.levelcontrol.b, headboundary.x))
+            end
+        elseif n_out == 1
+            out_lsw = only(out_lsws)
+            if type == 'V'
+                push!(eqs, connect(lsw_sys.weir.b, out_lsw.lsw.x))
+            else
+                push!(eqs, connect(lsw_sys.levelcontrol.b, out_lsw.lsw.x))
+            end
+        elseif n_out == 2
+            name = Symbol("bifurcation_", lsw_id)
+            # the the fraction from Mozart
+            lswrouting_split = @subset(lswrouting, :lsw_from == lsw_id)
+            @assert sort(lswrouting_split.lsw_to) == sort(out_lsw_ids)
+            @assert sum(lswrouting_split.fraction == 1.0)
+
+            # the first row's lsw_to becomes b, the second c
+            fraction_b = lswrouting_split.fraction[1]
+            out_lsw_b = sys_dict[lswrouting_split.lsw_to[1]]
+            out_lsw_c = sys_dict[lswrouting_split.lsw_to[2]]
+
+            bifurcation = Bifurcation(; name, fraction_b)
+            push!(bifurcations, bifurcation)
+            if type == 'V'
+                push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
+            else
+                push!(eqs, connect(lsw_sys.levelcontrol.b, bifurcation.a))
+            end
+            push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
+            push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))
+        else
+            error("outflow to more than 2 LSWs not supported")
+        end
+    end
+
+    @named district = ODESystem(eqs, t, [], [])
+    district =
+        compose(district, vcat(collect(values(sys_dict)), headboundaries, bifurcations))
+    return district
 end

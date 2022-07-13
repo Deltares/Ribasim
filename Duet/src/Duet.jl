@@ -19,6 +19,8 @@ using DataFrames
 using CSV
 using IntervalSets
 
+@variables t
+
 include("lsw.jl")
 include("plot.jl")
 
