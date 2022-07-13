@@ -293,7 +293,8 @@ function create_district(
         n_out = length(out_vertices)
         if n_out == 0
             name = Symbol("headboundary_", lsw_id)
-            headboundary = Bach.HeadBoundary(; name, h = 12.3)
+            # h value on the boundary is not used, but needed as BC
+            headboundary = Bach.HeadBoundary(; name, h = 0.0)
             push!(headboundaries, headboundary)
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, headboundary.x))

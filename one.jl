@@ -21,7 +21,7 @@ using Graphs
 
 GLMakie.activate!()
 
-# Δt for periodic update frequency and setting the ControlledLSW output rate
+# Δt for periodic update frequency, including user horizons
 Δt::Float64 = 86400.0
 vars = @variables t
 
@@ -163,7 +163,6 @@ function periodic_update!(integrator)
     # update all forcing
     # exchange with Modflow and Metaswap here
     (; t, p, sol) = integrator
-    tₜ = t  # the value, not the symbolic
 
     for lsw_id in lsw_ids
         P = prec_dict[lsw_id](t)
