@@ -252,7 +252,7 @@ Useful for plotting the graph using the example below:
 """
 node_coords(topology) = Point2f.(zip(topology.node_x, topology.node_y))
 
-# 8 color palette by Wong (Makie.wong_colors() doesn't have black)
+# 10 color palette by Wong (Makie.wong_colors() doesn't have black)
 wong_colors = [
     colorant"rgb(0,114,178)",
     colorant"rgb(230,159,0)",
@@ -262,6 +262,9 @@ wong_colors = [
     colorant"rgb(213,94,0)",
     colorant"rgb(240,228,66)",
     colorant"black",
+    colorant"rgb(255,160,122)", 
+    colorant"rgb(192,192,192)",
+
 ]
 
 "Plot timeseries of several key variables."
@@ -358,6 +361,8 @@ function plot_waterbalance_comparison(wb::DataFrame)
     return fig
 end
 
+
+
 function plot_series_comparison(
     reg::Bach.Register,
     mz_lswval::DataFrame,
@@ -401,3 +406,173 @@ end
 function plot_series_comparison(reg::Bach.Register, timespan::ClosedInterval{DateTime})
     plot_series_comparison(reg, unixtimespan(timespan))
 end
+
+"Plot timeseries of key variables related to user allocation and demand"
+function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Float64}, mzwb)
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Bach Agric_use")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :dem_agric), label="Mz Agric_demand")
+
+     stairs!(
+         ax2,
+         timespan,
+         mzwb.dem_agric / 864000;
+         color = :black,
+         step = :post,
+         label = "Mz Agric_demamd",
+     )
+     stairs!(
+        ax2,
+        timespan,
+        mzwb.alloc_agric /864000;
+        color = :red,
+        step = :post,
+        label = "Mz Agric_alloc",
+    )
+    
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+
+    lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Bach Infiltration")
+    lines!(ax3, timespan, interpolator(reg, :drainage), label = "Bach Drainage")
+    lines!(ax3, timespan, interpolator(reg, :urban_runoff), label = "Bach runoff")
+
+    lines!(ax4, timespan, interpolator(reg, :P), label = "Bach Precip")
+    lines!(ax4, timespan, interpolator(reg, :E_pot), label = "Bach Evap")
+
+    axislegend(ax1)
+    axislegend(ax2)
+    axislegend(ax3)
+    axislegend(ax4)
+
+    return fig
+end
+
+"Plot timeseries of key variables related to user allocation and demand -- to check if multiple users can be modelled correctly
+Industry data is made up"
+function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
+    fig = Figure()
+    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+
+
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label="Bach Indus_alloc")
+
+    lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
+    lines!(ax2, timespan, interpolator(reg, :dem_indus), label="Bach Indus_dem")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
+
+
+    axislegend(ax1)
+    axislegend(ax2)
+
+
+    return fig
+end
+
+# "Plot user total demand and shortage"
+# function plot_user_demand(bachwb::DataFrame, mzwb::DataFrame)
+#     "long format daily waterbalance dataframe for comparing mozart and bach"
+#     mzwblsw = @subset(mzwb, :lsw == lsw_id)
+#     time_start = intersect(mzwblsw.time_start, bachwb.time_start)
+#     mzwblsw = @subset(mzwblsw, :time_start in time_start)
+#     bachwb = @subset(bachwb, :time_start in time_start)
+#     bachwb.dem_agric = mzwblsw.dem_agric
+#     bachwb.dem_indus = mzwblsw.dem_indus
+#     wb = vcat(stack(bachwb))
+#     wb = @subset(wb, :variable != "balancecheck")
+
+#     # use days since start as x
+#     startdate, enddate = extrema(wb.time_start)
+#     x = Dates.value.(Day.(wb.time_start .- startdate))
+
+#     vars_user = [
+#         "dem_agric",
+#         "alloc_agric",
+#         "dem_wm",
+#         "alloc_indus"
+#         ]
+#     @chain wb begin
+#         @subset @byrow begin
+#             (:variable =="dem_agric")|(:variable==="alloc_agric")|| (:variable==="dem_agric") ||(:variable==="dem_agric") 
+#         end
+#     end
+
+#     stacks = [findfirst(==(v), vars_user) for v in wb.variable]
+
+#     if any(isnothing, stacks)
+#         for v in wb.variable
+            
+#             if !(v in vars_user)
+#                 wb = @subset(wb, :variable != v)
+#                 #@error "nothing found" v vars_user
+#                 #error("nothing found")
+#             end
+#             i=i+1
+#         end
+#     end
+#     stacks = [findfirst(==(v), vars_user) for v in wb.variable]
+
+#     wbsubset.shortage .= ""
+#     for i in 1:nrow(wbsubset)
+#         if wbsubset.variable == "alloc_agric"  wbsubset.variable == "alloc_dem"
+#             wbsubset.shortage[i] == "supply"
+#         elseif wbsubset.variable == "alloc_dem"
+#             wbsubset.shortage[i] == "supply"
+#         else
+#             wbsubset.shortage[i] == "demand"
+#         end
+#     end
+
+#     dodge = [x == "supply" ? 1 : 2 for x in wbsubset.shortage]
+
+#     fig = Figure()
+
+#     ax = Axis(
+#         fig[1, 1],
+#         # label the first and last day
+#         xticks = (collect(extrema(x)), string.([startdate, enddate])),
+#         xlabel = "time / day",
+#         ylabel = "volume / m³",
+#         title = "Bach user supply-demand water balance",
+#     )
+
+#     barplot!(
+#         ax,
+#         x,
+#         wbsubset.value;
+#         dodge,
+#         stack = stacks,
+#         color = stacks,
+#         colormap = Duet.wong_colors,
+#     )
+
+#     elements = vcat(
+#         [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
+#         [PolyElement(polycolor = Duet.wong_colors[i]) for i = 1:length(allvars)],
+#     )
+#     Legend(fig[1, 2], elements, vcat("Demand", "Supply", allvars))
+
+#     barplot!(
+#         ax,
+#         x,
+#         wb.value;
+#         dodge,
+#         stack = stacks,
+#         color = stacks,
+#         colormap = Duet.wong_colors,
+#     )
+
+#     axislegend(ax1)
+
+#     return fig
+# end
