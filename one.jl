@@ -81,8 +81,8 @@ lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 # choose to run a district, subset or single lsw
 # lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
 # lsw_ids = lswdik_district.lsw
-lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
-# lsw_ids = [lsw_hupsel]
+# lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
+lsw_ids = [lsw_hupsel]
 # lsw_ids = [lsw_hupsel, lsw_hupselwest, lsw_hupselwestwest]
 # lsw_ids = [lsw_kockengen, lsw_tol]
 
@@ -100,7 +100,8 @@ drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 demand_agric_dict, prio_agric_dict = Duet.create_user_dict(uslswdem, "A")
-demand_indus_dict, prio_indus_dict = Duet.create_user_dict(uslswdem, "I")
+# use "A" instead of "I" for industry since that doesn't exist in the data
+demand_indus_dict, prio_indus_dict = Duet.create_user_dict(uslswdem, "A")
 
 # values that don't vary between LSWs
 first_lsw_id = first(lsw_ids)
@@ -196,6 +197,7 @@ function periodic_update!(integrator)
         # allocate to different users
         allocate!(;
             integrator,
+            name,
             P,
             area,
             E_pot,
@@ -209,14 +211,13 @@ function periodic_update!(integrator)
         )
 
         # update parameters
-        name = Symbol(:sys_, lsw_id, :₊lsw₊)
         param!(integrator, Symbol(name, :P), P)
         param!(integrator, Symbol(name, :E_pot), E_pot)
         param!(integrator, Symbol(name, :drainage), drainage)
         param!(integrator, Symbol(name, :infiltration), infiltration)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
-        param!(integrator, -Symbol(name, :demand_agric), demand_agric)
-        param!(integrator, -Symbol(name, :demand_indus), demand_indus)
+        param!(integrator, Symbol(name, :demand_agric), -demand_agric)
+        param!(integrator, Symbol(name, :demand_indus), -demand_indus)
         param!(integrator, Symbol(name, :prio_agric), prio_agric)
         param!(integrator, Symbol(name, :prio_indus), prio_indus)
     end
@@ -227,6 +228,7 @@ end
 
 function allocate!(;
     integrator,
+    name,
     P,
     area,
     E_pot,
@@ -242,8 +244,7 @@ function allocate!(;
 
     # Note: equation not currently reproducing Mozart
     Q_avail_vol =
-        ((P - E_pot) * area) / (Δt) - min(0, (infiltration - drainage - urban_runoff))
-    param!(integrator, :Q_avail_vol, Q_avail_vol) # for plotting only
+        ((P - E_pot) * area) / Δt - min(0.0, infiltration - drainage - urban_runoff)
 
     # Create a lookup table for user prioritisation and demand
     # Will update this to not have to manually specify which users
@@ -270,16 +271,12 @@ function allocate!(;
         priority_lookup.Alloc[i] = Alloc_i
     end
 
-    param!(
-        integrator,
-        :alloc_agric,
-        -only(@subset(priority_lookup, :User == "Agric")).Alloc,
-    )
-    param!(
-        integrator,
-        :alloc_indus,
-        -only(@subset(priority_lookup, :User == "Indus")).Alloc,
-    )
+    alloc_agric = only(@subset(priority_lookup, :User == "Agric")).Alloc
+    alloc_indus = only(@subset(priority_lookup, :User == "Indus")).Alloc
+
+    # update parameters
+    param!(integrator, Symbol(name, :alloc_agric), -alloc_agric)
+    param!(integrator, Symbol(name, :alloc_indus), -alloc_indus)
 
     return nothing
 end
