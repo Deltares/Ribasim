@@ -135,8 +135,8 @@ mzwblsw.alloc_agric = mzwblsw.alloc_agric .* -1 # only needed for plots
 dem_agric_series = Duet.create_series(mzwblsw, :dem_agric)
 mzwblsw.dem_indus = mzwblsw.dem_agric * 1.3
 dem_indus_series = Duet.create_series(mzwblsw, :dem_indus)  # dummy value for testing prioritisation
-prio_agric_series = Bach.ForwardFill([times[begin]],uslswdem_agri.priority)
-prio_indus_series = Bach.ForwardFill([times[begin]],3) # a dummy value for testing prioritisation
+prio_agric_series = Bach.ForwardFill([times[begin]], uslswdem_agri.priority)
+prio_indus_series = Bach.ForwardFill([times[begin]], 3) # a dummy value for testing prioritisation
 
 
 @subset(vadvalue, :lsw == lsw_id)
@@ -177,7 +177,19 @@ function periodic_update!(integrator)
         infiltration = infiltration_dict[lsw_id](t)
         urban_runoff = urban_runoff_dict[lsw_id](t)
 
-        allocate!(;integrator,  P, areaₜ,E_pot,urban_runoff, infiltration, drainage, dem_agric, dem_indus, prio_indus, prio_agric)
+        allocate!(;
+            integrator,
+            P,
+            area,
+            E_pot,
+            urban_runoff,
+            infiltration,
+            drainage,
+            dem_agric,
+            dem_indus,
+            prio_indus,
+            prio_agric,
+        )
 
         name = Symbol(:sys_, lsw_id, :₊lsw₊)
         param!(integrator, Symbol(name, :P), P)
@@ -217,20 +229,38 @@ function periodic_update!(integrator)
 
 end
 
-function allocate!(;integrator, P, areaₜ, E_pot, dem_agric, urban_runoff,drainage, prio_agric,  infiltration, prio_indus, dem_indus)
+function allocate!(;
+    integrator,
+    P,
+    area,
+    E_pot,
+    dem_agric,
+    urban_runoff,
+    drainage,
+    prio_agric,
+    infiltration,
+    prio_indus,
+    dem_indus,
+)
     # function for demand allocation based upon user prioritisation
 
     # Note: equation not currently reproducing Mozart
-     Q_avail_vol = ((P - E_pot)*areaₜ)/(Δt) - min(0,(infiltration-drainage-urban_runoff))
-     param!(integrator, :Q_avail_vol, Q_avail_vol) # for plotting only
+    Q_avail_vol =
+        ((P - E_pot) * area) / (Δt) - min(0, (infiltration - drainage - urban_runoff))
+    param!(integrator, :Q_avail_vol, Q_avail_vol) # for plotting only
 
     # Create a lookup table for user prioritisation and demand
     # Will update this to not have to manually specify which users
-    priority_lookup = DataFrame(User= ["Agric",  "Indus"],Priority = [prio_agric,  prio_indus], Demand = [dem_agric,  dem_indus], Alloc = [0.0,0.0])
-    sort!(priority_lookup,[:Priority], rev = false) # Higher number is lower priority
+    priority_lookup = DataFrame(
+        User = ["Agric", "Indus"],
+        Priority = [prio_agric, prio_indus],
+        Demand = [dem_agric, dem_indus],
+        Alloc = [0.0, 0.0],
+    )
+    sort!(priority_lookup, [:Priority], rev = false) # Higher number is lower priority
 
-     # Add loop through demands
-    for i in 1:nrow(priority_lookup)
+    # Add loop through demands
+    for i = 1:nrow(priority_lookup)
 
         if priority_lookup.Demand[i] == 0
             Alloc_i = 0.0
@@ -348,4 +378,4 @@ Duet.plot_Qavailable_series(reg, timespan, mzwb)
 Duet.plot_Qavailable_dummy_series(reg, timespan)
 
 # plot for multiple demand allocation a supply-demand stack (currently using for dummy data in free flowing lsw)
-Duet.plot_user_demand(reg, timespan,bachwb, mzwb, lsw_id)
+Duet.plot_user_demand(reg, timespan, bachwb, mzwb, lsw_id)

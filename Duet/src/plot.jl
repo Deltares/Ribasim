@@ -262,9 +262,8 @@ wong_colors = [
     colorant"rgb(213,94,0)",
     colorant"rgb(240,228,66)",
     colorant"black",
-    colorant"rgb(255,160,122)", 
+    colorant"rgb(255,160,122)",
     colorant"rgb(192,192,192)",
-
 ]
 
 "Plot timeseries of several key variables."
@@ -439,32 +438,32 @@ end
 function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Float64}, mzwb)
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
-    ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right )
-    ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right)
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Bach Q_avail_vol")
     #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Bach Agric_use")
     lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :dem_agric), label="Mz Agric_demand")
+    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Mz Agric_demand")
 
-     stairs!(
-         ax2,
-         timespan,
-         mzwb.dem_agric / 864000;
-         color = :black,
-         step = :post,
-         label = "Mz Agric_demamd",
-     )
-     stairs!(
+    stairs!(
         ax2,
         timespan,
-        mzwb.alloc_agric /864000;
+        mzwb.dem_agric / 864000;
+        color = :black,
+        step = :post,
+        label = "Mz Agric_demamd",
+    )
+    stairs!(
+        ax2,
+        timespan,
+        mzwb.alloc_agric / 864000;
         color = :red,
         step = :post,
         label = "Mz Agric_alloc",
     )
-    
+
     lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
 
     lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Bach Infiltration")
@@ -487,15 +486,15 @@ Industry data is made up"
 function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right )
+    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
 
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol),  label = "Bach Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Bach Q_avail_vol")
     lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label="Bach Indus_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
 
     lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
-    lines!(ax2, timespan, interpolator(reg, :dem_indus), label="Bach Indus_dem")
+    lines!(ax2, timespan, interpolator(reg, :dem_indus), label = "Bach Indus_dem")
     lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
     lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
 
@@ -508,12 +507,18 @@ function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterv
 end
 
 "Plot user total demand and shortage"
-function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},bachwb::DataFrame, mzwb::DataFrame, lsw_id)
+function plot_user_demand(
+    reg::Bach.Register,
+    timespan::ClosedInterval{Float64},
+    bachwb::DataFrame,
+    mzwb::DataFrame,
+    lsw_id,
+)
 
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
-    lines!(ax1, timespan, interpolator(reg, :dem_indus), label="Bach Indus_dem")
+    lines!(ax1, timespan, interpolator(reg, :dem_indus), label = "Bach Indus_dem")
     lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
     lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
 
@@ -529,26 +534,21 @@ function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},
     wb = vcat(stack(bachwb))
     wb = @subset(wb, :variable != "balancecheck")
 
-    vars_user = [
-        "alloc_agric",
-        "alloc_indus",
-        "dem_agric",
-        "dem_indus"
-        ]
+    vars_user = ["alloc_agric", "alloc_indus", "dem_agric", "dem_indus"]
 
     for v in wb.variable
-            
-            if !(v in vars_user)
-                wb = @subset(wb, :variable != v)
 
-            end
-        
+        if !(v in vars_user)
+            wb = @subset(wb, :variable != v)
+
+        end
+
     end
 
     wb.shortage .= ""
     wb.user .= ""
-    for i in 1:nrow(wb)
-        if wb.variable[i] == "alloc_agric"  
+    for i = 1:nrow(wb)
+        if wb.variable[i] == "alloc_agric"
             wb.shortage[i] = "supply"
             wb.user[i] = "agri"
         elseif wb.variable[i] == "alloc_indus"
@@ -591,15 +591,7 @@ function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},
     # TO DO - fix x axis time
     cols = Duet.wong_colors[1:2]
 
-    barplot!(
-        ax2,
-        x,
-        wb.value;
-        dodge,
-        stack = stacks,
-        color = stacks,
-        colormap =  cols
-    )
+    barplot!(ax2, x, wb.value; dodge, stack = stacks, color = stacks, colormap = cols)
     elements = vcat(
         [MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
         [PolyElement(polycolor = cols[i]) for i = 1:length(users)],
@@ -608,6 +600,3 @@ function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},
 
     return fig
 end
-
-
-
