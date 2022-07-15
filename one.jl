@@ -1,9 +1,9 @@
-# Trying to get to feature completion using Mozart schematisation for only the Hupsel LSW
-# lsw.jl focuses on preparing the data, one.jl on running the model
+# Run a Bach simulation on a subset of LSWs based on Mozart schematisation, and compare.
 
-using Bach
 using Mozart
+using Bach
 using Duet
+
 using Dates
 using GLMakie
 using DiffEqCallbacks: PeriodicCallback
@@ -25,6 +25,7 @@ GLMakie.activate!()
 Δt::Float64 = 86400.0
 vars = @variables t
 
+lsw_hupselwestwest = 151316  # V, 2 upstream (hupsel & hupselzuid)
 lsw_hupselwest = 151309  # V, 2 upstream (hupsel & hupselzuid)
 lsw_hupselzuid = 151371  # V, no upstream
 lsw_hupsel = 151358  # V, no upstream, no agric
@@ -33,11 +34,11 @@ lsw_neer = 121438  # V, upstream
 lsw_kockengen = 200165  # P, no upstream
 lsw_tol = 200164  # P only kockengen upstream
 lsw_agric = 131183  # V
-lsw_id::Int = lsw_tol
+lsw_id::Int = lsw_hupsel
 
 dw_hupsel = 24  # Berkel / Slinge
 dw_tol = 42  # around Tol
-dw_id::Int = dw_tol
+dw_id::Int = dw_hupsel
 
 # read data from Mozart for all lsws
 reference_model = "decadal"
@@ -78,12 +79,17 @@ uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 
 # choose to run a district, subset or single lsw
-lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
+# lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
 # lsw_ids = lswdik_district.lsw
-# lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
-lsw_ids = [lsw_kockengen, lsw_tol]
+lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
+# lsw_ids = [lsw_hupsel]
+# lsw_ids = [lsw_hupsel, lsw_hupselwest, lsw_hupselwestwest]
+# lsw_ids = [lsw_kockengen, lsw_tol]
 
 graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
+
+# using GraphMakie
+# graphplot(graph)
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 mzwb = @subset(Mozart.read_mzwaterbalance(mzwaterbalance_path), :districtwatercode == dw_id)
@@ -254,22 +260,10 @@ sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
 
 sim = structural_simplify(sys)
 
-# for debugging bad systems (parts of structural_simplify)
-sys_check = expand_connections(sys)
-state = TearingState(sys_check);
-state, = MTK.inputs_to_parameters!(state);
-sys_check = MTK.alias_elimination!(state)
-state = TearingState(sys_check);
-check_consistency(state)
-equations(sys_check)
-states(sys_check)
-observed(sys_check)
-parameters(sys_check)
-
-equations(sim)
-states(sim)
-observed(sim)
-parameters(sim)
+# equations(sim)
+# states(sim)
+# observed(sim)
+# parameters(sim)
 
 sysnames = Bach.Names(sim)
 param_hist = ForwardFill(Float64[], Vector{Float64}[])

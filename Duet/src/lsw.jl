@@ -336,7 +336,6 @@ function create_district(
 
     @named district = ODESystem(eqs, t, [], [])
     lsw_systems = [k for k in values(sys_dict)]
-    district =
-        compose(district, vcat(lsw_systems, headboundaries, bifurcations))
+    district = compose(district, vcat(lsw_systems, headboundaries, bifurcations))
     return district
 end
