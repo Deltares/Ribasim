@@ -96,7 +96,10 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         area(t),
+        has_water(t),
         P(t) = 0,
+        abs_agric(t) = 0,
+        abs_indus(t) = 0,
         [input = true],
         E_pot(t) = 0,
         [input = true],
@@ -106,8 +109,20 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         [input = true],
         urban_runoff(t) = 0,
         [input = true],
+        alloc_agric(t) = 0,
+        [input = true],
+        alloc_indus(t) = 0,
+        [input = true],
     )
-    pars = @parameters(Δt = Δt, lsw_id = lsw_id, dw_id = dw_id)
+    pars = @parameters(
+        Δt = Δt,
+        lsw_id = lsw_id,
+        dw_id = dw_id,
+        demand_agric = 0.0,
+        prio_agric = 0.0,
+        demand_indus = 0.0,
+        prio_indus = 0.0,
+    )
 
     D = Differential(t)
 
@@ -115,9 +130,14 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         # lookups
         h ~ lsw_level(S, lsw_id)
         area ~ lsw_area(S, lsw_id)
+        # smooth factor that goes from 0.02 at 30 m3 to 0.98 at 50 m3
+        has_water ~ (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # meteo fluxes are area dependent
-        Q_prec ~ area * P
-        Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        Q_prec ~ area * P * has_water
+        Q_eact ~ area * E_pot * has_water
+        # abstract the allocation unless there is unexpectedly no water
+        abs_agric ~ alloc_agric * has_water
+        abs_indus ~ alloc_indus * has_water
         # storage / balance
         D(S) ~ Q_ex + Q_prec + Q_eact + drainage + infiltration + urban_runoff
         # connectors

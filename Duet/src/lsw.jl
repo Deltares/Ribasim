@@ -126,6 +126,18 @@ function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
     return dict
 end
 
+function create_user_dict(uslswdem::DataFrame, usercode::String)
+    demand_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    prio_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    uslswdem_user = @subset(uslswdem, :usercode == usercode)
+    for (key, df) in pairs(groupby(uslswdem_user, :lsw))
+        times = datetime2unix.(df.time_start)
+        demand_dict[key.lsw] = ForwardFill(times, copy(df.user_surfacewater_demand))
+        prio_dict[key.lsw] = ForwardFill(times, Vector{Float64}(df.priority))
+    end
+    return demand_dict, prio_dict
+end
+
 # add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
 # this way the level or area can be looked up from the volume
 function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
