@@ -110,6 +110,10 @@ infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 upstream_dict = Duet.create_dict(mzwb, :upstream)
 
+mzwb.dem_agric = mzwb.dem_agric .* -1 #keep all positive
+dem_agric_dict = Duet.create_dict(mzwb, :dem_agric)
+alloc_agric_dict = Duet.create_dict(mzwb, :alloc_agric)
+
 S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
 h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
 type::Char = only(local_surface_water_type)
@@ -117,9 +121,7 @@ type::Char = only(local_surface_water_type)
 #TODO update as dictionaries 
 mzwblsw = @subset(mzwb, :lsw == lsw_id)
 uslswdem = @subset(uslswdem, :lsw == lsw_id)
-mzwblsw.dem_agric = mzwblsw.dem_agric .* -1 #keep all positive
 mzwblsw.alloc_agric = mzwblsw.alloc_agric .* -1 # only needed for plots
-dem_agric_series = Duet.create_series(mzwblsw, :dem_agric) 
 mzwblsw.dem_indus = mzwblsw.dem_agric * 1.3
 dem_indus_series = Duet.create_series(mzwblsw, :dem_indus)  # dummy value for testing prioritisation
 prio_agric_series = Bach.ForwardFill([times[begin]],uslswdem_agri.priority)
@@ -159,7 +161,8 @@ function periodic_update_v!(integrator)
         infiltration = infiltration_dict[lsw](t)
         urban_runoff = urban_runoff_dict[lsw](t)
         upstream = upstream_dict[lsw](t)
-        dem_agric = dem_agric_series(t)
+        dem_agric = dem_agric_dict[lsw](t)
+
         prio_agric = prio_agric_series(t)
         prio_indus = prio_indus_series(t)
         dem_indus = dem_indus_series(t)

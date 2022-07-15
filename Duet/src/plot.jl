@@ -507,7 +507,7 @@ function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},
         "dem_agric",
         "dem_indus"
         ]
-
+    # keep only required variables for stacks
     for v in wb.variable
             
             if !(v in vars_user)
@@ -516,7 +516,7 @@ function plot_user_demand(reg::Bach.Register, timespan::ClosedInterval{Float64},
             end
         
     end
-
+    # TODO - update script to automatically detect part of string
     wb.shortage .= ""
     wb.user .= ""
     for i in 1:nrow(wb)
