@@ -1,9 +1,9 @@
-# Trying to get to feature completion using Mozart schematisation for only the Hupsel LSW
-# lsw.jl focuses on preparing the data, one.jl on running the model
+# Run a Bach simulation on a subset of LSWs based on Mozart schematisation, and compare.
 
-using Bach
 using Mozart
+using Bach
 using Duet
+
 using Dates
 using GLMakie
 using DiffEqCallbacks: PeriodicCallback
@@ -17,21 +17,30 @@ using DataFrames
 using DataFrameMacros
 using Chain
 using IntervalSets
+using Graphs
 
 GLMakie.activate!()
 
+# Δt for periodic update frequency, including user horizons
+Δt::Float64 = 86400.0
+vars = @variables t
+
+lsw_hupselwestwest = 151316  # V, 2 upstream (hupsel & hupselzuid)
+lsw_hupselwest = 151309  # V, 2 upstream (hupsel & hupselzuid)
+lsw_hupselzuid = 151371  # V, no upstream
 lsw_hupsel = 151358  # V, no upstream, no agric
 lsw_haarlo = 150016  # V, upstream
 lsw_neer = 121438  # V, upstream
-lsw_tol = 200164  # P
+lsw_kockengen = 200165  # P, no upstream
+lsw_tol = 200164  # P only kockengen upstream
 lsw_agric = 131183  # V
-lsw_id::Int = lsw_agric
+lsw_id::Int = lsw_hupsel
 
 dw_hupsel = 24  # Berkel / Slinge
-dw_agric = 12
-dw_id::Int = dw_agric
+dw_tol = 42  # around Tol
+dw_id::Int = dw_hupsel
 
-# read data from Mozart
+# read data from Mozart for all lsws
 reference_model = "decadal"
 if reference_model == "daily"
     simdir = normpath(@__DIR__, "data/lhm-daily/LHM41_dagsom")
@@ -62,54 +71,37 @@ end
 # uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
 # uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
-ladvalue =
-    @subset(Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik")), :lsw == lsw_id)
+vlvalue = Mozart.read_vlvalue(normpath(mozartin_dir, "vlvalue.dik"))
+ladvalue = Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik"))
 lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
-lswinfo = only(@subset(lswdik, :lsw == lsw_id))
-(;
-    local_surface_water_type,
-    target_volume,
-    target_level,
-    depth_surface_water,
-    maximum_level,
-) = lswinfo
-
-# if you want to run the entire district
-# lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
-# lsws = lswdik_district.lsw
-# if testing a single lsw
-lsws = [lsw_id]
-
-meteo_path = normpath(meteo_dir, "metocoef.ext")
-prec_dict, evap_dict = Duet.lsws_meteo(meteo_path, lsws)
-
+lswvalue = Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"))
 uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
-uslswdem_subset = @subset(uslswdem, :lsw == lsw_id)
-uslswdem_agri = @subset(uslswdem_subset, :usercode == "A")
+lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 
-# set bach runtimes equal to the mozart reference run
-times::Vector{Float64} = prec_dict[lsw_id].t
-startdate::DateTime = unix2datetime(times[begin])
-enddate::DateTime = unix2datetime(times[end])
-dates::Vector{DateTime} = unix2datetime.(times)
-timespan::ClosedInterval{Float64} = times[begin] .. times[end]
-datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
-# Δt for periodic update frequency and setting the ControlledLSW output rate
-Δt::Float64 = 86400.0
+# choose to run a district, subset or single lsw
+# lswdik_district = @subset(lswdik, :districtwatercode == dw_id)
+# lsw_ids = lswdik_district.lsw
+lsw_ids = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
+# lsw_ids = [lsw_hupsel]
+# lsw_ids = [lsw_hupsel, lsw_hupselwest, lsw_hupselwestwest]
+# lsw_ids = [lsw_kockengen, lsw_tol]
+
+graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
+
+# using GraphMakie
+# graphplot(graph)
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
-
 mzwb = @subset(Mozart.read_mzwaterbalance(mzwaterbalance_path), :districtwatercode == dw_id)
 
-mz_lswval = @subset(
-    Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"), lsw_id),
-    startdate <= :time_start < enddate
-)
+meteo_path = normpath(meteo_dir, "metocoef.ext")
+prec_dict, evap_dict = Duet.meteo_dicts(meteo_path, lsw_ids)
 drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 upstream_dict = Duet.create_dict(mzwb, :upstream)
 
+<<<<<<< HEAD
 mzwb.dem_agric = mzwb.dem_agric .* -1 #keep all positive
 dem_agric_dict = Duet.create_dict(mzwb, :dem_agric)
 alloc_agric_dict = Duet.create_dict(mzwb, :alloc_agric)
@@ -117,11 +109,42 @@ alloc_agric_dict = Duet.create_dict(mzwb, :alloc_agric)
 S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
 h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
 type::Char = only(local_surface_water_type)
+=======
+# TODO turn into a user demand dict
+uslswdem_lsw = @subset(uslswdem, :lsw == lsw_id)
+uslswdem_agri = @subset(uslswdem_lsw, :usercode == "A")
+>>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
 
-#TODO update as dictionaries 
+# values that don't vary between LSWs
+first_lsw_id = first(lsw_ids)
+type::Char = only(only(@subset(lswdik, :lsw == first_lsw_id)).local_surface_water_type)
+@assert type in ('V', 'P')
+# set bach runtimes equal to the mozart reference run
+times::Vector{Float64} = prec_dict[first_lsw_id].t
+startdate::DateTime = unix2datetime(times[begin])
+enddate::DateTime = unix2datetime(times[end])
+dates::Vector{DateTime} = unix2datetime.(times)
+timespan::ClosedInterval{Float64} = times[begin] .. times[end]
+datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
+
+curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, lswdik)
+
+# register lookup functions
+@eval Bach lsw_area(s, lsw_id) = Bach.lookup_area(Main.curve_dict[lsw_id], s)
+@eval Bach lsw_discharge(s, lsw_id) = Bach.lookup_discharge(Main.curve_dict[lsw_id], s)
+@eval Bach lsw_level(s, lsw_id) = Bach.lookup_level(Main.curve_dict[lsw_id], s)
+@register_symbolic Bach.lsw_area(s::Num, lsw_id::Num)
+@register_symbolic Bach.lsw_discharge(s::Num, lsw_id::Num)
+@register_symbolic Bach.lsw_level(s::Num, lsw_id::Num)
+
+#TODO update as dictionaries
 mzwblsw = @subset(mzwb, :lsw == lsw_id)
 uslswdem = @subset(uslswdem, :lsw == lsw_id)
 mzwblsw.alloc_agric = mzwblsw.alloc_agric .* -1 # only needed for plots
+<<<<<<< HEAD
+=======
+dem_agric_series = Duet.create_series(mzwblsw, :dem_agric)
+>>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
 mzwblsw.dem_indus = mzwblsw.dem_agric * 1.3
 dem_indus_series = Duet.create_series(mzwblsw, :dem_indus)  # dummy value for testing prioritisation
 prio_agric_series = Bach.ForwardFill([times[begin]],uslswdem_agri.priority)
@@ -132,6 +155,12 @@ prio_indus_series = Bach.ForwardFill([times[begin]],3) # a dummy value for testi
 curve = Bach.StorageCurve(vadvalue, lsw_id)
 q = Bach.lookup_discharge(curve, 1e6)
 a = Bach.lookup_area(curve, 1e6)
+function getstate(integrator, s)::Real
+    (; u) = integrator
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), sysnames.u_symbol)
+    return u[i]
+end
 
 function param(integrator, s)::Real
     (; p) = integrator
@@ -148,12 +177,12 @@ function param!(integrator, s, x::Real)::Real
     return p[i] = x
 end
 
-function periodic_update_v!(integrator)
+function periodic_update!(integrator)
     # update all forcing
     # exchange with Modflow and Metaswap here
     (; t, p, sol) = integrator
-    tₜ = t  # the value, not the symbolic
 
+<<<<<<< HEAD
     for lsw in lsws
         P = prec_dict[lsw](t)
         E_pot = evap_dict[lsw](t) * Bach.open_water_factor(t)
@@ -185,70 +214,65 @@ function periodic_update_v!(integrator)
         param!(integrator, :dem_indus, dem_indus) 
         param!(integrator, :prio_indus, prio_indus)
     
+=======
+    for lsw_id in lsw_ids
+        P = prec_dict[lsw_id](t)
+        E_pot = -evap_dict[lsw_id](t) * Bach.open_water_factor(t)
+        drainage = drainage_dict[lsw_id](t)
+        infiltration = infiltration_dict[lsw_id](t)
+        urban_runoff = urban_runoff_dict[lsw_id](t)
+
+>>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
         allocate!(;integrator,  P, areaₜ,E_pot,urban_runoff, infiltration, drainage, dem_agric, dem_indus, prio_indus, prio_agric)
-    
+
+        name = Symbol(:sys_, lsw_id, :₊lsw₊)
+        param!(integrator, Symbol(name, :P), P)
+        param!(integrator, Symbol(name, :E_pot), E_pot)
+        param!(integrator, Symbol(name, :drainage), drainage)
+        param!(integrator, Symbol(name, :infiltration), infiltration)
+        param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
+
+        if type == 'P'
+            # set the Q_wm for the coming day based on the expected storage
+            S = getstate(integrator, Symbol(name, :S))
+            outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
+            target_volume = param(integrator, Symbol(outname, :target_volume))
+            Δt = param(integrator, Symbol(name, :Δt))
+
+            f = SciMLBase.getobserved(sol)  # generated function
+            # first arg to f must be symbolic
+            area_symbol = Symbol(name, :area)
+            i = findfirst(==(area_symbol), sysnames.obs_symbol)
+            area_sym = sysnames.obs_syms[i]
+            area = f(area_sym, sol(t), p, t)
+
+            # what is the expected storage difference at the end of the period
+            # if there is no watermanagement?
+            # this assumes a constant area during the period
+            # TODO add upstream to ΔS calculation
+            ΔS = Δt * ((area * P) + drainage + infiltration + urban_runoff + (area * E_pot))
+            Q_wm = (S + ΔS - target_volume) / Δt
+
+            param!(integrator, Symbol(outname, :Q), Q_wm)
+        end
     end
 
-
-    Bach.save!(param_hist, tₜ, p)
+    Bach.save!(param_hist, t, p)
     return nothing
 
 
 end
-
-function periodic_update_p!(integrator)
-    # update all forcing
-    # exchange with Modflow and Metaswap here
-    (; u, t, p, sol) = integrator
-    tₜ = t  # the value, not the symbolic
-    P = prec_series(t)
-    E_pot = evap_series(t) * Bach.open_water_factor(t)
-    drainage = drainage_series(t)
-    infiltration = infiltration_series(t)
-    urban_runoff = urban_runoff_series(t)
-    upstream = upstream_series(t)
-
-    # set the Q_wm for the coming day based on the expected storage
-    S = only(u)
-    target_volume = param(integrator, :target_volume)
-    Δt = param(integrator, :Δt)
-
-    @variables t
-    vars = @variables area(t)
-    var = only(vars)
-    f = SciMLBase.getobserved(sol)  # generated function
-    areaₜ = f(var, sol(tₜ), p, tₜ)
-
-    # what is the expected storage difference at the end of the period if there is no watermanagement?
-    # this assumes a constant area during the period
-    ΔS =
-        Δt *
-        ((areaₜ * P) + upstream + drainage + infiltration + urban_runoff - (areaₜ * E_pot))
-    Q_wm = -(S + ΔS - target_volume) / Δt
-
-    param!(integrator, :P, P)
-    param!(integrator, :E_pot, E_pot)
-    param!(integrator, :drainage, drainage)
-    param!(integrator, :infiltration, infiltration)
-    param!(integrator, :urban_runoff, urban_runoff)
-    param!(integrator, :upstream, upstream)
-    param!(integrator, :Q_wm, Q_wm)
-
-    Bach.save!(param_hist, tₜ, p)
-    return nothing
-end
-
 
 function allocate!(;integrator, P, areaₜ, E_pot, dem_agric, urban_runoff,drainage, prio_agric,  infiltration, prio_indus, dem_indus)
-    # function for demand allocation based upon user prioritisation 
+    # function for demand allocation based upon user prioritisation
 
     # Note: equation not currently reproducing Mozart
-     Q_avail_vol = ((P - E_pot)*areaₜ)/(Δt) - min(0,(infiltration-drainage-urban_runoff)) 
+     Q_avail_vol = ((P - E_pot)*areaₜ)/(Δt) - min(0,(infiltration-drainage-urban_runoff))
      param!(integrator, :Q_avail_vol, Q_avail_vol) # for plotting only
 
     # Create a lookup table for user prioritisation and demand
     # Will update this to not have to manually specify which users
-    priority_lookup = DataFrame(User= ["Agric",  "Indus"],Priority = [prio_agric,  prio_indus], Demand = [dem_agric,  dem_indus], Alloc = [0.0,0.0]) 
+    priority_lookup = DataFrame(User= ["Agric",  "Indus"],Priority = [prio_agric,  prio_indus], Demand = [dem_agric,  dem_indus], Alloc = [0.0,0.0])
     sort!(priority_lookup,[:Priority], rev = false) # Higher number is lower priority
 
      # Add loop through demands
@@ -256,18 +280,18 @@ function allocate!(;integrator, P, areaₜ, E_pot, dem_agric, urban_runoff,drain
 
         if priority_lookup.Demand[i] == 0
             Alloc_i = 0.0
-        elseif Q_avail_vol >= priority_lookup.Demand[i] 
-            Alloc_i = priority_lookup.Demand[i] 
+        elseif Q_avail_vol >= priority_lookup.Demand[i]
+            Alloc_i = priority_lookup.Demand[i]
             Q_avail_vol = Q_avail_vol - Alloc_i
 
         else
             Alloc_i = Q_avail_vol
             Q_avail_vol = 0.0
         end
-        
+
         priority_lookup.Alloc[i] = Alloc_i
 
-        
+
     end
 
     param!(integrator, :alloc_agric, @subset(priority_lookup, :User == "Agric").Alloc[1])
@@ -275,53 +299,24 @@ function allocate!(;integrator, P, areaₜ, E_pot, dem_agric, urban_runoff,drain
 
 end
 
-name = Symbol(:lsw_, lsw_id)
-if type == 'V'
-    # use storage to look up area and discharge
-    curve = Bach.StorageCurve(vadvalue, lsw_id)
-    @eval Bach lsw_area(s) = Bach.lookup_area(Main.curve, s)
-    @eval Bach lsw_discharge(s) = Bach.lookup_discharge(Main.curve, s)
-    @register_symbolic Bach.lsw_area(s::Num)
-    @register_symbolic Bach.lsw_discharge(s::Num)
-    sys = Bach.FreeFlowLSW(; name, S = S0, Δt, lsw = lsw_id, district = dw_id)
-    periodic_update_type! = periodic_update_v!
-elseif type == 'P'
-    # use level to look up area, discharge is 0
-    volumes = Duet.tabulate_volumes(ladvalue, target_volume, target_level)
-    curve = Bach.StorageCurve(volumes, ladvalue.area, ladvalue.discharge)
-    @eval Bach lsw_level(s) = Bach.lookup(Main.volumes, Main.ladvalue.level, s)
-    @eval Bach lsw_area(s) = Bach.lookup(Main.volumes, Main.ladvalue.area, s)
-    @register_symbolic Bach.lsw_level(s::Num)
-    @register_symbolic Bach.lsw_area(s::Num)
-    sys = Bach.ControlledLSW(;
-        name,
-        S = S0,
-        h = h0,
-        Δt,
-        target_volume,
-        lsw = lsw_id,
-        district = dw_id,
-    )
-    periodic_update_type! = periodic_update_p!
-else
-    # O is for other; flood plains, dunes, harbour
-    error("Unsupported LSW type $type")
-end
+sys_dict =
+    Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt)
 
+sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
 
 sim = structural_simplify(sys)
 
-equations(sim)
-states(sim)
-observed(sim)
-parameters(sim) 
+# equations(sim)
+# states(sim)
+# observed(sim)
+# parameters(sim)
 
 sysnames = Bach.Names(sim)
 param_hist = ForwardFill(Float64[], Vector{Float64}[])
 tspan = (times[1], times[end])
 prob = ODAEProblem(sim, [], tspan)
 
-cb = PeriodicCallback(periodic_update_type!, Δt; initial_affect = true)
+cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
 
 integrator = init(
@@ -341,11 +336,9 @@ solve!(integrator)  # solve it until the end
 println(reg)
 
 ##
-
- 
 # interpolated timeseries of bach results
-# Duet.plot_series(reg, DateTime("2022-07")..DateTime("2022-08"))
-fig_s = Duet.plot_series(reg, type)
+
+fig_s = Duet.plot_series(reg, lsw_id)
 
 ##
 # plotting the water balance
@@ -354,22 +347,47 @@ mzwb_compare = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
 bachwb = Bach.waterbalance(reg, times, lsw_id)
 mzwb_compare = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
 wb = Duet.combine_waterbalance(mzwb_compare, bachwb)
-
 fig_wb = Duet.plot_waterbalance_comparison(wb)
 wb = Duet.combine_waterbalance(mzwb_compare, bachwb)
 Duet.plot_waterbalance_comparison(wb)
- 
+
 
 ##
 # compare individual component timeseries
+mz_out = @subset(lswvalue, :lsw == lsw_id)
+lswinfo = only(@subset(lswdik, :lsw == lsw_id))
+(; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
 
-fig_c = Duet.plot_series_comparison(reg, mz_lswval, :S, :volume, timespan, target_volume)
-fig_c = Duet.plot_series_comparison(reg, mz_lswval, :h, :level, timespan, target_level)
-# fig_c = Duet.plot_series_comparison(reg, mz_lswval, :area, :area, timespan)
-# fig_c = Duet.plot_series_comparison(reg, mz_lswval, :Q_out, :discharge, timespan)
-#Duet.plot_series_comparison(reg, mz_lswval, timespan)
+name = Symbol(:sys_, lsw_id, :₊lsw₊)
+fig_c = Duet.plot_series_comparison(
+    reg,
+    type,
+    mz_out,
+    Symbol(name, :S),
+    :volume,
+    timespan,
+    target_volume,
+)
+fig_c = Duet.plot_series_comparison(
+    reg,
+    type,
+    mz_out,
+    Symbol(name, :h),
+    :level,
+    timespan,
+    target_level,
+)
+fig_c = Duet.plot_series_comparison(reg, type, mz_out, Symbol(name, :area), :area, timespan)
+fig_c = if type == 'V'
+    outname = Symbol(:sys_, lsw_id, :₊weir₊Q)
+    Duet.plot_series_comparison(reg, type, mz_out, outname, :discharge, timespan)
+else
+    outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊Q)
+    Duet.plot_series_comparison(reg, type, mz_out, outname, :discharge, timespan)
+end
 
-
+##
+# plot user demand and allocation
 Duet.plot_Qavailable_series(reg, timespan, mzwb)
 
 # plot for multiple demand allocation
@@ -377,5 +395,3 @@ Duet.plot_Qavailable_dummy_series(reg, timespan)
 
 # plot for multiple demand allocation a supply-demand stack (currently using for dummy data in free flowing lsw)
 Duet.plot_user_demand(reg, timespan,bachwb, mzwb, lsw_id)
-
-
