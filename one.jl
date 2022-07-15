@@ -246,37 +246,30 @@ function allocate!(;
     Q_avail_vol =
         ((P - E_pot) * area) / Δt - min(0.0, infiltration - drainage - urban_runoff)
 
-    # Create a lookup table for user prioritisation and demand
-    # Will update this to not have to manually specify which users
-    priority_lookup = DataFrame(
-        User = ["Agric", "Indus"],
-        Priority = [prio_agric, prio_indus],
-        Demand = [demand_agric, demand_indus],
-        Alloc = [0.0, 0.0],
-    )
-    sort!(priority_lookup, [:Priority], rev = false) # Higher number is lower priority
+    alloc_agric = Ref(0.0)
+    alloc_indus = Ref(0.0)
+    users = [
+        (user = :agric, priority = prio_agric, demand = demand_agric, alloc = alloc_agric),
+        (user = :indus, priority = prio_indus, demand = demand_indus, alloc = alloc_indus),
+    ]
+    sort!(users, by = x -> x.priority)
 
-    # Add loop through demands
-    for i = 1:nrow(priority_lookup)
-        if priority_lookup.Demand[i] == 0
-            Alloc_i = 0.0
-        elseif Q_avail_vol >= priority_lookup.Demand[i]
-            Alloc_i = priority_lookup.Demand[i]
-            Q_avail_vol = Q_avail_vol - Alloc_i
-
+    # allocate by priority based on available water
+    for user in users
+        if user.demand <= 0
+            # allocation is initialized to 0
+        elseif Q_avail_vol >= user.demand
+            user.alloc[] = user.demand
+            Q_avail_vol -= user.alloc[]
         else
-            Alloc_i = Q_avail_vol
+            user.alloc[] = Q_avail_vol
             Q_avail_vol = 0.0
         end
-        priority_lookup.Alloc[i] = Alloc_i
     end
 
-    alloc_agric = only(@subset(priority_lookup, :User == "Agric")).Alloc
-    alloc_indus = only(@subset(priority_lookup, :User == "Indus")).Alloc
-
     # update parameters
-    param!(integrator, Symbol(name, :alloc_agric), -alloc_agric)
-    param!(integrator, Symbol(name, :alloc_indus), -alloc_indus)
+    param!(integrator, Symbol(name, :alloc_agric), -alloc_agric[])
+    param!(integrator, Symbol(name, :alloc_indus), -alloc_indus[])
 
     return nothing
 end
