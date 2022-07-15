@@ -101,7 +101,6 @@ infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 upstream_dict = Duet.create_dict(mzwb, :upstream)
 
-<<<<<<< HEAD
 mzwb.dem_agric = mzwb.dem_agric .* -1 #keep all positive
 dem_agric_dict = Duet.create_dict(mzwb, :dem_agric)
 alloc_agric_dict = Duet.create_dict(mzwb, :alloc_agric)
@@ -109,11 +108,9 @@ alloc_agric_dict = Duet.create_dict(mzwb, :alloc_agric)
 S0::Float64 = mz_lswval.volume[findfirst(==(startdate), mz_lswval.time_start)]
 h0::Float64 = mz_lswval.level[findfirst(==(startdate), mz_lswval.time_start)]
 type::Char = only(local_surface_water_type)
-=======
 # TODO turn into a user demand dict
 uslswdem_lsw = @subset(uslswdem, :lsw == lsw_id)
 uslswdem_agri = @subset(uslswdem_lsw, :usercode == "A")
->>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
 
 # values that don't vary between LSWs
 first_lsw_id = first(lsw_ids)
@@ -141,10 +138,6 @@ curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, 
 mzwblsw = @subset(mzwb, :lsw == lsw_id)
 uslswdem = @subset(uslswdem, :lsw == lsw_id)
 mzwblsw.alloc_agric = mzwblsw.alloc_agric .* -1 # only needed for plots
-<<<<<<< HEAD
-=======
-dem_agric_series = Duet.create_series(mzwblsw, :dem_agric)
->>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
 mzwblsw.dem_indus = mzwblsw.dem_agric * 1.3
 dem_indus_series = Duet.create_series(mzwblsw, :dem_indus)  # dummy value for testing prioritisation
 prio_agric_series = Bach.ForwardFill([times[begin]],uslswdem_agri.priority)
@@ -182,7 +175,6 @@ function periodic_update!(integrator)
     # exchange with Modflow and Metaswap here
     (; t, p, sol) = integrator
 
-<<<<<<< HEAD
     for lsw in lsws
         P = prec_dict[lsw](t)
         E_pot = evap_dict[lsw](t) * Bach.open_water_factor(t)
@@ -214,15 +206,6 @@ function periodic_update!(integrator)
         param!(integrator, :dem_indus, dem_indus) 
         param!(integrator, :prio_indus, prio_indus)
     
-=======
-    for lsw_id in lsw_ids
-        P = prec_dict[lsw_id](t)
-        E_pot = -evap_dict[lsw_id](t) * Bach.open_water_factor(t)
-        drainage = drainage_dict[lsw_id](t)
-        infiltration = infiltration_dict[lsw_id](t)
-        urban_runoff = urban_runoff_dict[lsw_id](t)
-
->>>>>>> 25dfe82f257138910a07490506194270e9dd8eef
         allocate!(;integrator,  P, areaₜ,E_pot,urban_runoff, infiltration, drainage, dem_agric, dem_indus, prio_indus, prio_agric)
 
         name = Symbol(:sys_, lsw_id, :₊lsw₊)
