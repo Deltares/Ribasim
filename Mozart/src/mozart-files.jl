@@ -527,12 +527,8 @@ function read_mzwaterbalance(path, lsw_sel::Union{Integer,Nothing} = nothing)
     df[!, "time_start"] = Mozart.datestring.(df.time_start)
     df[!, "time_end"] = Mozart.datestring.(df.time_end)
     # add a column with timestep length in seconds
-<<<<<<< HEAD
     df.period = Dates.value.(Second.(df.time_end - df.time_start))
 
-=======
-    df[!, :period] = Dates.value.(Second.(df.time_end - df.time_start))
->>>>>>> origin/agric_demand
     return df
 end
 
