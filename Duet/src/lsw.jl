@@ -262,9 +262,9 @@ function create_sys_dict(
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
-        # create and connect Weir or LevelControl
+        # create and connect OutflowTable or LevelControl
         if type == 'V'
-            @named weir = Bach.Weir(; lsw_id)
+            @named weir = Bach.OutflowTable(; lsw_id)
             eqs = [connect(lsw.x, weir.a), connect(lsw.s, weir.s)]
             lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
             lsw_sys = compose(lsw_sys, lsw, weir)

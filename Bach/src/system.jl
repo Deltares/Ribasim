@@ -26,7 +26,7 @@ Storage S [m³] is an output variable that can be a function of the hydraulic he
 end
 
 
-function Weir(; name, lsw_id)
+function OutflowTable(; name, lsw_id)
     @named a = FluidQuantityPort()  # upstream
     @named b = FluidQuantityPort()  # downstream
     @named s = Storage()  # upstream storage
