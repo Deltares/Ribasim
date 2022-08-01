@@ -1,0 +1,4 @@
+# ModelingToolkit.jl
+
+Bach uses ModelingToolkit.jl to define and connect components. ModelingToolkit
+can automatically generate numerical code from differential equations.

@@ -1,0 +1,174 @@
+# MODFLOW Concepts
+
+Bach has been designed to provide a computationally efficient representation of
+surface water for MODFLOW6. It does so by connecting to basic MODFLOW6 boundary
+conditions: the river and drainage packages.
+
+## Drainage
+
+The drainage package can be simulated to agricultural drains, ditches, or
+draining streams. The amount of water removed from the aquifer is proportional
+to the difference between the groundwater head and the drainage elevation.
+Drainage only occurs when the head is larger than the elevation; this boundary
+condition does not allow infiltration into the groundwater.
+
+```math
+Q_{drain} = \left\{ 
+    \begin{array}{ c l }
+        C_{drain} (\phi - h_{drain}) & \quad \textrm{if } \phi > h_{drain}) \\
+        0                            & \quad \textrm{otherwise}
+     \end{array}
+\right.
+```
+
+## River
+
+The river package can both drain the groundwater, or infiltrate surface water
+to the groundwater. It limits the amount of water that can infiltrate when
+the groundwater head falls below the river bottom, in which cases it assumes
+atmospheric pressure conditions underneath the surface water. 
+
+```math
+Q_{river} = \left\{ 
+    \begin{array}{ c l }
+        C_{river} (\phi - h_{river}) & \quad \textrm{if } \phi > b_{river}) \\
+        C_{river} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
+     \end{array}
+\right.
+```
+
+In the Netherlands, it is somewhat common to make a distinction between the
+drainage and infiltration conductance of surface waters. Drainage conductance
+is often larger than the infiltration conductance due to clogging processes,
+seepage, different flow patterns, etc.
+
+```math
+Q_{river} = \left\{ 
+    \begin{array}{ c l }
+        C_{river,drn} (\phi - h_{river}) & \quad \textrm{if } \phi > h_{river}) \\
+        C_{river,inf} (\phi - h_{river}) & \quad \textrm{if } \phi <= h_{river}) \\
+        C_{river,inf} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
+     \end{array}
+\right.
+```
+
+MODFLOW6 does not support this (currently), but an identical effect may be
+achieved by "stacking" a drainage package on top of a river package with these
+values:
+
+```math
+\begin{aligned}
+h_{drain} = h_{river}
+C_{drain} = C_{river,drn} - C{river,inf}
+\end{aligned}
+```
+
+## Numerical solution in MODFLOW
+
+MODFLOW uses a backward-in-time implicit solution scheme. This creates a large
+system of equations (a water balance for every cell), which it solves by
+repeatedly solving a linearized system of equations instead. In matrix form,
+this system of equations is expressed by:
+
+```math
+\mathbf{Ax} = \mathbf{b}
+```
+
+Where ``\mathbf{x}`` is a vector containing the head of every cell.
+
+For the boundary conditions, this requires linearization of the flow equations.
+Flow from outside of the aquifer (cell) may be represented by:
+
+```math
+a = p\phi + q
+```
+
+(Equation 2-6 in the MODFLOW6 manual.)
+
+For e.g. a draining boundary condition, the flow is head dependent:
+
+```math
+a = C(h - \phi) = -C\phi + Ch
+```
+
+With ``C`` the conductance, ``h`` the boundary head or elevation, and ``\phi``
+the groundwater head.
+
+In MODFLOW's internal formulation, the term in ``\mathbf{A}`` is called
+"coefficient of head" or hcof. Terms in ``\mathbf{b}`` are called "right hand
+side" or rhs. We can separate the equation above:
+
+```math
+\begin{aligned}
+p = \text{hcof} = -C \\
+q = \textrm{rhs} = -Ch \\
+a = -C\phi + Ch = \text{hcof} * \phi - \text{rhs}
+\end{aligned}
+```
+
+For every boundary condition, MODFLOW stores the hcof and rhs values. This
+makes it quite convenient for us to compute the water budget for every boundary
+condition: we simply multiply the hcof value by the head of the cell and
+subtract the rhs.
+
+Note that hcof may have a value of 0! For example, when for a river boundary
+the ``\phi <= b_{river})`` condition occurs, the flow into the cell is
+controlled only by ``h_{river}`` and ``b_{river}`` (equal to recharge for the
+linear solution).
+
+## Iterative coupled solution
+
+We can use a linearization to efficiently compute the flow from Bach's side as
+well. In the iterative coupled solution, we are solving both MODFLOW6 and Bach
+repeatedly, until they produce same drainage or infiltration (approximately).
+One of Bach's `LocalSurfaceWater`s contains many MODFLOW cells with boundary
+conditions. We could add every boundary condition to Bach's equations, but this
+is costly and cumbersome.
+
+Linearization allows us to "stack" (superpose) all the different boundary
+conditions into a single, simple equation. In linear form, every equation takes
+the form of:
+
+```math
+a = ph + q
+```
+
+Note the ``h`` rather than ``\phi``, we are formulating from Bach's
+perspective! We can sum all coefficients for p and q to provide a linear
+groundwater response to Bach.
+
+### Drainage
+
+From Bach's perspective, the groundwater head is constant given a timestep,
+so that:
+
+```math
+\begin{align}
+p = -C \\
+q = -C\phi
+\end{align}
+```
+
+When the head falls below the drainage elevation, the coefficients are 0.
+
+### River
+
+From Bach's persective, infiltration is never limited when the head falls below
+the bottom:
+
+```math
+\begin{align}
+p = -C \\
+q = -Cb
+\end{align}
+```
+
+Otherwise, infiltration and drainage occur with the same equation as for the
+drainage package:
+
+```math
+\begin{align}
+p = -C \\
+q = -C\phi
+\end{align}
+```
