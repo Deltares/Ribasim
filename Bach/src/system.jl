@@ -26,7 +26,7 @@ Storage S [m³] is an output variable that can be a function of the hydraulic he
 end
 
 
-function Weir(; name, lsw_id)
+function OutflowTable(; name, lsw_id)
     @named a = FluidQuantityPort()  # upstream
     @named b = FluidQuantityPort()  # downstream
     @named s = Storage()  # upstream storage
@@ -96,6 +96,8 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         area(t),
+        abs_agric(t) = 0,
+        abs_indus(t) = 0,
         P(t) = 0,
         [input = true],
         E_pot(t) = 0,
@@ -106,8 +108,20 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         [input = true],
         urban_runoff(t) = 0,
         [input = true],
+        alloc_agric(t) = 0,
+        [input = true],
+        alloc_indus(t) = 0,
+        [input = true],
     )
-    pars = @parameters(Δt = Δt, lsw_id = lsw_id, dw_id = dw_id)
+    pars = @parameters(
+        Δt = Δt,
+        lsw_id = lsw_id,
+        dw_id = dw_id,
+        demand_agric = 0.0,
+        prio_agric = 0.0,
+        demand_indus = 0.0,
+        prio_indus = 0.0,
+    )
 
     D = Differential(t)
 
@@ -118,8 +132,19 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         # meteo fluxes are area dependent
         Q_prec ~ area * P
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        # the allocated water is normally available
+        abs_agric ~ alloc_agric * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+        abs_indus ~ alloc_indus * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
         # storage / balance
-        D(S) ~ Q_ex + Q_prec + Q_eact + drainage + infiltration + urban_runoff
+        D(S) ~
+            Q_ex +
+            Q_prec +
+            Q_eact +
+            drainage +
+            infiltration +
+            urban_runoff +
+            abs_agric +
+            abs_indus
         # connectors
         h ~ x.h
         S ~ s.S

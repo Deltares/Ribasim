@@ -90,7 +90,7 @@ vars = [
     "storage_diff",
     "alloc_agric",
     "alloc_wm",
-    "alloc_indus"
+    "alloc_indus",
 ]
 cols = vcat(metacols, vars)
 
@@ -124,6 +124,18 @@ function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
         dict[key.lsw] = series
     end
     return dict
+end
+
+function create_user_dict(uslswdem::DataFrame, usercode::String)
+    demand_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    prio_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    uslswdem_user = @subset(uslswdem, :usercode == usercode)
+    for (key, df) in pairs(groupby(uslswdem_user, :lsw))
+        times = datetime2unix.(df.time_start)
+        demand_dict[key.lsw] = ForwardFill(times, copy(df.user_surfacewater_demand))
+        prio_dict[key.lsw] = ForwardFill(times, Vector{Float64}(df.priority))
+    end
+    return demand_dict, prio_dict
 end
 
 # add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
@@ -250,9 +262,9 @@ function create_sys_dict(
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
-        # create and connect Weir or LevelControl
+        # create and connect OutflowTable or LevelControl
         if type == 'V'
-            @named weir = Bach.Weir(; lsw_id)
+            @named weir = Bach.OutflowTable(; lsw_id)
             eqs = [connect(lsw.x, weir.a), connect(lsw.s, weir.s)]
             lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
             lsw_sys = compose(lsw_sys, lsw, weir)

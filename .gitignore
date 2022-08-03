@@ -18,3 +18,4 @@ Manifest.toml
 data/
 
 .vscode
+JuliaSysimage.dll

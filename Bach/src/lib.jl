@@ -438,7 +438,6 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
         storage_diff = -S_diff,
         alloc_agric = -alloc_agric_sum,
         alloc_indus = -alloc_indus_sum,
-
     )
     # flip signs since these come from a connected component, not the LSW itself
     if type == 'V'
