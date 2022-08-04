@@ -96,8 +96,6 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         Q_prec(t) = 0,
         Q_eact(t) = 0,
         area(t),
-        abs_agric(t) = 0,
-        abs_indus(t) = 0,
         P(t) = 0,
         [input = true],
         E_pot(t) = 0,
@@ -108,19 +106,11 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         [input = true],
         urban_runoff(t) = 0,
         [input = true],
-        alloc_agric(t) = 0,
-        [input = true],
-        alloc_indus(t) = 0,
-        [input = true],
     )
     pars = @parameters(
         Δt = Δt,
         lsw_id = lsw_id,
         dw_id = dw_id,
-        demand_agric = 0.0,
-        prio_agric = 0.0,
-        demand_indus = 0.0,
-        prio_indus = 0.0,
     )
 
     D = Differential(t)
@@ -132,9 +122,7 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
         # meteo fluxes are area dependent
         Q_prec ~ area * P
         Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        # the allocated water is normally available
-        abs_agric ~ alloc_agric * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-        abs_indus ~ alloc_indus * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+
         # storage / balance
         D(S) ~
             Q_ex +
@@ -142,9 +130,7 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
             Q_eact +
             drainage +
             infiltration +
-            urban_runoff +
-            abs_agric +
-            abs_indus
+            urban_runoff 
         # connectors
         h ~ x.h
         S ~ s.S
@@ -152,6 +138,41 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
     ]
     compose(ODESystem(eqs, t, vars, pars; name), x, s)
 end
+
+
+function GeneralUser(; name, lsw_id, dw_id, S, Δt) 
+   
+    @named x = FluidQuantityPort()
+    @named s = Storage(; S)
+
+    vars = @variables(
+        S(t) = S,
+        abs(t) = 0,
+    )
+    pars = @parameters(
+        Δt = Δt,
+        lsw_id = lsw_id,
+        dw_id = dw_id,
+        alloc = 0.0,
+        demand = 0.0,   
+        prio = 0.0,
+        #shortage = 0.0,
+        #[output = true],
+    )
+    D = Differential(t)
+
+
+    eqs = Equation[
+        # the allocated water is normally available
+        abs ~ x.Q
+        abs ~ alloc * (0.5 * tanh((s.S - 50.0) / 10.0) + 0.5)   
+       # shortage ~ demand - abs  
+       ]
+    compose(ODESystem(eqs, t, vars, pars; name), x,s)
+
+
+end
+
 
 function HeadBoundary(; name, h)
     @named x = FluidQuantityPort(; h)

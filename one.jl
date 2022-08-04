@@ -146,6 +146,9 @@ function param!(integrator, s, x::Real)::Real
     @debug "param!" integrator.t
     sym = Symbolics.getname(s)::Symbol
     i = findfirst(==(sym), sysnames.p_symbol)
+    if i==nothing 
+        show(sym)
+    end
     return p[i] = x
 end
 
@@ -197,7 +200,7 @@ function periodic_update!(integrator)
         # allocate to different users
         allocate!(;
             integrator,
-            name,
+            name =  Symbol(:sys_, lsw_id, :₊),
             P,
             area,
             E_pot,
@@ -216,10 +219,7 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :drainage), drainage)
         param!(integrator, Symbol(name, :infiltration), infiltration)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
-        param!(integrator, Symbol(name, :demand_agric), -demand_agric)
-        param!(integrator, Symbol(name, :demand_indus), -demand_indus)
-        param!(integrator, Symbol(name, :prio_agric), prio_agric)
-        param!(integrator, Symbol(name, :prio_indus), prio_indus)
+
     end
 
     Bach.save!(param_hist, t, p)
@@ -268,8 +268,13 @@ function allocate!(;
     end
 
     # update parameters
-    param!(integrator, Symbol(name, :alloc_agric), -alloc_agric[])
-    param!(integrator, Symbol(name, :alloc_indus), -alloc_indus[])
+
+    param!(integrator,Symbol(name, :agric₊alloc), -alloc_agric[])
+    param!(integrator, Symbol(name, :indus₊alloc), -alloc_indus[])
+    param!(integrator,Symbol(name, :agric₊demand), -demand_agric[])
+    param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])   
+     param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
+    param!(integrator, Symbol(name, :indus₊prio), -prio_indus[])
 
     return nothing
 end

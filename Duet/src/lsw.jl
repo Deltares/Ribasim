@@ -263,17 +263,25 @@ function create_sys_dict(
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
         # create and connect OutflowTable or LevelControl
+        eqs = Equation[]
         if type == 'V'
             @named weir = Bach.OutflowTable(; lsw_id)
-            eqs = [connect(lsw.x, weir.a), connect(lsw.s, weir.s)]
-            lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
-            lsw_sys = compose(lsw_sys, lsw, weir)
+            push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
+            wm = weir
         else
             @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
-            eqs = [connect(lsw.x, levelcontrol.a)]
-            lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
-            lsw_sys = compose(lsw_sys, lsw, levelcontrol)
+            push!(eqs, connect(lsw.x, levelcontrol.a))
+            wm = levelcontrol
         end
+
+        # connect with users 
+        # TODO: create a loop to iterate through users if they exist
+        @named agric = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)
+        @named indus = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)
+        push!(eqs, connect(lsw.x, agric.x, indus.x), connect(lsw.s, agric.s, indus.s))
+
+        lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
+        lsw_sys = compose(lsw_sys, lsw, wm, agric, indus)
 
         sys_dict[lsw_id] = lsw_sys
     end
