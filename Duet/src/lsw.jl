@@ -138,106 +138,152 @@ function create_user_dict(uslswdem::DataFrame, usercode::String)
     return demand_dict, prio_dict
 end
 
-# add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
-# this way the level or area can be looked up from the volume
-function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
-    @assert issorted(ladvalue.area)
-    @assert issorted(ladvalue.level)
+"""
+Fill missings with a forward fill, and a backward fill until the first value
 
-    # check assumption on other LSWs: is the target level always in the LAD?
-    i = findfirst(≈(target_level), ladvalue.level)
-    @assert i !== nothing
+# Example
+```julia-repl
+> pad_missing!([missing, 2, missing, 3, missing])
+[2, 2, 2, 3, 3]::Vector{Int}
+```
+"""
+function pad_missing!(data)
+    val = data[findfirst(!ismissing, data)]
+    for i in eachindex(data)
+        if ismissing(data[i])
+            data[i] = val
+        else
+            val = data[i]
+        end
+    end
+    return disallowmissing(data)
+end
 
-    # calculate ΔS per segment in the LAD
-    n = nrow(ladvalue)
-    ΔS = zeros(n - 1)
-    for i in eachindex(ΔS)
-        h1, h2 = ladvalue.level[i], ladvalue.level[i+1]
-        area1, area2 = ladvalue.area[i], ladvalue.area[i+1]
+"P&O: lad > vadl (add volume based on depth_surface_water at volume 0)"
+function add_volume(df, depth_surface_water)
+    @assert df.area[1] >= 0
+
+    # The areas (m2) from Mozart are often similar to volume (m3).
+    # This would imply a completely flat profile where each new m3 covers a new m2.
+    # To avoid issues here we take the median area for all volumes except the first.
+    # Once the bottom of the waterways are covered, area does not increase further.
+    mid = median(df.area)
+    @assert mid > 0.0
+    df.area .= mid
+
+    n = nrow(df)
+    if df.area[1] == 0
+        # We'd then expect this to be always true, but it isn't
+        # df.level[1] == depth_surface_water
+        # But since area is 0 we just keep the df.level[1] and use that as the bottom.
+        # Example LSW: 110116
+    else
+        # add starting row
+        n += 1
+        pushfirst!(df.area, 0.0)
+        pushfirst!(df.discharge, 0.0)
+        # make up a bottom in this edge case
+        if depth_surface_water > df.level[1]
+            depth_surface_water = df.level[1] - 0.1
+        end
+        pushfirst!(df.level, depth_surface_water)
+    end
+    # initialize volume
+    df.volume .= NaN
+    df.volume[1] = 0.0
+    df = df[:, [:volume, :area, :discharge, :level]]
+
+    # fill in the rest of the volumes
+    for i in 2:n
+        S1 = df.volume[i-1]
+        h1, h2 = df.level[i-1], df.level[i]
+        area1, area2 = df.area[i-1], df.area[i]
         Δh = h2 - h1
         avg_area = area2 + area1 / 2
-        ΔS[i] = Δh * avg_area
+        ΔS = Δh * avg_area
+        df.volume[i] = S1 + ΔS
     end
-
-    # calculate S based on target_volume and ΔS
-    S = zeros(n)
-    S[i] = target_volume
-    if i + 1 <= n
-        for j = (i+1):n
-            S[j] = S[j-1] + ΔS[j-1]
-        end
-    end
-    if i - 1 >= 1
-        for j = (i-1):-1:1
-            S[j] = S[j+1] - ΔS[j]
-        end
-    end
-
-    return S
+    return df
 end
 
-function create_curve(
-    lsw_id::Int,
-    type::Char,
-    vadvalue::DataFrame,
-    vlvalue::DataFrame,
-    ladvalue::DataFrame,
-    lswdik::DataFrame,
-)::Bach.StorageCurve
-    if type == 'V'
-        # for type V, add level based on the lowest weirearea (lowest level in vlvalue)
-        vadvalue_lsw = @subset(vadvalue, :lsw == lsw_id)
-        vlvalue_lsw = @subset(vlvalue, :lsw == lsw_id)
-        weirarea_id = sort(vlvalue_lsw, :level)[1, :weirarea]
-        vlvalue_lsw_weirarea = @subset(vlvalue_lsw, :weirarea == weirarea_id)
+"V: vad > vadl (add level based on depth_surface_water at volume 0)"
+function add_level(df, depth_surface_water)
+    @assert df.volume[1] >= 0
+    @assert df.area[1] >= 0
+    @assert df.discharge[1] == 0
+    n = nrow(df)
 
-        # fix an apparent digit cutoff issue in the Hupsel LSW table
-        fix_hupsel!(v, lsw_id) =
-            lsw_id == 151358 &&
-            replace!(v, 582932.422 => 1582932.422, 574653.7 => 1574653.7)
-        fix_hupsel!(vlvalue_lsw_weirarea.volume_lsw, lsw_id)
-        fix_hupsel!(vadvalue_lsw.volume, lsw_id)
-        fix_hupsel!(vadvalue_lsw.area, lsw_id)
+    # The areas (m2) from Mozart are often similar to volume (m3).
+    # This would imply a completely flat profile where each new m3 covers a new m2.
+    # To avoid issues here we take the median area for all volumes except the first.
+    # Once the bottom of the waterways are covered, area does not increase further.
+    mid = median(df.area)
+    @assert mid > 0.0
+    df.area .= mid
 
-        # vlvalue begins at S = 0, vadvalue begins at Q = 0, so vlvalue has one extra record.
-        # At S = 0, take level from vlvalue, area = 0 and Q = 0.
-        # sorting should only be needed after fix_hupsel
-        volume = sort(vlvalue_lsw_weirarea.volume_lsw)
-        area = pushfirst!(sort(vadvalue_lsw.area), 0.0)
-        discharge = pushfirst!(sort(vadvalue_lsw.discharge), 0.0)
-        level = sort(vlvalue_lsw_weirarea.level)
-    elseif type == 'P'
-        ladvalue_lsw = @subset(ladvalue, :lsw == lsw_id)
-        lswinfo = only(@subset(lswdik, :lsw == lsw_id))
-        (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
+    if df.volume[1] != 0
+        # add starting row
+        n += 1
+        pushfirst!(df.volume, 0.0)
+        pushfirst!(df.area, 0.0)
+        pushfirst!(df.discharge, 0.0)
+    end
 
-        # use level to look up area, discharge is 0
-        volume = Duet.tabulate_volumes(ladvalue_lsw, target_volume, target_level)
-        (; level, area, discharge) = ladvalue_lsw
+    # initialize level
+    df.level .= NaN
+    df.level[1] = depth_surface_water
+
+    # fill in the rest of the level
+    for i in 2:n
+        h1 = df.level[i-1]
+        S1, S2 = df.volume[i-1], df.volume[i]
+        area1, area2 = df.area[i-1], df.area[i]
+        ΔS = S2 - S1
+        avg_area = area2 + area1 / 2
+        Δh = ΔS / avg_area
+        df.level[i] = h1 + Δh
+    end
+    return df
+end
+
+function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame, ladvalue::DataFrame)::DataFrame
+    lswdik_lsw = @subset(lswdik, :lsw == lsw_id)
+    depth_surface_water = only(lswdik_lsw.depth_surface_water)
+    type = only(only(lswdik_lsw.local_surface_water_type))
+    if type == 'P' || type == 'O'
+        df = @subset(ladvalue, :lsw == lsw_id)[:, [:area, :discharge, :level]]
+        # force that the numbers always go up, ignoring relations
+        sort!(df.area)
+        sort!(df.discharge)
+        sort!(df.level)
+        df = add_volume(df, depth_surface_water)
     else
-        # O is for other; flood plains, dunes, harbour
-        error("Unsupported LSW type $type")
+        df = @subset(vadvalue, :lsw == lsw_id)[:, [:volume, :area, :discharge]]
+        # force that the numbers always go up, ignoring relations
+        sort!(df.volume)
+        sort!(df.area)
+        sort!(df.discharge)
+        df = add_level(df, depth_surface_water)
     end
-
-    profile = DataFrame(; volume, area, discharge, level)
-    curve = Bach.StorageCurve(profile)
-    return curve
+    @assert issorted(df.volume)
+    @assert issorted(df.area)
+    @assert issorted(df.discharge)
+    @assert issorted(df.level)
+    return df
 end
 
-function create_curve_dict(
+function create_profile_dict(
     lsw_ids::Vector{Int},
-    type::Char,
-    vadvalue::DataFrame,
-    vlvalue::DataFrame,
-    ladvalue::DataFrame,
     lswdik::DataFrame,
-)::Dict{Int,Bach.StorageCurve}
-    curve_dict = Dict{Int,Bach.StorageCurve}()
+    vadvalue::DataFrame,
+    ladvalue::DataFrame,
+)::Dict{Int,DataFrame}
+    profile_dict = Dict{Int,DataFrame}()
     for lsw_id in lsw_ids
-        curve = create_curve(lsw_id, type, vadvalue, vlvalue, ladvalue, lswdik)
-        curve_dict[lsw_id] = curve
+        profile = create_profile(lsw_id, lswdik, vadvalue, ladvalue)
+        profile_dict[lsw_id] = profile
     end
-    return curve_dict
+    return profile_dict
 end
 
 function create_sys_dict(
@@ -274,7 +320,7 @@ function create_sys_dict(
             wm = levelcontrol
         end
 
-        # connect with users 
+        # connect with users
         # TODO: create a loop to iterate through users if they exist
         @named agric = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)
         @named indus = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)

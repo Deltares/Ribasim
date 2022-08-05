@@ -115,7 +115,8 @@ dates::Vector{DateTime} = unix2datetime.(times)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 
-curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, lswdik)
+profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
+curve_dict = Dict{Int, Bach.StorageCurve}(k => Bach.StorageCurve(v) for (k, v) in profile_dict)
 
 # register lookup functions
 @eval Bach lsw_area(s, lsw_id) = Bach.lookup_area(Main.curve_dict[lsw_id], s)
@@ -146,8 +147,8 @@ function param!(integrator, s, x::Real)::Real
     @debug "param!" integrator.t
     sym = Symbolics.getname(s)::Symbol
     i = findfirst(==(sym), sysnames.p_symbol)
-    if i==nothing 
-        show(sym)
+    if i === nothing
+        @error "parameter name not found" sym sysnames.p_symbol
     end
     return p[i] = x
 end
@@ -272,7 +273,7 @@ function allocate!(;
     param!(integrator,Symbol(name, :agric₊alloc), -alloc_agric[])
     param!(integrator, Symbol(name, :indus₊alloc), -alloc_indus[])
     param!(integrator,Symbol(name, :agric₊demand), -demand_agric[])
-    param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])   
+    param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])
      param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
     param!(integrator, Symbol(name, :indus₊prio), -prio_indus[])
 

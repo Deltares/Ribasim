@@ -18,6 +18,8 @@ using DataFrameMacros
 using DataFrames
 using CSV
 using IntervalSets
+using Missings
+using Statistics
 
 @variables t
 
