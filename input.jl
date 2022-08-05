@@ -59,7 +59,7 @@ lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 lsw_ids = Vector{Int}(lswdik.lsw)
 
 profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
-graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
+graph, fractions = Mozart.lswrouting_graph(lsw_ids, lswrouting)
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path)
@@ -85,7 +85,7 @@ datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 Create a new UGrid netCDF file and populate it with static data; the profiles and
 initial conditions.
 """
-function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue)
+function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, lswdik, fractions)
 
     # create 3D data structure
     n_lsw = length(lsw_ids)
@@ -115,9 +115,18 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue)
     ds = UGrid.ugrid_dataset(path, graph, node_coords)
     UGrid.create_spatial_ref!(ds; epsg = 28992)
 
+    # add fractions on edges
+    defVar(
+        ds,
+        "fraction",
+        fractions,
+        ("edge",),
+        attrib = Pair{String,String}["units"=>"1"],
+    )
+
     # Don't put integer data in the file if you want to open it in QGIS, see
     # https://github.com/lutraconsulting/MDAL/issues/348
-    defVar(ds, "lsw", Float64.(lsw_ids), ("data_node",), attrib = Pair{String,String}[])
+    defVar(ds, "node", Float64.(lsw_ids), ("node",), attrib = Pair{String,String}[])
     defVar(
         ds,
         "profile_row",
@@ -137,7 +146,7 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue)
         "profile",
         profiles,
         ("profile_row", "profile_col", "node"),
-        attrib = Pair{String,String}["grid_mapping"=>"spatial_ref"],
+        attrib = Pair{String,String}[],
     )
 
     initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
@@ -145,17 +154,58 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue)
     # get the lsws out in the same order
     lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
 
-    volume_data = Float32.(initial_condition[lsw_idxs, :volume])
-    volumes = KeyedArray(volume_data; lsw = lsw_ids)
-
     defVar(
         ds,
         "volume",
-        volumes,
+        Float64.(initial_condition[lsw_idxs, :volume]),
         ("node",),
-        attrib = Pair{String,String}["grid_mapping"=>"spatial_ref"],
+        attrib = Pair{String,String}[
+            "grid_mapping"=>"spatial_ref"
+            "units"=>"m3"
+            ],
     )
 
+    # info from lswdik
+    defVar(
+        ds,
+        "target_volume",
+        Float32.(lswdik.target_volume),
+        ("node",),
+        attrib = Pair{String,String}[
+            "grid_mapping"=>"spatial_ref"
+            "units"=>"m3"
+            ],
+    )
+    defVar(
+        ds,
+        "target_level",
+        Float32.(lswdik.target_level),
+        ("node",),
+        attrib = Pair{String,String}[
+            "grid_mapping"=>"spatial_ref"
+            "units"=>"m"
+            ],
+    )
+    defVar(
+        ds,
+        "depth_surface_water",
+        Float32.(lswdik.depth_surface_water),
+        ("node",),
+        attrib = Pair{String,String}[
+            "grid_mapping"=>"spatial_ref"
+            "units"=>"m"
+            ],
+    )
+    defVar(
+        ds,
+        "local_surface_water_type",
+        only.(lswdik.local_surface_water_type),
+        ("node",),
+        attrib = Pair{String,String}[
+            "grid_mapping"=>"spatial_ref"
+            "units"=>"-"
+            ],
+    )
     return ds
 end
 
@@ -188,6 +238,8 @@ ds = create_static(
     graph,
     lswlocs,
     lswvalue,
+    lswdik,
+    fractions,
 )
 
 # write_dynamic

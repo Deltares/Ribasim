@@ -286,25 +286,39 @@ function create_profile_dict(
     return profile_dict
 end
 
+function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
+    # a Vector like lsw_ids for the sources
+    # that maps to a dict of outneighbor lsw to fractions
+    fractions = [Dict{Int, Float32}() for _ in lsw_ids]
+    for (e, edge) in enumerate(edges(graph_all))
+        fraction = fractions_all[e]
+        lsw_from = lsw_all[src(edge)]
+        lsw_to = lsw_all[dst(edge)]
+        if (lsw_from in lsw_ids) && (lsw_to in lsw_ids)
+            i = findfirst(==(lsw_from), lsw_ids)
+            fractions[i][lsw_to] = fraction
+        end
+    end
+    @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
+    return fractions
+end
+
 function create_sys_dict(
     lsw_ids::Vector{Int},
     dw_id::Int,
-    type::Char,
-    lswdik::DataFrame,
-    lswvalue::DataFrame,
-    startdate::DateTime,
-    enddate::DateTime,
+    types::Vector{Char},
+    target_volumes::Vector{Float32},
+    target_levels::Vector{Float32},
+    initial_volumes::Vector{Float64},
     Δt::Float64,
 )
     sys_dict = Dict{Int,ODESystem}()
 
-    for lsw_id in lsw_ids
-        lswinfo = only(@subset(lswdik, :lsw == lsw_id))
-        (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
-
-        lswvalue_lsw =
-            @subset(lswvalue, :lsw == lsw_id && startdate <= :time_start < enddate)
-        S0::Float64 = lswvalue_lsw.volume[1]
+    for (i, lsw_id) in enumerate(lsw_ids)
+        target_volume = target_volumes[i]
+        target_level = target_levels[i]
+        S0 = initial_volumes[i]
+        type = types[i]
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
@@ -338,9 +352,9 @@ end
 # and bifurcations when needed
 function create_district(
     lsw_ids::Vector{Int},
-    type::Char,
+    types::Vector{Char},
     graph::DiGraph,
-    lswrouting::DataFrame,
+    fractions::Vector{Dict{Int,Float32}},
     sys_dict::Dict{Int,ODESystem},
 )::ODESystem
 
@@ -351,6 +365,7 @@ function create_district(
 
     for (v, lsw_id) in enumerate(lsw_ids)
         lsw_sys = sys_dict[lsw_id]
+        type = types[v]
 
         out_vertices = outneighbors(graph, v)
         out_lsw_ids = [lsw_ids[v] for v in out_vertices]
@@ -375,16 +390,14 @@ function create_district(
                 push!(eqs, connect(lsw_sys.levelcontrol.b, out_lsw.lsw.x))
             end
         elseif n_out == 2
+            # create a Bifurcation with a fixed fraction
             name = Symbol("bifurcation_", lsw_id)
-            # the the fraction from Mozart
-            lswrouting_split = @subset(lswrouting, :lsw_from == lsw_id)
-            @assert sort(lswrouting_split.lsw_to) == sort(out_lsw_ids)
-            @assert sum(lswrouting_split.fraction == 1.0)
+            @assert sum(values(fractions[v])) == 1
 
             # the first row's lsw_to becomes b, the second c
-            fraction_b = lswrouting_split.fraction[1]
-            out_lsw_b = sys_dict[lswrouting_split.lsw_to[1]]
-            out_lsw_c = sys_dict[lswrouting_split.lsw_to[2]]
+            fraction_b = fractions[v][out_lsw_ids[1]]
+            out_lsw_b = sys_dict[out_lsw_ids[1]]
+            out_lsw_c = sys_dict[out_lsw_ids[2]]
 
             bifurcation = Bifurcation(; name, fraction_b)
             push!(bifurcations, bifurcation)

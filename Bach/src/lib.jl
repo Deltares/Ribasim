@@ -28,7 +28,7 @@ struct StorageCurve
     end
 end
 
-function StorageCurve(df::DataFrame)
+function StorageCurve(df)
     return StorageCurve(df.volume, df.area, df.discharge, df.level)
 end
 

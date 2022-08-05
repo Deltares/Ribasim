@@ -86,7 +86,11 @@ lsw_ids = [lsw_hupsel]
 # lsw_ids = [lsw_hupsel, lsw_hupselwest, lsw_hupselwestwest]
 # lsw_ids = [lsw_kockengen, lsw_tol]
 
-graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
+lsw_all = Vector(lswdik.lsw)
+graph_all, fractions_all = Mozart.lswrouting_graph(lsw_all, lswrouting)
+lsw_indices = [findfirst(==(lsw_id), lsw_all) for lsw_id in lsw_ids]
+graph, _ = induced_subgraph(graph_all, lsw_indices)
+fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 
 # using GraphMakie
 # graphplot(graph)
@@ -274,16 +278,25 @@ function allocate!(;
     param!(integrator, Symbol(name, :indus₊alloc), -alloc_indus[])
     param!(integrator,Symbol(name, :agric₊demand), -demand_agric[])
     param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])
-     param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
+    param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
     param!(integrator, Symbol(name, :indus₊prio), -prio_indus[])
 
     return nothing
 end
 
-sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt)
+types = only.(lswdik.local_surface_water_type)
+target_levels = Vector{Float32}(lswdik.target_level)
+target_volumes = Vector{Float32}(lswdik.target_volume)
+initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
+@assert DataFrames.nrow(initial_condition) == length(lsw_ids)
+# get the lsws out in the same order
+lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
+initial_volumes = Float64.(initial_condition[lsw_idxs, :volume])
 
-sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
+sys_dict =
+    Duet.create_sys_dict(lsw_ids, dw_id, types, target_levels, target_volumes, initial_volumes, Δt)
+
+sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
 
 sim = structural_simplify(sys)
 
