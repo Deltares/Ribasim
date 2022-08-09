@@ -1,7 +1,9 @@
 [deps]
+AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 Bach = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
@@ -27,9 +29,12 @@ JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MethodOfLines = "94925ecb-adb7-4558-8ed8-f975c56a0bf4"
+Missings = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 ModflowInterface = "a348c28d-122a-4d3f-b833-160dba4591a7"
 Mozart = "8575f4fb-8c5d-4a90-a68c-395cd70cdec8"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+NetCDF_jll = "7243133f-43d8-5620-bbf4-c2c921802cf3"
 NetworkLayout = "46757867-2c16-5918-afeb-47bfcb05e46a"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
@@ -40,6 +45,10 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+UGrid = "b63259b2-7b5b-4ce8-8eaa-061d924318f9"
+
+[compat]
+NetCDF_jll = "=400.702.400"
 
 [extras]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"

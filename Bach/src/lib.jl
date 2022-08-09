@@ -28,7 +28,7 @@ struct StorageCurve
     end
 end
 
-function StorageCurve(df::DataFrame)
+function StorageCurve(df)
     return StorageCurve(df.volume, df.area, df.discharge, df.level)
 end
 
@@ -52,6 +52,7 @@ function lookup(X, Y, x)
     end
 end
 
+Base.length(curve::StorageCurve) = length(curve.s)
 lookup_area(curve::StorageCurve, s) = lookup(curve.s, curve.a, s)
 lookup_discharge(curve::StorageCurve, s) = lookup(curve.s, curve.q, s)
 lookup_level(curve::StorageCurve, s) = lookup(curve.s, curve.h, s)

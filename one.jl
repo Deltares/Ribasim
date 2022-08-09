@@ -86,7 +86,11 @@ lsw_ids = [lsw_hupsel]
 # lsw_ids = [lsw_hupsel, lsw_hupselwest, lsw_hupselwestwest]
 # lsw_ids = [lsw_kockengen, lsw_tol]
 
-graph = Mozart.lswrouting_graph(lsw_ids, lswrouting)
+lsw_all = Vector(lswdik.lsw)
+graph_all, fractions_all = Mozart.lswrouting_graph(lsw_all, lswrouting)
+lsw_indices = [findfirst(==(lsw_id), lsw_all) for lsw_id in lsw_ids]
+graph, _ = induced_subgraph(graph_all, lsw_indices)
+fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 
 # using GraphMakie
 # graphplot(graph)
@@ -112,7 +116,8 @@ dates::Vector{DateTime} = unix2datetime.(times)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 
-curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, lswdik)
+profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
+curve_dict = Dict{Int, Bach.StorageCurve}(k => Bach.StorageCurve(v) for (k, v) in profile_dict)
 
 # register lookup functions
 @eval Bach lsw_area(s, lsw_id) = Bach.lookup_area(Main.curve_dict[lsw_id], s)
@@ -141,8 +146,8 @@ function param!(integrator, s, x::Real)::Real
     @debug "param!" integrator.t
     sym = Symbolics.getname(s)::Symbol
     i = findfirst(==(sym), sysnames.p_symbol)
-    if i==nothing 
-        show(sym)
+    if i === nothing
+        @error "parameter name not found" sym sysnames.p_symbol
     end
     return p[i] = x
 end
@@ -280,10 +285,19 @@ for lsw_id in lsw_ids
     push!(all_users,tmp )
 end
 
-sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt, all_users)
+types = only.(lswdik.local_surface_water_type)
+target_levels = Vector{Float32}(lswdik.target_level)
+target_volumes = Vector{Float32}(lswdik.target_volume)
+initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
+@assert DataFrames.nrow(initial_condition) == length(lsw_ids)
+# get the lsws out in the same order
+lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
+initial_volumes = Float64.(initial_condition[lsw_idxs, :volume])
 
-sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
+sys_dict =
+    Duet.create_sys_dict(lsw_ids, dw_id, types, target_levels, target_volumes, initial_volumes, Δt, all_users)
+
+sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
 
 sim = structural_simplify(sys)
 
