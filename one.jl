@@ -99,9 +99,6 @@ prec_dict, evap_dict = Duet.meteo_dicts(meteo_path, lsw_ids)
 drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
-demand_agric_dict, prio_agric_dict = Duet.create_user_dict(uslswdem, "A")
-# use "A" instead of "I" for industry since that doesn't exist in the data
-demand_indus_dict, prio_indus_dict = Duet.create_user_dict(uslswdem, "A")
 
 # values that don't vary between LSWs
 first_lsw_id = first(lsw_ids)
@@ -124,8 +121,6 @@ curve_dict = Duet.create_curve_dict(lsw_ids, type, vadvalue, vlvalue, ladvalue, 
 @register_symbolic Bach.lsw_area(s::Num, lsw_id::Num)
 @register_symbolic Bach.lsw_discharge(s::Num, lsw_id::Num)
 @register_symbolic Bach.lsw_level(s::Num, lsw_id::Num)
-
-
 
 function getstate(integrator, s)::Real
     (; u) = integrator
@@ -166,10 +161,6 @@ function periodic_update!(integrator)
         drainage = drainage_dict[lsw_id](t)
         infiltration = infiltration_dict[lsw_id](t)
         urban_runoff = urban_runoff_dict[lsw_id](t)
-        demand_agric = demand_agric_dict[lsw_id](t)
-        demand_indus = demand_indus_dict[lsw_id](t)
-        prio_agric = prio_agric_dict[lsw_id](t)
-        prio_indus = prio_indus_dict[lsw_id](t)
 
         # area
         f = SciMLBase.getobserved(sol)  # generated function
@@ -196,22 +187,25 @@ function periodic_update!(integrator)
 
             param!(integrator, Symbol(outname, :Q), Q_wm)
         end
-
-        # allocate to different users
-        allocate!(;
-            integrator,
-            name =  Symbol(:sys_, lsw_id, :₊),
-            P,
-            area,
-            E_pot,
-            urban_runoff,
-            drainage,
-            infiltration,
-            demand_agric,
-            demand_indus,
-            prio_indus,
-            prio_agric,
-        )
+        
+        lswusers, demandlsw, priolsw = Duet.compile_users(uslswdem, lsw_id) 
+        @show lswusers
+        if length(lswusers) > 0
+            # allocate to different users
+            allocate!(;
+                integrator,
+                name =  Symbol(:sys_, lsw_id, :₊),
+                P,
+                area,
+                E_pot,
+                urban_runoff,
+                drainage,
+                infiltration,
+                demandlsw,
+                priolsw,
+                lswusers,
+            )
+        end
 
         # update parameters
         param!(integrator, Symbol(name, :P), P)
@@ -220,6 +214,8 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :infiltration), infiltration)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
 
+        return demandlsw, priolsw
+        
     end
 
     Bach.save!(param_hist, t, p)
@@ -235,25 +231,23 @@ function allocate!(;
     urban_runoff,
     drainage,
     infiltration,
-    demand_agric,
-    demand_indus,
-    prio_agric,
-    prio_indus,
+    demandlsw,
+    priolsw,
+    lswusers,
 )
-    # function for demand allocation based upon user prioritisation
+    (; t, p, sol) = integrator
 
+    # function for demand allocation based upon user prioritisation
     # Note: equation not currently reproducing Mozart
     Q_avail_vol =
         ((P - E_pot) * area) / Δt - min(0.0, infiltration - drainage - urban_runoff)
 
-    alloc_agric = Ref(0.0)
-    alloc_indus = Ref(0.0)
-    users = [
-        (user = :agric, priority = prio_agric, demand = demand_agric, alloc = alloc_agric),
-        (user = :indus, priority = prio_indus, demand = demand_indus, alloc = alloc_indus),
-    ]
+    users = []
+    for user in lswusers
+        tmp = (user = user, priority = priolsw[user](t), demand = demandlsw[user](t), alloc = Ref(0.0)) 
+        push!(users, tmp)
+    end
     sort!(users, by = x -> x.priority)
-
     # allocate by priority based on available water
     for user in users
         if user.demand <= 0
@@ -265,22 +259,29 @@ function allocate!(;
             user.alloc[] = Q_avail_vol
             Q_avail_vol = 0.0
         end
+        
+        # update parameters
+        symalloc = Symbol(name, user.user, :₊alloc)
+        param!(integrator, symalloc, -user.alloc[])
+        # The following are not essential for the simulation
+        symdemand = Symbol(name, user.user, :₊demand)
+        param!(integrator, symdemand, -user.demand[])
+        symprio = Symbol(name, user.user, :₊prio)
+        param!(integrator, symprio, -user.priority[])
+
     end
-
-    # update parameters
-
-    param!(integrator,Symbol(name, :agric₊alloc), -alloc_agric[])
-    param!(integrator, Symbol(name, :indus₊alloc), -alloc_indus[])
-    param!(integrator,Symbol(name, :agric₊demand), -demand_agric[])
-    param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])   
-     param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
-    param!(integrator, Symbol(name, :indus₊prio), -prio_indus[])
-
     return nothing
 end
 
+# create a vector of vectors of all non zero users within all the lsws
+all_users = Vector{Symbol}[]
+for lsw_id in lsw_ids
+    tmp =  Duet.list_users(uslswdem, lsw_id)
+    push!(all_users,tmp )
+end
+
 sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt)
+    Duet.create_sys_dict(lsw_ids, dw_id, type, lswdik, lswvalue, startdate, enddate, Δt, all_users)
 
 sys = Duet.create_district(lsw_ids, type, graph, lswrouting, sys_dict)
 

@@ -138,6 +138,52 @@ function create_user_dict(uslswdem::DataFrame, usercode::String)
     return demand_dict, prio_dict
 end
 
+# create a vector of all existing user demand and priorities per lsw
+function compile_users(uslswdem::DataFrame, lsw_id)
+    uslswdem_sub = @subset(uslswdem, :lsw == lsw_id)
+    uslswdem_sub.username .= Duet.match_userid(uslswdem_sub, Bach.userid_lookup)
+    demand_dict = Dict{Vector{String},Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    prio_dict = Dict{Vector{String},Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    lswusers = []
+    for (key, df) in pairs(groupby(uslswdem_sub, :username))
+        if sum(df.user_surfacewater_demand) ==  0.0
+            continue 
+        else
+            push!(lswusers, key.username)
+            times = datetime2unix.(df.time_start)
+            demand_dict[key.username] = ForwardFill(times, copy(df.user_surfacewater_demand))
+            prio_dict[key.username] = ForwardFill(times, Vector{Float64}(df.priority))
+        end
+    end
+    return lswusers,demand_dict, prio_dict
+end
+
+# function to create a vector of all non-zero uers in a given lsw
+function list_users(uslswdem::DataFrame, lsw_id)
+    uslswdem_sub = @subset(uslswdem, :lsw == lsw_id)
+    uslswdem_sub.username .= Duet.match_userid(uslswdem_sub, Bach.userid_lookup)
+    lswusers = Symbol[]
+    all = unique(uslswdem_sub.username)
+    for i in all
+        if sum(@subset(uslswdem_sub, :username == i).user_surfacewater_demand) ==  0.0
+            continue 
+        else
+            push!(lswusers, Symbol(i))
+        end
+    end
+    return lswusers
+end
+
+# take the userid_code from uslswdem and convert to corresponding username 
+function match_userid(df1::DataFrame, df2::DataFrame) 
+    username =[]
+    for i = 1:nrow(df1)
+        code_i = df1.usercode[i]
+        push!(username,  @subset(df2,:usercode == code_i).username)
+    end
+    return username
+end
+
 # add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
 # this way the level or area can be looked up from the volume
 function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
@@ -249,10 +295,11 @@ function create_sys_dict(
     startdate::DateTime,
     enddate::DateTime,
     Δt::Float64,
+    all_users,
 )
     sys_dict = Dict{Int,ODESystem}()
 
-    for lsw_id in lsw_ids
+    for (lswusers,lsw_id) in zip(all_users,lsw_ids)
         lswinfo = only(@subset(lswdik, :lsw == lsw_id))
         (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
 
@@ -274,15 +321,16 @@ function create_sys_dict(
             wm = levelcontrol
         end
 
-        # connect with users 
-        # TODO: create a loop to iterate through users if they exist
-        @named agric = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)
-        @named indus = Bach.GeneralUser(;  lsw_id, dw_id, Δt, S = S0)
-        push!(eqs, connect(lsw.x, agric.x, indus.x), connect(lsw.s, agric.s, indus.s))
+        all_components = [lsw, wm]
+
+        for user in lswusers
+            usersys = Bach.GeneralUser(;name = user,  lsw_id, dw_id, Δt, S = S0) 
+            push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s ))
+            push!(all_components, usersys)
+        end
 
         lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
-        lsw_sys = compose(lsw_sys, lsw, wm, agric, indus)
-
+        lsw_sys = compose(lsw_sys,all_components)
         sys_dict[lsw_id] = lsw_sys
     end
     return sys_dict

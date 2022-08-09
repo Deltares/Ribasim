@@ -72,6 +72,10 @@ const evap_factor = [
     0.00 0.00 0.00
 ]
 
+userid_lookup = DataFrame(usercode = ["A", "WM", "I"],
+                          username = ["agric", "wm", "industry"]) # TO DO: add all users to dataframe
+
+
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
 function open_water_factor(dt::DateTime)
