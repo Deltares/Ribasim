@@ -192,9 +192,8 @@ function periodic_update!(integrator)
 
             param!(integrator, Symbol(outname, :Q), Q_wm)
         end
-        
-        lswusers, demandlsw, priolsw = Duet.compile_users(uslswdem, lsw_id) 
-        @show lswusers
+
+        lswusers, demandlsw, priolsw = Duet.compile_users(uslswdem, lsw_id)
         if length(lswusers) > 0
             # allocate to different users
             allocate!(;
@@ -220,7 +219,7 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
 
         return demandlsw, priolsw
-        
+
     end
 
     Bach.save!(param_hist, t, p)
@@ -249,7 +248,7 @@ function allocate!(;
 
     users = []
     for user in lswusers
-        tmp = (user = user, priority = priolsw[user](t), demand = demandlsw[user](t), alloc = Ref(0.0)) 
+        tmp = (user = user, priority = priolsw[user](t), demand = demandlsw[user](t), alloc = Ref(0.0))
         push!(users, tmp)
     end
     sort!(users, by = x -> x.priority)
@@ -264,7 +263,7 @@ function allocate!(;
             user.alloc[] = Q_avail_vol
             Q_avail_vol = 0.0
         end
-        
+
         # update parameters
         symalloc = Symbol(name, user.user, :₊alloc)
         param!(integrator, symalloc, -user.alloc[])
@@ -295,7 +294,7 @@ lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
 initial_volumes = Float64.(initial_condition[lsw_idxs, :volume])
 
 sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, types, target_levels, target_volumes, initial_volumes, Δt, all_users)
+    Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels, initial_volumes, Δt, all_users)
 
 sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
 
@@ -336,6 +335,7 @@ fig_s = Duet.plot_series(reg, lsw_id)
 
 ##
 # plotting the water balance
+# TODO update after taking the users out of the system
 
 mzwb_compare = Duet.read_mzwaterbalance_compare(mzwaterbalance_path, lsw_id)
 bachwb = Bach.waterbalance(reg, times, lsw_id)

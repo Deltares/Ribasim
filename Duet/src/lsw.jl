@@ -147,7 +147,7 @@ function compile_users(uslswdem::DataFrame, lsw_id)
     lswusers = []
     for (key, df) in pairs(groupby(uslswdem_sub, :username))
         if sum(df.user_surfacewater_demand) ==  0.0
-            continue 
+            continue
         else
             push!(lswusers, key.username)
             times = datetime2unix.(df.time_start)
@@ -166,7 +166,7 @@ function list_users(uslswdem::DataFrame, lsw_id)
     all = unique(uslswdem_sub.username)
     for i in all
         if sum(@subset(uslswdem_sub, :username == i).user_surfacewater_demand) ==  0.0
-            continue 
+            continue
         else
             push!(lswusers, Symbol(i))
         end
@@ -174,8 +174,8 @@ function list_users(uslswdem::DataFrame, lsw_id)
     return lswusers
 end
 
-# take the userid_code from uslswdem and convert to corresponding username 
-function match_userid(df1::DataFrame, df2::DataFrame) 
+# take the userid_code from uslswdem and convert to corresponding username
+function match_userid(df1::DataFrame, df2::DataFrame)
     username =[]
     for i = 1:nrow(df1)
         code_i = df1.usercode[i]
@@ -183,12 +183,6 @@ function match_userid(df1::DataFrame, df2::DataFrame)
     end
     return username
 end
-
-# add a volume column to the ladvalue DataFrame, using the target level and volume from lsw.dik
-# this way the level or area can be looked up from the volume
-function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
-    @assert issorted(ladvalue.area)
-    @assert issorted(ladvalue.level)
 
 """
 Fill missings with a forward fill, and a backward fill until the first value
@@ -280,20 +274,9 @@ function add_level(df, depth_surface_water)
         pushfirst!(df.discharge, 0.0)
     end
 
-function create_curve(
-    lsw_id::Int,
-    type::Char,
-    vadvalue::DataFrame,
-    vlvalue::DataFrame,
-    ladvalue::DataFrame,
-    lswdik::DataFrame,
-)::Bach.StorageCurve
-    if type == 'V'
-        # for type V, add level based on the lowest weirearea (lowest level in vlvalue)
-        vadvalue_lsw = @subset(vadvalue, :lsw == lsw_id)
-        vlvalue_lsw = @subset(vlvalue, :lsw == lsw_id)
-        weirarea_id = sort(vlvalue_lsw, :level)[1, :weirarea]
-        vlvalue_lsw_weirarea = @subset(vlvalue_lsw, :weirarea == weirarea_id)
+    # initialize level
+    df.level .= NaN
+    df.level[1] = depth_surface_water
 
     # fill in the rest of the level
     for i in 2:n
@@ -373,7 +356,7 @@ function create_sys_dict(
     target_levels::Vector{Float32},
     initial_volumes::Vector{Float64},
     Δt::Float64,
-    all_users,
+    all_users::Vector{Vector{Symbol}},
 )
     sys_dict = Dict{Int,ODESystem}()
 
@@ -383,13 +366,6 @@ function create_sys_dict(
         S0 = initial_volumes[i]
         type = types[i]
         lswusers = all_users[i]
-        
-        lswinfo = only(@subset(lswdik, :lsw == lsw_id))
-        (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
-
-        lswvalue_lsw =
-            @subset(lswvalue, :lsw == lsw_id && startdate <= :time_start < enddate)
-        S0::Float64 = lswvalue_lsw.volume[1]
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
@@ -408,7 +384,7 @@ function create_sys_dict(
         all_components = [lsw, wm]
 
         for user in lswusers
-            usersys = Bach.GeneralUser(;name = user,  lsw_id, dw_id, Δt, S = S0) 
+            usersys = Bach.GeneralUser(;name = user,  lsw_id, dw_id, Δt, S = S0)
             push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s ))
             push!(all_components, usersys)
         end

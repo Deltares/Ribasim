@@ -1,5 +1,4 @@
 # Run a Bach simulation based on a netCDF created by input.jl
-
 using Mozart
 using Bach
 using Duet
@@ -20,8 +19,12 @@ using Graphs
 using UGrid
 using NCDatasets
 using AxisKeys
+using TOML
 
-ds = NCDataset("data/ugrid/input-mozart.nc")
+config = TOML.parsefile("run.toml")
+config["lsw_ids"]
+
+ds = NCDataset(config["input_path"])
 
 "create KeyedArray from NCDataset variable"
 function key_cfvar(
@@ -37,32 +40,14 @@ function key_cfvar(
     return KeyedArray(data; coords...)
 end
 
-
 # Δt for periodic update frequency, including user horizons
-Δt::Float64 = 86400.0
+Δt::Float64 = config["update_timestep"]
 vars = @variables t
 
-lsw_hupselwestwest = 151316  # V, 2 upstream (hupsel & hupselzuid)
-lsw_hupselwest = 151309  # V, 2 upstream (hupsel & hupselzuid)
-lsw_hupselzuid = 151371  # V, no upstream
-lsw_hupsel = 151358  # V, no upstream, no agric
-lsw_haarlo = 150016  # V, upstream
-lsw_neer = 121438  # V, upstream
-lsw_kockengen = 200165  # P, no upstream
-lsw_tol = 200164  # P only kockengen upstream
-lsw_agric = 131183  # V
-lsw_id::Int = lsw_hupsel
-lsw_ids::Vector{Int} = [lsw_id]
-lsw_ids::Vector{Int} = [lsw_hupsel, lsw_hupselzuid, lsw_hupselwest]
-
-dw_hupsel = 24  # Berkel / Slinge
-dw_tol = 42  # around Tol
-dw_id::Int = dw_hupsel
+lsw_ids::Vector{Int} = config["lsw_ids"]
+dw_id::Int = 0
 
 # values that don't vary between LSWs
-first_lsw_id = first(lsw_ids)
-type::Char = 'V'
-@assert type in ('V', 'P')
 # set bach runtimes equal to the mozart reference run
 dates::Vector{DateTime} = ds["time"][:]
 startdate::DateTime = dates[begin]
@@ -84,7 +69,10 @@ priority_agriculture = key_cfvar(ds, "priority_agriculture")(node=lsw_ids)
 initial_volumes = Vector(key_cfvar(ds, "volume")(node=lsw_ids))
 target_volumes = Vector(key_cfvar(ds, "target_volume")(node=lsw_ids))
 target_levels = Vector(key_cfvar(ds, "target_level")(node=lsw_ids))
-types = Vector(key_cfvar(ds, "local_surface_water_type")(node=lsw_ids))
+types = Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node=lsw_ids)))
+
+# create a vector of vectors of all non zero users within all the lsws
+all_users = fill([:agric], length(lsw_ids))
 
 # create a subgraph from the UGrid file, with fractions on the edges we use
 function ugrid_subgraph(ds, lsw_ids)
@@ -99,12 +87,15 @@ function ugrid_subgraph(ds, lsw_ids)
 end
 
 function create_curve_dict(profile)
-    profile_cols = Tuple(Symbol.(profile.profile_col))
+    # profile_cols = Tuple(Symbol.(profile.profile_col))
+    profile_cols = (:volume, :area, :discharge, :level)
+    nc_names = [Float64(c) for c in ('v', 'a', 'd', 'l')]
 
     curve_dict = Dict{Int, Bach.StorageCurve}()
     for (i, lsw_id) in enumerate(lsw_ids)
         prof = profile[node=i]
-        data = [Vector(filter(!isnan, prof(profile_col=String(col)))) for col in profile_cols]
+        # data = [Vector(filter(!isnan, prof(profile_col=String(col)))) for col in profile_cols]
+        data = [Vector(filter(!isnan, prof(profile_col=col))) for col in nc_names]
         nt = NamedTuple{profile_cols}(data)
         curve_dict[lsw_id] = Bach.StorageCurve(nt)
     end
@@ -155,26 +146,26 @@ function periodic_update!(integrator)
 
     forcing_t_idx = searchsortedlast(times, t + 1e-4)
 
-    for (forcing_lsw_idx, lsw_id) in enumerate(lsw_ids)
+    for (i, lsw_id) in enumerate(lsw_ids)
+        lswusers = all_users[i]
+        type = types[i]
         name = Symbol(:sys_, lsw_id, :₊lsw₊)
 
         # forcing values
-        P = precipitation[time=forcing_t_idx, node=forcing_lsw_idx]
-        E_pot = -reference_evapotranspiration[time=forcing_t_idx, node=forcing_lsw_idx] * Bach.open_water_factor(t)
-        drainage = drainages[time=forcing_t_idx, node=forcing_lsw_idx]
-        infiltration = infiltrations[time=forcing_t_idx, node=forcing_lsw_idx]
-        urban_runoff = urban_runoffs[time=forcing_t_idx, node=forcing_lsw_idx]
-        demand_agric = demand_agriculture[time=forcing_t_idx, node=forcing_lsw_idx]
-        prio_agric = priority_agriculture[time=forcing_t_idx, node=forcing_lsw_idx]
-        demand_indus = 0.0
-        prio_indus = 1.0
+        P = precipitation[time=forcing_t_idx, node=i]
+        E_pot = -reference_evapotranspiration[time=forcing_t_idx, node=i] * Bach.open_water_factor(t)
+        drainage = drainages[time=forcing_t_idx, node=i]
+        infiltration = infiltrations[time=forcing_t_idx, node=i]
+        urban_runoff = urban_runoffs[time=forcing_t_idx, node=i]
+        demand_agric = demand_agriculture[time=forcing_t_idx, node=i]
+        prio_agric = priority_agriculture[time=forcing_t_idx, node=i]
 
         # area
         f = SciMLBase.getobserved(sol)  # generated function
         # first arg to f must be symbolic
         area_symbol = Symbol(name, :area)
-        i = findfirst(==(area_symbol), sysnames.obs_symbol)
-        area_sym = sysnames.obs_syms[i]
+        idx_area = findfirst(==(area_symbol), sysnames.obs_symbol)
+        area_sym = sysnames.obs_syms[idx_area]
         area = f(area_sym, sol(t), p, t)
 
         # water level control
@@ -195,21 +186,25 @@ function periodic_update!(integrator)
             param!(integrator, Symbol(outname, :Q), Q_wm)
         end
 
-        # allocate to different users
-        allocate!(;
-            integrator,
-            name =  Symbol(:sys_, lsw_id, :₊),
-            P,
-            area,
-            E_pot,
-            urban_runoff,
-            drainage,
-            infiltration,
-            demand_agric,
-            demand_indus,
-            prio_indus,
-            prio_agric,
-        )
+        # TODO update this and all_users to support other users than agric
+        demandlsw = demand_agric
+        priolsw = prio_agric
+        if length(lswusers) > 0
+            # allocate to different users
+            allocate!(;
+                integrator,
+                name =  Symbol(:sys_, lsw_id, :₊),
+                P,
+                area,
+                E_pot,
+                urban_runoff,
+                drainage,
+                infiltration,
+                demandlsw,
+                priolsw,
+                lswusers,
+            )
+        end
 
         # update parameters
         param!(integrator, Symbol(name, :P), P)
@@ -233,25 +228,25 @@ function allocate!(;
     urban_runoff,
     drainage,
     infiltration,
-    demand_agric,
-    demand_indus,
-    prio_agric,
-    prio_indus,
+    demandlsw,
+    priolsw,
+    lswusers,
 )
-    # function for demand allocation based upon user prioritisation
+    (; t, p, sol) = integrator
 
+    # function for demand allocation based upon user prioritisation
     # Note: equation not currently reproducing Mozart
     Q_avail_vol =
         ((P - E_pot) * area) / Δt - min(0.0, infiltration - drainage - urban_runoff)
 
-    alloc_agric = Ref(0.0)
-    alloc_indus = Ref(0.0)
-    users = [
-        (user = :agric, priority = prio_agric, demand = demand_agric, alloc = alloc_agric),
-        (user = :indus, priority = prio_indus, demand = demand_indus, alloc = alloc_indus),
-    ]
+    users = []
+    for (i, user) in enumerate(lswusers)
+        priority = priolsw[i]
+        demand = demandlsw[i]
+        tmp = (;user, priority, demand, alloc = Ref(0.0))
+        push!(users, tmp)
+    end
     sort!(users, by = x -> x.priority)
-
     # allocate by priority based on available water
     for user in users
         if user.demand <= 0
@@ -263,22 +258,22 @@ function allocate!(;
             user.alloc[] = Q_avail_vol
             Q_avail_vol = 0.0
         end
+
+        # update parameters
+        symalloc = Symbol(name, user.user, :₊alloc)
+        param!(integrator, symalloc, -user.alloc[])
+        # The following are not essential for the simulation
+        symdemand = Symbol(name, user.user, :₊demand)
+        param!(integrator, symdemand, -user.demand[])
+        symprio = Symbol(name, user.user, :₊prio)
+        param!(integrator, symprio, -user.priority[])
+
     end
-
-    # update parameters
-
-    param!(integrator,Symbol(name, :agric₊alloc), -alloc_agric[])
-    param!(integrator, Symbol(name, :indus₊alloc), -alloc_indus[])
-    param!(integrator,Symbol(name, :agric₊demand), -demand_agric[])
-    param!(integrator, Symbol(name, :indus₊demand), -demand_indus[])
-    param!(integrator,Symbol(name, :agric₊prio), -prio_agric[])
-    param!(integrator, Symbol(name, :indus₊prio), -prio_indus[])
-
     return nothing
 end
 
 sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels, initial_volumes, Δt)
+    Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels, initial_volumes, Δt, all_users)
 
 graph, graph_all, fractions_all, lsw_all = ugrid_subgraph(ds, lsw_ids)
 fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)

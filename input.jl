@@ -92,7 +92,8 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
     n_profile_rows = maximum(nrow, values(profile_dict))
     n_profile_cols = 4  # number of cols in 1 LSW profile
     profile_rows = 1:n_profile_rows
-    profile_cols = ["volume", "area", "discharge", "level"]
+    # profile_cols = ["volume", "area", "discharge", "level"]
+    profile_cols = ['v', 'a', 'd', 'l']
 
     # store the 2D profiles per LSW together in a 3D variable
     profile_data = fill(NaN32, n_profile_rows, n_profile_cols, n_lsw)
@@ -104,10 +105,14 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
     )
     for (lsw_id, profile) in profile_dict
         tableview = profiles(profile_row = 1:nrow(profile), lsw = lsw_id)
-        tableview(profile_col = "volume") .= profile.volume
-        tableview(profile_col = "area") .= profile.area
-        tableview(profile_col = "discharge") .= profile.discharge
-        tableview(profile_col = "level") .= profile.level
+        # tableview(profile_col = "volume") .= profile.volume
+        # tableview(profile_col = "area") .= profile.area
+        # tableview(profile_col = "discharge") .= profile.discharge
+        # tableview(profile_col = "level") .= profile.level
+        tableview(profile_col = 'v') .= profile.volume
+        tableview(profile_col = 'a') .= profile.area
+        tableview(profile_col = 'd') .= profile.discharge
+        tableview(profile_col = 'l') .= profile.level
     end
 
     # create ugrid with network
@@ -130,14 +135,14 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
     defVar(
         ds,
         "profile_row",
-        profiles.profile_row,
+        Float32.(profiles.profile_row),
         ("profile_row",),
         attrib = Pair{String,String}[],
     )
     defVar(
         ds,
         "profile_col",
-        profiles.profile_col,
+        Float32.(profiles.profile_col),
         ("profile_col",),
         attrib = Pair{String,String}[],
     )
@@ -196,10 +201,11 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
             "units"=>"m"
             ],
     )
+    # convert the Char to Float32 to avoid MDAL issue
     defVar(
         ds,
         "local_surface_water_type",
-        only.(lswdik.local_surface_water_type),
+        Float32.(only.(lswdik.local_surface_water_type)),
         ("node",),
         attrib = Pair{String,String}[
             "grid_mapping"=>"spatial_ref"
