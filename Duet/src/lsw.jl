@@ -190,6 +190,8 @@ function tabulate_volumes(ladvalue::DataFrame, target_volume, target_level)
     @assert issorted(ladvalue.area)
     @assert issorted(ladvalue.level)
 
+"""
+Fill missings with a forward fill, and a backward fill until the first value
 # Example
 ```julia-repl
 > pad_missing!([missing, 2, missing, 3, missing])
