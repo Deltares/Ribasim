@@ -70,6 +70,7 @@ drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 demand_agric_dict, prio_agric_dict = Duet.create_user_dict(uslswdem, "A")
+demand_wm_dict, prio_wm_dict = Duet.create_user_dict(uslswdem, "WM")
 # use "A" instead of "I" for industry since that doesn't exist in the data
 # demand_indus_dict, prio_indus_dict = Duet.create_user_dict(uslswdem, "A")
 
@@ -295,5 +296,6 @@ add_equidistant_series!(
     "m3 s-1",
 )
 add_equidistant_series!(ds, prio_agric_dict, lsw_ids, days, "priority_agriculture", "-")
+add_equidistant_series!(ds, prio_wm_dict, lsw_ids, days, "priority_watermanagement", "-")
 
 close(ds)
