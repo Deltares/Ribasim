@@ -59,7 +59,7 @@ lswdik_unsorted = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 # sort the lsws as integer to make it easy to match other data sources
 lsw_idxs = sortperm(Vector{Int}(lswdik_unsorted.lsw))
 lswdik = lswdik_unsorted[lsw_idxs, :]
-lsw_ids = Vector{Int}(lswdik.lsw)
+lsw_ids::Vector{Int} = Vector{Int}(lswdik.lsw)
 
 profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
 graph, fractions = Mozart.lswrouting_graph(lsw_ids, lswrouting)
