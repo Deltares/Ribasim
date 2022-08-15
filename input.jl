@@ -31,15 +31,13 @@ elseif reference_model == "decadal"
     mozartout_dir = normpath(@__DIR__, "data/lhm-output/mozart")
     # this must be after mozartin has run, or the VAD relations are not correct
     mozartin_dir = mozartout_dir
-    meteo_dir = normpath(
-        @__DIR__,
-        "data",
-        "lhm-input",
-        "control",
-        "control_LHM4_2_2019_2020",
-        "meteo",
-        "mozart",
-    )
+    meteo_dir = normpath(@__DIR__,
+                         "data",
+                         "lhm-input",
+                         "control",
+                         "control_LHM4_2_2019_2020",
+                         "meteo",
+                         "mozart")
 else
     error("unknown reference model")
 end
@@ -89,7 +87,8 @@ datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 Create a new UGrid netCDF file and populate it with static data; the profiles and
 initial conditions.
 """
-function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, lswdik, fractions)
+function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, lswdik,
+                       fractions)
 
     # create 3D data structure
     n_lsw = length(lsw_ids)
@@ -100,12 +99,10 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
 
     # store the 2D profiles per LSW together in a 3D variable
     profile_data = fill(NaN32, n_profile_rows, n_profile_cols, n_lsw)
-    profiles = KeyedArray(
-        profile_data;
-        profile_row = profile_rows,
-        profile_col = profile_cols,
-        lsw = lsw_ids,
-    )
+    profiles = KeyedArray(profile_data;
+                          profile_row = profile_rows,
+                          profile_col = profile_cols,
+                          lsw = lsw_ids)
     for (lsw_id, profile) in profile_dict
         tableview = profiles(profile_row = 1:nrow(profile), lsw = lsw_id)
         tableview(profile_col = 'S') .= profile.volume
@@ -116,108 +113,79 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
 
     # create ugrid with network
     node_coords = (; x = first.(lswlocs), y = last.(lswlocs))
-    ds = UGrid.ugrid_dataset(path, graph, node_coords; format=:netcdf3_64bit_offset)
+    ds = UGrid.ugrid_dataset(path, graph, node_coords; format = :netcdf3_64bit_offset)
 
     UGrid.create_spatial_ref!(ds; epsg = 28992)
     # not yet recognized in QGIS
     ds["mesh1d"].attrib["grid_mapping"] = "spatial_ref"
 
     # add fractions on edges
-    defVar(
-        ds,
-        "fraction",
-        fractions,
-        ("edge",),
-        attrib = Pair{String,String}["units"=>"1"],
-    )
+    defVar(ds,
+           "fraction",
+           fractions,
+           ("edge",),
+           attrib = Pair{String, String}["units" => "1"])
 
     # following 3 can be integers in MDAL release after 0.9.4
-    defVar(ds, "node", Float32.(lsw_ids), ("node",), attrib = Pair{String,String}[
-        "grid_mapping"=>"spatial_ref"
-        "geometry"=>"crs"
-        "long_name"=>"local surface water ID"
-        "units"=>"-"
-        ])
-    defVar(
-        ds,
-        "profile_row",
-        Float32.(profiles.profile_row),
-        ("profile_row",),
-        attrib = Pair{String,String}[],
-    )
-    defVar(
-        ds,
-        "profile_col",
-        Float32.(profiles.profile_col),
-        ("profile_col",),
-        attrib = Pair{String,String}[],
-    )
-    defVar(
-        ds,
-        "profile",
-        profiles,
-        ("profile_row", "profile_col", "node"),
-        attrib = Pair{String,String}[],
-    )
+    defVar(ds, "node", Float32.(lsw_ids), ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "geometry" => "crs"
+                                         "long_name" => "local surface water ID"
+                                         "units" => "-"])
+    defVar(ds,
+           "profile_row",
+           Float32.(profiles.profile_row),
+           ("profile_row",),
+           attrib = Pair{String, String}[])
+    defVar(ds,
+           "profile_col",
+           Float32.(profiles.profile_col),
+           ("profile_col",),
+           attrib = Pair{String, String}[])
+    defVar(ds,
+           "profile",
+           profiles,
+           ("profile_row", "profile_col", "node"),
+           attrib = Pair{String, String}[])
 
-    initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
+    initial_condition = @subset(lswvalue, :time_start==startdate, in(:lsw, lsw_ids))
     @assert DataFrames.nrow(initial_condition) == n_lsw
     # get the lsws out in the same order
     lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
 
-    defVar(
-        ds,
-        "volume",
-        Float64.(initial_condition[lsw_idxs, :volume]),
-        ("node",),
-        attrib = Pair{String,String}[
-            "grid_mapping"=>"spatial_ref"
-            "units"=>"m3"
-            ],
-    )
+    defVar(ds,
+           "volume",
+           Float64.(initial_condition[lsw_idxs, :volume]),
+           ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "units" => "m3"])
 
     # info from lswdik
-    defVar(
-        ds,
-        "target_volume",
-        Float32.(lswdik.target_volume),
-        ("node",),
-        attrib = Pair{String,String}[
-            "grid_mapping"=>"spatial_ref"
-            "units"=>"m3"
-            ],
-    )
-    defVar(
-        ds,
-        "target_level",
-        Float32.(lswdik.target_level),
-        ("node",),
-        attrib = Pair{String,String}[
-            "grid_mapping"=>"spatial_ref"
-            "units"=>"m"
-            ],
-    )
-    defVar(
-        ds,
-        "depth_surface_water",
-        Float32.(lswdik.depth_surface_water),
-        ("node",),
-        attrib = Pair{String,String}[
-            "grid_mapping"=>"spatial_ref"
-            "units"=>"m"
-            ],
-    )
+    defVar(ds,
+           "target_volume",
+           Float32.(lswdik.target_volume),
+           ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "units" => "m3"])
+    defVar(ds,
+           "target_level",
+           Float32.(lswdik.target_level),
+           ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "units" => "m"])
+    defVar(ds,
+           "depth_surface_water",
+           Float32.(lswdik.depth_surface_water),
+           ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "units" => "m"])
     # can be NC_CHAR in MDAL release after 0.9.4
-    defVar(
-        ds,
-        "local_surface_water_type",
-        Float32.(only.(lswdik.local_surface_water_type)),
-        ("node",),
-        attrib = Pair{String,String}[
-            "grid_mapping"=>"spatial_ref"
-            "units"=>"-"
-            ],
-    )
+    defVar(ds,
+           "local_surface_water_type",
+           Float32.(only.(lswdik.local_surface_water_type)),
+           ("node",),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref"
+                                         "units" => "-"])
     return ds
 end
 
@@ -233,26 +201,22 @@ function add_equidistant_series!(ds, series_dict, lsw_ids, sampletimes, varname,
 
     @assert !any(isnan, data)
 
-    defVar(
-        ds,
-        varname,
-        data,
-        ("time", "node"),
-        attrib = Pair{String,String}["grid_mapping"=>"spatial_ref", "units"=>units],
-    )
+    defVar(ds,
+           varname,
+           data,
+           ("time", "node"),
+           attrib = Pair{String, String}["grid_mapping" => "spatial_ref", "units" => units])
 end
 
 lswlocs = Mozart.lsw_centers(joinpath(coupling_dir, "lsws.dbf"), lsw_ids)
-ds = create_static(
-    "data/ugrid/input-mozart.nc";
-    lsw_ids,
-    profile_dict,
-    graph,
-    lswlocs,
-    lswvalue,
-    lswdik,
-    fractions,
-)
+ds = create_static("data/ugrid/input-mozart.nc";
+                   lsw_ids,
+                   profile_dict,
+                   graph,
+                   lswlocs,
+                   lswvalue,
+                   lswdik,
+                   fractions)
 
 # write_dynamic
 
@@ -266,40 +230,34 @@ ds = create_static(
 # add time coordinate
 days = startdate:Day(1):enddate
 n_time = length(days)
-defVar(
-    ds,
-    "time",
-    days,
-    ("time",),
-    attrib = [
-        "units" => CFTime.DEFAULT_TIME_UNITS,
-        "calendar" => "standard",
-        "axis" => "T",
-        "standard_name" => "time",
-        "long_name" => "time",
-    ],
-)
+defVar(ds,
+       "time",
+       days,
+       ("time",),
+       attrib = [
+           "units" => CFTime.DEFAULT_TIME_UNITS,
+           "calendar" => "standard",
+           "axis" => "T",
+           "standard_name" => "time",
+           "long_name" => "time",
+       ])
 
 add_equidistant_series!(ds, prec_dict, lsw_ids, days, "precipitation", "m s-1")
-add_equidistant_series!(
-    ds,
-    evap_dict,
-    lsw_ids,
-    days,
-    "reference_evapotranspiration",
-    "m s-1",
-)
+add_equidistant_series!(ds,
+                        evap_dict,
+                        lsw_ids,
+                        days,
+                        "reference_evapotranspiration",
+                        "m s-1")
 add_equidistant_series!(ds, drainage_dict, lsw_ids, days, "drainage", "m3 s-1")
 add_equidistant_series!(ds, infiltration_dict, lsw_ids, days, "infiltration", "m3 s-1")
 add_equidistant_series!(ds, urban_runoff_dict, lsw_ids, days, "urban_runoff", "m3 s-1")
-add_equidistant_series!(
-    ds,
-    demand_agric_dict,
-    lsw_ids,
-    days,
-    "demand_agriculture",
-    "m3 s-1",
-)
+add_equidistant_series!(ds,
+                        demand_agric_dict,
+                        lsw_ids,
+                        days,
+                        "demand_agriculture",
+                        "m3 s-1")
 add_equidistant_series!(ds, prio_agric_dict, lsw_ids, days, "priority_agriculture", "-")
 add_equidistant_series!(ds, prio_wm_dict, lsw_ids, days, "priority_watermanagement", "-")
 

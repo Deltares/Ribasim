@@ -43,9 +43,9 @@ function lookup(X, Y, x)
     else
         i = searchsortedlast(X, x)
         x0 = X[i]
-        x1 = X[i+1]
+        x1 = X[i + 1]
         y0 = Y[i]
-        y1 = Y[i+1]
+        y1 = Y[i + 1]
         slope = (y1 - y0) / (x1 - x0)
         y = y0 + slope * (x - x0)
         return y
@@ -58,21 +58,18 @@ lookup_discharge(curve::StorageCurve, s) = lookup(curve.s, curve.q, s)
 lookup_level(curve::StorageCurve, s) = lookup(curve.s, curve.h, s)
 
 # see open_water_factor(t)
-const evap_factor = [
-    0.00 0.50 0.70
-    0.80 1.00 1.00
-    1.20 1.30 1.30
-    1.30 1.30 1.30
-    1.31 1.31 1.31
-    1.30 1.30 1.30
-    1.29 1.27 1.24
-    1.21 1.19 1.18
-    1.17 1.17 1.17
-    1.00 0.90 0.80
-    0.80 0.70 0.60
-    0.00 0.00 0.00
-]
-
+const evap_factor = [0.00 0.50 0.70
+                     0.80 1.00 1.00
+                     1.20 1.30 1.30
+                     1.30 1.30 1.30
+                     1.31 1.31 1.31
+                     1.30 1.30 1.30
+                     1.29 1.27 1.24
+                     1.21 1.19 1.18
+                     1.17 1.17 1.17
+                     1.00 0.90 0.80
+                     0.80 0.70 0.60
+                     0.00 0.00 0.00]
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
@@ -91,7 +88,6 @@ end
 
 open_water_factor(t::Real) = open_water_factor(unix2datetime(t))
 
-
 """
     ForwardFill(t, v)
 
@@ -104,10 +100,10 @@ There is a tolerance of 1e-4 for t to avoid narrowly missing the next timestep.
     ff(0.1 - 1e-5) == v[2]
     ff(0.1 - 1e-3) == v[1]
 """
-struct ForwardFill{T,V}
+struct ForwardFill{T, V}
     t::T
     v::V
-    function ForwardFill(t::T, v::V) where {T,V}
+    function ForwardFill(t::T, v::V) where {T, V}
         n = length(t)
         if n != length(v)
             error("ForwardFill vectors are not of equal length")
@@ -115,12 +111,12 @@ struct ForwardFill{T,V}
         if !issorted(t)
             error("ForwardFill t is not sorted")
         end
-        new{T,V}(t, v)
+        new{T, V}(t, v)
     end
 end
 
 "Interpolate into a forward filled timeseries at t"
-function (ff::ForwardFill{T,V})(t)::eltype(V) where {T,V}
+function (ff::ForwardFill{T, V})(t)::eltype(V) where {T, V}
     # Subtract a small amount to avoid e.g. t = 2.999999s not picking up the t = 3s value.
     # This can occur due to floating point issues with the calculated t::Float64
     # The offset is larger than the eps of 1 My in seconds, and smaller than the periodic
@@ -131,7 +127,7 @@ function (ff::ForwardFill{T,V})(t)::eltype(V) where {T,V}
 end
 
 "Interpolate and get the index j of the result, useful for V=Vector{Vector{Float64}}"
-function (ff::ForwardFill{T,V})(t, j)::eltype(eltype(V)) where {T,V}
+function (ff::ForwardFill{T, V})(t, j)::eltype(eltype(V)) where {T, V}
     i = searchsortedlast(ff.t, t + 1e-4)
     i == 0 && throw(DomainError(t, "Requesting t before start of series."))
     return ff.v[i][j]
@@ -149,14 +145,12 @@ end
 
 """ModelingToolkit.connect, but save both the equations and systems
 to avoid errors when forgetting to match the eqs and systems manually."""
-function join!(
-    eqs::Vector{Equation},
-    systems::Set{ODESystem},
-    sys1::ODESystem,
-    connector1::Symbol,
-    sys2::ODESystem,
-    connector2::Symbol,
-)
+function join!(eqs::Vector{Equation},
+               systems::Set{ODESystem},
+               sys1::ODESystem,
+               connector1::Symbol,
+               sys2::ODESystem,
+               connector2::Symbol)
     eq = connect(getproperty(sys1, connector1), getproperty(sys2, connector2))
     push!(eqs, eq)
     push!(systems, sys1, sys2)
@@ -166,8 +160,8 @@ end
 parentname(s::Symbol) = Symbol(first(eachsplit(String(s), "₊")))
 
 # SymbolicUtils.Sym{Real} and Term{Real} with MTK Metadata
-const SymReal = Sym{Real,Base.ImmutableDict{DataType,Any}}
-const TermReal = Term{Real,Base.ImmutableDict{DataType,Any}}
+const SymReal = Sym{Real, Base.ImmutableDict{DataType, Any}}
+const TermReal = Term{Real, Base.ImmutableDict{DataType, Any}}
 
 """
     Names(sys::MTK.AbstractODESystem)
@@ -177,7 +171,7 @@ Collection of names of the system, used for looking up values.
 struct Names
     u_syms::Vector{TermReal}  # states(sys)
     # parameters are normally SymReal, but TermReal if moved by inputs_to_parameters!
-    p_syms::Vector{Union{SymReal,TermReal}}  # parameters(sys)
+    p_syms::Vector{Union{SymReal, TermReal}}  # parameters(sys)
     obs_eqs::Vector{Equation}  # observed(sys)
     obs_syms::Vector{TermReal}  # lhs of observed(sys)
     u_symbol::Vector{Symbol}  # Symbol versions, used as names...
@@ -232,11 +226,9 @@ struct Register{T}
     integrator::T  # SciMLBase.AbstractODEIntegrator
     param_hist::ForwardFill
     sysnames::Names
-    function Register(
-        integrator::T,
-        param_hist,
-        sysnames,
-    ) where {T<:SciMLBase.AbstractODEIntegrator}
+    function Register(integrator::T,
+                      param_hist,
+                      sysnames) where {T <: SciMLBase.AbstractODEIntegrator}
         @assert length(integrator.u) == length(sysnames.u_syms)
         @assert length(integrator.p) == length(sysnames.p_syms)
         new{T}(integrator, param_hist, sysnames)
@@ -351,7 +343,7 @@ function savedvalues(reg::Register, sym)::Vector{Float64}
         # the observed will be interpolated if the state it gets is interpolated
         # and the parameters are current
         n = length(sol.t)
-        [f(sym, sol[i], param_hist(sol.t[i]), sol.t[i]) for i = 1:n]
+        [f(sym, sol[i], param_hist(sol.t[i]), sol.t[i]) for i in 1:n]
     else
         error(lazy"Symbol $s not found in system.")
     end
@@ -372,7 +364,6 @@ end
 
 identify(reg::Register, sym)::Symbol = identify(reg.sysnames, sym)
 
-
 """
     sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
 
@@ -383,8 +374,8 @@ give the daily total in m³, which can be used in a water balance.
 function sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
     n = length(times)
     integrals = Array{Float64}(undef, n - 1)
-    for i = 1:n-1
-        integral, err = quadgk(f, times[i], times[i+1])
+    for i in 1:(n - 1)
+        integral, err = quadgk(f, times[i], times[i + 1])
         integrals[i] = integral
     end
     return integrals
@@ -426,21 +417,20 @@ function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
 
     # create a dataframe with the same names and sign conventions as lswwaterbalans.out
     bachwb = DataFrame(;
-        model = "bach",
-        lsw = lsw_id,
-        districtwatercode = 24,
-        type,
-        time_start = unix2datetime.(times[1:end-1]),
-        time_end = unix2datetime.(times[2:end]),
-        precip = Q_prec_sum,
-        evaporation = Q_eact_sum,
-        drainage_sh = drainage_sum,
-        infiltr_sh = infiltration_sum,
-        urban_runoff = urban_runoff_sum,
-        storage_diff = -S_diff,
-        alloc_agric = -alloc_agric_sum,
-        alloc_indus = -alloc_indus_sum,
-    )
+                       model = "bach",
+                       lsw = lsw_id,
+                       districtwatercode = 24,
+                       type,
+                       time_start = unix2datetime.(times[1:(end - 1)]),
+                       time_end = unix2datetime.(times[2:end]),
+                       precip = Q_prec_sum,
+                       evaporation = Q_eact_sum,
+                       drainage_sh = drainage_sum,
+                       infiltr_sh = infiltration_sum,
+                       urban_runoff = urban_runoff_sum,
+                       storage_diff = -S_diff,
+                       alloc_agric = -alloc_agric_sum,
+                       alloc_indus = -alloc_indus_sum)
     # flip signs since these come from a connected component, not the LSW itself
     if type == 'V'
         bachwb.todownstream = -Q_out_sum

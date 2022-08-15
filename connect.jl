@@ -1,6 +1,5 @@
 # connect components into a model, used for trying out things
 
-
 import DifferentialEquations as DE
 import ModelingToolkit as MTK
 using CSV

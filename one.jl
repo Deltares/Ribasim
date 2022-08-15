@@ -55,15 +55,13 @@ elseif reference_model == "decadal"
     mozartout_dir = normpath(@__DIR__, "data/lhm-output/mozart")
     # this must be after mozartin has run, or the VAD relations are not correct
     mozartin_dir = mozartout_dir
-    meteo_dir = normpath(
-        @__DIR__,
-        "data",
-        "lhm-input",
-        "control",
-        "control_LHM4_2_2019_2020",
-        "meteo",
-        "mozart",
-    )
+    meteo_dir = normpath(@__DIR__,
+                         "data",
+                         "lhm-input",
+                         "control",
+                         "control_LHM4_2_2019_2020",
+                         "meteo",
+                         "mozart")
 else
     error("unknown reference model")
 end
@@ -96,7 +94,7 @@ fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 # graphplot(graph)
 
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
-mzwb = @subset(Mozart.read_mzwaterbalance(mzwaterbalance_path), :districtwatercode == dw_id)
+mzwb = @subset(Mozart.read_mzwaterbalance(mzwaterbalance_path), :districtwatercode==dw_id)
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_dict, evap_dict = Duet.meteo_dicts(meteo_path, lsw_ids)
@@ -106,7 +104,7 @@ urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 
 # values that don't vary between LSWs
 first_lsw_id = first(lsw_ids)
-type::Char = only(only(@subset(lswdik, :lsw == first_lsw_id)).local_surface_water_type)
+type::Char = only(only(@subset(lswdik, :lsw==first_lsw_id)).local_surface_water_type)
 @assert type in ('V', 'P')
 # set bach runtimes equal to the mozart reference run
 times::Vector{Float64} = prec_dict[first_lsw_id].t
@@ -117,12 +115,13 @@ timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 
 profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
-curve_dict = Dict{Int, Bach.StorageCurve}(k => Bach.StorageCurve(v) for (k, v) in profile_dict)
+curve_dict = Dict{Int, Bach.StorageCurve}(k => Bach.StorageCurve(v)
+                                          for (k, v) in profile_dict)
 
 # register lookup functions
-@eval Bach lsw_area(s, lsw_id) = Bach.lookup_area(Main.curve_dict[lsw_id], s)
-@eval Bach lsw_discharge(s, lsw_id) = Bach.lookup_discharge(Main.curve_dict[lsw_id], s)
-@eval Bach lsw_level(s, lsw_id) = Bach.lookup_level(Main.curve_dict[lsw_id], s)
+@eval Bach lsw_area(s, lsw_id)=Bach.lookup_area(Main.curve_dict[lsw_id], s)
+@eval Bach lsw_discharge(s, lsw_id)=Bach.lookup_discharge(Main.curve_dict[lsw_id], s)
+@eval Bach lsw_level(s, lsw_id)=Bach.lookup_level(Main.curve_dict[lsw_id], s)
 @register_symbolic Bach.lsw_area(s::Num, lsw_id::Num)
 @register_symbolic Bach.lsw_discharge(s::Num, lsw_id::Num)
 @register_symbolic Bach.lsw_level(s::Num, lsw_id::Num)
@@ -197,18 +196,17 @@ function periodic_update!(integrator)
         if length(lswusers) > 0
             # allocate to different users
             allocate!(;
-                integrator,
-                name =  Symbol(:sys_, lsw_id, :₊),
-                P,
-                area,
-                E_pot,
-                urban_runoff,
-                drainage,
-                infiltration,
-                demandlsw,
-                priolsw,
-                lswusers,
-            )
+                      integrator,
+                      name = Symbol(:sys_, lsw_id, :₊),
+                      P,
+                      area,
+                      E_pot,
+                      urban_runoff,
+                      drainage,
+                      infiltration,
+                      demandlsw,
+                      priolsw,
+                      lswusers)
         end
 
         # update parameters
@@ -219,7 +217,6 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
 
         return demandlsw, priolsw
-
     end
 
     Bach.save!(param_hist, t, p)
@@ -227,28 +224,28 @@ function periodic_update!(integrator)
 end
 
 function allocate!(;
-    integrator,
-    name,
-    P,
-    area,
-    E_pot,
-    urban_runoff,
-    drainage,
-    infiltration,
-    demandlsw,
-    priolsw,
-    lswusers,
-)
+                   integrator,
+                   name,
+                   P,
+                   area,
+                   E_pot,
+                   urban_runoff,
+                   drainage,
+                   infiltration,
+                   demandlsw,
+                   priolsw,
+                   lswusers)
     (; t, p, sol) = integrator
 
     # function for demand allocation based upon user prioritisation
     # Note: equation not currently reproducing Mozart
-    Q_avail_vol =
-        ((P - E_pot) * area) / Δt - min(0.0, infiltration - drainage - urban_runoff)
+    Q_avail_vol = ((P - E_pot) * area) / Δt -
+                  min(0.0, infiltration - drainage - urban_runoff)
 
     users = []
     for user in lswusers
-        tmp = (user = user, priority = priolsw[user](t), demand = demandlsw[user](t), alloc = Ref(0.0))
+        tmp = (user = user, priority = priolsw[user](t), demand = demandlsw[user](t),
+               alloc = Ref(0.0))
         push!(users, tmp)
     end
     sort!(users, by = x -> x.priority)
@@ -272,7 +269,6 @@ function allocate!(;
         param!(integrator, symdemand, -user.demand[])
         symprio = Symbol(name, user.user, :₊prio)
         param!(integrator, symprio, -user.priority[])
-
     end
     return nothing
 end
@@ -280,21 +276,21 @@ end
 # create a vector of vectors of all non zero users within all the lsws
 all_users = Vector{Symbol}[]
 for lsw_id in lsw_ids
-    tmp =  Duet.list_users(uslswdem, lsw_id)
-    push!(all_users,tmp )
+    tmp = Duet.list_users(uslswdem, lsw_id)
+    push!(all_users, tmp)
 end
 
 types = only.(lswdik.local_surface_water_type)
 target_levels = Vector{Float32}(lswdik.target_level)
 target_volumes = Vector{Float32}(lswdik.target_volume)
-initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
+initial_condition = @subset(lswvalue, :time_start==startdate, in(:lsw, lsw_ids))
 @assert DataFrames.nrow(initial_condition) == length(lsw_ids)
 # get the lsws out in the same order
 lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
 initial_volumes = Float64.(initial_condition[lsw_idxs, :volume])
 
-sys_dict =
-    Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels, initial_volumes, Δt, all_users)
+sys_dict = Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
+                                initial_volumes, Δt, all_users)
 
 sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
 
@@ -312,15 +308,12 @@ prob = ODAEProblem(sim, [], tspan)
 
 cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
 
-integrator = init(
-    prob,
-    DE.Rosenbrock23();
-    callback = cb,
-    save_on = true,
-    abstol = 1e-9,
-    reltol = 1e-9,
-)
-
+integrator = init(prob,
+                  DE.Rosenbrock23();
+                  callback = cb,
+                  save_on = true,
+                  abstol = 1e-9,
+                  reltol = 1e-9)
 
 reg = Register(integrator, param_hist, sysnames)
 
@@ -345,32 +338,27 @@ fig_wb = Duet.plot_waterbalance_comparison(wb)
 wb = Duet.combine_waterbalance(mzwb_compare, bachwb)
 Duet.plot_waterbalance_comparison(wb)
 
-
 ##
 # compare individual component timeseries
-mz_out = @subset(lswvalue, :lsw == lsw_id)
-lswinfo = only(@subset(lswdik, :lsw == lsw_id))
+mz_out = @subset(lswvalue, :lsw==lsw_id)
+lswinfo = only(@subset(lswdik, :lsw==lsw_id))
 (; target_volume, target_level, depth_surface_water, maximum_level) = lswinfo
 
 name = Symbol(:sys_, lsw_id, :₊lsw₊)
-fig_c = Duet.plot_series_comparison(
-    reg,
-    type,
-    mz_out,
-    Symbol(name, :S),
-    :volume,
-    timespan,
-    target_volume,
-)
-fig_c = Duet.plot_series_comparison(
-    reg,
-    type,
-    mz_out,
-    Symbol(name, :h),
-    :level,
-    timespan,
-    target_level,
-)
+fig_c = Duet.plot_series_comparison(reg,
+                                    type,
+                                    mz_out,
+                                    Symbol(name, :S),
+                                    :volume,
+                                    timespan,
+                                    target_volume)
+fig_c = Duet.plot_series_comparison(reg,
+                                    type,
+                                    mz_out,
+                                    Symbol(name, :h),
+                                    :level,
+                                    timespan,
+                                    target_level)
 fig_c = Duet.plot_series_comparison(reg, type, mz_out, Symbol(name, :area), :area, timespan)
 fig_c = if type == 'V'
     outname = Symbol(:sys_, lsw_id, :₊weir₊Q)

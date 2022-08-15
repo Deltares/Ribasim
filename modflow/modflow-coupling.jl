@@ -19,17 +19,13 @@ struct UsefulModflowModel
     head::Vector{Float64}
 end
 
-
 function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
-    tag = MF.get_var_address(
-        model,
-        component,
-        modelname,
-        subcomponent_name = subcomponent_name,
-    )
+    tag = MF.get_var_address(model,
+                             component,
+                             modelname,
+                             subcomponent_name = subcomponent_name)
     return BMI.get_value_ptr(model, tag)
 end
-
 
 function UsefuModflowModel(directory, modelname)
     # TODO: CAN WE GO BACK?
@@ -40,7 +36,6 @@ function UsefuModflowModel(directory, modelname)
     head = get_var_ptr(model, "X", modelname)
     return UsefulModflowModel(model, modelname, maxiter, head)
 end
-
 
 function solve_to_convergence(model::UsefulModflowModel)
     converged = false
@@ -56,7 +51,6 @@ function solve_to_convergence(model::UsefulModflowModel)
     println("converged")
     return iteration
 end
-
 
 function run_mf6_model(directory)
     cd(directory)
@@ -129,8 +123,8 @@ head = BMI.get_value_ptr(model, headtag)
 
 ##
 
-const BoundView =
-    SubArray{Float64,1,Matrix{Float64},Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}
+const BoundView = SubArray{Float64, 1, Matrix{Float64},
+                           Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
 """
 Memory views on a single MODFLOW6 Drainage package.
@@ -151,7 +145,6 @@ struct ModflowDrainagePackage
     budget::Vector{Float64}
 end
 
-
 function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
     nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
     bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = "DRN_SYS1")
@@ -164,7 +157,6 @@ function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
 
     return ModflowDrainagePackage(nodelist, hcof, rhs, conductance, elevation, budget)
 end
-
 
 """
 Memory views on a single MODFLOW6 River package.
@@ -185,7 +177,6 @@ struct ModflowRiverPackage
     budget::Vector{Float64}
 end
 
-
 function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
     nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
     bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
@@ -197,17 +188,14 @@ function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
     bottom_elevation = view(bound, 3, :)
     budget = zeros(size(hcof))
 
-    return ModflowRiverPackage(
-        nodelist,
-        hcof,
-        rhs,
-        conductance,
-        stage,
-        bottom_elevation,
-        budget,
-    )
+    return ModflowRiverPackage(nodelist,
+                               hcof,
+                               rhs,
+                               conductance,
+                               stage,
+                               bottom_elevation,
+                               budget)
 end
-
 
 struct ModflowRiverDrainagePackage
     river::ModflowRiverPackage
@@ -215,13 +203,10 @@ struct ModflowRiverDrainagePackage
     budget::Vector{Float64}
 end
 
-
-function ModflowRiverDrainagePackage(
-    model,
-    modelname,
-    subcomponent_river,
-    subcomponent_drainage,
-)
+function ModflowRiverDrainagePackage(model,
+                                     modelname,
+                                     subcomponent_river,
+                                     subcomponent_drainage)
     river = ModflowRiverPackage(model, modelname, subcomponent_river)
     drainage = ModflowDrainagePackage(model, modelname, subcomponent_drainage)
     if river.nodelist != drainage.nodelist
@@ -230,7 +215,6 @@ function ModflowRiverDrainagePackage(
     end
     return ModflowRiverDrainagePackage(river, drainage)
 end
-
 
 """
 Compute the flow the from the boundary condition.
@@ -287,13 +271,11 @@ function budget!(boundary, head)
     end
 end
 
-
 function budget!(boundary::ModflowRiverDrainagePackage, head)
     budget!(boundary.river, head)
     budget!(boundary.drainage, head)
     boundary.budget .= boundary.river.budget .+ boundary.drainage.budget
 end
-
 
 riv_sys1 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS1", "DRN_SYS4")
 riv_sys2 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS2", "DRN_SYS5")
@@ -318,7 +300,6 @@ MF.finalize_time_step(model)
 directory = "LHM-steady-selection"
 run_mf6_model(directory)
 
-
 function sum_budget!(exchange)
     boundary = exchange.boundary
     exchange.lsw_drainage_sum .= 0.0
@@ -332,27 +313,22 @@ function sum_budget!(exchange)
     end
 end
 
-
 "Read volume level"
 function read_vlvalue(path)
     names = ["lsw", "weirarea", "volume_lsw", "level", "level_slope"]
-    return CSV.read(
-        path,
-        DataFrame;
-        header = names,
-        delim = ' ',
-        ignorerepeated = true,
-        stringtype = String,
-        strict = true,
-    )
+    return CSV.read(path,
+                    DataFrame;
+                    header = names,
+                    delim = ' ',
+                    ignorerepeated = true,
+                    stringtype = String,
+                    strict = true)
 end
-
 
 struct VolumeLevelCurve
     volume::Vector{Float64}
     level::Vector{Float64}
 end
-
 
 function lookup(X, Y, x)
     if x <= first(X)
@@ -365,15 +341,14 @@ function lookup(X, Y, x)
     else
         i = searchsortedlast(X, x)
         x0 = X[i]
-        x1 = X[i+1]
+        x1 = X[i + 1]
         y0 = Y[i]
-        y1 = Y[i+1]
+        y1 = Y[i + 1]
         slope = (y1 - y0) / (x1 - x0)
         y = y0 + slope * (x - x0)
         return y
     end
 end
-
 
 """
 Contains data per LSW.
@@ -398,12 +373,9 @@ struct WeirAreaExchangeData
     curves::Vector{VolumeLevelCurve}  # n_weir_area
 end
 
-
-function WeirAreaExchangeData(
-    vlvalue_df,  # vlvalue.dik
-    unknown,
-    lswid_to_index,  #::Dict{Int, Int},  # Martijn
-)
+function WeirAreaExchangeData(vlvalue_df,  # vlvalue.dik
+                              unknown,
+                              lswid_to_index)
     # Fout: vlvalue_df bevat veel duplicate weir areas, voor de curve segments
     weir_area = df.weir_area
     lsw_ids = df.lsw
@@ -416,9 +388,8 @@ function WeirAreaExchangeData(
 
     stage = zeros(n_weir_area)
     curves = # TODO Martijn
-        return WeirAreaExchangeData(lsw_index, stage, curves)
+    return WeirAreaExchangeData(lsw_index, stage, curves)
 end
-
 
 """
 Contains data per MODFLOW6 node.
@@ -435,19 +406,17 @@ end
 to_index means index in lsw_index
 lsw_index is index into the vector of Bach's LocalSurfaceWaters
 """
-function ModflowExchangeData(
-    boundary,
-    modflow_nodes, #  ::Vector{Int},  # BMI
-    coupling_grids, #::Dict{String, Union{Matrix{Float64}, Matrix{Int}}
-    lswid_to_index,  #::Dict{Int, Int},  # Martijn
-    weirareaid_to_index,  #::Dict{Int, Int},  # Martijn
-)
+function ModflowExchangeData(boundary,
+                             modflow_nodes, #  ::Vector{Int},  # BMI
+                             coupling_grids, #::Dict{String, Union{Matrix{Float64}, Matrix{Int}}
+                             lswid_to_index,  #::Dict{Int, Int},  # Martijn
+                             weirareaid_to_index)
     nbound = length(boundary.nodelist)
     lsw_index = zeros(Int, nbound)
     weir_area_index = zeros(Int, nbound)
     stage_correction = zeros(Float64, nbound)
     grids = coupling_grids
-    for i = 1:nbound
+    for i in 1:nbound
         nodeuser = modflow_nodes[boundary.nodelist[i]]
         lsw_index[i] = lswid_to_index[grids["lsw_id"][nodeuser]]
         weir_area_index[i] = weirareaid_to_index[grids["weir_area"][nodeuser]]
@@ -455,7 +424,6 @@ function ModflowExchangeData(
     end
     return ModflowExchangeData(boundary, lsw_index, weir_area_index, stage_correction)
 end
-
 
 function get_nodeuser(model, modelname)
     shape = get_var_ptr(model, modelname, "MSHAPE", subcomponent_name = "DIS")
@@ -465,119 +433,96 @@ function get_nodeuser(model, modelname)
     return nodeuser .% ncell_per_layer
 end
 
-
 struct LocalSurfaceWaterExchange{T}
     modflow::ModflowExchangeData{T}
     lsw::LswExchangeData
     weir_area::WeirAreaExchangeData
 end
 
-
-function LocalSurfaceWaterDrainageExchange(
-    model,
-    modelname,
-    subcomponent,
-    modflow_nodes,
-    coupling_grids,  # Dict or struct
-    vlvalue_df,
-    lswid_to_index,
-    weirareaid_to_index,  # index into your list of weir areas
-)
+function LocalSurfaceWaterDrainageExchange(model,
+                                           modelname,
+                                           subcomponent,
+                                           modflow_nodes,
+                                           coupling_grids,  # Dict or struct
+                                           vlvalue_df,
+                                           lswid_to_index,
+                                           weirareaid_to_index)
     boundary = ModflowDrainagePackage(model, modelname, subcomponent)
     weir_area = WeirAreaExchangeData(vlvalue_df, lswid_to_index)
-    modflow = ModflowExchangeData(
-        boundary,
-        modflow_nodes,
-        coupling_grids,
-        lswid_to_index,
-        weirareaid_to_index,
-    )
+    modflow = ModflowExchangeData(boundary,
+                                  modflow_nodes,
+                                  coupling_grids,
+                                  lswid_to_index,
+                                  weirareaid_to_index)
     lsw = LswExchangeData(length(lswid_to_index))
     return LocalSurfaceWaterExchange{ModflowDrainagePackage}(modflow, lsw, weir_area)
 end
 
-
-function LocalSurfaceWaterRiverDrainageExchange(
-    model,
-    modelname,
-    subcomponents::Tuple{String,String},
-    modflow_nodes,
-    coupling_grids,  # Dict or struct
-    vlvalue_df,
-    lswid_to_index,
-    weirareaid_to_index,  # index into your list of weir areas
-)
+function LocalSurfaceWaterRiverDrainageExchange(model,
+                                                modelname,
+                                                subcomponents::Tuple{String, String},
+                                                modflow_nodes,
+                                                coupling_grids,  # Dict or struct
+                                                vlvalue_df,
+                                                lswid_to_index,
+                                                weirareaid_to_index)
     subcomponent_river, subcomponent_drainage = subcomponents
-    boundary = ModflowRiverDrainagePackage(
-        model,
-        modelname,
-        subcomponent_river,
-        subcomponent_drainage,
-    )
+    boundary = ModflowRiverDrainagePackage(model,
+                                           modelname,
+                                           subcomponent_river,
+                                           subcomponent_drainage)
     weir_area = WeirAreaExchangeData(vlvalue_df, lswid_to_index)
-    modflow = ModflowExchangeData(
-        boundary,
-        modflow_nodes,
-        coupling_grids,
-        lswid_to_index,
-        weirareaid_to_index,
-    )
+    modflow = ModflowExchangeData(boundary,
+                                  modflow_nodes,
+                                  coupling_grids,
+                                  lswid_to_index,
+                                  weirareaid_to_index)
     lsw = LswExchangeData(length(lswid_to_index))
     return LocalSurfaceWaterExchange{ModflowRiverDrainagePackage}(modflow, lsw, weir_area)
 end
 
-
-function initialize_exchanges(
-    model,
-    modelname,
-    vlvalue_df,
-    river_subcomponents,
-    drainage_subcomponents,
-    path_coupling_dataset,
-    lswid_to_index,
-)
-
+function initialize_exchanges(model,
+                              modelname,
+                              vlvalue_df,
+                              river_subcomponents,
+                              drainage_subcomponents,
+                              path_coupling_dataset,
+                              lswid_to_index)
     coupling_ds = Dataset(path_coupling_dataset)
-    coupling_grids = Dict(
-        "lsw_id" => coupling_ds["lsw_id"][:],
-        "weir_area" => coupling_ds["weir_area"][:],
-        "correction" => coupling_ds["correction"][:],
-    )
+    coupling_grids = Dict("lsw_id" => coupling_ds["lsw_id"][:],
+                          "weir_area" => coupling_ds["weir_area"][:],
+                          "correction" => coupling_ds["correction"][:])
     close(coupling_ds)
 
     modflow_nodes = get_nodeuser(model, modelname)
     exchanges = LocalSurfaceWaterExchange{
-        Union{ModflowDrainagePackage,ModflowRiverDrainagePackage},
-    }[]
+                                          Union{ModflowDrainagePackage,
+                                                ModflowRiverDrainagePackage}
+                                          }[]
     for subcomponent in river_subcomponents
-        exchange = LocalSurfaceWaterRiverDrainageExchange(
-            model,
-            modelname,
-            subcomponent,
-            coupling_grids,
-            modflow_nodes,
-            vlvalue_df,
-            lswid_to_index,
-            weirareaid_to_index,
-        )
+        exchange = LocalSurfaceWaterRiverDrainageExchange(model,
+                                                          modelname,
+                                                          subcomponent,
+                                                          coupling_grids,
+                                                          modflow_nodes,
+                                                          vlvalue_df,
+                                                          lswid_to_index,
+                                                          weirareaid_to_index)
         push!(exchanges, exchange)
     end
     for subcomponent in drainage_subcomponents
-        exchange = LocalSurfaceWaterDrainageExchange(
-            model,
-            modelname,
-            subcomponent,
-            coupling_grids,
-            modflow_nodes,
-            vlvalue_df,
-            lswid_to_index,
-            weirareaid_to_index,
-        )
+        exchange = LocalSurfaceWaterDrainageExchange(model,
+                                                     modelname,
+                                                     subcomponent,
+                                                     coupling_grids,
+                                                     modflow_nodes,
+                                                     vlvalue_df,
+                                                     lswid_to_index,
+                                                     weirareaid_to_index)
         push!(exchanges, exchange)
     end
     return exchanges
 end
-
 
 """
 Idem ditto infiltration
@@ -588,13 +533,11 @@ function apply_drainage!(bachmodel, exchange)
     bachmodel.drainage[exchange.modflow.lsw_index] += exchange.lsw.drainage_sum
 end
 
-
 function apply_infiltration!(bachmodel, exchange)
     # TODO use in Bach
     # MUST BE POSITIVE
     bachmodel.infiltration[exchange.modflow.lsw_index] += exchange.lsw.infiltration_sum
 end
-
 
 function set_node_stage!(boundary::ModflowRiverDrainagePackage, index, value)
     bottom = boundary.river.bottom_elevation[index]
@@ -602,7 +545,6 @@ function set_node_stage!(boundary::ModflowRiverDrainagePackage, index, value)
     boundary.river.stage[index] = new_value
     boundary.drainage.elevation[index] = new_value
 end
-
 
 """
 Compute a stage for every weir area, and thus for every LSW: In case no weir
@@ -616,13 +558,12 @@ function compute_stage!(exchange, lsw_volumes)
     end
 end
 
-
 """
 
 """
 function set_stage!(exchange::LocalSurfaceWaterExchange{ModflowRiverDrainagePackage})
-    for (i, (weir_area_index, stage_correction)) in
-        enumerate(zip(exchange.modflow.weir_area_index, exchange.modflow.stage_correction))
+    for (i, (weir_area_index, stage_correction)) in enumerate(zip(exchange.modflow.weir_area_index,
+                                                                  exchange.modflow.stage_correction))
         stage = exchange.weir_area_stage[weir_area_index] + stage_correction
         set_node_stage!(exchange.boundary, i, stage)
     end
@@ -665,13 +606,11 @@ function exchange_bach_to_modflow!(coupledmodel)
     return nothing
 end
 
-
 struct SequentialCoupledModel
     mfmodel::UsefulModflowModel
     bachmodel::BachModel
-    exchanges::Vector{Union{ModflowDrainagePackage,ModflowRiverDrainagePackage}}
+    exchanges::Vector{Union{ModflowDrainagePackage, ModflowRiverDrainagePackage}}
 end
-
 
 function update!(coupledmodel::SequentialCoupledModel)
     (; mfmodel, bachmodel, exchanges) = coupledmodel
@@ -686,22 +625,18 @@ function update!(coupledmodel::SequentialCoupledModel)
     return nothing
 end
 
-
 struct IterativeCoupledModel
     mfmodel::UsefulModflowModel
     bachmodel::BachModel
-    exchanges::Vector{Union{ModflowDrainagePackage,ModflowRiverDrainagePackage}}
+    exchanges::Vector{Union{ModflowDrainagePackage, ModflowRiverDrainagePackage}}
     previous_bach_state::Vector{Float64}
     criterion::Float64
 end
 
 function is_converged(coupledmodel::IterativeCoupledModel)
-    return @. all(
-        abs(coupledmodel.bachmodel.state - coupledmodel.previous_bach_state) <
-        coupledmodel.criterion,
-    )
+    return @. all(abs(coupledmodel.bachmodel.state - coupledmodel.previous_bach_state) <
+                  coupledmodel.criterion)
 end
-
 
 function update!(coupledmodel::IterativeCoupledModel)
     (; mfmodel, bachmodel, exchanges, previous_state) = coupledmodel
@@ -735,7 +670,6 @@ function update!(coupledmodel::IterativeCoupledModel)
     return iteration
 end
 
-
 riv_sys1 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS1", "DRN_SYS4")
 riv_sys2 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS2", "DRN_SYS5")
 riv_sys4 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS4", "DRN_SYS6")
@@ -744,7 +678,6 @@ riv_sys5 = ModflowRiverDrainagePackage(model, modelname, "RIV_SYS5", "DRN_SYS7")
 drn_sys1 = ModflowDrainagePackage(model, modelname, "DRN_SYS1")
 drn_sys2 = ModflowDrainagePackage(model, modelname, "DRN_SYS2")
 drn_sys3 = ModflowDrainagePackage(model, modelname, "DRN_SYS3")
-
 
 directory = "LHM-steady-selection"
 cd(directory)
@@ -761,15 +694,13 @@ river_subcomponents = [
 drainage_subcomponents = ["DRN_SYS1", "DRN_SYS2", "DRN_SYS3"]
 path_coupling_dataset = "../selection_coupling.nc"
 
-exchanges = initialize_exchanges(
-    model,
-    modelname,
-    vlvalue_df,
-    river_subcomponents,
-    drainage_subcomponents,
-    path_coupling_dataset,
-    lswid_to_index,
-)
+exchanges = initialize_exchanges(model,
+                                 modelname,
+                                 vlvalue_df,
+                                 river_subcomponents,
+                                 drainage_subcomponents,
+                                 path_coupling_dataset,
+                                 lswid_to_index)
 MF.prepare_time_step(m, 0.0)
 MF.prepare_solve(m, 1)
 solve_to_convergence(m)

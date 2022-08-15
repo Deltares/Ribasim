@@ -2,13 +2,9 @@ using Serialization
 using TimerOutputs
 const to = TimerOutput()
 
-@timeit to "load modules" begin
-    using ModelingToolkit, OrdinaryDiffEq
-end
+@timeit to "load modules" begin using ModelingToolkit, OrdinaryDiffEq end
 
-@timeit to "define components" begin
-    include("electrical_components.jl")
-end
+@timeit to "define components" begin include("electrical_components.jl") end
 
 @timeit to "create system" begin
     R = 1.0
@@ -19,18 +15,16 @@ end
     @named source = ConstantVoltage(V = V)
     @named ground = Ground()
 
-    rc_eqs = [
-        connect(source.p, resistor.p)
-        connect(resistor.n, capacitor.p)
-        connect(capacitor.n, source.n)
-        connect(capacitor.n, ground.g)
-    ]
+    rc_eqs = [connect(source.p, resistor.p)
+              connect(resistor.n, capacitor.p)
+              connect(capacitor.n, source.n)
+              connect(capacitor.n, ground.g)]
 
     @named rc_model = ODESystem(rc_eqs, t)
     rc_model = compose(rc_model, [resistor, capacitor, source, ground])
 end
 
-@timeit to "structural_simplify" sys = structural_simplify(rc_model)
+@timeit to "structural_simplify" sys=structural_simplify(rc_model)
 
 @timeit to "create ODAEProblem" begin
     u0 = [capacitor.v => 0.0]
@@ -44,7 +38,7 @@ open("prob.jls", "w") do f
     serialize(f, prob)
 end
 
-@timeit to "solve" sol = solve(prob, Tsit5())
+@timeit to "solve" sol=solve(prob, Tsit5())
 
 println("Solver return code: ", sol.retcode, "\n")
 show(sol.destats)

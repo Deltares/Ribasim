@@ -70,7 +70,7 @@ function cutout(aoi::String, lsw::Int)
     ]
     mkpath("cutout/$aoi")
     for (name, table) in tables
-        table_aoi = @subset(table, :lsw == lsw)
+        table_aoi = @subset(table, :lsw==lsw)
         tsv("cutout/$aoi/$name.tsv", table_aoi)
     end
 end

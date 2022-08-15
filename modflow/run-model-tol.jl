@@ -3,15 +3,12 @@ import BasicModelInterface as BMI
 import ModflowInterface as MF
 
 function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
-    tag = MF.get_var_address(
-        model,
-        component,
-        modelname,
-        subcomponent_name = subcomponent_name,
-    )
+    tag = MF.get_var_address(model,
+                             component,
+                             modelname,
+                             subcomponent_name = subcomponent_name)
     return BMI.get_value_ptr(model, tag)
 end
-
 
 function solve_to_convergence(model, maxiter)
     converged = false
@@ -28,9 +25,8 @@ function solve_to_convergence(model, maxiter)
     return iteration - 1
 end
 
-
-const BoundView =
-    SubArray{Float64,1,Matrix{Float64},Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}
+const BoundView = SubArray{Float64, 1, Matrix{Float64},
+                           Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
 """
 Memory views on a single MODFLOW6 Drainage package.
@@ -51,7 +47,6 @@ struct ModflowDrainagePackage
     budget::Vector{Float64}
 end
 
-
 function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
     nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
     bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = "DRN_SYS1")
@@ -64,7 +59,6 @@ function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
 
     return ModflowDrainagePackage(nodelist, hcof, rhs, conductance, elevation, budget)
 end
-
 
 """
 Memory views on a single MODFLOW6 River package.
@@ -85,7 +79,6 @@ struct ModflowRiverPackage
     budget::Vector{Float64}
 end
 
-
 function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
     nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
     bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
@@ -97,17 +90,14 @@ function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
     bottom_elevation = view(bound, 3, :)
     budget = zeros(size(hcof))
 
-    return ModflowRiverPackage(
-        nodelist,
-        hcof,
-        rhs,
-        conductance,
-        stage,
-        bottom_elevation,
-        budget,
-    )
+    return ModflowRiverPackage(nodelist,
+                               hcof,
+                               rhs,
+                               conductance,
+                               stage,
+                               bottom_elevation,
+                               budget)
 end
-
 
 struct ModflowRiverDrainagePackage
     river::ModflowRiverPackage
@@ -115,13 +105,10 @@ struct ModflowRiverDrainagePackage
     budget::Vector{Float64}
 end
 
-
-function ModflowRiverDrainagePackage(
-    model,
-    modelname,
-    subcomponent_river,
-    subcomponent_drainage,
-)
+function ModflowRiverDrainagePackage(model,
+                                     modelname,
+                                     subcomponent_river,
+                                     subcomponent_drainage)
     river = ModflowRiverPackage(model, modelname, subcomponent_river)
     drainage = ModflowDrainagePackage(model, modelname, subcomponent_drainage)
     if river.nodelist != drainage.nodelist
@@ -142,7 +129,6 @@ function budget!(boundary, head)
     end
 end
 
-
 function budget!(boundary::ModflowRiverDrainagePackage, head)
     budget!(boundary.river, head)
     budget!(boundary.drainage, head)
@@ -155,7 +141,7 @@ end
 """
 function set_stage!(boundary::ModflowRiverDrainagePackage, Δstage)
     n = length(boundary.river.nodelist)
-    for i = 1:n
+    for i in 1:n
         # Stage should not fall below bottom!
         newstage = max(boundary.river.stage[i] + Δstage, boundary.river.bottom_elevation[i])
         boundary.river.stage[i] = newstage

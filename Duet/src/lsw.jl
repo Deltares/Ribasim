@@ -21,7 +21,6 @@ function lsw_meteo(path, lsw_sel::Integer)
         end
     end
 
-
     evap_series = Bach.ForwardFill(times, evap)
     prec_series = Bach.ForwardFill(times, prec)
     return prec_series, evap_series
@@ -44,8 +43,8 @@ end
 
 function meteo_dicts(path, lsw_ids::Vector{Int})
     # prepare empty dictionaries
-    prec_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
-    evap_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    prec_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    evap_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for lsw_id in lsw_ids
         # prec and evap share the same vector for times
         times = Float64[]
@@ -105,20 +104,20 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
     mzwb.watermanagement = mzwb.alloc_wm_dw + mzwb.to_dw
     # remove the last period, since bach doesn't have it
     allcols = type == 'V' ? vcat(cols, "todownstream") : vcat(cols, "watermanagement")
-    mzwb = mzwb[1:end-1, allcols]
+    mzwb = mzwb[1:(end - 1), allcols]
     # add a column with timestep length in seconds
     mzwb.period = Dates.value.(Second.(mzwb.time_end - mzwb.time_start))
     return mzwb
 end
 
 # create a bach timeseries input from the mozart water balance output
-function create_series(mzwb::AbstractDataFrame, col::Union{Symbol,String})
+function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String})
     # convert m3/timestep to m3/s for bach
     ForwardFill(datetime2unix.(mzwb.time_start), mzwb[!, col] ./ mzwb.period)
 end
 
-function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
-    dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+function create_dict(mzwb::DataFrame, col::Union{Symbol, String})
+    dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for (key, df) in pairs(groupby(mzwb, :lsw))
         series = create_series(df, col)
         dict[key.lsw] = series
@@ -127,9 +126,9 @@ function create_dict(mzwb::DataFrame, col::Union{Symbol,String})
 end
 
 function create_user_dict(uslswdem::DataFrame, usercode::String)
-    demand_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
-    prio_dict = Dict{Int,Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
-    uslswdem_user = @subset(uslswdem, :usercode == usercode)
+    demand_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    prio_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    uslswdem_user = @subset(uslswdem, :usercode==usercode)
     for (key, df) in pairs(groupby(uslswdem_user, :lsw))
         times = datetime2unix.(df.time_start)
         demand_dict[key.lsw] = ForwardFill(times, copy(df.user_surfacewater_demand))
@@ -140,33 +139,34 @@ end
 
 # create a vector of all existing user demand and priorities per lsw
 function compile_users(uslswdem::DataFrame, lsw_id)
-    uslswdem_sub = @subset(uslswdem, :lsw == lsw_id)
+    uslswdem_sub = @subset(uslswdem, :lsw==lsw_id)
     uslswdem_sub.username .= Duet.match_userid(uslswdem_sub, Bach.userid_lookup)
-    demand_dict = Dict{Vector{String},Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
-    prio_dict = Dict{Vector{String},Bach.ForwardFill{Vector{Float64},Vector{Float64}}}()
+    demand_dict = Dict{Vector{String}, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    prio_dict = Dict{Vector{String}, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
     lswusers = []
     for (key, df) in pairs(groupby(uslswdem_sub, :username))
-        if sum(df.user_surfacewater_demand) ==  0.0
+        if sum(df.user_surfacewater_demand) == 0.0
             continue
         else
             push!(lswusers, key.username)
             times = datetime2unix.(df.time_start)
-            demand_dict[key.username] = ForwardFill(times, copy(df.user_surfacewater_demand))
+            demand_dict[key.username] = ForwardFill(times,
+                                                    copy(df.user_surfacewater_demand))
             prio_dict[key.username] = ForwardFill(times, Vector{Float64}(df.priority))
         end
     end
-    return lswusers,demand_dict, prio_dict
+    return lswusers, demand_dict, prio_dict
 end
 
 # function to create a vector of all non-zero uers in a given lsw
 function list_all_users(lsw_ids::Vector)
     all_users = Vector{Symbol}[]
     commonuser = ["agriculture"] # can update with other possible users
-    userid = ["agric"]  
+    userid = ["agric"]
     for lsw_id in lsw_ids
-        userlsw =Symbol[]
+        userlsw = Symbol[]
         for i in enumerate(commonuser)
-            dem_tmp = key_cfvar(ds, ("demand_"*commonuser[i]))(node=lsw_id) 
+            dem_tmp = key_cfvar(ds, ("demand_" * commonuser[i]))(node = lsw_id)
             if sum(dem_tmp.data) > 0.0
                 push!(userlsw, Symbol(userid[i]))
             else
@@ -174,14 +174,13 @@ function list_all_users(lsw_ids::Vector)
             end
         end
         # Note - important that this is after "commonusers" iterations
-        if Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node=lsw_id))) == "P"
+        if Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node = lsw_id))) == "P"
             push!(userlsw, Symbol("wm"))
         end
         push!(all_users, userlsw)
     end
     return all_users
 end
-
 
 """
 Fill missings with a forward fill, and a backward fill until the first value
@@ -239,9 +238,9 @@ function add_volume(df, depth_surface_water)
 
     # fill in the rest of the volumes
     for i in 2:n
-        S1 = df.volume[i-1]
-        h1, h2 = df.level[i-1], df.level[i]
-        area1, area2 = df.area[i-1], df.area[i]
+        S1 = df.volume[i - 1]
+        h1, h2 = df.level[i - 1], df.level[i]
+        area1, area2 = df.area[i - 1], df.area[i]
         Δh = h2 - h1
         avg_area = area2 + area1 / 2
         ΔS = Δh * avg_area
@@ -279,9 +278,9 @@ function add_level(df, depth_surface_water)
 
     # fill in the rest of the level
     for i in 2:n
-        h1 = df.level[i-1]
-        S1, S2 = df.volume[i-1], df.volume[i]
-        area1, area2 = df.area[i-1], df.area[i]
+        h1 = df.level[i - 1]
+        S1, S2 = df.volume[i - 1], df.volume[i]
+        area1, area2 = df.area[i - 1], df.area[i]
         ΔS = S2 - S1
         avg_area = area2 + area1 / 2
         Δh = ΔS / avg_area
@@ -290,19 +289,20 @@ function add_level(df, depth_surface_water)
     return df
 end
 
-function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame, ladvalue::DataFrame)::DataFrame
-    lswdik_lsw = @subset(lswdik, :lsw == lsw_id)
+function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame,
+                        ladvalue::DataFrame)::DataFrame
+    lswdik_lsw = @subset(lswdik, :lsw==lsw_id)
     depth_surface_water = only(lswdik_lsw.depth_surface_water)
     type = only(only(lswdik_lsw.local_surface_water_type))
     if type == 'P' || type == 'O'
-        df = @subset(ladvalue, :lsw == lsw_id)[:, [:area, :discharge, :level]]
+        df = @subset(ladvalue, :lsw==lsw_id)[:, [:area, :discharge, :level]]
         # force that the numbers always go up, ignoring relations
         sort!(df.area)
         sort!(df.discharge)
         sort!(df.level)
         df = add_volume(df, depth_surface_water)
     else
-        df = @subset(vadvalue, :lsw == lsw_id)[:, [:volume, :area, :discharge]]
+        df = @subset(vadvalue, :lsw==lsw_id)[:, [:volume, :area, :discharge]]
         # force that the numbers always go up, ignoring relations
         sort!(df.volume)
         sort!(df.area)
@@ -316,13 +316,11 @@ function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame, lad
     return df
 end
 
-function create_profile_dict(
-    lsw_ids::Vector{Int},
-    lswdik::DataFrame,
-    vadvalue::DataFrame,
-    ladvalue::DataFrame,
-)::Dict{Int,DataFrame}
-    profile_dict = Dict{Int,DataFrame}()
+function create_profile_dict(lsw_ids::Vector{Int},
+                             lswdik::DataFrame,
+                             vadvalue::DataFrame,
+                             ladvalue::DataFrame)::Dict{Int, DataFrame}
+    profile_dict = Dict{Int, DataFrame}()
     for lsw_id in lsw_ids
         profile = create_profile(lsw_id, lswdik, vadvalue, ladvalue)
         profile_dict[lsw_id] = profile
@@ -347,17 +345,15 @@ function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
     return fractions
 end
 
-function create_sys_dict(
-    lsw_ids::Vector{Int},
-    dw_id::Int,
-    types::Vector{Char},
-    target_volumes::Vector{Float32},
-    target_levels::Vector{Float32},
-    initial_volumes::Vector{Float64},
-    Δt::Float64,
-    all_users::Vector{Vector{Symbol}},
-)
-    sys_dict = Dict{Int,ODESystem}()
+function create_sys_dict(lsw_ids::Vector{Int},
+                         dw_id::Int,
+                         types::Vector{Char},
+                         target_volumes::Vector{Float32},
+                         target_levels::Vector{Float32},
+                         initial_volumes::Vector{Float64},
+                         Δt::Float64,
+                         all_users::Vector{Vector{Symbol}})
+    sys_dict = Dict{Int, ODESystem}()
 
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
@@ -383,13 +379,13 @@ function create_sys_dict(
         all_components = [lsw, wm]
 
         for user in lswusers
-            usersys = Bach.GeneralUser(;name = user,  lsw_id, dw_id, Δt, S = S0)
-            push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s ))
+            usersys = Bach.GeneralUser(; name = user, lsw_id, dw_id, Δt, S = S0)
+            push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
             push!(all_components, usersys)
         end
 
         lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
-        lsw_sys = compose(lsw_sys,all_components)
+        lsw_sys = compose(lsw_sys, all_components)
         sys_dict[lsw_id] = lsw_sys
     end
     return sys_dict
@@ -397,14 +393,11 @@ end
 
 # connect the LSW systems with each other, with boundaries at the end
 # and bifurcations when needed
-function create_district(
-    lsw_ids::Vector{Int},
-    types::Vector{Char},
-    graph::DiGraph,
-    fractions::Vector{Dict{Int,Float32}},
-    sys_dict::Dict{Int,ODESystem},
-)::ODESystem
-
+function create_district(lsw_ids::Vector{Int},
+                         types::Vector{Char},
+                         graph::DiGraph,
+                         fractions::Vector{Dict{Int, Float32}},
+                         sys_dict::Dict{Int, ODESystem})::ODESystem
     eqs = Equation[]
     headboundaries = ODESystem[]
     bifurcations = ODESystem[]

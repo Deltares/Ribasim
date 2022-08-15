@@ -1,7 +1,6 @@
 # path = raw"c:\projects\NHI-prototype\data\test-models\Joeri\f01_basic_tests\c21_Hooghoudt_bare_soil\RCHINDEX2SVAT.DXC"
 # path = raw"c:\projects\NHI-prototype\data\test-models\Joeri\f01_basic_tests\c21_Hooghoudt_bare_soil\NODENR2SVAT.DXC"
 
-
 read_exchange(path) = readdlm(path, Int)
 
 ##
@@ -10,7 +9,7 @@ using Sparse
 const solution_id = 1
 const Float = Float64
 
-@enum METHOD sum = 1 average = 2
+@enum METHOD sum=1 average=2
 
 function normalize_columns!(S::SparseCSCMatrix)
     for (column, summed) in enumerate(sum(S, 1))
@@ -36,14 +35,12 @@ function create_mapping(src_index, dst_index, method)
     return S, mask
 end
 
-
 struct Exchange
     mf_to_msw::Any
     msw_to_mf::Any
 end
 
 function Exchange(path_mod2svat, path_nodenr2svat, path_rchindex2svat)
-
 end
 
 struct MetaMod
@@ -86,23 +83,21 @@ function MetaMod(mf6, msw, mf6modelname)
     msw_storage = get_value_ptr(msw, "dsc1sim")
     msw_time = get_value_ptr(msw, "currenttime")
 
-    return MetaMod(
-        mf6,
-        msw,
-        mf6modelname,
-        maxiter,
-        head,
-        recharge,
-        storage,
-        area,
-        top,
-        bot,
-        maxiter,
-        msw_head,
-        msw_volume,
-        msw_storage,
-        msw_time,
-    )
+    return MetaMod(mf6,
+                   msw,
+                   mf6modelname,
+                   maxiter,
+                   head,
+                   recharge,
+                   storage,
+                   area,
+                   top,
+                   bot,
+                   maxiter,
+                   msw_head,
+                   msw_volume,
+                   msw_storage,
+                   msw_time)
 end
 
 function update!(metamod::MetaMod)

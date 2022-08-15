@@ -49,7 +49,7 @@ using LinearAlgebra
 
 const Float = Float64
 
-struct Solution{Mat,Fac}
+struct Solution{Mat, Fac}
     A::Mat
     b::Vector{Float}
     x::Vector{Float}
@@ -237,7 +237,7 @@ Q_storage = -S_old / Δt + S_new / Δt
 """
 function formulate_storage!(s::Solution, Δt, vads::Vector{VolumeAreaDischargeStage})
     Δt == 0.0 && return
-    for node = 1:length(s.b)
+    for node in 1:length(s.b)
         add_to_diag!(s, node, -1.0 / Δt)
         add_to_rhs!(s, node, -s.x[node] / Δt)
     end
@@ -326,8 +326,8 @@ This term is a constant:
 and may go into the rhs vector.
 """
 function formulate!(s::Solution, e::StageConnection, vads::Vector{VolumeAreaDischargeStage})
-    for (src, dst, connection, conductance) in
-        zip(e.src, e.dst, e.connection, e.conductance)
+    for (src, dst, connection, conductance) in zip(e.src, e.dst, e.connection,
+                                                   e.conductance)
         x_src = s.x[src]
         x_dst = s.x[dst]
         a_src, b_src = linearized_stage(vads, x_src)
@@ -373,13 +373,12 @@ flux is provided to the groundwater when the head is below the bottom. In the
 first case, the flux will automatically tend to zero. Negative storage will be
 zeroed between non-linear iterations.
 """
-function formulate!(
-    s::Solution,
-    riv::GroundwaterRiverExchange,
-    vads::VolumeAreaDischargeStage,
-)
-    for (node, offset, head, bottom, conductance) in
-        zip(riv.node, riv.weirarea_offset, riv.head, riv.bottom, riv.conductance)
+function formulate!(s::Solution,
+                    riv::GroundwaterRiverExchange,
+                    vads::VolumeAreaDischargeStage)
+    for (node, offset, head, bottom, conductance) in zip(riv.node, riv.weirarea_offset,
+                                                         riv.head, riv.bottom,
+                                                         riv.conductance)
         x = s.x[node]
         a, b = slope_and_intersect(vads.storage, vads.stage, x)
         if head <= bottom
@@ -413,7 +412,6 @@ function linearsolve!(s::Solution)
     ldiv!(s.x, s.F, s.b)
 end
 
-
 # Do some testing
 
 volume = x = [0.0, 0.0, 0.0]
@@ -421,15 +419,11 @@ x_previous = [0.0, 0.0, 0.0]
 b = [0.0, 0.0, 0.0]
 
 # Bucket of 10 by 10 m
-vads = fill(
-    VolumeAreaDischargeStage(
-        [0.0, 100.0],
-        [100.0, 100.0],  # constant area
-        [0.0, 100.0],  # 100.0 m3/d when at 100.0
-        [0.0, 1.0],  # 10 x 10 x 1 m = 100 m3
-    ),
-    3,
-)
+vads = fill(VolumeAreaDischargeStage([0.0, 100.0],
+                                     [100.0, 100.0],  # constant area
+                                     [0.0, 100.0],  # 100.0 m3/d when at 100.0
+                                     [0.0, 1.0]),
+            3)
 
 aa = [1.0 1.0 0.0; 1.0 1.0 1.0; 0.0 1.0 1.0]
 A = sparse(aa)
@@ -457,11 +451,10 @@ formulate!(s, wc, vads)
 formulate_storage!(s, Δt, vads)
 linearsolve!(s)
 
-
 function run(out)
     s.x .= 0.0
     n = size(out)[2]
-    for i = 1:n
+    for i in 1:n
         s.A.nzval .= 0.0
         s.b .= 0.0
         formulate!(s, p, vads)
