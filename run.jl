@@ -151,7 +151,7 @@ function periodic_update!(integrator)
         name = Symbol(:sys_, lsw_id, :₊lsw₊)
 
         # forcing values
-        P = precipitation[time = forcing_t_idx, node = i]
+        P = 0.0
         E_pot = -reference_evapotranspiration[time = forcing_t_idx, node = i] *
                 Bach.open_water_factor(t)
         drainage = drainages[time = forcing_t_idx, node = i]
@@ -172,7 +172,7 @@ function periodic_update!(integrator)
         area = f(area_sym, sol(t), p, t)
 
         # water level control
-        Q_wm = 0.0 # initalised 
+        Q_wm = 0.0 # initalised
         if type == 'P'
             # set the Q_wm for the coming day based on the expected storage
             S = getstate(integrator, Symbol(name, :S))
@@ -267,7 +267,7 @@ function allocate!(;
             Q_avail_vol = 0.0
         end
 
-        if type == "P" & user ≠ "wm"
+        if type == "P" && user ≠ "wm"
             # if general users are allocated before wm, then the wm demand increases
             wm.demand += user.alloc
         end
@@ -290,7 +290,7 @@ function allocate!(;
 end
 
 sys_dict = Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
-                                initial_volumes, Δt, all_users)
+                                initial_volumes, Δt, all_users; precipitation)
 
 graph, graph_all, fractions_all, lsw_all = ugrid_subgraph(ds, lsw_ids)
 fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)

@@ -345,6 +345,10 @@ function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
     return fractions
 end
 
+function lsw_sys_affect!(integ, u, p, ctx)
+    integ.p[p.P] = popfirst!(ctx.P)
+end
+
 function create_sys_dict(lsw_ids::Vector{Int},
                          dw_id::Int,
                          types::Vector{Char},
@@ -352,7 +356,8 @@ function create_sys_dict(lsw_ids::Vector{Int},
                          target_levels::Vector{Float32},
                          initial_volumes::Vector{Float64},
                          Δt::Float64,
-                         all_users::Vector{Vector{Symbol}})
+                         all_users::Vector{Vector{Symbol}};
+                         precipitation)
     sys_dict = Dict{Int, ODESystem}()
 
     for (i, lsw_id) in enumerate(lsw_ids)
@@ -384,7 +389,11 @@ function create_sys_dict(lsw_ids::Vector{Int},
             push!(all_components, usersys)
         end
 
-        lsw_sys = ODESystem(eqs, t; name = Symbol(:sys_, lsw_id))
+        name = Symbol(:sys_, lsw_id)
+        ctx = (; P = Iterators.Stateful(precipitation[node = i]))
+
+        discrete_events = [Δt => (lsw_sys_affect!, [], [lsw.P => :P], ctx)]
+        lsw_sys = ODESystem(eqs, t; name, discrete_events)
         lsw_sys = compose(lsw_sys, all_components)
         sys_dict[lsw_id] = lsw_sys
     end
