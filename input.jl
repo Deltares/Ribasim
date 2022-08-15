@@ -49,14 +49,17 @@ coupling_dir = normpath(@__DIR__, "data/lhm-input/coupling")
 vadvalue = Mozart.read_vadvalue(normpath(mozartin_dir, "vadvalue.dik"))
 vlvalue = Mozart.read_vlvalue(normpath(mozartin_dir, "vlvalue.dik"))
 ladvalue = Mozart.read_ladvalue(normpath(mozartin_dir, "ladvalue.dik"))
-lswdik = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 lswvalue = Mozart.read_lswvalue(normpath(mozartout_dir, "lswvalue.out"))
 uslswdem = Mozart.read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 lswrouting = Mozart.read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
+lswdik_unsorted = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 # uslsw = Mozart.read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
 
 # prepare the input data from Mozart files for all of the Netherlands
-lsw_ids = Vector{Int}(lswdik.lsw)
+# sort the lsws as integer to make it easy to match other data sources
+lsw_idxs = sortperm(Vector{Int}(lswdik_unsorted.lsw))
+lswdik = lswdik_unsorted[lsw_idxs, :]
+lsw_ids::Vector{Int} = Vector{Int}(lswdik.lsw)
 
 profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
 graph, fractions = Mozart.lswrouting_graph(lsw_ids, lswrouting)
@@ -93,8 +96,7 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
     n_profile_rows = maximum(nrow, values(profile_dict))
     n_profile_cols = 4  # number of cols in 1 LSW profile
     profile_rows = 1:n_profile_rows
-    # profile_cols = ["volume", "area", "discharge", "level"]
-    profile_cols = ['v', 'a', 'd', 'l']
+    profile_cols = ['S', 'A', 'Q', 'h']
 
     # store the 2D profiles per LSW together in a 3D variable
     profile_data = fill(NaN32, n_profile_rows, n_profile_cols, n_lsw)
@@ -106,20 +108,19 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
     )
     for (lsw_id, profile) in profile_dict
         tableview = profiles(profile_row = 1:nrow(profile), lsw = lsw_id)
-        # tableview(profile_col = "volume") .= profile.volume
-        # tableview(profile_col = "area") .= profile.area
-        # tableview(profile_col = "discharge") .= profile.discharge
-        # tableview(profile_col = "level") .= profile.level
-        tableview(profile_col = 'v') .= profile.volume
-        tableview(profile_col = 'a') .= profile.area
-        tableview(profile_col = 'd') .= profile.discharge
-        tableview(profile_col = 'l') .= profile.level
+        tableview(profile_col = 'S') .= profile.volume
+        tableview(profile_col = 'A') .= profile.area
+        tableview(profile_col = 'Q') .= profile.discharge
+        tableview(profile_col = 'h') .= profile.level
     end
 
     # create ugrid with network
     node_coords = (; x = first.(lswlocs), y = last.(lswlocs))
-    ds = UGrid.ugrid_dataset(path, graph, node_coords)
+    ds = UGrid.ugrid_dataset(path, graph, node_coords; format=:netcdf3_64bit_offset)
+
     UGrid.create_spatial_ref!(ds; epsg = 28992)
+    # not yet recognized in QGIS
+    ds["mesh1d"].attrib["grid_mapping"] = "spatial_ref"
 
     # add fractions on edges
     defVar(
@@ -130,9 +131,13 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
         attrib = Pair{String,String}["units"=>"1"],
     )
 
-    # Don't put integer data in the file if you want to open it in QGIS, see
-    # https://github.com/lutraconsulting/MDAL/issues/348
-    defVar(ds, "node", Float64.(lsw_ids), ("node",), attrib = Pair{String,String}[])
+    # following 3 can be integers in MDAL release after 0.9.4
+    defVar(ds, "node", Float32.(lsw_ids), ("node",), attrib = Pair{String,String}[
+        "grid_mapping"=>"spatial_ref"
+        "geometry"=>"crs"
+        "long_name"=>"local surface water ID"
+        "units"=>"-"
+        ])
     defVar(
         ds,
         "profile_row",
@@ -202,7 +207,7 @@ function create_static(path; lsw_ids, profile_dict, graph, lswlocs, lswvalue, ls
             "units"=>"m"
             ],
     )
-    # convert the Char to Float32 to avoid MDAL issue
+    # can be NC_CHAR in MDAL release after 0.9.4
     defVar(
         ds,
         "local_surface_water_type",

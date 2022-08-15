@@ -91,7 +91,7 @@ end
 function create_curve_dict(profile)
     # profile_cols = Tuple(Symbol.(profile.profile_col))
     profile_cols = (:volume, :area, :discharge, :level)
-    nc_names = [Float64(c) for c in ('v', 'a', 'd', 'l')]
+    nc_names = [Float32(c) for c in ('S', 'A', 'Q', 'h')]
 
     curve_dict = Dict{Int, Bach.StorageCurve}()
     for (i, lsw_id) in enumerate(lsw_ids)
