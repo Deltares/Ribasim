@@ -159,30 +159,29 @@ function compile_users(uslswdem::DataFrame, lsw_id)
 end
 
 # function to create a vector of all non-zero uers in a given lsw
-function list_users(uslswdem::DataFrame, lsw_id)
-    uslswdem_sub = @subset(uslswdem, :lsw == lsw_id)
-    uslswdem_sub.username .= Duet.match_userid(uslswdem_sub, Bach.userid_lookup)
-    lswusers = Symbol[]
-    all = unique(uslswdem_sub.username)
-    for i in all
-        if sum(@subset(uslswdem_sub, :username == i).user_surfacewater_demand) ==  0.0
-            continue
-        else
-            push!(lswusers, Symbol(i))
+function list_all_users(lsw_ids::Vector)
+    all_users = Vector{Symbol}[]
+    commonuser = ["agriculture"] # can update with other possible users
+    userid = ["agric"]  
+    for lsw_id in lsw_ids
+        userlsw =Symbol[]
+        for i in enumerate(commonuser)
+            dem_tmp = key_cfvar(ds, ("demand_"*commonuser[i]))(node=lsw_id) 
+            if sum(dem_tmp.data) > 0.0
+                push!(userlsw, Symbol(userid[i]))
+            else
+                continue
+            end
         end
+        # Note - important that this is after "commonusers" iterations
+        if Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node=lsw_id))) == "P"
+            push!(userlsw, Symbol("wm"))
+        end
+        push!(all_users, userlsw)
     end
-    return lswusers
+    return all_users
 end
 
-# take the userid_code from uslswdem and convert to corresponding username
-function match_userid(df1::DataFrame, df2::DataFrame)
-    username =[]
-    for i = 1:nrow(df1)
-        code_i = df1.usercode[i]
-        push!(username,  @subset(df2,:usercode == code_i).username)
-    end
-    return username
-end
 
 """
 Fill missings with a forward fill, and a backward fill until the first value

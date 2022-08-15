@@ -64,6 +64,7 @@ infiltrations = key_cfvar(ds, "infiltration")(node=lsw_ids)
 urban_runoffs = key_cfvar(ds, "urban_runoff")(node=lsw_ids)
 demand_agriculture = key_cfvar(ds, "demand_agriculture")(node=lsw_ids)
 priority_agriculture = key_cfvar(ds, "priority_agriculture")(node=lsw_ids)
+priority_wm = key_cfvar(ds, "priority_watermanagement")(node = lsw_ids)
 
 # (node,)
 initial_volumes = Vector(key_cfvar(ds, "volume")(node=lsw_ids))
@@ -73,6 +74,7 @@ types = Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node=lsw_ids)))
 
 # create a vector of vectors of all non zero users within all the lsws
 all_users = fill([:agric], length(lsw_ids))
+#all_users = list_all_users(lsw_ids)
 
 # create a subgraph from the UGrid file, with fractions on the edges we use
 function ugrid_subgraph(ds, lsw_ids)
@@ -159,6 +161,9 @@ function periodic_update!(integrator)
         urban_runoff = urban_runoffs[time=forcing_t_idx, node=i]
         demand_agric = demand_agriculture[time=forcing_t_idx, node=i]
         prio_agric = priority_agriculture[time=forcing_t_idx, node=i]
+        prio_wm = priority_wm[time=forcing_t_idx, node =i]
+        demandlsw = [demand_agric] 
+        priolsw = [prio_agric]
 
         # area
         f = SciMLBase.getobserved(sol)  # generated function
@@ -169,6 +174,7 @@ function periodic_update!(integrator)
         area = f(area_sym, sol(t), p, t)
 
         # water level control
+        Q_wm = 0.0 # initalised 
         if type == 'P'
             # set the Q_wm for the coming day based on the expected storage
             S = getstate(integrator, Symbol(name, :S))
@@ -183,12 +189,10 @@ function periodic_update!(integrator)
             ΔS = Δt * ((area * P) + drainage + infiltration + urban_runoff + (area * E_pot))
             Q_wm = (S + ΔS - target_volume) / Δt
 
-            param!(integrator, Symbol(outname, :Q), Q_wm)
+            demandlsw = push!(demand_lsw, (-Q_wm)) # make negative to keep consistent with other demands
+            priolsw = push!(prioagric, prio_wm)
         end
 
-        # TODO update this and all_users to support other users than agric
-        demandlsw = demand_agric
-        priolsw = prio_agric
         if length(lswusers) > 0
             # allocate to different users
             allocate!(;
@@ -203,6 +207,8 @@ function periodic_update!(integrator)
                 demandlsw,
                 priolsw,
                 lswusers,
+                wm_demand = Q_wm,
+                type,
             )
         end
 
@@ -231,8 +237,9 @@ function allocate!(;
     demandlsw,
     priolsw,
     lswusers,
+    wm_demand,
+    type,
 )
-    (; t, p, sol) = integrator
 
     # function for demand allocation based upon user prioritisation
     # Note: equation not currently reproducing Mozart
@@ -247,6 +254,12 @@ function allocate!(;
         push!(users, tmp)
     end
     sort!(users, by = x -> x.priority)
+
+    if wm_demand > 0.0
+        # if there is surplus water from level control (positive Q_wm), make it available for users regardless of wm priority ordering
+        Q_avail_vol += wm_demand
+    end
+
     # allocate by priority based on available water
     for user in users
         if user.demand <= 0
@@ -259,6 +272,11 @@ function allocate!(;
             Q_avail_vol = 0.0
         end
 
+        if type == "P" & user ≠ "wm" 
+            # if general users are allocated before wm, then the wm demand increases
+            wm.demand += user.alloc 
+        end
+
         # update parameters
         symalloc = Symbol(name, user.user, :₊alloc)
         param!(integrator, symalloc, -user.alloc[])
@@ -266,8 +284,12 @@ function allocate!(;
         symdemand = Symbol(name, user.user, :₊demand)
         param!(integrator, symdemand, -user.demand[])
         symprio = Symbol(name, user.user, :₊prio)
-        param!(integrator, symprio, -user.priority[])
+        param!(integrator, symprio, user.priority[])
 
+        if type == "P" 
+            outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
+            param!(integrator, Symbol(outname, :Q),  Q_avail_vol )
+        end
     end
     return nothing
 end
