@@ -1,3 +1,7 @@
+---
+title: "Modflow"
+---
+
 # MODFLOW Concepts
 
 Bach has been designed to provide a computationally efficient representation of
@@ -12,14 +16,14 @@ to the difference between the groundwater head and the drainage elevation.
 Drainage only occurs when the head is larger than the elevation; this boundary
 condition does not allow infiltration into the groundwater.
 
-```math
+$$
 Q_{drain} = \left\{ 
     \begin{array}{ c l }
         C_{drain} (\phi - h_{drain}) & \quad \textrm{if } \phi > h_{drain}) \\
         0                            & \quad \textrm{otherwise}
      \end{array}
 \right.
-```
+$$
 
 ## River
 
@@ -28,21 +32,21 @@ to the groundwater. It limits the amount of water that can infiltrate when
 the groundwater head falls below the river bottom, in which cases it assumes
 atmospheric pressure conditions underneath the surface water. 
 
-```math
+$$
 Q_{river} = \left\{ 
     \begin{array}{ c l }
         C_{river} (\phi - h_{river}) & \quad \textrm{if } \phi > b_{river}) \\
         C_{river} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
      \end{array}
 \right.
-```
+$$
 
 In the Netherlands, it is somewhat common to make a distinction between the
 drainage and infiltration conductance of surface waters. Drainage conductance
 is often larger than the infiltration conductance due to clogging processes,
 seepage, different flow patterns, etc.
 
-```math
+$$
 Q_{river} = \left\{ 
     \begin{array}{ c l }
         C_{river,drn} (\phi - h_{river}) & \quad \textrm{if } \phi > h_{river}) \\
@@ -50,18 +54,18 @@ Q_{river} = \left\{
         C_{river,inf} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
      \end{array}
 \right.
-```
+$$
 
 MODFLOW6 does not support this (currently), but an identical effect may be
 achieved by "stacking" a drainage package on top of a river package with these
 values:
 
-```math
+$$
 \begin{aligned}
 h_{drain} = h_{river}
 C_{drain} = C_{river,drn} - C{river,inf}
 \end{aligned}
-```
+$$
 
 ## Numerical solution in MODFLOW
 
@@ -70,41 +74,41 @@ system of equations (a water balance for every cell), which it solves by
 repeatedly solving a linearized system of equations instead. In matrix form,
 this system of equations is expressed by:
 
-```math
+$$
 \mathbf{Ax} = \mathbf{b}
-```
+$$
 
-Where ``\mathbf{x}`` is a vector containing the head of every cell.
+Where $\mathbf{x}$ is a vector containing the head of every cell.
 
 For the boundary conditions, this requires linearization of the flow equations.
 Flow from outside of the aquifer (cell) may be represented by:
 
-```math
+$$
 a = p\phi + q
-```
+$$
 
 (Equation 2-6 in the MODFLOW6 manual.)
 
 For e.g. a draining boundary condition, the flow is head dependent:
 
-```math
+$$
 a = C(h - \phi) = -C\phi + Ch
-```
+$$
 
-With ``C`` the conductance, ``h`` the boundary head or elevation, and ``\phi``
+With $C$ the conductance, $h$ the boundary head or elevation, and $\phi$
 the groundwater head.
 
-In MODFLOW's internal formulation, the term in ``\mathbf{A}`` is called
-"coefficient of head" or hcof. Terms in ``\mathbf{b}`` are called "right hand
+In MODFLOW's internal formulation, the term in $\mathbf{A}$ is called
+"coefficient of head" or hcof. Terms in $\mathbf{b}$ are called "right hand
 side" or rhs. We can separate the equation above:
 
-```math
+$$
 \begin{aligned}
 p = \text{hcof} = -C \\
 q = \textrm{rhs} = -Ch \\
 a = -C\phi + Ch = \text{hcof} * \phi - \text{rhs}
 \end{aligned}
-```
+$$
 
 For every boundary condition, MODFLOW stores the hcof and rhs values. This
 makes it quite convenient for us to compute the water budget for every boundary
@@ -112,8 +116,8 @@ condition: we simply multiply the hcof value by the head of the cell and
 subtract the rhs.
 
 Note that hcof may have a value of 0! For example, when for a river boundary
-the ``\phi <= b_{river})`` condition occurs, the flow into the cell is
-controlled only by ``h_{river}`` and ``b_{river}`` (equal to recharge for the
+the $\phi <= b_{river}$ condition occurs, the flow into the cell is
+controlled only by $h_{river}$ and $b_{river}$ (equal to recharge for the
 linear solution).
 
 ## Iterative coupled solution
@@ -129,11 +133,11 @@ Linearization allows us to "stack" (superpose) all the different boundary
 conditions into a single, simple equation. In linear form, every equation takes
 the form of:
 
-```math
+$$
 a = ph + q
-```
+$$
 
-Note the ``h`` rather than ``\phi``, we are formulating from Bach's
+Note the $h$ rather than $\phi$, we are formulating from Bach's
 perspective! We can sum all coefficients for p and q to provide a linear
 groundwater response to Bach.
 
@@ -142,12 +146,12 @@ groundwater response to Bach.
 From Bach's perspective, the groundwater head is constant given a timestep,
 so that:
 
-```math
+$$
 \begin{align}
 p = -C \\
 q = -C\phi
 \end{align}
-```
+$$
 
 When the head falls below the drainage elevation, the coefficients are 0.
 
@@ -156,22 +160,22 @@ When the head falls below the drainage elevation, the coefficients are 0.
 From Bach's persective, infiltration is never limited when the head falls below
 the bottom:
 
-```math
+$$
 \begin{align}
 p = -C \\
 q = -Cb
 \end{align}
-```
+$$
 
 Otherwise, infiltration and drainage occur with the same equation as for the
 drainage package:
 
-```math
+$$
 \begin{align}
 p = -C \\
 q = -C\phi
 \end{align}
-```
+$$
 
 # Assigning MODFLOW water levels
 
@@ -179,23 +183,23 @@ Principally, MODFLOW deals with water levels; Bach deals with water volumes.
 The translation from a water volume to a water level should be a relatively
 straightforward one: 
 
-```math
+$$
 \Delta d = \frac{\Delta V}{A}
-```
+$$
 
 However, the primary complication is that where Bach has **one** volume,
 MODFLOW has many levels to adjust. The sum of all these adjustments times
 their respective areas should result in the LSW volume change:
 
-```math
+$$
 \sum_{i=0}^{i=n} \Delta d_i A_i = \Delta V_{LSW}
-```
+$$
 
 and
 
-```math
+$$
 h = b + d
-```
+$$
 
 It should be obvious that there are many ways to distribute this volume change
 across the adjustment of every boundary condition of every cell. The main
@@ -210,14 +214,14 @@ appropriate volume and assign the associated water level. For efficiency, this
 lookup table can be discretized in a limited number of steps, and in coupling
 the level will be interpolated.
 
-!!! note
-
-    Great care is required when parametrizing these volume-level relationships.
-    As Bach does not know the properties of the surface water, it can perform
-    very limited validation of the volume-level lookup tables. As the total
-    volume of the LSW is distributed accross *all* boundary conditions, it
-    should be checked that the change of the water column for every boundary
-    condition matches the total volume change of the LSW.
+:::{.callout-note}
+Great care is required when parametrizing these volume-level relationships.
+As Bach does not know the properties of the surface water, it can perform
+very limited validation of the volume-level lookup tables. As the total
+volume of the LSW is distributed accross *all* boundary conditions, it
+should be checked that the change of the water column for every boundary
+condition matches the total volume change of the LSW.
+:::
 
 In principle, all (stationary!) hydraulic behavior of the LSW can be described
 approximately by these lookup tables.
