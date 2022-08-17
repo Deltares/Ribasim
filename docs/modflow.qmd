@@ -17,9 +17,9 @@ Drainage only occurs when the head is larger than the elevation; this boundary
 condition does not allow infiltration into the groundwater.
 
 $$
-Q_{drain} = \left\{ 
+Q_{drain} = \left\{
     \begin{array}{ c l }
-        C_{drain} (\phi - h_{drain}) & \quad \textrm{if } \phi > h_{drain}) \\
+        C_{drain} (\phi - h_{drain}) & \quad \textrm{if } \phi > h_{drain} \\
         0                            & \quad \textrm{otherwise}
      \end{array}
 \right.
@@ -30,13 +30,13 @@ $$
 The river package can both drain the groundwater, or infiltrate surface water
 to the groundwater. It limits the amount of water that can infiltrate when
 the groundwater head falls below the river bottom, in which cases it assumes
-atmospheric pressure conditions underneath the surface water. 
+atmospheric pressure conditions underneath the surface water.
 
 $$
-Q_{river} = \left\{ 
+Q_{river} = \left\{
     \begin{array}{ c l }
-        C_{river} (\phi - h_{river}) & \quad \textrm{if } \phi > b_{river}) \\
-        C_{river} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
+        C_{river} (\phi - h_{river}) & \quad \textrm{if } \phi > b_{river} \\
+        C_{river} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river}
      \end{array}
 \right.
 $$
@@ -47,11 +47,11 @@ is often larger than the infiltration conductance due to clogging processes,
 seepage, different flow patterns, etc.
 
 $$
-Q_{river} = \left\{ 
+Q_{river} = \left\{
     \begin{array}{ c l }
-        C_{river,drn} (\phi - h_{river}) & \quad \textrm{if } \phi > h_{river}) \\
-        C_{river,inf} (\phi - h_{river}) & \quad \textrm{if } \phi <= h_{river}) \\
-        C_{river,inf} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river})
+        C_{river,drn} (\phi - h_{river}) & \quad \textrm{if } \phi > h_{river} \\
+        C_{river,inf} (\phi - h_{river}) & \quad \textrm{if } \phi <= h_{river} \\
+        C_{river,inf} (h_{river} - b_{river}) & \quad \textrm{if } \phi <= b_{river}
      \end{array}
 \right.
 $$
@@ -181,7 +181,7 @@ $$
 
 Principally, MODFLOW deals with water levels; Bach deals with water volumes.
 The translation from a water volume to a water level should be a relatively
-straightforward one: 
+straightforward one:
 
 $$
 \Delta d = \frac{\Delta V}{A}
