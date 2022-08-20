@@ -341,7 +341,16 @@ function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
             fractions[i][lsw_to] = fraction
         end
     end
-    @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
+    # This can be triggered by district crossing bifurcations.
+    # for d in fractions
+    #     if !isempty(d)
+    #         if sum(values(d)) != 1
+    #             @warn "fraction don't add up"
+    #             @show d
+    #         end
+    #     end
+    # end
+    # @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
     return fractions
 end
 
@@ -352,13 +361,17 @@ end
 function create_sys_dict(lsw_ids::Vector{Int},
                          dw_id::Int,
                          types::Vector{Char},
-                         target_volumes::Vector{Float32},
-                         target_levels::Vector{Float32},
+                         target_volumes::Vector{Float64},
+                         target_levels::Vector{Float64},
                          initial_volumes::Vector{Float64},
                          Δt::Float64,
                          all_users::Vector{Vector{Symbol}};
-                         precipitation)
+                         forcing)
     sys_dict = Dict{Int, ODESystem}()
+
+    vars = forcing.variable
+    locs = forcing.location
+    vals = forcing.value
 
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
@@ -390,8 +403,14 @@ function create_sys_dict(lsw_ids::Vector{Int},
         end
 
         name = Symbol(:sys_, lsw_id)
-        ctx = (; P = Iterators.Stateful(precipitation[node = i]))
 
+        precipitation = vals[searchsorted_forcing(vars, locs, :precipitation, lsw_id)]
+        ctx = (; P = Iterators.Stateful(precipitation))
+
+        # Δt here is allowed to be either a scalar for fixed periods or a vector
+        # we could detect ranges here
+        # PeriodicCallback v PresetTimeCallback
+        # PresetTimeCallback uses `t in tstops`, so that needs to be efficient
         discrete_events = [Δt => (lsw_sys_affect!, [], [lsw.P => :P], ctx)]
         lsw_sys = ODESystem(eqs, t; name, discrete_events)
         lsw_sys = compose(lsw_sys, all_components)

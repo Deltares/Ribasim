@@ -1,5 +1,4 @@
-# Run a Bach simulation based on a netCDF created by input.jl
-using Mozart
+# Run a Bach simulation based on files created by input.jl
 using Bach
 using Duet
 
@@ -16,70 +15,66 @@ using DataFrameMacros
 using Chain
 using IntervalSets
 using Graphs
-using UGrid
-using NCDatasets
-using AxisKeys
 using TOML
+using Arrow
 
 config = TOML.parsefile("run.toml")
-config["lsw_ids"]
 
-ds = NCDataset(config["input_path"])
+lsw_ids::Vector{Int} = config["lsw_ids"]
+# TODO part of the static dataset
+dw_id::Int = 0
 
-"create KeyedArray from NCDataset variable"
-function key_cfvar(ds::Union{NCDataset, NCDatasets.MFDataset},
-                   name::AbstractString;
-                   load = true)
-    cfvar = ds[name]
-    coords = NamedTuple(Symbol(nm) => nomissing(ds[nm][:])
-                        for nm in NCDatasets.dimnames(cfvar))
-    all_idx = Tuple(Colon() for _ in 1:ndims(cfvar))
-    data = load ? cfvar[all_idx...] : cfvar
-    return KeyedArray(data; coords...)
-end
+forcing = Arrow.Table(config["forcing_path"])
+state = Arrow.Table(config["state_path"])
+static = Arrow.Table(config["static_path"])
+profile = Arrow.Table(config["profile_path"])
+network = Duet.read_ply(config["network_path"])
 
 # Δt for periodic update frequency, including user horizons
 Δt::Float64 = config["update_timestep"]
 vars = @variables t
 
-lsw_ids::Vector{Int} = config["lsw_ids"]
-dw_id::Int = 0
+# find rows in forcing data
+vars = forcing.variable
+locs = forcing.location
+vals = forcing.value
+precipitation_ranges = [Duet.searchsorted_forcing(vars, locs, :precipitation, lsw_id) for lsw_id in lsw_ids]
+reference_evapotranspiration_ranges = [Duet.searchsorted_forcing(vars, locs, :reference_evapotranspiration, lsw_id) for lsw_id in lsw_ids]
+drainage_ranges = [Duet.searchsorted_forcing(vars, locs, :drainage, lsw_id) for lsw_id in lsw_ids]
+infiltration_ranges = [Duet.searchsorted_forcing(vars, locs, :infiltration, lsw_id) for lsw_id in lsw_ids]
+urban_runoff_ranges = [Duet.searchsorted_forcing(vars, locs, :urban_runoff, lsw_id) for lsw_id in lsw_ids]
+demand_agriculture_ranges = [Duet.searchsorted_forcing(vars, locs, :demand_agriculture, lsw_id) for lsw_id in lsw_ids]
+priority_agriculture_ranges = [Duet.searchsorted_forcing(vars, locs, :priority_agriculture, lsw_id) for lsw_id in lsw_ids]
+priority_watermanagement_ranges = [Duet.searchsorted_forcing(vars, locs, :priority_watermanagement, lsw_id) for lsw_id in lsw_ids]
 
 # values that don't vary between LSWs
 # set bach runtimes equal to the mozart reference run
-dates::Vector{DateTime} = ds["time"][:]
+dates::Vector{DateTime} = forcing.time[precipitation_ranges[1]]
 startdate::DateTime = dates[begin]
 enddate::DateTime = dates[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 times::Vector{Float64} = datetime2unix.(dates)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 
-# (node, time)
-precipitation = key_cfvar(ds, "precipitation")(node = lsw_ids)
-reference_evapotranspiration = key_cfvar(ds, "reference_evapotranspiration")(node = lsw_ids)
-drainages = key_cfvar(ds, "drainage")(node = lsw_ids)
-infiltrations = key_cfvar(ds, "infiltration")(node = lsw_ids)
-urban_runoffs = key_cfvar(ds, "urban_runoff")(node = lsw_ids)
-demand_agriculture = key_cfvar(ds, "demand_agriculture")(node = lsw_ids)
-priority_agriculture = key_cfvar(ds, "priority_agriculture")(node = lsw_ids)
-priority_wm = key_cfvar(ds, "priority_watermanagement")(node = lsw_ids)
+# read state data
+initial_volumes = state.volume[findall(in(lsw_ids), state.location)]
 
-# (node,)
-initial_volumes = Vector(key_cfvar(ds, "volume")(node = lsw_ids))
-target_volumes = Vector(key_cfvar(ds, "target_volume")(node = lsw_ids))
-target_levels = Vector(key_cfvar(ds, "target_level")(node = lsw_ids))
-types = Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node = lsw_ids)))
+# read static data
+static_rows = findall(in(lsw_ids), static.location)
+target_volumes = static.target_volume[static_rows]
+target_levels = static.target_level[static_rows]
+types = static.local_surface_water_type[static_rows]
 
 # create a vector of vectors of all non zero users within all the lsws
 all_users = fill([:agric], length(lsw_ids))
 #all_users = list_all_users(lsw_ids)
 
-# create a subgraph from the UGrid file, with fractions on the edges we use
-function ugrid_subgraph(ds, lsw_ids)
-    # defined for every edge in the ugrid
-    fractions_all = ds["fraction"][:]
-    lsw_all = Int.(ds["node"][:])
-    graph_all, node_coords_all = UGrid.ugraph(ds, only(UGrid.infovariables(ds)).attrib)
+# create a subgraph, with fractions on the edges we use
+function subgraph(network, lsw_ids)
+    # defined for every edge in the ply file
+    fractions_all = network.edge_table.fractions
+    lsw_all = Int.(network.node_table.location)
+    graph_all = network.graph
     lsw_indices = [findfirst(==(lsw_id), lsw_all) for lsw_id in lsw_ids]
     graph, _ = induced_subgraph(graph_all, lsw_indices)
 
@@ -87,22 +82,21 @@ function ugrid_subgraph(ds, lsw_ids)
 end
 
 function create_curve_dict(profile)
-    # profile_cols = Tuple(Symbol.(profile.profile_col))
-    profile_cols = (:volume, :area, :discharge, :level)
-    nc_names = [Float32(c) for c in ('S', 'A', 'Q', 'h')]
+    @assert issorted(profile.location)
 
     curve_dict = Dict{Int, Bach.StorageCurve}()
-    for (i, lsw_id) in enumerate(lsw_ids)
-        prof = profile[node = i]
-        # data = [Vector(filter(!isnan, prof(profile_col=String(col)))) for col in profile_cols]
-        data = [Vector(filter(!isnan, prof(profile_col = col))) for col in nc_names]
-        nt = NamedTuple{profile_cols}(data)
-        curve_dict[lsw_id] = Bach.StorageCurve(nt)
+    for lsw_id in lsw_ids
+        profile_rows = searchsorted(profile.location, lsw_id)
+        curve_dict[lsw_id] = Bach.StorageCurve(
+            profile.volume[profile_rows],
+            profile.area[profile_rows],
+            profile.discharge[profile_rows],
+            profile.level[profile_rows],
+        )
     end
     return curve_dict
 end
 
-profile = key_cfvar(ds, "profile")(node = lsw_ids)
 curve_dict = create_curve_dict(profile)
 
 # register lookup functions
@@ -152,14 +146,14 @@ function periodic_update!(integrator)
 
         # forcing values
         P = 0.0
-        E_pot = -reference_evapotranspiration[time = forcing_t_idx, node = i] *
-                Bach.open_water_factor(t)
-        drainage = drainages[time = forcing_t_idx, node = i]
-        infiltration = infiltrations[time = forcing_t_idx, node = i]
-        urban_runoff = urban_runoffs[time = forcing_t_idx, node = i]
-        demand_agric = demand_agriculture[time = forcing_t_idx, node = i]
-        prio_agric = priority_agriculture[time = forcing_t_idx, node = i]
-        prio_wm = priority_wm[time = forcing_t_idx, node = i]
+        E_pot = -vals[reference_evapotranspiration_ranges[i][forcing_t_idx]] *
+            Bach.open_water_factor(t)
+        drainage = vals[drainage_ranges[i][forcing_t_idx]]
+        infiltration = vals[infiltration_ranges[i][forcing_t_idx]]
+        urban_runoff = vals[urban_runoff_ranges[i][forcing_t_idx]]
+        demand_agric = vals[demand_agriculture_ranges[i][forcing_t_idx]]
+        prio_agric = vals[priority_agriculture_ranges[i][forcing_t_idx]]
+        prio_wm = vals[priority_watermanagement_ranges[i][forcing_t_idx]]
         demandlsw = [demand_agric]
         priolsw = [prio_agric]
 
@@ -290,9 +284,9 @@ function allocate!(;
 end
 
 sys_dict = Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
-                                initial_volumes, Δt, all_users; precipitation)
+                                initial_volumes, Δt, all_users; forcing)
 
-graph, graph_all, fractions_all, lsw_all = ugrid_subgraph(ds, lsw_ids)
+graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
 fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
 
