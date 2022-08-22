@@ -1,5 +1,23 @@
 ---
-title: "docs"
+title: "Bach"
 ---
 
-This is a Quarto website.
+Bach is a water resources model, designed to be the replacement of the regional surface
+water module Mozart in the Netherlands Hydrological Instrument (NHI). Bach is still a work
+in progress, it is a prototype that demonstrates all essential functionalities.
+
+Bach is written in the [Julia programming language](https://julialang.org/) and is built
+on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
+libraries, notably [ModelingToolkit.jl](https://mtk.sciml.ai/stable/).
+
+# Status
+
+The initial focus is on being able to
+reproduce the Mozart regional surface water reservoir results. Each component is defined by
+a set of symbolic equations, and can be connected to each other. From this a simplified
+system of equations is generated automatically. We use solvers with adaptive time stepping
+from [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) to get results.
+
+![Timeseries of a single reservoir, with the input and output fluxes on the top, and the storage volume (the state) below.](https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png)
+
+![Bar plot of the daily waterbalance, comparing Mozart (left) and Bach (right).](https://user-images.githubusercontent.com/4471859/179259174-0caccd4a-c51b-449e-873c-17d48cfc8870.png)
