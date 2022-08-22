@@ -89,6 +89,7 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
                       Q_ex(t),  # upstream, downstream, users
                       Q_prec(t)=0,
                       Q_eact(t)=0,
+                      infiltration_act(t)=0,
                       area(t),
                       P(t)=0,
                       [input = true],
@@ -113,13 +114,14 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
                    # meteo fluxes are area dependent
                    Q_prec ~ area * P
                    Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
+                   infiltration_act ~ infiltration * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
 
                    # storage / balance
                    D(S) ~ Q_ex +
                           Q_prec +
                           Q_eact +
                           drainage +
-                          infiltration +
+                          infiltration_act +
                           urban_runoff
                    # connectors
                    h ~ x.h
@@ -149,7 +151,7 @@ function GeneralUser(; name, lsw_id, dw_id, S, Δt)
                    # the allocated water is normally available
                    abs ~ x.Q
                    abs ~ alloc * (0.5 * tanh((s.S - 50.0) / 10.0) + 0.5)
-                   # shortage ~ demand - abs  
+                   # shortage ~ demand - abs
                    ]
     compose(ODESystem(eqs, t, vars, pars; name), x, s)
 end
