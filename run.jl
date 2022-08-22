@@ -142,17 +142,18 @@ function periodic_update!(integrator)
     for (i, lsw_id) in enumerate(lsw_ids)
         lswusers = all_users[i]
         type = types[i]
-        name = Symbol(:sys_, lsw_id, :₊lsw₊)
+        basename = Symbol(:sys_, lsw_id)
+        name = Symbol(basename, :₊lsw₊)
 
         # forcing values
-        P = 0.0
-        E_pot = -vals[reference_evapotranspiration_ranges[i][forcing_t_idx]] *
-            Bach.open_water_factor(t)
-        drainage = vals[drainage_ranges[i][forcing_t_idx]]
-        infiltration = vals[infiltration_ranges[i][forcing_t_idx]]
-        urban_runoff = vals[urban_runoff_ranges[i][forcing_t_idx]]
-        demand_agric = vals[demand_agriculture_ranges[i][forcing_t_idx]]
-        prio_agric = vals[priority_agriculture_ranges[i][forcing_t_idx]]
+        P = param(integrator, Symbol(name, :P))
+        E_pot = param(integrator, Symbol(name, :E_pot))
+        drainage = param(integrator, Symbol(name, :drainage))
+        infiltration = param(integrator, Symbol(name, :infiltration))
+        urban_runoff = param(integrator, Symbol(name, :urban_runoff))
+        demand_agric = param(integrator, Symbol(basename, :₊agric₊demand))
+        prio_agric = param(integrator, Symbol(basename, :₊agric₊prio))
+
         prio_wm = vals[priority_watermanagement_ranges[i][forcing_t_idx]]
         demandlsw = [demand_agric]
         priolsw = [prio_agric]
@@ -203,12 +204,6 @@ function periodic_update!(integrator)
                       type)
         end
 
-        # update parameters
-        param!(integrator, Symbol(name, :P), P)
-        param!(integrator, Symbol(name, :E_pot), E_pot)
-        param!(integrator, Symbol(name, :drainage), drainage)
-        param!(integrator, Symbol(name, :infiltration), infiltration)
-        param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
     end
 
     Bach.save!(param_hist, t, p)
