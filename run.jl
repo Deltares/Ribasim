@@ -20,7 +20,7 @@ using Arrow
 
 config = TOML.parsefile("run.toml")
 
-lsw_ids::Vector{Int} = config["lsw_ids"]
+lsw_ids = config["lsw_ids"]
 # TODO part of the static dataset
 dw_id::Int = 0
 
