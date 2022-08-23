@@ -25,13 +25,12 @@ Storage S [m³] is an output variable that can be a function of the hydraulic he
     ODESystem(Equation[], t, vars, []; name)
 end
 
-function OutflowTable(; name, lsw_id, lsw_discharge)
+function OutflowTable(; name, lsw_discharge)
     @named a = FluidQuantityPort()  # upstream
     @named b = FluidQuantityPort()  # downstream
     @named s = Storage()  # upstream storage
 
     vars = @variables Q(t)
-    pars = @parameters lsw_id = lsw_id
 
     eqs = Equation[
                    # conservation of flow
@@ -40,13 +39,12 @@ function OutflowTable(; name, lsw_id, lsw_discharge)
                    Q ~ lsw_discharge(s.S)
                    # connectors
                    Q ~ a.Q]
-    compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
+    compose(ODESystem(eqs, t, vars, []; name), a, b, s)
 end
 
-function LevelControl(; name, lsw_id, target_volume, target_level)
+function LevelControl(; name, target_volume, target_level)
     @named a = FluidQuantityPort()  # lsw
     pars = @parameters(Q=0.0,
-                       lsw_id=lsw_id,
                        target_volume=target_volume,
                        target_level=target_level,
                        alloc_a=0.0, # lsw
@@ -80,7 +78,7 @@ connected components.
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 """
-function LSW(; name, S, Δt, lsw_id, dw_id, lsw_level, lsw_area)
+function LSW(; name, S, lsw_level, lsw_area)
     @named x = FluidQuantityPort()
     @named s = Storage(; S)
 
@@ -101,9 +99,6 @@ function LSW(; name, S, Δt, lsw_id, dw_id, lsw_level, lsw_area)
                       [input = true],
                       urban_runoff(t)=0,
                       [input = true],)
-    pars = @parameters(Δt=Δt,
-                       lsw_id=lsw_id,
-                       dw_id=dw_id,)
 
     D = Differential(t)
 
@@ -127,25 +122,21 @@ function LSW(; name, S, Δt, lsw_id, dw_id, lsw_level, lsw_area)
                    h ~ x.h
                    S ~ s.S
                    Q_ex ~ x.Q]
-    compose(ODESystem(eqs, t, vars, pars; name), x, s)
+    compose(ODESystem(eqs, t, vars, []; name), x, s)
 end
 
-function GeneralUser(; name, lsw_id, dw_id, S, Δt)
+function GeneralUser(; name, S)
     @named x = FluidQuantityPort()
     @named s = Storage(; S)
 
     vars = @variables(S(t)=S,
                       abs(t)=0,)
-    pars = @parameters(Δt=Δt,
-                       lsw_id=lsw_id,
-                       dw_id=dw_id,
-                       alloc=0.0,
+    pars = @parameters(alloc=0.0,
                        demand=0.0,
                        prio=0.0,
                        #shortage = 0.0,
                        #[output = true],
                        )
-    D = Differential(t)
 
     eqs = Equation[
                    # the allocated water is normally available
@@ -157,7 +148,7 @@ function GeneralUser(; name, lsw_id, dw_id, S, Δt)
 end
 
 # Function to assign general users in a level controlled LSW. Demand can be met from external source
-function GeneralUser_P(; name, lsw_id)
+function GeneralUser_P(; name)
     @named a = FluidQuantityPort()  # from lsw source
     #@named b = FluidQuantityPort()  # from external source
     @named s_a = Storage(; S)
@@ -167,10 +158,7 @@ function GeneralUser_P(; name, lsw_id)
                       abs_b(t)=0,
                       abs(t)=0,)
 
-    pars = @parameters(Δt=Δt,
-                       lsw_id=lsw_id,
-                       dw_id=dw_id,
-                       alloc_a=0.0,
+    pars = @parameters(alloc_a=0.0,
                        alloc_b=0.0,
                        demand=0.0,
                        prio=0.0,)
@@ -187,14 +175,10 @@ function GeneralUser_P(; name, lsw_id)
     compose(ODESystem(eqs, t, vars, pars; name), a)
 end
 
-function FlushingUser(; name, lsw_id, dw_id, Δt)
+function FlushingUser(; name)
     @named x_in = FluidQuantityPort()
     @named x_out = FluidQuantityPort()
-    pars = @parameters(demand_flush=0.0,
-                       Δt=Δt,
-                       lsw_id=lsw_id,
-                       dw_id=dw_id,)
-    D = Differential(t)
+    pars = @parameters(demand_flush=0.0)
 
     eqs = Equation[x_in.Q ~ demand_flush
                    x_in.Q ~ -x_out.Q]

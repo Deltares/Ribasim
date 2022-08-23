@@ -34,9 +34,6 @@ end
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
 
-    # TODO part of the static dataset
-    dw_id = 0
-
     forcing = Arrow.Table(config["forcing_path"])
     state = Arrow.Table(config["state_path"])
     static = Arrow.Table(config["static_path"])
@@ -44,7 +41,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     network = read_ply(config["network_path"])
 
     # Δt for periodic update frequency, including user horizons
-    Δt::Float64 = config["update_timestep"]
+    Δt = Float64(config["update_timestep"])
     vars = @variables t
 
     # find rows in forcing data
@@ -116,7 +113,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             type = types[i]
             basename = Symbol(:sys_, lsw_id)
             name = Symbol(basename, :₊lsw₊)
-            Δt = param(integrator, Symbol(name, :Δt))
 
             # forcing values
             P = param(integrator, Symbol(name, :P))
@@ -171,8 +167,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                             demandlsw,
                             priolsw,
                             lswusers = push!(lswusers, "levelcontrol"),
-                            wm_demand = Q_wm,
-                            Δt)
+                            wm_demand = Q_wm)
             elseif length(lswusers) > 0
                 # allocate to different users for a free flowing LSW
                 allocate_V!(;
@@ -186,8 +181,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                             infiltration,
                             demandlsw,
                             priolsw,
-                            lswusers = lswusers,
-                            Δt)
+                            lswusers = lswusers)
             end
 
             # update parameters
@@ -219,8 +213,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                          infiltration,
                          demandlsw,
                          priolsw,
-                         lswusers,
-                         Δt)
+                         lswusers)
 
         # function for demand allocation based upon user prioritisation
         # Note: equation not currently reproducing Mozart
@@ -274,8 +267,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                          demandlsw,
                          priolsw,
                          lswusers::Vector{String},
-                         wm_demand,
-                         Δt)
+                         wm_demand)
         # function for demand allocation based upon user prioritisation
         # Note: equation not currently reproducing Mozart
         Q_avail_vol = ((P - E_pot) * area) / Δt -
@@ -337,7 +329,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     curve_dict = create_curve_dict(profile, lsw_ids)
-    sys_dict = create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
+    sys_dict = create_sys_dict(lsw_ids, types, target_volumes, target_levels,
                                initial_volumes, Δt, all_users; forcing, curve_dict)
 
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)

@@ -35,7 +35,6 @@ usermap::Dict{Symbol, Symbol} = Dict(:agric => :agriculture,
                                      :indus => :industry)
 
 function create_sys_dict(lsw_ids::Vector{Int},
-                         dw_id::Int,
                          types::Vector{Char},
                          target_volumes::Vector{Float64},
                          target_levels::Vector{Float64},
@@ -62,7 +61,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
         lsw_discharge = LinearInterpolation(curve.q, curve.s)
         lsw_level = LinearInterpolation(curve.h, curve.s)
 
-        @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id, lsw_level, lsw_area)
+        @named lsw = Bach.LSW(; S = S0, lsw_level, lsw_area)
 
         # map external variable names to symbolic; used to update forcings
         varpars = [:precipitation => lsw.P
@@ -74,25 +73,25 @@ function create_sys_dict(lsw_ids::Vector{Int},
         # create and connect OutflowTable or LevelControl
         eqs = Equation[]
         if type == 'V'
-            @named weir = Bach.OutflowTable(; lsw_id, lsw_discharge)
+            @named weir = Bach.OutflowTable(; lsw_discharge)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
             all_components = [lsw, weir]
 
             for user in lswusers
-                usersys = Bach.GeneralUser(; name = user, lsw_id, dw_id, Δt, S = S0)
+                usersys = Bach.GeneralUser(; name = user, S = S0)
                 push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
             end
 
         else
-            @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
+            @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
             push!(varpars, :priority_watermanagement => levelcontrol.prio)
             all_components = [lsw, levelcontrol]
 
             for user in lswusers
                 # Locally allocated water
-                usersys = Bach.GeneralUser_P(; name = user, lsw_id, dw_id, Δt, S = S0)
+                usersys = Bach.GeneralUser_P(; name = user, S = S0)
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
 
