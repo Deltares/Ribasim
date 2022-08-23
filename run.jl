@@ -1,5 +1,5 @@
 # Run a Bach simulation based on files created by input.jl
-using AbbreviatedStackTraces
+# using AbbreviatedStackTraces
 using Bach
 using Duet
 

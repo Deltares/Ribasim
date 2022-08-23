@@ -31,133 +31,6 @@ function create_curve_dict(profile, lsw_ids)
     return curve_dict
 end
 
-# Allocate function for free flowing LSWs
-function allocate_V!(;
-                     integrator,
-                     name,
-                     P,
-                     area,
-                     E_pot,
-                     urban_runoff,
-                     drainage,
-                     infiltration,
-                     demandlsw,
-                     priolsw,
-                     lswusers)
-
-    # function for demand allocation based upon user prioritisation
-    # Note: equation not currently reproducing Mozart
-    Q_avail_vol = ((P - E_pot) * area) / Δt -
-                  min(0.0, infiltration - drainage - urban_runoff)
-
-    users = []
-    for (i, user) in enumerate(lswusers)
-        priority = priolsw[i]
-        demand = demandlsw[i]
-        tmp = (; user, priority, demand, alloc = Ref(0.0))
-        push!(users, tmp)
-    end
-    sort!(users, by = x -> x.priority)
-
-    # allocate by priority based on available water
-    for user in users
-        if user.demand <= 0
-            # allocation is initialized to 0
-        elseif Q_avail_vol >= user.demand
-            user.alloc[] = user.demand
-            Q_avail_vol -= user.alloc[]
-        else
-            user.alloc[] = Q_avail_vol
-            Q_avail_vol = 0.0
-        end
-
-        # update parameters
-        symalloc = Symbol(name, user.user, :₊alloc)
-        param!(integrator, symalloc, -user.alloc[])
-        # The following are not essential for the simulation
-        symdemand = Symbol(name, user.user, :₊demand)
-        param!(integrator, symdemand, -user.demand[])
-        symprio = Symbol(name, user.user, :₊prio)
-        param!(integrator, symprio, user.priority[])
-    end
-
-    return nothing
-end
-
-# Allocate function for level controled LSWs
-function allocate_P!(;
-                     integrator,
-                     name,
-                     P,
-                     area,
-                     E_pot,
-                     urban_runoff,
-                     drainage,
-                     infiltration,
-                     demandlsw,
-                     priolsw,
-                     lswusers::Vector{String},
-                     wm_demand)
-    # function for demand allocation based upon user prioritisation
-    # Note: equation not currently reproducing Mozart
-    Q_avail_vol = ((P - E_pot) * area) / Δt -
-                  min(0.0, infiltration - drainage - urban_runoff)
-
-    users = []
-    for (i, user) in enumerate(lswusers)
-        priority = priolsw[i]
-        demand = demandlsw[i]
-        tmp = (; user, priority, demand, alloc_a = Ref(0.0), alloc_b = Ref(0.0)) # alloc_a is lsw sourced, alloc_b is external source
-        push!(users, tmp)
-    end
-    sort!(users, by = x -> x.priority)
-
-    if wm_demand > 0.0
-        Q_avail_vol += wm_demand
-    end
-
-    external_demand = sum(user.demand) - Q_avail_vol
-    external_avail = external_demand # For prototype, enough water can be supplied from external
-
-    # allocate by priority based on available water
-    for user in users
-        if user.demand <= 0.0
-            # allocation is initialized to 0
-        elseif Q_avail_vol >= user.demand
-            user.alloc_a[] = user.demand
-            Q_avail_vol -= user.alloc_a[]
-            if user ≠ "levelcontrol"
-                # if general users are allocated by lsw water before wm, then the wm demand increases
-                levelcontrol.demand += user.alloc_a
-            end
-        else
-            # If water cannot be supplied by LSW, demand is sourced from external network
-            external_alloc = user.demand - Q_avail_vol
-            Q_avail_vol = 0.0
-            if external_avail >= external_alloc # Currently always true
-                user.alloc_b[] = external_alloc
-                external_avail -= external_alloc
-            else
-                user.alloc_b[] = external_avail
-                external_avail = 0.0
-            end
-        end
-
-        # update parameters
-        symalloc = Symbol(name, user.user, :₊alloc_a)
-        param!(integrator, symalloc, -user.alloc_a[])
-        symalloc = Symbol(name, user.user, :₊alloc_b)
-        param!(integrator, symalloc, -user.alloc_b[])
-        # The following are not essential for the simulation
-        symdemand = Symbol(name, user.user, :₊demand)
-        param!(integrator, symdemand, -user.demand[])
-        symprio = Symbol(name, user.user, :₊prio)
-        param!(integrator, symprio, user.priority[])
-    end
-
-    return nothing
-end
-
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
 
@@ -168,22 +41,25 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     state = Arrow.Table(config["state_path"])
     static = Arrow.Table(config["static_path"])
     profile = Arrow.Table(config["profile_path"])
-    network = Duet.read_ply(config["network_path"])
+    network = read_ply(config["network_path"])
 
     # Δt for periodic update frequency, including user horizons
     Δt::Float64 = config["update_timestep"]
     vars = @variables t
 
     # find rows in forcing data
+    tims = forcing.time
     vars = forcing.variable
     locs = forcing.location
     vals = forcing.value
-    priority_watermanagement_ranges = [Duet.searchsorted_forcing(vars, locs,
-                                                                 :priority_watermanagement,
-                                                                 lsw_id)
-                                       for lsw_id in lsw_ids]
+    rows = [searchsorted_forcing(vars, locs,
+                                 :priority_watermanagement,
+                                 lsw_id)
+            for lsw_id in lsw_ids]
+    prio_wm_series = [ForwardFill(datetime2unix.(tims[i]), vals[i]) for i in rows]
+
     # base the running time on the precipitation of the first LSW
-    rows = Duet.searchsorted_forcing(vars, locs, :precipitation, first(lsw_ids))
+    rows = searchsorted_forcing(vars, locs, :precipitation, first(lsw_ids))
     # values that don't vary between LSWs
     # set bach runtimes equal to the mozart reference run
     dates::Vector{DateTime} = forcing.time[rows]
@@ -200,14 +76,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # create a vector of vectors of all non zero general users within all the lsws
     all_users = fill([:agric], length(lsw_ids))
-    #all_users = list_all_users(lsw_ids)
 
-    curve_dict = create_curve_dict(profile)
+    curve_dict = create_curve_dict(profile, lsw_ids)
 
     # register lookup functions
-    @eval lsw_area(s, lsw_id) = lookup_area(curve_dict[lsw_id], s)
-    @eval lsw_discharge(s, lsw_id) = lookup_discharge(curve_dict[lsw_id], s)
-    @eval lsw_level(s, lsw_id) = lookup_level(curve_dict[lsw_id], s)
+    @eval lsw_area(s, lsw_id) = lookup_area($(curve_dict)[lsw_id], s)
+    @eval lsw_discharge(s, lsw_id) = lookup_discharge($(curve_dict)[lsw_id], s)
+    @eval lsw_level(s, lsw_id) = lookup_level($(curve_dict)[lsw_id], s)
 
     # captures sysnames
     function getstate(integrator, s)::Real
@@ -237,7 +112,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return p[i] = x
     end
 
-    # captures sysnames, times, vals, priority_watermanagement_ranges
+    # captures sysnames, times, vals, prio_wm
     function periodic_update!(integrator)
         # update all forcing
         # exchange with Modflow and Metaswap here
@@ -250,6 +125,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             type = types[i]
             basename = Symbol(:sys_, lsw_id)
             name = Symbol(basename, :₊lsw₊)
+            Δt = param(integrator, Symbol(name, :Δt))
 
             # forcing values
             P = param(integrator, Symbol(name, :P))
@@ -260,7 +136,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             demand_agric = param(integrator, Symbol(basename, :₊agric₊demand))
             prio_agric = param(integrator, Symbol(basename, :₊agric₊prio))
 
-            prio_wm = vals[priority_watermanagement_ranges[i][forcing_t_idx]]
+            prio_wm_serie = prio_wm_series[i]
+            prio_wm = prio_wm_serie(t)
             demandlsw = [demand_agric]
             priolsw = [prio_agric]
 
@@ -279,7 +156,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 S = getstate(integrator, Symbol(name, :S))
                 outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
                 target_volume = param(integrator, Symbol(outname, :target_volume))
-                Δt = param(integrator, Symbol(name, :Δt))
 
                 # what is the expected storage difference at the end of the period
                 # if there is no watermanagement?
@@ -304,23 +180,23 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                             demandlsw,
                             priolsw,
                             lswusers = push!(lswusers, "levelcontrol"),
-                            wm_demand = Q_wm)
-            else
-                if length(lswusers) > 0
-                    # allocate to different users for a free flowing LSW
-                    allocate_V!(;
-                                integrator,
-                                name = Symbol(:sys_, lsw_id, :₊),
-                                P,
-                                area,
-                                E_pot,
-                                urban_runoff,
-                                drainage,
-                                infiltration,
-                                demandlsw,
-                                priolsw,
-                                lswusers = lswusers)
-                end
+                            wm_demand = Q_wm,
+                            Δt)
+            elseif length(lswusers) > 0
+                # allocate to different users for a free flowing LSW
+                allocate_V!(;
+                            integrator,
+                            name = Symbol(:sys_, lsw_id, :₊),
+                            P,
+                            area,
+                            E_pot,
+                            urban_runoff,
+                            drainage,
+                            infiltration,
+                            demandlsw,
+                            priolsw,
+                            lswusers = lswusers,
+                            Δt)
             end
 
             # update parameters
@@ -340,12 +216,141 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
-    sys_dict = Duet.create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
-                                    initial_volumes, Δt, all_users; forcing)
+    # Allocate function for free flowing LSWs
+    function allocate_V!(;
+                         integrator,
+                         name,
+                         P,
+                         area,
+                         E_pot,
+                         urban_runoff,
+                         drainage,
+                         infiltration,
+                         demandlsw,
+                         priolsw,
+                         lswusers,
+                         Δt)
+
+        # function for demand allocation based upon user prioritisation
+        # Note: equation not currently reproducing Mozart
+        Q_avail_vol = ((P - E_pot) * area) / Δt -
+                      min(0.0, infiltration - drainage - urban_runoff)
+
+        users = []
+        for (i, user) in enumerate(lswusers)
+            priority = priolsw[i]
+            demand = demandlsw[i]
+            tmp = (; user, priority, demand, alloc = Ref(0.0))
+            push!(users, tmp)
+        end
+        sort!(users, by = x -> x.priority)
+
+        # allocate by priority based on available water
+        for user in users
+            if user.demand <= 0
+                # allocation is initialized to 0
+            elseif Q_avail_vol >= user.demand
+                user.alloc[] = user.demand
+                Q_avail_vol -= user.alloc[]
+            else
+                user.alloc[] = Q_avail_vol
+                Q_avail_vol = 0.0
+            end
+
+            # update parameters
+            symalloc = Symbol(name, user.user, :₊alloc)
+            param!(integrator, symalloc, -user.alloc[])
+            # The following are not essential for the simulation
+            symdemand = Symbol(name, user.user, :₊demand)
+            param!(integrator, symdemand, -user.demand[])
+            symprio = Symbol(name, user.user, :₊prio)
+            param!(integrator, symprio, user.priority[])
+        end
+
+        return nothing
+    end
+
+    # Allocate function for level controled LSWs
+    function allocate_P!(;
+                         integrator,
+                         name,
+                         P,
+                         area,
+                         E_pot,
+                         urban_runoff,
+                         drainage,
+                         infiltration,
+                         demandlsw,
+                         priolsw,
+                         lswusers::Vector{String},
+                         wm_demand,
+                         Δt)
+        # function for demand allocation based upon user prioritisation
+        # Note: equation not currently reproducing Mozart
+        Q_avail_vol = ((P - E_pot) * area) / Δt -
+                      min(0.0, infiltration - drainage - urban_runoff)
+
+        users = []
+        for (i, user) in enumerate(lswusers)
+            priority = priolsw[i]
+            demand = demandlsw[i]
+            tmp = (; user, priority, demand, alloc_a = Ref(0.0), alloc_b = Ref(0.0)) # alloc_a is lsw sourced, alloc_b is external source
+            push!(users, tmp)
+        end
+        sort!(users, by = x -> x.priority)
+
+        if wm_demand > 0.0
+            Q_avail_vol += wm_demand
+        end
+
+        external_demand = sum(user.demand) - Q_avail_vol
+        external_avail = external_demand # For prototype, enough water can be supplied from external
+
+        # allocate by priority based on available water
+        for user in users
+            if user.demand <= 0.0
+                # allocation is initialized to 0
+            elseif Q_avail_vol >= user.demand
+                user.alloc_a[] = user.demand
+                Q_avail_vol -= user.alloc_a[]
+                if user ≠ "levelcontrol"
+                    # if general users are allocated by lsw water before wm, then the wm demand increases
+                    levelcontrol.demand += user.alloc_a
+                end
+            else
+                # If water cannot be supplied by LSW, demand is sourced from external network
+                external_alloc = user.demand - Q_avail_vol
+                Q_avail_vol = 0.0
+                if external_avail >= external_alloc # Currently always true
+                    user.alloc_b[] = external_alloc
+                    external_avail -= external_alloc
+                else
+                    user.alloc_b[] = external_avail
+                    external_avail = 0.0
+                end
+            end
+
+            # update parameters
+            symalloc = Symbol(name, user.user, :₊alloc_a)
+            param!(integrator, symalloc, -user.alloc_a[])
+            symalloc = Symbol(name, user.user, :₊alloc_b)
+            param!(integrator, symalloc, -user.alloc_b[])
+            # The following are not essential for the simulation
+            symdemand = Symbol(name, user.user, :₊demand)
+            param!(integrator, symdemand, -user.demand[])
+            symprio = Symbol(name, user.user, :₊prio)
+            param!(integrator, symprio, user.priority[])
+        end
+
+        return nothing
+    end
+
+    sys_dict = create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
+                               initial_volumes, Δt, all_users; forcing)
 
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
-    fractions = Duet.fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
-    sys = Duet.create_district(lsw_ids, types, graph, fractions, sys_dict)
+    fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
+    sys = create_district(lsw_ids, types, graph, fractions, sys_dict)
 
     sim = structural_simplify(sys)
 
