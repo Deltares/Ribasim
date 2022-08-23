@@ -51,7 +51,7 @@ function LevelControl(; name, lsw_id, target_volume, target_level)
                        lsw_id=lsw_id,
                        target_volume=target_volume,
                        target_level=target_level,
-                       alloc_a = 0.0 # 
+                       alloc_a = 0.0, # 
                        alloc_b = 0.0)
     eqs = Equation[
                    # conservation of flow
