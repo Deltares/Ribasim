@@ -43,19 +43,18 @@ function OutflowTable(; name, lsw_id)
     compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
 end
 
-function LevelControl(; name, lsw_id, target_volume, target_level)
+function LevelControl(; name,  lsw_id, target_volume, target_level)
     @named a = FluidQuantityPort()  # lsw
-    #@named b = FluidQuantityPort()  # downstream
-
     pars = @parameters(Q=0.0,
                        lsw_id=lsw_id,
                        target_volume=target_volume,
                        target_level=target_level,
-                       alloc_a = 0.0, # 
-                       alloc_b = 0.0)
+                       alloc_a = 0.0 # lsw
+                       alloc_b = 0.0 # external
+                       )
     eqs = Equation[
                    # conservation of flow
-                   a.Q + b.Q ~ 0
+                   a.Q = alloc_a + alloc_b
                    # in callback set the flow rate
                    # connectors
                    Q ~ a.Q]
