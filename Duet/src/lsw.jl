@@ -34,7 +34,7 @@ function parse_meteo_line!(times, prec, evap, line)
     v = parse(Float64, line[43:end]) * 0.001 / period_s  # [mm timestep⁻¹] to [m s⁻¹]
     if is_evap
         push!(times, t)
-        push!(evap, v)
+        push!(evap, -v * Bach.open_water_factor(t))
     else
         push!(prec, v)
     end
@@ -337,24 +337,46 @@ function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
             fractions[i][lsw_to] = fraction
         end
     end
-    @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
+    # This can be triggered by district crossing bifurcations.
+    # for d in fractions
+    #     if !isempty(d)
+    #         if sum(values(d)) != 1
+    #             @warn "fraction don't add up"
+    #             @show d
+    #         end
+    #     end
+    # end
+    # @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
     return fractions
 end
 
-function lsw_sys_affect!(integ, u, p, ctx)
-    integ.p[p.P] = popfirst!(ctx.P)
+function update_forcing!(integ, u, p, ctx)
+    integ.p[only(p)] = ctx(integ.t)
 end
+
+# map from internal user names to the names used in the forcing table
+usermap::Dict{Symbol, Symbol} = Dict(
+    :agric => :agriculture,
+    :wm => :watermanagement,
+    :indus => :industry,
+)
 
 function create_sys_dict(lsw_ids::Vector{Int},
                          dw_id::Int,
                          types::Vector{Char},
-                         target_volumes::Vector{Float32},
-                         target_levels::Vector{Float32},
+                         target_volumes::Vector{Float64},
+                         target_levels::Vector{Float64},
                          initial_volumes::Vector{Float64},
                          Δt::Float64,
                          all_users::Vector{Vector{Symbol}};
-                         precipitation)
+                         forcing)
     sys_dict = Dict{Int, ODESystem}()
+
+
+    tims = forcing.time
+    vars = forcing.variable
+    locs = forcing.location
+    vals = forcing.value
 
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
@@ -364,6 +386,15 @@ function create_sys_dict(lsw_ids::Vector{Int},
         lswusers = all_users[i]
 
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
+
+        # map external variable names to symbolic; used to update forcings
+        varpars = [
+            :precipitation => lsw.P
+            :reference_evapotranspiration => lsw.E_pot
+            :drainage => lsw.drainage
+            :infiltration => lsw.infiltration
+            :urban_runoff => lsw.urban_runoff
+        ]
 
         # create and connect OutflowTable or LevelControl
         eqs = Equation[]
@@ -383,6 +414,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
             @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
             wm = levelcontrol
+            push!(varpars, :priority_watermanagement => levelcontrol.prio)
             all_components = [lsw, wm]
 
             for user in lswusers
@@ -390,15 +422,32 @@ function create_sys_dict(lsw_ids::Vector{Int},
                 usersys = Bach.GeneralUser_P(; name = user, lsw_id, dw_id, Δt, S = S0)
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
+
+                
+                longuser = usermap[user]
+                push!(varpars, Symbol(:priority_, longuser) => usersys.prio)
+                push!(varpars, Symbol(:demand_, longuser) => usersys.demand)
                 # To do: consider how to connect external user demand (i.e. usersys.b)
             end
             # TO DO: including flushing requirement
+
         end
 
         name = Symbol(:sys_, lsw_id)
-        ctx = (; P = Iterators.Stateful(precipitation[node = i]))
 
-        discrete_events = [Δt => (lsw_sys_affect!, [], [lsw.P => :P], ctx)]
+        # for each forcing variable name and symbol, create a callback to update the
+        # forcing as soon as it changes
+        discrete_events = []
+        for (var, par) in varpars
+            i = searchsorted_forcing(vars, locs, var, lsw_id)
+            # don't create a callback if there is nothing to update
+            isempty(i) && continue
+            t = datetime2unix.(tims[i])
+            v = vals[i]
+            ctx = Bach.ForwardFill(t, v)
+            discrete_event = t => (update_forcing!, [], [par], ctx)
+            push!(discrete_events, discrete_event)
+        end
         lsw_sys = ODESystem(eqs, t; name, discrete_events)
         lsw_sys = compose(lsw_sys, all_components)
         sys_dict[lsw_id] = lsw_sys

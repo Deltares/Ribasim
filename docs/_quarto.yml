@@ -1,0 +1,19 @@
+project:
+  type: website
+
+website:
+  title: "Bach"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - intro.qmd
+      - modflow.qmd
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+
+bibliography: references.bib

@@ -1,0 +1,83 @@
+---
+title: "Introduction"
+---
+
+# Water balance equations
+
+The water balance equation over a given system can be defined a first-order ordinary
+differential equation (ODE), where the change of the storage $S$ over time is determined by the
+inflow fluxes minus the outflow fluxes.
+
+$$
+\frac{\mathrm{d}S}{\mathrm{d}t} = Q_{in} - Q_{out}
+$$
+
+We can split out the fluxes into separate terms, such as precipitation $P$,
+evapotranspiration $ET$ and runoff $R$. For now other fluxes are combined into $Q_{rest}$.
+If define all fluxes entering our reservoir as positive, and those leaving the system to be
+negative, all fluxes can be summed up.
+
+$$
+\frac{\mathrm{d}S}{\mathrm{d}t} = R + P + ET + Q_{rest}
+$$
+
+Such a water balance ODE can be represented in ModelingToolkit.jl as follows:
+
+```julia
+using ModelingToolkit
+
+@variables t S(t) R(t) P(t) ET(t) Q_rest(t)  # independent and dependent variables
+D = Differential(t)       # define an operator for the differentiation w.r.t. time
+
+sys = ODESystem([D(S) ~ R + P + ET + Q_rest])
+```
+
+On the last line, an `ODESystem` is created that consists of a single equation. Before we
+can solve this, we need to create an `ODEProblem`, that provides information about the
+timespan of the simulation, as well as the initial conditions.
+
+# Time
+
+The water balance equation can be applied on many timescales; years, weeks, days or hours.
+Depending on the application and available data any of these can be the best choice.
+In Bach, we make use of DifferentialEquations.jl and can use any of its [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/).
+Many of these solvers make use of adaptive time stepping, which means the solver will
+decide how large the time steps can be depending on the state of the system.
+
+The forcing, like precipitation, is generally provided as a time series. Bach is set up
+to support unevenly spaced timeseries. The solver will stop on timestamps where new forcing
+values are available, so they can be loaded as the new value.
+
+So Bach is essentially a continuous model, rather than daily or hourly. If you want to use
+hourly forcing, you only need to make sure that your forcing data contains hourly updates.
+The output frequency can be configured independently. To be able to write a closed water
+balance on e.g. a daily basis, we integrate the timeseries over the days. This way any
+variation inside of the days is also included, and we can output in `m³` rather than `m³s⁻¹`.
+
+# Space
+
+The water balance equation can be applied on different spatial scales. Besides modelling a
+single lumped watershed, it allows you to divide the area into a network of connected
+representative elementary watersheds (REWs) [@REGGIANI1998367]. At this scale global water
+balance laws can be formulated by means of integration of point-scale conservation equations
+over control volumes. Such an approach makes Bach a semi-distributed model. In this document
+we typically use the term "basin" to refer to the REW. In Mozart the spatial unit was called
+Local Surface Water (LSW). Each basin has an associated polygon, and the set of basins is
+connected to each other as described by a graph, which we call the network. Below is a
+representation of both on the map.
+
+![Mozart Local Surface Water polygons and their drainage.](https://user-images.githubusercontent.com/4471859/185932183-62c305e6-bc14-4f3c-a74c-437f831c9145.png)
+
+The network is described as graph. Flow can be bi-directional, and the graph does not have
+to be acyclic.
+
+```{mermaid}
+graph LR;
+    A["basin A"] --- B["basin B"];
+    A --- C["basin C"];
+    B --- D["basin D"];
+    C --- D;
+```
+
+Internally a directed graph is used. The direction is defined to be the positive flow
+direction, and is often set in the dominant flow direction.
