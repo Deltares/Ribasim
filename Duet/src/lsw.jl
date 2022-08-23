@@ -158,7 +158,7 @@ function compile_users(uslswdem::DataFrame, lsw_id)
     return lswusers, demand_dict, prio_dict
 end
 
-# function to create a vector of all non-zero uers in a given lsw
+# function to create a vector of all non-zero general users in a given lsw
 function list_all_users(lsw_ids::Vector)
     all_users = Vector{Symbol}[]
     commonuser = ["agriculture"] # can update with other possible users
@@ -172,10 +172,6 @@ function list_all_users(lsw_ids::Vector)
             else
                 continue
             end
-        end
-        # Note - important that this is after "commonusers" iterations
-        if Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node = lsw_id))) == "P"
-            push!(userlsw, Symbol("wm"))
         end
         push!(all_users, userlsw)
     end
@@ -375,18 +371,28 @@ function create_sys_dict(lsw_ids::Vector{Int},
             @named weir = Bach.OutflowTable(; lsw_id)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
             wm = weir
+            all_components = [lsw, wm]
+
+            for user in lswusers
+                usersys = Bach.GeneralUser(; name = user, lsw_id, dw_id, Δt, S = S0)
+                push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
+                push!(all_components, usersys)
+            end
+
         else
             @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
             wm = levelcontrol
-        end
+            all_components = [lsw, wm]
 
-        all_components = [lsw, wm]
-
-        for user in lswusers
-            usersys = Bach.GeneralUser(; name = user, lsw_id, dw_id, Δt, S = S0)
-            push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
-            push!(all_components, usersys)
+            for user in lswusers
+                # Locally allocated water
+                usersys = Bach.GeneralUser_P(; name = user, lsw_id, dw_id, Δt, S = S0)
+                push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
+                push!(all_components, usersys)
+                # To do: consider how to connect external user demand (i.e. usersys.b)
+            end
+            # TO DO: including flushing requirement
         end
 
         name = Symbol(:sys_, lsw_id)
