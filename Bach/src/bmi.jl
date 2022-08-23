@@ -348,7 +348,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     integrator = init(prob,
                       DE.Rosenbrock23();
                       callback = cb,
-                      save_on = true,
+                      saveat = get(config, "saveat", []),
                       abstol = 1e-9,
                       reltol = 1e-9)
 

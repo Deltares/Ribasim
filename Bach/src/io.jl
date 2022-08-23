@@ -137,3 +137,39 @@ function searchsorted_forcing(vars, locs, var, loc)
     # return the global index range of the variable and location combination
     return var_rows[col_rows]
 end
+
+"Get a view on the time and value of a timeseries of a variable at a location"
+function tsview(t, var::Symbol, loc::Int)
+    i = Bach.searchsorted_forcing(t.variable, t.location, var, loc)
+    return view(t, i, :time), view(t, i, :value)
+end
+
+# :sys_151358₊agric₊alloc to (151358, :agric.alloc)
+# :headboundary_151309₊h to (151309, :h)
+function parsename(sym)::Tuple{Symbol, Int}
+    loc, sysvar = split(String(sym), '₊'; limit = 2)
+    location = parse(Int, replace(loc, r"^\w+_" => ""))
+    variable = Symbol(replace(sysvar, '₊' => '.'))
+    return variable, location
+end
+
+"Create a long form DataFrame of all variables on every saved timestep."
+function samples_long(reg::Bach.Register)::DataFrame
+    df = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
+                   value = Float64[])
+
+    (; p_symbol, obs_symbol, u_symbol) = reg.sysnames
+    symbols = vcat(u_symbol, obs_symbol, p_symbol)
+    t = reg.integrator.sol.t
+    time = unix2datetime.(t)
+
+    for symbol in symbols
+        value = Bach.interpolator(reg, symbol).(t)
+        variable, location = parsename(symbol)
+        batch = DataFrame(; time, variable, location, value)
+        append!(df, batch)
+    end
+
+    # sort like the forcing
+    return sort!(df, [:variable, :location, :time])
+end

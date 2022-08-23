@@ -1,6 +1,8 @@
 
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
+saveat = 86400.0
+
 # path to the UGrid NetCDF with the network, profiles, user and forcing data
 lsw_ids = [151358, 151371, 151309]
 
