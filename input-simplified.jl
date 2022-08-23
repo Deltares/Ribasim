@@ -16,7 +16,7 @@ lsw_ids = Int.(nc["node"][:])
 # state
 begin
     volume = Float64.(nc["volume"][:])
-    state = DataFrame(; location=lsw_ids, volume)
+    state = DataFrame(; location = lsw_ids, volume)
     Arrow.write(normpath(output_dir, "state.arrow"), state)
 end
 
@@ -27,7 +27,8 @@ begin
     target_volume = Float64.(nc["target_volume"][:])
     local_surface_water_type = Arrow.DictEncode(Char.(nc["local_surface_water_type"][:]))
 
-    static = DataFrame(; location=lsw_ids, target_level, target_volume, depth_surface_water, local_surface_water_type)
+    static = DataFrame(; location = lsw_ids, target_level, target_volume,
+                       depth_surface_water, local_surface_water_type)
     Arrow.write(normpath(output_dir, "static.arrow"), static)
 end
 
@@ -38,8 +39,9 @@ begin
     @assert !any(isnan.(profile_3d))
     n_prof = length(nc["profile_row"])
 
-    profiles = DataFrame(location=Int[],volume=Float64[],area=Float64[],discharge=Float64[],level=Float64[])
-    for (lsw_id, profile_2d) in zip(lsw_ids, eachslice(profile_3d; dims=3))
+    profiles = DataFrame(location = Int[], volume = Float64[], area = Float64[],
+                         discharge = Float64[], level = Float64[])
+    for (lsw_id, profile_2d) in zip(lsw_ids, eachslice(profile_3d; dims = 3))
         append!(profiles.location, fill(lsw_id, n_prof))
         append!(profiles.volume, profile_2d[:, 1])
         append!(profiles.area, profile_2d[:, 2])

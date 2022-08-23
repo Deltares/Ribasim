@@ -355,11 +355,9 @@ function update_forcing!(integ, u, p, ctx)
 end
 
 # map from internal user names to the names used in the forcing table
-usermap::Dict{Symbol, Symbol} = Dict(
-    :agric => :agriculture,
-    :wm => :watermanagement,
-    :indus => :industry,
-)
+usermap::Dict{Symbol, Symbol} = Dict(:agric => :agriculture,
+                                     :levelcontrol => :watermanagement,
+                                     :indus => :industry)
 
 function create_sys_dict(lsw_ids::Vector{Int},
                          dw_id::Int,
@@ -371,7 +369,6 @@ function create_sys_dict(lsw_ids::Vector{Int},
                          all_users::Vector{Vector{Symbol}};
                          forcing)
     sys_dict = Dict{Int, ODESystem}()
-
 
     tims = forcing.time
     vars = forcing.variable
@@ -388,21 +385,18 @@ function create_sys_dict(lsw_ids::Vector{Int},
         @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
 
         # map external variable names to symbolic; used to update forcings
-        varpars = [
-            :precipitation => lsw.P
-            :reference_evapotranspiration => lsw.E_pot
-            :drainage => lsw.drainage
-            :infiltration => lsw.infiltration
-            :urban_runoff => lsw.urban_runoff
-        ]
+        varpars = [:precipitation => lsw.P
+                   :reference_evapotranspiration => lsw.E_pot
+                   :drainage => lsw.drainage
+                   :infiltration => lsw.infiltration
+                   :urban_runoff => lsw.urban_runoff]
 
         # create and connect OutflowTable or LevelControl
         eqs = Equation[]
         if type == 'V'
             @named weir = Bach.OutflowTable(; lsw_id)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
-            wm = weir
-            all_components = [lsw, wm]
+            all_components = [lsw, weir]
 
             for user in lswusers
                 usersys = Bach.GeneralUser(; name = user, lsw_id, dw_id, Δt, S = S0)
@@ -413,9 +407,8 @@ function create_sys_dict(lsw_ids::Vector{Int},
         else
             @named levelcontrol = Bach.LevelControl(; lsw_id, target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
-            wm = levelcontrol
             push!(varpars, :priority_watermanagement => levelcontrol.prio)
-            all_components = [lsw, wm]
+            all_components = [lsw, levelcontrol]
 
             for user in lswusers
                 # Locally allocated water
@@ -423,7 +416,6 @@ function create_sys_dict(lsw_ids::Vector{Int},
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
 
-                
                 longuser = usermap[user]
                 push!(varpars, Symbol(:priority_, longuser) => usersys.prio)
                 push!(varpars, Symbol(:demand_, longuser) => usersys.demand)

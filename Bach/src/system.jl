@@ -2,6 +2,14 @@
 # convert units with unix2datetime and datetime2unix
 @variables t
 
+# location dependent lookup tables
+function lsw_area end
+function lsw_discharge end
+function lsw_level end
+@register_symbolic lsw_area(s, lsw_id)
+@register_symbolic lsw_discharge(s, lsw_id)
+@register_symbolic lsw_level(s, lsw_id)
+
 """
     FluidQuantityPort(; name, h = 0.0, Q = 0.0)
 
@@ -43,18 +51,17 @@ function OutflowTable(; name, lsw_id)
     compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
 end
 
-function LevelControl(; name,  lsw_id, target_volume, target_level)
+function LevelControl(; name, lsw_id, target_volume, target_level)
     @named a = FluidQuantityPort()  # lsw
     pars = @parameters(Q=0.0,
                        lsw_id=lsw_id,
                        target_volume=target_volume,
                        target_level=target_level,
-                       alloc_a = 0.0 # lsw
-                       alloc_b = 0.0 # external
-                       )
+                       alloc_a=0.0, # lsw
+                       alloc_b=0.0,)
     eqs = Equation[
                    # conservation of flow
-                   a.Q = alloc_a + alloc_b
+                   a.Q ~ alloc_a + alloc_b
                    # in callback set the flow rate
                    # connectors
                    Q ~ a.Q]
@@ -164,30 +171,26 @@ function GeneralUser_P(; name, lsw_id)
     @named s_a = Storage(; S)
     @named s_b = Storage(; S)
 
-    vars = @variables(
-        abs_a(t)=0,
-        abs_b(t)=0,
-        abs(t) =0,
-        )
+    vars = @variables(abs_a(t)=0,
+                      abs_b(t)=0,
+                      abs(t)=0,)
 
-    pars = @parameters(
-        Δt=Δt,
-        lsw_id=lsw_id,
-        dw_id=dw_id,
-        alloc_a = 0.0,
-        alloc_b = 0.0,
-        demand=0.0,
-        prio=0.0,
-        )   
+    pars = @parameters(Δt=Δt,
+                       lsw_id=lsw_id,
+                       dw_id=dw_id,
+                       alloc_a=0.0,
+                       alloc_b=0.0,
+                       demand=0.0,
+                       prio=0.0,)
     eqs = Equation[
                    # in callback set the flow rate
                    # connectors
                    abs ~ a.Q + abs_b
                    abs_a ~ alloc_a * (0.5 * tanh((s_a.S - 50.0) / 10.0) + 0.5)
                    abs_b ~ alloc_b * (0.5 * tanh((s_b.S - 50.0) / 10.0) + 0.5)
-                   abs_a ~  a.Q
+                   abs_a ~ a.Q
                    #abs_b ~ b.Q
-                ]
+                   ]
 
     compose(ODESystem(eqs, t, vars, pars; name), a)
 end
@@ -195,18 +198,14 @@ end
 function FlushingUser(; name, lsw_id, dw_id, Δt)
     @named x_in = FluidQuantityPort()
     @named x_out = FluidQuantityPort()
-    pars = @parameters(
-        demand_flush = 0.0,
-        Δt=Δt,
-        lsw_id=lsw_id,
-        dw_id=dw_id,
-        )
+    pars = @parameters(demand_flush=0.0,
+                       Δt=Δt,
+                       lsw_id=lsw_id,
+                       dw_id=dw_id,)
     D = Differential(t)
 
-    eqs = Equation[
-                    x_in.Q ~ demand_flush
-                    x_in.Q ~ -x_out.Q
-                   ]
+    eqs = Equation[x_in.Q ~ demand_flush
+                   x_in.Q ~ -x_out.Q]
     compose(ODESystem(eqs, t, [], pars; name), x)
 end
 

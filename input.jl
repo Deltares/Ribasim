@@ -279,7 +279,8 @@ close(ds)
 # write graph as a PLY file; simple and loads fast in QGIS
 node_table = (; x = first.(lswlocs), y = last.(lswlocs), location = Float64.(lsw_ids))
 edge_table = (; fractions)
-Duet.write_ply(normpath(output_dir, "network.ply"), graph, node_table, edge_table; ascii=true, crs="EPSG:28992")
+Duet.write_ply(normpath(output_dir, "network.ply"), graph, node_table, edge_table;
+               ascii = true, crs = "EPSG:28992")
 
 open(normpath(output_dir, "lsw_ids.txt"), "w") do io
     for lsw_id in lsw_ids
@@ -292,8 +293,9 @@ end
 # and then compute the row indices for each ID using
 # i = searchsorted(profiles.id, lsw_id)  # e.g. 1:25
 
-function long_profiles(;lsw_ids, profile_dict)
-    profiles = DataFrame(location=Int[],volume=Float64[],area=Float64[],discharge=Float64[],level=Float64[])
+function long_profiles(; lsw_ids, profile_dict)
+    profiles = DataFrame(location = Int[], volume = Float64[], area = Float64[],
+                         discharge = Float64[], level = Float64[])
     for lsw_id in lsw_ids
         profile = profile_dict[lsw_id]
         append!(profiles.location, fill(lsw_id, nrow(profile)))
@@ -323,11 +325,14 @@ function append_equidistant_forcing!(forcing, series_dict, variable::Symbol)
     return forcing
 end
 
-function long_equidistant_forcing(path; prec_dict, evap_dict, drainage_dict, infiltration_dict,
-    urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
+function long_equidistant_forcing(path; prec_dict, evap_dict, drainage_dict,
+                                  infiltration_dict,
+                                  urban_runoff_dict, demand_agric_dict, prio_agric_dict,
+                                  prio_wm_dict)
 
     # all dynamic input is stored here, one number per row
-    forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[], value = Float64[])
+    forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
+                        value = Float64[])
     append_equidistant_forcing!(forcing, prec_dict, :precipitation)
     append_equidistant_forcing!(forcing, evap_dict, :reference_evapotranspiration)
     append_equidistant_forcing!(forcing, drainage_dict, :drainage)
@@ -361,7 +366,8 @@ function long_forcing(path; prec_dict, evap_dict, drainage_dict, infiltration_di
                       urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
 
     # all dynamic input is stored here, one number per row
-    forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[], value = Float64[])
+    forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
+                        value = Float64[])
     append_forcing!(forcing, prec_dict, :precipitation)
     append_forcing!(forcing, evap_dict, :reference_evapotranspiration)
     append_forcing!(forcing, drainage_dict, :drainage)
@@ -376,16 +382,26 @@ function long_forcing(path; prec_dict, evap_dict, drainage_dict, infiltration_di
     Arrow.write(path, forcing)
 end
 
-long_profiles(;lsw_ids, profile_dict)
+long_profiles(; lsw_ids, profile_dict)
 
-long_forcing(normpath(output_dir, "forcing.arrow"); prec_dict, evap_dict, drainage_dict, infiltration_dict,
-                      urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
+long_forcing(normpath(output_dir, "forcing.arrow"); prec_dict, evap_dict, drainage_dict,
+             infiltration_dict,
+             urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
 
-long_equidistant_forcing(normpath(output_dir, "forcing-daily.arrow"); prec_dict, evap_dict, drainage_dict, infiltration_dict,
-            urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
+long_equidistant_forcing(normpath(output_dir, "forcing-daily.arrow"); prec_dict, evap_dict,
+                         drainage_dict, infiltration_dict,
+                         urban_runoff_dict, demand_agric_dict, prio_agric_dict,
+                         prio_wm_dict)
 
 begin
-    static = lswdik[:, [:lsw, :districtwatercode, :target_volume, :target_level, :depth_surface_water]]
+    static = lswdik[:,
+                    [
+                        :lsw,
+                        :districtwatercode,
+                        :target_volume,
+                        :target_level,
+                        :depth_surface_water,
+                    ]]
     rename!(static, :lsw => :location)
     static.local_surface_water_type = Arrow.DictEncode(only.(lswdik.local_surface_water_type))
     Arrow.write(normpath(output_dir, "static.arrow"), static)
@@ -397,6 +413,6 @@ begin
     # get the lsws out in the same order
     lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
     volume = Float64.(initial_condition[lsw_idxs, :volume])
-    state = DataFrame(; location=lsw_ids, volume)
+    state = DataFrame(; location = lsw_ids, volume)
     Arrow.write(normpath(output_dir, "state.arrow"), state)
 end

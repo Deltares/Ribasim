@@ -1,11 +1,11 @@
 # modified version of save_ply while this is pending:
 # https://github.com/JuliaGeometry/jl/pull/20
-function save_ply_spaces(ply, stream::IO; ascii::Bool=false)
+function save_ply_spaces(ply, stream::IO; ascii::Bool = false)
     PlyIO.write_header(ply, stream, ascii)
     for element in ply
         if ascii
-            for i=1:length(element)
-                for (j,property) in enumerate(element.properties)
+            for i in 1:length(element)
+                for (j, property) in enumerate(element.properties)
                     if j != 1
                         write(stream, ' ')
                     end
@@ -20,9 +20,9 @@ function save_ply_spaces(ply, stream::IO; ascii::Bool=false)
 end
 
 function save_ply_spaces(ply, file_name::AbstractString; kwargs...)
-  open(file_name, "w") do fid
-    save_ply_spaces(ply, fid; kwargs...)
-  end
+    open(file_name, "w") do fid
+        save_ply_spaces(ply, fid; kwargs...)
+    end
 end
 
 "Convert the columns of table into a Vector{ArrayProperty}"
@@ -43,7 +43,7 @@ end
 "Remove a key from a NamedTuple"
 takeout(del::Symbol, nt::NamedTuple) = Base.tail(merge(NamedTuple{(del,)}((nothing,)), nt))
 
-function write_ply(path, g, node_table, edge_table; ascii=false, crs=nothing)
+function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing)
     # graph g provides the edges and has vertices 1:n
     # `node_table` provides the vertices and has rows 1:n, and needs at least x and y columns
     # `edge_table` provides data on the edges, like fractions
@@ -55,14 +55,12 @@ function write_ply(path, g, node_table, edge_table; ascii=false, crs=nothing)
     end
 
     vertex = PlyElement("vertex",
-        array_properties(node_table)...
-    )
+                        array_properties(node_table)...)
     push!(ply, vertex)
     edge = PlyElement("edge",
-                    ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
-                    ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
-                    array_properties(edge_table)...
-    )
+                      ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
+                      ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
+                      array_properties(edge_table)...)
     push!(ply, edge)
     save_ply_spaces(ply, path; ascii)
 end
@@ -110,7 +108,7 @@ function searchsorted_arrow(a::Arrow.DictEncoded, x)
     if idx === nothing
         # return the empty range at the insertion point like Base.searchsorted
         n = length(a)
-        return n+1:n
+        return (n + 1):n
     end
     return searchsorted(a.indices, idx - 1)
 end
@@ -123,7 +121,7 @@ function searchsorted_forcing(vars::Arrow.DictEncoded, locs::Arrow.DictEncoded, 
     if idx === nothing
         # return the empty range at the insertion point like Base.searchsorted
         n = length(vars)
-        return n+1:n
+        return (n + 1):n
     end
     indices = view(locs.indices, var_rows)
     col_rows = searchsorted(indices, idx - 1)
