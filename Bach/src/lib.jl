@@ -32,30 +32,7 @@ function StorageCurve(df)
     return StorageCurve(df.volume, df.area, df.discharge, df.level)
 end
 
-function lookup(X, Y, x)
-    if x <= first(X)
-        return first(Y)
-    elseif x >= last(X)
-        return last(Y)
-    elseif isnan(x)
-        # TODO figure out why initial storage is NaN and remove this
-        return first(Y)
-    else
-        i = searchsortedlast(X, x)
-        x0 = X[i]
-        x1 = X[i + 1]
-        y0 = Y[i]
-        y1 = Y[i + 1]
-        slope = (y1 - y0) / (x1 - x0)
-        y = y0 + slope * (x - x0)
-        return y
-    end
-end
-
 Base.length(curve::StorageCurve) = length(curve.s)
-lookup_area(curve::StorageCurve, s) = lookup(curve.s, curve.a, s)
-lookup_discharge(curve::StorageCurve, s) = lookup(curve.s, curve.q, s)
-lookup_level(curve::StorageCurve, s) = lookup(curve.s, curve.h, s)
 
 # see open_water_factor(t)
 const evap_factor = [0.00 0.50 0.70

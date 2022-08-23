@@ -18,6 +18,7 @@ using TOML
 using Graphs
 using Arrow
 using PlyIO
+using DataInterpolations
 
 export interpolator, Register, ForwardFill
 

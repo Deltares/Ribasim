@@ -77,13 +77,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # create a vector of vectors of all non zero general users within all the lsws
     all_users = fill([:agric], length(lsw_ids))
 
-    curve_dict = create_curve_dict(profile, lsw_ids)
-
-    # register lookup functions
-    @eval lsw_area(s, lsw_id) = lookup_area($(curve_dict)[lsw_id], s)
-    @eval lsw_discharge(s, lsw_id) = lookup_discharge($(curve_dict)[lsw_id], s)
-    @eval lsw_level(s, lsw_id) = lookup_level($(curve_dict)[lsw_id], s)
-
     # captures sysnames
     function getstate(integrator, s)::Real
         (; u) = integrator
@@ -117,8 +110,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # update all forcing
         # exchange with Modflow and Metaswap here
         (; t, p, sol) = integrator
-
-        forcing_t_idx = searchsortedlast(times, t + 1e-4)
 
         for (i, lsw_id) in enumerate(lsw_ids)
             lswusers = all_users[i]
@@ -345,8 +336,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
+    curve_dict = create_curve_dict(profile, lsw_ids)
     sys_dict = create_sys_dict(lsw_ids, dw_id, types, target_volumes, target_levels,
-                               initial_volumes, Δt, all_users; forcing)
+                               initial_volumes, Δt, all_users; forcing, curve_dict)
 
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)

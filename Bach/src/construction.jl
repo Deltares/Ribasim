@@ -42,7 +42,8 @@ function create_sys_dict(lsw_ids::Vector{Int},
                          initial_volumes::Vector{Float64},
                          Δt::Float64,
                          all_users::Vector{Vector{Symbol}};
-                         forcing)
+                         forcing,
+                         curve_dict)
     sys_dict = Dict{Int, ODESystem}()
 
     tims = forcing.time
@@ -56,8 +57,12 @@ function create_sys_dict(lsw_ids::Vector{Int},
         S0 = initial_volumes[i]
         type = types[i]
         lswusers = all_users[i]
+        curve = curve_dict[lsw_id]
+        lsw_area = LinearInterpolation(curve.a, curve.s)
+        lsw_discharge = LinearInterpolation(curve.q, curve.s)
+        lsw_level = LinearInterpolation(curve.h, curve.s)
 
-        @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id)
+        @named lsw = Bach.LSW(; S = S0, Δt, lsw_id, dw_id, lsw_level, lsw_area)
 
         # map external variable names to symbolic; used to update forcings
         varpars = [:precipitation => lsw.P
@@ -69,7 +74,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
         # create and connect OutflowTable or LevelControl
         eqs = Equation[]
         if type == 'V'
-            @named weir = Bach.OutflowTable(; lsw_id)
+            @named weir = Bach.OutflowTable(; lsw_id, lsw_discharge)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
             all_components = [lsw, weir]
 

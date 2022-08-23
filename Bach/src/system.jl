@@ -2,14 +2,6 @@
 # convert units with unix2datetime and datetime2unix
 @variables t
 
-# location dependent lookup tables
-function lsw_area end
-function lsw_discharge end
-function lsw_level end
-@register_symbolic lsw_area(s, lsw_id)
-@register_symbolic lsw_discharge(s, lsw_id)
-@register_symbolic lsw_level(s, lsw_id)
-
 """
     FluidQuantityPort(; name, h = 0.0, Q = 0.0)
 
@@ -33,7 +25,7 @@ Storage S [m³] is an output variable that can be a function of the hydraulic he
     ODESystem(Equation[], t, vars, []; name)
 end
 
-function OutflowTable(; name, lsw_id)
+function OutflowTable(; name, lsw_id, lsw_discharge)
     @named a = FluidQuantityPort()  # upstream
     @named b = FluidQuantityPort()  # downstream
     @named s = Storage()  # upstream storage
@@ -45,7 +37,7 @@ function OutflowTable(; name, lsw_id)
                    # conservation of flow
                    a.Q + b.Q ~ 0
                    # Q(S) rating curve
-                   Q ~ lsw_discharge(s.S, lsw_id)
+                   Q ~ lsw_discharge(s.S)
                    # connectors
                    Q ~ a.Q]
     compose(ODESystem(eqs, t, vars, pars; name), a, b, s)
@@ -88,7 +80,7 @@ connected components.
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 """
-function LSW(; name, S, Δt, lsw_id, dw_id)
+function LSW(; name, S, Δt, lsw_id, dw_id, lsw_level, lsw_area)
     @named x = FluidQuantityPort()
     @named s = Storage(; S)
 
@@ -117,8 +109,8 @@ function LSW(; name, S, Δt, lsw_id, dw_id)
 
     eqs = Equation[
                    # lookups
-                   h ~ lsw_level(S, lsw_id)
-                   area ~ lsw_area(S, lsw_id)
+                   h ~ lsw_level(S)
+                   area ~ lsw_area(S)
                    # meteo fluxes are area dependent
                    Q_prec ~ area * P
                    Q_eact ~ area * E_pot * (0.5 * tanh((S - 50.0) / 10.0) + 0.5)

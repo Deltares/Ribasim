@@ -128,3 +128,12 @@ function searchsorted_forcing(vars::Arrow.DictEncoded, locs::Arrow.DictEncoded, 
     # return the global index range of the variable and location combination
     return var_rows[col_rows]
 end
+
+function searchsorted_forcing(vars, locs, var, loc)
+    # get the global index range of the variable
+    var_rows = searchsorted(vars, var)
+    locs_sel = view(locs, var_rows)
+    col_rows = searchsorted(locs_sel, loc)
+    # return the global index range of the variable and location combination
+    return var_rows[col_rows]
+end
