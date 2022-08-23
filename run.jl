@@ -63,6 +63,7 @@ urban_runoffs = key_cfvar(ds, "urban_runoff")(node = lsw_ids)
 demand_agriculture = key_cfvar(ds, "demand_agriculture")(node = lsw_ids)
 priority_agriculture = key_cfvar(ds, "priority_agriculture")(node = lsw_ids)
 priority_wm = key_cfvar(ds, "priority_watermanagement")(node = lsw_ids)
+#demand_flushing = key_cfvar(ds, "demand_flushing")(node = lsw_ids)
 
 # (node,)
 initial_volumes = Vector(key_cfvar(ds, "volume")(node = lsw_ids))
@@ -70,7 +71,7 @@ target_volumes = Vector(key_cfvar(ds, "target_volume")(node = lsw_ids))
 target_levels = Vector(key_cfvar(ds, "target_level")(node = lsw_ids))
 types = Char.(Vector(key_cfvar(ds, "local_surface_water_type")(node = lsw_ids)))
 
-# create a vector of vectors of all non zero users within all the lsws
+# create a vector of vectors of all non zero general users within all the lsws
 all_users = fill([:agric], length(lsw_ids))
 #all_users = list_all_users(lsw_ids)
 
@@ -158,6 +159,7 @@ function periodic_update!(integrator)
         infiltration = infiltrations[time = forcing_t_idx, node = i]
         urban_runoff = urban_runoffs[time = forcing_t_idx, node = i]
         demand_agric = demand_agriculture[time = forcing_t_idx, node = i]
+      #  demand_flush = demand_flushing[time = forcing_t_idx, node = i]
         prio_agric = priority_agriculture[time = forcing_t_idx, node = i]
         prio_wm = priority_wm[time = forcing_t_idx, node = i]
         demandlsw = [demand_agric]
@@ -189,11 +191,26 @@ function periodic_update!(integrator)
 
             demandlsw = push!(demand_lsw, (-Q_wm)) # make negative to keep consistent with other demands
             priolsw = push!(prioagric, prio_wm)
-        end
 
-        if length(lswusers) > 0
-            # allocate to different users
-            allocate!(;
+            allocate_P!(;
+                integrator,
+                name = Symbol(:sys_, lsw_id, :₊),
+                P,
+                area,
+                E_pot,
+                urban_runoff,
+                drainage,
+                infiltration,
+                demandlsw,
+                priolsw,
+                lswusers = push!(lswusers, "wm"),
+                wm_demand = Q_wm,
+                )
+        else 
+
+            if length(lswusers) > 0
+                # allocate to different users for a free flowing LSW
+                allocate_V!(;
                       integrator,
                       name = Symbol(:sys_, lsw_id, :₊),
                       P,
@@ -204,9 +221,8 @@ function periodic_update!(integrator)
                       infiltration,
                       demandlsw,
                       priolsw,
-                      lswusers,
-                      wm_demand = Q_wm,
-                      type)
+                      lswusers = lswusers)
+            end
         end
 
         # update parameters
@@ -215,31 +231,35 @@ function periodic_update!(integrator)
         param!(integrator, Symbol(name, :drainage), drainage)
         param!(integrator, Symbol(name, :infiltration), infiltration)
         param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
+
+        # Allocate water to flushing (only external water. Flush in = Flush out)
+        #outname_flush = Symbol(:sys_, lsw_id, :₊flushing₊)
+        #param!(integrator, Symbol(outname_flush, :Q), demand_flush)
+
     end
 
     Bach.save!(param_hist, t, p)
     return nothing
 end
 
-function allocate!(;
-                   integrator,
-                   name,
-                   P,
-                   area,
-                   E_pot,
-                   urban_runoff,
-                   drainage,
-                   infiltration,
-                   demandlsw,
-                   priolsw,
-                   lswusers,
-                   wm_demand,
-                   type)
+# Allocate function for free flowing LSWs
+function allocate_V!(;
+    integrator,
+    name,
+    P,
+    area,
+    E_pot,
+    urban_runoff,
+    drainage,
+    infiltration,
+    demandlsw,
+    priolsw,
+    lswusers)
 
     # function for demand allocation based upon user prioritisation
     # Note: equation not currently reproducing Mozart
     Q_avail_vol = ((P - E_pot) * area) / Δt -
-                  min(0.0, infiltration - drainage - urban_runoff)
+        min(0.0, infiltration - drainage - urban_runoff)
 
     users = []
     for (i, user) in enumerate(lswusers)
@@ -250,15 +270,10 @@ function allocate!(;
     end
     sort!(users, by = x -> x.priority)
 
-    if wm_demand > 0.0
-        # if there is surplus water from level control (positive Q_wm), make it available for users regardless of wm priority ordering
-        Q_avail_vol += wm_demand
-    end
-
     # allocate by priority based on available water
     for user in users
         if user.demand <= 0
-            # allocation is initialized to 0
+        # allocation is initialized to 0
         elseif Q_avail_vol >= user.demand
             user.alloc[] = user.demand
             Q_avail_vol -= user.alloc[]
@@ -266,26 +281,96 @@ function allocate!(;
             user.alloc[] = Q_avail_vol
             Q_avail_vol = 0.0
         end
+    
 
-        if type == "P" && user ≠ "wm"
-            # if general users are allocated before wm, then the wm demand increases
-            wm.demand += user.alloc
+    # update parameters
+    symalloc = Symbol(name, user.user, :₊alloc)
+    param!(integrator, symalloc, -user.alloc[])
+    # The following are not essential for the simulation
+    symdemand = Symbol(name, user.user, :₊demand)
+    param!(integrator, symdemand, -user.demand[])
+    symprio = Symbol(name, user.user, :₊prio)
+    param!(integrator, symprio, user.priority[])
+
+    end
+
+    return nothing
+end
+
+
+# Allocate function for level controled LSWs
+function allocate_P!(;
+    integrator,
+    name,
+    P,
+    area,
+    E_pot,
+    urban_runoff,
+    drainage,
+    infiltration,
+    demandlsw,
+    priolsw,
+    lswusers,
+    wm_demand
+)
+    # function for demand allocation based upon user prioritisation
+    # Note: equation not currently reproducing Mozart
+    Q_avail_vol = ((P - E_pot) * area) / Δt -
+        min(0.0, infiltration - drainage - urban_runoff)
+
+    users = []
+    for (i, user) in enumerate(lswusers)
+    priority = priolsw[i]
+    demand = demandlsw[i]
+    tmp = (; user, priority, demand, alloc_a = Ref(0.0), alloc_b = Ref(0.0)) # alloc_a is lsw sourced, alloc_b is external source
+    push!(users, tmp)
+    end
+    sort!(users, by = x -> x.priority)
+
+    if wm_demand > 0.0
+        Q_avail_vol += wm_demand
+    end
+
+    external_demand = sum(user.demand) - Q_avail_vol 
+    external_avail = external_demand # For prototype, enough water can be supplied from external
+
+    # allocate by priority based on available water
+    for user in users
+        if user.demand <= 0.0
+        # allocation is initialized to 0
+        elseif Q_avail_vol >= user.demand
+            user.alloc_a[] = user.demand
+            Q_avail_vol -= user.alloc_a[]
+            if user ≠ "wm"
+                # if general users are allocated by lsw water before wm, then the wm demand increases
+                wm.demand += user.alloc_a
+            end
+        else
+            # If water cannot be supplied by LSW, demand is sourced from external network
+            external_alloc = user.demand - Q_avail_vol  
+            Q_avail_vol = 0.0
+            if external_avail >= external_alloc # Currently always true
+                user.alloc_b[] = external_alloc
+                external_avail -= external_alloc
+            else 
+                user.alloc_b[] = external_avail
+                external_avail = 0.0
+            end
         end
 
         # update parameters
-        symalloc = Symbol(name, user.user, :₊alloc)
-        param!(integrator, symalloc, -user.alloc[])
+        symalloc = Symbol(name, user.user, :₊alloc_a)
+        param!(integrator, symalloc, -user.alloc_a[])
+        symalloc = Symbol(name, user.user, :₊alloc_b)
+        param!(integrator, symalloc, -user.alloc_b[])
         # The following are not essential for the simulation
         symdemand = Symbol(name, user.user, :₊demand)
         param!(integrator, symdemand, -user.demand[])
         symprio = Symbol(name, user.user, :₊prio)
         param!(integrator, symprio, user.priority[])
 
-        if type == "P"
-            outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
-            param!(integrator, Symbol(outname, :Q), Q_avail_vol)
-        end
     end
+
     return nothing
 end
 

@@ -45,19 +45,21 @@ end
 
 function LevelControl(; name, lsw_id, target_volume, target_level)
     @named a = FluidQuantityPort()  # lsw
-    @named b = FluidQuantityPort()  # district water
+    #@named b = FluidQuantityPort()  # downstream
 
     pars = @parameters(Q=0.0,
                        lsw_id=lsw_id,
                        target_volume=target_volume,
-                       target_level=target_level,)
+                       target_level=target_level,
+                       alloc_a = 0.0 # 
+                       alloc_b = 0.0)
     eqs = Equation[
                    # conservation of flow
                    a.Q + b.Q ~ 0
                    # in callback set the flow rate
                    # connectors
                    Q ~ a.Q]
-    compose(ODESystem(eqs, t, [], pars; name), a, b)
+    compose(ODESystem(eqs, t, [], pars; name), a)
 end
 
 """
@@ -152,6 +154,59 @@ function GeneralUser(; name, lsw_id, dw_id, S, Δt)
                    # shortage ~ demand - abs  
                    ]
     compose(ODESystem(eqs, t, vars, pars; name), x, s)
+end
+
+# Function to assign general users in a level controlled LSW. Demand can be met from external source
+function GeneralUser_P(; name, lsw_id)
+    @named a = FluidQuantityPort()  # from lsw source
+    #@named b = FluidQuantityPort()  # from external source
+    @named s_a = Storage(; S)
+    @named s_b = Storage(; S)
+
+    vars = @variables(
+        abs_a(t)=0,
+        abs_b(t)=0,
+        abs(t) =0,
+        )
+
+    pars = @parameters(
+        Δt=Δt,
+        lsw_id=lsw_id,
+        dw_id=dw_id,
+        alloc_a = 0.0,
+        alloc_b = 0.0,
+        demand=0.0,
+        prio=0.0,
+        )   
+    eqs = Equation[
+                   # in callback set the flow rate
+                   # connectors
+                   abs ~ a.Q + abs_b
+                   abs_a ~ alloc_a * (0.5 * tanh((s_a.S - 50.0) / 10.0) + 0.5)
+                   abs_b ~ alloc_b * (0.5 * tanh((s_b.S - 50.0) / 10.0) + 0.5)
+                   abs_a ~  a.Q
+                   #abs_b ~ b.Q
+                ]
+
+    compose(ODESystem(eqs, t, vars, pars; name), a)
+end
+
+function FlushingUser(; name, lsw_id, dw_id, Δt)
+    @named x_in = FluidQuantityPort()
+    @named x_out = FluidQuantityPort()
+    pars = @parameters(
+        demand_flush = 0.0,
+        Δt=Δt,
+        lsw_id=lsw_id,
+        dw_id=dw_id,
+        )
+    D = Differential(t)
+
+    eqs = Equation[
+                    x_in.Q ~ demand_flush
+                    x_in.Q ~ -x_out.Q
+                   ]
+    compose(ODESystem(eqs, t, [], pars; name), x)
 end
 
 function HeadBoundary(; name, h)
