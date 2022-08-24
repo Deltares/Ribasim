@@ -272,7 +272,7 @@ function plot_series(reg::Bach.Register,
 
     name = Symbol(:sys_, lsw_id, :₊lsw₊)
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)), label = "precipitation")
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_eact)), label = "evaporation")
+    lines!(ax1, timespan, -interpolator(reg, Symbol(name, :Q_eact)), label = "evaporation")
     haskey(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)) && lines!(ax1,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)),
@@ -281,7 +281,7 @@ function plot_series(reg::Bach.Register,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)),
            label = "watermanagement")
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
+    lines!(ax1, timespan, -interpolator(reg, Symbol(name, :drainage)), label = "drainage")
     lines!(ax1,
            timespan,
            interpolator(reg, Symbol(name, :infiltration)),

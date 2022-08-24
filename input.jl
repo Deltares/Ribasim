@@ -17,7 +17,7 @@ using Statistics
 using CFTime
 using Arrow
 
-output_dir = "data/input/3"
+output_dir = "data/input/4"
 
 # read data from Mozart for all lsws
 reference_model = "decadal"
@@ -60,7 +60,7 @@ lswdik_unsorted = Mozart.read_lsw(normpath(mozartin_dir, "lsw.dik"))
 # sort the lsws as integer to make it easy to match other data sources
 lsw_idxs = sortperm(Vector{Int}(lswdik_unsorted.lsw))
 lswdik = lswdik_unsorted[lsw_idxs, :]
-lsw_ids::Vector{Int} = Vector{Int}(lswdik.lsw)
+lsw_ids = Vector{Int}(lswdik.lsw)
 
 profile_dict = Duet.create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
 graph, fractions = Mozart.lswrouting_graph(lsw_ids, lswrouting)
@@ -70,7 +70,7 @@ mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path)
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_dict, evap_dict = Duet.meteo_dicts(meteo_path, lsw_ids)
-drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
+drainage_dict = Duet.create_dict(mzwb, :drainage_sh; flipsign=true)
 infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 demand_agric_dict, prio_agric_dict = Duet.create_user_dict(uslswdem, "A")
@@ -251,7 +251,7 @@ add_equidistant_series!(ds,
                         evap_dict,
                         lsw_ids,
                         days,
-                        "reference_evapotranspiration",
+                        "evaporation",
                         "m s-1")
 add_equidistant_series!(ds, drainage_dict, lsw_ids, days, "drainage", "m3 s-1")
 add_equidistant_series!(ds, infiltration_dict, lsw_ids, days, "infiltration", "m3 s-1")
@@ -279,7 +279,7 @@ close(ds)
 # write graph as a PLY file; simple and loads fast in QGIS
 node_table = (; x = first.(lswlocs), y = last.(lswlocs), location = Float64.(lsw_ids))
 edge_table = (; fractions)
-Duet.write_ply(normpath(output_dir, "network.ply"), graph, node_table, edge_table;
+Bach.write_ply(normpath(output_dir, "network.ply"), graph, node_table, edge_table;
                ascii = true, crs = "EPSG:28992")
 
 open(normpath(output_dir, "lsw_ids.txt"), "w") do io
@@ -305,7 +305,7 @@ function long_profiles(; lsw_ids, profile_dict)
         append!(profiles.level, profile.level)
     end
 
-    Arrow.write(normpath(output_dir, "profile.arrow"), profiles)
+    Arrow.write(normpath(output_dir, "profile-mozart.arrow"), profiles)
 end
 
 function append_equidistant_forcing!(forcing, series_dict, variable::Symbol)
@@ -334,7 +334,7 @@ function long_equidistant_forcing(path; prec_dict, evap_dict, drainage_dict,
     forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
                         value = Float64[])
     append_equidistant_forcing!(forcing, prec_dict, :precipitation)
-    append_equidistant_forcing!(forcing, evap_dict, :reference_evapotranspiration)
+    append_equidistant_forcing!(forcing, evap_dict, :evaporation)
     append_equidistant_forcing!(forcing, drainage_dict, :drainage)
     append_equidistant_forcing!(forcing, infiltration_dict, :infiltration)
     append_equidistant_forcing!(forcing, urban_runoff_dict, :urban_runoff)
@@ -369,7 +369,7 @@ function long_forcing(path; prec_dict, evap_dict, drainage_dict, infiltration_di
     forcing = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
                         value = Float64[])
     append_forcing!(forcing, prec_dict, :precipitation)
-    append_forcing!(forcing, evap_dict, :reference_evapotranspiration)
+    append_forcing!(forcing, evap_dict, :evaporation)
     append_forcing!(forcing, drainage_dict, :drainage)
     append_forcing!(forcing, infiltration_dict, :infiltration)
     append_forcing!(forcing, urban_runoff_dict, :urban_runoff)
@@ -404,7 +404,7 @@ begin
                     ]]
     rename!(static, :lsw => :location)
     static.local_surface_water_type = Arrow.DictEncode(only.(lswdik.local_surface_water_type))
-    Arrow.write(normpath(output_dir, "static.arrow"), static)
+    Arrow.write(normpath(output_dir, "static-mozart.arrow"), static)
 end
 
 begin
@@ -414,5 +414,5 @@ begin
     lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
     volume = Float64.(initial_condition[lsw_idxs, :volume])
     state = DataFrame(; location = lsw_ids, volume)
-    Arrow.write(normpath(output_dir, "state.arrow"), state)
+    Arrow.write(normpath(output_dir, "state-mozart.arrow"), state)
 end

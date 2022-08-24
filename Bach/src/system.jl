@@ -113,9 +113,9 @@ function LSW(; name, S, lsw_level, lsw_area)
 
                    # storage / balance
                    D(S) ~ Q_ex +
-                          Q_prec +
+                          Q_prec -
                           Q_eact +
-                          drainage +
+                          drainage -
                           infiltration_act +
                           urban_runoff
                    # connectors

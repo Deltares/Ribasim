@@ -65,7 +65,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
 
         # map external variable names to symbolic; used to update forcings
         varpars = [:precipitation => lsw.P
-                   :reference_evapotranspiration => lsw.E_pot
+                   :evaporation => lsw.E_pot
                    :drainage => lsw.drainage
                    :infiltration => lsw.infiltration
                    :urban_runoff => lsw.urban_runoff]

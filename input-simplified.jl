@@ -4,8 +4,7 @@ using Arrow
 using NCDatasets
 using DataFrames
 
-input_dir = "data/input/3"
-output_dir = "data/input/3-simplified"
+output_dir = "data/input/4"
 nc_path = "data/input/vanHuite/simplified.nc"
 
 nc = NCDataset(nc_path)

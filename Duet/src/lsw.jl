@@ -34,7 +34,7 @@ function parse_meteo_line!(times, prec, evap, line)
     v = parse(Float64, line[43:end]) * 0.001 / period_s  # [mm timestep⁻¹] to [m s⁻¹]
     if is_evap
         push!(times, t)
-        push!(evap, -v * Bach.open_water_factor(t))
+        push!(evap, v * Bach.open_water_factor(t))
     else
         push!(prec, v)
     end
@@ -111,15 +111,19 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
 end
 
 # create a bach timeseries input from the mozart water balance output
-function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String})
+function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String}; flipsign=false)
     # convert m3/timestep to m3/s for bach
-    ForwardFill(datetime2unix.(mzwb.time_start), mzwb[!, col] ./ mzwb.period)
+    v = mzwb[!, col] ./ mzwb.period
+    if flipsign
+        v .*= -1
+    end
+    ForwardFill(datetime2unix.(mzwb.time_start), v)
 end
 
-function create_dict(mzwb::DataFrame, col::Union{Symbol, String})
+function create_dict(mzwb::DataFrame, col::Union{Symbol, String}; flipsign=false)
     dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for (key, df) in pairs(groupby(mzwb, :lsw))
-        series = create_series(df, col)
+        series = create_series(df, col; flipsign)
         dict[key.lsw] = series
     end
     return dict
