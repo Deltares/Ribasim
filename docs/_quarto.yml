@@ -9,6 +9,7 @@ website:
         text: Home
       - intro.qmd
       - modflow.qmd
+      - user_allocation.qmd
 
 format:
   html:
