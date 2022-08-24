@@ -141,7 +141,7 @@ end
 "Get a view on the time and value of a timeseries of a variable at a location"
 function tsview(t, var::Symbol, loc::Int)
     i = Bach.searchsorted_forcing(t.variable, t.location, var, loc)
-    return view(t, i, :time), view(t, i, :value)
+    return view(t.time, i), view(t.value, i)
 end
 
 # :sys_151358₊agric₊alloc to (151358, :agric.alloc)

@@ -281,10 +281,10 @@ function plot_series(reg::Bach.Register,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)),
            label = "watermanagement")
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage), -1), label = "drainage")
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
     lines!(ax1,
            timespan,
-           interpolator(reg, Symbol(name, :infiltration)),
+           interpolator(reg, Symbol(name, :infiltration), -1),
            label = "infiltration")
     lines!(ax1,
            timespan,

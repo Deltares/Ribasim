@@ -17,7 +17,7 @@ using Statistics
 using CFTime
 using Arrow
 
-output_dir = "data/input/4"
+output_dir = "data/input/5"
 
 # read data from Mozart for all lsws
 reference_model = "decadal"
@@ -70,8 +70,8 @@ mzwb = Mozart.read_mzwaterbalance(mzwaterbalance_path)
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
 prec_dict, evap_dict = Duet.meteo_dicts(meteo_path, lsw_ids)
-drainage_dict = Duet.create_dict(mzwb, :drainage_sh; flipsign=true)
-infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh)
+drainage_dict = Duet.create_dict(mzwb, :drainage_sh)
+infiltration_dict = Duet.create_dict(mzwb, :infiltr_sh; flipsign=true)
 urban_runoff_dict = Duet.create_dict(mzwb, :urban_runoff)
 demand_agric_dict, prio_agric_dict = Duet.create_user_dict(uslswdem, "A")
 demand_wm_dict, prio_wm_dict = Duet.create_user_dict(uslswdem, "WM")
@@ -388,10 +388,11 @@ long_forcing(normpath(output_dir, "forcing.arrow"); prec_dict, evap_dict, draina
              infiltration_dict,
              urban_runoff_dict, demand_agric_dict, prio_agric_dict, prio_wm_dict)
 
-long_equidistant_forcing(normpath(output_dir, "forcing-daily.arrow"); prec_dict, evap_dict,
-                         drainage_dict, infiltration_dict,
-                         urban_runoff_dict, demand_agric_dict, prio_agric_dict,
-                         prio_wm_dict)
+# not needed anymore
+# long_equidistant_forcing(normpath(output_dir, "forcing-daily.arrow"); prec_dict, evap_dict,
+#                          drainage_dict, infiltration_dict,
+#                          urban_runoff_dict, demand_agric_dict, prio_agric_dict,
+#                          prio_wm_dict)
 
 begin
     static = lswdik[:,
