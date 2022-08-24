@@ -2,7 +2,7 @@
 function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
     # a Vector like lsw_ids for the sources
     # that maps to a dict of outneighbor lsw to fractions
-    fractions = [Dict{Int, Float32}() for _ in lsw_ids]
+    fractions = [Dict{Int, Float64}() for _ in lsw_ids]
     for (e, edge) in enumerate(edges(graph_all))
         fraction = fractions_all[e]
         lsw_from = lsw_all[src(edge)]
@@ -131,7 +131,7 @@ end
 function create_district(lsw_ids::Vector{Int},
                          types::Vector{Char},
                          graph::DiGraph,
-                         fractions::Vector{Dict{Int, Float32}},
+                         fractions::Vector{Dict{Int, Float64}},
                          sys_dict::Dict{Int, ODESystem})::ODESystem
     eqs = Equation[]
     headboundaries = ODESystem[]

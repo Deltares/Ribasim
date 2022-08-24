@@ -33,12 +33,26 @@ end
 
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
+    n_lsw = length(lsw_ids)
 
     forcing = Arrow.Table(config["forcing_path"])
     state = Arrow.Table(config["state_path"])
     static = Arrow.Table(config["static_path"])
     profile = Arrow.Table(config["profile_path"])
-    network = read_ply(config["network_path"])
+
+    network = if n_lsw == 0
+        error("lsw_ids is empty")
+    elseif n_lsw == 1 && !haskey(config, "network_path")
+        # network_path is optional for size 1 networks
+        (
+            graph = DiGraph(1),
+            node_table = (; x=[NaN], y=[NaN],location=lsw_ids),
+            edge_table = (; fractions=[1.0]),
+            crs = nothing,
+        )
+    else
+        read_ply(config["network_path"])
+    end
 
     # Δt for periodic update frequency, including user horizons
     Δt = Float64(config["update_timestep"])
