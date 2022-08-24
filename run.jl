@@ -17,8 +17,13 @@ reg = BMI.initialize(Bach.Register, config)
 solve!(reg.integrator)  # solve it until the end
 println(reg)
 
-## input objects
+fig_s = Duet.plot_series(reg, config["lsw_ids"][1])
 
+## plot settings
+ylims = (-0.2e6, 1.2e6)
+
+## outflow
+case = "emptying"
 config = Dict{String,Any}()
 lsw_id = 1
 config["lsw_ids"] = [lsw_id]
@@ -26,10 +31,54 @@ config["update_timestep"] = 86400.0
 # config["saveat"] = 86400.0
 config["starttime"] = Date("2022-01-01")
 config["endtime"] = Date("2022-02-01")
-config["state"] = DataFrame(location=lsw_id, volume=1000.0)
+config["state"] = DataFrame(location=lsw_id, volume=1e6)
 config["static"] = DataFrame(location=lsw_id, target_level=NaN, target_volume=NaN, depth_surface_water=NaN, local_surface_water_type='V')
 config["forcing"] = DataFrame(time=DateTime[], variable=Symbol[], location=Int[], value=Float64[])
-config["profile"] = DataFrame(location=lsw_id, volume=[0.0,1e9], area=[1e9,1e9], discharge=[0.0,1e3], level=[10.0,11.0])
+config["profile"] = DataFrame(location=lsw_id, volume=[0.0,1e6], area=[1e6,1e6], discharge=[0.0,1e0], level=[10.0,11.0])
+
+reg = BMI.initialize(Bach.Register, config)
+solve!(reg.integrator)  # solve it until the end
+println(reg)
+fig = Plots.plot(reg.integrator.sol; title=case, ylims)
+Plots.savefig(fig, "data/fig/run/$case.png")
+fig
+
+## precipitation and outflow
+case = "precipitation"
+config = Dict{String,Any}()
+lsw_id = 1
+config["lsw_ids"] = [lsw_id]
+config["update_timestep"] = 86400.0
+# config["saveat"] = 86400.0
+starttime = DateTime("2022-01-01")
+config["starttime"] = starttime
+config["endtime"] = Date("2022-02-01")
+config["state"] = DataFrame(location=lsw_id, volume=1e6)
+config["static"] = DataFrame(location=lsw_id, target_level=NaN, target_volume=NaN, depth_surface_water=NaN, local_surface_water_type='V')
+config["forcing"] = DataFrame(time=starttime, variable=:precipitation, location=lsw_id, value=0.5e-6)
+config["profile"] = DataFrame(location=lsw_id, volume=[0.0,1e6], area=[1e6,1e6], discharge=[0.0,1e0], level=[10.0,11.0])
+
+reg = BMI.initialize(Bach.Register, config)
+solve!(reg.integrator)  # solve it until the end
+println(reg)
+fig = Plots.plot(reg.integrator.sol; title=case, ylims)
+Plots.savefig(fig, "data/fig/run/$case.png")
+fig
+
+## evaporation, no outflow
+case = "evaporation"
+config = Dict{String,Any}()
+lsw_id = 1
+config["lsw_ids"] = [lsw_id]
+config["update_timestep"] = 86400.0
+# config["saveat"] = 86400.0
+starttime = DateTime("2022-01-01")
+config["starttime"] = starttime
+config["endtime"] = Date("2022-02-01")
+config["state"] = DataFrame(location=lsw_id, volume=1e6)
+config["static"] = DataFrame(location=lsw_id, target_level=NaN, target_volume=NaN, depth_surface_water=NaN, local_surface_water_type='V')
+config["forcing"] = DataFrame(time=starttime, variable=:evaporation, location=lsw_id, value=1e-6)
+config["profile"] = DataFrame(location=lsw_id, volume=[0.0,1e6], area=[1e6,1e6], discharge=[0.0,0.0], level=[10.0,11.0])
 
 reg = BMI.initialize(Bach.Register, config)
 solve!(reg.integrator)  # solve it until the end
