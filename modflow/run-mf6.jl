@@ -1,6 +1,9 @@
-
+using NCDatasets
 import BasicModelInterface as BMI
 import ModflowInterface as MF
+
+coupling_ds = NCDataset("c:/src/bach/data/volume_level_profile-hupsel.nc")
+
 
 function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
     tag = MF.get_var_address(model,
@@ -49,7 +52,7 @@ end
 
 function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
     nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
-    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = "DRN_SYS1")
+    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
     hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name = subcomponent)
     rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name = subcomponent)
 
@@ -67,7 +70,7 @@ To get an overview of the memory addresses specify in the simulation namefile op
 
 memory_print_option all
 
-Not to be used directly EVER. (Well maybe if you have no "infiltration factors")
+Not to be used directly -- maybe if you have no "infiltration factors".
 """
 struct ModflowRiverPackage
     nodelist::Vector{Int32}
@@ -152,7 +155,7 @@ end
 
 ##
 
-directory = "..\\data\\modflow\\LHM-de-Tol"
+directory = "..\\data\\hupsel-steady-state"
 modelname = "GWF"
 cd(directory)
 model = BMI.initialize(MF.ModflowModel)
@@ -163,8 +166,9 @@ component_id = 1
 headtag = MF.get_var_address(model, "X", modelname)
 head = BMI.get_value_ptr(model, headtag)
 maxiter = only(get_var_ptr(model, "SLN_1", "MXITER"))
-riv_sys1 = ModflowRiverDrainagePackage(model, modelname, "TOL_RIV_SYS1", "TOL_DRN_SYS4")
-riv_sys2 = ModflowRiverDrainagePackage(model, modelname, "TOL_RIV_SYS2", "TOL_DRN_SYS5")
+sys1 = ModflowRiverDrainagePackage(model, modelname, "RIV_P", "DRN_P")
+sys2 = ModflowRiverDrainagePackage(model, modelname, "RIV_S", "DRN_S")
+sys3 = ModflowDrainagePackage(model, modelname, "DRN_T")
 
 MF.prepare_time_step(model, 0.0)
 MF.prepare_solve(model, component_id)
@@ -173,8 +177,9 @@ solve_to_convergence(model, maxiter)
 MF.finalize_time_step(model)
 MF.finalize_solve(model, component_id)
 
-budget!(riv_sys1, head)
-budget!(riv_sys2, head)
+budget!(sys1, head)
+budget!(sys2, head)
+budget!(sys3, head)
 
 # To get netflow, sum the budget for riv_sys1 and riv_sys2
 # Compute the stage change, call set_stage!
