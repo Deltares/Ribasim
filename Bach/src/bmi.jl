@@ -31,14 +31,27 @@ function create_curve_dict(profile, lsw_ids)
     return curve_dict
 end
 
+read_table(entry::AbstractString) = Arrow.Table(entry)
+
+function read_table(entry)
+    @assert Tables.istable(entry)
+    return entry
+end
+
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
     n_lsw = length(lsw_ids)
 
-    forcing = Arrow.Table(config["forcing_path"])
-    state = Arrow.Table(config["state_path"])
-    static = Arrow.Table(config["static_path"])
-    profile = Arrow.Table(config["profile_path"])
+    # support either paths to Arrow files or tables
+    forcing = read_table(config["forcing"])
+    state = read_table(config["state"])
+    static = read_table(config["static"])
+    profile = read_table(config["profile"])
+
+    forcing = DataFrame(forcing)
+    state = DataFrame(state)
+    static = DataFrame(static)
+    profile = DataFrame(profile)
 
     network = if n_lsw == 0
         error("lsw_ids is empty")
@@ -73,8 +86,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     rows = searchsorted_forcing(vars, locs, :precipitation, first(lsw_ids))
     # values that don't vary between LSWs
     # set bach runtimes equal to the mozart reference run
-    dates::Vector{DateTime} = forcing.time[rows]
-    times::Vector{Float64} = datetime2unix.(dates)
+
+    starttime = DateTime(config["starttime"])
+    endtime = DateTime(config["endtime"])
 
     # read state data
     initial_volumes = state.volume[findall(in(lsw_ids), state.location)]
@@ -137,8 +151,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             demand_agric = param(integrator, Symbol(basename, :₊agric₊demand))
             prio_agric = param(integrator, Symbol(basename, :₊agric₊prio))
 
-            prio_wm_serie = prio_wm_series[i]
-            prio_wm = prio_wm_serie(t)
             demandlsw = [demand_agric]
             priolsw = [prio_agric]
 
@@ -153,6 +165,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             # water level control
             Q_wm = 0.0 # initalised
             if type == 'P'
+                prio_wm_serie = prio_wm_series[i]
+                prio_wm = prio_wm_serie(t)
+
                 # set the Q_wm for the coming day based on the expected storage
                 S = getstate(integrator, Symbol(name, :S))
                 outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
@@ -354,7 +369,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
-    tspan = (times[1], times[end])
+    tspan = (datetime2unix(starttime), datetime2unix(endtime))
     prob = ODAEProblem(sim, [], tspan)
 
     cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
