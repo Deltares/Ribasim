@@ -227,18 +227,18 @@ Base.haskey(reg::Register, sym) = haskey(reg.sysnames, sym)
 
 Return a time interpolating function for the given symbol or symbolic term.
 """
-function interpolator(reg::Register, sym)::Function
+function interpolator(reg::Register, sym, scale=1)::Function
     (; sysnames, integrator, param_hist) = reg
     sol = integrator.sol
     s = getname(sym)
     return if s in sysnames.u_symbol
         i = findfirst(==(s), sysnames.u_symbol)
         # use solution as normal
-        t -> sol(t, idxs = i)
+        t -> sol(t, idxs = i) * scale
     elseif s in sysnames.p_symbol
         # use param_hist
         i = findfirst(==(s), sysnames.p_symbol)
-        t -> param_hist(t, i)
+        t -> param_hist(t, i) * scale
     elseif s in sysnames.obs_symbol
         # combine solution and param_hist
         f = SciMLBase.getobserved(sol)  # generated function
@@ -249,7 +249,7 @@ function interpolator(reg::Register, sym)::Function
         end
         # the observed will be interpolated if the state it gets is interpolated
         # and the parameters are current
-        t -> f(sym, sol(t), param_hist(t), t)
+        t -> f(sym, sol(t), param_hist(t), t) * scale
     else
         error(lazy"Symbol $s not found in system.")
     end
