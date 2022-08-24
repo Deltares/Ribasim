@@ -1,57 +1,57 @@
 ---
-title:  User Allocation 
+title:  User Allocation
 ---
 
-# Overview 
+# Overview
 
-Bach has been designed with the functionality to allocate water to different users within each LSW. 
+Bach has been designed with the functionality to allocate water to different users within each LSW.
 The volume allocated is determined by the user demand, the available water, and the priority of each user with respect to other users within the same LSW. The water demands for a given LSW can be summarized into three user categories. The handling of the allocation of water for different user categories varies, as explained in more detail below.
 
-## 1.	General User
-## 2.	Level Control 
-## 3.	Flushing Requirement
+::: {.hidden}
+$$
+ \def\qavail{{Q_\mathit{avail\:vol}}}
+ \def\demwm{{D_{\mathit{wm}}}}
+ \def\demuser{{D_{\mathit{user}}}}
+$$
+:::
 
 ## General User
 
-The General User category include the users Agriculture, Industry and Public Water supply. These users extract water from the LSW and the demand (Demand_Gen) is determined externally.  The source of water allocated to the General User is dependent on if the LSW is a free-flowing type LSW or a level-controlled LSW.
+The General User category include the users Agriculture, Industry and Public Water supply. These users extract water from the LSW and the demand ($\demuser$) is determined externally.  The source of water allocated to the General User is dependent on if the LSW is a free-flowing type LSW or a level-controlled LSW.
 
-If the LSW is free-flowing, the water source will be the available water within the LSW. If the LSW is level-controlled additional water can be sourced from the regional network, should the water available from the LSW be insufficient to satisfy Demand_Gen.
+If the LSW is free-flowing, the water source will be the available water within the LSW. If the LSW is level-controlled additional water can be sourced from the regional network, should the water available from the LSW be insufficient to satisfy $\demuser$.
 
-The availability of water (Q_avail_vol) internally in a LSW in a given timestep is calculated by Equation 1. This volume is available to be extracted by the General Users.
-In the Bach prototype, additional water from the regional network is modelled as an unlimited supply.
+The availability of water ($\qavail$) internally in a LSW in a given timestep is calculated by @eq-q-avail. This volume is available to be extracted by the General Users.
+In the Bach prototype, additional water from the regional network is currently modelled as an unlimited supply.
 
-### Equation 1:    
 $$
- Q_avail_vol = \frac{(P-E_pot) x area}{\mathrm{Δ}t} - min(0.0, (infiltration - drainage - urban_runoff))
-                  
-$$
+\qavail = \frac{(P - E_{pot}) \cdot \mathit{area}}{\mathrm{Δ}t} - \min(0, \mathit{infiltration} - \mathit{drainage} - \mathit{urban\_runoff})
+$$ {#eq-q-avail}
 
-The Q_avail_vol can be assigned to multiple users in the same LSW. Allocation is based upon user priority. For a given user, in the case where Q_avail_vol > Demand_Gen, the user demand is satisfied and the remaining Q_avail_vol becomes available for the user of next highest priority.
-For a given user, in the case where Demand_Gen > Q_avail_vol then all of the available water is assigned to the user. This results in an allocation shortage and no remaining local water for any users of lower priority.  
+The $\qavail$ can be assigned to multiple users in the same LSW. Allocation is based upon user priority. For a given user, in the case where $\qavail > \demuser$, the user demand is satisfied and the remaining $\qavail$ becomes available for the user of next highest priority.
+For a given user, in the case where $\demuser > \qavail$ then all of the available water is assigned to the user. This results in an allocation shortage and no remaining local water for any users of lower priority.
 
-However, as discussed, if the LSW is a level-controlled LSW, additional water can then be sourced from the regional network and is allocated to satisfy the allocation shortage of the General User. 
+However, as discussed, if the LSW is a level-controlled LSW, additional water can then be sourced from the regional network and is allocated to satisfy the allocation shortage of the General User.
 
 ## Level Control
 
-A level-controlled LSW (local_surface_water_type = "P") has a user demand referred to as water management (Demand_wm). The purpose of this demand is to maintain the water levels for each LSW at a target level. This target levels is determined externally.
-The Demand_wm is negative if additional water is required to increase the water level in the LSW, or positive if there is surplus water which must be removed to lower the level in the LSW.
-When Demand_wm is positive and there is surplus water, Bach is designed to make any surplus water available to General Users within the LSW for abstraction. This is modelled by adding the Demand_wm to the Q_avail_vol in calculated in Equation 1.
+A level-controlled LSW (`local_surface_water_type = "P"`) has a user demand referred to as water management ($\demwm$). The purpose of this demand is to maintain the water levels for each LSW at a target level. This target levels is determined externally.
+The $\demwm$ is negative if additional water is required to increase the water level in the LSW, or positive if there is surplus water which must be removed to lower the level in the LSW.
+When $\demwm$ is positive and there is surplus water, Bach is designed to make any surplus water available to General Users within the LSW for abstraction. This is modelled by adding the $\demwm$ to the $\qavail$ in calculated in @eq-wm.
 
-### Equation 2:       
 $$
-Q_avail_vol = Demand_{wm}
-$$
+\qavail = \demwm
+$$ {#eq-wm}
 
-When the Demand_wm is negative, the Demand_wm is allocated first from the LSW Q_avail_vol, and then secondly with water from the national network, should the local LSW water not be sufficient to satisfy Demand_wm. This demand is therefore handled similar to that of a General User. 
-In the case that a General User is allocated water as a higher priority than the Level Control such that the water level of the LSW decreases, the Demand_wm will increase accordingly. However, in most cases the demand for Level Control is higher than that of the General Users so this does not occur.
+When the $\demwm$ is negative, the $\demwm$ is allocated first from the LSW $\qavail$, and then secondly with water from the national network, should the local LSW water not be sufficient to satisfy $\demwm$. This demand is therefore handled similar to that of a General User.
+In the case that a General User is allocated water as a higher priority than the Level Control such that the water level of the LSW decreases, the $\demwm$ will increase accordingly. However, in most cases the demand for Level Control is higher than that of the General Users so this does not occur.
 
 ## Flushing Requirement
 
 The flushing requirement for the LSW is a special case of user. Flushing is required to maintain water quality in the LSW. This is determined externally.
-Water from the national network flows into the LSW, and the same volume gets removed from the LSW back to the national network. 
-This water cannot be allocated to other users and there is no net change to the water level in the LSW or the Q_avail_vol such that:
+Water from the national network flows into the LSW, and the same volume gets removed from the LSW back to the national network.
+This water cannot be allocated to other users and there is no net change to the water level in the LSW or the $\qavail$, see @eq-flushing.
 
-### Equation 3:                                      
 $$
-Q_in = -Q_out
-$$
+\mathit{Q_{in}} = -\mathit{Q_{out}}
+$$ {#eq-flushing}
