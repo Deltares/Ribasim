@@ -178,7 +178,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 # this assumes a constant area during the period
                 # TODO add upstream to ΔS calculation
                 ΔS = Δt *
-                     ((area * P) + drainage + infiltration + urban_runoff + (area * E_pot))
+                     ((area * P) + drainage - infiltration + urban_runoff - (area * E_pot))
                 Q_wm = (S + ΔS - target_volume) / Δt
 
                 demandlsw = push!(demand_lsw, (-Q_wm)) # make negative to keep consistent with other demands
