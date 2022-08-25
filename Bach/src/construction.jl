@@ -64,7 +64,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
             all_components = [lsw, weir]
 
             for user in lswusers
-                usersys = Bach.GeneralUser(; name = user, S = S0)
+                usersys = Bach.GeneralUser(; name = user)
                 push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
             end
@@ -76,8 +76,8 @@ function create_sys_dict(lsw_ids::Vector{Int},
 
             for user in lswusers
                 # Locally allocated water
-                usersys = Bach.GeneralUser_P(; name = user, S = S0)
-                push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
+                usersys = Bach.GeneralUser_P(; name = user)
+                push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s_a))
                 push!(all_components, usersys)
                 # TODO: consider how to connect external user demand (i.e. usersys.b)
             end
@@ -115,21 +115,20 @@ function create_district(lsw_ids::Vector{Int},
 
         n_out = length(out_vertices)
         if n_out == 0
-            name = Symbol("headboundary_", lsw_id)
-            # h value on the boundary is not used, but needed as BC
-            headboundary = Bach.HeadBoundary(; name, h = 0.0)
-            push!(headboundaries, headboundary)
             if type == 'V'
+                name = Symbol("headboundary_", lsw_id)
+                # h value on the boundary is not used, but needed as BC
+                headboundary = Bach.HeadBoundary(; name, h = 0.0)
+                push!(headboundaries, headboundary)
                 push!(eqs, connect(lsw_sys.weir.b, headboundary.x))
-            else
-                push!(eqs, connect(lsw_sys.levelcontrol.b, headboundary.x))
             end
         elseif n_out == 1
             out_lsw = only(out_lsws)
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, out_lsw.lsw.x))
             else
-                push!(eqs, connect(lsw_sys.levelcontrol.b, out_lsw.lsw.x))
+                # TODO put conductance in between
+                push!(eqs, connect(lsw_sys.lsw.x, out_lsw.lsw.x))
             end
         elseif n_out == 2
             # create a Bifurcation with a fixed fraction
@@ -146,7 +145,7 @@ function create_district(lsw_ids::Vector{Int},
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
             else
-                push!(eqs, connect(lsw_sys.levelcontrol.b, bifurcation.a))
+                push!(eqs, connect(lsw_sys.lsw.x, bifurcation.a))
             end
             push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
             push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))

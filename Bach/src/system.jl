@@ -44,17 +44,11 @@ end
 
 function LevelControl(; name, target_volume, target_level)
     @named a = FluidQuantityPort()  # lsw
-    pars = @parameters(Q=0.0,
-                       target_volume=target_volume,
+    pars = @parameters(target_volume=target_volume,
                        target_level=target_level,
                        alloc_a=0.0, # lsw
                        alloc_b=0.0,)
-    eqs = Equation[
-                   # conservation of flow
-                   a.Q ~ alloc_a + alloc_b
-                   # in callback set the flow rate
-                   # connectors
-                   Q ~ a.Q]
+    eqs = Equation[a.Q ~ alloc_a + alloc_b]
     compose(ODESystem(eqs, t, [], pars; name), a)
 end
 
@@ -127,14 +121,14 @@ end
 
 function GeneralUser(; name)
     @named x = FluidQuantityPort()
-    @named s = Storage(; S)
+    @named s = Storage()
 
     vars = @variables(abs(t)=0,)
     pars = @parameters(alloc=0.0,
                        demand=0.0,
                        prio=0.0,
-                       #shortage = 0.0,
-                       #[output = true],
+                       # shortage = 0.0,
+                       # [output = true],
                        )
 
     eqs = Equation[
@@ -149,9 +143,9 @@ end
 # Function to assign general users in a level controlled LSW. Demand can be met from external source
 function GeneralUser_P(; name)
     @named a = FluidQuantityPort()  # from lsw source
-    #@named b = FluidQuantityPort()  # from external source
-    @named s_a = Storage(; S)
-    @named s_b = Storage(; S)
+    @named s_a = Storage()
+    # @named b = FluidQuantityPort()  # from external source
+    # @named s_b = Storage()
 
     vars = @variables(abs_a(t)=0,
                       abs_b(t)=0,
@@ -166,12 +160,12 @@ function GeneralUser_P(; name)
                    # connectors
                    abs ~ a.Q + abs_b
                    abs_a ~ alloc_a * (0.5 * tanh((s_a.S - 50.0) / 10.0) + 0.5)
-                   abs_b ~ alloc_b * (0.5 * tanh((s_b.S - 50.0) / 10.0) + 0.5)
+                   abs_b ~ alloc_b
                    abs_a ~ a.Q
-                   #abs_b ~ b.Q
+                   # abs_b ~ b.Q
                    ]
 
-    compose(ODESystem(eqs, t, vars, pars; name), a)
+    compose(ODESystem(eqs, t, vars, pars; name), a, s_a)
 end
 
 function FlushingUser(; name)

@@ -147,7 +147,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # println(Date(unix2datetime(t)))
 
         for (i, lsw_id) in enumerate(lsw_ids)
-            lswusers = all_users[i]
+            lswusers = copy(all_users[i])
             type = types[i]
             basename = Symbol(:sys_, lsw_id)
             name = Symbol(basename, :₊lsw₊)
@@ -191,8 +191,10 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                      ((area * P) + drainage - infiltration + urban_runoff - (area * E_pot))
                 Q_wm = (S + ΔS - target_volume) / Δt
 
-                demandlsw = push!(demand_lsw, (-Q_wm)) # make negative to keep consistent with other demands
-                priolsw = push!(prioagric, prio_wm)
+                # add levelcontrol to users
+                push!(lswusers, :levelcontrol)
+                push!(demandlsw, (-Q_wm)) # make negative to keep consistent with other demands
+                push!(priolsw, prio_wm)
 
                 allocate_P!(;
                             integrator,
@@ -205,7 +207,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                             infiltration,
                             demandlsw,
                             priolsw,
-                            lswusers = push!(lswusers, "levelcontrol"),
+                            lswusers,
                             wm_demand = Q_wm)
             elseif length(lswusers) > 0
                 # allocate to different users for a free flowing LSW
@@ -231,8 +233,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
 
             # Allocate water to flushing (only external water. Flush in = Flush out)
-            #outname_flush = Symbol(:sys_, lsw_id, :₊flushing₊)
-            #param!(integrator, Symbol(outname_flush, :Q), demand_flush)
+            # outname_flush = Symbol(:sys_, lsw_id, :₊flushing₊)
+            # param!(integrator, Symbol(outname_flush, :Q), demand_flush)
 
         end
 
@@ -252,7 +254,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                          infiltration,
                          demandlsw,
                          priolsw,
-                         lswusers)
+                         lswusers::Vector{Symbol})
 
         # function for demand allocation based upon user prioritisation
         # Note: equation not currently reproducing Mozart
@@ -305,7 +307,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                          infiltration,
                          demandlsw,
                          priolsw,
-                         lswusers::Vector{String},
+                         lswusers::Vector{Symbol},
                          wm_demand)
         # function for demand allocation based upon user prioritisation
         # Note: equation not currently reproducing Mozart
@@ -313,11 +315,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                       min(0.0, infiltration - drainage - urban_runoff)
 
         users = []
+        total_user_demand = 0.0
         for (i, user) in enumerate(lswusers)
             priority = priolsw[i]
             demand = demandlsw[i]
             tmp = (; user, priority, demand, alloc_a = Ref(0.0), alloc_b = Ref(0.0)) # alloc_a is lsw sourced, alloc_b is external source
             push!(users, tmp)
+            total_user_demand += demand
         end
         sort!(users, by = x -> x.priority)
 
@@ -325,7 +329,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             Q_avail_vol += wm_demand
         end
 
-        external_demand = sum(user.demand) - Q_avail_vol
+        external_demand = total_user_demand - Q_avail_vol
         external_avail = external_demand # For prototype, enough water can be supplied from external
 
         # allocate by priority based on available water
@@ -335,7 +339,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             elseif Q_avail_vol >= user.demand
                 user.alloc_a[] = user.demand
                 Q_avail_vol -= user.alloc_a[]
-                if user ≠ "levelcontrol"
+                if user !== :levelcontrol
                     # if general users are allocated by lsw water before wm, then the wm demand increases
                     levelcontrol.demand += user.alloc_a
                 end
@@ -357,11 +361,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             param!(integrator, symalloc, -user.alloc_a[])
             symalloc = Symbol(name, user.user, :₊alloc_b)
             param!(integrator, symalloc, -user.alloc_b[])
-            # The following are not essential for the simulation
-            symdemand = Symbol(name, user.user, :₊demand)
-            param!(integrator, symdemand, -user.demand[])
-            symprio = Symbol(name, user.user, :₊prio)
-            param!(integrator, symprio, user.priority[])
         end
 
         return nothing
