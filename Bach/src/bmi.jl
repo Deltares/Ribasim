@@ -328,7 +328,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         if wm_demand > 0.0
             Q_avail_vol += wm_demand
         end
-
         external_demand = total_user_demand - Q_avail_vol
         external_avail = external_demand # For prototype, enough water can be supplied from external
 
@@ -336,10 +335,14 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         for user in users
             if user.demand <= 0.0
                 # allocation is initialized to 0
+                if user.user === :levelcontrol
+                    # pump excess water to external water
+                    user.alloc_b[] = user.demand
+                end
             elseif Q_avail_vol >= user.demand
                 user.alloc_a[] = user.demand
                 Q_avail_vol -= user.alloc_a[]
-                if user !== :levelcontrol
+                if user.user !== :levelcontrol
                     # if general users are allocated by lsw water before wm, then the wm demand increases
                     levelcontrol.demand += user.alloc_a
                 end

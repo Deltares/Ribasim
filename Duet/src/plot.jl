@@ -278,9 +278,13 @@ function plot_series(reg::Bach.Register,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)),
            label = "outflow")
-    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)) && lines!(ax1,
+    haskey(reg, Symbol(:sys_, lsw_id, :₊link₊a₊, :Q)) && lines!(ax1,
            timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q)),
+           interpolator(reg, Symbol(:sys_, lsw_id, :₊link₊a₊, :Q)),
+           label = "link")
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(ax1,
+           timespan,
+           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1),
            label = "watermanagement")
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
     lines!(ax1,
@@ -293,11 +297,18 @@ function plot_series(reg::Bach.Register,
            label = "urban_runoff")
     axislegend(ax1)
     hidexdecorations!(ax1, grid = false)
-    # TODO make a plot with the daily mean h as part of plot_series_comparison
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
+        target_level = Symbol(:sys_, lsw_id, :₊levelcontrol₊, :target_level)
+        if haskey(reg, target_level)
+            lines!(ax2, timespan, interpolator(reg, target_level))
+        end
     else
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :S)))
+        target_volume = Symbol(:sys_, lsw_id, :₊levelcontrol₊, :target_volume)
+        if haskey(reg, target_volume)
+            lines!(ax2, timespan, interpolator(reg, target_volume))
+        end
     end
     linkxaxes!(ax1, ax2)
     return fig

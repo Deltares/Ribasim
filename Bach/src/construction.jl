@@ -71,7 +71,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
 
         else
             # TODO user provided conductance
-            @named link = Bach.LevelLink(; cond=1e-2)
+            @named link = Bach.LevelLink(; cond = 1e-2)
             push!(eqs, connect(lsw.x, link.a))
 
             @named levelcontrol = Bach.LevelControl(; target_volume, target_level)

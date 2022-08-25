@@ -215,9 +215,8 @@ function LevelLink(; name, cond)
     pars = @parameters cond = cond
 
     eqs = Equation[
-        # conservation of flow
-        a.Q + b.Q ~ 0
-        a.Q ~ cond * (a.h - b.h)
-    ]
+                   # conservation of flow
+                   a.Q + b.Q ~ 0
+                   a.Q ~ cond * (a.h - b.h)]
     compose(ODESystem(eqs, t, [], pars; name), a, b)
 end
