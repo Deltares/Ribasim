@@ -105,7 +105,7 @@ function create_district(lsw_ids::Vector{Int},
                          fractions::Vector{Dict{Int, Float64}},
                          sys_dict::Dict{Int, ODESystem})::ODESystem
     eqs = Equation[]
-    headboundaries = ODESystem[]
+    downstreamboundaries = ODESystem[]
     bifurcations = ODESystem[]
     @assert nv(graph) == length(sys_dict) == length(lsw_ids)
 
@@ -119,15 +119,17 @@ function create_district(lsw_ids::Vector{Int},
 
         n_out = length(out_vertices)
         if n_out == 0
-            name = Symbol("headboundary_", lsw_id)
-            # h value on the boundary is not used, but needed as BC
-            headboundary = Bach.HeadBoundary(; name, h = 0.0)
-            push!(headboundaries, headboundary)
             if type == 'V'
-                push!(eqs, connect(lsw_sys.weir.b, headboundary.x))
+                name = Symbol("headboundary_", lsw_id)
+                # h value on the boundary is not used, but needed as BC
+                downstreamboundary = Bach.HeadBoundary(; name, h = 0.0)
+                push!(eqs, connect(lsw_sys.weir.b, downstreamboundary.x))
             else
-                push!(eqs, connect(lsw_sys.link.b, headboundary.x))
+                name = Symbol("noflowboundary_", lsw_id)
+                downstreamboundary = Bach.NoFlowBoundary(; name)
+                push!(eqs, connect(lsw_sys.link.b, downstreamboundary.x))
             end
+            push!(downstreamboundaries, downstreamboundary)
         elseif n_out == 1
             out_lsw = only(out_lsws)
             if type == 'V'
@@ -161,6 +163,6 @@ function create_district(lsw_ids::Vector{Int},
 
     @named district = ODESystem(eqs, t, [], [])
     lsw_systems = [k for k in values(sys_dict)]
-    district = compose(district, vcat(lsw_systems, headboundaries, bifurcations))
+    district = compose(district, vcat(lsw_systems, downstreamboundaries, bifurcations))
     return district
 end

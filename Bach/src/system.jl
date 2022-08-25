@@ -186,6 +186,13 @@ function HeadBoundary(; name, h)
     compose(ODESystem(eqs, t, vars, []; name), x)
 end
 
+function NoFlowBoundary(; name)
+    @named x = FluidQuantityPort()
+
+    eqs = Equation[x.Q ~ 0]
+    compose(ODESystem(eqs, t, [], []; name), x)
+end
+
 # Fractional bifurcation, only made for flow from a to b and c
 function Bifurcation(; name, fraction_b)
     @named a = FluidQuantityPort()
