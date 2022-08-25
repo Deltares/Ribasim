@@ -5,19 +5,19 @@ mode = "sequential"
 [modflow6.models]
 [modflow6.models.gwf]
     type = "gwf"
-    dataset = "../data/volume_level_profile-hupsel.nc"
-    basins = "lwd_id"
+    dataset = "c:/src/bach/data/volume_level_profile-hupsel.nc"
+    basins = "lsw_id"
     
     [[modflow6.models.gwf.bounds]]
     river = "RIV_P"
-    drain = "DNR_P"
+    drain = "DRN_P"
     profile = "profile_primary"
 
     [[modflow6.models.gwf.bounds]]
     river = "RIV_S"
-    drain = "DNR_S"
+    drain = "DRN_S"
     profile = "profile_secondary"
 
     [[modflow6.models.gwf.bounds]]
-    drain = "DNR_T"
+    drain = "DRN_T"
     profile = "profile_tertiary"

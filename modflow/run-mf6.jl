@@ -1,4 +1,3 @@
-using TOML
 using NCDatasets
 import BasicModelInterface as BMI
 import ModflowInterface as MF
@@ -158,56 +157,6 @@ function set_level!(boundary::ModflowRiverDrainagePackage, index, level)
     return
 end
 
-##
-
-directory = "..\\data\\hupsel-steady-state"
-modelname = "GWF"
-cd(directory)
-model = BMI.initialize(MF.ModflowModel)
-BMI.get_component_name(model)
-
-component_id = 1
-
-headtag = MF.get_var_address(model, "X", modelname)
-head = BMI.get_value_ptr(model, headtag)
-maxiter = only(get_var_ptr(model, "SLN_1", "MXITER"))
-sys1 = ModflowRiverDrainagePackage(model, modelname, "RIV_P", "DRN_P")
-sys2 = ModflowRiverDrainagePackage(model, modelname, "RIV_S", "DRN_S")
-sys3 = ModflowDrainagePackage(model, modelname, "DRN_T")
-
-MF.prepare_time_step(model, 0.0)
-MF.prepare_solve(model, component_id)
-solve_to_convergence(model, maxiter)
-# This should write the heads to the output file.
-MF.finalize_time_step(model)
-MF.finalize_solve(model, component_id)
-
-budget!(sys1, head)
-budget!(sys2, head)
-budget!(sys3, head)
-
-# To get netflow, sum the budget for riv_sys1 and riv_sys2
-# Compute the stage change, call set_stage!
-# You could use a while loop until the end time for MODFLOW6 is reached, or just loop the NPER...
-
-# destroys the model, and deallocates the data, don't use it anymore after this
-# if you need data to be separate from modflow, copy it, which is what `BMI.get_value` does
-BMI.finalize(model)
-
-
-
-path ="c:/src/bach/data/volume_level_profile-hupsel.nc"
-bach_ids = [151358, 151371, 151309]
-config = Dict(
-    "lsw_ids" => bach_ids
-)
-
-coupling_ds = NCDataset(path)
-grid_lsw = Matrix{Union{Int, Missing}}(coupling_ds["lsw_id"][:])
-node_user = get_var_ptr(model, modelname, "NODEUSER", subcomponent_name="DIS")
-node_reduced = get_var_ptr(model, "GWF", "NODEREDUCED", subcomponent_name="DIS")
-
-
 
 """
 For every active boundary condition in MODFLOW package:
@@ -242,6 +191,7 @@ Create volume-level profiles for a single MODFLOW6 boundary.
   every cell.
 - `bach_ids::Vector{Int}`: the basin identification numbers present in the
   Bach model.
+- `node_reduced::Vector{Int}`: The MODFLOW6 NODE_REDUCED node numbering.
 
 """
 function VolumeLevelProfiles(
@@ -249,6 +199,7 @@ function VolumeLevelProfiles(
     boundary,
     profile,
     bach_ids,
+    node_reduced::Vector{Int32},
 )
     I = LinearIndices(basins)
     indices = CartesianIndex{2}[]
@@ -260,7 +211,7 @@ function VolumeLevelProfiles(
         basin_id = basins[i] 
         first_volume = profile[i, 1, 1]
 
-        if !ismissing(lsw) && !ismissing(first_volume) && (lsw in bach_ids)
+        if !ismissing(basin_id) && !ismissing(first_volume) && (basin_id in bach_ids)
             modelnode = node_reduced[I[i]]
             boundary_node = findfirst(==(modelnode), boundary.nodelist)
             isnothing(boundary_node) && error("boundary_node not in model")
@@ -277,21 +228,6 @@ function VolumeLevelProfiles(
         basin_ids, model_nodes, boundary_nodes, volumes, levels
     )
 end
-
-boundaries = [sys1, sys2, sys3]
-profiles = [
-    coupling_ds["profile_primary"][:],
-    coupling_ds["profile_secondary"][:],
-    coupling_ds["profile_tertiary"][:],
-]
-
-coupling_profiles = [VolumeLevelProfiles(grid_lsw, boundary, profile) for (boundary, profile) in zip(boundaries, profiles)]
-bach_ids = [151358, 151371, 151309]
-lsw_volumes = Dict(
-    151358 => 0.0,
-    151371 => 0.0,
-    151309 => 0.0,
-) 
 
 """
 Iterate over every node of the boundary, and:
@@ -310,8 +246,8 @@ function set_modflow_levels!(exchange, lsw_volumes)
         boundary_index = profile.boundary_index[i]
         lsw_volume = lsw_volumes[lsw_id]
         nodelevel = LinearInterpolation(
-            view(profile.volume[:, i])
-            view(profile.level[:, i])
+            view(profile.volume[:, i]),
+            view(profile.level[:, i]),
         )(lsw_volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
@@ -335,7 +271,7 @@ function collect_modflow_budgets!(drainage, infiltration, exchange, head)
 end
 
 
-struct BoundaryExchange{B} where B <: ModflowPackage
+struct BoundaryExchange{B}
     boundary::B
     profile::VolumeLevelProfiles
 end
@@ -345,6 +281,8 @@ struct Modflow6Simulation
     maxiter::Int  # Is a copy of the initial value in MODFLOW6
     head::Vector{Float64}
 end
+
+struct BachModel end
 
 struct BachModflowExchange
     bach::BachModel
@@ -358,7 +296,7 @@ end
 
 function update!(sim::Modflow6Simulation)
     COMPONENT_ID = 1
-    model = sim.model
+    model = sim.bmi
     MF.prepare_time_step(model, 0.0)
     MF.prepare_solve(model, COMPONENT_ID)
 
@@ -370,7 +308,7 @@ function update!(sim::Modflow6Simulation)
         converged = MF.solve(model, 1)
         iteration += 1
     end
-    if !converged && error("mf6: failed to converge")
+    !converged && error("mf6: failed to converge")
 
     MF.finalize_time_step(model)
     MF.finalize_solve(model, COMPONENT_ID)
@@ -378,14 +316,14 @@ function update!(sim::Modflow6Simulation)
 end
 
 
-function BachModflowExchange(config)
-    bach = BMI.initialize(Bach.Register, config)
-    bach_ids = ...
+function BachModflowExchange(config, bach_ids)
+    bach = BachModel()#BMI.initialize(Bach.Register, config)
 
-    mf6_config = config["mf6"]
+    mf6_config = config["modflow6"]
     directory = dirname(mf6_config["simulation"])
     cd(directory)
     model = BMI.initialize(MF.ModflowModel)
+    MF.prepare_time_step(model, 0.0)
 
     exchanges = []
     for (modelname, model_config) in mf6_config["models"]
@@ -393,30 +331,34 @@ function BachModflowExchange(config)
         path_dataset = model_config["dataset"]
         !isfile(path_dataset) && error("Dataset not found")
         dataset = NCDataset(path_dataset)
-        basins = dataset[model_config["basins"]][:]
-        
+        basins = Matrix{Union{Int, Missing}}(dataset[model_config["basins"]][:])
+        node_reduced = get_var_ptr(model, modelname, "NODEREDUCED", subcomponent_name="DIS")
+            
         for bound_config in model_config["bounds"]
-            if "river" in bound_config && "drain" in bound_config
+            config_keys = keys(bound_config)
+            if "river" in config_keys && "drain" in config_keys
                 bound = ModflowRiverDrainagePackage(model, modelname, bound_config["river"], bound_config["drain"])
-            elseif "river" in bound_config
+            elseif "river" in config_keys
                 bound = ModflowRiverPackage(model, modelname, bound_config["river"])
-            elseif "drain" in bound_config
+            elseif "drain" in config_keys
                 bound = ModflowDrainagePackage(model, modelname, bound_config["drain"])
             else
                 error("Expected drain or river entry in bound")
             end
-            profile = dataset[model_config["profile"]]
-            vlp = VolumeLevelProfiles(basins, bound, profile, bach_ids)
+            profile = dataset[bound_config["profile"]][:]
+            vlp = VolumeLevelProfiles(basins, bound, profile, bach_ids, node_reduced)
             exchange = BoundaryExchange(bound, vlp)
             push!(exchanges, exchange)
         end
         close(dataset)
     end
 
+    # TODO: multiple models
+    (modelname, _) = first(mf6_config["models"])
     simulation = Modflow6Simulation(
         model,
         only(get_var_ptr(model, "SLN_1", "MXITER")),
-        BMI.get_var_ptr(model, "X", modelname)
+        get_var_ptr(model, modelname, "X")
     )
     return BachModflowExchange(
         bach,
