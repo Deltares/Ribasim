@@ -38,6 +38,36 @@ function read_table(entry)
     return entry
 end
 
+"Create an extra column in the forcing which is 0 or the index into the system parameters"
+function find_param_index(variable, location, p_vars, p_locs)
+    # zero means not in the model, skip
+    param_index = zeros(Int, length(variable))
+
+    for i in eachindex(variable, location, param_index)
+        var = variable[i]
+        loc = location[i]
+        for (j, (p_var, p_loc)) in enumerate(zip(p_vars, p_locs))
+            if (p_var, p_loc) == (var, loc)
+                param_index[i] = j
+            end
+        end
+    end
+    return param_index
+end
+
+# subset of parameters that we possibly have forcing data for
+# map from variable symbols from Bach.parsename to forcing.variable symbols
+# TODO make this systematic such that we don't need a manual mapping anymore
+const parvars = Dict{Symbol, Symbol}(
+    Symbol("agric.demand") => :demand_agriculture,
+    Symbol("agric.prio") => :priority_agriculture,
+    Symbol("lsw.P") => :precipitation,
+    Symbol("lsw.E_pot") => :evaporation,
+    Symbol("lsw.infiltration") => :infiltration,
+    Symbol("lsw.drainage") => :drainage,
+    Symbol("lsw.urban_runoff") => :urban_runoff,
+)
+
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
     n_lsw = length(lsw_ids)
@@ -69,23 +99,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # Δt for periodic update frequency, including user horizons
     Δt = Float64(config["update_timestep"])
-    vars = @variables t
-
-    # find rows in forcing data
-    tims = forcing.time
-    vars = forcing.variable
-    locs = forcing.location
-    vals = forcing.value
-    rows = [searchsorted_forcing(vars, locs,
-                                 :priority_watermanagement,
-                                 lsw_id)
-            for lsw_id in lsw_ids]
-    prio_wm_series = [ForwardFill(datetime2unix.(tims[i]), vals[i]) for i in rows]
-
-    # base the running time on the precipitation of the first LSW
-    rows = searchsorted_forcing(vars, locs, :precipitation, first(lsw_ids))
-    # values that don't vary between LSWs
-    # set bach runtimes equal to the mozart reference run
 
     starttime = DateTime(config["starttime"])
     endtime = DateTime(config["endtime"])
@@ -130,11 +143,12 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return p[i] = x
     end
 
-    # captures sysnames, times, vals, prio_wm
+    # captures sysnames
     function periodic_update!(integrator)
         # update all forcing
         # exchange with Modflow and Metaswap here
         (; t, p, sol) = integrator
+        # println(Date(unix2datetime(t)))
 
         for (i, lsw_id) in enumerate(lsw_ids)
             lswusers = all_users[i]
@@ -165,8 +179,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             # water level control
             Q_wm = 0.0 # initalised
             if type == 'P'
-                prio_wm_serie = prio_wm_series[i]
-                prio_wm = prio_wm_serie(t)
+                # TODO integrate with forcing
+                prio_wm = 0
 
                 # set the Q_wm for the coming day based on the expected storage
                 S = getstate(integrator, Symbol(name, :S))
@@ -359,21 +373,55 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     curve_dict = create_curve_dict(profile, lsw_ids)
     sys_dict = create_sys_dict(lsw_ids, types, target_volumes, target_levels,
-                               initial_volumes, Δt, all_users; forcing, curve_dict)
+                               initial_volumes, all_users; curve_dict)
 
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
     sys = create_district(lsw_ids, types, graph, fractions, sys_dict)
 
+    println("structural_simplify")
     sim = structural_simplify(sys)
 
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
+    println("ODAEProblem ", Time(now()))
     prob = ODAEProblem(sim, [], tspan)
 
-    cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+    # take only the forcing data we need, and add the system's parameter index
+    # split out the variables and locations to make it easier to find the right p_symbol index
+    p_symbol = sysnames.p_symbol
+    p_vars = [get(parvars, Bach.parsename(p)[1], :none) for p in p_symbol]
+    p_locs = getindex.(Bach.parsename.(p_symbol), 2)
 
+    param_index = find_param_index(forcing.variable, forcing.location, p_vars, p_locs)
+    used_param_index = filter(!=(0), param_index)
+    used_rows = findall(!=(0), param_index)
+    # consider usign views here
+    used_time = forcing.time[used_rows]
+    @assert issorted(used_time) "time column in forcing must be sorted"
+    used_time_unix = datetime2unix.(used_time)
+    used_value = forcing.value[used_rows]
+    # this is how often we need to callback
+    used_time_uniq = unique(used_time)
+
+    # find the range of the current timestep, and the associated parameter indices,
+    # and update all the corresponding parameter values
+    # captures used_time_unix, used_param_index, used_value
+    function update_forcings!(integrator)
+        (; t, p) = integrator
+        r = searchsorted(used_time_unix, t)
+        i = used_param_index[r]
+        v = used_value[r]
+        p[i] .= v
+        return nothing
+    end
+
+    preset_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
+    period_cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
+    cb = CallbackSet(preset_cb, period_cb)
+
+    println("init")
     integrator = init(prob,
                       DE.Rosenbrock23();
                       callback = cb,

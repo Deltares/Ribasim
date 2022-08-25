@@ -17,7 +17,7 @@ using Statistics
 using CFTime
 using Arrow
 
-output_dir = "data/input/5"
+output_dir = "data/input/6"
 
 # read data from Mozart for all lsws
 reference_model = "decadal"
@@ -377,8 +377,12 @@ function long_forcing(path; prec_dict, evap_dict, drainage_dict, infiltration_di
     append_forcing!(forcing, prio_agric_dict, :priority_agriculture)
     append_forcing!(forcing, prio_wm_dict, :priority_watermanagement)
 
-    forcing.variable = Arrow.DictEncode(forcing.variable)
-    forcing.location = Arrow.DictEncode(forcing.location)
+    # right now we only rely on time being sorted
+    sort!(forcing, [:time, :location, :variable])
+    # these will reduce the size of the file considerably, but also seem to confuse QGIS
+    # forcing.time = Arrow.DictEncode(forcing.time)
+    # forcing.variable = Arrow.DictEncode(forcing.variable)
+    # forcing.location = Arrow.DictEncode(forcing.location)
     Arrow.write(path, forcing)
 end
 

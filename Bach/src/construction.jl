@@ -39,16 +39,9 @@ function create_sys_dict(lsw_ids::Vector{Int},
                          target_volumes::Vector{Float64},
                          target_levels::Vector{Float64},
                          initial_volumes::Vector{Float64},
-                         Δt::Float64,
                          all_users::Vector{Vector{Symbol}};
-                         forcing,
                          curve_dict)
     sys_dict = Dict{Int, ODESystem}()
-
-    tims = forcing.time
-    vars = forcing.variable
-    locs = forcing.location
-    vals = forcing.value
 
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
@@ -62,13 +55,6 @@ function create_sys_dict(lsw_ids::Vector{Int},
         lsw_level = LinearInterpolation(curve.h, curve.s)
 
         @named lsw = Bach.LSW(; S = S0, lsw_level, lsw_area)
-
-        # map external variable names to symbolic; used to update forcings
-        varpars = [:precipitation => lsw.P
-                   :evaporation => lsw.E_pot
-                   :drainage => lsw.drainage
-                   :infiltration => lsw.infiltration
-                   :urban_runoff => lsw.urban_runoff]
 
         # create and connect OutflowTable or LevelControl
         eqs = Equation[]
@@ -86,7 +72,6 @@ function create_sys_dict(lsw_ids::Vector{Int},
         else
             @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
-            push!(varpars, :priority_watermanagement => levelcontrol.prio)
             all_components = [lsw, levelcontrol]
 
             for user in lswusers
@@ -94,32 +79,14 @@ function create_sys_dict(lsw_ids::Vector{Int},
                 usersys = Bach.GeneralUser_P(; name = user, S = S0)
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
-
-                longuser = usermap[user]
-                push!(varpars, Symbol(:priority_, longuser) => usersys.prio)
-                push!(varpars, Symbol(:demand_, longuser) => usersys.demand)
-                # To do: consider how to connect external user demand (i.e. usersys.b)
+                # TODO: consider how to connect external user demand (i.e. usersys.b)
             end
-            # TO DO: including flushing requirement
+            # TODO: include flushing requirement
 
         end
 
         name = Symbol(:sys_, lsw_id)
-
-        # for each forcing variable name and symbol, create a callback to update the
-        # forcing as soon as it changes
-        discrete_events = []
-        for (var, par) in varpars
-            i = searchsorted_forcing(vars, locs, var, lsw_id)
-            # don't create a callback if there is nothing to update
-            isempty(i) && continue
-            t = datetime2unix.(tims[i])
-            v = vals[i]
-            ctx = Bach.ForwardFill(t, v)
-            discrete_event = t => (update_forcing!, [], [par], ctx)
-            push!(discrete_events, discrete_event)
-        end
-        lsw_sys = ODESystem(eqs, t; name, discrete_events)
+        lsw_sys = ODESystem(eqs, t; name)
         lsw_sys = compose(lsw_sys, all_components)
         sys_dict[lsw_id] = lsw_sys
     end

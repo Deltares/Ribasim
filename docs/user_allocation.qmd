@@ -15,7 +15,7 @@ $$
 $$
 :::
 
-## General User
+# General User
 
 The General User category include the users Agriculture, Industry and Public Water supply. These users extract water from the LSW and the demand ($\demuser$) is determined externally.  The source of water allocated to the General User is dependent on if the LSW is a free-flowing type LSW or a level-controlled LSW.
 
@@ -33,7 +33,7 @@ For a given user, in the case where $\demuser > \qavail$ then all of the availab
 
 However, as discussed, if the LSW is a level-controlled LSW, additional water can then be sourced from the regional network and is allocated to satisfy the allocation shortage of the General User.
 
-## Level Control
+# Level Control
 
 A level-controlled LSW (`local_surface_water_type = "P"`) has a user demand referred to as water management ($\demwm$). The purpose of this demand is to maintain the water levels for each LSW at a target level. This target levels is determined externally.
 The $\demwm$ is negative if additional water is required to increase the water level in the LSW, or positive if there is surplus water which must be removed to lower the level in the LSW.
@@ -46,7 +46,7 @@ $$ {#eq-wm}
 When the $\demwm$ is negative, the $\demwm$ is allocated first from the LSW $\qavail$, and then secondly with water from the national network, should the local LSW water not be sufficient to satisfy $\demwm$. This demand is therefore handled similar to that of a General User.
 In the case that a General User is allocated water as a higher priority than the Level Control such that the water level of the LSW decreases, the $\demwm$ will increase accordingly. However, in most cases the demand for Level Control is higher than that of the General Users so this does not occur.
 
-## Flushing Requirement
+# Flushing Requirement
 
 The flushing requirement for the LSW is a special case of user. Flushing is required to maintain water quality in the LSW. This is determined externally.
 Water from the national network flows into the LSW, and the same volume gets removed from the LSW back to the national network.
