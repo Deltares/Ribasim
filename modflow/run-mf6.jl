@@ -1,8 +1,14 @@
+using TOML
 using NCDatasets
 import BasicModelInterface as BMI
 import ModflowInterface as MF
+import DataInterpolations: LinearInterpolation
 
 
+"""
+Convenience method (missing from XMI?) to get the adress and return the
+pointer.
+"""
 function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
     tag = MF.get_var_address(model,
                              component,
@@ -12,27 +18,15 @@ function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_
 end
 
 
-function solve_to_convergence(model, maxiter)
-    converged = false
-    iteration = 1
-
-    while !converged && iteration <= maxiter
-        @show iteration
-        # 1 is solution_id
-        converged = MF.solve(model, 1)
-        iteration += 1
-    end
-
-    println("converged")
-    return iteration - 1
-end
-
+# The MODFLOW6 boundaries are memory-contiguous, rowwise. This means that the
+# different parameters are next to each other (e.g. conductance and elevation).
+# It is more convenient for us to group by kind of parameter. Using a simple
+# Vector{Float64} forces a contiguous block of memory and Julia will create
+# a new array, rather than a view on the MODFLOW6 memory. This type is the
+# appropriate one for a view.
 const BoundView = SubArray{Float64, 1, Matrix{Float64},
                            Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
-                           
-abstract type ModflowPackage end
-                           
 """
 Memory views on a single MODFLOW6 Drainage package.
 
@@ -42,6 +36,11 @@ memory_print_option all
 
 Only to be used for components that are not a river system, such as primary or
 secondary rivers.
+"""
+abstract type ModflowPackage end
+                           
+"""
+Views on the arrays of interest of a MODFLOW6 Drainage package.
 """
 struct ModflowDrainagePackage <: ModflowPackage
     nodelist::Vector{Int32}
@@ -71,13 +70,10 @@ function set_level!(boundary::ModflowDrainagePackage, index, level)
 end
 
 """
-Memory views on a single MODFLOW6 River package.
+Views on the arrays of interest of a MODFLOW6 River package.
 
-To get an overview of the memory addresses specify in the simulation namefile options:
-
-memory_print_option all
-
-Not to be used directly -- maybe if you have no "infiltration factors".
+Not to be used directly if "infiltration factors" are used via an additional
+drainage package.
 """
 struct ModflowRiverPackage <: ModflowPackage
     nodelist::Vector{Int32}
@@ -109,6 +105,12 @@ function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
                                budget)
 end
 
+"""
+Contains the combined MODFLOW6 River and Drainage package, where the drainage
+package is "stacked" to achieve a differing drainage/infiltration conductance.
+
+See: https://github.com/MODFLOW-USGS/modflow6/issues/419 
+"""
 struct ModflowRiverDrainagePackage <: ModflowPackage
     river::ModflowRiverPackage
     drainage::ModflowDrainagePackage
@@ -220,7 +222,7 @@ Where N is the number of boundaries in the package and M is the number of steps
 in the piecewise linear volume-level relationship.
 """
 struct VolumeLevelProfiles
-    lsw_id::Vector{Int}
+    basin_id::Vector{Int}
     model_node::Vector{Int}
     boundary_index::Vector{Int}
     volume::Matrix{Float64}
@@ -228,26 +230,41 @@ struct VolumeLevelProfiles
 end
 
 
+"""
+Create volume-level profiles for a single MODFLOW6 boundary.
+
+# Arguments
+- `basin::Matrix{Union{Int, Missing}}`: the basin identification number.
+  these values must accord with the Bach IDs.
+- `boundary::B where B <: ModflowPackage`: struct holding views on the
+  MODFLOW6 memory.
+- `profile`::Array{Union{Float64, Missing}}`: the volumes and levels for
+  every cell.
+- `bach_ids::Vector{Int}`: the basin identification numbers present in the
+  Bach model.
+
+"""
 function VolumeLevelProfiles(
-    grid_lsw,
+    basins,
     boundary,
     profile,
+    bach_ids,
 )
-    I = LinearIndices(grid_lsw)
+    I = LinearIndices(basins)
     indices = CartesianIndex{2}[]
-    lsw_ids = Int[]
+    basin_ids = Int[]
     model_nodes = Int[]
     boundary_nodes = Int[]
 
-    for i in CartesianIndices(grid_lsw)
-        lsw = grid_lsw[i] 
+    for i in CartesianIndices(basins)
+        basin_id = basins[i] 
         first_volume = profile[i, 1, 1]
 
         if !ismissing(lsw) && !ismissing(first_volume) && (lsw in bach_ids)
             modelnode = node_reduced[I[i]]
             boundary_node = findfirst(==(modelnode), boundary.nodelist)
             isnothing(boundary_node) && error("boundary_node not in model")
-            push!(lsw_ids, lsw)
+            push!(basin_ids, basin_id)
             push!(indices, i)
             push!(model_nodes, modelnode)
             push!(boundary_nodes, boundary_node)
@@ -257,7 +274,7 @@ function VolumeLevelProfiles(
     volumes = transpose(profile[indices, :, 1])
     levels = transpose(profile[indices, :, 2])
     return VolumeLevelProfiles(
-        lsw_ids, model_nodes, boundary_nodes, volumes, levels
+        basin_ids, model_nodes, boundary_nodes, volumes, levels
     )
 end
 
@@ -276,19 +293,164 @@ lsw_volumes = Dict(
     151309 => 0.0,
 ) 
 
-function set_modflow_levels!(
-    boundary::{B} where B <: ModflowPackage,
-    profile::VolumeLevelProfiles,
-    lsw_volumes,
-)
+"""
+Iterate over every node of the boundary, and:
+
+* Find the volume-level profile
+* Find the volume of the associated basin
+* Interpolate the level based on that volume
+* Set the level as the drainage elevation / river stage
+
+"""
+function set_modflow_levels!(exchange, lsw_volumes)
+    boundary = exchange.boundary
+    profile = exchange.profile
     for i=eachindex(lsw.lsw_id)
         lsw_id = profile.lsw_id[i]
         boundary_index = profile.boundary_index[i]
-        volume = view(profile.volume[:, i])
-        level = view(profile.level[:, i])
-        
         lsw_volume = lsw_volumes[lsw_id]
-        nodelevel = lookup(lsw_volume, volume, level)
+        nodelevel = LinearInterpolation(
+            view(profile.volume[:, i])
+            view(profile.level[:, i])
+        )(lsw_volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
+end
+
+
+function collect_modflow_budgets!(drainage, infiltration, exchange, head)
+    boundary = exchange.boundary
+    profile = exchange.profile
+    budget!(boundary, head)
+    for i in profile.boundary_index
+        basin_id = profile.lsw_id[i]
+        discharge = boundary.budget[i]
+        if discharge > 0
+            infiltration[basin_id] = discharge
+        else
+            drainage[basin_id] = abs(discharge)
+        end
+    end
+    return
+end
+
+
+struct BoundaryExchange{B} where B <: ModflowPackage
+    boundary::B
+    profile::VolumeLevelProfiles
+end
+
+struct Modflow6Simulation
+    bmi::MF.ModflowModel
+    maxiter::Int  # Is a copy of the initial value in MODFLOW6
+    head::Vector{Float64}
+end
+
+struct BachModflowExchange
+    bach::BachModel
+    modflow::Modflow6Simulation
+    exchanges::Vector{BoundaryExchange}
+    basin_volume::Dict{Int, Float64}
+    basin_infiltration::Dict{Int, Float64}
+    basin_drainage::Dict{Int, Float64}
+end
+
+
+function update!(sim::Modflow6Simulation)
+    COMPONENT_ID = 1
+    model = sim.model
+    MF.prepare_time_step(model, 0.0)
+    MF.prepare_solve(model, COMPONENT_ID)
+
+    converged = false
+    iteration = 1
+    while !converged && iteration <= sim.maxiter
+        @show iteration
+        # 1 is solution_id
+        converged = MF.solve(model, 1)
+        iteration += 1
+    end
+    if !converged && error("mf6: failed to converge")
+
+    MF.finalize_time_step(model)
+    MF.finalize_solve(model, COMPONENT_ID)
+    return
+end
+
+
+function BachModflowExchange(config)
+    bach = BMI.initialize(Bach.Register, config)
+    bach_ids = ...
+
+    mf6_config = config["mf6"]
+    directory = dirname(mf6_config["simulation"])
+    cd(directory)
+    model = BMI.initialize(MF.ModflowModel)
+
+    exchanges = []
+    for (modelname, model_config) in mf6_config["models"]
+        model_config["type"] != "gwf" && error("Only gwf models are supported")
+        path_dataset = model_config["dataset"]
+        !isfile(path_dataset) && error("Dataset not found")
+        dataset = NCDataset(path_dataset)
+        basins = dataset[model_config["basins"]][:]
+        
+        for bound_config in model_config["bounds"]
+            if "river" in bound_config && "drain" in bound_config
+                bound = ModflowRiverDrainagePackage(model, modelname, bound_config["river"], bound_config["drain"])
+            elseif "river" in bound_config
+                bound = ModflowRiverPackage(model, modelname, bound_config["river"])
+            elseif "drain" in bound_config
+                bound = ModflowDrainagePackage(model, modelname, bound_config["drain"])
+            else
+                error("Expected drain or river entry in bound")
+            end
+            profile = dataset[model_config["profile"]]
+            vlp = VolumeLevelProfiles(basins, bound, profile, bach_ids)
+            exchange = BoundaryExchange(bound, vlp)
+            push!(exchanges, exchange)
+        end
+        close(dataset)
+    end
+
+    simulation = Modflow6Simulation(
+        model,
+        only(get_var_ptr(model, "SLN_1", "MXITER")),
+        BMI.get_var_ptr(model, "X", modelname)
+    )
+    return BachModflowExchange(
+        bach,
+        simulation,
+        exchanges,
+        Dict(i => 0.0 for i in bach_ids),
+        Dict(i => 0.0 for i in bach_ids),
+        Dict(i => 0.0 for i in bach_ids),
+    )
+end
+ 
+
+function exchange_bach_to_modflow!(m::BachModflowExchange)
+    for exchange in m.exchanges
+        set_modflow_levels!(exchange, m.basin_volumes)
+    end
+    return
+end
+    
+
+function exchange_modflow_to_bach!(m::BachModflowExchange)
+    infiltration = m.basin_infiltration
+    drainage = m.basin_drainage
+    for exchange in m.exchanges
+        collect_modflow_budgets!(drainage, infiltration, exchange, m.modflow.head)
+    end
+    return
+end
+
+
+function update!(m::BachModflowExchange)
+    update!(m.modflow)
+    exchange_modflow_to_bach!(m)
+    update!(m.bach)
+    exchange_bach_to_modflow!(m)
+    return
 end
