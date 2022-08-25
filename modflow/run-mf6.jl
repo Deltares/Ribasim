@@ -3,7 +3,6 @@ import BasicModelInterface as BMI
 import ModflowInterface as MF
 import DataInterpolations: LinearInterpolation
 
-
 """
 Convenience method (missing from XMI?) to get the adress and return the
 pointer.
@@ -15,7 +14,6 @@ function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_
                              subcomponent_name = subcomponent_name)
     return BMI.get_value_ptr(model, tag)
 end
-
 
 # The MODFLOW6 boundaries are memory-contiguous, rowwise. This means that the
 # different parameters are next to each other (e.g. conductance and elevation).
@@ -37,7 +35,7 @@ Only to be used for components that are not a river system, such as primary or
 secondary rivers.
 """
 abstract type ModflowPackage end
-                           
+
 """
 Views on the arrays of interest of a MODFLOW6 Drainage package.
 """
@@ -157,7 +155,6 @@ function set_level!(boundary::ModflowRiverDrainagePackage, index, level)
     return
 end
 
-
 """
 For every active boundary condition in MODFLOW package:
 
@@ -178,7 +175,6 @@ struct VolumeLevelProfiles
     level::Matrix{Float64}
 end
 
-
 """
 Create volume-level profiles for a single MODFLOW6 boundary.
 
@@ -194,13 +190,11 @@ Create volume-level profiles for a single MODFLOW6 boundary.
 - `node_reduced::Vector{Int}`: The MODFLOW6 NODE_REDUCED node numbering.
 
 """
-function VolumeLevelProfiles(
-    basins,
-    boundary,
-    profile,
-    bach_ids,
-    node_reduced::Vector{Int32},
-)
+function VolumeLevelProfiles(basins,
+                             boundary,
+                             profile,
+                             bach_ids,
+                             node_reduced::Vector{Int32})
     I = LinearIndices(basins)
     indices = CartesianIndex{2}[]
     basin_ids = Int[]
@@ -208,7 +202,7 @@ function VolumeLevelProfiles(
     boundary_nodes = Int[]
 
     for i in CartesianIndices(basins)
-        basin_id = basins[i] 
+        basin_id = basins[i]
         first_volume = profile[i, 1, 1]
 
         if !ismissing(basin_id) && !ismissing(first_volume) && (basin_id in bach_ids)
@@ -221,12 +215,10 @@ function VolumeLevelProfiles(
             push!(boundary_nodes, boundary_node)
         end
     end
-            
+
     volumes = transpose(profile[indices, :, 1])
     levels = transpose(profile[indices, :, 2])
-    return VolumeLevelProfiles(
-        basin_ids, model_nodes, boundary_nodes, volumes, levels
-    )
+    return VolumeLevelProfiles(basin_ids, model_nodes, boundary_nodes, volumes, levels)
 end
 
 """
@@ -241,18 +233,15 @@ Iterate over every node of the boundary, and:
 function set_modflow_levels!(exchange, lsw_volumes)
     boundary = exchange.boundary
     profile = exchange.profile
-    for i=eachindex(lsw.lsw_id)
+    for i in eachindex(lsw.lsw_id)
         lsw_id = profile.lsw_id[i]
         boundary_index = profile.boundary_index[i]
         lsw_volume = lsw_volumes[lsw_id]
-        nodelevel = LinearInterpolation(
-            view(profile.volume[:, i]),
-            view(profile.level[:, i]),
-        )(lsw_volume)
+        nodelevel = LinearInterpolation(view(profile.volume[:, i]),
+                                        view(profile.level[:, i]))(lsw_volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
 end
-
 
 function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     boundary = exchange.boundary
@@ -269,7 +258,6 @@ function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     end
     return
 end
-
 
 struct BoundaryExchange{B}
     boundary::B
@@ -293,7 +281,6 @@ struct BachModflowExchange
     basin_drainage::Dict{Int, Float64}
 end
 
-
 function update!(sim::Modflow6Simulation)
     COMPONENT_ID = 1
     model = sim.bmi
@@ -315,7 +302,6 @@ function update!(sim::Modflow6Simulation)
     return
 end
 
-
 function BachModflowExchange(config, bach_ids)
     bach = BachModel()#BMI.initialize(Bach.Register, config)
 
@@ -332,12 +318,14 @@ function BachModflowExchange(config, bach_ids)
         !isfile(path_dataset) && error("Dataset not found")
         dataset = NCDataset(path_dataset)
         basins = Matrix{Union{Int, Missing}}(dataset[model_config["basins"]][:])
-        node_reduced = get_var_ptr(model, modelname, "NODEREDUCED", subcomponent_name="DIS")
-            
+        node_reduced = get_var_ptr(model, modelname, "NODEREDUCED",
+                                   subcomponent_name = "DIS")
+
         for bound_config in model_config["bounds"]
             config_keys = keys(bound_config)
             if "river" in config_keys && "drain" in config_keys
-                bound = ModflowRiverDrainagePackage(model, modelname, bound_config["river"], bound_config["drain"])
+                bound = ModflowRiverDrainagePackage(model, modelname, bound_config["river"],
+                                                    bound_config["drain"])
             elseif "river" in config_keys
                 bound = ModflowRiverPackage(model, modelname, bound_config["river"])
             elseif "drain" in config_keys
@@ -355,21 +343,16 @@ function BachModflowExchange(config, bach_ids)
 
     # TODO: multiple models
     (modelname, _) = first(mf6_config["models"])
-    simulation = Modflow6Simulation(
-        model,
-        only(get_var_ptr(model, "SLN_1", "MXITER")),
-        get_var_ptr(model, modelname, "X")
-    )
-    return BachModflowExchange(
-        bach,
-        simulation,
-        exchanges,
-        Dict(i => 0.0 for i in bach_ids),
-        Dict(i => 0.0 for i in bach_ids),
-        Dict(i => 0.0 for i in bach_ids),
-    )
+    simulation = Modflow6Simulation(model,
+                                    only(get_var_ptr(model, "SLN_1", "MXITER")),
+                                    get_var_ptr(model, modelname, "X"))
+    return BachModflowExchange(bach,
+                               simulation,
+                               exchanges,
+                               Dict(i => 0.0 for i in bach_ids),
+                               Dict(i => 0.0 for i in bach_ids),
+                               Dict(i => 0.0 for i in bach_ids))
 end
- 
 
 function exchange_bach_to_modflow!(m::BachModflowExchange)
     for exchange in m.exchanges
@@ -377,7 +360,6 @@ function exchange_bach_to_modflow!(m::BachModflowExchange)
     end
     return
 end
-    
 
 function exchange_modflow_to_bach!(m::BachModflowExchange)
     infiltration = m.basin_infiltration
@@ -387,7 +369,6 @@ function exchange_modflow_to_bach!(m::BachModflowExchange)
     end
     return
 end
-
 
 function update!(m::BachModflowExchange)
     update!(m.modflow)

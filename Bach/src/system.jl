@@ -125,12 +125,11 @@ function LSW(; name, S, lsw_level, lsw_area)
     compose(ODESystem(eqs, t, vars, []; name), x, s)
 end
 
-function GeneralUser(; name, S)
+function GeneralUser(; name)
     @named x = FluidQuantityPort()
     @named s = Storage(; S)
 
-    vars = @variables(S(t)=S,
-                      abs(t)=0,)
+    vars = @variables(abs(t)=0,)
     pars = @parameters(alloc=0.0,
                        demand=0.0,
                        prio=0.0,

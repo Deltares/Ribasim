@@ -58,15 +58,13 @@ end
 # subset of parameters that we possibly have forcing data for
 # map from variable symbols from Bach.parsename to forcing.variable symbols
 # TODO make this systematic such that we don't need a manual mapping anymore
-const parvars = Dict{Symbol, Symbol}(
-    Symbol("agric.demand") => :demand_agriculture,
-    Symbol("agric.prio") => :priority_agriculture,
-    Symbol("lsw.P") => :precipitation,
-    Symbol("lsw.E_pot") => :evaporation,
-    Symbol("lsw.infiltration") => :infiltration,
-    Symbol("lsw.drainage") => :drainage,
-    Symbol("lsw.urban_runoff") => :urban_runoff,
-)
+const parvars = Dict{Symbol, Symbol}(Symbol("agric.demand") => :demand_agriculture,
+                                     Symbol("agric.prio") => :priority_agriculture,
+                                     Symbol("lsw.P") => :precipitation,
+                                     Symbol("lsw.E_pot") => :evaporation,
+                                     Symbol("lsw.infiltration") => :infiltration,
+                                     Symbol("lsw.drainage") => :drainage,
+                                     Symbol("lsw.urban_runoff") => :urban_runoff)
 
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
@@ -87,12 +85,10 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         error("lsw_ids is empty")
     elseif n_lsw == 1 && !haskey(config, "network_path")
         # network_path is optional for size 1 networks
-        (
-            graph = DiGraph(1),
-            node_table = (; x=[NaN], y=[NaN],location=lsw_ids),
-            edge_table = (; fractions=[1.0]),
-            crs = nothing,
-        )
+        (graph = DiGraph(1),
+         node_table = (; x = [NaN], y = [NaN], location = lsw_ids),
+         edge_table = (; fractions = [1.0]),
+         crs = nothing)
     else
         read_ply(config["network_path"])
     end

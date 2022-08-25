@@ -111,7 +111,8 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
 end
 
 # create a bach timeseries input from the mozart water balance output
-function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String}; flipsign=false)
+function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String};
+                       flipsign = false)
     # convert m3/timestep to m3/s for bach
     v = mzwb[!, col] ./ mzwb.period
     if flipsign
@@ -120,7 +121,7 @@ function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String}; flip
     ForwardFill(datetime2unix.(mzwb.time_start), v)
 end
 
-function create_dict(mzwb::DataFrame, col::Union{Symbol, String}; flipsign=false)
+function create_dict(mzwb::DataFrame, col::Union{Symbol, String}; flipsign = false)
     dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for (key, df) in pairs(groupby(mzwb, :lsw))
         series = create_series(df, col; flipsign)

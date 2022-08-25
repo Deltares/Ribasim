@@ -227,7 +227,7 @@ Base.haskey(reg::Register, sym) = haskey(reg.sysnames, sym)
 
 Return a time interpolating function for the given symbol or symbolic term.
 """
-function interpolator(reg::Register, sym, scale=1)::Function
+function interpolator(reg::Register, sym, scale = 1)::Function
     (; sysnames, integrator, param_hist) = reg
     sol = integrator.sol
     s = getname(sym)
