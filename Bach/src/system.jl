@@ -200,3 +200,17 @@ function Bifurcation(; name, fraction_b)
                    c.Q ~ (1 - fraction_b) * a.Q]
     compose(ODESystem(eqs, t, [], pars; name), a, b, c)
 end
+
+function LevelLink(; name, cond)
+    @named a = FluidQuantityPort()
+    @named b = FluidQuantityPort()
+
+    pars = @parameters cond = cond
+
+    eqs = Equation[
+        # conservation of flow
+        a.Q + b.Q ~ 0
+        a.Q ~ cond * (a.h - b.h)
+    ]
+    compose(ODESystem(eqs, t, [], pars; name), a, b)
+end

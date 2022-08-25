@@ -70,9 +70,13 @@ function create_sys_dict(lsw_ids::Vector{Int},
             end
 
         else
+            # TODO user provided conductance
+            @named link = Bach.LevelLink(; cond=1e-2)
+            push!(eqs, connect(lsw.x, link.a))
+
             @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
             push!(eqs, connect(lsw.x, levelcontrol.a))
-            all_components = [lsw, levelcontrol]
+            all_components = [lsw, link, levelcontrol]
 
             for user in lswusers
                 # Locally allocated water
@@ -115,20 +119,21 @@ function create_district(lsw_ids::Vector{Int},
 
         n_out = length(out_vertices)
         if n_out == 0
+            name = Symbol("headboundary_", lsw_id)
+            # h value on the boundary is not used, but needed as BC
+            headboundary = Bach.HeadBoundary(; name, h = 0.0)
+            push!(headboundaries, headboundary)
             if type == 'V'
-                name = Symbol("headboundary_", lsw_id)
-                # h value on the boundary is not used, but needed as BC
-                headboundary = Bach.HeadBoundary(; name, h = 0.0)
-                push!(headboundaries, headboundary)
                 push!(eqs, connect(lsw_sys.weir.b, headboundary.x))
+            else
+                push!(eqs, connect(lsw_sys.link.b, headboundary.x))
             end
         elseif n_out == 1
             out_lsw = only(out_lsws)
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, out_lsw.lsw.x))
             else
-                # TODO put conductance in between
-                push!(eqs, connect(lsw_sys.lsw.x, out_lsw.lsw.x))
+                push!(eqs, connect(lsw_sys.link.b, out_lsw.lsw.x))
             end
         elseif n_out == 2
             # create a Bifurcation with a fixed fraction
@@ -145,7 +150,7 @@ function create_district(lsw_ids::Vector{Int},
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
             else
-                push!(eqs, connect(lsw_sys.lsw.x, bifurcation.a))
+                push!(eqs, connect(lsw_sys.link.b, bifurcation.a))
             end
             push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
             push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))
