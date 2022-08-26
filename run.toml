@@ -1,14 +1,17 @@
 starttime = 2019-01-01
-# endtime = 2019-02-01
-endtime = 2021-01-01
+endtime = 2019-01-05
+# endtime = 2021-01-01
+
+# TODO support
+levelcontrol = false
 
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
 saveat = 86400.0
 
 # path to the UGrid NetCDF with the network, profiles, user and forcing data
-# lsw_ids = [151358]
-lsw_ids = [151358, 151371, 151309]
+lsw_ids = [151358]
+# lsw_ids = [151358, 151371, 151309]
 # lsw_ids = [200164]
 # lsw_ids = [200164, 200165]
 
@@ -37,3 +40,37 @@ network_path = "data/input/6/network.ply"
 #        151595, 151598, 151610, 151613, 151626, 151627, 151629, 151633,
 #        151690, 151707
 # ]
+
+# entire district around de Tol
+# lsw_ids = [
+#        200011, 200025, 200028, 200031, 200032, 200033, 200034, 200035,
+#        200036, 200088, 200093, 200099, 200101, 200105, 200111, 200120,
+#        200121, 200122, 200142, 200143, 200144, 200147, 200148, 200149,
+#        200150, 200151, 200154, 200155, 200156, 200164, 200165, 991024
+# ]
+
+[modflow]
+simulation = "data/hupsel-steady-state/mfsim.nam"
+mode = "sequential"
+timestep = 86400.0
+
+[modflow.models]
+
+[modflow.models.gwf]
+type = "gwf"
+dataset = "d:/repo/bach/modflow/volume_level_profile-hupsel.nc"
+basins = "lsw_id"
+
+[[modflow.models.gwf.bounds]]
+river = "RIV_P"
+drain = "DRN_P"
+profile = "profile_primary"
+
+[[modflow.models.gwf.bounds]]
+river = "RIV_S"
+drain = "DRN_S"
+profile = "profile_secondary"
+
+[[modflow.models.gwf.bounds]]
+drain = "DRN_T"
+profile = "profile_tertiary"

@@ -55,6 +55,38 @@ function find_param_index(variable, location, p_vars, p_locs)
     return param_index
 end
 
+"Get the indices of modflow-coupled LSWs into the system state vector"
+function find_volume_index(mf_locs, u_vars, u_locs)
+    volume_index = zeros(Int, length(mf_locs))
+
+    for (i, mf_loc) in enumerate(mf_locs)
+        for (j, (u_var, u_loc)) in enumerate(zip(u_vars, u_locs))
+            if (u_var, u_loc) == (Symbol("lsw.S"), mf_loc)
+                volume_index[i] = j
+            end
+        end
+        @assert volume_index[i] != 0
+    end
+    return volume_index
+end
+
+function find_modflow_indices(mf_locs, p_vars, p_locs)
+    drainage_index = zeros(Int, length(mf_locs))
+    infiltration_index = zeros(Int, length(mf_locs))
+
+    for (i, mf_loc) in enumerate(mf_locs)
+        for (j, (p_var, p_loc)) in enumerate(zip(p_vars, p_locs))
+            if (p_var, p_loc) == (Symbol("lsw.drainage"), mf_loc)
+                drainage_index[i] = j
+            elseif (p_var, p_loc) == (Symbol("lsw.infiltration"), mf_loc)
+                infiltration_index[i] = j
+            end
+        end
+        @assert drainage_index[i] != 0
+        @assert infiltration_index[i] != 0
+    end
+    return drainage_index, infiltration_index
+end
 # subset of parameters that we possibly have forcing data for
 # map from variable symbols from Bach.parsename to forcing.variable symbols
 # TODO make this systematic such that we don't need a manual mapping anymore
@@ -389,10 +421,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # take only the forcing data we need, and add the system's parameter index
     # split out the variables and locations to make it easier to find the right p_symbol index
     p_symbol = sysnames.p_symbol
-    p_vars = [get(parvars, Bach.parsename(p)[1], :none) for p in p_symbol]
-    p_locs = getindex.(Bach.parsename.(p_symbol), 2)
+    u_symbol = sysnames.u_symbol
+    pf_vars = [get(parvars, Bach.parsename(p)[1], :none) for p in p_symbol]
+    pf_locs = getindex.(Bach.parsename.(p_symbol), 2)
 
-    param_index = find_param_index(forcing.variable, forcing.location, p_vars, p_locs)
+    param_index = find_param_index(forcing.variable, forcing.location, pf_vars, pf_locs)
     used_param_index = filter(!=(0), param_index)
     used_rows = findall(!=(0), param_index)
     # consider usign views here
@@ -416,25 +449,34 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     # initialize Modflow model
-    # config = TOML.parsefile("c:/src/bach/modflow/couple.toml")
     config_modflow = config["modflow"]
     Δt_modflow = Float64(config_modflow["timestep"])
     bme = BachModflowExchange(config_modflow, lsw_ids);
+
+    # get the index into the system state vector for each coupled LSW
+    mf_locs = collect(keys(bme.basin_volume))
+    u_vars = getindex.(Bach.parsename.(u_symbol), 1)
+    u_locs = getindex.(Bach.parsename.(u_symbol), 2)
+    volume_index = find_volume_index(mf_locs, u_vars, u_locs)
+
+    # similarly for the index into the system parameter vector
+    pmf_vars = getindex.(Bach.parsename.(p_symbol), 1)
+    pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
+    drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
 
     start_time = BMI.get_start_time(bme.modflow.bmi)
     current_time = BMI.get_current_time(bme.modflow.bmi)
     end_time = BMI.get_end_time(bme.modflow.bmi)
     @info "Modflow is initialized" start_time current_time end_time
 
-    # captures Δt_modflow
+    # captures volume_index, drainage_index, infiltration_index, bme, tspan
     function exchange_modflow!(integrator)
-        (; t, u, p, sol) = integrator
+        (; t, u, p) = integrator
         println("mf6_ex ", Date(unix2datetime(t)))
 
         # set basin_volume from bach
-        for (lsw_id_state, s) in zip(lsw_ids_state, u)
-            bme.basin_volume[lsw_id_state] = s
-        end
+        # mutate the underlying vector, we know the keys are equal
+        bme.basin_volume.values .= u[volume_index]
 
         # convert basin_volume to modflow levels
         exchange_bach_to_modflow!(bme)
@@ -448,10 +490,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
         # put basin_infiltration and basin_drainage into bach
         # convert modflow m3/d to bach m3/s, both positive
-        for ((lsw, infil), drain) in zip(pairs(basin_infiltration), basin_drainage)
-            # like update_forcings!
-            # TODO remove infiltration and drainage from forcing
-        end
+        # TODO don't use infiltration and drainage from forcing
+        p[drainage_index] .= bme.basin_drainage.values ./ 86400.0
+        p[infiltration_index] .= bme.basin_infiltration.values ./ 86400.0
     end
 
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
@@ -467,7 +508,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                       abstol = 1e-9,
                       reltol = 1e-9)
 
-    return Register(integrator, param_hist, sysnames)
+    return Register(integrator, param_hist, sysnames, bme)
 end
 
 function BMI.update(reg::Register)

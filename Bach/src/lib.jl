@@ -203,12 +203,14 @@ struct Register{T}
     integrator::T  # SciMLBase.AbstractODEIntegrator
     param_hist::ForwardFill
     sysnames::Names
+    exchange::Union{BachModflowExchange,Nothing}
     function Register(integrator::T,
                       param_hist,
-                      sysnames) where {T <: SciMLBase.AbstractODEIntegrator}
+                      sysnames,
+                      exchange) where {T <: SciMLBase.AbstractODEIntegrator}
         @assert length(integrator.u) == length(sysnames.u_syms)
         @assert length(integrator.p) == length(sysnames.p_syms)
-        new{T}(integrator, param_hist, sysnames)
+        new{T}(integrator, param_hist, sysnames, exchange)
     end
 end
 

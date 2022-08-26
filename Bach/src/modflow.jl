@@ -305,14 +305,13 @@ function update!(sim::Modflow6Simulation, first_step)
 end
 
 function BachModflowExchange(config, bach_ids)
-    mf6_config = config["modflow6"]
-    directory = dirname(mf6_config["simulation"])
-    cd(directory)
+    directory = dirname(config["simulation"])
+    cd(directory)  # needed for modflow to run
     model = BMI.initialize(MF.ModflowModel)
     MF.prepare_time_step(model, 0.0)
 
     exchanges = []
-    for (modelname, model_config) in mf6_config["models"]
+    for (modelname, model_config) in config["models"]
         model_config["type"] != "gwf" && error("Only gwf models are supported")
         path_dataset = model_config["dataset"]
         !isfile(path_dataset) && error("Dataset not found")
@@ -342,19 +341,19 @@ function BachModflowExchange(config, bach_ids)
     end
 
     # TODO: multiple models
-    (modelname, _) = first(mf6_config["models"])
+    (modelname, _) = first(config["models"])
     simulation = Modflow6Simulation(
         model,
         only(get_var_ptr(model, "SLN_1", "MXITER")),
         get_var_ptr(model, modelname, "X")
     )
+    n = length(bach_ids)
     return BachModflowExchange(
-        bach,
         simulation,
         exchanges,
-        dictionary(i => 0.0 for i in bach_ids),
-        dictionary(i => 0.0 for i in bach_ids),
-        dictionary(i => 0.0 for i in bach_ids),
+        Dictionary(bach_ids, zeros(n)),
+        Dictionary(bach_ids, zeros(n)),
+        Dictionary(bach_ids, zeros(n)),
     )
 end
 

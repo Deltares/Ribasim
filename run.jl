@@ -12,13 +12,21 @@ using SciMLBase
 using Graphs
 
 ## input files
+
+# always run all
+cd(@__DIR__)
 config = TOML.parsefile("run.toml")
 reg = BMI.initialize(Bach.Register, config)
+BMI.finalize(reg.exchange.modflow.bmi)
+
+##
 println("solve! ", Time(now()))
 @time solve!(reg.integrator)  # solve it until the end
 println(reg)
+# finalize modflow, no file output otherwise
+BMI.finalize(reg.exchange.modflow.bmi)
 
-fig_s = Duet.plot_series(reg, config["lsw_ids"][1]; level = true)
+# fig_s = Duet.plot_series(reg, config["lsw_ids"][1]; level = true)
 
 ## plot settings
 ylims = (-0.2e6, 1.2e6)

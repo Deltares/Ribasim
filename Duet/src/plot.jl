@@ -270,6 +270,7 @@ function plot_series(reg::Bach.Register,
     ylabel = level ? "water level / m + NAP" : "storage volume / m³"
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
 
+    # TODO plot users/agriculture
     name = Symbol(:sys_, lsw_id, :₊lsw₊)
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)), label = "precipitation")
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_eact), -1),
