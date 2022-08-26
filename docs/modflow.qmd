@@ -302,4 +302,50 @@ in this case for the sake simplicity.
 : Volume-level table for a single cell in the Hupsel basin. {#tbl-hupsel-v-h}
 
 Image ... shows the volume of the first row of the cell based input for the
-primary system. Symbology is set to unique values
+primary system. Symbology is set to unique values.
+
+# Test case: Hupsel
+
+To test the coupling, the following simulations have been setup and run:
+
+1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
+  differing groundwater recharge values.
+2. A coupled run where the MODFLOW6 stages are updated through the
+
+From these tests, we expect the following behavior:
+
+1. Drainage terms should remain largely the same when the water level is lowered in a steady-state:
+  the amount of recharge is fixed, and this is locally drained.
+2. In case of negative recharge (evapotranspiration), infiltration occurs in the surface waters.
+  Infiltration should be zero when the basin volume is 0.
+
+Figure ... shows the water balance of steady-state for submodel of the
+LHM that has been by selecting the cells belonging to the district containing
+the Hupsel catch, the Berkel. The Hupsel basin show the expected behavior:
+in terms of incoming flows, most is precipitation with a minor part lateral
+inflow from higher areas. In terms of outgoing flows, most of the precipitation
+ends up in the surface water, primarily in the many ditches of the tertiary
+system. Only a relatively small part of the water leaves the basin via the
+groundwater. Interbasin flows through the groundwater form such a minor role,
+as the aquifer is thin and transmissivity is limited.
+
+## Budgets
+
+Table ... shows the budgets computed by MODFLOW6 per primary, secondary, and
+tertiary system. These are compared to the budget computed by the coupling
+procedure, which uses equation ...
+
+As expected, these numbers match exactly.
+
+## Zero volume
+
+# Test case: de Tol
+
+Figure ... shows the water balance of steady-state for a submodel of the LHM
+for the Polder de Tol and its surroundings. While groundwater recharge is the
+dominant in going flow, lateral groundwater flow (over the entire depth of
+the groundwater model) is a sizable inflow for the area; the larger lateral
+inflow shows that De Tol is a net receiver of groundwater. In contrast to the
+Hupsel, the tertiary system is almost entirely absent: drainage occurs not
+through ephemeral tertiary ditches, but by the permanently water-bearing
+ditches of the primary and secondary system instead. 

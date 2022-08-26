@@ -1,4 +1,5 @@
 using NCDatasets
+using Dictionaries
 import BasicModelInterface as BMI
 import ModflowInterface as MF
 import DataInterpolations: LinearInterpolation
@@ -62,7 +63,7 @@ function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
 end
 
 function set_level!(boundary::ModflowDrainagePackage, index, level)
-    boundary.drainage.elevation[index] = level
+    boundary.elevation[index] = level
     return
 end
 
@@ -230,18 +231,21 @@ Iterate over every node of the boundary, and:
 * Set the level as the drainage elevation / river stage
 
 """
-function set_modflow_levels!(exchange, lsw_volumes)
+function set_modflow_levels!(exchange, basin_volume)
     boundary = exchange.boundary
     profile = exchange.profile
-    for i in eachindex(lsw.lsw_id)
+    for i=eachindex(lsw.lsw_id)
         lsw_id = profile.lsw_id[i]
         boundary_index = profile.boundary_index[i]
         lsw_volume = lsw_volumes[lsw_id]
-        nodelevel = LinearInterpolation(view(profile.volume[:, i]),
-                                        view(profile.level[:, i]))(lsw_volume)
+        nodelevel = LinearInterpolation(
+            view(profile.volume[:, i]),
+            view(profile.level[:, i]),
+        )(lsw_volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
 end
+
 
 function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     boundary = exchange.boundary
@@ -258,6 +262,7 @@ function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     end
     return
 end
+
 
 struct BoundaryExchange{B}
     boundary::B
@@ -276,15 +281,16 @@ struct BachModflowExchange
     bach::BachModel
     modflow::Modflow6Simulation
     exchanges::Vector{BoundaryExchange}
-    basin_volume::Dict{Int, Float64}
-    basin_infiltration::Dict{Int, Float64}
-    basin_drainage::Dict{Int, Float64}
+    basin_volume::Dictionary{Int, Float64}
+    basin_infiltration::Dictionary{Int, Float64}
+    basin_drainage::Dictionary{Int, Float64}
 end
 
-function update!(sim::Modflow6Simulation)
+
+function update!(sim::Modflow6Simulation, firstep)
     COMPONENT_ID = 1
     model = sim.bmi
-    MF.prepare_time_step(model, 0.0)
+    !firststep && MF.prepare_time_step(model, 0.0)
     MF.prepare_solve(model, COMPONENT_ID)
 
     converged = false
@@ -297,8 +303,8 @@ function update!(sim::Modflow6Simulation)
     end
     !converged && error("mf6: failed to converge")
 
-    MF.finalize_time_step(model)
     MF.finalize_solve(model, COMPONENT_ID)
+    MF.finalize_time_step(model)
     return
 end
 
@@ -343,29 +349,49 @@ function BachModflowExchange(config, bach_ids)
 
     # TODO: multiple models
     (modelname, _) = first(mf6_config["models"])
-    simulation = Modflow6Simulation(model,
-                                    only(get_var_ptr(model, "SLN_1", "MXITER")),
-                                    get_var_ptr(model, modelname, "X"))
-    return BachModflowExchange(bach,
-                               simulation,
-                               exchanges,
-                               Dict(i => 0.0 for i in bach_ids),
-                               Dict(i => 0.0 for i in bach_ids),
-                               Dict(i => 0.0 for i in bach_ids))
+    simulation = Modflow6Simulation(
+        model,
+        only(get_var_ptr(model, "SLN_1", "MXITER")),
+        get_var_ptr(model, modelname, "X")
+    )
+    return BachModflowExchange(
+        bach,
+        simulation,
+        exchanges,
+        dictionary(i => 0.0 for i in bach_ids),
+        dictionary(i => 0.0 for i in bach_ids),
+        dictionary(i => 0.0 for i in bach_ids),
+    )
 end
 
 function exchange_bach_to_modflow!(m::BachModflowExchange)
     for exchange in m.exchanges
-        set_modflow_levels!(exchange, m.basin_volumes)
+        set_modflow_levels!(exchange, m.basin_volume)
     end
     return
 end
 
 function exchange_modflow_to_bach!(m::BachModflowExchange)
+
     infiltration = m.basin_infiltration
     drainage = m.basin_drainage
+    head = m.modflow.head
+
+    map(zero, infiltration)
+    map(zero, drainage)
+    
     for exchange in m.exchanges
-        collect_modflow_budgets!(drainage, infiltration, exchange, m.modflow.head)
+        boundary = exchange.boundary
+        profile = exchange.profile
+        budget!(boundary, head)
+        for (i, basin_id) in zip(profile.boundary_index, profile.basin_id)
+            discharge = boundary.budget[i]
+            if discharge > 0
+                infiltration[basin_id] += discharge
+            else
+                drainage[basin_id] += abs(discharge)
+            end
+        end
     end
     return
 end
