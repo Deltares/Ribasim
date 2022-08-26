@@ -1,5 +1,6 @@
 using TOML
 include("run-mf6.jl")
+import BasicModelInterface as BMI
 
 # Standard run
 cd("c:/src/bach/modflow")

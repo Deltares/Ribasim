@@ -234,14 +234,14 @@ Iterate over every node of the boundary, and:
 function set_modflow_levels!(exchange, basin_volume)
     boundary = exchange.boundary
     profile = exchange.profile
-    for i=eachindex(lsw.lsw_id)
-        lsw_id = profile.lsw_id[i]
+    for i=eachindex(profile.basin_id)
+        basin_id = profile.basin_id[i]
         boundary_index = profile.boundary_index[i]
-        lsw_volume = lsw_volumes[lsw_id]
+        volume = basin_volume[basin_id]
         nodelevel = LinearInterpolation(
-            view(profile.volume[:, i]),
-            view(profile.level[:, i]),
-        )(lsw_volume)
+            view(profile.level, :, i),
+            view(profile.volume,: , i),
+        )(volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
 end
@@ -287,10 +287,10 @@ struct BachModflowExchange
 end
 
 
-function update!(sim::Modflow6Simulation, firstep)
+function update!(sim::Modflow6Simulation, first_step)
     COMPONENT_ID = 1
     model = sim.bmi
-    !firststep && MF.prepare_time_step(model, 0.0)
+    !first_step && MF.prepare_time_step(model, 0.0)
     MF.prepare_solve(model, COMPONENT_ID)
 
     converged = false
@@ -396,8 +396,8 @@ function exchange_modflow_to_bach!(m::BachModflowExchange)
     return
 end
 
-function update!(m::BachModflowExchange)
-    update!(m.modflow)
+function update!(m::BachModflowExchange, first_step)
+    update!(m.modflow, first_step)
     exchange_modflow_to_bach!(m)
     update!(m.bach)
     exchange_bach_to_modflow!(m)
