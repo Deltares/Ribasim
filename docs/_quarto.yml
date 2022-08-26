@@ -10,11 +10,14 @@ website:
       - intro.qmd
       - modflow.qmd
       - user_allocation.qmd
+      - demo.ipynb
 
 format:
   html:
     theme: cosmo
     css: styles.css
     toc: true
+    code-fold: true
 
 bibliography: references.bib
+juypter: julia-1.8
