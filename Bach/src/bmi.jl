@@ -416,9 +416,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     # initialize Modflow model
-    Δt_modflow = Float64(config["update_modflow"])
     # config = TOML.parsefile("c:/src/bach/modflow/couple.toml")
     config_modflow = config["modflow"]
+    Δt_modflow = Float64(config_modflow["timestep"])
     bme = BachModflowExchange(config_modflow, lsw_ids);
 
     start_time = BMI.get_start_time(bme.modflow.bmi)
@@ -428,11 +428,30 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # captures Δt_modflow
     function exchange_modflow!(integrator)
-        (; t, p, sol) = integrator
+        (; t, u, p, sol) = integrator
         println("mf6_ex ", Date(unix2datetime(t)))
 
-        # for (i, lsw_id) in enumerate(lsw_ids)
-        # end
+        # set basin_volume from bach
+        for (lsw_id_state, s) in zip(lsw_ids_state, u)
+            bme.basin_volume[lsw_id_state] = s
+        end
+
+        # convert basin_volume to modflow levels
+        exchange_bach_to_modflow!(bme)
+
+        # run modflow timestep
+        first_step = t == tspan[begin]
+        update!(bme.modflow, first_step)
+
+        # sets basin_infiltration and basin_drainage from modflow
+        exchange_modflow_to_bach!(bme)
+
+        # put basin_infiltration and basin_drainage into bach
+        # convert modflow m3/d to bach m3/s, both positive
+        for ((lsw, infil), drain) in zip(pairs(basin_infiltration), basin_drainage)
+            # like update_forcings!
+            # TODO remove infiltration and drainage from forcing
+        end
     end
 
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)

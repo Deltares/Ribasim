@@ -107,7 +107,7 @@ end
 Contains the combined MODFLOW6 River and Drainage package, where the drainage
 package is "stacked" to achieve a differing drainage/infiltration conductance.
 
-See: https://github.com/MODFLOW-USGS/modflow6/issues/419 
+See: https://github.com/MODFLOW-USGS/modflow6/issues/419
 """
 struct ModflowRiverDrainagePackage <: ModflowPackage
     river::ModflowRiverPackage
@@ -275,17 +275,13 @@ struct Modflow6Simulation
     head::Vector{Float64}
 end
 
-struct BachModel end
-
 struct BachModflowExchange
-    bach::BachModel
     modflow::Modflow6Simulation
     exchanges::Vector{BoundaryExchange}
     basin_volume::Dictionary{Int, Float64}
     basin_infiltration::Dictionary{Int, Float64}
     basin_drainage::Dictionary{Int, Float64}
 end
-
 
 function update!(sim::Modflow6Simulation, first_step)
     COMPONENT_ID = 1
@@ -309,8 +305,6 @@ function update!(sim::Modflow6Simulation, first_step)
 end
 
 function BachModflowExchange(config, bach_ids)
-    bach = BachModel()#BMI.initialize(Bach.Register, config)
-
     mf6_config = config["modflow6"]
     directory = dirname(mf6_config["simulation"])
     cd(directory)
@@ -379,7 +373,7 @@ function exchange_modflow_to_bach!(m::BachModflowExchange)
 
     map(zero, infiltration)
     map(zero, drainage)
-    
+
     for exchange in m.exchanges
         boundary = exchange.boundary
         profile = exchange.profile
@@ -393,13 +387,5 @@ function exchange_modflow_to_bach!(m::BachModflowExchange)
             end
         end
     end
-    return
-end
-
-function update!(m::BachModflowExchange, first_step)
-    update!(m.modflow, first_step)
-    exchange_modflow_to_bach!(m)
-    update!(m.bach)
-    exchange_bach_to_modflow!(m)
     return
 end
