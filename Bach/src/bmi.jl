@@ -140,7 +140,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     # captures sysnames
-    function periodic_update!(integrator)
+    function allocate!(integrator)
         # update all forcing
         # exchange with Modflow and Metaswap here
         (; t, p, sol) = integrator
@@ -415,9 +415,30 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
-    preset_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
-    period_cb = PeriodicCallback(periodic_update!, Δt; initial_affect = true)
-    cb = CallbackSet(preset_cb, period_cb)
+    # initialize Modflow model
+    Δt_modflow = Float64(config["update_modflow"])
+    # config = TOML.parsefile("c:/src/bach/modflow/couple.toml")
+    config_modflow = config["modflow"]
+    bme = BachModflowExchange(config_modflow, lsw_ids);
+
+    start_time = BMI.get_start_time(bme.modflow.bmi)
+    current_time = BMI.get_current_time(bme.modflow.bmi)
+    end_time = BMI.get_end_time(bme.modflow.bmi)
+    @info "Modflow is initialized" start_time current_time end_time
+
+    # captures Δt_modflow
+    function exchange_modflow!(integrator)
+        (; t, p, sol) = integrator
+        println("mf6_ex ", Date(unix2datetime(t)))
+
+        # for (i, lsw_id) in enumerate(lsw_ids)
+        # end
+    end
+
+    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
+    allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true)
+    modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
+    cb = CallbackSet(forcing_cb, allocation_cb, modflow_cb)
 
     println("init")
     integrator = init(prob,

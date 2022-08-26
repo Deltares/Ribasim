@@ -22,6 +22,7 @@ using DataInterpolations
 
 export interpolator, Register, ForwardFill
 
+include("modflow.jl")
 include("lib.jl")
 include("system.jl")
 include("construction.jl")
