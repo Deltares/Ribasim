@@ -87,16 +87,6 @@ function find_modflow_indices(mf_locs, p_vars, p_locs)
     end
     return drainage_index, infiltration_index
 end
-# subset of parameters that we possibly have forcing data for
-# map from variable symbols from Bach.parsename to forcing.variable symbols
-# TODO make this systematic such that we don't need a manual mapping anymore
-const parvars = Dict{Symbol, Symbol}(Symbol("agric.demand") => :demand_agriculture,
-                                     Symbol("agric.prio") => :priority_agriculture,
-                                     Symbol("lsw.P") => :precipitation,
-                                     Symbol("lsw.E_pot") => :evaporation,
-                                     Symbol("lsw.infiltration") => :infiltration,
-                                     Symbol("lsw.drainage") => :drainage,
-                                     Symbol("lsw.urban_runoff") => :urban_runoff)
 
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
@@ -418,11 +408,30 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     println("ODAEProblem ", Time(now()))
     prob = ODAEProblem(sim, [], tspan)
 
+    # subset of parameters that we possibly have forcing data for
+    # map from variable symbols from Bach.parsename to forcing.variable symbols
+    # TODO make this systematic such that we don't need a manual mapping anymore
+    paramvars = Dict{Symbol, Symbol}(
+        Symbol("agric.demand") => :demand_agriculture,
+        Symbol("agric.prio") => :priority_agriculture,
+        Symbol("lsw.P") => :precipitation,
+        Symbol("lsw.E_pot") => :evaporation,
+        Symbol("lsw.infiltration") => :infiltration,
+        Symbol("lsw.drainage") => :drainage,
+        Symbol("lsw.urban_runoff") => :urban_runoff)
+
+    run_modflow = get(config, "run_modflow", false)::Bool
+    if run_modflow
+        # these will be provided by modflow
+        pop!(paramvars, Symbol("lsw.drainage"))
+        pop!(paramvars, Symbol("lsw.infiltration"))
+    end
+
     # take only the forcing data we need, and add the system's parameter index
     # split out the variables and locations to make it easier to find the right p_symbol index
     p_symbol = sysnames.p_symbol
     u_symbol = sysnames.u_symbol
-    pf_vars = [get(parvars, Bach.parsename(p)[1], :none) for p in p_symbol]
+    pf_vars = [get(paramvars, Bach.parsename(p)[1], :none) for p in p_symbol]
     pf_locs = getindex.(Bach.parsename.(p_symbol), 2)
 
     param_index = find_param_index(forcing.variable, forcing.location, pf_vars, pf_locs)
@@ -448,26 +457,30 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
-    # initialize Modflow model
-    config_modflow = config["modflow"]
-    Δt_modflow = Float64(config_modflow["timestep"])
-    bme = BachModflowExchange(config_modflow, lsw_ids);
+    if run_modflow
+        # initialize Modflow model
+        config_modflow = config["modflow"]
+        Δt_modflow = Float64(config_modflow["timestep"])
+        bme = BachModflowExchange(config_modflow, lsw_ids);
 
-    # get the index into the system state vector for each coupled LSW
-    mf_locs = collect(keys(bme.basin_volume))
-    u_vars = getindex.(Bach.parsename.(u_symbol), 1)
-    u_locs = getindex.(Bach.parsename.(u_symbol), 2)
-    volume_index = find_volume_index(mf_locs, u_vars, u_locs)
+        # get the index into the system state vector for each coupled LSW
+        mf_locs = collect(keys(bme.basin_volume))
+        u_vars = getindex.(Bach.parsename.(u_symbol), 1)
+        u_locs = getindex.(Bach.parsename.(u_symbol), 2)
+        volume_index = find_volume_index(mf_locs, u_vars, u_locs)
 
-    # similarly for the index into the system parameter vector
-    pmf_vars = getindex.(Bach.parsename.(p_symbol), 1)
-    pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
-    drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
+        # similarly for the index into the system parameter vector
+        pmf_vars = getindex.(Bach.parsename.(p_symbol), 1)
+        pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
+        drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
 
-    start_time = BMI.get_start_time(bme.modflow.bmi)
-    current_time = BMI.get_current_time(bme.modflow.bmi)
-    end_time = BMI.get_end_time(bme.modflow.bmi)
-    @info "Modflow is initialized" start_time current_time end_time
+        start_time = BMI.get_start_time(bme.modflow.bmi)
+        current_time = BMI.get_current_time(bme.modflow.bmi)
+        end_time = BMI.get_end_time(bme.modflow.bmi)
+        @info "Modflow is initialized" start_time current_time end_time
+    else
+        bme = nothing
+    end
 
     # captures volume_index, drainage_index, infiltration_index, bme, tspan
     function exchange_modflow!(integrator)
@@ -497,8 +510,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
     allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true)
-    modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
-    cb = CallbackSet(forcing_cb, allocation_cb, modflow_cb)
+
+    cb = if run_modflow
+        modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
+        CallbackSet(forcing_cb, allocation_cb, modflow_cb)
+    else
+        CallbackSet(forcing_cb, allocation_cb)
+    end
 
     println("init")
     integrator = init(prob,
