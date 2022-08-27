@@ -117,6 +117,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # Δt for periodic update frequency, including user horizons
     Δt = Float64(config["update_timestep"])
+    add_levelcontrol = get(config, "add_levelcontrol", true)::Bool
 
     starttime = DateTime(config["starttime"])
     endtime = DateTime(config["endtime"])
@@ -193,29 +194,32 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             area_sym = sysnames.obs_syms[idx_area]
             area = f(area_sym, sol(t), p, t)
 
-            # water level control
-            Q_wm = 0.0 # initalised
             if type == 'P'
-                # TODO integrate with forcing
-                prio_wm = 0
+                if add_levelcontrol
+                    # TODO integrate with forcing
+                    prio_wm = 0
 
-                # set the Q_wm for the coming day based on the expected storage
-                S = getstate(integrator, Symbol(name, :S))
-                outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
-                target_volume = param(integrator, Symbol(outname, :target_volume))
+                    # set the Q_wm for the coming day based on the expected storage
+                    S = getstate(integrator, Symbol(name, :S))
+                    outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
+                    target_volume = param(integrator, Symbol(outname, :target_volume))
 
-                # what is the expected storage difference at the end of the period
-                # if there is no watermanagement?
-                # this assumes a constant area during the period
-                # TODO add upstream to ΔS calculation
-                ΔS = Δt *
-                     ((area * P) + drainage - infiltration + urban_runoff - (area * E_pot))
-                Q_wm = (S + ΔS - target_volume) / Δt
+                    # what is the expected storage difference at the end of the period
+                    # if there is no watermanagement?
+                    # this assumes a constant area during the period
+                    # TODO add upstream to ΔS calculation
+                    ΔS = Δt *
+                         ((area * P) + drainage - infiltration + urban_runoff -
+                          (area * E_pot))
+                    Q_wm = (S + ΔS - target_volume) / Δt
 
-                # add levelcontrol to users
-                push!(lswusers, :levelcontrol)
-                push!(demandlsw, (-Q_wm)) # make negative to keep consistent with other demands
-                push!(priolsw, prio_wm)
+                    # add levelcontrol to users
+                    push!(lswusers, :levelcontrol)
+                    push!(demandlsw, -Q_wm) # make negative to keep consistent with other demands
+                    push!(priolsw, prio_wm)
+                else
+                    Q_wm = 0.0
+                end
 
                 allocate_P!(;
                             integrator,
@@ -392,7 +396,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     curve_dict = create_curve_dict(profile, lsw_ids)
     sys_dict = create_sys_dict(lsw_ids, types, target_volumes, target_levels,
-                               initial_volumes, all_users; curve_dict)
+                               initial_volumes, all_users; curve_dict, add_levelcontrol)
 
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)

@@ -1,8 +1,8 @@
 starttime = 2019-01-01
-endtime = 2019-01-05
+endtime = 2019-03-01
 # endtime = 2021-01-01
 
-levelcontrol = false  # TODO support
+add_levelcontrol = false
 run_modflow = false
 
 # [s] Δt for periodic update frequency, including user horizons
@@ -10,10 +10,10 @@ update_timestep = 86400.0
 saveat = 86400.0
 
 # path to the UGrid NetCDF with the network, profiles, user and forcing data
-lsw_ids = [151358]
+# lsw_ids = [151358]
 # lsw_ids = [151358, 151371, 151309]
 # lsw_ids = [200164]
-# lsw_ids = [200164, 200165]
+lsw_ids = [200164, 200165]
 
 forcing = "data/input/6/forcing.arrow"
 state = "data/input/6/state.arrow"

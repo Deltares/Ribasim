@@ -40,7 +40,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
                          target_levels::Vector{Float64},
                          initial_volumes::Vector{Float64},
                          all_users::Vector{Vector{Symbol}};
-                         curve_dict)
+                         curve_dict, add_levelcontrol)
     sys_dict = Dict{Int, ODESystem}()
 
     for (i, lsw_id) in enumerate(lsw_ids)
@@ -74,9 +74,13 @@ function create_sys_dict(lsw_ids::Vector{Int},
             @named link = Bach.LevelLink(; cond = 1e-2)
             push!(eqs, connect(lsw.x, link.a))
 
-            @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
-            push!(eqs, connect(lsw.x, levelcontrol.a))
-            all_components = [lsw, link, levelcontrol]
+            all_components = [lsw, link]
+
+            if add_levelcontrol
+                @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
+                push!(eqs, connect(lsw.x, levelcontrol.a))
+                push!(all_components, levelcontrol)
+            end
 
             for user in lswusers
                 # Locally allocated water
