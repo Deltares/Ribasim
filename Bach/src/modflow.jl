@@ -234,18 +234,15 @@ Iterate over every node of the boundary, and:
 function set_modflow_levels!(exchange, basin_volume)
     boundary = exchange.boundary
     profile = exchange.profile
-    for i=eachindex(profile.basin_id)
+    for i in eachindex(profile.basin_id)
         basin_id = profile.basin_id[i]
         boundary_index = profile.boundary_index[i]
         volume = basin_volume[basin_id]
-        nodelevel = LinearInterpolation(
-            view(profile.level, :, i),
-            view(profile.volume,: , i),
-        )(volume)
+        nodelevel = LinearInterpolation(view(profile.level, :, i),
+                                        view(profile.volume, :, i))(volume)
         set_level!(boundary, boundary_index, nodelevel)
     end
 end
-
 
 function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     boundary = exchange.boundary
@@ -262,7 +259,6 @@ function collect_modflow_budgets!(drainage, infiltration, exchange, head)
     end
     return
 end
-
 
 struct BoundaryExchange{B}
     boundary::B
@@ -342,19 +338,15 @@ function BachModflowExchange(config, bach_ids)
 
     # TODO: multiple models
     (modelname, _) = first(config["models"])
-    simulation = Modflow6Simulation(
-        model,
-        only(get_var_ptr(model, "SLN_1", "MXITER")),
-        get_var_ptr(model, modelname, "X")
-    )
+    simulation = Modflow6Simulation(model,
+                                    only(get_var_ptr(model, "SLN_1", "MXITER")),
+                                    get_var_ptr(model, modelname, "X"))
     n = length(bach_ids)
-    return BachModflowExchange(
-        simulation,
-        exchanges,
-        Dictionary(bach_ids, zeros(n)),
-        Dictionary(bach_ids, zeros(n)),
-        Dictionary(bach_ids, zeros(n)),
-    )
+    return BachModflowExchange(simulation,
+                               exchanges,
+                               Dictionary(bach_ids, zeros(n)),
+                               Dictionary(bach_ids, zeros(n)),
+                               Dictionary(bach_ids, zeros(n)))
 end
 
 function exchange_bach_to_modflow!(m::BachModflowExchange)
@@ -365,7 +357,6 @@ function exchange_bach_to_modflow!(m::BachModflowExchange)
 end
 
 function exchange_modflow_to_bach!(m::BachModflowExchange)
-
     infiltration = m.basin_infiltration
     drainage = m.basin_drainage
     head = m.modflow.head

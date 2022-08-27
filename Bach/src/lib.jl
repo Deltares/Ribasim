@@ -203,7 +203,7 @@ struct Register{T}
     integrator::T  # SciMLBase.AbstractODEIntegrator
     param_hist::ForwardFill
     sysnames::Names
-    exchange::Union{BachModflowExchange,Nothing}
+    exchange::Union{BachModflowExchange, Nothing}
     function Register(integrator::T,
                       param_hist,
                       sysnames,

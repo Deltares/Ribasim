@@ -411,14 +411,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # subset of parameters that we possibly have forcing data for
     # map from variable symbols from Bach.parsename to forcing.variable symbols
     # TODO make this systematic such that we don't need a manual mapping anymore
-    paramvars = Dict{Symbol, Symbol}(
-        Symbol("agric.demand") => :demand_agriculture,
-        Symbol("agric.prio") => :priority_agriculture,
-        Symbol("lsw.P") => :precipitation,
-        Symbol("lsw.E_pot") => :evaporation,
-        Symbol("lsw.infiltration") => :infiltration,
-        Symbol("lsw.drainage") => :drainage,
-        Symbol("lsw.urban_runoff") => :urban_runoff)
+    paramvars = Dict{Symbol, Symbol}(Symbol("agric.demand") => :demand_agriculture,
+                                     Symbol("agric.prio") => :priority_agriculture,
+                                     Symbol("lsw.P") => :precipitation,
+                                     Symbol("lsw.E_pot") => :evaporation,
+                                     Symbol("lsw.infiltration") => :infiltration,
+                                     Symbol("lsw.drainage") => :drainage,
+                                     Symbol("lsw.urban_runoff") => :urban_runoff)
 
     run_modflow = get(config, "run_modflow", false)::Bool
     if run_modflow
@@ -461,7 +460,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # initialize Modflow model
         config_modflow = config["modflow"]
         Δt_modflow = Float64(config_modflow["timestep"])
-        bme = BachModflowExchange(config_modflow, lsw_ids);
+        bme = BachModflowExchange(config_modflow, lsw_ids)
 
         # get the index into the system state vector for each coupled LSW
         mf_locs = collect(keys(bme.basin_volume))
@@ -472,7 +471,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # similarly for the index into the system parameter vector
         pmf_vars = getindex.(Bach.parsename.(p_symbol), 1)
         pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
-        drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
+        drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars,
+                                                                  pmf_locs)
 
         start_time = BMI.get_start_time(bme.modflow.bmi)
         current_time = BMI.get_current_time(bme.modflow.bmi)
