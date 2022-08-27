@@ -17,7 +17,7 @@ using Graphs
 cd(@__DIR__)
 config = TOML.parsefile("run.toml")
 reg = BMI.initialize(Bach.Register, config)
-BMI.finalize(reg.exchange.modflow.bmi)
+reg.exchange === nothing || BMI.finalize(reg.exchange.modflow.bmi)
 
 ##
 println("solve! ", Time(now()))

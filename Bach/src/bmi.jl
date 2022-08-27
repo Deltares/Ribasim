@@ -166,7 +166,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # update all forcing
         # exchange with Modflow and Metaswap here
         (; t, p, sol) = integrator
-        # println(Date(unix2datetime(t)))
 
         for (i, lsw_id) in enumerate(lsw_ids)
             lswusers = copy(all_users[i])
@@ -399,13 +398,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
     sys = create_district(lsw_ids, types, graph, fractions, sys_dict)
 
-    println("structural_simplify")
     sim = structural_simplify(sys)
 
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
-    println("ODAEProblem ", Time(now()))
     prob = ODAEProblem(sim, [], tspan)
 
     # subset of parameters that we possibly have forcing data for
@@ -473,11 +470,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
         drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars,
                                                                   pmf_locs)
-
-        start_time = BMI.get_start_time(bme.modflow.bmi)
-        current_time = BMI.get_current_time(bme.modflow.bmi)
-        end_time = BMI.get_end_time(bme.modflow.bmi)
-        @info "Modflow is initialized" start_time current_time end_time
     else
         bme = nothing
     end
@@ -485,7 +477,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # captures volume_index, drainage_index, infiltration_index, bme, tspan
     function exchange_modflow!(integrator)
         (; t, u, p) = integrator
-        println("mf6_ex ", Date(unix2datetime(t)))
 
         # set basin_volume from bach
         # mutate the underlying vector, we know the keys are equal
@@ -518,7 +509,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         CallbackSet(forcing_cb, allocation_cb)
     end
 
-    println("init")
     integrator = init(prob,
                       DE.Rosenbrock23();
                       callback = cb,

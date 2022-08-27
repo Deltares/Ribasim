@@ -2,8 +2,8 @@ starttime = 2019-01-01
 endtime = 2019-01-05
 # endtime = 2021-01-01
 
-# TODO support
-levelcontrol = false
+levelcontrol = false  # TODO support
+run_modflow = false
 
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
@@ -21,6 +21,11 @@ static = "data/input/6/static.arrow"
 profile = "data/input/6/profile.arrow"
 network_path = "data/input/6/network.ply"
 
+# state = "data/input/6/state-mozart.arrow"
+# static = "data/input/6/static-mozart.arrow"
+# profile = "data/input/6/profile-mozart.arrow"
+
+# entire district around Hupsel
 # lsw_ids = [
 #        150006, 150016, 150017, 150018, 151145, 151191, 151196, 151208,
 #        151209, 151213, 151216, 151220, 151225, 151228, 151229, 151232,

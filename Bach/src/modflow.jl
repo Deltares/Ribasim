@@ -288,7 +288,6 @@ function update!(sim::Modflow6Simulation, first_step)
     converged = false
     iteration = 1
     while !converged && iteration <= sim.maxiter
-        @show iteration
         # 1 is solution_id
         converged = MF.solve(model, 1)
         iteration += 1
