@@ -1,0 +1,247 @@
+---
+title: "Water balance equations"
+---
+
+Bach currently simulates the following "natural" water balance terms:
+
+1. Precipitation
+2. Evaporation
+3. Infiltration
+4. Drainage
+5. Urban runoff 
+6. Upstream flow
+7. Downstream flow
+
+Additionally, Bach simulates the following "allocated" water balance terms:
+
+1. General user
+2. Level Control
+3. Flushing
+
+Depending on the type of boundary conditions, Bach requires relation between
+storage volume and wetted area ($A$), and between the storage volume and the
+water level ($h$). These are (currently) represented by piecewise linear
+relationships.
+
+# Natural water balance terms
+## Precipitation
+
+The precipitation term is given by:
+
+$$
+Q_P = P A(S) 
+$$
+
+Where $P$ is the precipitation rate and $A$ is the wetted area. $A$ is a
+function of storage: as the volume of water changes, the area of the free water
+surface may change as well, depending on the slopes of the surface waters. 
+
+## Evaporation
+
+The evaporation term is given by:
+
+$$
+Q_E = E_{pot} A(S) * (0.5 \tanh(S - 50.0) / 10.0) + 0.5
+$$
+
+Where $E_{pot}$ is the potential evaporation rate and $A$ is the wetted area.
+The $(0.5 \tanh(S - 50.0) / 10.0) + 0.5$ term ensures no evaporation occurs
+when $S <= 0$ and is a sigmoid function which provides a smooth gradient as $S
+\rightarrow 0$.
+
+A straightforward formulation $Q_E = \mathrm{max}(E_{pot} A(S),
+0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}$ is $\infty$ at $S =
+0$. A hyperbolic tangent is a commonly used activation function
+[@enwiki:1106669904] to approximate on-off behavior while preserving a smooth
+derivative.
+
+A non-smooth derivative results in extremely small timesteps and long
+computation time: ModelingToolkit identifies the singular behavior and adjusts
+it timestepping. In a physical interpretation, evaporation is switched on or
+off per individual droplet of water. In general, the effect of the sigmoid term
+is negligible, or not even necessary. As a surface water dries, its wetted area
+decreases and so does the evaporative flux. However, for (simplified) cases with
+constant wetted surface (a rectangular profile), evaporation only stops at $S =
+0$.
+
+## Infiltration and Drainage
+
+Infiltration is provided as a lump sum for the basin. If Bach is coupled with
+MODFLOW6, the infiltration is computed as the sum of all **positive** flows of the
+MODFLOW6 boundary conditions in the basin:
+
+$$
+Q_{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
+$$
+
+Where $i$ is the index of the boundary condition, $j$ the MODFLOW6 cell index,
+$n$ the number of boundary conditions, and $m$ the number of MODFLOW6 cells in
+the basin. $Q_{\mathrm{mf6}_{i,j}}$ is the flow computed by MODFLOW6 for cell $j$
+for boundary condition $i$.
+
+Drainage is a lump sump for the basin, and consists of the sum of the absolute
+value of all **negative** flows of the MODFLOW6 boundary conditions in the
+basin.
+
+$$
+Q_{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0) \right|
+$$
+
+The interaction with MODFLOW6 boundary conditions is explained in greater
+detail in the MODFLOW Coupling section of this documentation.
+
+## Upstream and downstream flow
+
+Bach's basins can be connected to each other, and each basin expects an
+explicit connection. Two connections are currently available for inter-basin
+flows:
+
+1. ``OutflowTable``
+2. ``LevelLink``
+
+The flow direction of the basin is not pre-determined: flow directions may
+freely reverse, provided the connection allows it. Currently, a ``LevelLink``
+allows bidirectional flow, but the 
+
+Additionally, two additional "connections" area available for the "outmost"
+basins (external nodes) in a network.
+
+1. ``NoFlowBoundary``
+2. ``HeadBoundary``
+
+### OutflowTable
+
+The OutflowTable is a tabulation of a basin's discharge behavior. It describes
+a piecewise linear relationship between the basin's storage volume and its
+discharge. It can be understood as an emprical description of a basin's
+properties. This can include a weir, but also the lumped hydraulic behavior of the
+upstream channels.
+
+The OutflowTable should indicate at which volume no discharge occurs (the dead
+storage volume). 
+
+:::{.callout-note}
+Currently, the discharge relies only on the basin's volume; it could also use
+the volume of both connected basins to simulate backwater effects, submersion
+of weirs, or even reversal of flows for high precipitation events.
+:::
+
+### LevelLink
+
+A ``LevelLink`` connects two basins together. The flow between the two basins
+is determined by a linear relationship:
+
+$$
+Q = C (h_a - h_b)
+$$
+
+Where $h_a$ is the water level in the first basin, $h_b$ is the water level in
+the second basin, and $C$ is the conductance of the link. A ``LevelLink`` makes
+no assumptions about the direction of the flow: water flows from high to low.
+
+### NoFlowBoundary
+
+This sets the exchange flow to 0.
+
+### HeadBoundary
+
+This sets the water level in the basin to a fixed level; lower or higher level
+result in instantaneous corrective fluxes.
+
+# Allocated water balance terms
+
+Bach has been designed with the functionality to allocate water to different
+users within each basin. The volume allocated is determined by the user demand,
+the available water, and the priority of each user with respect to other users
+within the same basin. The water demands for a given basin can be summarized into
+three user categories. The handling of the allocation of water for different
+user categories varies, as explained in more detail below.
+
+::: {.hidden}
+$$
+ \def\qavail{{Q_\mathit{avail\:vol}}}
+ \def\demwm{{D_{\mathit{wm}}}}
+ \def\demuser{{D_{\mathit{user}}}}
+$$
+:::
+
+## General User
+
+The General User category include the users Agriculture, Industry and Public
+Water supply. These users extract water from the basin and the demand
+($\demuser$) is determined externally.  The source of water allocated to the
+General User is dependent on if the basin is a free-flowing type basin or a
+level-controlled basin.
+
+If the basin is free-flowing, the water source will be the available water within
+the basin. If the basin is level-controlled additional water can be sourced from
+the regional network, should the water available from the basin be insufficient
+to satisfy $\demuser$.
+
+The availability of water ($\qavail$) internally in a basin in a given timestep
+is calculated by @eq-q-avail. This volume is available to be extracted by the
+General Users. In the Bach prototype, additional water from the regional
+network is currently modelled as an unlimited supply.
+
+$$
+\qavail = \frac{(P - E_{pot}) \cdot \mathit{area}}{\mathrm{Δ}t} - \min(0, Q_{infil} - Q_{drain} - Q_{runoff})
+$$ {#eq-q-avail}
+
+The $\qavail$ can be assigned to multiple users in the same basin. Allocation is
+based upon user priority. For a given user, in the case where $\qavail >
+\demuser$, the user demand is satisfied and the remaining $\qavail$ becomes
+available for the user of next highest priority. For a given user, in the case
+where $\demuser > \qavail$ then all of the available water is assigned to the
+user. This results in an allocation shortage and no remaining local water for
+any users of lower priority.
+
+However, as discussed, if the basin is a level-controlled basin, additional water
+can then be sourced from the regional network and is allocated to satisfy the
+allocation shortage of the General User.
+
+The allocation of water is decided intermittently by a separate process. This
+separate process is not all-knowing and it may overextract. Like other water
+balance sinks, negative storage is avoided and smooth numerical behavior is
+ensured via an activation function:
+
+$$
+Q_{user} = Q_{alloc} * (0.5 \tanh(S - 50.0) / 10.0) + 0.5
+$$
+
+## Level Control
+
+A level-controlled basin (`local_surface_water_type = "P"`) has a user demand
+referred to as water management ($\demwm$). The purpose of this demand is to
+maintain the water levels for each basin at a target level. This target levels is
+determined externally. The $\demwm$ is negative if additional water is required
+to increase the water level in the basin, or positive if there is surplus water
+which must be removed to lower the level in the basin. When $\demwm$ is positive
+and there is surplus water, Bach is designed to make any surplus water
+available to General Users within the basin for abstraction. This is modelled by
+adding the $\demwm$ to the $\qavail$ in calculated in @eq-wm.
+
+$$
+\qavail = \demwm
+$$ {#eq-wm}
+
+When the $\demwm$ is negative, the $\demwm$ is allocated first from the basin
+$\qavail$, and then secondly with water from the national network, should the
+local basin water not be sufficient to satisfy $\demwm$. This demand is therefore
+handled similar to that of a General User. In the case that a General User is
+allocated water as a higher priority than the Level Control such that the water
+level of the basin decreases, the $\demwm$ will increase accordingly. However, in
+most cases the demand for Level Control is higher than that of the General
+Users so this does not occur.
+
+## Flushing
+
+The flushing requirement for the basin is a special case of user. Flushing is
+required to maintain water quality in the basin. This is determined externally.
+Water from the national network flows into the basin, and the same volume gets
+removed from the basin back to the national network. This water cannot be
+allocated to other users and there is no net change to the water level in the
+basin or the $\qavail$, see @eq-flushing.
+
+$$
+\mathit{Q_{in}} = -\mathit{Q_{out}}
+$$ {#eq-flushing}

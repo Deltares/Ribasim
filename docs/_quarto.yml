@@ -8,8 +8,8 @@ website:
       - href: index.qmd
         text: Home
       - intro.qmd
+      - equations.qmd
       - modflow.qmd
-      - user_allocation.qmd
       - demo.ipynb
 
 format:

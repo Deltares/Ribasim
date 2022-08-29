@@ -1,13 +1,27 @@
 ---
-title: "Modflow"
+title: "Modflow Coupling"
 ---
-
-# MODFLOW Concepts
 
 Bach has been designed to provide a computationally efficient representation of
 surface water for MODFLOW6. It does so by connecting to basic MODFLOW6 boundary
 conditions: the river and drainage packages.
 
+Bach connects to MODFLOW6 via the Basic Model Interface (BMI) and Extended
+Model Interface (XMI) [@hughes2022modflow]. BMI describes the interface to
+initialize a model, get values from its memory, run a timestep, etc. XMI
+extends this interface to allow much finer control into MODFLOW6's solution
+procedures. We have written a Julia package [@modflowinterface] which
+implements this interface for the Julia programming language. In coupling, Bach
+uses this interface to get the head values, the boundary condition water
+levels, and the budgets term of the MODFLOW6 groundwater model while MODFLOW6
+is running.
+
+Additionally, links can be made with other (BMI/XMI-compliant) processes and
+models. One example of such a link is using the irrigation demand calculated by
+an unsaturated zone model; in the Netherlands Hydrological Instrument MetaSWAP
+provides this demand.
+
+# MODFLOW Concepts
 ## Drainage
 
 The drainage package can be simulated to agricultural drains, ditches, or
@@ -61,11 +75,46 @@ achieved by "stacking" a drainage package on top of a river package with these
 values:
 
 $$
-\begin{aligned}
-h_{drain} = h_{river}
-C_{drain} = C_{river,drn} - C{river,inf}
-\end{aligned}
+\begin{array}{ c l }
+  h_{drain} = h_{river} \\
+  C_{drain} = C_{river,drn} - C_{river,inf}
+\end{array}
 $$
+
+# Coupling
+
+Broadly speaking, three schemes are commonly considered for coupling
+hydrological kernels [@vanwalsum2011integration], [@hughes2012documentation]:
+
+1. Sequential: the first model computes a timestep and calculates a state or flux.
+This is passed on to the second model, which then computes its timestep.
+2. Iterative: the first model computes a timestep and calculates a state or
+flux. This is passed on to the second models, which computes its timestep. This
+results in an updated boundary condition for the first model, which recomputes
+the timestep, then the second model recomputes its timestep, etc. These
+iterations are repeated until some convergence criteria are met.
+3. Fully coupled: all equations (e.g. the governing equations of both
+groundwater flow and surface water flow) are solved at the same time.
+
+Each scheme has its advantages and disadvantages. Numerically speaking, the
+fully coupled approach is most robust, but it effectively means a single
+all-encompassing hydrological kernel. The first scheme is computationally the
+cheapest, but states and fluxes lag one timestep behind, so that mass
+conservation is not guaranteed. For example, based on its river levels,
+MODFLOW6 may compute a infiltration flux. Bach then runs its timestep, and
+finds that given MODFLOW6's infiltration flux, no water is present in the
+surface waters: the infiltration flux has been overestimated by MODFLOW6, and
+mass is not conserved. 
+
+Such an error is avoided in the second scheme: states and fluxes only lag a
+single iteration behind, and the iterations are repeated until the difference
+is negligible. Taking the example from above, the emptying of the surface
+waters would result in lower water levels and recuded infiltration in the
+second iteration. Mass is conserved, but at a higher computational cost.
+
+Currently, we have only implemented the sequential scheme for coupling bach to
+MODFLOW6. However, the iterative solution is relatively easy to implement: it
+is in essence a repeated sequential step.
 
 ## Numerical solution in MODFLOW
 
@@ -120,18 +169,57 @@ the $\phi <= b_{river}$ condition occurs, the flow into the cell is
 controlled only by $h_{river}$ and $b_{river}$ (equal to recharge for the
 linear solution).
 
+## Sequential coupled solution
+
+A coupled run stars by initializing both models and creating the exchange
+information: which MODFLOW6 boundary condition is connected to which Bach
+basin. While the model is running, the model proceeds through time as follows:
+
+1. Bach solves the equations on a basin level; this occurs with adaptive
+timestepping via ModelingToolkit.
+2. At a specified time (in accordance with the MODFLOW6 time discretization),
+the volumes are converted to MODFLOW6 boundary condition levels.
+3. MODFLOW6 runs a timestep.
+4. The drainage and infiltration budgets are computed from MODFLOW6 using the
+equations described above and aggregated per basin.
+5. The aggregated values are set as Bach boundary conditions, and Bach
+solves until the next preset exchange time.
+
+These steps run until the final timestep is finished.
+
 ## Iterative coupled solution
 
-We can use a linearization to efficiently compute the flow from Bach's side as
-well. In the iterative coupled solution, we are solving both MODFLOW6 and Bach
-repeatedly, until they produce same drainage or infiltration (approximately).
-One of Bach's `LocalSurfaceWater`s contains many MODFLOW cells with boundary
-conditions. We could add every boundary condition to Bach's equations, but this
-is costly and cumbersome.
+:::{.callout-note}
+We have not implemented an iterative coupled solution yet. The section below
+describes an approach.
+:::
 
-Linearization allows us to "stack" (superpose) all the different boundary
-conditions into a single, simple equation. In linear form, every equation takes
-the form of:
+The simplest form of a linear solution occurs as follows:
+
+1. MODFLOW6 computes drainage and infiltration flows.
+2. Bach uses these flows to compute a storage volume for the basin.
+3. The volume is translated to a water level for every MODFLOW6 boundary
+condition in the basins.
+4. MODFLOW6 recomputes drainage and infiltration flows with the updated water
+levels, etc.
+
+Such a scheme is not maximally efficient: the discharge and infiltration terms
+are not constant, but are driven by a head difference. This head difference
+depends on the level of the boundary conditions and head of every cell of the
+groundwater model. If the surface waters of a basin empty, the water level will
+decrease and drainage and infiltration flows will change. Ideally, we can
+provide Bach with sufficient information, so that it make a a better estimate
+of drainage and infiltration terms. 
+
+As groundwater flow is often (approximately linear), we can use a linearization
+to more efficiently compute the flow from Bach's side as well. In the iterative
+coupled solution, we are solving both MODFLOW6 and Bach repeatedly, until they
+produce same drainage or infiltration (approximately). One of Bach's basins
+contains many MODFLOW cells with boundary conditions. We could add every
+boundary condition to Bach's equations, but this is costly and cumbersome.
+Fortunately, linearization allows us to "stack" (superpose) all the different
+boundary conditions into a single, simple equation. In linear form, every
+equation takes the form of:
 
 $$
 a = ph + q
@@ -177,6 +265,7 @@ q = -C\phi
 \end{align}
 $$
 
+
 # Assigning MODFLOW water levels
 
 Principally, MODFLOW deals with water levels; Bach deals with water volumes.
@@ -201,10 +290,12 @@ $$
 h = b + d
 $$
 
+Where $h$ is water level, $b$ is the bed elevation, and $d$ is water depth.
+
 It should be obvious that there are many ways to distribute this volume change
 across the adjustment of every boundary condition of every cell. The main
 question is when a volume grows or decreases, how should this volume change be
-distributed across the LSW?
+distributed across the basin?
 
 The best method to find an answer to this question is to run a hydraulic model,
 extract water heights, and compute the total volume. This can then be used as a
@@ -218,134 +309,18 @@ the level will be interpolated.
 Great care is required when parametrizing these volume-level relationships.
 As Bach does not know the properties of the surface water, it can perform
 very limited validation of the volume-level lookup tables. As the total
-volume of the LSW is distributed accross *all* boundary conditions, it
+volume of the basin is distributed accross **all** boundary conditions, it
 should be checked that the change of the water column for every boundary
-condition matches the total volume change of the LSW.
+condition matches the total volume change of the basin.
 :::
 
-In principle, all (stationary!) hydraulic behavior of the LSW can be described
+In principle, all (stationary!) hydraulic behavior of the basin can be described
 approximately by these lookup tables.
 
 ## Parametrization
 
 In coupling Bach to MODFLOW6, relations translating the Bach volume must be
-given for every every cell of every boundary condition. 
-
-## Examples
-
-To get a feeling for the simplifications and the errors of the approximation,
-let's consider three oversimplified hydraulic models:
-
-1. The LSW has a single water level.
-2. The LSW has a single water depth.
-3. The LSW has a water depth that linearly decreases with bed elevation.
-
-To investigate these cases, we will assume a rectangular profile (constant
-wetted area). This allows to create plots of cumulative wetted area versus
-height, so that the area between the water level and the bed elevation equals
-LSW volume.
-
-## Test cases
-
-In our test cases, we will work with the Dutch national groundwater model
-(LHM). For testing, we simplify the top boundary conditions to just three
-surface water "systems", from large to small:
-
-1. Primary
-2. Secondary
-3. Tertiary
-
-(Note: Bach has no knowledge of these systems. Any basin is represented by a
-single volume.)
-
-These systems are be separated due to their relatively small size in comparison
-with relatively coarse cells of the groundwater model: most cells in the LHM
-contain more than one surface water, and are included via representative
-parameters which take the physical scaling into account.
-
-In case of sufficiently small cell sizes, no overlap occurs and all surface
-waters can be represented in a single grid.
-
-For the purposes of testing, we have not created empirical volume-level
-relationships for the surface water of every cell. Instead, we have chosen
-for an (over)simplified representation over the hydraulic properties, which
-makes it easy to verify the behavior of Bach and the coupling procedures:
-
-1. Primary, secondary, and tertiary systems have a rectangular profile: the
-  area of the surface water does not change with water level or volume.
-2. Water depth is constant for a system within a basin.
-3. Water depth increases linearly with volume. (This follows from 1.)
-4. Water depth is distributed across the systems in a geometric progression:
-  when the tertiary system contains 0.1 m of water, the secondary system contains
-0.2 m, and the primary system contains 0.4 m.
-5. Water depth is 0.0 m for all systems when basin volume is 0.0. (This follows from 4.)
-6. The distribution of water occurs according to the surface water area (width
-  times length) used for the LHM parametrization of river bed conductance.
-  
-An example of the resulting parameters for a single cell is shown in
-@tbl-hupsel-v-h. The first row shows the water levels when the basin is empty.
-The level for primary, secondary, and tertiary are equal to the bottom
-elevation of the surface waters. The second row shows the volume and levels for
-water depths of 0.4, 0.2, and 0.1 m. The third row shows the volume and levels
-for a tenfold larger volume. This results in implausible water levels with
-depths of 4.0, 2.0 and 1.0 m; the water level in the primary system is over
-two meters higher than in the tertiary system. In reality, the surface waters
-would overflow and surface ponding would occur; this mechanism is ignored
-in this case for the sake simplicity.
-
-| Volume (m3) | Primary (m NAP) | Secondary (m NAP) | Tertiary (m NAP) |
-|-------------|-----------------|-------------------|------------------|
-| 0.0         | 25.65           | 25.83             | 26.60            |
-| 6843.1      | 26.05           | 26.03             | 26.70            |
-| 68431.0     | 29.65           | 27.83             | 27.60            |
-
-: Volume-level table for a single cell in the Hupsel basin. {#tbl-hupsel-v-h}
-
-Image ... shows the volume of the first row of the cell based input for the
-primary system. Symbology is set to unique values.
-
-# Test case: Hupsel
-
-To test the coupling, the following simulations have been setup and run:
-
-1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
-  differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated through the
-
-From these tests, we expect the following behavior:
-
-1. Drainage terms should remain largely the same when the water level is lowered in a steady-state:
-  the amount of recharge is fixed, and this is locally drained.
-2. In case of negative recharge (evapotranspiration), infiltration occurs in the surface waters.
-  Infiltration should be zero when the basin volume is 0.
-
-Figure ... shows the water balance of steady-state for submodel of the
-LHM that has been by selecting the cells belonging to the district containing
-the Hupsel catch, the Berkel. The Hupsel basin show the expected behavior:
-in terms of incoming flows, most is precipitation with a minor part lateral
-inflow from higher areas. In terms of outgoing flows, most of the precipitation
-ends up in the surface water, primarily in the many ditches of the tertiary
-system. Only a relatively small part of the water leaves the basin via the
-groundwater. Interbasin flows through the groundwater form such a minor role,
-as the aquifer is thin and transmissivity is limited.
-
-## Budgets
-
-Table ... shows the budgets computed by MODFLOW6 per primary, secondary, and
-tertiary system. These are compared to the budget computed by the coupling
-procedure, which uses equation ...
-
-As expected, these numbers match exactly.
-
-## Zero volume
-
-# Test case: de Tol
-
-Figure ... shows the water balance of steady-state for a submodel of the LHM
-for the Polder de Tol and its surroundings. While groundwater recharge is the
-dominant in going flow, lateral groundwater flow (over the entire depth of
-the groundwater model) is a sizable inflow for the area; the larger lateral
-inflow shows that De Tol is a net receiver of groundwater. In contrast to the
-Hupsel, the tertiary system is almost entirely absent: drainage occurs not
-through ephemeral tertiary ditches, but by the permanently water-bearing
-ditches of the primary and secondary system instead. 
+given for every every cell (!) of every boundary condition. These consist of
+piecewise linear relationships between the basin volume and its associated
+water level for the boundary condition in the cell. The MODFLOW6 example cases
+show examples of such a parametrization.
