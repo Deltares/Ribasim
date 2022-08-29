@@ -296,7 +296,10 @@ function plot_series(reg::Bach.Register,
            timespan,
            interpolator(reg, Symbol(name, :urban_runoff)),
            label = "urban_runoff")
-    axislegend(ax1)
+
+    fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
+    #axislegend(ax1, position = :rt)
+    
     hidexdecorations!(ax1, grid = false)
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
@@ -317,6 +320,46 @@ end
 
 function plot_series(reg::Bach.Register, lsw_id::Int; level = false)
     plot_series(reg,
+                lsw_id,
+                reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
+                level)
+end
+
+"Plot timeseries of wm external and LSW source allocation"
+function plot_wm_source(reg::Bach.Register,
+                     lsw_id::Int,
+                     timespan::ClosedInterval{Float64};
+                     level = true)
+    fig = Figure()
+    ylabel = "flow rate / m³ s⁻¹"
+    ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
+
+    # TODO plot users/agriculture
+    name = Symbol(:sys_, lsw_id, :₊lsw₊)
+
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(ax1,
+           timespan,
+           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1),
+           label = "total watermanagement")
+
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a)) && lines!(ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1),
+        label = "LSW sources")
+
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b)) && lines!(ax1,
+           timespan,
+           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b), -1),
+           label = "externally sourced")
+    fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
+
+    #axislegend(ax1)
+    hidexdecorations!(ax1, grid = false)
+    return fig
+end
+
+function plot_wm_source(reg::Bach.Register, lsw_id::Int; level = false)
+    plot_wm_source(reg,
                 lsw_id,
                 reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
                 level)
