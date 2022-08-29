@@ -299,7 +299,7 @@ function plot_series(reg::Bach.Register,
 
     fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
     #axislegend(ax1, position = :rt)
-    
+
     hidexdecorations!(ax1, grid = false)
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
@@ -340,17 +340,17 @@ function plot_wm_source(reg::Bach.Register,
     haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(ax1,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1),
-           label = "total watermanagement")
+           label = "Total watermanagement")
 
     haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a)) && lines!(ax1,
         timespan,
         interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1),
-        label = "LSW sources")
+        label = "LSW sourced")
 
     haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b)) && lines!(ax1,
            timespan,
            interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b), -1),
-           label = "externally sourced")
+           label = "Externally sourced")
     fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
 
     #axislegend(ax1)
