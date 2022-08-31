@@ -244,3 +244,11 @@ basin or the $\qavail$, see @eq-flushing.
 $$
 \mathit{Q_{in}} = -\mathit{Q_{out}}
 $$ {#eq-flushing}
+
+# Numerical solution
+
+Bach uses ModelingToolkit.jl to provide a numerical solution to the water
+balance equations. Changes to forcings or parameters such as precipitation, but
+also the allocated water abstraction is managed through the use of CallBack
+functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW6 are also
+managed via the use of a callback function.
