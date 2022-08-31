@@ -252,3 +252,33 @@ balance equations. Changes to forcings or parameters such as precipitation, but
 also the allocated water abstraction is managed through the use of CallBack
 functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW6 are also
 managed via the use of a callback function.
+
+# Performance
+
+Bach needs to be sufficiently fast to make application on the national scale, with
+~10000 basins, practical. Therefore, whilst developing, we need to be mindful that
+our approach can scale to such a size. To start with a number, currently we can
+simulate a set of 40 connected free-flowing basins for a period of 2 years in about 10
+seconds.
+
+There are many things that can influence the calculations times, for instance:
+
+- [Solver tolerance](https://diffeq.sciml.ai/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect)
+    we currently use a very conservative tolerance of `1e-10`, whereas with larger
+    tolerances step sizes can easily be 3x longer, leading to a 3x speedup.
+- [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/): The `Rosenbrock23`
+    method we use is robust to oscillations and massive stiffness, however other solvers
+    should be tried as well.
+- Forcing: Every time new forcing data is injected into the model, it needs to pause.
+    Moreover, the larger the forcing fluxes are, the bigger the shock to the system,
+    leading to smaller timesteps and thus longer simulation times.
+
+Similarly to other models that solve using a system of equations, like Modflow, if one
+basin takes longer to converge due to extreme forcing, or bad schematization, the system as
+a whole need to iterate longer. It is important to be mindful of this, as poor
+schematization choices can slow down the model.
+
+When scaling up the model, we will need spend some time to strike the right balance between
+error tolerance, schematization and forcing. The SciML software we use has many
+[showcases](https://sciml.ai/showcase/) of large scale applications, as well as
+documentation on how to achieve the optimal performance for your system.
