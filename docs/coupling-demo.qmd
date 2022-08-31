@@ -1,4 +1,8 @@
-## Test cases
+---
+title: "Bach-Modflow Demonstration"
+---
+
+## Example: parametrization
 
 In our test cases, we will work with the Dutch national groundwater model
 (LHM). For testing, we simplify the top boundary conditions to just three
@@ -97,13 +101,62 @@ with the bottom elevation.
 
 ![Water level corresponding to normative basin volume.](https://user-images.githubusercontent.com/13662783/187672663-99b9efd3-5e09-4d6f-bd3a-4180ff5b2ce4.PNG){#fig-grid-level}
 
-# Test case: Hupsel
+## Example: Configuration
+
+An example of the MODFLOW6 section of TOML configuration required for a coupled
+run can be seen below:
+
+```TOML
+[modflow6]
+simulation = "../data/hupsel/mfsim.nam"
+mode = "sequential"
+
+[modflow6.models]
+[modflow6.models.gwf]
+    type = "gwf"
+    dataset = "../data/volume_level_profile-hupsel.nc"
+    basins = "basin_id"
+    
+    [[modflow6.models.gwf.bounds]]
+    river = "RIV_P"
+    drain = "DRN_P"
+    profile = "profile_primary"
+
+    [[modflow6.models.gwf.bounds]]
+    river = "RIV_S"
+    drain = "DRN_S"
+    profile = "profile_secondary"
+
+    [[modflow6.models.gwf.bounds]]
+    drain = "DRN_T"
+    profile = "profile_tertiary"
+```
+
+The section starts by stating the path to the MODFLOW6 simulation name file
+(`simulation`). The next section contains the information regarding the
+MODFLOW6 model(s) to couple to Bach's basins. Per model, a path to the coupling
+parameter dataset is provided (`dataset`), along with the variable to use as
+the basin identification number (`basins`). Next, for every boundary condition
+that should be coupled to Bach, the package names (`river`, `drain`) used by
+MODFLOW6 must be specified (as we look for these names in the MODFLOW6 memory),
+along with the name of the variable in the coupling dataset which provides the
+volume-level relationship (`profile`).
+
+As can be seen in the example, the coupling mechanism supports coupling of: 
+
+1. A single drainage package (`drain` entry).
+2. A single river package (`river` entry).
+3. A combination of river and drainage package (when infiltration conductance
+does not equal drainage conductance) both (`river` and `drain` entry).
+
+
+## Test case: Hupsel
 
 To test the coupling, the following simulations have been setup and run:
 
 1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
   differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated through the
+2. A coupled run where the MODFLOW6 stages are updated by Bach.
 
 From these tests, we expect the following behavior:
 
@@ -122,17 +175,13 @@ system. Only a relatively small part of the water leaves the basin via the
 groundwater. Interbasin flows through the groundwater form such a minor role,
 as the aquifer is thin and transmissivity is limited.
 
-## Budgets
-
 Table ... shows the budgets computed by MODFLOW6 per primary, secondary, and
 tertiary system. These are compared to the budget computed by the coupling
 procedure, which uses equation ...
 
 As expected, these numbers match exactly.
 
-## Zero volume
-
-# Test case: de Tol
+## Test case: de Tol
 
 Figure ... shows the water balance of steady-state for a submodel of the LHM
 for the Polder de Tol and its surroundings. While groundwater recharge is the
@@ -142,9 +191,3 @@ inflow shows that De Tol is a net receiver of groundwater. In contrast to the
 Hupsel, the tertiary system is almost entirely absent: drainage occurs not
 through ephemeral tertiary ditches, but by the permanently water-bearing
 ditches of the primary and secondary system instead. 
-
-Currently, ModelingToolkit takes control of the timestepping. At specified
-times, basin volumes are converted to MODFLOW6 boundary condition levels (via
-so-called ContinuousCallbacks), and the groundwater equations are solved to
-convergence. The drainage and infiltration budgets are then aggregated per
-basin, and set for Bach. Bach then proceends with the next timestep.

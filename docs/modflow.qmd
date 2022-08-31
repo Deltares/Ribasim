@@ -323,5 +323,24 @@ approximately by these lookup tables.
 In coupling Bach to MODFLOW6, relations translating the Bach volume must be
 given **for every every cell** of every boundary condition. These consist of
 piecewise linear relationships between the basin volume and its associated
-water level for the boundary condition in the cell. The MODFLOW6 coupling
-example cases show examples of such a parametrization.
+water level for the boundary condition in the cell.
+
+These values are stored in a netCDF dataset. This dataset must meet the following
+requirements:
+
+1. It must contain a `x` and `y` coordinate. The extent and cell size of these
+coordinates must match the domain of the coupled MODFLOW6 model exactly. 
+2. It must contain a variable (x, y) denoting the basin IDs.
+3. It must contain a volume-level variable (x, y, row, column) for every
+coupled MODFLOW6 boundary condition, describing the volume-level lookup table
+per cell.
+
+:::{.callout-note}
+The `x` and `y` coordinates are valid for structured MODFLOW6 models (DIS).
+Discretized-by-vertices (DISV) and fully unstructured discretization (DISU).
+are not yet supported, but require no fundamental changes: one basin is
+connected to multiple MODFLOW6 cells, and the coupling parameters must match
+the (structured, unstructured) grid of the MODFLOW6 model exactly.
+:::
+
+The MODFLOW6 coupling example cases show examples of such a parametrization.
