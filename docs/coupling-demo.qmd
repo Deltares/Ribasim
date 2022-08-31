@@ -188,7 +188,7 @@ system playing a less dominant role, relatively speaking: as its elevation is
 the highest compared to the primary and secondary system, the head difference
 is reduced strongest for the tertiary system. 
 
-With evapotranspiration excess (-0.05 and 0.1 mm/d; low values are chosen here
+With evapotranspiration (ET) excess (-0.05 and 0.1 mm/d; low values are chosen here
 since most ET would be drawn from storage, which is not available in a
 steady-state model), the surface waters provide mostly inflow, and recharge is
 a negative term. In this case, the secondary system provides a small amount of
@@ -196,17 +196,13 @@ infiltration; most of the water is drawn from the surroundings instead.
 
 ![Water balance of the MODFLOW6 boundary conditions for the Hupsel basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715349-9eee8830-9b03-4a88-b7c9-b16004c694f6.png){#fig-hupsel-gwb-volume0}
 
-@fig-hupsel-gwb-volume0 shows the same model, with 0-basin volume, and
-elevations set equal to bed elevation. Consequently, primary and secondary
-outflow terms are larger for positive groundwater recharge as they drain at a
-lower level and intercept the water before the tertiary system does. Secondly,
-with negative groundwater recharge, no infiltration occurs and the water is
-drawn from the surroundings instead. This shows the coupling mechanism
+@fig-hupsel-gwb-volume0 shows the same model, with 0-basin volume which causes
+water levels to be set equal to bed elevation. Consequently, primary and
+secondary outflow terms are larger for positive groundwater recharge as they
+drain at a lower level and intercept the water before the tertiary system does.
+Secondly, with negative groundwater recharge, no infiltration occurs and the
+water is drawn from the surroundings instead. This shows the coupling mechanism
 adjusting MODFLOW6 water levels succesfully.
-
-:::{.callout-note}
-Add the Bach run with sufficient timesteps
-:::
 
 ## Test case: de Tol
 
@@ -219,7 +215,7 @@ process, but without Bach. This results in volumes of 0.0, so all MODFLOW6
 water levels are set equal to bed elevation.
 3. A coupled run where the water levels are updated by Bach.
 
-![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187720891-798f1f24-8664-492d-a21f-365ed1085ed8.png){#fig-tol-gwb-steady}
+![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769185-f63a5821-dfe8-4d99-b43e-780962e73870.png){#fig-tol-gwb-steady}
 
 @fig-tol-gwb-steady shows the water balance of steady-state for a submodel of
 the LHM for the Polder de Tol and its surroundings. While groundwater recharge
@@ -229,8 +225,15 @@ inflow shows that De Tol is a net receiver of groundwater which is mostly
 discharged through the secondary system. In contrast to the Hupsel, the
 tertiary system is almost entirely absent: drainage occurs not through
 ephemeral tertiary ditches, but by the permanently water-bearing ditches of the
-primary and secondary system. 
+primary and secondary system. Unlike the Hupsel, the water balance does not
+shrink to very small discharges, as there is sizable regional groundwater flow.
 
-:::{.callout-note}
-Fix the nodes not found error
-:::
+![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769180-91f6344c-3489-4200-8a0c-d5e82a28ebaf.png){#fig-tol-gwb-volume0}
+
+@fig-tol-gwb-volume0 shows the same model, with 0-basin volume which causes
+water levels to be set equal to bed elevation. The total discharge is larger:
+the primary and secondary systems are set to lower levels, and so the head
+difference is larger. While De Tol's evapotranspiration excess can be fed by
+the regional groundwater, the primary and secondary ditches also provide some
+part; as expected, they do not feed when the coupling mechanism adjusts
+MODFLOW6's water levels.
