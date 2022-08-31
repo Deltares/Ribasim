@@ -90,7 +90,7 @@ input for the primary system. Symbology is set to unique values. While water
 levels differ per cell in this parametrization, the "normative volume" defined
 above is shared by all cells in a basin.
 
-![Basin normative volume.](https://user-images.githubusercontent.com/13662783/187672671-20d22031-3b50-474a-9ee1-4408c25a4f30.PNG){#fig-grid-volume}
+![Basin normative volume of the primary system.](https://user-images.githubusercontent.com/13662783/187672671-20d22031-3b50-474a-9ee1-4408c25a4f30.PNG){#fig-grid-volume}
 
 @fig-grid-volume shows the water level corresponding to the normative storage
 volume based input for the primary system (it corresponds to the value shown in
@@ -99,7 +99,7 @@ from west to east: as our simplified parametrization assumes a constant water
 depth for all cells in a single system, water levels spatially fall and rise
 with the bottom elevation.
 
-![Water level corresponding to normative basin volume.](https://user-images.githubusercontent.com/13662783/187672663-99b9efd3-5e09-4d6f-bd3a-4180ff5b2ce4.PNG){#fig-grid-level}
+![Water level corresponding to the normative basin volume of the primary system.](https://user-images.githubusercontent.com/13662783/187672663-99b9efd3-5e09-4d6f-bd3a-4180ff5b2ce4.PNG){#fig-grid-level}
 
 ## Example: Configuration
 
@@ -149,14 +149,16 @@ As can be seen in the example, the coupling mechanism supports coupling of:
 3. A combination of river and drainage package (when infiltration conductance
 does not equal drainage conductance) both (`river` and `drain` entry).
 
-
 ## Test case: Hupsel
 
 To test the coupling, the following simulations have been setup and run:
 
 1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
-  differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated by Bach.
+differing groundwater recharge values.
+2. A coupled run where the MODFLOW6 stages are updated by the Bach coupler
+process, but without Bach. This results in volumes of 0.0, so all MODFLOW6
+water levels are set equal to bed elevation.
+3. A coupled run where the water levels are updated by Bach.
 
 From these tests, we expect the following behavior:
 
@@ -165,29 +167,68 @@ From these tests, we expect the following behavior:
 2. In case of negative recharge (evapotranspiration), infiltration occurs in the surface waters.
   Infiltration should be zero when the basin volume is 0.
 
-Figure ... shows the water balance of steady-state for submodel of the
+![Water balance of the MODFLOW6 boundary conditions for the Hupsel basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715341-fd99dc06-2eda-4b84-a201-650dc7220574.png){#fig-hupsel-gwb-steady}
+
+@fig-hupsel-gwb-steady shows the water balance of steady-state for submodel of the
 LHM that has been by selecting the cells belonging to the district containing
-the Hupsel catch, the Berkel. The Hupsel basin show the expected behavior:
-in terms of incoming flows, most is precipitation with a minor part lateral
-inflow from higher areas. In terms of outgoing flows, most of the precipitation
-ends up in the surface water, primarily in the many ditches of the tertiary
-system. Only a relatively small part of the water leaves the basin via the
-groundwater. Interbasin flows through the groundwater form such a minor role,
-as the aquifer is thin and transmissivity is limited.
+the Hupsel catch, the Berkel. 
 
-Table ... shows the budgets computed by MODFLOW6 per primary, secondary, and
-tertiary system. These are compared to the budget computed by the coupling
-procedure, which uses equation ...
+The Hupsel basin show the expected behavior: for a net groundwater recharge of
+1.0 mm/d, most is precipitation with a minor part lateral inflow from higher
+areas. In terms of outgoing flows, most of the precipitation ends up in the
+surface water, primarily in the many ditches of the tertiary system. Only a
+relatively small part of the water leaves the basin via the groundwater.
+Interbasin flows through the groundwater form such a minor role, as the aquifer
+is thin and transmissivity is limited.
 
-As expected, these numbers match exactly.
+Reducing groundwater recharge to 0.5 mm/d reduces all flows, with the tertiary
+system playing a less dominant role, relatively speaking: as its elevation is
+the highest compared to the primary and secondary system, the head difference
+is reduced strongest for the tertiary system. 
+
+With evapotranspiration excess (-0.05 and 0.1 mm/d; low values are chosen here
+since most ET would be drawn from storage, which is not available in a
+steady-state model), the surface waters provide mostly inflow, and recharge is
+a negative term. In this case, the secondary system provides a small amount of
+infiltration; most of the water is drawn from the surroundings instead.
+
+![Water balance of the MODFLOW6 boundary conditions for the Hupsel basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715349-9eee8830-9b03-4a88-b7c9-b16004c694f6.png){#fig-hupsel-gwb-volume0}
+
+@fig-hupsel-gwb-volume0 shows the same model, with 0-basin volume, and
+elevations set equal to bed elevation. Consequently, primary and secondary
+outflow terms are larger for positive groundwater recharge as they drain at a
+lower level and intercept the water before the tertiary system does. Secondly,
+with negative groundwater recharge, no infiltration occurs and the water is
+drawn from the surroundings instead. This shows the coupling mechanism
+adjusting MODFLOW6 water levels succesfully.
+
+:::{.callout-note}
+Add the Bach run with sufficient timesteps
+:::
 
 ## Test case: de Tol
 
-Figure ... shows the water balance of steady-state for a submodel of the LHM
-for the Polder de Tol and its surroundings. While groundwater recharge is the
-dominant in going flow, lateral groundwater flow (over the entire depth of
-the groundwater model) is a sizable inflow for the area; the larger lateral
-inflow shows that De Tol is a net receiver of groundwater. In contrast to the
-Hupsel, the tertiary system is almost entirely absent: drainage occurs not
-through ephemeral tertiary ditches, but by the permanently water-bearing
-ditches of the primary and secondary system instead. 
+To test the coupling, the following simulations have been setup and run:
+
+1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
+differing groundwater recharge values.
+2. A coupled run where the MODFLOW6 stages are updated by the Bach coupler
+process, but without Bach. This results in volumes of 0.0, so all MODFLOW6
+water levels are set equal to bed elevation.
+3. A coupled run where the water levels are updated by Bach.
+
+![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187720891-798f1f24-8664-492d-a21f-365ed1085ed8.png){#fig-tol-gwb-steady}
+
+@fig-tol-gwb-steady shows the water balance of steady-state for a submodel of
+the LHM for the Polder de Tol and its surroundings. While groundwater recharge
+is the dominant ingoing flow, lateral groundwater flow (over the entire depth
+of the groundwater model) is a sizable inflow for the area; the larger lateral
+inflow shows that De Tol is a net receiver of groundwater which is mostly
+discharged through the secondary system. In contrast to the Hupsel, the
+tertiary system is almost entirely absent: drainage occurs not through
+ephemeral tertiary ditches, but by the permanently water-bearing ditches of the
+primary and secondary system. 
+
+:::{.callout-note}
+Fix the nodes not found error
+:::

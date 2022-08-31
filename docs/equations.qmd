@@ -262,7 +262,7 @@ free-flowing basins for a period of 2 years in about 10 seconds.
 
 For a real scaling test we would need to do a national simulation, but we expect these
 computation times not to be problematic, considering that simulating those same 40 basins
-in Modflow takes minutes.
+in MODFLOW6 takes minutes.
 
 There are many things that can influence the calculations times, for instance:
 
@@ -276,7 +276,7 @@ There are many things that can influence the calculations times, for instance:
     Moreover, the larger the forcing fluxes are, the bigger the shock to the system,
     leading to smaller timesteps and thus longer simulation times.
 
-Similarly to other models that solve using a system of equations, like Modflow, if one
+Similarly to other models that solve using a system of equations, like MODFLOW6, if one
 basin takes longer to converge due to extreme forcing, or bad schematization, the system as
 a whole need to iterate longer. It is important to be mindful of this, as poor
 schematization choices can slow down the model.
