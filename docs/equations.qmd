@@ -257,9 +257,12 @@ managed via the use of a callback function.
 
 Bach needs to be sufficiently fast to make application on the national scale, with
 ~10000 basins, practical. Therefore, whilst developing, we need to be mindful that
-our approach can scale to such a size. To start with a number, currently we can
-simulate a set of 40 connected free-flowing basins for a period of 2 years in about 10
-seconds.
+our approach can scale to such a size. We currently simulate a set of 40 connected
+free-flowing basins for a period of 2 years in about 10 seconds.
+
+For a real scaling test we would need to do a national simulation, but we expect these
+computation times not to be problematic, considering that simulating those same 40 basins
+in Modflow takes minutes.
 
 There are many things that can influence the calculations times, for instance:
 
