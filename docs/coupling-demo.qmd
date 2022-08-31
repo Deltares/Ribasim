@@ -107,29 +107,31 @@ An example of the MODFLOW6 section of TOML configuration required for a coupled
 run can be seen below:
 
 ```TOML
-[modflow6]
+[modflow]
 simulation = "../data/hupsel/mfsim.nam"
 mode = "sequential"
+timestep = 86400.0
 
-[modflow6.models]
-[modflow6.models.gwf]
-    type = "gwf"
-    dataset = "../data/volume_level_profile-hupsel.nc"
-    basins = "basin_id"
-    
-    [[modflow6.models.gwf.bounds]]
-    river = "RIV_P"
-    drain = "DRN_P"
-    profile = "profile_primary"
+[modflow.models]
 
-    [[modflow6.models.gwf.bounds]]
-    river = "RIV_S"
-    drain = "DRN_S"
-    profile = "profile_secondary"
+[modflow.models.gwf]
+type = "gwf"
+dataset = "../data/volume_level_profile-hupsel.nc"
+basins = "basin_id"
 
-    [[modflow6.models.gwf.bounds]]
-    drain = "DRN_T"
-    profile = "profile_tertiary"
+[[modflow.models.gwf.bounds]]
+river = "RIV_P"
+drain = "DRN_P"
+profile = "profile_primary"
+
+[[modflow.models.gwf.bounds]]
+river = "RIV_S"
+drain = "DRN_S"
+profile = "profile_secondary"
+
+[[modflow.models.gwf.bounds]]
+drain = "DRN_T"
+profile = "profile_tertiary"
 ```
 
 The section starts by stating the path to the MODFLOW6 simulation name file
