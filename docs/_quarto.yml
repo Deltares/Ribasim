@@ -5,7 +5,6 @@ website:
   title: "Bach"
   navbar:
     left:
-      - intro.qmd
       - equations.qmd
       - modflow.qmd
       - demo.ipynb
@@ -20,3 +19,4 @@ format:
 
 bibliography: references.bib
 juypter: julia-1.8
+number-sections: true
