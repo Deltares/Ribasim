@@ -144,7 +144,7 @@ function create_district(lsw_ids::Vector{Int},
         elseif n_out == 2
             # create a Bifurcation with a fixed fraction
             name = Symbol("bifurcation_", lsw_id)
-            @assert sum(values(fractions[v])) == 1
+            @assert sum(values(fractions[v])) ≈ 1
 
             # the first row's lsw_to becomes b, the second c
             fraction_b = fractions[v][out_lsw_ids[1]]
