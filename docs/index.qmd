@@ -123,9 +123,10 @@ lines between A, B, C, and D) instead.
 
 Multiple basins may exist within the same spatial polygon, representing
 different aspects of the surface water system (perennial ditches, ephemeral
-ditches, or even surface ponding). @fig-p, @fig-s, @fig-t show the primary,
-secondary, and tertiary surface waters in the Hupsel basin (as defined in the
-Mozart LSW's). These systems may represented in multiple ways.
+ditches, or even surface ponding). @fig-p, @fig-s, @fig-t show the 25.0 m
+rasterized primary, secondary, and tertiary surface waters as identified by BRT
+TOP10NL [@pdoktopnl] in the Hupsel basin (as defined in the Mozart LSW's).
+These systems may represented in multiple ways.
 
 ![Hupsel: primary surface water.](https://user-images.githubusercontent.com/13662783/187625163-d0a81bb6-7f55-4ad1-83e2-90ec1ee79740.PNG){#fig-p}
 

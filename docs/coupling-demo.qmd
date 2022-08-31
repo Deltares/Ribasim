@@ -8,20 +8,20 @@ surface water "systems", from large to small:
 2. Secondary
 3. Tertiary
 
-(Note: Bach has no knowledge of these systems. Any basin is represented by a
-single volume.)
+These systems are separated in the groundwater model schematization due to the
+relatively small size of the surface waters (several meters in width) in
+comparison with relatively coarse cells of the groundwater model (250 m): most
+cells in the LHM contain more than one surface water, and are included via
+representative parameters which take the physical scaling into account. In case
+of sufficiently small cell sizes, no overlap occurs and all surface waters can
+be represented in a single grid.
 
-These systems are be separated due to their relatively small size in comparison
-with relatively coarse cells of the groundwater model: most cells in the LHM
-contain more than one surface water, and are included via representative
-parameters which take the physical scaling into account.
-
-In case of sufficiently small cell sizes, no overlap occurs and all surface
-waters can be represented in a single grid.
-
-For the purposes of testing, we have not created empirical volume-level
-relationships for the surface water of every cell. Instead, we have chosen an
-(over)simplified representation over the hydraulic properties, which makes it
+Bach has no knowledge of these systems unless explicitly separated into
+different (sub-)basins. In the examples below, these three systems are
+represented by one basin with a single volume. For the purposes of testing, we
+have not yet created empirical volume-level relationships for the surface water
+of every cell extracted from a hydraulic model. Instead, we have chosen an
+(over)simplified parametrization of the hydraulic properties, which makes it
 easy to verify the behavior of Bach and the coupling procedures:
 
 1. Primary, secondary, and tertiary systems have a rectangular profile: the
@@ -34,7 +34,34 @@ easy to verify the behavior of Bach and the coupling procedures:
 5. Water depth is 0.0 m for all systems when basin volume is 0.0. (This follows from 4.)
 6. The distribution of water occurs according to the surface water area (width
   times length) used for the LHM parametrization of river bed conductance.
-  
+
+For freely draining basins, a simplified storage-discharge relationship has
+been derived as follows:
+
+1. The area of the basin polygon has been multiplied by 1 mm/d (roughly the
+average precipitation excess in the Netherlands). This yields a "normative
+discharge".
+2. A corresponding normative volume has been chosen, corresponding with water
+depths of 0.4, 0.2, and 0.1 m for the primary, secondary, and tertiary surface
+waters respectively.
+3. A dead storage volume has been chosen, corresponding with water depths of
+0.2, 0.1, and 0.05 m for the primary, secondary, and tertiary surface waters
+respectively. The basin only starts discharging when the storage volume exceeds
+this value.
+
+:::{.callout-note}
+Bach is not limited to such oversimplified parametrization! Bach uses
+tabulations and therefore supports arbitrary (piecewise linear) volume-depth
+and volume-discharge relationships.
+:::
+
+A visual representation of this simplified conceptual schematization is given
+in @fig-volume-depth and @fig-volume-discharge.
+
+![Distribution of water depths over the primary, secondary, and tertiary system.](https://user-images.githubusercontent.com/13662783/187665858-d01fd60f-f3c2-4662-af82-cf8acfbe169b.PNG){#fig-volume-depth}
+
+![Discharge as a function of basin storage volume.](https://user-images.githubusercontent.com/13662783/187668931-c04d4126-9208-44f5-bafa-4c5f74a96dc9.PNG){#fig-volume-discharge}
+
 An example of the resulting parameters for a single cell is shown in
 @tbl-hupsel-v-h. The first row shows the water levels when the basin is empty.
 The level for primary, secondary, and tertiary are equal to the bottom
@@ -54,8 +81,21 @@ in the test cases for the sake of simplicity.
 
 : Volume-level table for a single cell in the Hupsel basin. {#tbl-hupsel-v-h}
 
-Image ... shows the volume of the first row of the cell based input for the
-primary system. Symbology is set to unique values.
+@fig-grid-volume shows the volume of the first row of the cell based
+input for the primary system. Symbology is set to unique values. While water
+levels differ per cell in this parametrization, the "normative volume" defined
+above is shared by all cells in a basin.
+
+![Basin normative volume.](https://user-images.githubusercontent.com/13662783/187672671-20d22031-3b50-474a-9ee1-4408c25a4f30.PNG){#fig-grid-volume}
+
+@fig-grid-volume shows the water level corresponding to the normative storage
+volume based input for the primary system (it corresponds to the value shown in
+the first row of the primary colum in @tbl-hupsel-v-h). We see a clear gradient
+from west to east: as our simplified parametrization assumes a constant water
+depth for all cells in a single system, water levels spatially fall and rise
+with the bottom elevation.
+
+![Water level corresponding to normative basin volume.](https://user-images.githubusercontent.com/13662783/187672663-99b9efd3-5e09-4d6f-bd3a-4180ff5b2ce4.PNG){#fig-grid-level}
 
 # Test case: Hupsel
 

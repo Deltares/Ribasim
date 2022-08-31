@@ -17,9 +17,9 @@ levels, and the budgets term of the MODFLOW6 groundwater model while MODFLOW6
 is running.
 
 Additionally, links can be made with other (BMI/XMI-compliant) processes and
-models. One example of such a link is using the irrigation demand calculated by
-an unsaturated zone model; in the Netherlands Hydrological Instrument MetaSWAP
-provides this demand.
+models. One example of such a link is using the surface runoff and the
+agricultural irrigation demand calculated by an unsaturated zone model; in the
+Netherlands Hydrological Instrument MetaSWAP provides this demand.
 
 # MODFLOW Concepts
 ## Drainage
@@ -178,7 +178,8 @@ basin. While the model is running, the model proceeds through time as follows:
 1. Bach solves the equations on a basin level; this occurs with adaptive
 timestepping via ModelingToolkit.
 2. At a specified time (in accordance with the MODFLOW6 time discretization),
-the volumes are converted to MODFLOW6 boundary condition levels.
+the volumes are converted to MODFLOW6 boundary condition levels using a
+Callback function.
 3. MODFLOW6 runs a timestep.
 4. The drainage and infiltration budgets are computed from MODFLOW6 using the
 equations described above and aggregated per basin.
@@ -194,7 +195,7 @@ We have not implemented an iterative coupled solution yet. The section below
 describes an approach.
 :::
 
-The simplest form of a linear solution occurs as follows:
+The simplest form of a iterative solution occurs as follows:
 
 1. MODFLOW6 computes drainage and infiltration flows.
 2. Bach uses these flows to compute a storage volume for the basin.
@@ -208,10 +209,10 @@ are not constant, but are driven by a head difference. This head difference
 depends on the level of the boundary conditions and head of every cell of the
 groundwater model. If the surface waters of a basin empty, the water level will
 decrease and drainage and infiltration flows will change. Ideally, we can
-provide Bach with sufficient information, so that it make a a better estimate
-of drainage and infiltration terms. 
+provide Bach with more information, so that it may estimate drainage and
+infiltration terms better. 
 
-As groundwater flow is often (approximately linear), we can use a linearization
+As groundwater flow is often (approximately) linear, we can use linearization
 to more efficiently compute the flow from Bach's side as well. In the iterative
 coupled solution, we are solving both MODFLOW6 and Bach repeatedly, until they
 produce same drainage or infiltration (approximately). One of Bach's basins
@@ -269,33 +270,33 @@ $$
 # Assigning MODFLOW water levels
 
 Principally, MODFLOW deals with water levels; Bach deals with water volumes.
-The translation from a water volume to a water level should be a relatively
-straightforward one:
+The translation from a water volume to a water level for a single boundary
+condition is straightforward:
 
 $$
-\Delta d = \frac{\Delta V}{A}
-$$
-
-However, the primary complication is that where Bach has **one** volume,
-MODFLOW has many levels to adjust. The sum of all these adjustments times
-their respective areas should result in the LSW volume change:
-
-$$
-\sum_{i=0}^{i=n} \Delta d_i A_i = \Delta V_{LSW}
-$$
-
-and
-
-$$
+\begin{align}
+\Delta d = \frac{\Delta V}{A} \\
 h = b + d
+\end{align}
 $$
 
-Where $h$ is water level, $b$ is the bed elevation, and $d$ is water depth.
+Where $d$ is water depth, $V$ is volume, $A$ is area, $h$ is water level, and
+$b$ is the bed elevation.
+
+However, the primary complication is that where Bach has **one volume**,
+MODFLOW has **many levels** to adjust. The sum of all these adjustments times
+their respective areas should result in the basin volume change:
+
+$$
+\sum_{i=1}^{j=m} \sum_{j=1}^{i=n} \Delta d_{i,j} A_{i,j} = \Delta V_{basin}
+$$
+
+where $i$ is the index of the boundary condition and $j$ the index of the cell.
 
 It should be obvious that there are many ways to distribute this volume change
 across the adjustment of every boundary condition of every cell. The main
-question is when a volume grows or decreases, how should this volume change be
-distributed across the basin?
+question is when the basin volume grows or decreases, how should this volume
+change be distributed across the basin?
 
 The best method to find an answer to this question is to run a hydraulic model,
 extract water heights, and compute the total volume. This can then be used as a
@@ -320,7 +321,7 @@ approximately by these lookup tables.
 ## Parametrization
 
 In coupling Bach to MODFLOW6, relations translating the Bach volume must be
-given for every every cell (!) of every boundary condition. These consist of
+given **for every every cell** of every boundary condition. These consist of
 piecewise linear relationships between the basin volume and its associated
-water level for the boundary condition in the cell. The MODFLOW6 example cases
-show examples of such a parametrization.
+water level for the boundary condition in the cell. The MODFLOW6 coupling
+example cases show examples of such a parametrization.
