@@ -1,5 +1,5 @@
 ---
-title: "Water balance equations"
+title: "Water balance"
 ---
 
 Bach currently simulates the following "natural" water balance terms:
@@ -9,8 +9,7 @@ Bach currently simulates the following "natural" water balance terms:
 3. Infiltration
 4. Drainage
 5. Urban runoff 
-6. Upstream flow
-7. Downstream flow
+6. Upstream and downstream flow
 
 Additionally, Bach simulates the following "allocated" water balance terms:
 

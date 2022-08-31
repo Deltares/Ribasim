@@ -5,12 +5,11 @@ website:
   title: "Bach"
   navbar:
     left:
-      - href: index.qmd
-        text: Home
       - intro.qmd
       - equations.qmd
       - modflow.qmd
       - demo.ipynb
+      - coupling-demo.qmd
 
 format:
   html:
