@@ -12,9 +12,17 @@ on top of the [SciML: Open Source Software for Scientific Machine Learning](http
 libraries, notably [ModelingToolkit.jl](https://mtk.sciml.ai/stable/).
 
 ::: {layout-ncol=2 layout-valign="bottom"}
-[![](https://user-images.githubusercontent.com/4471859/187672447-adb9cb11-16ca-488b-bef9-08e059fe6d55.svg)](https://www.deltares.nl/)
+<a href="https://www.deltares.nl/">
+    <img alt="Deltares logo"
+        src="https://user-images.githubusercontent.com/4471859/187672447-adb9cb11-16ca-488b-bef9-08e059fe6d55.svg"
+        height="60">
+</a>
 
-[![](https://user-images.githubusercontent.com/4471859/187672456-874b344a-9ad3-42b5-af6a-93517f7fbbe8.png)](https://nhi.nu/)
+<a href="https://nhi.nu/">
+    <img alt="NHI logo"
+        src="https://user-images.githubusercontent.com/4471859/187672456-874b344a-9ad3-42b5-af6a-93517f7fbbe8.png"
+        height="60">
+</a>
 :::
 
 # Status
