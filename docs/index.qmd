@@ -93,8 +93,8 @@ values are available, so they can be loaded as the new value.
 Bach is essentially a continuous model, rather than daily or hourly. If you want to use
 hourly forcing, you only need to make sure that your forcing data contains hourly updates.
 The output frequency can be configured independently. To be able to write a closed water
-balance on e.g. a daily basis, we integrate the timeseries over the days. This way any
-variation inside of the days is also included, and we can output in `m³` rather than `m³s⁻¹`.
+balance, we accumulate the fluxes. This way any variations in between timesteps are also
+included, and we can output in `m³` rather than `m³s⁻¹`.
 
 ## Space
 

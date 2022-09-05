@@ -34,6 +34,30 @@ usermap::Dict{Symbol, Symbol} = Dict(:agric => :agriculture,
                                      :levelcontrol => :watermanagement,
                                      :indus => :industry)
 
+
+"""
+    add_cumulative!(components, eqs, var)
+
+Connect an Integrator to a variable `var`. First `var` is tied to a RealOutput
+connector, which is then tied to the Integrator. Both
+ModelingToolkitStandardLibrary.Blocks components are added to `components`,
+and the new equations are added to `eqs`.
+
+This is especially useful for tracking cumulative flows over the simulation,
+for water balance purposes. If `var` represents the volumetric flux from
+rain, then we add the total amount of rainfall
+"""
+function add_cumulative!(components, eqs, var)
+    varname = getname(var)
+    # since this function may get called on different variables from the same system,
+    # add the variable name to the name such that the names stay unique
+    output = RealOutput(; name=Symbol(varname, :₊output))
+    int = Integrator(; name=Symbol(varname, :₊sum))
+    push!(components, output, int)
+    push!(eqs, var ~ output.u, connect(output, int.input))
+    return nothing
+end
+
 function create_sys_dict(lsw_ids::Vector{Int},
                          types::Vector{Char},
                          target_volumes::Vector{Float64},
@@ -57,29 +81,42 @@ function create_sys_dict(lsw_ids::Vector{Int},
         @named lsw = Bach.LSW(; S = S0, lsw_level, lsw_area)
 
         # create and connect OutflowTable or LevelControl
+        all_components = [lsw]
         eqs = Equation[]
+
+        # add cumulative flows for all LSW waterbalance terms
+        add_cumulative!(all_components, eqs, lsw.Q_prec)
+        add_cumulative!(all_components, eqs, lsw.Q_eact)
+        add_cumulative!(all_components, eqs, lsw.drainage)
+        add_cumulative!(all_components, eqs, lsw.infiltration_act)
+        add_cumulative!(all_components, eqs, lsw.urban_runoff)
+
         if type == 'V'
             @named weir = Bach.OutflowTable(; lsw_discharge)
+            push!(all_components, weir)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
-            all_components = [lsw, weir]
+            add_cumulative!(all_components, eqs, weir.Q)
 
             for user in lswusers
                 usersys = Bach.GeneralUser(; name = user)
                 push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
                 push!(all_components, usersys)
+                add_cumulative!(all_components, eqs, usersys.x.Q)
             end
 
         else
             # TODO user provided conductance
             @named link = Bach.LevelLink(; cond = 1e-2)
+            push!(all_components, link)
             push!(eqs, connect(lsw.x, link.a))
 
-            all_components = [lsw, link]
+            add_cumulative!(all_components, eqs, link.b.Q)
 
             if add_levelcontrol
                 @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
                 push!(eqs, connect(lsw.x, levelcontrol.a))
                 push!(all_components, levelcontrol)
+                add_cumulative!(all_components, eqs, levelcontrol.a.Q)
             end
 
             for user in lswusers
@@ -88,6 +125,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s_a))
                 push!(all_components, usersys)
                 # TODO: consider how to connect external user demand (i.e. usersys.b)
+                add_cumulative!(all_components, eqs, usersys.a.Q)
             end
             # TODO: include flushing requirement
 

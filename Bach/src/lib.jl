@@ -173,6 +173,14 @@ function Names(sys::MTK.AbstractODESystem)
     u_symbol = Symbol[getname(s) for s in u_syms]
     p_symbol = Symbol[getname(s) for s in p_syms]
     obs_symbol = Symbol[getname(s) for s in obs_syms]
+
+    # For some reason these are returned by states, but are not an actual state, i.e.
+    # the integrator.u does not include them after structural_simplify, as expected.
+    # For now we filter them out here such that our indices are correct.
+    i = findall(x -> !endswith(x, "₊sum₊input₊u"), String.(u_symbol))
+    u_syms = u_syms[i]
+    u_symbol = u_symbol[i]
+
     return Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
 end
 
@@ -342,83 +350,3 @@ function identify(sysnames::Names, sym)::Symbol
 end
 
 identify(reg::Register, sym)::Symbol = identify(reg.sysnames, sym)
-
-"""
-    sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
-
-Integrate a function `f(t)` between every successive two times in `times`.
-For a `f` that gives a flux in m³ s⁻¹, and a daily `times` vector, this will
-give the daily total in m³, which can be used in a water balance.
-"""
-function sum_fluxes(f::Function, times::Vector{Float64})::Vector{Float64}
-    n = length(times)
-    integrals = Array{Float64}(undef, n - 1)
-    for i in 1:(n - 1)
-        integral, err = quadgk(f, times[i], times[i + 1])
-        integrals[i] = integral
-    end
-    return integrals
-end
-
-function waterbalance(reg::Register, times::Vector{Float64}, lsw_id::Int)
-    # TODO include upstream inflow
-    name = Symbol(:sys_, lsw_id, :₊lsw₊)
-    Q_eact_itp = interpolator(reg, Symbol(name, :Q_eact))
-    Q_prec_itp = interpolator(reg, Symbol(name, :Q_prec))
-    drainage_itp = interpolator(reg, Symbol(name, :drainage))
-    infiltration_itp = interpolator(reg, Symbol(name, :infiltration))
-    urban_runoff_itp = interpolator(reg, Symbol(name, :urban_runoff))
-    alloc_agric_itp = interpolator(reg, Symbol(name, :alloc_agric))
-    alloc_indus_itp = interpolator(reg, Symbol(name, :alloc_indus))
-    S_itp = interpolator(reg, Symbol(name, :S))
-
-    Q_eact_sum = sum_fluxes(Q_eact_itp, times)
-    Q_prec_sum = sum_fluxes(Q_prec_itp, times)
-    drainage_sum = sum_fluxes(drainage_itp, times)
-    infiltration_sum = sum_fluxes(infiltration_itp, times)
-    urban_runoff_sum = sum_fluxes(urban_runoff_itp, times)
-    alloc_agric_sum = sum_fluxes(alloc_agric_itp, times)
-    alloc_indus_sum = sum_fluxes(alloc_indus_itp, times)
-
-    # for storage we take the diff. 1e-6 is needed to avoid NaN at the start
-    S_diff = diff(S_itp.(times .+ 1e-6))
-
-    if haskey(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q))
-        Q_out_itp = interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q))
-        Q_out_sum = sum_fluxes(Q_out_itp, times)
-        type = 'V'
-    else
-        @assert haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q))
-        Q_wm_itp = interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :Q))
-        Q_wm_sum = sum_fluxes(Q_wm_itp, times)
-        type = 'P'
-    end
-
-    # create a dataframe with the same names and sign conventions as lswwaterbalans.out
-    bachwb = DataFrame(;
-                       model = "bach",
-                       lsw = lsw_id,
-                       districtwatercode = 24,
-                       type,
-                       time_start = unix2datetime.(times[1:(end - 1)]),
-                       time_end = unix2datetime.(times[2:end]),
-                       precip = Q_prec_sum,
-                       evaporation = Q_eact_sum,
-                       drainage_sh = drainage_sum,
-                       infiltr_sh = infiltration_sum,
-                       urban_runoff = urban_runoff_sum,
-                       storage_diff = -S_diff,
-                       alloc_agric = -alloc_agric_sum,
-                       alloc_indus = -alloc_indus_sum)
-    # flip signs since these come from a connected component, not the LSW itself
-    if type == 'V'
-        bachwb.todownstream = -Q_out_sum
-    else
-        bachwb.watermanagement = -Q_wm_sum
-    end
-
-    # TODO add the balancecheck
-    # bachwb = transform(bachwb, vars => (+) => :balancecheck)
-    bachwb.period = Dates.value.(Second.(bachwb.time_end - bachwb.time_start))
-    return bachwb
-end

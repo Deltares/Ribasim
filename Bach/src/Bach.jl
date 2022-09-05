@@ -7,7 +7,6 @@ using DiffEqCallbacks
 using DifferentialEquations
 import DifferentialEquations as DE
 using ModelingToolkit
-using QuadGK
 using SciMLBase
 using Symbolics: getname
 using DataFrames
@@ -19,6 +18,7 @@ using Graphs
 using Arrow
 using PlyIO
 using DataInterpolations
+using ModelingToolkitStandardLibrary.Blocks
 
 export interpolator, Register, ForwardFill
 
