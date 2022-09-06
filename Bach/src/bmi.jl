@@ -88,6 +88,39 @@ function find_modflow_indices(mf_locs, p_vars, p_locs)
     return drainage_index, infiltration_index
 end
 
+"Collect the indices, locations and names of all integrals, for writing to output"
+function prepare_waterbalance(sysnames)
+    # fluxes integrated over time
+    wbal_entries = (;location=Int[],variable=String[],index=Int[],flip=Bool[])
+    # initial values are handled in callback
+    prev_state = fill(NaN, length(sysnames.u_symbol))
+    for (i, u_name) in enumerate(sysnames.u_symbol)
+        varname, location = Bach.parsename(u_name)
+        varname = String(varname)
+        if endswith(varname, ".sum.x")
+            variable = replace(varname, r".sum.x$"=>"")
+            # flip the sign of the loss terms
+            flip = if endswith(variable, ".x.Q")
+                true
+            elseif variable in ("weir.Q", "lsw.Q_eact", "lsw.infiltration_act")
+                true
+            else
+                false
+            end
+            push!(wbal_entries.location, location)
+            push!(wbal_entries.variable, variable)
+            push!(wbal_entries.index, i)
+            push!(wbal_entries.flip, flip)
+        elseif varname == "lsw.S"
+            push!(wbal_entries.location, location)
+            push!(wbal_entries.variable, varname)
+            push!(wbal_entries.index, i)
+            push!(wbal_entries.flip, false)
+        end
+    end
+    return wbal_entries, prev_state
+end
+
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     lsw_ids = config["lsw_ids"]
     n_lsw = length(lsw_ids)
@@ -503,14 +536,41 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         p[infiltration_index] .= bme.basin_infiltration.values ./ 86400.0
     end
 
+    wbal_entries, prev_state = prepare_waterbalance(sysnames)
+    output = DataFrame(time = DateTime[], variable = String[], location = Int[],
+                       value = Float64[])
+    # captures output, wbal_entries, prev_state, tspan
+    function write_output!(integrator)
+        (; t, u) = integrator
+        time = unix2datetime(t)
+        first_step = t == tspan[begin]
+        for (;variable, location, index, flip) in Tables.rows(wbal_entries)
+            if variable == "lsw.S"
+                S = u[index]
+                if first_step
+                    prev_state[index] = S
+                end
+                value = prev_state[index] - S
+                prev_state[index] = S
+            else
+                value = flip ? -u[index] : u[index]
+                u[index] = 0.0  # reset cumulative back to 0 to get m3 since previous record
+            end
+            record = (;time, variable, location, value)
+            push!(output, record)
+        end
+    end
+
+    Δt_output = Float64(get(config, "output_timestep", 86400.0))
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
     allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true)
+    output_cb = PeriodicCallback(write_output!, Δt_output; initial_affect = true)
 
     cb = if run_modflow
         modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
-        CallbackSet(forcing_cb, allocation_cb, modflow_cb)
+        CallbackSet(forcing_cb, allocation_cb, output_cb, modflow_cb)
     else
-        CallbackSet(forcing_cb, allocation_cb)
+        CallbackSet(forcing_cb, allocation_cb, output_cb)
     end
 
     integrator = init(prob,
@@ -520,7 +580,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                       abstol = 1e-9,
                       reltol = 1e-9)
 
-    return Register(integrator, param_hist, sysnames, bme)
+    # TODO integrate output in the Register
+    return Register(integrator, param_hist, sysnames, bme), output
 end
 
 function BMI.update(reg::Register)
