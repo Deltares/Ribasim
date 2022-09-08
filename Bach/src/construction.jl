@@ -81,62 +81,65 @@ function create_sys_dict(lsw_ids::Vector{Int},
         @named lsw = Bach.LSW(; S = S0, lsw_level, lsw_area)
 
         # create and connect OutflowTable or LevelControl
-        all_components = [lsw]
+        systems = [lsw]
         eqs = Equation[]
 
         # add cumulative flows for all LSW waterbalance terms
-        add_cumulative!(all_components, eqs, lsw.Q_prec)
-        add_cumulative!(all_components, eqs, lsw.Q_eact)
-        add_cumulative!(all_components, eqs, lsw.drainage)
-        add_cumulative!(all_components, eqs, lsw.infiltration_act)
-        add_cumulative!(all_components, eqs, lsw.urban_runoff)
+        add_cumulative!(systems, eqs, lsw.Q_prec)
+        add_cumulative!(systems, eqs, lsw.Q_eact)
+        add_cumulative!(systems, eqs, lsw.drainage)
+        add_cumulative!(systems, eqs, lsw.infiltration_act)
+        add_cumulative!(systems, eqs, lsw.urban_runoff)
 
         if type == 'V'
+            # always add a weir to a free flowing basin
             @named weir = Bach.OutflowTable(; lsw_discharge)
-            push!(all_components, weir)
+            push!(systems, weir)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
-            add_cumulative!(all_components, eqs, weir.Q)
+            add_cumulative!(systems, eqs, weir.Q)
 
             for user in lswusers
                 usersys = Bach.GeneralUser(; name = user)
                 push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
-                push!(all_components, usersys)
-                add_cumulative!(all_components, eqs, usersys.x.Q)
+                push!(systems, usersys)
+                add_cumulative!(systems, eqs, usersys.x.Q)
             end
-
         else
-            # TODO user provided conductance
-            @named link = Bach.LevelLink(; cond = 1e-2)
-            push!(all_components, link)
-            push!(eqs, connect(lsw.x, link.a))
-
-            add_cumulative!(all_components, eqs, link.b.Q)
-
             if add_levelcontrol
                 @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
                 push!(eqs, connect(lsw.x, levelcontrol.a))
-                push!(all_components, levelcontrol)
-                add_cumulative!(all_components, eqs, levelcontrol.a.Q)
+                push!(systems, levelcontrol)
+                add_cumulative!(systems, eqs, levelcontrol.a.Q)
             end
-
             for user in lswusers
                 # Locally allocated water
                 usersys = Bach.GeneralUser_P(; name = user)
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s_a))
-                push!(all_components, usersys)
+                push!(systems, usersys)
                 # TODO: consider how to connect external user demand (i.e. usersys.b)
-                add_cumulative!(all_components, eqs, usersys.a.Q)
+                add_cumulative!(systems, eqs, usersys.a.Q)
             end
             # TODO: include flushing requirement
-
         end
 
         name = Symbol(:sys_, lsw_id)
         lsw_sys = ODESystem(eqs, t; name)
-        lsw_sys = compose(lsw_sys, all_components)
+        lsw_sys = compose(lsw_sys, systems)
         sys_dict[lsw_id] = lsw_sys
     end
     return sys_dict
+end
+
+"Add a LevelLink between two systems"
+function add_levellink!(systems, eqs, src::Pair{Int,ODESystem}, dst::Pair{Int,ODESystem})
+    src_id, src_sys = src
+    dst_id, dst_sys = dst
+    linkname = Symbol(:sys_, src_id, :_, dst_id)
+    link = Bach.LevelLink(; cond = 1e-2, name = linkname)
+    push!(eqs, connect(src_sys.lsw.x, link.a))
+    push!(eqs, connect(link.b, dst_sys.lsw.x))
+    push!(systems, link)
+    add_cumulative!(systems, eqs, link.b.Q)
 end
 
 # connect the LSW systems with each other, with boundaries at the end
@@ -147,8 +150,7 @@ function create_district(lsw_ids::Vector{Int},
                          fractions::Vector{Dict{Int, Float64}},
                          sys_dict::Dict{Int, ODESystem})::ODESystem
     eqs = Equation[]
-    downstreamboundaries = ODESystem[]
-    bifurcations = ODESystem[]
+    systems = ODESystem[]
     @assert nv(graph) == length(sys_dict) == length(lsw_ids)
 
     for (v, lsw_id) in enumerate(lsw_ids)
@@ -169,42 +171,51 @@ function create_district(lsw_ids::Vector{Int},
             else
                 name = Symbol("noflowboundary_", lsw_id)
                 downstreamboundary = Bach.NoFlowBoundary(; name)
-                push!(eqs, connect(lsw_sys.link.b, downstreamboundary.x))
+                push!(eqs, connect(lsw_sys.lsw.x, downstreamboundary.x))
             end
-            push!(downstreamboundaries, downstreamboundary)
+            push!(systems, downstreamboundary)
         elseif n_out == 1
+            out_lsw_id = only(out_lsw_ids)
             out_lsw = only(out_lsws)
             if type == 'V'
                 push!(eqs, connect(lsw_sys.weir.b, out_lsw.lsw.x))
             else
-                push!(eqs, connect(lsw_sys.link.b, out_lsw.lsw.x))
+                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id => out_lsw)
             end
         elseif n_out == 2
-            # create a Bifurcation with a fixed fraction
-            name = Symbol("bifurcation_", lsw_id)
-            @assert sum(values(fractions[v])) ≈ 1
+            out_lsw_id_b = out_lsw_ids[1]
+            out_lsw_id_c = out_lsw_ids[2]
+            out_lsw_b = sys_dict[out_lsw_id_b]
+            out_lsw_c = sys_dict[out_lsw_id_c]
 
-            # the first row's lsw_to becomes b, the second c
-            fraction_b = fractions[v][out_lsw_ids[1]]
-            out_lsw_b = sys_dict[out_lsw_ids[1]]
-            out_lsw_c = sys_dict[out_lsw_ids[2]]
-
-            bifurcation = Bifurcation(; name, fraction_b)
-            push!(bifurcations, bifurcation)
             if type == 'V'
-                push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
+                # create a Bifurcation with a fixed fraction
+                name = Symbol("bifurcation_", lsw_id)
+                @assert sum(values(fractions[v])) ≈ 1
+
+                # the first row's lsw_to becomes b, the second c
+                fraction_b = fractions[v][out_lsw_ids[1]]
+
+                bifurcation = Bifurcation(; name, fraction_b)
+                push!(systems, bifurcation)
+                if type == 'V'
+                    push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
+                else
+                    push!(eqs, connect(lsw_sys.link.b, bifurcation.a))
+                end
+                push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
+                push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))
             else
-                push!(eqs, connect(lsw_sys.link.b, bifurcation.a))
+                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id_b => out_lsw_b)
+                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id_c => out_lsw_c)
             end
-            push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
-            push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))
         else
             error("outflow to more than 2 LSWs not supported")
         end
     end
 
     @named district = ODESystem(eqs, t, [], [])
-    lsw_systems = [k for k in values(sys_dict)]
-    district = compose(district, vcat(lsw_systems, downstreamboundaries, bifurcations))
+    append!(systems, [k for k in values(sys_dict)])
+    district = compose(district, systems)
     return district
 end
