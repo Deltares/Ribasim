@@ -1,9 +1,3 @@
-using NCDatasets
-using Dictionaries
-import BasicModelInterface as BMI
-import ModflowInterface as MF
-import DataInterpolations: LinearInterpolation
-
 """
 Convenience method (missing from XMI?) to get the adress and return the
 pointer.
@@ -310,7 +304,7 @@ function BachModflowExchange(config, bach_ids)
         model_config["type"] != "gwf" && error("Only gwf models are supported")
         path_dataset = model_config["dataset"]
         !isfile(path_dataset) && error("Dataset not found")
-        dataset = NCDataset(path_dataset)
+        dataset = NCDatasets.NCDataset(path_dataset)
         basins = Matrix{Union{Int, Missing}}(dataset[model_config["basins"]][:])
         node_reduced = get_var_ptr(model, modelname, "NODEREDUCED",
                                    subcomponent_name = "DIS")

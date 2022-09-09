@@ -3,22 +3,25 @@ module Bach
 # turn off precompilation during development
 __precompile__(false)
 
-using DiffEqCallbacks
-using DifferentialEquations
-import DifferentialEquations as DE
-using ModelingToolkit
-using SciMLBase
-using Symbolics: getname
-using DataFrames
-using DataFrameMacros
-using Dates
 import BasicModelInterface as BMI
+import ModflowInterface as MF
+import ModelingToolkit as MTK
+import NCDatasets
+
+using Dates
 using TOML
-using Graphs
 using Arrow
 using PlyIO
-using DataInterpolations
+using DataFrames
+using Dictionaries
+using Graphs
+using DataInterpolations: LinearInterpolation
+using DiffEqCallbacks
+using ModelingToolkit
+using ModelingToolkit: getname
 using ModelingToolkitStandardLibrary.Blocks
+using OrdinaryDiffEq
+using SciMLBase
 
 export interpolator, Register, ForwardFill
 
