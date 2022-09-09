@@ -48,14 +48,16 @@ end
 function lsw_centers(path, lsws)
     df = DataFrame(DBFTables.Table(path))
     n = length(lsws)
-    lswlocs = zeros(Point2f, n)
+    x = zeros(n)
+    y = zeros(n)
     for (i, lsw) in enumerate(lsws)
         row = findfirst(==(lsw), df.LSWFINAL)
         # the lsws.dbf file only had district coordinates, so in QGIS the x and y column
         # were added with `x(centroid($geometry))` and `y(centroid($geometry))`
-        lswlocs[i] = Point2f(df[row, :x], df[row, :y])
+        x[i] = df[row, :x]
+        y[i] = df[row, :y]
     end
-    return lswlocs
+    return x, y
 end
 
 "Write rows relating to a specific LSW to separate TSV files"
@@ -87,3 +89,5 @@ function write_lswrouting(path, graph, lswlocs)
         end
     end
 end
+
+nothing

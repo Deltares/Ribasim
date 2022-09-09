@@ -1,36 +1,3 @@
-# modified version of save_ply while this is pending:
-# https://github.com/JuliaGeometry/jl/pull/20
-function save_ply_spaces(ply, stream::IO; ascii::Bool = false)
-    PlyIO.write_header(ply, stream, ascii)
-    for element in ply
-        if ascii
-            for i in 1:length(element)
-                for (j, property) in enumerate(element.properties)
-                    if j != 1
-                        write(stream, ' ')
-                    end
-                    PlyIO.write_ascii_value(stream, property, i)
-                end
-                println(stream)
-            end
-        else # binary
-            PlyIO.write_binary_values(stream, length(element), element.properties...)
-        end
-    end
-end
-
-function save_ply_spaces(ply, file_name::AbstractString; kwargs...)
-    open(file_name, "w") do fid
-        save_ply_spaces(ply, fid; kwargs...)
-    end
-end
-
-"Convert the columns of table into a Vector{ArrayProperty}"
-function array_properties(table)
-    columns = Tables.columns(table)
-    names = Tables.columnnames(columns)
-    return [ArrayProperty(name, Tables.getcolumn(columns, name)) for name in names]
-end
 
 "Convert a PlyElement into a Tables.jl compatible NamedTuple"
 function element_table(elem::PlyElement)
@@ -42,28 +9,6 @@ end
 # https://discourse.julialang.org/t/filtering-keys-out-of-named-tuples/73564/5
 "Remove a key from a NamedTuple"
 takeout(del::Symbol, nt::NamedTuple) = Base.tail(merge(NamedTuple{(del,)}((nothing,)), nt))
-
-function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing)
-    # graph g provides the edges and has vertices 1:n
-    # `node_table` provides the vertices and has rows 1:n, and needs at least x and y columns
-    # `edge_table` provides data on the edges, like fractions
-    # https://www.mdal.xyz/drivers/ply.html
-    # note that integer data is not yet supported by MDAL
-    ply = Ply()
-    if crs !== nothing
-        push!(ply, PlyComment(string("crs: ", convert(String, crs))))
-    end
-
-    vertex = PlyElement("vertex",
-                        array_properties(node_table)...)
-    push!(ply, vertex)
-    edge = PlyElement("edge",
-                      ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
-                      ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
-                      array_properties(edge_table)...)
-    push!(ply, edge)
-    save_ply_spaces(ply, path; ascii)
-end
 
 "Read a PLY file into a graph, and return the vertex coordinates"
 function read_ply(path)

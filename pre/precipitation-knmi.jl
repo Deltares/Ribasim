@@ -1,6 +1,6 @@
-using TOML, Arrow, CSV, Dates, DataFrames
+# Read daily KNMI precipitation into a forcing Arrow table for Bach.
 
-# read daily KNMI precipitation into a forcing Arrow table for Bach
+using TOML, Arrow, CSV, Dates, DataFrames
 
 config = TOML.parsefile("run.toml")
 lsw_ids = config["lsw_ids"]

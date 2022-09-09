@@ -478,8 +478,8 @@ function read_mzwaterbalance(path, lsw_sel::Union{Integer, Nothing} = nothing)
     if lsw_sel !== nothing
         df = @subset(df, :lsw==lsw_sel)
     end
-    df[!, "time_start"] = Mozart.datestring.(df.time_start)
-    df[!, "time_end"] = Mozart.datestring.(df.time_end)
+    df[!, "time_start"] = datestring.(df.time_start)
+    df[!, "time_end"] = datestring.(df.time_end)
     # add a column with timestep length in seconds
     df.period = Dates.value.(Second.(df.time_end - df.time_start))
 
@@ -494,3 +494,5 @@ function read_lswvalue(path, lsw_sel::Integer)
     df = @subset(df, :lsw==lsw_sel)
     return df
 end
+
+nothing

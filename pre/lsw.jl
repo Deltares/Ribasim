@@ -1,5 +1,86 @@
 # Read data for a Bach-Mozart reference run
 
+# see open_water_factor(t)
+evap_factor::Matrix{Float64} = [0.00 0.50 0.70
+                     0.80 1.00 1.00
+                     1.20 1.30 1.30
+                     1.30 1.30 1.30
+                     1.31 1.31 1.31
+                     1.30 1.30 1.30
+                     1.29 1.27 1.24
+                     1.21 1.19 1.18
+                     1.17 1.17 1.17
+                     1.00 0.90 0.80
+                     0.80 0.70 0.60
+                     0.00 0.00 0.00]
+
+# Makkink to open water evaporation factor, depending on the month of the year (rows)
+# and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
+function open_water_factor(dt::DateTime)
+    i = month(dt)
+    d = day(dt)
+    j = if d < 11
+        1
+    elseif d < 21
+        2
+    else
+        3
+    end
+    return evap_factor[i, j]
+end
+
+open_water_factor(t::Real) = open_water_factor(unix2datetime(t))
+
+# ForwardFill copied from Bach to avoid a dependency
+"""
+    ForwardFill(t, v)
+
+Create a callable struct that will give a value from v on or after a given t.
+There is a tolerance of 1e-4 for t to avoid narrowly missing the next timestep.
+
+    v = rand(21)
+    ff = ForwardFill(0:0.1:2, v)
+    ff(0.1) == v[2]
+    ff(0.1 - 1e-5) == v[2]
+    ff(0.1 - 1e-3) == v[1]
+"""
+struct ForwardFill{T, V}
+    t::T
+    v::V
+    function ForwardFill(t::T, v::V) where {T, V}
+        n = length(t)
+        if n != length(v)
+            error("ForwardFill vectors are not of equal length")
+        end
+        if !issorted(t)
+            error("ForwardFill t is not sorted")
+        end
+        new{T, V}(t, v)
+    end
+end
+
+"Interpolate into a forward filled timeseries at t"
+function (ff::ForwardFill{T, V})(t)::eltype(V) where {T, V}
+    # Subtract a small amount to avoid e.g. t = 2.999999s not picking up the t = 3s value.
+    # This can occur due to floating point issues with the calculated t::Float64
+    # The offset is larger than the eps of 1 My in seconds, and smaller than the periodic
+    # callback interval.
+    i = searchsortedlast(ff.t, t + 1e-4)
+    i == 0 && throw(DomainError(t, "Requesting t before start of series."))
+    return ff.v[i]
+end
+
+"Interpolate and get the index j of the result, useful for V=Vector{Vector{Float64}}"
+function (ff::ForwardFill{T, V})(t, j)::eltype(eltype(V)) where {T, V}
+    i = searchsortedlast(ff.t, t + 1e-4)
+    i == 0 && throw(DomainError(t, "Requesting t before start of series."))
+    return ff.v[i][j]
+end
+
+function Base.show(io::IO, ff::ForwardFill)
+    println(io, typeof(ff))
+end
+
 function lsw_meteo(path, lsw_sel::Integer)
     times = Float64[]
     evap = Float64[]
@@ -21,8 +102,8 @@ function lsw_meteo(path, lsw_sel::Integer)
         end
     end
 
-    evap_series = Bach.ForwardFill(times, evap)
-    prec_series = Bach.ForwardFill(times, prec)
+    evap_series = ForwardFill(times, evap)
+    prec_series = ForwardFill(times, prec)
     return prec_series, evap_series
 end
 
@@ -34,7 +115,7 @@ function parse_meteo_line!(times, prec, evap, line)
     v = parse(Float64, line[43:end]) * 0.001 / period_s  # [mm timestep⁻¹] to [m s⁻¹]
     if is_evap
         push!(times, t)
-        push!(evap, v * Bach.open_water_factor(t))
+        push!(evap, v * open_water_factor(t))
     else
         push!(prec, v)
     end
@@ -43,13 +124,13 @@ end
 
 function meteo_dicts(path, lsw_ids::Vector{Int})
     # prepare empty dictionaries
-    prec_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
-    evap_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    prec_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    evap_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for lsw_id in lsw_ids
         # prec and evap share the same vector for times
         times = Float64[]
-        prec_dict[lsw_id] = Bach.ForwardFill(times, Float64[])
-        evap_dict[lsw_id] = Bach.ForwardFill(times, Float64[])
+        prec_dict[lsw_id] = ForwardFill(times, Float64[])
+        evap_dict[lsw_id] = ForwardFill(times, Float64[])
     end
 
     # fill them with data, going over each line once
@@ -122,7 +203,7 @@ function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String};
 end
 
 function create_dict(mzwb::DataFrame, col::Union{Symbol, String}; flipsign = false)
-    dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
     for (key, df) in pairs(groupby(mzwb, :lsw))
         series = create_series(df, col; flipsign)
         dict[key.lsw] = series
@@ -131,8 +212,8 @@ function create_dict(mzwb::DataFrame, col::Union{Symbol, String}; flipsign = fal
 end
 
 function create_user_dict(uslswdem::DataFrame, usercode::String)
-    demand_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
-    prio_dict = Dict{Int, Bach.ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    demand_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
+    prio_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
     uslswdem_user = @subset(uslswdem, :usercode==usercode)
     for (key, df) in pairs(groupby(uslswdem_user, :lsw))
         times = datetime2unix.(df.time_start)
@@ -287,3 +368,62 @@ function create_profile_dict(lsw_ids::Vector{Int},
     end
     return profile_dict
 end
+
+# modified version of save_ply while this is pending:
+# https://github.com/JuliaGeometry/jl/pull/20
+function save_ply_spaces(ply, stream::IO; ascii::Bool = false)
+    PlyIO.write_header(ply, stream, ascii)
+    for element in ply
+        if ascii
+            for i in 1:length(element)
+                for (j, property) in enumerate(element.properties)
+                    if j != 1
+                        write(stream, ' ')
+                    end
+                    PlyIO.write_ascii_value(stream, property, i)
+                end
+                println(stream)
+            end
+        else # binary
+            PlyIO.write_binary_values(stream, length(element), element.properties...)
+        end
+    end
+end
+
+function save_ply_spaces(ply, file_name::AbstractString; kwargs...)
+    open(file_name, "w") do fid
+        save_ply_spaces(ply, fid; kwargs...)
+    end
+end
+
+"Convert the columns of table into a Vector{ArrayProperty}"
+function array_properties(table)
+    columns = Tables.columns(table)
+    names = Tables.columnnames(columns)
+    return [ArrayProperty(name, Tables.getcolumn(columns, name)) for name in names]
+end
+
+# write graph as a PLY file; simple and loads fast in QGIS
+function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing)
+    # graph g provides the edges and has vertices 1:n
+    # `node_table` provides the vertices and has rows 1:n, and needs at least x and y columns
+    # `edge_table` provides data on the edges, like fractions
+    # https://www.mdal.xyz/drivers/ply.html
+    # note that integer data is not yet supported by MDAL
+    ply = Ply()
+    if crs !== nothing
+        push!(ply, PlyComment(string("crs: ", convert(String, crs))))
+    end
+
+    vertex = PlyElement("vertex",
+                        array_properties(node_table)...)
+    push!(ply, vertex)
+    edge = PlyElement("edge",
+                      ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
+                      ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
+                      array_properties(edge_table)...)
+    push!(ply, edge)
+    save_ply_spaces(ply, path; ascii)
+end
+
+nothing
