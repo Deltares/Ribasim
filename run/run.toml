@@ -9,7 +9,6 @@ run_modflow = false
 update_timestep = 86400.0
 saveat = 86400.0
 
-# path to the UGrid NetCDF with the network, profiles, user and forcing data
 # lsw_ids = [151358]
 # lsw_ids = [151358, 151371, 151309]
 # lsw_ids = [200164]

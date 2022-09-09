@@ -236,7 +236,7 @@ end
 """
     node_coords(topology)
 
-Get the location of the nodes of a UGRID topology.
+Get the location of the nodes of a topology.
 Useful for plotting the graph using the example below:
 
     GraphMakie.graphplot(; layout = g -> node_coords(topology))
