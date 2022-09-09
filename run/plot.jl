@@ -327,9 +327,9 @@ end
 
 "Plot timeseries of wm external and LSW source allocation"
 function plot_wm_source(reg::Bach.Register,
-                     lsw_id::Int,
-                     timespan::ClosedInterval{Float64};
-                     level = true)
+                        lsw_id::Int,
+                        timespan::ClosedInterval{Float64};
+                        level = true)
     fig = Figure()
     ylabel = "flow rate / m³ s⁻¹"
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
@@ -343,9 +343,9 @@ function plot_wm_source(reg::Bach.Register,
            label = "Total watermanagement")
 
     haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a)) && lines!(ax1,
-        timespan,
-        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1),
-        label = "LSW sourced")
+           timespan,
+           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1),
+           label = "LSW sourced")
 
     haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b)) && lines!(ax1,
            timespan,
@@ -360,9 +360,9 @@ end
 
 function plot_wm_source(reg::Bach.Register, lsw_id::Int; level = false)
     plot_wm_source(reg,
-                lsw_id,
-                reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
-                level)
+                   lsw_id,
+                   reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
+                   level)
 end
 
 "long format daily waterbalance dataframe for comparing mozart and bach"

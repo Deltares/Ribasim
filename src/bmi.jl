@@ -91,14 +91,14 @@ end
 "Collect the indices, locations and names of all integrals, for writing to output"
 function prepare_waterbalance(sysnames)
     # fluxes integrated over time
-    wbal_entries = (;location=Int[],variable=String[],index=Int[],flip=Bool[])
+    wbal_entries = (; location = Int[], variable = String[], index = Int[], flip = Bool[])
     # initial values are handled in callback
     prev_state = fill(NaN, length(sysnames.u_symbol))
     for (i, u_name) in enumerate(sysnames.u_symbol)
         varname, location = Bach.parsename(u_name)
         varname = String(varname)
         if endswith(varname, ".sum.x")
-            variable = replace(varname, r".sum.x$"=>"")
+            variable = replace(varname, r".sum.x$" => "")
             # flip the sign of the loss terms
             flip = if endswith(variable, ".x.Q")
                 true
@@ -538,13 +538,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     wbal_entries, prev_state = prepare_waterbalance(sysnames)
     waterbalance = DataFrame(time = DateTime[], variable = String[], location = Int[],
-                       value = Float64[])
+                             value = Float64[])
     # captures waterbalance, wbal_entries, prev_state, tspan
     function write_output!(integrator)
         (; t, u) = integrator
         time = unix2datetime(t)
         first_step = t == tspan[begin]
-        for (;variable, location, index, flip) in Tables.rows(wbal_entries)
+        for (; variable, location, index, flip) in Tables.rows(wbal_entries)
             if variable == "lsw.S"
                 S = u[index]
                 if first_step
@@ -556,7 +556,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 value = flip ? -u[index] : u[index]
                 u[index] = 0.0  # reset cumulative back to 0 to get m3 since previous record
             end
-            record = (;time, variable, location, value)
+            record = (; time, variable, location, value)
             push!(waterbalance, record)
         end
     end

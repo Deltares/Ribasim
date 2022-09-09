@@ -34,7 +34,6 @@ usermap::Dict{Symbol, Symbol} = Dict(:agric => :agriculture,
                                      :levelcontrol => :watermanagement,
                                      :indus => :industry)
 
-
 """
     add_cumulative!(components, eqs, var)
 
@@ -51,8 +50,8 @@ function add_cumulative!(components, eqs, var)
     varname = getname(var)
     # since this function may get called on different variables from the same system,
     # add the variable name to the name such that the names stay unique
-    output = RealOutput(; name=Symbol(varname, :₊output))
-    int = Integrator(; name=Symbol(varname, :₊sum))
+    output = RealOutput(; name = Symbol(varname, :₊output))
+    int = Integrator(; name = Symbol(varname, :₊sum))
     push!(components, output, int)
     push!(eqs, var ~ output.u, connect(output, int.input))
     return nothing
@@ -131,7 +130,7 @@ function create_sys_dict(lsw_ids::Vector{Int},
 end
 
 "Add a LevelLink between two systems"
-function add_levellink!(systems, eqs, src::Pair{Int,ODESystem}, dst::Pair{Int,ODESystem})
+function add_levellink!(systems, eqs, src::Pair{Int, ODESystem}, dst::Pair{Int, ODESystem})
     src_id, src_sys = src
     dst_id, dst_sys = dst
     linkname = Symbol(:sys_, src_id, :_, dst_id)

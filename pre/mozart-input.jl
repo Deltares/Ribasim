@@ -89,7 +89,6 @@ dates::Vector{DateTime} = unix2datetime.(times)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
 
-
 # The profiles for each node are all stored together in an Arrow IPC file
 # we can enforce that IDs are contiguous, and that all values are increasing
 # and then compute the row indices for each ID using
@@ -228,7 +227,7 @@ x, y = lsw_centers(normpath(coupling_dir, "lsws.dbf"), lsw_ids)
 node_table = (; x, y, location = Float64.(lsw_ids))
 edge_table = (; fractions)
 write_ply(normpath(output_dir, "network.ply"), graph, node_table, edge_table;
-               ascii = true, crs = "EPSG:28992")
+          ascii = true, crs = "EPSG:28992")
 
 open(normpath(output_dir, "lsw_ids.txt"), "w") do io
     for lsw_id in lsw_ids

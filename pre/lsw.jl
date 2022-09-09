@@ -2,17 +2,17 @@
 
 # see open_water_factor(t)
 evap_factor::Matrix{Float64} = [0.00 0.50 0.70
-                     0.80 1.00 1.00
-                     1.20 1.30 1.30
-                     1.30 1.30 1.30
-                     1.31 1.31 1.31
-                     1.30 1.30 1.30
-                     1.29 1.27 1.24
-                     1.21 1.19 1.18
-                     1.17 1.17 1.17
-                     1.00 0.90 0.80
-                     0.80 0.70 0.60
-                     0.00 0.00 0.00]
+                                0.80 1.00 1.00
+                                1.20 1.30 1.30
+                                1.30 1.30 1.30
+                                1.31 1.31 1.31
+                                1.30 1.30 1.30
+                                1.29 1.27 1.24
+                                1.21 1.19 1.18
+                                1.17 1.17 1.17
+                                1.00 0.90 0.80
+                                0.80 0.70 0.60
+                                0.00 0.00 0.00]
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.

@@ -20,7 +20,6 @@ while current_time < end_time
 end
 BMI.finalize(bme.modflow.bmi)
 
-
 # Run, but with volumes of 0: should result in no infiltration
 cd("c:/src/bach/modflow")
 config = TOML.parsefile("c:/src/bach/modflow/couple.toml")
