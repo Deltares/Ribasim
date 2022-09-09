@@ -537,9 +537,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     wbal_entries, prev_state = prepare_waterbalance(sysnames)
-    output = DataFrame(time = DateTime[], variable = String[], location = Int[],
+    waterbalance = DataFrame(time = DateTime[], variable = String[], location = Int[],
                        value = Float64[])
-    # captures output, wbal_entries, prev_state, tspan
+    # captures waterbalance, wbal_entries, prev_state, tspan
     function write_output!(integrator)
         (; t, u) = integrator
         time = unix2datetime(t)
@@ -557,7 +557,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 u[index] = 0.0  # reset cumulative back to 0 to get m3 since previous record
             end
             record = (;time, variable, location, value)
-            push!(output, record)
+            push!(waterbalance, record)
         end
     end
 
@@ -580,8 +580,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                       abstol = 1e-9,
                       reltol = 1e-9)
 
-    # TODO integrate output in the Register
-    return Register(integrator, param_hist, sysnames, bme), output
+    return Register(integrator, param_hist, sysnames, waterbalance)
 end
 
 function BMI.update(reg::Register)

@@ -138,13 +138,14 @@ function budget!(boundary, head)
     for (i, node) in enumerate(boundary.nodelist)
         boundary.budget[i] = boundary.hcof[i] * head[node] - boundary.rhs[i]
     end
+    return boundary
 end
 
 function budget!(boundary::ModflowRiverDrainagePackage, head)
     budget!(boundary.river, head)
     budget!(boundary.drainage, head)
     boundary.budget .= boundary.river.budget .+ boundary.drainage.budget
-    return
+    return boundary
 end
 
 """
@@ -153,7 +154,7 @@ level should be a scalar!
 function set_level!(boundary::ModflowRiverDrainagePackage, index, level)
     boundary.river.stage[index] = level
     boundary.drainage.elevation[index] = level
-    return
+    return boundary
 end
 
 """
@@ -300,9 +301,8 @@ function update!(sim::Modflow6Simulation, first_step)
 end
 
 function BachModflowExchange(config, bach_ids)
-    directory = dirname(config["simulation"])
-    cd(directory)  # needed for modflow to run
-    model = BMI.initialize(MF.ModflowModel)
+    model = MF.ModflowModel(config["simulation"])
+    BMI.initialize(model)
     MF.prepare_time_step(model, 0.0)
 
     exchanges = []
@@ -360,8 +360,8 @@ function exchange_modflow_to_bach!(m::BachModflowExchange)
     drainage = m.basin_drainage
     head = m.modflow.head
 
-    map(zero, infiltration)
-    map(zero, drainage)
+    fill!(infiltration, 0.0)
+    fill!(drainage, 0.0)
 
     for exchange in m.exchanges
         boundary = exchange.boundary
