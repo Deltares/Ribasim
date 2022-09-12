@@ -2,39 +2,26 @@
 # using PackageCompiler; PackageCompiler.create_sysimage(; precompile_execution_file="precompile.jl")
 # or https://www.julia-vscode.org/docs/stable/userguide/compilesysimage/
 
-using ModelingToolkit, DifferentialEquations
-using Makie, GLMakie, CairoMakie
-using JuliaFormatter
+using Bach
+using Dates
+using TOML
+using Arrow
+using DataFrames
+import BasicModelInterface as BMI
+using SciMLBase
 
-@parameters t σ ρ β
-@variables x(t) y(t) z(t)
-D = Differential(t)
+include("../../run/plot.jl")
 
-eqs = [D(D(x)) ~ σ * (y - x), D(y) ~ x * (ρ - z) - y, D(z) ~ x * y - β * z]
+# TODO interpret path in TOML as relative to it
+cd(normpath(@__DIR__, "../.."))
 
-@named sys = ODESystem(eqs)
-sim = structural_simplify(sys)
+config = TOML.parsefile("run/run.toml")
+reg = BMI.initialize(Bach.Register, config)
+solve!(reg.integrator)
 
-u0 = [D(x) => 2.0, x => 1.0, y => 0.0, z => 0.0]
-
-p = [σ => 28.0, ρ => 10.0, β => 8 / 3]
-
-tspan = (0.0, 100.0)
-prob = ODEProblem(sim, u0, tspan, p)
-sol = solve(prob, Rosenbrock23())
-
-v = [1.1, 2.2]
-
+using GLMakie
 GLMakie.activate!()
-
-lines(v, v);
-scatterlines(v, v);
-stairs(v, v);
-
+plot_series(reg, config["lsw_ids"][1]; level = true)
+using CairoMakie
 CairoMakie.activate!()
-
-lines(v, v);
-scatterlines(v, v);
-stairs(v, v);
-
-format(@__FILE__)
+plot_series(reg, config["lsw_ids"][1]; level = false)
