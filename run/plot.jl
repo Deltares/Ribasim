@@ -1,4 +1,10 @@
 # Plotting functions
+using Dates
+using IntervalSets
+using Colors
+using Printf
+using DataFrameMacros
+using PlotUtils
 
 "Create a time axis with Unix time values and date formatted labels"
 function time!(ax, xmin::DateTime, xmax::DateTime)
@@ -26,7 +32,7 @@ Both systems and connectors are separately included in the graph.
 Returns the graph, as well as the names of the systems and connectors:
     g, component_names, connector_names
 """
-function reconstruct_graph(systems::Set{ODESystem}, eqs::Vector{Equation})
+function reconstruct_graph(systems::Set, eqs::Vector)
     # get the names and number of connectors
     connector_names_set = Set{Symbol}()
     for eq in eqs
@@ -70,7 +76,7 @@ end
 Based on a list of systems and their connections, create an interactive graph plot
 that shows the components and their values over time.
 """
-function graph_system(systems::Set{ODESystem}, eqs::Vector{Equation}, reg::Bach.Register)
+function graph_system(systems::Set, eqs::Vector, reg::Bach.Register)
     g, component_names, connector_names = reconstruct_graph(systems, eqs)
     n_component = length(component_names)
     n_connector = length(connector_names)
@@ -606,3 +612,5 @@ function plot_user_demand(reg::Bach.Register,
 
     return fig
 end
+
+nothing

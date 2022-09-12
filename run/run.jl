@@ -1,23 +1,28 @@
 # Run a Bach simulation based on files created by input.jl
 using AbbreviatedStackTraces
 using Bach
-using Duet
-
 using Dates
 using TOML
 using Arrow
 using DataFrames
 import BasicModelInterface as BMI
 using SciMLBase
-using Graphs
+using CairoMakie
 
-## input files
+include("../run/plot.jl")
 
-# always run all
-cd(@__DIR__)
-config = TOML.parsefile("run.toml")
+# TODO interpret path in TOML as relative to it
+cd(normpath(@__DIR__, ".."))
+
+##
+
+config = TOML.parsefile("run/run.toml")
 reg = BMI.initialize(Bach.Register, config)
-reg.exchange === nothing || BMI.finalize(reg.exchange.modflow.bmi)
+solve!(reg.integrator)
+
+##
+
+plot_series(reg, config["lsw_ids"][1]; level = false)
 
 ##
 println("solve! ", Time(now()))
