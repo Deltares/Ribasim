@@ -1,7 +1,38 @@
-# TODO is Register enough? or create a new struct
+"Change a dictionary entry to be relative to `dir` if is is not an abolute path"
+function relative_path!(dict, key, dir)
+    if haskey(dict, key)
+        val = dict[key]
+        dict[key] = normpath(dir, val)
+        @info "relative" val normpath(dir, val)
+    end
+    return dict
+end
+
+"Make all possible path entries relative to `dir`."
+function relative_paths!(dict, dir)
+    relative_path!(dict, "forcing", dir)
+    relative_path!(dict, "state", dir)
+    relative_path!(dict, "static", dir)
+    relative_path!(dict, "profile", dir)
+    relative_path!(dict, "network_path", dir)
+    if haskey(dict, "modflow")
+        relative_path!(dict["modflow"], "simulation", dir)
+        relative_path!(dict["modflow"]["models"]["gwf"], "dataset", dir)
+    end
+    return dict
+end
+
+"Parse the TOML configuration file, updating paths to be relative to the TOML file."
+function parsefile(config_file::AbstractString)
+    config = TOML.parsefile(config_file)
+    dir = dirname(config_file)
+    return relative_paths!(config, dir)
+end
 
 function BMI.initialize(T::Type{Register}, config_file::AbstractString)
     config = TOML.parsefile(config_file)
+    dir = dirname(config_file)
+    config = relative_paths!(config, dir)
     BMI.initialize(T, config)
 end
 

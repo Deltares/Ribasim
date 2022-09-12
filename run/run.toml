@@ -10,19 +10,15 @@ update_timestep = 86400.0
 saveat = 86400.0
 
 # lsw_ids = [151358]
-# lsw_ids = [151358, 151371, 151309]
+lsw_ids = [151358, 151371, 151309]
 # lsw_ids = [200164]
-lsw_ids = [200164, 200165]
+# lsw_ids = [200164, 200165]
 
-forcing = "data/input/6/forcing.arrow"
-state = "data/input/6/state.arrow"
-static = "data/input/6/static.arrow"
-profile = "data/input/6/profile.arrow"
-network_path = "data/input/6/network.ply"
-
-# state = "data/input/6/state-mozart.arrow"
-# static = "data/input/6/static-mozart.arrow"
-# profile = "data/input/6/profile-mozart.arrow"
+forcing = "../data/input/6/forcing.arrow"
+state = "../data/input/6/state.arrow"
+static = "../data/input/6/static.arrow"
+profile = "../data/input/6/profile.arrow"
+network_path = "../data/input/6/network.ply"
 
 # entire district around Hupsel
 # lsw_ids = [
@@ -54,7 +50,7 @@ network_path = "data/input/6/network.ply"
 # ]
 
 [modflow]
-simulation = "data/hupsel-steady-state/mfsim.nam"
+simulation = "../data/hupsel-steady-state/mfsim.nam"
 mode = "sequential"
 timestep = 86400.0
 
@@ -62,7 +58,7 @@ timestep = 86400.0
 
 [modflow.models.gwf]
 type = "gwf"
-dataset = "d:/repo/bach/modflow/volume_level_profile-hupsel.nc"
+dataset = "../modflow/volume_level_profile-hupsel.nc"
 basins = "lsw_id"
 
 [[modflow.models.gwf.bounds]]
