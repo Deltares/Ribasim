@@ -382,7 +382,7 @@ function combine_waterbalance(mzwb, bachwb)
     return wb
 end
 
-function plot_waterbalance_comparison(wb::DataFrame)
+function plot_waterbalance_comparison(wb)
     # use days since start as x
     startdate, enddate = extrema(wb.time_start)
     x = Dates.value.(Day.(wb.time_start .- startdate))
@@ -427,7 +427,7 @@ end
 
 function plot_series_comparison(reg::Bach.Register,
                                 type::Char,
-                                mz_lswval::DataFrame,
+                                mz_lswval,
                                 bachvar::Symbol,
                                 mzvar::Symbol,
                                 timespan::ClosedInterval{Float64},
@@ -531,8 +531,8 @@ end
 "Plot user total demand and shortage"
 function plot_user_demand(reg::Bach.Register,
                           timespan::ClosedInterval{Float64},
-                          bachwb::DataFrame,
-                          mzwb::DataFrame,
+                          bachwb,
+                          mzwb,
                           lsw_id)
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)

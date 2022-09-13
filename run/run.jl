@@ -13,10 +13,16 @@ include("../run/plot.jl")
 
 ##
 
-config = Bach.parsefile("../run/run.toml")
+config = Bach.parsefile("run/run.toml")
 reg = BMI.initialize(Bach.Register, config)
 solve!(reg.integrator)
 
 ##
 
+reg = Bach.run("run/run.toml")
+
+##
+
 plot_series(reg, config["lsw_ids"][1]; level = false)
+
+##

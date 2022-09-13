@@ -20,6 +20,8 @@ static = "../data/input/6/static.arrow"
 profile = "../data/input/6/profile.arrow"
 network_path = "../data/input/6/network.ply"
 
+waterbalance = "../data/output/waterbalance.arrow"
+
 # entire district around Hupsel
 # lsw_ids = [
 #        150006, 150016, 150017, 150018, 151145, 151191, 151196, 151208,

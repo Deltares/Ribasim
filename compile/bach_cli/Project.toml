@@ -1,0 +1,10 @@
+name = "bach_cli"
+uuid = "e45c999e-e944-4589-a8e6-7d0b7a60140a"
+authors = ["Deltares and contributors"]
+version = "0.1.0"
+
+[deps]
+Bach = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
+
+[compat]
+julia = "1.8"

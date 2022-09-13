@@ -9,6 +9,7 @@ website:
       - modflow.qmd
       - demo.ipynb
       - coupling-demo.qmd
+      - developer.qmd
 
 format:
   html:

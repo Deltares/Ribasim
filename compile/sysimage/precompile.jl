@@ -3,21 +3,11 @@
 # or https://www.julia-vscode.org/docs/stable/userguide/compilesysimage/
 
 using Bach
-using Dates
-using TOML
-using Arrow
-using DataFrames
-import BasicModelInterface as BMI
-using SciMLBase
 
 include("../../run/plot.jl")
 
-# TODO interpret path in TOML as relative to it
-cd(normpath(@__DIR__, "../.."))
-
-config = TOML.parsefile("run/run.toml")
-reg = BMI.initialize(Bach.Register, config)
-solve!(reg.integrator)
+config = Bach.parsefile("../../run/run.toml")
+reg = Bach.run(config)
 
 using GLMakie
 GLMakie.activate!()

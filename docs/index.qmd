@@ -96,7 +96,7 @@ The output frequency can be configured independently. To be able to write a clos
 balance, we accumulate the fluxes. This way any variations in between timesteps are also
 included, and we can output in `m³` rather than `m³s⁻¹`.
 
-## Space
+## Space {#sec-space}
 
 The water balance equation can be applied on different spatial scales. Besides modelling a
 single lumped watershed, it allows you to divide the area into a network of connected
@@ -167,3 +167,319 @@ As each (sub)basin has its own volume, low throughput (high volume, low
 discharge, long residence time) and high throughput (low volume, high
 discharge, short residence time) systems can be represented in a lumped manner;
 of course, more detail requires more parameters.
+
+# Usage
+
+## Installing the compiled executable
+
+Binaries of `bach_cli` can be downloaded from
+[bach-artifacts](https://github.com/visr/bach-artifacts/releases), and are currently
+available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
+however it is important that the contents of the zip file are kept together in a directory.
+The `bach_cli` executable is in the `bin` directory.
+
+To check whether the installation was performed successfully, run `bach_cli` with no
+arguments in the command line will give the following message:
+
+```
+Usage: bach_cli 'path/to/config.toml'
+```
+
+## Installing as a Julia package
+
+Bach is a [Julia](https://julialang.org/) package, that can be installed using Julia's
+built in package manager, `Pkg`. For more information on how to use `Pkg`, see the
+[Getting Started](https://pkgdocs.julialang.org/v1/getting-started/) page in its documentation.
+
+Since Bach is not yet registered in the General registry, you have to install it using the
+full url. Note that here suggest `dev` to do a development install.
+
+```julia-repl
+pkg> dev https://github.com/Deltares/Bach.jl
+```
+
+This will clone the git repository, put it under your home directory in `.julia/dev/Bach`,
+and add the Bach package to your project environment. Note that to receive updates, you
+have to pull in the latest changes yourself using `git pull`.
+
+Installation may take a while since Pkg is also installing and pre-compiling the dependencies
+of Bach.
+
+Once it is done, you can go back the Julia REPL and try to load Bach:
+
+```julia-repl
+julia> using Bach
+```
+
+If you already have a simulation prepared, you can run it using:
+
+```julia-repl
+julia> Bach.run("path/to/config.toml")
+```
+
+Again, there will be considerable latency. For this reason, if you expect to run Bach
+a lot, we recommend to:
+
+- Use `bach_cli` if you only need `Bach.run` and don't need to do developments.
+- Adapt a workflow that keeps you session active; the first `Bach.run("model.toml")` will
+  take considerably more time than the second one, since more code needs to be compiled.
+- Use a system image, explained in the [developer documentation](#developer.qmd), to reduce latency further
+
+:::{.callout-tip}
+## Tip: Visual Studio Code
+
+There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll
+down to see it. We use and recommend Microsoft's free and open source [Visual Studio
+Code](https://code.visualstudio.com/). When combined with the [Julia
+extension](https://www.julia-vscode.org/) it provides a powerful and interactive
+development experience.
+:::
+
+:::{.callout-tip}
+## Tip: Revise.jl
+
+If you plan to make changes to the code of Bach, we recommend installing the `Revise.jl`
+package. This package allows you to modify code and use the changes without restarting
+Julia. Install it with `add Revise` from the Pkg REPL. Then create a file called
+`.julia/config/startup.jl`, and put `using Revise` there. This will load Revise every
+time you start a Julia session.
+:::
+
+## Input and output files
+
+### Configuration file
+
+Bach has a single configuration file, which is written in the [TOML](https://toml.io/) format.
+It contains settings, as well as paths to other input and output files.
+
+```toml
+# start- and endtime of the simulation
+# can also be set to a date-time like 1979-05-27T07:32:00
+starttime = 2019-01-01
+endtime = 2021-01-01
+
+# maintain target waterlevel in level controlled basins
+add_levelcontrol = true  # default is true
+# run a coupled Bach - Modflow simulation
+run_modflow = false  # default is false
+
+# all timesteps are in seconds
+# do water allocation for this time horizon
+update_timestep = 86400.0
+# save output at this interval
+output_timestep = 86400.0  # default is 86400.0
+# save timesteps at this interval
+# note that this is internal, and is forwarded to the DiffEq solver options
+# https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Output-Control
+saveat = 86400.0  # default is to save every step
+
+# location IDs that will be included in the simulation
+# these location IDs are referenced in the input files below
+lsw_ids = [151358, 151371, 151309]
+
+# input files
+forcing = "../data/input/6/forcing.arrow"
+state = "../data/input/6/state.arrow"
+static = "../data/input/6/static.arrow"
+profile = "../data/input/6/profile.arrow"
+network_path = "../data/input/6/network.ply"
+
+# output file
+waterbalance = "../data/output/waterbalance.arrow"
+```
+
+Additionally, if `run_modflow = true`, a Modflow specific section needs to be added to
+the configuration file. This part is documented in [the Modflow coupling demo](#coupling-demo.qmd).
+
+### Network
+
+The network, as set with `network_path` in the configuration file, is the path to a
+[PLY file](https://en.wikipedia.org/wiki/PLY_(file_format)). This network is a directed
+graph, that links the different basins to each other, as described in @sec-space.
+
+The PLY format is a relatively simple file format that comes in binary and ASCII flavors,
+both of which are supported. To support viewing the network as a mesh layer in
+[QGIS](https://docs.qgis.org/latest/en/docs/user_manual/working_with_mesh/mesh_properties.html),
+we recommend adding a comment specifying the coordinate reference system (CRS) as documented by
+[MDAL](https://www.mdal.xyz/drivers/ply.html) and shown below. In this example, only the
+first and last two vertices are shown, just like for the edges.
+
+```
+ply
+format ascii 1.0
+comment crs: EPSG:28992
+element vertex 8531
+property float64 x
+property float64 y
+property float64 location
+element edge 6318
+property int32 vertex1
+property int32 vertex2
+property float32 fractions
+end_header
+140702.897 414305.632 10020.0
+157416.633 424082.847 10037.0
+⋮
+47343.505 371868.984 991896.0
+45651.526 372390.837 991908.0
+0 11 1.0
+1 25 1.0
+⋮
+8512 7572 1.0
+8516 7677 1.0
+```
+
+For each vertex, the x and y coordinates are given, followed by the location ID. For each
+edge, the source and destination vertex are given, followed by the fraction. The vertex
+here refers not to the location ID, but to the zero-based index of the vertices as ordered
+in the file. The fraction is typically 1.0, but can be divided into smaller parts if there
+is a bifurcation from one basin to two downstream basins. This then represents the fraction
+of water flowing from the source along this edge.
+
+The network file is allowed to be a superset of the locations IDs that you simulate (the
+`lsw_ids` configuration). A sub-network will be derived automatically.
+
+### Arrow files
+
+The input and output files described below all share that they are tabular files, stored 
+in the [Apache Arrow](https://arrow.apache.org/) IPC file format, also known as Feather
+files. This format has been chosen since it is standardized, fast, simple and flexible.
+It can be read and written by many different software packages and libraries in different
+languages. In Bach we use [Arrow.jl](https://arrow.juliadata.org/dev/).
+
+Below we give details per file, in which we describe the schema of the table using a syntax
+like this:
+
+column    | type    | restriction
+--------- | ------- | -----------
+location  | Int     | -
+volume    | Float64 | non-negative
+
+
+This means that two columns are required, one named `location`, that contained elements
+of type `Int`, and a column named `volume` that contains elements of type `Float64`. The
+order of the columns does not matter, and the files are also allowed to have extra columns,
+which will be ignored. In some cases there may be restrictions on the values or the ordering
+of the rows. This is indicated under `restriction`.
+
+Tables are also allowed to have rows for locations, variables or times that are not part of
+the simulation, these will be ignored. That makes it easy to prepare data for a larger
+region once, and test models on a subset of the basins.
+
+The Arrow input files can be compressed with LZ4 or Zstd compression. Furthermore, in some
+of the columns, a small amount of different values are repeated many times. To reduce file
+sizes it may be a good idea to apply
+[dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
+to those columns.
+
+### State
+
+The state table aims to capture the full state of the system, such that it can be used
+as an initial condition, that is potentially the outcome of an earlier simulation.
+Currently the only state is the volume of storage.
+
+column    | type    | restriction
+--------- | ------- | -----------
+location  | Int     | -
+volume    | Float64 | non-negative
+
+
+Each location specified in `lsw_ids` needs to be in the table.
+
+### Static
+
+The static table provides data that is fixed per location. The `local_surface_water_type`
+can be either `V` for free draining basins or `P` for level controlled basins.
+
+column                   | type    | restriction
+------------------------ | ------- | -----------
+location                 | Int     | -
+target_level             | Float64 | -
+target_volume            | Float64 | -
+local_surface_water_type | Char    | 'V' or 'P'
+
+Each location specified in `lsw_ids` needs to be in the table.
+
+:::{.callout-note}
+Of `target_level` and `target_volume`, currently only `target_volume` is used, and only
+for level controlled basins. This variable should be moved to the forcing table to allow
+dynamic targets.
+:::
+
+### Profile
+
+The profile table defines the physical dimensions of the storage reservoir of each basin.
+Depending on the basin type, the columns are used differently. For free draining basins,
+the level is not used in the calculation, but may be used to convert calculated volumes
+to levels for output. For level controlled basins, the discharge is not used.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+location  | Int     | -            | sorted
+volume    | Float64 | $m^3$        | sorted per location and start at 0
+area      | Float64 | $m^2$        | sorted per location and non-negative
+discharge | Float64 | $m^3 s^{-1}$ | sorted per location and non-negative
+level     | Float64 | $m$          | sorted per location
+
+The level is in meters above a datum that is the same for the entire model.
+An example of the first 5 rows of such a table is given below. The first 4 rows define the
+profile of location `10020`. The number of rows can vary per location. Using a very large
+number of rows may impact performance.
+
+location |  volume        | area          | discharge  | level
+-------- |--------------- |-------------- |----------- |-------
+   10020 |      0.0       |     1.36404e5 | 0.0        | -0.105
+   10020 |  24726.2       |     1.36404e5 | 0.0        |  0.095
+   10020 |  49452.5       |     1.36404e5 | 0.00942702 |  0.295
+   10020 |      2.49735e6 |     1.36404e5 | 0.942702   | 20.095
+   10037 |      0.0       | 50663.3       | 0.0        |  2.129
+
+Each location specified in `lsw_ids` needs to be in the table at least once.
+
+### Forcing
+
+All dynamic data can be added to the forcing table.
+
+column   | type     | restriction
+-------- | -------- | -----------
+time     | DateTime | sorted
+variable | String   | -
+location | Int      | -
+value    | Float64  | depending on variable
+
+Here is an example of the first and last two rows of a forcing table:
+
+time                | variable      | location | value
+------------------- |-------------- |--------- |-------
+2019-01-01T00:00:00 | precipitation |   150006 | 2.89352e-10
+2019-01-01T00:00:00 | precipitation |   150016 | 2.89352e-10
+⋮                   | ⋮             | ⋮         | ⋮
+2020-12-31T00:00:00 | evaporation   |   151690 | 1.15741e-9
+2020-12-31T00:00:00 | evaporation   |   151707 | 1.15741e-9
+
+The forcing table is a [narrow table](https://en.wikipedia.org/wiki/Wide_and_narrow_data#Narrow).
+When the simulation arrives at a time given in the forcing data, it will update all the
+values given for that time. These values then stay constant until the next update, there
+is no interpolation in between. This format give maximum flexibility to update different
+variables at different times.
+
+### Water balance
+
+The water balance table outputs all water balance terms at a regular output frequency, as
+defined by `output_timestep` in the configuration file. The units are $m^3$, which is the
+total volume of flow into the basin since the previous output timestep. The inital timestep
+of the simulation, with all values set to zero, is also written to the file. Since flow out
+of the basin is given a negative value, and the storage change is included, you can sum all
+components to verify the closure of the water balance.
+
+column   | type     | restriction
+-------- | -------- | -----------
+time     | DateTime | sorted
+variable | String   | -
+location | Int      | -
+value    | Float64  | non-negative volume ($m^3$)
+
+The water balance table has the same schema as the forcing table. Since the output frequency
+is constant, and equal for all variables, you can pivot this table from [narrow](https://en.wikipedia.org/wiki/Wide_and_narrow_data) to wide data to get the different water balance
+components as columns. Having them as a narrow table can make it easier to process, since
+for a given model you may not know the water balance components ahead of time.

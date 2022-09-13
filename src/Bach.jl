@@ -1,8 +1,5 @@
 module Bach
 
-# turn off precompilation during development
-__precompile__(false)
-
 import BasicModelInterface as BMI
 import ModflowInterface as MF
 import ModelingToolkit as MTK

@@ -1,6 +1,6 @@
 # Bach
 
-**Documentation: https://deltares.github.io/bach/**
+**Documentation: https://deltares.github.io/Bach.jl/**
 
 Bach is a water resources model, designed to be the replacement of the regional surface
 water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI). Bach is

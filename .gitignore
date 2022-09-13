@@ -16,6 +16,7 @@ docs/site/
 Manifest.toml
 
 data/
+compile/bach_cli/create_app/bach_cli/
 
 .vscode
 JuliaSysimage.dll

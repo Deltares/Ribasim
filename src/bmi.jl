@@ -3,7 +3,6 @@ function relative_path!(dict, key, dir)
     if haskey(dict, key)
         val = dict[key]
         dict[key] = normpath(dir, val)
-        @info "relative" val normpath(dir, val)
     end
     return dict
 end
@@ -15,6 +14,7 @@ function relative_paths!(dict, dir)
     relative_path!(dict, "static", dir)
     relative_path!(dict, "profile", dir)
     relative_path!(dict, "network_path", dir)
+    relative_path!(dict, "waterbalance", dir)
     if haskey(dict, "modflow")
         relative_path!(dict["modflow"], "simulation", dir)
         relative_path!(dict["modflow"]["models"]["gwf"], "dataset", dir)
@@ -634,3 +634,28 @@ function BMI.update_until(reg::Register, time)
 end
 
 BMI.get_current_time(reg::Register) = reg.integrator.t
+
+run(config_file::AbstractString) = run(parsefile(config_file))
+
+function run(config::AbstractDict)
+    reg = BMI.initialize(Register, config)
+    solve!(reg.integrator)
+    if haskey(config, "waterbalance")
+        wbal_path = config["waterbalance"]
+        Arrow.write(wbal_path, reg.waterbalance)
+    end
+    return reg
+end
+
+function run()
+    usage = "Usage: julia -e 'using Bach; Bach.run()' 'path/to/config.toml'"
+    n = length(ARGS)
+    if n != 1
+        throw(ArgumentError(usage))
+    end
+    toml_path = only(ARGS)
+    if !isfile(toml_path)
+        throw(ArgumentError("File not found: $(toml_path)\n" * usage))
+    end
+    run(toml_path)
+end
