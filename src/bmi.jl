@@ -606,6 +606,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     integrator = init(prob,
                       Rosenbrock23();
+                      progress = true,
+                      progress_name = "Simulating",
                       callback = cb,
                       saveat = get(config, "saveat", []),
                       abstol = 1e-9,
@@ -638,13 +640,17 @@ BMI.get_current_time(reg::Register) = reg.integrator.t
 run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::AbstractDict)
-    reg = BMI.initialize(Register, config)
-    solve!(reg.integrator)
-    if haskey(config, "waterbalance")
-        path = config["waterbalance"]
-        # create directory if needed
-        mkpath(dirname(path))
-        Arrow.write(path, reg.waterbalance)
+    logger = TerminalLogger()
+    with_logger(logger) do
+        @info "Initializing Bach model"
+        reg = BMI.initialize(Register, config)
+        solve!(reg.integrator)
+        if haskey(config, "waterbalance")
+            path = config["waterbalance"]
+            # create directory if needed
+            mkpath(dirname(path))
+            Arrow.write(path, reg.waterbalance)
+        end
     end
     return reg
 end

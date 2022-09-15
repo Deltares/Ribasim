@@ -110,10 +110,10 @@ struct ModflowRiverDrainagePackage <: ModflowPackage
     nodelist::Vector{Int32}
 end
 
-function ModflowRiverDrainagePackage(model,
-                                     modelname,
-                                     subcomponent_river,
-                                     subcomponent_drainage)
+function ModflowRiverDrainagePackage(model::MF.ModflowModel,
+                                     modelname::AbstractString,
+                                     subcomponent_river::AbstractString,
+                                     subcomponent_drainage::AbstractString)
     river = ModflowRiverPackage(model, modelname, subcomponent_river)
     drainage = ModflowDrainagePackage(model, modelname, subcomponent_drainage)
     if river.nodelist != drainage.nodelist
