@@ -369,33 +369,6 @@ function create_profile_dict(lsw_ids::Vector{Int},
     return profile_dict
 end
 
-# modified version of save_ply while this is pending:
-# https://github.com/JuliaGeometry/jl/pull/20
-function save_ply_spaces(ply, stream::IO; ascii::Bool = false)
-    PlyIO.write_header(ply, stream, ascii)
-    for element in ply
-        if ascii
-            for i in 1:length(element)
-                for (j, property) in enumerate(element.properties)
-                    if j != 1
-                        write(stream, ' ')
-                    end
-                    PlyIO.write_ascii_value(stream, property, i)
-                end
-                println(stream)
-            end
-        else # binary
-            PlyIO.write_binary_values(stream, length(element), element.properties...)
-        end
-    end
-end
-
-function save_ply_spaces(ply, file_name::AbstractString; kwargs...)
-    open(file_name, "w") do fid
-        save_ply_spaces(ply, fid; kwargs...)
-    end
-end
-
 "Convert the columns of table into a Vector{ArrayProperty}"
 function array_properties(table)
     columns = Tables.columns(table)
@@ -423,7 +396,7 @@ function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing
                       ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
                       array_properties(edge_table)...)
     push!(ply, edge)
-    save_ply_spaces(ply, path; ascii)
+    save_ply(ply, path; ascii)
 end
 
 nothing
