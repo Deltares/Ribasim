@@ -640,17 +640,14 @@ BMI.get_current_time(reg::Register) = reg.integrator.t
 run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::AbstractDict)
-    logger = TerminalLogger()
-    with_logger(logger) do
-        @info "Initializing Bach model"
-        reg = BMI.initialize(Register, config)
-        solve!(reg.integrator)
-        if haskey(config, "waterbalance")
-            path = config["waterbalance"]
-            # create directory if needed
-            mkpath(dirname(path))
-            Arrow.write(path, reg.waterbalance)
-        end
+    @info "Initializing Bach model"
+    reg = BMI.initialize(Register, config)
+    solve!(reg.integrator)
+    if haskey(config, "waterbalance")
+        path = config["waterbalance"]
+        # create directory if needed
+        mkpath(dirname(path))
+        Arrow.write(path, reg.waterbalance)
     end
     return reg
 end

@@ -19,8 +19,6 @@ using ModelingToolkit: getname
 using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEq
 using SciMLBase
-using TerminalLoggers: TerminalLogger
-using Logging: with_logger
 
 export interpolator, Register, ForwardFill
 

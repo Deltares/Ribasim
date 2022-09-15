@@ -1,5 +1,9 @@
 # Run a Bach simulation based on files created by input.jl
 using AbbreviatedStackTraces
+using Logging: global_logger
+using TerminalLoggers: TerminalLogger
+global_logger(TerminalLogger())
+
 using Bach
 using Dates
 using TOML
