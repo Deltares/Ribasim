@@ -641,8 +641,10 @@ function run(config::AbstractDict)
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
     if haskey(config, "waterbalance")
-        wbal_path = config["waterbalance"]
-        Arrow.write(wbal_path, reg.waterbalance)
+        path = config["waterbalance"]
+        # create directory if needed
+        mkpath(dirname(path))
+        Arrow.write(path, reg.waterbalance)
     end
     return reg
 end
