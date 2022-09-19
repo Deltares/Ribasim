@@ -483,3 +483,13 @@ The water balance table has the same schema as the forcing table. Since the outp
 is constant, and equal for all variables, you can pivot this table from [narrow](https://en.wikipedia.org/wiki/Wide_and_narrow_data) to wide data to get the different water balance
 components as columns. Having them as a narrow table can make it easier to process, since
 for a given model you may not know the water balance components ahead of time.
+
+## Example input files
+
+From [this link](https://github.com/visr/bach-artifacts/releases/download/v0.1.0/schematization.zip)
+you can download an existing schematization for the Netherlands that was used for testing
+purposes during development. It is provided here as an example to help people get started.
+Based on the description of the input files above, you can also generate your own
+schematization using your tools of choice. We have used [DataFrames.jl](https://github.com/JuliaData/DataFrames.jl)
+and [Arrow.jl](https://github.com/JuliaData/Arrow.jl) to prepare the tables, but one can
+equally use for instance Python's [pandas](https://arrow.apache.org/docs/python/pandas.html).
