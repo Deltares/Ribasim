@@ -62,7 +62,10 @@ function create_curve_dict(profile, lsw_ids)
     return curve_dict
 end
 
-read_table(entry::AbstractString) = Arrow.Table(entry)
+# Read into memory for now with read, to avoid locking the file, since it mmaps otherwise.
+# We could pass Mmap.mmap(path) ourselves and make sure it gets closed, since Arrow.Table
+# does not have an io handle to close.
+read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
 function read_table(entry)
     @assert Tables.istable(entry)
