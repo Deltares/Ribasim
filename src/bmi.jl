@@ -189,6 +189,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     starttime = DateTime(config["starttime"])
     endtime = DateTime(config["endtime"])
 
+    curve_dict = create_curve_dict(profile, lsw_ids)
+
     # read state data
     initial_volumes = state.volume[findall(in(lsw_ids), state.location)]
 
@@ -240,6 +242,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             type = types[i]
             basename = Symbol(:sys_, lsw_id)
             name = Symbol(basename, :₊lsw₊)
+            S = getstate(integrator, Symbol(name, :S))
 
             # forcing values
             P = param(integrator, Symbol(name, :P))
@@ -253,13 +256,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             demandlsw = [demand_agric]
             priolsw = [prio_agric]
 
-            # area
-            f = SciMLBase.getobserved(sol)  # generated function
-            # first arg to f must be symbolic
-            area_symbol = Symbol(name, :area)
-            idx_area = findfirst(==(area_symbol), sysnames.obs_symbol)
-            area_sym = sysnames.obs_syms[idx_area]
-            area = f(area_sym, sol(t), p, t)
+            # area: it's much faster to do the area lookup ourselves than to generate the
+            # observed function for area and get it from there
+            curve = curve_dict[lsw_id]
+            lsw_area = LinearInterpolation(curve.a, curve.s)
+            area = lsw_area(S)
 
             if type == 'P'
                 if add_levelcontrol
@@ -267,7 +268,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                     prio_wm = 0
 
                     # set the Q_wm for the coming day based on the expected storage
-                    S = getstate(integrator, Symbol(name, :S))
                     outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
                     target_volume = param(integrator, Symbol(outname, :target_volume))
 
@@ -461,7 +461,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
-    curve_dict = create_curve_dict(profile, lsw_ids)
     sys_dict = create_sys_dict(lsw_ids, types, target_volumes, target_levels,
                                initial_volumes, all_users; curve_dict, add_levelcontrol)
 
