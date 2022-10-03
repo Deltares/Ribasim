@@ -608,7 +608,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     integrator = init(prob,
-                      Rosenbrock23();
+                      Rosenbrock23(autodiff=false);
                       progress = true,
                       progress_name = "Simulating",
                       callback = cb,
