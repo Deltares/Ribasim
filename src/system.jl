@@ -193,19 +193,34 @@ function NoFlowBoundary(; name)
     compose(ODESystem(eqs, t, [], []; name), x)
 end
 
-# Fractional bifurcation, only made for flow from a to b and c
-function Bifurcation(; name, fraction_b)
-    @named a = FluidQuantityPort()
-    @named b = FluidQuantityPort()
-    @named c = FluidQuantityPort()
+# Fractional bifurcation
+function Bifurcation(; name, fractions)
+    @named src = FluidQuantityPort()
 
-    pars = @parameters fraction_b = fraction_b
+    if !(sum(fractions) ≈ 1)
+        @error "Invalid Bifurcation, fractions must add up to 1" name fractions
+        error("Invalid Bifurcation")
+    end
 
-    eqs = Equation[
-                   # conservation of flow
-                   b.Q ~ fraction_b * a.Q
-                   c.Q ~ (1 - fraction_b) * a.Q]
-    compose(ODESystem(eqs, t, [], pars; name), a, b, c)
+    ports = [src]
+    eqs = Equation[]
+    pars = Num[]
+    for (i, fraction) in enumerate(fractions)
+        port = FluidQuantityPort(; name = Symbol(:dst_, i))
+        parname = Symbol(:fraction_, i)
+        # from @macroexpand @parameters a = 1.0, to make symbol interpolation easy
+        defaultval = Symbolics.setdefaultval(Sym{Real}(parname), fraction)
+        fracpar = MTK.toparam(Symbolics.wrap(MTK.setmetadata(defaultval,
+                                                             Symbolics.VariableSource,
+                                                             (:parameters, parname))))
+
+        eq = port.Q ~ fracpar * src.Q
+        push!(ports, port)
+        push!(eqs, eq)
+        push!(pars, fracpar)
+    end
+
+    compose(ODESystem(eqs, t, [], pars; name), ports)
 end
 
 function LevelLink(; name, cond)

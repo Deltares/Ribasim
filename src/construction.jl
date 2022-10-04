@@ -12,16 +12,6 @@ function fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
             fractions[i][lsw_to] = fraction
         end
     end
-    # This can be triggered by district crossing bifurcations.
-    # for d in fractions
-    #     if !isempty(d)
-    #         if sum(values(d)) != 1
-    #             @warn "fraction don't add up"
-    #             @show d
-    #         end
-    #     end
-    # end
-    # @assert all((sum(values(d)) == 1 for d in fractions if !isempty(d)))
     return fractions
 end
 
@@ -158,7 +148,7 @@ function create_district(lsw_ids::Vector{Int},
 
         out_vertices = outneighbors(graph, v)
         out_lsw_ids = [lsw_ids[v] for v in out_vertices]
-        out_lsws = [sys_dict[out_lsw_id] for out_lsw_id in out_lsw_ids]
+        out_lsws = [sys_dict[id] for id in out_lsw_ids]
 
         n_out = length(out_vertices)
         if n_out == 0
@@ -181,35 +171,31 @@ function create_district(lsw_ids::Vector{Int},
             else
                 add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id => out_lsw)
             end
-        elseif n_out == 2
-            out_lsw_id_b = out_lsw_ids[1]
-            out_lsw_id_c = out_lsw_ids[2]
-            out_lsw_b = sys_dict[out_lsw_id_b]
-            out_lsw_c = sys_dict[out_lsw_id_c]
-
+        else
             if type == 'V'
-                # create a Bifurcation with a fixed fraction
+                # create a Bifurcation with parametrized fraction
                 name = Symbol("bifurcation_", lsw_id)
                 @assert sum(values(fractions[v])) ≈ 1
 
-                # the first row's lsw_to becomes b, the second c
-                fraction_b = fractions[v][out_lsw_ids[1]]
-
-                bifurcation = Bifurcation(; name, fraction_b)
+                frac_dict = fractions[v]
+                distributary_fractions = [frac_dict[id] for id in out_lsw_ids]
+                bifurcation = Bifurcation(; name, fractions = distributary_fractions)
                 push!(systems, bifurcation)
                 if type == 'V'
-                    push!(eqs, connect(lsw_sys.weir.b, bifurcation.a))
+                    push!(eqs, connect(lsw_sys.weir.b, bifurcation.src))
                 else
-                    push!(eqs, connect(lsw_sys.link.b, bifurcation.a))
+                    push!(eqs, connect(lsw_sys.link.b, bifurcation.src))
                 end
-                push!(eqs, connect(bifurcation.b, out_lsw_b.lsw.x))
-                push!(eqs, connect(bifurcation.c, out_lsw_c.lsw.x))
+
+                for (i, out_lsw) in enumerate(out_lsws)
+                    bifurcation_out = getproperty(bifurcation, Symbol(:dst_, i))
+                    push!(eqs, connect(bifurcation_out, out_lsw.lsw.x))
+                end
             else
-                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id_b => out_lsw_b)
-                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id_c => out_lsw_c)
+                for (out_lsw_id, out_lsw) in zip(out_lsw_ids, out_lsws)
+                    add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id => out_lsw)
+                end
             end
-        else
-            error("outflow to more than 2 LSWs not supported")
         end
     end
 
