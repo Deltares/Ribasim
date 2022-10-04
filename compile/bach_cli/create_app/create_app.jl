@@ -7,14 +7,12 @@ cd(@__DIR__)
 
 appdir = "./bach_cli"
 
-create_app(
-    "..",
-    appdir;
-    # map from binary name to julia function name
-    executables = ["bach_cli" => "julia_main"],
-    precompile_execution_file = "precompile.jl",
-    filter_stdlibs = false  # safer, makes only a tiny difference
-)
+create_app("..",
+           appdir;
+           # map from binary name to julia function name
+           executables = ["bach_cli" => "julia_main"],
+           precompile_execution_file = "precompile.jl",
+           filter_stdlibs = false)
 
 """
 Add the following metadata files to the newly created build:

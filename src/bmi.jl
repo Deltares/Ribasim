@@ -156,9 +156,6 @@ function prepare_waterbalance(sysnames)
 end
 
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
-    lsw_ids = config["lsw_ids"]
-    n_lsw = length(lsw_ids)
-
     # support either paths to Arrow files or tables
     forcing = read_table(config["forcing"])
     state = read_table(config["state"])
@@ -169,6 +166,14 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     state = DataFrame(state)
     static = DataFrame(static)
     profile = DataFrame(profile)
+
+    if haskey(config, "lsw_ids")
+        lsw_ids = config["lsw_ids"]::Vector{Int}
+    else
+        # use all lsw_ids in the state if it is not given in the TOML file
+        lsw_ids = Vector{Int}(state.location)
+    end
+    n_lsw = length(lsw_ids)
 
     network = if n_lsw == 0
         error("lsw_ids is empty")
@@ -607,7 +612,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     integrator = init(prob,
-                      Rosenbrock23(autodiff=false);
+                      Rosenbrock23(autodiff = false);
                       progress = true,
                       progress_name = "Simulating",
                       callback = cb,
