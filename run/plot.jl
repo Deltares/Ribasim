@@ -277,21 +277,22 @@ function plot_series(reg::Bach.Register,
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
 
     # TODO plot users/agriculture
-    name = Symbol(:sys_, lsw_id, :₊lsw₊)
+    name = Symbol(:lsw_, lsw_id, :₊)
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)), label = "precipitation")
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_eact), -1),
            label = "evaporation")
-    haskey(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)) && lines!(ax1,
+    haskey(reg, Symbol(:weir_, lsw_id, :₊, :Q)) && lines!(ax1,
            timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊weir₊, :Q)),
+           interpolator(reg, Symbol(:weir_, lsw_id, :₊, :Q)),
            label = "outflow")
-    haskey(reg, Symbol(:sys_, lsw_id, :₊link₊a₊, :Q)) && lines!(ax1,
+    # TODO update for link numbering
+    # haskey(reg, Symbol(:link_, lsw_id, :₊a₊, :Q)) && lines!(ax1,
+    #        timespan,
+    #        interpolator(reg, Symbol(:link_, lsw_id, :₊a₊, :Q)),
+    #        label = "link")
+    haskey(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q)) && lines!(ax1,
            timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊link₊a₊, :Q)),
-           label = "link")
-    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1),
+           interpolator(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q), -1),
            label = "watermanagement")
     lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
     lines!(ax1,
@@ -309,13 +310,13 @@ function plot_series(reg::Bach.Register,
     hidexdecorations!(ax1, grid = false)
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
-        target_level = Symbol(:sys_, lsw_id, :₊levelcontrol₊, :target_level)
+        target_level = Symbol(:levelcontrol_, lsw_id, :₊target_level)
         if haskey(reg, target_level)
             lines!(ax2, timespan, interpolator(reg, target_level))
         end
     else
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :S)))
-        target_volume = Symbol(:sys_, lsw_id, :₊levelcontrol₊, :target_volume)
+        target_volume = Symbol(:levelcontrol_, lsw_id, :₊target_volume)
         if haskey(reg, target_volume)
             lines!(ax2, timespan, interpolator(reg, target_volume))
         end
