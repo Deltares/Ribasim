@@ -47,15 +47,29 @@ function add_cumulative!(components, eqs, var)
     return nothing
 end
 
-function create_sys_dict(lsw_ids::Vector{Int},
-                         types::Vector{Char},
-                         target_volumes::Vector{Float64},
-                         target_levels::Vector{Float64},
-                         initial_volumes::Vector{Float64},
-                         all_users::Vector{Vector{Symbol}};
-                         curve_dict, add_levelcontrol)
-    sys_dict = Dict{Int, ODESystem}()
+"Add a LevelLink between two systems"
+function add_levellink!(systems, eqs, src_sys::ODESystem, dst_sys::ODESystem,
+                        levellink_id::Int)
+    @named link[levellink_id] = Bach.LevelLink(; cond = 1e-2)
+    push!(systems, link)
+    push!(eqs, connect(src_sys.x, link.a))
+    push!(eqs, connect(link.b, dst_sys.x))
+    add_cumulative!(systems, eqs, link.b.Q)
+    return levellink_id + 1
+end
 
+function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, target_levels,
+                       initial_volumes, all_users, curve_dict, add_levelcontrol, name)
+    eqs = Equation[]
+    systems = ODESystem[]
+
+    # store some systems so we can more easily connect them
+    lsw_dict = Dict{Int, ODESystem}()
+    weir_dict = Dict{Int, ODESystem}()
+
+    @assert nv(graph) == length(lsw_ids)
+
+    # create the node systems
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
         target_level = target_levels[i]
@@ -63,15 +77,15 @@ function create_sys_dict(lsw_ids::Vector{Int},
         type = types[i]
         lswusers = all_users[i]
         curve = curve_dict[lsw_id]
+
         lsw_area = LinearInterpolation(curve.a, curve.s)
         lsw_discharge = LinearInterpolation(curve.q, curve.s)
         lsw_level = LinearInterpolation(curve.h, curve.s)
 
-        @named lsw = Bach.LSW(; S = S0, lsw_level, lsw_area)
-
-        # create and connect OutflowTable or LevelControl
-        systems = [lsw]
-        eqs = Equation[]
+        # TODO set initial concentration
+        @named lsw[lsw_id] = Bach.LSW(; C = rand(), S = S0, lsw_level, lsw_area)
+        lsw_dict[lsw_id] = lsw
+        push!(systems, lsw)
 
         # add cumulative flows for all LSW waterbalance terms
         add_cumulative!(systems, eqs, lsw.Q_prec)
@@ -81,28 +95,34 @@ function create_sys_dict(lsw_ids::Vector{Int},
         add_cumulative!(systems, eqs, lsw.urban_runoff)
 
         if type == 'V'
-            # always add a weir to a free flowing basin
-            @named weir = Bach.OutflowTable(; lsw_discharge)
+            # always add a weir to a free flowing basin, the lsw_id here means "from"
+            @named weir[lsw_id] = Bach.OutflowTable(; lsw_discharge)
+            weir_dict[lsw_id] = weir
             push!(systems, weir)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
             add_cumulative!(systems, eqs, weir.Q)
 
-            for user in lswusers
-                usersys = Bach.GeneralUser(; name = user)
+            for (i, user) in enumerate(lswusers)
+                i > 1 && error("multiple users not yet supported")
+                @named usersys[lsw_id] = GeneralUser()
                 push!(eqs, connect(lsw.x, usersys.x), connect(lsw.s, usersys.s))
                 push!(systems, usersys)
                 add_cumulative!(systems, eqs, usersys.x.Q)
             end
         else
             if add_levelcontrol
-                @named levelcontrol = Bach.LevelControl(; target_volume, target_level)
+                @named levelcontrol[lsw_id] = Bach.LevelControl(; target_volume,
+                                                                target_level)
                 push!(eqs, connect(lsw.x, levelcontrol.a))
                 push!(systems, levelcontrol)
                 add_cumulative!(systems, eqs, levelcontrol.a.Q)
             end
-            for user in lswusers
+            for (i, user) in enumerate(lswusers)
+                i > 1 && error("multiple users not yet supported")
+
+                # TODO generalize user numbering, or come up with better @name a[i] strategy
                 # Locally allocated water
-                usersys = Bach.GeneralUser_P(; name = user)
+                @named usersys[lsw_id] = GeneralUser_P()
                 push!(eqs, connect(lsw.x, usersys.a), connect(lsw.s, usersys.s_a))
                 push!(systems, usersys)
                 # TODO: consider how to connect external user demand (i.e. usersys.b)
@@ -110,97 +130,72 @@ function create_sys_dict(lsw_ids::Vector{Int},
             end
             # TODO: include flushing requirement
         end
-
-        name = Symbol(:sys_, lsw_id)
-        lsw_sys = ODESystem(eqs, t; name)
-        lsw_sys = compose(lsw_sys, systems)
-        sys_dict[lsw_id] = lsw_sys
     end
-    return sys_dict
-end
 
-"Add a LevelLink between two systems"
-function add_levellink!(systems, eqs, src::Pair{Int, ODESystem}, dst::Pair{Int, ODESystem})
-    src_id, src_sys = src
-    dst_id, dst_sys = dst
-    linkname = Symbol(:sys_, src_id, :_, dst_id)
-    link = Bach.LevelLink(; cond = 1e-2, name = linkname)
-    push!(eqs, connect(src_sys.lsw.x, link.a))
-    push!(eqs, connect(link.b, dst_sys.lsw.x))
-    push!(systems, link)
-    add_cumulative!(systems, eqs, link.b.Q)
-end
-
-# connect the LSW systems with each other, with boundaries at the end
-# and bifurcations when needed
-function create_district(lsw_ids::Vector{Int},
-                         types::Vector{Char},
-                         graph::DiGraph,
-                         fractions::Vector{Dict{Int, Float64}},
-                         sys_dict::Dict{Int, ODESystem})::ODESystem
-    eqs = Equation[]
-    systems = ODESystem[]
-    @assert nv(graph) == length(sys_dict) == length(lsw_ids)
-
+    # connect the nodes with each other, with boundaries at the end and bifurcations when
+    # needed
+    levellink_id = 1
     for (v, lsw_id) in enumerate(lsw_ids)
-        lsw_sys = sys_dict[lsw_id]
+        lsw = lsw_dict[lsw_id]
         type = types[v]
 
         out_vertices = outneighbors(graph, v)
         out_lsw_ids = [lsw_ids[v] for v in out_vertices]
-        out_lsws = [sys_dict[id] for id in out_lsw_ids]
+        out_lsws = [lsw_dict[id] for id in out_lsw_ids]
 
         n_out = length(out_vertices)
         if n_out == 0
             if type == 'V'
-                name = Symbol("headboundary_", lsw_id)
                 # h value on the boundary is not used, but needed as BC
-                downstreamboundary = Bach.HeadBoundary(; name, h = 0.0)
-                push!(eqs, connect(lsw_sys.weir.b, downstreamboundary.x))
+                dsbound = @named headboundary[lsw_id] = Bach.HeadBoundary(; h = 0.0,
+                                                                          C = 0.0)
+                weir = weir_dict[lsw_id]
+                push!(eqs, connect(weir.b, dsbound.x))
+                push!(systems, dsbound)
             else
-                name = Symbol("noflowboundary_", lsw_id)
-                downstreamboundary = Bach.NoFlowBoundary(; name)
-                push!(eqs, connect(lsw_sys.lsw.x, downstreamboundary.x))
+                # TODO this is probably only needed when there is nothing attached to
+                # the LSW connector. It should be harmless to add in any case, though
+                # it is currently giving ExtraVariablesSystemException.
+                # dsbound = @named noflowboundary[lsw_id] = NoFlowBoundary()
+                # push!(eqs, connect(lsw.x, noflowboundary.x))
+                # push!(systems, dsbound)
             end
-            push!(systems, downstreamboundary)
         elseif n_out == 1
-            out_lsw_id = only(out_lsw_ids)
             out_lsw = only(out_lsws)
             if type == 'V'
-                push!(eqs, connect(lsw_sys.weir.b, out_lsw.lsw.x))
+                weir = weir_dict[lsw_id]
+                push!(eqs, connect(weir.b, out_lsw.x))
             else
-                add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id => out_lsw)
+                levellink_id = add_levellink!(systems, eqs, lsw, out_lsw, levellink_id)
             end
         else
             if type == 'V'
                 # create a Bifurcation with parametrized fraction
-                name = Symbol("bifurcation_", lsw_id)
                 @assert sum(values(fractions[v])) ≈ 1
 
                 frac_dict = fractions[v]
                 distributary_fractions = [frac_dict[id] for id in out_lsw_ids]
-                bifurcation = Bifurcation(; name, fractions = distributary_fractions)
+                @named bifurcation[lsw_id] = Bifurcation(;
+                                                         fractions = distributary_fractions)
                 push!(systems, bifurcation)
                 if type == 'V'
-                    push!(eqs, connect(lsw_sys.weir.b, bifurcation.src))
+                    weir = weir_dict[lsw_id]
+                    push!(eqs, connect(weir.b, bifurcation.src))
                 else
-                    push!(eqs, connect(lsw_sys.link.b, bifurcation.src))
+                    push!(eqs, connect(link.b, bifurcation.src))
                 end
 
                 for (i, out_lsw) in enumerate(out_lsws)
                     bifurcation_out = getproperty(bifurcation, Symbol(:dst_, i))
-                    push!(eqs, connect(bifurcation_out, out_lsw.lsw.x))
+                    push!(eqs, connect(bifurcation_out, out_lsw.x))
                 end
             else
-                for (out_lsw_id, out_lsw) in zip(out_lsw_ids, out_lsws)
-                    add_levellink!(systems, eqs, lsw_id => lsw_sys, out_lsw_id => out_lsw)
+                for out_lsw in out_lsws
+                    levellink_id = add_levellink!(systems, eqs, lsw, out_lsw, levellink_id)
                 end
             end
         end
     end
 
-    @named district = ODESystem(eqs, t, [], [])
-    append!(systems, [k for k in values(sys_dict)])
-    district = compose(district, systems)
-    return district
+    return ODESystem(eqs, t, [], []; name, systems)
 end

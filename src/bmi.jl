@@ -245,8 +245,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         for (i, lsw_id) in enumerate(lsw_ids)
             lswusers = copy(all_users[i])
             type = types[i]
-            basename = Symbol(:sys_, lsw_id)
-            name = Symbol(basename, :₊lsw₊)
+            name = Symbol(:lsw_, lsw_id, :₊)
             S = getstate(integrator, Symbol(name, :S))
 
             # forcing values
@@ -255,8 +254,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             drainage = param(integrator, Symbol(name, :drainage))
             infiltration = param(integrator, Symbol(name, :infiltration))
             urban_runoff = param(integrator, Symbol(name, :urban_runoff))
-            demand_agric = param(integrator, Symbol(basename, :₊agric₊demand))
-            prio_agric = param(integrator, Symbol(basename, :₊agric₊prio))
+            demand_agric = param(integrator, Symbol(:usersys_, lsw_id, :₊demand))
+            prio_agric = param(integrator, Symbol(:usersys_, lsw_id, :₊prio))
 
             demandlsw = [demand_agric]
             priolsw = [prio_agric]
@@ -273,8 +272,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                     prio_wm = 0
 
                     # set the Q_wm for the coming day based on the expected storage
-                    outname = Symbol(:sys_, lsw_id, :₊levelcontrol₊)
-                    target_volume = param(integrator, Symbol(outname, :target_volume))
+                    tv_name = Symbol(:levelcontrol_, lsw_id, :₊target_volume)
+                    target_volume = param(integrator, tv_name)
 
                     # what is the expected storage difference at the end of the period
                     # if there is no watermanagement?
@@ -295,7 +294,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
                 allocate_P!(;
                             integrator,
-                            name = Symbol(:sys_, lsw_id, :₊),
+                            lsw_id,
                             P,
                             area,
                             E_pot,
@@ -310,7 +309,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 # allocate to different users for a free flowing LSW
                 allocate_V!(;
                             integrator,
-                            name = Symbol(:sys_, lsw_id, :₊),
+                            lsw_id,
                             P,
                             area,
                             E_pot,
@@ -330,7 +329,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
 
             # Allocate water to flushing (only external water. Flush in = Flush out)
-            # outname_flush = Symbol(:sys_, lsw_id, :₊flushing₊)
+            # outname_flush = Symbol(:flushing_, lsw_id, :₊)
             # param!(integrator, Symbol(outname_flush, :Q), demand_flush)
 
         end
@@ -342,7 +341,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # Allocate function for free flowing LSWs
     function allocate_V!(;
                          integrator,
-                         name,
+                         lsw_id,
                          P,
                          area,
                          E_pot,
@@ -380,12 +379,12 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             end
 
             # update parameters
-            symalloc = Symbol(name, user.user, :₊alloc)
+            symalloc = Symbol(:usersys_, lsw_id, :₊alloc)
             param!(integrator, symalloc, -user.alloc[])
             # The following are not essential for the simulation
-            symdemand = Symbol(name, user.user, :₊demand)
+            symdemand = Symbol(:usersys_, lsw_id, :₊demand)
             param!(integrator, symdemand, -user.demand[])
-            symprio = Symbol(name, user.user, :₊prio)
+            symprio = Symbol(:usersys_, lsw_id, :₊prio)
             param!(integrator, symprio, user.priority[])
         end
 
@@ -395,7 +394,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # Allocate function for level controled LSWs
     function allocate_P!(;
                          integrator,
-                         name,
+                         lsw_id,
                          P,
                          area,
                          E_pot,
@@ -457,23 +456,24 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             end
 
             # update parameters
-            symalloc = Symbol(name, user.user, :₊alloc_a)
+            # TODO generalize for new user naming
+            symalloc = Symbol(:usersys_, lsw_id, :₊alloc_a)
             param!(integrator, symalloc, -user.alloc_a[])
-            symalloc = Symbol(name, user.user, :₊alloc_b)
+            symalloc = Symbol(:usersys_, lsw_id, :₊alloc_b)
             param!(integrator, symalloc, -user.alloc_b[])
         end
 
         return nothing
     end
 
-    sys_dict = create_sys_dict(lsw_ids, types, target_volumes, target_levels,
-                               initial_volumes, all_users; curve_dict, add_levelcontrol)
-
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
-    sys = create_district(lsw_ids, types, graph, fractions, sys_dict)
 
-    sim = structural_simplify(sys)
+    @named netsys = NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes,
+                                  target_levels,
+                                  initial_volumes, all_users, curve_dict, add_levelcontrol)
+
+    sim = structural_simplify(netsys)
 
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])

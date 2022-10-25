@@ -3,15 +3,16 @@
 @variables t
 
 """
-    FluidQuantityPort(; name, h = 0.0, Q = 0.0)
+    FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
 
 Similar to FluidPort, but leaving out concentration for now.
 
 - h [m]: hydraulic head above reference level
 - Q [m³ s⁻¹]: volumetric flux
+- C [kg m⁻³]: mass concentration
 """
-@connector function FluidQuantityPort(; name, h = 0.0, Q = 0.0)
-    vars = @variables h(t)=h Q(t)=Q [connect = Flow]
+@connector function FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
+    vars = @variables h(t)=h Q(t)=Q [connect = Flow] C(t)=C [connect = Stream]
     ODESystem(Equation[], t, vars, []; name)
 end
 
@@ -26,8 +27,8 @@ Storage S [m³] is an output variable that can be a function of the hydraulic he
 end
 
 function OutflowTable(; name, lsw_discharge)
-    @named a = FluidQuantityPort()  # upstream
-    @named b = FluidQuantityPort()  # downstream
+    @named a = FluidPort()  # upstream
+    @named b = FluidPort()  # downstream
     @named s = Storage()  # upstream storage
 
     vars = @variables Q(t)
@@ -38,18 +39,21 @@ function OutflowTable(; name, lsw_discharge)
                    # Q(S) rating curve
                    Q ~ lsw_discharge(s.S)
                    # connectors
-                   Q ~ a.Q]
-    compose(ODESystem(eqs, t, vars, []; name), a, b, s)
+                   Q ~ a.Q
+                   b.C ~ instream(a.C)
+                   a.C ~ instream(a.C)]
+    ODESystem(eqs, t, vars, []; systems = [a, b, s], name)
 end
 
 function LevelControl(; name, target_volume, target_level)
-    @named a = FluidQuantityPort()  # lsw
+    @named a = FluidPort()  # lsw
     pars = @parameters(target_volume=target_volume,
                        target_level=target_level,
                        alloc_a=0.0, # lsw
                        alloc_b=0.0,)
-    eqs = Equation[a.Q ~ alloc_a + alloc_b]
-    compose(ODESystem(eqs, t, [], pars; name), a)
+    eqs = Equation[a.Q ~ alloc_a + alloc_b
+                   a.C ~ 0]
+    ODESystem(eqs, t, [], pars; systems = [a], name)
 end
 
 """
@@ -60,6 +64,7 @@ constant input fluxes. Dynamic exchange fluxes can be defined in
 connected components.
 
 # State or observed variables
+- C [kg m⁻³]: mass concentration
 - S [m³]: storage volume
 - area [m²]: open water surface area
 - Q_prec [m³ s⁻¹]: precipitation inflow
@@ -72,11 +77,12 @@ connected components.
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 """
-function LSW(; name, S, lsw_level, lsw_area)
-    @named x = FluidQuantityPort()
+function LSW(; name, C, S, lsw_level, lsw_area)
+    @named x = FluidPort(; C)
     @named s = Storage(; S)
 
     vars = @variables(h(t),
+                      C(t)=C,
                       S(t)=S,
                       Q_ex(t),  # upstream, downstream, users
                       Q_prec(t)=0,
@@ -112,15 +118,19 @@ function LSW(; name, S, lsw_level, lsw_area)
                           drainage -
                           infiltration_act +
                           urban_runoff
+                   # mass balance for concentration
+                   # TODO include other fluxes
+                   D(C) ~ ifelse(Q_ex > 0, (instream(x.C) - C) * Q_ex / S, 0)
                    # connectors
                    h ~ x.h
+                   C ~ x.C
                    S ~ s.S
                    Q_ex ~ x.Q]
-    compose(ODESystem(eqs, t, vars, []; name), x, s)
+    ODESystem(eqs, t, vars, []; systems = [x, s], name)
 end
 
 function GeneralUser(; name)
-    @named x = FluidQuantityPort()
+    @named x = FluidPort()
     @named s = Storage()
 
     vars = @variables(abs(t)=0,)
@@ -136,15 +146,15 @@ function GeneralUser(; name)
                    abs ~ x.Q
                    abs ~ alloc * (0.5 * tanh((s.S - 50.0) / 10.0) + 0.5)
                    # shortage ~ demand - abs
-                   ]
-    compose(ODESystem(eqs, t, vars, pars; name), x, s)
+                   x.C ~ 0]
+    ODESystem(eqs, t, vars, pars; systems = [x, s], name)
 end
 
 # Function to assign general users in a level controlled LSW. Demand can be met from external source
 function GeneralUser_P(; name)
-    @named a = FluidQuantityPort()  # from lsw source
+    @named a = FluidPort()  # from lsw source
     @named s_a = Storage()
-    # @named b = FluidQuantityPort()  # from external source
+    # @named b = FluidPort()  # from external source
     # @named s_b = Storage()
 
     vars = @variables(abs_a(t)=0,
@@ -163,39 +173,41 @@ function GeneralUser_P(; name)
                    abs_b ~ alloc_b
                    abs_a ~ a.Q
                    # abs_b ~ b.Q
-                   ]
+                   a.C ~ 0]
 
-    compose(ODESystem(eqs, t, vars, pars; name), a, s_a)
+    ODESystem(eqs, t, vars, pars; systems = [a, s_a], name)
 end
 
 function FlushingUser(; name)
-    @named x_in = FluidQuantityPort()
-    @named x_out = FluidQuantityPort()
+    @named x_in = FluidPort()
+    @named x_out = FluidPort()
     pars = @parameters(demand_flush=0.0)
 
     eqs = Equation[x_in.Q ~ demand_flush
-                   x_in.Q ~ -x_out.Q]
-    compose(ODESystem(eqs, t, [], pars; name), x)
+                   x_in.Q ~ -x_out.Q
+                   x_out.C ~ instream(x_in.C)
+                   x_in.C ~ instream(x_out.C)]
+    ODESystem(eqs, t, [], pars; systems = [x], name)
 end
 
-function HeadBoundary(; name, h)
-    @named x = FluidQuantityPort(; h)
-    vars = @variables h(t)=h [input = true]
+function HeadBoundary(; name, h, C)
+    @named x = FluidPort(; h)
+    vars = @variables h(t)=h [input = true] C(t)=C [input = true]
 
-    eqs = Equation[x.h ~ h]
-    compose(ODESystem(eqs, t, vars, []; name), x)
+    eqs = Equation[x.h ~ h, x.C ~ C]
+    ODESystem(eqs, t, vars, []; systems = [x], name)
 end
 
 function NoFlowBoundary(; name)
-    @named x = FluidQuantityPort()
-
-    eqs = Equation[x.Q ~ 0]
-    compose(ODESystem(eqs, t, [], []; name), x)
+    @named x = FluidPort()
+    @unpack Q, C = x
+    eqs = Equation[Q ~ 0, C ~ 0]
+    ODESystem(eqs, t, [], []; systems = [x], name)
 end
 
 # Fractional bifurcation
 function Bifurcation(; name, fractions)
-    @named src = FluidQuantityPort()
+    @named src = FluidPort()
 
     if !(sum(fractions) ≈ 1)
         @error "Invalid Bifurcation, fractions must add up to 1" name fractions
@@ -203,10 +215,10 @@ function Bifurcation(; name, fractions)
     end
 
     ports = [src]
-    eqs = Equation[]
+    eqs = Equation[src.C ~ instream(src.C)]
     pars = Num[]
     for (i, fraction) in enumerate(fractions)
-        port = FluidQuantityPort(; name = Symbol(:dst_, i))
+        port = FluidPort(; name = Symbol(:dst_, i))
         parname = Symbol(:fraction_, i)
         # from @macroexpand @parameters a = 1.0, to make symbol interpolation easy
         defaultval = Symbolics.setdefaultval(Sym{Real}(parname), fraction)
@@ -214,24 +226,26 @@ function Bifurcation(; name, fractions)
                                                              Symbolics.VariableSource,
                                                              (:parameters, parname))))
 
-        eq = port.Q ~ fracpar * src.Q
+        neweqs = Equation[port.Q ~ fracpar * src.Q, port.C ~ instream(src.C)]
         push!(ports, port)
-        push!(eqs, eq)
+        append!(eqs, neweqs)
         push!(pars, fracpar)
     end
 
-    compose(ODESystem(eqs, t, [], pars; name), ports)
+    ODESystem(eqs, t, [], pars; systems = ports, name)
 end
 
 function LevelLink(; name, cond)
-    @named a = FluidQuantityPort()
-    @named b = FluidQuantityPort()
+    @named a = FluidPort()
+    @named b = FluidPort()
 
     pars = @parameters cond = cond
 
     eqs = Equation[
                    # conservation of flow
                    a.Q + b.Q ~ 0
-                   a.Q ~ cond * (a.h - b.h)]
-    compose(ODESystem(eqs, t, [], pars; name), a, b)
+                   a.Q ~ cond * (a.h - b.h)
+                   b.C ~ instream(a.C)
+                   a.C ~ instream(b.C)]
+    ODESystem(eqs, t, [], pars; systems = [a, b], name)
 end
