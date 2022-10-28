@@ -197,7 +197,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     curve_dict = create_curve_dict(profile, lsw_ids)
 
     # read state data
-    initial_volumes = state.volume[findall(in(lsw_ids), state.location)]
+    used_rows = findall(in(lsw_ids), state.location)
+    used_state = (; volume = state.volume[used_rows], salinity = state.salinity[used_rows])
 
     # read static data
     static_rows = findall(in(lsw_ids), static.location)
@@ -471,7 +472,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     @named netsys = NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes,
                                   target_levels,
-                                  initial_volumes, all_users, curve_dict, add_levelcontrol)
+                                  used_state, all_users, curve_dict, add_levelcontrol)
 
     sim = structural_simplify(netsys)
 

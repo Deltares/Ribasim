@@ -59,7 +59,7 @@ function add_levellink!(systems, eqs, src_sys::ODESystem, dst_sys::ODESystem,
 end
 
 function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, target_levels,
-                       initial_volumes, all_users, curve_dict, add_levelcontrol, name)
+                       used_state, all_users, curve_dict, add_levelcontrol, name)
     eqs = Equation[]
     systems = ODESystem[]
 
@@ -73,7 +73,8 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
     for (i, lsw_id) in enumerate(lsw_ids)
         target_volume = target_volumes[i]
         target_level = target_levels[i]
-        S0 = initial_volumes[i]
+        S0 = used_state.volume[i]
+        C0 = used_state.salinity[i]
         type = types[i]
         lswusers = all_users[i]
         curve = curve_dict[lsw_id]
@@ -82,8 +83,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
         lsw_discharge = LinearInterpolation(curve.q, curve.s)
         lsw_level = LinearInterpolation(curve.h, curve.s)
 
-        # TODO set initial concentration
-        @named lsw[lsw_id] = Bach.LSW(; C = rand(), S = S0, lsw_level, lsw_area)
+        @named lsw[lsw_id] = Bach.LSW(; C = C0, S = S0, lsw_level, lsw_area)
         lsw_dict[lsw_id] = lsw
         push!(systems, lsw)
 

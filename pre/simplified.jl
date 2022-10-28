@@ -15,7 +15,9 @@ lsw_ids = Int.(nc["node"][:])
 # state
 begin
     volume = Float64.(nc["volume"][:])
-    state = DataFrame(; location = lsw_ids, volume)
+    salinity = similar(volume)
+    salinity .= 0.1
+    state = DataFrame(; location = lsw_ids, volume, salinity)
     Arrow.write(normpath(output_dir, "state.arrow"), state)
 end
 

@@ -9,7 +9,7 @@ Similar to FluidPort, but leaving out concentration for now.
 
 - h [m]: hydraulic head above reference level
 - Q [m³ s⁻¹]: volumetric flux
-- C [kg m⁻³]: mass concentration
+- C [kg m⁻³]: salinity
 """
 @connector function FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
     vars = @variables h(t)=h Q(t)=Q [connect = Flow] C(t)=C [connect = Stream]
@@ -64,7 +64,7 @@ constant input fluxes. Dynamic exchange fluxes can be defined in
 connected components.
 
 # State or observed variables
-- C [kg m⁻³]: mass concentration
+- C [kg m⁻³]: salinity
 - S [m³]: storage volume
 - area [m²]: open water surface area
 - Q_prec [m³ s⁻¹]: precipitation inflow
