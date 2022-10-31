@@ -613,13 +613,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     integrator = init(prob,
-                      Rosenbrock23(autodiff = false);
+                      AutoTsit5(Rosenbrock23());
                       progress = true,
                       progress_name = "Simulating",
                       callback = cb,
                       saveat = get(config, "saveat", []),
-                      abstol = 1e-9,
-                      reltol = 1e-9)
+                      abstol = 1e-6,
+                      reltol = 1e-3)
 
     return Register(integrator, param_hist, sysnames, waterbalance)
 end
