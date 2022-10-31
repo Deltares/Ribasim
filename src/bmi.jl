@@ -479,7 +479,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
-    prob = ODAEProblem(sim, [], tspan)
+    prob = ODAEProblem(sim, [], tspan; sparse = true)
 
     # subset of parameters that we possibly have forcing data for
     # map from variable symbols from Bach.parsename to forcing.variable symbols

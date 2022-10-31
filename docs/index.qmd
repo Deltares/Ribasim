@@ -376,12 +376,13 @@ to those columns.
 
 The state table aims to capture the full state of the system, such that it can be used
 as an initial condition, that is potentially the outcome of an earlier simulation.
-Currently the only state is the volume of storage.
+Currently the only states are the volume and salinity of storage.
 
 column    | type    | restriction
 --------- | ------- | -----------
 location  | Int     | -
 volume    | Float64 | non-negative
+salinity  | Float64 | non-negative
 
 
 Each location specified in `lsw_ids` needs to be in the table.
