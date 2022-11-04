@@ -39,7 +39,7 @@ using SciMLBase
     E_pot = @subset(output, :variable==Epot_getvar).value
 
     t = reg.integrator.sol.t
-    S = reg.integrator.sol(t, idxs = 1) # TO DO: improve ease of using usyms names
+    S = reg.integrator.sol(t, idxs = 1) # TODO: improve ease of using usyms names
     drainage = reg.integrator.sol(t, idxs = 4)
     infiltration = reg.integrator.sol(t, idxs = 5)
     urban_runoff = reg.integrator.sol(t, idxs = 6)
@@ -54,9 +54,9 @@ using SciMLBase
           min(0.0, infiltration[2] - drainage[2] - urban_runoff[2])
     @test abs[2] == alloc[2] * (0.5 * tanh((S[2] - 50.0) / 10.0) + 0.5)
 
-    # TO DO: Set up test for when there are more than one users (indus?)
+    # TODO: Set up test for when there are more than one users (indus?)
 
-    # TO DO: Test for multiple allocation users
+    # TODO: Test for multiple allocation users
 
 end
 
@@ -97,7 +97,7 @@ end
     E_pot = @subset(output, :variable==Epot_getvar).value
 
     t = reg.integrator.sol.t
-    S = reg.integrator.sol(t, idxs = 1) # TO DO: improve ease of using usyms names
+    S = reg.integrator.sol(t, idxs = 1) # TODO: improve ease of using usyms names
     drainage = reg.integrator.sol(t, idxs = 4)
     infiltration = reg.integrator.sol(t, idxs = 5)
     urban_runoff = reg.integrator.sol(t, idxs = 6)
@@ -127,6 +127,6 @@ end
 
 @testset "flushing" begin
 
-    # TO DO: Test for situation when there is a flushing requirement (salinity)
+    # TODO: Test for situation when there is a flushing requirement (salinity)
 
 end

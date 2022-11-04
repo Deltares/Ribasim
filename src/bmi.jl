@@ -55,9 +55,9 @@ function create_curve_dict(profile, lsw_ids)
     for lsw_id in lsw_ids
         profile_rows = searchsorted(profile.location, lsw_id)
         curve_dict[lsw_id] = Ribasim.StorageCurve(profile.volume[profile_rows],
-                                               profile.area[profile_rows],
-                                               profile.discharge[profile_rows],
-                                               profile.level[profile_rows])
+                                                  profile.area[profile_rows],
+                                                  profile.discharge[profile_rows],
+                                                  profile.level[profile_rows])
     end
     return curve_dict
 end

@@ -336,10 +336,10 @@ function RibasimModflowExchange(config, ribasim_ids)
                                     get_var_ptr(model, modelname, "X"))
     n = length(ribasim_ids)
     return RibasimModflowExchange(simulation,
-                               exchanges,
-                               Dictionary(ribasim_ids, zeros(n)),
-                               Dictionary(ribasim_ids, zeros(n)),
-                               Dictionary(ribasim_ids, zeros(n)))
+                                  exchanges,
+                                  Dictionary(ribasim_ids, zeros(n)),
+                                  Dictionary(ribasim_ids, zeros(n)),
+                                  Dictionary(ribasim_ids, zeros(n)))
 end
 
 function exchange_ribasim_to_modflow!(m::RibasimModflowExchange)

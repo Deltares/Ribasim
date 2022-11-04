@@ -465,7 +465,8 @@ function plot_series_comparison(reg::Ribasim.Register, timespan::ClosedInterval{
 end
 
 "Plot timeseries of key variables related to user allocation and demand"
-function plot_Qavailable_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64}, mzwb)
+function plot_Qavailable_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64},
+                                mzwb)
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
@@ -509,7 +510,8 @@ end
 
 "Plot timeseries of key variables related to user allocation and demand -- to check if multiple users can be modelled correctly
 Industry data is made up"
-function plot_Qavailable_dummy_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64})
+function plot_Qavailable_dummy_series(reg::Ribasim.Register,
+                                      timespan::ClosedInterval{Float64})
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
@@ -603,7 +605,7 @@ function plot_user_demand(reg::Ribasim.Register,
                xlabel = "time / day",
                ylabel = "volume / m³",
                title = "Ribasim user supply-demand water balance")
-    # TO DO - fix x axis time
+    # TODO - fix x axis time
     cols = Duet.wong_colors[1:2]
 
     barplot!(ax2, x, wb.value; dodge, stack = stacks, color = stacks, colormap = cols)

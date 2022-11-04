@@ -117,7 +117,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
         else
             if add_levelcontrol
                 @named levelcontrol[lsw_id] = Ribasim.LevelControl(; target_volume,
-                                                                target_level)
+                                                                   target_level)
                 push!(eqs, connect(lsw.x, levelcontrol.a))
                 push!(systems, levelcontrol)
                 add_cumulative!(systems, eqs, levelcontrol.a.Q)
@@ -153,7 +153,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
             if type == 'V'
                 # h value on the boundary is not used, but needed as BC
                 dsbound = @named headboundary[lsw_id] = Ribasim.HeadBoundary(; h = 0.0,
-                                                                          C = 0.0)
+                                                                             C = 0.0)
                 weir = weir_dict[lsw_id]
                 push!(eqs, connect(weir.b, dsbound.x))
                 push!(systems, dsbound)
