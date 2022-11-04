@@ -24,8 +24,10 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 [compat]
 Arrow = "2.3"
 BasicModelInterface = "0.1"
+DataFrames = "1.4"
 DataInterpolations = "3.7"
 Dictionaries = "0.3"
+DiffEqCallbacks = "2.23"
 Graphs = "1.6"
 ModelingToolkit = "8.20"
 ModelingToolkitStandardLibrary = "1.5"
@@ -33,13 +35,16 @@ ModflowInterface = "1"
 NCDatasets = "0.12.7"
 OrdinaryDiffEq = "6.7"
 PlyIO = "1.1.2"
+SciMLBase = "1.60"
 TOML = "1"
 julia = "1.8"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrameMacros = "75880514-38bc-4a95-a458-c2aea5a3a702"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "SafeTestsets", "Test"]
+test = ["Aqua", "CSV", "DataFrameMacros", "SafeTestsets", "Test"]
