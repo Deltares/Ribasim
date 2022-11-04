@@ -488,19 +488,19 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # subset of parameters that we possibly have forcing data for
     # map from variable symbols from Bach.parsename to forcing.variable symbols
     # TODO make this systematic such that we don't need a manual mapping anymore
-    paramvars = Dict{Symbol, Symbol}(Symbol("agric.demand") => :demand_agriculture,
-                                     Symbol("agric.prio") => :priority_agriculture,
-                                     Symbol("lsw.P") => :precipitation,
-                                     Symbol("lsw.E_pot") => :evaporation,
-                                     Symbol("lsw.infiltration") => :infiltration,
-                                     Symbol("lsw.drainage") => :drainage,
-                                     Symbol("lsw.urban_runoff") => :urban_runoff)
+    paramvars = Dict{Symbol, Symbol}(:agric_demand => :demand_agriculture,
+                                     :agric_prio => :priority_agriculture,
+                                     :P => :precipitation,
+                                     :E_pot => :evaporation,
+                                     :infiltration => :infiltration,
+                                     :drainage => :drainage,
+                                     :urban_runoff => :urban_runoff)
 
     run_modflow = get(config, "run_modflow", false)::Bool
     if run_modflow
         # these will be provided by modflow
-        pop!(paramvars, Symbol("lsw.drainage"))
-        pop!(paramvars, Symbol("lsw.infiltration"))
+        pop!(paramvars, :drainage)
+        pop!(paramvars, :infiltration)
     end
 
     # take only the forcing data we need, and add the system's parameter index

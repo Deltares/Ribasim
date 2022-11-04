@@ -89,8 +89,8 @@ function tsview(t, var::Symbol, loc::Int)
     return view(t.time, i), view(t.value, i)
 end
 
-# :sys_151358₊agric₊alloc to (151358, :agric.alloc)
-# :headboundary_151309₊h to (151309, :h)
+# :sys_151358₊agric₊alloc to (:agric.alloc, 151358)
+# :headboundary_151309₊h to (:h, 151309)
 function parsename(sym)::Tuple{Symbol, Int}
     loc, sysvar = split(String(sym), '₊'; limit = 2)
     location = parse(Int, replace(loc, r"^\w+_" => ""))
