@@ -1,7 +1,7 @@
 using Dates
 using DataFrames
 using DataFrameMacros
-using Bach
+using Ribasim
 using Arrow
 import BasicModelInterface as BMI
 using SciMLBase
@@ -27,10 +27,10 @@ lswforcing = DataFrame(Arrow.Table(normpath(datadir, "forcing.arrow")));
                                   discharge = [0.0, 1e0], level = [10.0, 11.0])
 
     ## Simulate
-    reg = BMI.initialize(Bach.Register, config)
+    reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
 
-    output = Bach.samples_long(reg)
+    output = Ribasim.samples_long(reg)
 
     # test all lsws have been modelled
     @test length(unique(output.location)) == length(config["lsw_ids"])
@@ -43,7 +43,7 @@ lswforcing = DataFrame(Arrow.Table(normpath(datadir, "forcing.arrow")));
 
     @test S == sort!(S, rev = true)
 
-    Q_ex = Bach.interpolator(reg, Symbol(name, :Q_ex)).(t) # is this also weir??
+    Q_ex = Ribasim.interpolator(reg, Symbol(name, :Q_ex)).(t) # is this also weir??
     @test isapprox(Q_ex .* -1.0e6, S.u, atol = 0.000001)
     @test isapprox(S[50] - S[51], weir[51], atol = 0.000001)
     @test isapprox(S[126] - S[127], weir[127], atol = 0.000001)
@@ -65,10 +65,10 @@ end
                                   discharge = [0.0, 1e0], level = [10.0, 11.0])
 
     # Simulate
-    reg = BMI.initialize(Bach.Register, config)
+    reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
     t = reg.integrator.sol.t
-    output = Bach.samples_long(reg)
+    output = Ribasim.samples_long(reg)
 
     P_getvar = :P
     P = @subset(output, :variable==P_getvar).value   # P and Epot are from the forcing

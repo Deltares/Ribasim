@@ -2,16 +2,16 @@
 title: "Modflow Coupling"
 ---
 
-Bach has been designed to provide a computationally efficient representation of
+Ribasim has been designed to provide a computationally efficient representation of
 surface water for MODFLOW6. It does so by connecting to basic MODFLOW6 boundary
 conditions: the river and drainage packages.
 
-Bach connects to MODFLOW6 via the Basic Model Interface (BMI) and Extended
+Ribasim connects to MODFLOW6 via the Basic Model Interface (BMI) and Extended
 Model Interface (XMI) [@hughes2022modflow]. BMI describes the interface to
 initialize a model, get values from its memory, run a timestep, etc. XMI
 extends this interface to allow much finer control into MODFLOW6's solution
 procedures. We have written a Julia package [@modflowinterface] which
-implements this interface for the Julia programming language. In coupling, Bach
+implements this interface for the Julia programming language. In coupling, Ribasim
 uses this interface to get the head values, the boundary condition water
 levels, and the budgets term of the MODFLOW6 groundwater model while MODFLOW6
 is running.
@@ -101,7 +101,7 @@ fully coupled approach is most robust, but it effectively means a single
 all-encompassing hydrological kernel. The first scheme is computationally the
 cheapest, but states and fluxes lag one timestep behind, so that mass
 conservation is not guaranteed. For example, based on its river levels,
-MODFLOW6 may compute a infiltration flux. Bach then runs its timestep, and
+MODFLOW6 may compute a infiltration flux. Ribasim then runs its timestep, and
 finds that given MODFLOW6's infiltration flux, no water is present in the
 surface waters: the infiltration flux has been overestimated by MODFLOW6, and
 mass is not conserved. 
@@ -172,10 +172,10 @@ linear solution).
 ## Sequential coupled solution
 
 A coupled run stars by initializing both models and creating the exchange
-information: which MODFLOW6 boundary condition is connected to which Bach
+information: which MODFLOW6 boundary condition is connected to which Ribasim
 basin. While the model is running, the model proceeds through time as follows:
 
-1. Bach solves the equations on a basin level; this occurs with adaptive
+1. Ribasim solves the equations on a basin level; this occurs with adaptive
 timestepping via ModelingToolkit.
 2. At a specified time (in accordance with the MODFLOW6 time discretization),
 the volumes are converted to MODFLOW6 boundary condition levels using a
@@ -183,7 +183,7 @@ Callback function.
 3. MODFLOW6 runs a timestep.
 4. The drainage and infiltration budgets are computed from MODFLOW6 using the
 equations described above and aggregated per basin.
-5. The aggregated values are set as Bach boundary conditions, and Bach
+5. The aggregated values are set as Ribasim boundary conditions, and Ribasim
 solves until the next preset exchange time.
 
 These steps run until the final timestep is finished.
@@ -198,7 +198,7 @@ describes an approach.
 The simplest form of a iterative solution occurs as follows:
 
 1. MODFLOW6 computes drainage and infiltration flows.
-2. Bach uses these flows to compute a storage volume for the basin.
+2. Ribasim uses these flows to compute a storage volume for the basin.
 3. The volume is translated to a water level for every MODFLOW6 boundary
 condition in the basins.
 4. MODFLOW6 recomputes drainage and infiltration flows with the updated water
@@ -209,15 +209,15 @@ are not constant, but are driven by a head difference. This head difference
 depends on the level of the boundary conditions and head of every cell of the
 groundwater model. If the surface waters of a basin empty, the water level will
 decrease and drainage and infiltration flows will change. Ideally, we can
-provide Bach with more information, so that it may estimate drainage and
+provide Ribasim with more information, so that it may estimate drainage and
 infiltration terms better. 
 
 As groundwater flow is often (approximately) linear, we can use linearization
-to more efficiently compute the flow from Bach's side as well. In the iterative
-coupled solution, we are solving both MODFLOW6 and Bach repeatedly, until they
-produce same drainage or infiltration (approximately). One of Bach's basins
+to more efficiently compute the flow from Ribasim's side as well. In the iterative
+coupled solution, we are solving both MODFLOW6 and Ribasim repeatedly, until they
+produce same drainage or infiltration (approximately). One of Ribasim's basins
 contains many MODFLOW cells with boundary conditions. We could add every
-boundary condition to Bach's equations, but this is costly and cumbersome.
+boundary condition to Ribasim's equations, but this is costly and cumbersome.
 Fortunately, linearization allows us to "stack" (superpose) all the different
 boundary conditions into a single, simple equation. In linear form, every
 equation takes the form of:
@@ -226,13 +226,13 @@ $$
 a = ph + q
 $$
 
-Note the $h$ rather than $\phi$, we are formulating from Bach's
+Note the $h$ rather than $\phi$, we are formulating from Ribasim's
 perspective! We can sum all coefficients for p and q to provide a linear
-groundwater response to Bach.
+groundwater response to Ribasim.
 
 ### Drainage
 
-From Bach's perspective, the groundwater head is constant given a timestep,
+From Ribasim's perspective, the groundwater head is constant given a timestep,
 so that:
 
 $$
@@ -246,7 +246,7 @@ When the head falls below the drainage elevation, the coefficients are 0.
 
 ### River
 
-From Bach's persective, infiltration is never limited when the head falls below
+From Ribasim's persective, infiltration is never limited when the head falls below
 the bottom:
 
 $$
@@ -269,7 +269,7 @@ $$
 
 # Assigning MODFLOW water levels
 
-Principally, MODFLOW deals with water levels; Bach deals with water volumes.
+Principally, MODFLOW deals with water levels; Ribasim deals with water volumes.
 The translation from a water volume to a water level for a single boundary
 condition is straightforward:
 
@@ -283,7 +283,7 @@ $$
 Where $d$ is water depth, $V$ is volume, $A$ is area, $h$ is water level, and
 $b$ is the bed elevation.
 
-However, the primary complication is that where Bach has **one volume**,
+However, the primary complication is that where Ribasim has **one volume**,
 MODFLOW has **many levels** to adjust. The sum of all these adjustments times
 their respective areas should result in the basin volume change:
 
@@ -301,14 +301,14 @@ change be distributed across the basin?
 The best method to find an answer to this question is to run a hydraulic model,
 extract water heights, and compute the total volume. This can then be used as a
 lookup table for every cell. These runs can also be used for parametrizing the
-volume-discharge lookup tables. In coupling to Bach, we need only find the
+volume-discharge lookup tables. In coupling to Ribasim, we need only find the
 appropriate volume and assign the associated water level. For efficiency, this
 lookup table can be discretized in a limited number of steps, and in coupling
 the level will be interpolated.
 
 :::{.callout-note}
 Great care is required when parametrizing these volume-level relationships.
-As Bach does not know the properties of the surface water, it can perform
+As Ribasim does not know the properties of the surface water, it can perform
 very limited validation of the volume-level lookup tables. As the total
 volume of the basin is distributed accross **all** boundary conditions, it
 should be checked that the change of the water column for every boundary
@@ -320,7 +320,7 @@ approximately by these lookup tables.
 
 ## Parametrization
 
-In coupling Bach to MODFLOW6, relations translating the Bach volume must be
+In coupling Ribasim to MODFLOW6, relations translating the Ribasim volume must be
 given **for every every cell** of every boundary condition. These consist of
 piecewise linear relationships between the basin volume and its associated
 water level for the boundary condition in the cell.

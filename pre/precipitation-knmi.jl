@@ -1,4 +1,4 @@
-# Read daily KNMI precipitation into a forcing Arrow table for Bach.
+# Read daily KNMI precipitation into a forcing Arrow table for Ribasim.
 
 using TOML, Arrow, CSV, Dates, DataFrames
 

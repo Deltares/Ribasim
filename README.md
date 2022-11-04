@@ -1,13 +1,13 @@
-# Bach
+# Ribasim
 
-**Documentation: https://deltares.github.io/Bach.jl/**
+**Documentation: https://deltares.github.io/Ribasim.jl/**
 
-Bach is a water resources model, designed to be the replacement of the regional surface
-water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI). Bach is
+Ribasim is a water resources model, designed to be the replacement of the regional surface
+water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI). Ribasim is
 a work in progress, it is a prototype that demonstrates all essential functionalities.
 Further development of the prototype in a software release is planned in 2022 and 2023.
 
-Bach is written in the [Julia programming language](https://julialang.org/) and is built
+Ribasim is written in the [Julia programming language](https://julialang.org/) and is built
 on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
 libraries, notably [ModelingToolkit.jl](https://mtk.sciml.ai/stable/).
 

@@ -50,7 +50,7 @@ end
 "Add a LevelLink between two systems"
 function add_levellink!(systems, eqs, src_sys::ODESystem, dst_sys::ODESystem,
                         levellink_id::Int)
-    @named link[levellink_id] = Bach.LevelLink(; cond = 1e-2)
+    @named link[levellink_id] = Ribasim.LevelLink(; cond = 1e-2)
     push!(systems, link)
     push!(eqs, connect(src_sys.x, link.a))
     push!(eqs, connect(link.b, dst_sys.x))
@@ -83,7 +83,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
         lsw_discharge = LinearInterpolation(curve.q, curve.s)
         lsw_level = LinearInterpolation(curve.h, curve.s)
 
-        @named lsw[lsw_id] = Bach.LSW(; C = C0, S = S0, lsw_level, lsw_area)
+        @named lsw[lsw_id] = Ribasim.LSW(; C = C0, S = S0, lsw_level, lsw_area)
         lsw_dict[lsw_id] = lsw
         push!(systems, lsw)
         push!(inputs, lsw.P)
@@ -101,7 +101,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
 
         if type == 'V'
             # always add a weir to a free flowing basin, the lsw_id here means "from"
-            @named weir[lsw_id] = Bach.OutflowTable(; lsw_discharge)
+            @named weir[lsw_id] = Ribasim.OutflowTable(; lsw_discharge)
             weir_dict[lsw_id] = weir
             push!(systems, weir)
             push!(eqs, connect(lsw.x, weir.a), connect(lsw.s, weir.s))
@@ -116,7 +116,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
             end
         else
             if add_levelcontrol
-                @named levelcontrol[lsw_id] = Bach.LevelControl(; target_volume,
+                @named levelcontrol[lsw_id] = Ribasim.LevelControl(; target_volume,
                                                                 target_level)
                 push!(eqs, connect(lsw.x, levelcontrol.a))
                 push!(systems, levelcontrol)
@@ -152,7 +152,7 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
         if n_out == 0
             if type == 'V'
                 # h value on the boundary is not used, but needed as BC
-                dsbound = @named headboundary[lsw_id] = Bach.HeadBoundary(; h = 0.0,
+                dsbound = @named headboundary[lsw_id] = Ribasim.HeadBoundary(; h = 0.0,
                                                                           C = 0.0)
                 weir = weir_dict[lsw_id]
                 push!(eqs, connect(weir.b, dsbound.x))

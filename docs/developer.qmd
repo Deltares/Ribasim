@@ -5,34 +5,34 @@ title: "Dev docs"
 # System image
 
 The `ribasim_cli` is an executable that can be used without needing to install julia itself.
-If you want to work from julia, but want to reduce the latency when working with Bach.jl,
+If you want to work from julia, but want to reduce the latency when working with Ribasim.jl,
 an effective option is to work with system images. Like `ribasim_cli`, they can also be created
 by PackageCompiler, see the [sysimage docs](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html).
 
-In the Bach repository under `compile/sysimage` is a project prepared that allows you to
+In the Ribasim repository under `compile/sysimage` is a project prepared that allows you to
 create a system image. This project contains many package that are not only used for
-running Bach, but also to do post-processing such as plotting using [Makie](https://docs.makie.org/stable/).
+running Ribasim, but also to do post-processing such as plotting using [Makie](https://docs.makie.org/stable/).
 
 PackageCompiler can be used directly, but for these instructions we will show you how to
 create such a system image from Visual Studio Code. For details see the
 [julia-vscode docs](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/).
 
-First, open the Bach repository in VS Code. Run the "Julia: Start REPL" command, which you
+First, open the Ribasim repository in VS Code. Run the "Julia: Start REPL" command, which you
 can find using Ctrl+Shift+P. In the REPL, assuming `pwd()` returns the root of the
-repository, run `] activate compile/sysimage`. Bach is a part of this project, but the
+repository, run `] activate compile/sysimage`. Ribasim is a part of this project, but the
 package manager needs to be told that it resides at the root of the repository. This only
 needs to be done once, because then the path is contained in the `Manifest.toml`. Run
-`] rm Bach` to remove it, and add it back using `] dev .` Now run `] up` to make sure
+`] rm Ribasim` to remove it, and add it back using `] dev .` Now run `] up` to make sure
 you build a system image using the latest versions of the dependencies.
 
 Then, click "Julia env" in the bottom bar and select the `compile/sysimage` directory.
 Now use Ctrl+Shift+P and run "Tasks: Run Build Task", followed by
 "Julia: Build custom sysimage for current environment". This will take a while, as it will
 not only include the dependencies, but it will also run the code in
-`compile/sysimage/precompile.jl`, which includes a Bach run and plotting commands.
+`compile/sysimage/precompile.jl`, which includes a Ribasim run and plotting commands.
 
 If successful, this will create a "JuliaSysimage" shared library file under
-`compile/sysimage`. Move this file to the root of the project. When opening the Bach
+`compile/sysimage`. Move this file to the root of the project. When opening the Ribasim
 repository in VS Code, it will use this system image based on the conditions described
 [here](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/#Using-custom-sysimages).
 

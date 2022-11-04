@@ -1,4 +1,4 @@
-# Read data for a Bach-Mozart reference run
+# Read data for a Ribasim-Mozart reference run
 
 # see open_water_factor(t)
 evap_factor::Matrix{Float64} = [0.00 0.50 0.70
@@ -31,7 +31,7 @@ end
 
 open_water_factor(t::Real) = open_water_factor(unix2datetime(t))
 
-# ForwardFill copied from Bach to avoid a dependency
+# ForwardFill copied from Ribasim to avoid a dependency
 """
     ForwardFill(t, v)
 
@@ -157,7 +157,7 @@ function remove_zero_cols(df)
     return df[!, Not(allzeros)]
 end
 
-# both the mozart and bach waterbalance dataframes have these columns
+# both the mozart and Ribasim waterbalance dataframes have these columns
 metacols = ["model", "lsw", "districtwatercode", "type", "time_start", "time_end"]
 # does not include the type dependent columns "todownstream" and "watermanagement"
 vars = [
@@ -174,16 +174,16 @@ vars = [
 ]
 cols = vcat(metacols, vars)
 
-# read_mzwaterbalance with extra columns for comparing to bach
+# read_mzwaterbalance with extra columns for comparing to Ribasim
 function read_mzwaterbalance_compare(path, lsw_sel::Int)
     mzwb = Mozart.read_mzwaterbalance(path, lsw_sel)
     type = only(mzwb[1, :type])::Char
     mzwb[!, "model"] .= "mozart"
-    # since bach doesn't differentiate, assign to_dw to todownstream if it is downstream
+    # since Ribasim doesn't differentiate, assign to_dw to todownstream if it is downstream
     mzwb.todownstream = min.(mzwb.todownstream, mzwb.to_dw)
     # similarly create a single watermanagement column
     mzwb.watermanagement = mzwb.alloc_wm_dw + mzwb.to_dw
-    # remove the last period, since bach doesn't have it
+    # remove the last period, since Ribasim doesn't have it
     allcols = type == 'V' ? vcat(cols, "todownstream") : vcat(cols, "watermanagement")
     mzwb = mzwb[1:(end - 1), allcols]
     # add a column with timestep length in seconds
@@ -191,10 +191,10 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
     return mzwb
 end
 
-# create a bach timeseries input from the mozart water balance output
+# create a Ribasim timeseries input from the mozart water balance output
 function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String};
                        flipsign = false)
-    # convert m3/timestep to m3/s for bach
+    # convert m3/timestep to m3/s for Ribasim
     v = mzwb[!, col] ./ mzwb.period
     if flipsign
         v .*= -1

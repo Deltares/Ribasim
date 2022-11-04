@@ -1,4 +1,4 @@
-# The components needed for coupling Bach and Modflow
+# The components needed for coupling Ribasim and Modflow
 
 ##
 import BasicModelInterface as BMI
@@ -404,7 +404,7 @@ end
 
 """
 to_index means index in lsw_index
-lsw_index is index into the vector of Bach's LocalSurfaceWaters
+lsw_index is index into the vector of Ribasim's LocalSurfaceWaters
 """
 function ModflowExchangeData(boundary,
                              modflow_nodes, #  ::Vector{Int},  # BMI
@@ -527,16 +527,16 @@ end
 """
 Idem ditto infiltration
 """
-function apply_drainage!(bachmodel, exchange)
-    # TODO use in Bach
+function apply_drainage!(ribamodel, exchange)
+    # TODO use in Ribasim
     # MUST BE POSITIVE
-    bachmodel.drainage[exchange.modflow.lsw_index] += exchange.lsw.drainage_sum
+    ribamodel.drainage[exchange.modflow.lsw_index] += exchange.lsw.drainage_sum
 end
 
-function apply_infiltration!(bachmodel, exchange)
-    # TODO use in Bach
+function apply_infiltration!(ribamodel, exchange)
+    # TODO use in Ribasim
     # MUST BE POSITIVE
-    bachmodel.infiltration[exchange.modflow.lsw_index] += exchange.lsw.infiltration_sum
+    ribamodel.infiltration[exchange.modflow.lsw_index] += exchange.lsw.infiltration_sum
 end
 
 function set_node_stage!(boundary::ModflowRiverDrainagePackage, index, value)
@@ -575,30 +575,30 @@ set_stage!(exchange::LocalSurfaceWaterExchange{ModflowDrainagePackage}) = nothin
 """
 Collect the net budgets from MODFLOW and set these in the exchange structure.
 """
-function exchange_modflow_to_bach!(coupledmodel)
+function exchange_modflow_to_ribasim!(coupledmodel)
     head = coupledmodel.mfmodel.head
     exchanges = coupledmodel.exchanges
-    bachmodel = coupledmodel.bachmodel
+    ribamodel = coupledmodel.ribamodel
 
     for exchange in exchanges
         budget!(exchange.boundary, head)
         sum_budget!(exchange)
     end
-    apply_drainage!(bachmodel, exchange)
-    apply_infiltration!(bachmodel, exchange)
+    apply_drainage!(ribamodel, exchange)
+    apply_infiltration!(ribamodel, exchange)
     return nothing
 end
 
 """
-Translate the storage volumes of the Bach Local Surface Waters into water
+Translate the storage volumes of the Ribasim Local Surface Waters into water
 height per weir area, and apply individual cell corrections. Set the
 elevations and stages in MODFLOW.
 """
-function exchange_bach_to_modflow!(coupledmodel)
+function exchange_ribasim_to_modflow!(coupledmodel)
     exchanges = coupledmodel.exchanges
     for exchange in exchanges
         # lswvolume: is a vector in canonical order of every
-        compute_stage!(exchange, bachmodel.lswvolume)
+        compute_stage!(exchange, ribamodel.lswvolume)
         # This sets the stage in MODFLOW as well, as the exchange holds a view
         # on the MODFLOW6 memory.
         set_stage!(exchange)
@@ -608,62 +608,62 @@ end
 
 struct SequentialCoupledModel
     mfmodel::UsefulModflowModel
-    bachmodel::BachModel
+    ribamodel::RibasimModel
     exchanges::Vector{Union{ModflowDrainagePackage, ModflowRiverDrainagePackage}}
 end
 
 function update!(coupledmodel::SequentialCoupledModel)
-    (; mfmodel, bachmodel, exchanges) = coupledmodel
+    (; mfmodel, ribamodel, exchanges) = coupledmodel
     MF.prepare_time_step(mfmodel.model, 0.0)
     Δt = MF.get_time_step(mfmodel.model)
 
-    run_timestep(bachmodel, Δt)
-    exchange_bach_to_modflow!(coupledmodel)
+    run_timestep(ribamodel, Δt)
+    exchange_ribasim_to_modflow!(coupledmodel)
     MF.prepare_solve(mfmodel.model, 1)
     solve_to_convergence(mfmodel.model)
-    exchange_modflow_to_bach!(coupledmodel)
+    exchange_modflow_to_ribasim!(coupledmodel)
     return nothing
 end
 
 struct IterativeCoupledModel
     mfmodel::UsefulModflowModel
-    bachmodel::BachModel
+    ribamodel::RibasimModel
     exchanges::Vector{Union{ModflowDrainagePackage, ModflowRiverDrainagePackage}}
-    previous_bach_state::Vector{Float64}
+    previous_ribasim_state::Vector{Float64}
     criterion::Float64
 end
 
 function is_converged(coupledmodel::IterativeCoupledModel)
-    return @. all(abs(coupledmodel.bachmodel.state - coupledmodel.previous_bach_state) <
+    return @. all(abs(coupledmodel.ribamodel.state - coupledmodel.previous_ribasim_state) <
                   coupledmodel.criterion)
 end
 
 function update!(coupledmodel::IterativeCoupledModel)
-    (; mfmodel, bachmodel, exchanges, previous_state) = coupledmodel
+    (; mfmodel, ribamodel, exchanges, previous_state) = coupledmodel
     # 0.0 is a dummy value. MODFLOW6 just goes forward.
     MF.prepare_time_step(mfmodel.model, 0.0)
     Δt = MF.get_time_step(mfmodel.model)
 
-    copyto!(previous_state, bachmodel.state)
+    copyto!(previous_state, ribamodel.state)
 
     converged = false
     iteration = 1
     while !converged && iteration <= model.maxiter
         @show iteration
 
-        run_timestep(bachmodel, Δt)
-        exchange_bach_to_modflow!(coupledmodel)
+        run_timestep(ribamodel, Δt)
+        exchange_ribasim_to_modflow!(coupledmodel)
         # Do a single linear solve
         mf_converged = MF.solve(mfmodel.model, 1)
 
         # TODO: check coupled convergence
-        # Set bach model back if not converged yet
+        # Set ribamodel back if not converged yet
         if !(mf_converged && is_converged(coupledmodel))
             # TODO:
-            # bachmodel contains a single previous state at t - Δt.
-            backtrack!(bachmodel, previous_state, Δt)
+            # ribamodel contains a single previous state at t - Δt.
+            backtrack!(ribamodel, previous_state, Δt)
         end
-        exchange_modflow_to_bach!(coupledmodel)
+        exchange_modflow_to_ribasim!(coupledmodel)
         iteration += 1
     end
     println("converged")

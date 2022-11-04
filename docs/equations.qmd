@@ -2,7 +2,7 @@
 title: "Water balance"
 ---
 
-Bach currently simulates the following "natural" water balance terms:
+Ribasim currently simulates the following "natural" water balance terms:
 
 1. Precipitation
 2. Evaporation
@@ -11,13 +11,13 @@ Bach currently simulates the following "natural" water balance terms:
 5. Urban runoff 
 6. Upstream and downstream flow
 
-Additionally, Bach simulates the following "allocated" water balance terms:
+Additionally, Ribasim simulates the following "allocated" water balance terms:
 
 1. General user
 2. Level Control
 3. Flushing
 
-Depending on the type of boundary conditions, Bach requires relation between
+Depending on the type of boundary conditions, Ribasim requires relation between
 storage volume and wetted area ($A$), and between the storage volume and the
 water level ($h$). These are (currently) represented by piecewise linear
 relationships.
@@ -65,7 +65,7 @@ constant wetted surface (a rectangular profile), evaporation only stops at $S =
 
 ## Infiltration and Drainage
 
-Infiltration is provided as a lump sum for the basin. If Bach is coupled with
+Infiltration is provided as a lump sum for the basin. If Ribasim is coupled with
 MODFLOW6, the infiltration is computed as the sum of all **positive** flows of the
 MODFLOW6 boundary conditions in the basin:
 
@@ -91,7 +91,7 @@ detail in the MODFLOW Coupling section of this documentation.
 
 ## Upstream and downstream flow
 
-Bach's basins can be connected to each other, and each basin expects an
+Ribasim's basins can be connected to each other, and each basin expects an
 explicit connection. Two connections are currently available for inter-basin
 flows:
 
@@ -149,7 +149,7 @@ result in instantaneous corrective fluxes.
 
 # Allocated water balance terms
 
-Bach has been designed with the functionality to allocate water to different
+Ribasim has been designed with the functionality to allocate water to different
 users within each basin. The volume allocated is determined by the user demand,
 the available water, and the priority of each user with respect to other users
 within the same basin. The water demands for a given basin can be summarized into
@@ -179,7 +179,7 @@ to satisfy $\demuser$.
 
 The availability of water ($\qavail$) internally in a basin in a given timestep
 is calculated by @eq-q-avail. This volume is available to be extracted by the
-General Users. In the Bach prototype, additional water from the regional
+General Users. In the Ribasim prototype, additional water from the regional
 network is currently modelled as an unlimited supply.
 
 $$
@@ -215,7 +215,7 @@ maintain the water levels for each basin at a target level. This target levels i
 determined externally. The $\demwm$ is negative if additional water is required
 to increase the water level in the basin, or positive if there is surplus water
 which must be removed to lower the level in the basin. When $\demwm$ is positive
-and there is surplus water, Bach is designed to make any surplus water
+and there is surplus water, Ribasim is designed to make any surplus water
 available to General Users within the basin for abstraction. This is modelled by
 adding the $\demwm$ to the $\qavail$ in calculated in @eq-wm.
 
@@ -247,7 +247,7 @@ $$ {#eq-flushing}
 
 # Numerical solution
 
-Bach uses ModelingToolkit.jl to provide a numerical solution to the water
+Ribasim uses ModelingToolkit.jl to provide a numerical solution to the water
 balance equations. Changes to forcings or parameters such as precipitation, but
 also the allocated water abstraction is managed through the use of CallBack
 functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW6 are also
@@ -255,7 +255,7 @@ managed via the use of a callback function.
 
 # Performance
 
-Bach needs to be sufficiently fast to make application on the national scale, with
+Ribasim needs to be sufficiently fast to make application on the national scale, with
 ~10000 basins, practical. Therefore, whilst developing, we need to be mindful that
 our approach can scale to such a size. We currently simulate a set of 40 connected
 free-flowing basins for a period of 2 years in about 10 seconds.

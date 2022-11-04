@@ -1,10 +1,10 @@
-# Run a Bach simulation based on files created by input.jl
+# Run a Ribasim simulation based on files created by input.jl
 using AbbreviatedStackTraces
 using Logging: global_logger
 using TerminalLoggers: TerminalLogger
 global_logger(TerminalLogger())
 
-using Bach
+using Ribasim
 using Dates
 using TOML
 using Arrow
@@ -17,13 +17,13 @@ include("../run/plot.jl")
 
 ##
 
-config = Bach.parsefile("run/run.toml")
-reg = BMI.initialize(Bach.Register, config)
+config = Ribasim.parsefile("run/run.toml")
+reg = BMI.initialize(Ribasim.Register, config)
 solve!(reg.integrator)
 
 ##
 
-reg = Bach.run("run/run.toml")
+reg = Ribasim.run("run/run.toml")
 
 ##
 

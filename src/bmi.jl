@@ -51,10 +51,10 @@ end
 function create_curve_dict(profile, lsw_ids)
     @assert issorted(profile.location)
 
-    curve_dict = Dict{Int, Bach.StorageCurve}()
+    curve_dict = Dict{Int, Ribasim.StorageCurve}()
     for lsw_id in lsw_ids
         profile_rows = searchsorted(profile.location, lsw_id)
-        curve_dict[lsw_id] = Bach.StorageCurve(profile.volume[profile_rows],
+        curve_dict[lsw_id] = Ribasim.StorageCurve(profile.volume[profile_rows],
                                                profile.area[profile_rows],
                                                profile.discharge[profile_rows],
                                                profile.level[profile_rows])
@@ -129,7 +129,7 @@ function prepare_waterbalance(sysnames)
     # initial values are handled in callback
     prev_state = fill(NaN, length(sysnames.u_symbol))
     for (i, u_name) in enumerate(sysnames.u_symbol)
-        varname, location = Bach.parsename(u_name)
+        varname, location = Ribasim.parsename(u_name)
         varname = String(varname)
         if endswith(varname, ".sum.x")
             variable = replace(varname, r".sum.x$" => "")
@@ -335,7 +335,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
         end
 
-        Bach.save!(param_hist, t, p)
+        Ribasim.save!(param_hist, t, p)
         return nothing
     end
 
@@ -480,13 +480,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     sim, input_idxs = structural_simplify(netsys, (; inputs, outputs = []))
 
-    sysnames = Bach.Names(sim)
+    sysnames = Ribasim.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
     prob = ODAEProblem(sim, [], tspan; sparse = true)
 
     # subset of parameters that we possibly have forcing data for
-    # map from variable symbols from Bach.parsename to forcing.variable symbols
+    # map from variable symbols from Ribasim.parsename to forcing.variable symbols
     # TODO make this systematic such that we don't need a manual mapping anymore
     paramvars = Dict{Symbol, Symbol}(:agric_demand => :demand_agriculture,
                                      :agric_prio => :priority_agriculture,
@@ -507,8 +507,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # split out the variables and locations to make it easier to find the right p_symbol index
     p_symbol = sysnames.p_symbol
     u_symbol = sysnames.u_symbol
-    pf_vars = [get(paramvars, Bach.parsename(p)[1], :none) for p in p_symbol]
-    pf_locs = getindex.(Bach.parsename.(p_symbol), 2)
+    pf_vars = [get(paramvars, Ribasim.parsename(p)[1], :none) for p in p_symbol]
+    pf_locs = getindex.(Ribasim.parsename.(p_symbol), 2)
 
     param_index = find_param_index(forcing.variable, forcing.location, pf_vars, pf_locs)
     used_param_index = filter(!=(0), param_index)
@@ -537,46 +537,46 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # initialize Modflow model
         config_modflow = config["modflow"]
         Δt_modflow = Float64(config_modflow["timestep"])
-        bme = BachModflowExchange(config_modflow, lsw_ids)
+        rme = RibasimModflowExchange(config_modflow, lsw_ids)
 
         # get the index into the system state vector for each coupled LSW
-        mf_locs = collect(keys(bme.basin_volume))
-        u_vars = getindex.(Bach.parsename.(u_symbol), 1)
-        u_locs = getindex.(Bach.parsename.(u_symbol), 2)
+        mf_locs = collect(keys(rme.basin_volume))
+        u_vars = getindex.(Ribasim.parsename.(u_symbol), 1)
+        u_locs = getindex.(Ribasim.parsename.(u_symbol), 2)
         volume_index = find_volume_index(mf_locs, u_vars, u_locs)
 
         # similarly for the index into the system parameter vector
-        pmf_vars = getindex.(Bach.parsename.(p_symbol), 1)
-        pmf_locs = getindex.(Bach.parsename.(p_symbol), 2)
+        pmf_vars = getindex.(Ribasim.parsename.(p_symbol), 1)
+        pmf_locs = getindex.(Ribasim.parsename.(p_symbol), 2)
         drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars,
                                                                   pmf_locs)
     else
-        bme = nothing
+        rme = nothing
     end
 
-    # captures volume_index, drainage_index, infiltration_index, bme, tspan
+    # captures volume_index, drainage_index, infiltration_index, rme, tspan
     function exchange_modflow!(integrator)
         (; t, u, p) = integrator
 
-        # set basin_volume from bach
+        # set basin_volume from Ribasim
         # mutate the underlying vector, we know the keys are equal
-        bme.basin_volume.values .= u[volume_index]
+        rme.basin_volume.values .= u[volume_index]
 
         # convert basin_volume to modflow levels
-        exchange_bach_to_modflow!(bme)
+        exchange_ribasim_to_modflow!(rme)
 
         # run modflow timestep
         first_step = t == tspan[begin]
-        update!(bme.modflow, first_step)
+        update!(rme.modflow, first_step)
 
         # sets basin_infiltration and basin_drainage from modflow
-        exchange_modflow_to_bach!(bme)
+        exchange_modflow_to_ribasim!(rme)
 
-        # put basin_infiltration and basin_drainage into bach
-        # convert modflow m3/d to bach m3/s, both positive
+        # put basin_infiltration and basin_drainage into Ribasim
+        # convert modflow m3/d to Ribasim m3/s, both positive
         # TODO don't use infiltration and drainage from forcing
-        p[drainage_index] .= bme.basin_drainage.values ./ 86400.0
-        p[infiltration_index] .= bme.basin_infiltration.values ./ 86400.0
+        p[drainage_index] .= rme.basin_drainage.values ./ 86400.0
+        p[infiltration_index] .= rme.basin_infiltration.values ./ 86400.0
     end
 
     wbal_entries, prev_state = prepare_waterbalance(sysnames)
@@ -652,7 +652,7 @@ BMI.get_current_time(reg::Register) = reg.integrator.t
 run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::AbstractDict)
-    @info "Initializing Bach model"
+    @info "Initializing Ribasim model"
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
     if haskey(config, "waterbalance")
@@ -665,7 +665,7 @@ function run(config::AbstractDict)
 end
 
 function run()
-    usage = "Usage: julia -e 'using Bach; Bach.run()' 'path/to/config.toml'"
+    usage = "Usage: julia -e 'using Ribasim; Ribasim.run()' 'path/to/config.toml'"
     n = length(ARGS)
     if n != 1
         throw(ArgumentError(usage))

@@ -2,7 +2,7 @@ project:
   type: website
 
 website:
-  title: "Bach"
+  title: "Ribasim"
   navbar:
     left:
       - equations.qmd

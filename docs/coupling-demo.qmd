@@ -1,5 +1,5 @@
 ---
-title: "Bach-Modflow Demonstration"
+title: "Ribasim-Modflow Demonstration"
 ---
 
 ## Example: parametrization
@@ -20,13 +20,13 @@ representative parameters which take the physical scaling into account. In case
 of sufficiently small cell sizes, no overlap occurs and all surface waters can
 be represented in a single grid.
 
-Bach has no knowledge of these systems unless explicitly separated into
+Ribasim has no knowledge of these systems unless explicitly separated into
 different (sub-)basins. In the examples below, these three systems are
 represented by one basin with a single volume. For the purposes of testing, we
 have not yet created empirical volume-level relationships for the surface water
 of every cell extracted from a hydraulic model. Instead, we have chosen an
 (over)simplified parametrization of the hydraulic properties, which makes it
-easy to verify the behavior of Bach and the coupling procedures:
+easy to verify the behavior of Ribasim and the coupling procedures:
 
 1. Primary, secondary, and tertiary systems have a rectangular profile: the
   area of the surface water does not change with water level or volume.
@@ -54,7 +54,7 @@ respectively. The basin only starts discharging when the storage volume exceeds
 this value.
 
 :::{.callout-note}
-Bach is not limited to such oversimplified parametrization! Bach uses
+Ribasim is not limited to such oversimplified parametrization! Ribasim uses
 tabulations and therefore supports arbitrary (piecewise linear) volume-depth
 and volume-discharge relationships.
 :::
@@ -136,10 +136,10 @@ profile = "profile_tertiary"
 
 The section starts by stating the path to the MODFLOW6 simulation name file
 (`simulation`). The next section contains the information regarding the
-MODFLOW6 model(s) to couple to Bach's basins. Per model, a path to the coupling
+MODFLOW6 model(s) to couple to Ribasim's basins. Per model, a path to the coupling
 parameter dataset is provided (`dataset`), along with the variable to use as
 the basin identification number (`basins`). Next, for every boundary condition
-that should be coupled to Bach, the package names (`river`, `drain`) used by
+that should be coupled to Ribasim, the package names (`river`, `drain`) used by
 MODFLOW6 must be specified (as we look for these names in the MODFLOW6 memory),
 along with the name of the variable in the coupling dataset which provides the
 volume-level relationship (`profile`).
@@ -157,10 +157,10 @@ To test the coupling, the following simulations have been setup and run:
 
 1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
 differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated by the Bach coupler
-process, but without Bach. This results in volumes of 0.0, so all MODFLOW6
+2. A coupled run where the MODFLOW6 stages are updated by the Ribasim coupler
+process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW6
 water levels are set equal to bed elevation.
-3. A coupled run where the water levels are updated by Bach.
+3. A coupled run where the water levels are updated by Ribasim.
 
 From these tests, we expect the following behavior:
 
@@ -210,10 +210,10 @@ To test the coupling, the following simulations have been setup and run:
 
 1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
 differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated by the Bach coupler
-process, but without Bach. This results in volumes of 0.0, so all MODFLOW6
+2. A coupled run where the MODFLOW6 stages are updated by the Ribasim coupler
+process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW6
 water levels are set equal to bed elevation.
-3. A coupled run where the water levels are updated by Bach.
+3. A coupled run where the water levels are updated by Ribasim.
 
 ![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769185-f63a5821-dfe8-4d99-b43e-780962e73870.png){#fig-tol-gwb-steady}
 

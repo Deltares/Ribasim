@@ -5,7 +5,7 @@ mode = "sequential"
 [modflow6.models]
 [modflow6.models.gwf]
     type = "gwf"
-    dataset = "c:/src/bach/data/volume_level_profile-hupsel.nc"
+    dataset = "c:/src/Ribasim/data/volume_level_profile-hupsel.nc"
     basins = "lsw_id"
     
     [[modflow6.models.gwf.bounds]]

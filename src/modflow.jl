@@ -176,20 +176,20 @@ Create volume-level profiles for a single MODFLOW6 boundary.
 
 # Arguments
 - `basin::Matrix{Union{Int, Missing}}`: the basin identification number.
-  these values must accord with the Bach IDs.
+  these values must accord with the Ribasim IDs.
 - `boundary::B where B <: ModflowPackage`: struct holding views on the
   MODFLOW6 memory.
 - `profile`::Array{Union{Float64, Missing}}`: the volumes and levels for
   every cell.
-- `bach_ids::Vector{Int}`: the basin identification numbers present in the
-  Bach model.
+- `ribasim_ids::Vector{Int}`: the basin identification numbers present in the
+  Ribasim model.
 - `node_reduced::Vector{Int}`: The MODFLOW6 NODE_REDUCED node numbering.
 
 """
 function VolumeLevelProfiles(basins,
                              boundary,
                              profile,
-                             bach_ids,
+                             ribasim_ids,
                              node_reduced::Vector{Int32})
     I = LinearIndices(basins)
     indices = CartesianIndex{2}[]
@@ -201,7 +201,7 @@ function VolumeLevelProfiles(basins,
         basin_id = basins[i]
         first_volume = profile[i, 1, 1]
 
-        if !ismissing(basin_id) && !ismissing(first_volume) && (basin_id in bach_ids)
+        if !ismissing(basin_id) && !ismissing(first_volume) && (basin_id in ribasim_ids)
             modelnode = node_reduced[I[i]]
             boundary_node = findfirst(==(modelnode), boundary.nodelist)
             isnothing(boundary_node) && error("boundary_node not in model")
@@ -266,7 +266,7 @@ struct Modflow6Simulation
     head::Vector{Float64}
 end
 
-struct BachModflowExchange
+struct RibasimModflowExchange
     modflow::Modflow6Simulation
     exchanges::Vector{BoundaryExchange}
     basin_volume::Dictionary{Int, Float64}
@@ -294,7 +294,7 @@ function update!(sim::Modflow6Simulation, first_step)
     return
 end
 
-function BachModflowExchange(config, bach_ids)
+function RibasimModflowExchange(config, ribasim_ids)
     model = MF.ModflowModel(config["simulation"])
     BMI.initialize(model)
     MF.prepare_time_step(model, 0.0)
@@ -322,7 +322,7 @@ function BachModflowExchange(config, bach_ids)
                 error("Expected drain or river entry in bound")
             end
             profile = dataset[bound_config["profile"]][:]
-            vlp = VolumeLevelProfiles(basins, bound, profile, bach_ids, node_reduced)
+            vlp = VolumeLevelProfiles(basins, bound, profile, ribasim_ids, node_reduced)
             exchange = BoundaryExchange(bound, vlp)
             push!(exchanges, exchange)
         end
@@ -334,22 +334,22 @@ function BachModflowExchange(config, bach_ids)
     simulation = Modflow6Simulation(model,
                                     only(get_var_ptr(model, "SLN_1", "MXITER")),
                                     get_var_ptr(model, modelname, "X"))
-    n = length(bach_ids)
-    return BachModflowExchange(simulation,
+    n = length(ribasim_ids)
+    return RibasimModflowExchange(simulation,
                                exchanges,
-                               Dictionary(bach_ids, zeros(n)),
-                               Dictionary(bach_ids, zeros(n)),
-                               Dictionary(bach_ids, zeros(n)))
+                               Dictionary(ribasim_ids, zeros(n)),
+                               Dictionary(ribasim_ids, zeros(n)),
+                               Dictionary(ribasim_ids, zeros(n)))
 end
 
-function exchange_bach_to_modflow!(m::BachModflowExchange)
+function exchange_ribasim_to_modflow!(m::RibasimModflowExchange)
     for exchange in m.exchanges
         set_modflow_levels!(exchange, m.basin_volume)
     end
     return
 end
 
-function exchange_modflow_to_bach!(m::BachModflowExchange)
+function exchange_modflow_to_ribasim!(m::RibasimModflowExchange)
     infiltration = m.basin_infiltration
     drainage = m.basin_drainage
     head = m.modflow.head

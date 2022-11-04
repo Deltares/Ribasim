@@ -76,7 +76,7 @@ end
 Based on a list of systems and their connections, create an interactive graph plot
 that shows the components and their values over time.
 """
-function graph_system(systems::Set, eqs::Vector, reg::Bach.Register)
+function graph_system(systems::Set, eqs::Vector, reg::Ribasim.Register)
     g, component_names, connector_names = reconstruct_graph(systems, eqs)
     n_component = length(component_names)
     n_connector = length(connector_names)
@@ -266,7 +266,7 @@ wong_colors = [
 ]
 
 "Plot timeseries of several key variables."
-function plot_series(reg::Bach.Register,
+function plot_series(reg::Ribasim.Register,
                      lsw_id::Int,
                      timespan::ClosedInterval{Float64};
                      level = true)
@@ -325,7 +325,7 @@ function plot_series(reg::Bach.Register,
     return fig
 end
 
-function plot_series(reg::Bach.Register, lsw_id::Int; level = false)
+function plot_series(reg::Ribasim.Register, lsw_id::Int; level = false)
     plot_series(reg,
                 lsw_id,
                 reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
@@ -333,7 +333,7 @@ function plot_series(reg::Bach.Register, lsw_id::Int; level = false)
 end
 
 "Plot timeseries of wm external and LSW source allocation"
-function plot_wm_source(reg::Bach.Register,
+function plot_wm_source(reg::Ribasim.Register,
                         lsw_id::Int,
                         timespan::ClosedInterval{Float64};
                         level = true)
@@ -365,20 +365,20 @@ function plot_wm_source(reg::Bach.Register,
     return fig
 end
 
-function plot_wm_source(reg::Bach.Register, lsw_id::Int; level = false)
+function plot_wm_source(reg::Ribasim.Register, lsw_id::Int; level = false)
     plot_wm_source(reg,
                    lsw_id,
                    reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
                    level)
 end
 
-"long format daily waterbalance dataframe for comparing mozart and bach"
-function combine_waterbalance(mzwb, bachwb)
-    time_start = intersect(mzwb.time_start, bachwb.time_start)
+"long format daily waterbalance dataframe for comparing mozart and Ribasim"
+function combine_waterbalance(mzwb, ribasimwb)
+    time_start = intersect(mzwb.time_start, ribasimwb.time_start)
     mzwb = @subset(mzwb, :time_start in time_start)
-    bachwb = @subset(bachwb, :time_start in time_start)
+    ribasimwb = @subset(ribasimwb, :time_start in time_start)
 
-    wb = vcat(stack(bachwb), stack(mzwb))
+    wb = vcat(stack(ribasimwb), stack(mzwb))
     wb = @subset(wb, !(:variable in ("balancecheck", "upstream")))
     return wb
 end
@@ -408,7 +408,7 @@ function plot_waterbalance_comparison(wb)
               xticks = (collect(extrema(x)), string.([startdate, enddate])),
               xlabel = "time / day",
               ylabel = "volume / m³",
-              title = "Mozart and Bach daily water balance")
+              title = "Mozart and Ribasim daily water balance")
 
     barplot!(ax,
              x,
@@ -421,15 +421,15 @@ function plot_waterbalance_comparison(wb)
     elements = vcat([MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
                     [PolyElement(polycolor = Duet.wong_colors[i])
                      for i in 1:length(allvars)])
-    Legend(fig[1, 2], elements, vcat("mozart", "bach", allvars))
+    Legend(fig[1, 2], elements, vcat("mozart", "Ribasim", allvars))
 
     return fig
 end
 
-function plot_series_comparison(reg::Bach.Register,
+function plot_series_comparison(reg::Ribasim.Register,
                                 type::Char,
                                 mz_lswval,
-                                bachvar::Symbol,
+                                ribasimvar::Symbol,
                                 mzvar::Symbol,
                                 timespan::ClosedInterval{Float64},
                                 target = nothing)
@@ -438,11 +438,11 @@ function plot_series_comparison(reg::Bach.Register,
 
     # plot all the calculated data points
     scatter!(ax,
-             Bach.timesteps(reg),
-             Bach.savedvalues(reg, bachvar);
+             Ribasim.timesteps(reg),
+             Ribasim.savedvalues(reg, ribasimvar);
              markersize = 4,
              color = :blue,
-             label = "$bachvar bach")
+             label = "$ribasimvar Ribasim")
     stairs!(ax,
             datetime2unix.(mz_lswval.time_start),
             mz_lswval[!, mzvar];
@@ -456,25 +456,25 @@ function plot_series_comparison(reg::Bach.Register,
     return fig
 end
 
-function plot_series_comparison(reg::Bach.Register)
+function plot_series_comparison(reg::Ribasim.Register)
     plot_series_comparison(reg, reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end])
 end
 
-function plot_series_comparison(reg::Bach.Register, timespan::ClosedInterval{DateTime})
+function plot_series_comparison(reg::Ribasim.Register, timespan::ClosedInterval{DateTime})
     plot_series_comparison(reg, unixtimespan(timespan))
 end
 
 "Plot timeseries of key variables related to user allocation and demand"
-function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Float64}, mzwb)
+function plot_Qavailable_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64}, mzwb)
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right)
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Bach Q_avail_vol")
-    #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Bach Agric_use")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Ribasim Q_avail_vol")
+    #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Ribasim Agric_use")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
     lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Mz Agric_demand")
 
     stairs!(ax2,
@@ -490,14 +490,14 @@ function plot_Qavailable_series(reg::Bach.Register, timespan::ClosedInterval{Flo
             step = :post,
             label = "Mz Agric_alloc")
 
-    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
 
-    lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Bach Infiltration")
-    lines!(ax3, timespan, interpolator(reg, :drainage), label = "Bach Drainage")
-    lines!(ax3, timespan, interpolator(reg, :urban_runoff), label = "Bach runoff")
+    lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Ribasim Infiltration")
+    lines!(ax3, timespan, interpolator(reg, :drainage), label = "Ribasim Drainage")
+    lines!(ax3, timespan, interpolator(reg, :urban_runoff), label = "Ribasim runoff")
 
-    lines!(ax4, timespan, interpolator(reg, :P), label = "Bach Precip")
-    lines!(ax4, timespan, interpolator(reg, :E_pot), label = "Bach Evap")
+    lines!(ax4, timespan, interpolator(reg, :P), label = "Ribasim Precip")
+    lines!(ax4, timespan, interpolator(reg, :E_pot), label = "Ribasim Evap")
 
     axislegend(ax1)
     axislegend(ax2)
@@ -509,19 +509,19 @@ end
 
 "Plot timeseries of key variables related to user allocation and demand -- to check if multiple users can be modelled correctly
 Industry data is made up"
-function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterval{Float64})
+function plot_Qavailable_dummy_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64})
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
     ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Bach Q_avail_vol")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Ribasim Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
 
-    lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
-    lines!(ax2, timespan, interpolator(reg, :dem_indus), label = "Bach Indus_dem")
-    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
-    lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
+    lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Ribasim Agric_dem")
+    lines!(ax2, timespan, interpolator(reg, :dem_indus), label = "Ribasim Indus_dem")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
 
     axislegend(ax1)
     axislegend(ax2)
@@ -530,28 +530,28 @@ function plot_Qavailable_dummy_series(reg::Bach.Register, timespan::ClosedInterv
 end
 
 "Plot user total demand and shortage"
-function plot_user_demand(reg::Bach.Register,
+function plot_user_demand(reg::Ribasim.Register,
                           timespan::ClosedInterval{Float64},
-                          bachwb,
+                          ribasimwb,
                           mzwb,
                           lsw_id)
     fig = Figure()
     ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Bach Agric_dem")
-    lines!(ax1, timespan, interpolator(reg, :dem_indus), label = "Bach Indus_dem")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Bach Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Bach Indus_alloc")
+    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Ribasim Agric_dem")
+    lines!(ax1, timespan, interpolator(reg, :dem_indus), label = "Ribasim Indus_dem")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
 
     axislegend(ax1)
 
-    # long format daily waterbalance dataframe for bach
+    # long format daily waterbalance dataframe for Ribasim
     mzwblsw = @subset(mzwb, :lsw==lsw_id)
-    time_start = intersect(mzwblsw.time_start, bachwb.time_start)
+    time_start = intersect(mzwblsw.time_start, ribasimwb.time_start)
     mzwblsw = @subset(mzwblsw, :time_start in time_start)
-    bachwb = @subset(bachwb, :time_start in time_start)
-    bachwb.dem_agric = mzwblsw.dem_agric
-    bachwb.dem_indus = mzwblsw.dem_agric * 1.3 # as in one.jl. needs updating
-    wb = vcat(stack(bachwb))
+    ribasimwb = @subset(ribasimwb, :time_start in time_start)
+    ribasimwb.dem_agric = mzwblsw.dem_agric
+    ribasimwb.dem_indus = mzwblsw.dem_agric * 1.3 # as in one.jl. needs updating
+    wb = vcat(stack(ribasimwb))
     wb = @subset(wb, :variable!="balancecheck")
 
     vars_user = ["alloc_agric", "alloc_indus", "dem_agric", "dem_indus"]
@@ -602,7 +602,7 @@ function plot_user_demand(reg::Bach.Register,
                xticks = (collect(extrema(x)), string.([startdate, enddate])),
                xlabel = "time / day",
                ylabel = "volume / m³",
-               title = "Bach user supply-demand water balance")
+               title = "Ribasim user supply-demand water balance")
     # TO DO - fix x axis time
     cols = Duet.wong_colors[1:2]
 

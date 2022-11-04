@@ -1,11 +1,11 @@
-using Bach
+using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase
 
 @testset "single basin" begin
-    config = Bach.parsefile("testrun.toml")
+    config = Ribasim.parsefile("testrun.toml")
     ## Simulate
-    reg = BMI.initialize(Bach.Register, config)
+    reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
 
     t = reg.integrator.sol.t

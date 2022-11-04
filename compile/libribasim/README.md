@@ -1,14 +1,14 @@
 # Libribasim
 
-Libribasim is a shared library that exposes Bach functionality to external (non-Julian)
+Libribasim is a shared library that exposes Ribasim functionality to external (non-Julian)
 programs. It can be compiled using [PackageCompiler's
 create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html) , which is set
-up in this directory. The C API that is offered to control Bach is the C API of the [Basic
+up in this directory. The C API that is offered to control Ribasim is the C API of the [Basic
 Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
 
 Not all BMI functions are implemented yet, this has been set up as a proof of concept to
 demonstrate that we could use other software such as
-[`imod_coupler`](https://github.com/Deltares/imod_coupler) to control Bach and couple it to
+[`imod_coupler`](https://github.com/Deltares/imod_coupler) to control Ribasim and couple it to
 other models.
 
 Here is an example of using libribasim from Python:

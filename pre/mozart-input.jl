@@ -81,7 +81,7 @@ demand_flush_dict, prio_flush_dict = create_user_dict(uslswdem, "WF")
 # use "A" instead of "I" for industry since that doesn't exist in the data
 # demand_indus_dict, prio_indus_dict = create_user_dict(uslswdem, "A")
 
-# set bach runtimes equal to the mozart reference run
+# set Ribasim runtimes equal to the mozart reference run
 times::Vector{Float64} = prec_dict[first(lsw_ids)].t
 startdate::DateTime = unix2datetime(times[begin])
 enddate::DateTime = unix2datetime(times[end])

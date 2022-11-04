@@ -1,4 +1,4 @@
-using Bach
+using Ribasim
 using CSV
 using DataFrames
 using DataFrameMacros
@@ -6,7 +6,7 @@ import BasicModelInterface as BMI
 using SciMLBase
 
 @testset "allocation_V" begin
-    config = Bach.parsefile("testrun.toml")
+    config = Ribasim.parsefile("testrun.toml")
     config["add_levelcontrol"] = false
     config["waterbalance"] = "output/waterbalance_alloc_V.arrow"
 
@@ -20,10 +20,10 @@ using SciMLBase
                   strict = true)
 
     config["forcing"] = df
-    reg = BMI.initialize(Bach.Register, config)
+    reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
 
-    output = Bach.samples_long(reg)
+    output = Ribasim.samples_long(reg)
 
     demand_getvar = :demand
     demand = @subset(output, :variable==demand_getvar).value
@@ -61,7 +61,7 @@ using SciMLBase
 end
 
 @testset "allocation_P" begin
-    config = Bach.parsefile("testrun.toml")
+    config = Ribasim.parsefile("testrun.toml")
     config["add_levelcontrol"] = true
     config["waterbalance"] = "output/waterbalance_alloc_P.arrow"
 
@@ -77,10 +77,10 @@ end
 
     config["forcing"] = df
 
-    reg = BMI.initialize(Bach.Register, config)
+    reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
 
-    output = Bach.samples_long(reg)
+    output = Ribasim.samples_long(reg)
 
     # Test the output parameters are as expected
     demand_getvar = :demand

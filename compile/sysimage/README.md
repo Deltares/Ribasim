@@ -6,6 +6,6 @@ using TOML
 using PackageCompiler
 
 d = TOML.parsefile("Project.toml")
-pkgs = collect(filter(k -> !(k in ["Bach", "AxisKeys"]), keys(d["deps"])))
+pkgs = collect(filter(k -> !(k in ["Ribasim", "AxisKeys"]), keys(d["deps"])))
 create_sysimage(pkgs; sysimage_path="sysimage.dll")
 ```

@@ -1,7 +1,7 @@
 module libribasim
 
 import BasicModelInterface as BMI
-using Bach
+using Ribasim
 
 model = nothing
 

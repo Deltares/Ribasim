@@ -2,12 +2,12 @@
 # using PackageCompiler; PackageCompiler.create_sysimage(; precompile_execution_file="precompile.jl")
 # or https://www.julia-vscode.org/docs/stable/userguide/compilesysimage/
 
-using Bach
+using Ribasim
 
 include("../../run/plot.jl")
 
-config = Bach.parsefile("../../run/run.toml")
-reg = Bach.run(config)
+config = Ribasim.parsefile("../../run/run.toml")
+reg = Ribasim.run(config)
 
 using GLMakie
 GLMakie.activate!()
