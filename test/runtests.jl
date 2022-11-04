@@ -1,19 +1,11 @@
-using SafeTestsets
-using Test
-using Aqua
-using Dates
-using TOML
-using Arrow
-using DataFrames
-import BasicModelInterface as BMI
-using SciMLBase
+using Bach, Test, SafeTestsets, Aqua
 
-@safetestset "Bach" begin
-    include("io.jl")
-    include("config.jl")
-    include("alloc.jl")
-    include("equations.jl")
-    include("basin.jl")
+@testset "Bach" begin
+    @safetestset "Input/Output" begin include("io.jl") end
+    @safetestset "Configuration" begin include("config.jl") end
+    @safetestset "Water allocation" begin include("alloc.jl") end
+    @safetestset "Equations" begin include("equations.jl") end
+    @safetestset "Basin" begin include("basin.jl") end
 
-    Aqua.test_all(Bach; ambiguities=false)
+    Aqua.test_all(Bach; ambiguities = false)
 end
