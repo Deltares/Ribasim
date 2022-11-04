@@ -5,12 +5,12 @@ using LibGit2
 # change directory to this script's location
 cd(@__DIR__)
 
-appdir = "./bach_cli"
+appdir = "./ribasim_cli"
 
 create_app("..",
            appdir;
            # map from binary name to julia function name
-           executables = ["bach_cli" => "julia_main"],
+           executables = ["ribasim_cli" => "julia_main"],
            precompile_execution_file = "precompile.jl",
            filter_stdlibs = false)
 
@@ -60,7 +60,7 @@ function add_metadata()
 
         ## Version
 
-        This bach_cli build uses the Bach version mentioned below.
+        This ribasim_cli build uses the Bach version mentioned below.
 
         ```toml
         version = "$version"

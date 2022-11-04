@@ -1,4 +1,4 @@
-module libbach
+module libribasim
 
 import BasicModelInterface as BMI
 using Bach
@@ -48,4 +48,4 @@ Base.@ccallable function get_current_time()::Cint
     return 0
 end
 
-end # module libbach
+end # module libribasim

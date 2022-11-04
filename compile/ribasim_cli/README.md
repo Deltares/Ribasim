@@ -1,4 +1,4 @@
-# bach_cli
+# ribasim_cli
 
 This is a [Julia](https://julialang.org/) project that uses the
 [Bach.jl](https://github.com/Deltares/Bach.jl) Julia package, puts a simple command line
@@ -16,8 +16,8 @@ line as follows:
 julia -e 'using Bach; Bach.run()' path/to/config.toml
 ```
 
-With a bach_cli build this becomes:
+With a ribasim_cli build this becomes:
 
 ```
-bach_cli path/to/config.toml
+ribasim_cli path/to/config.toml
 ```

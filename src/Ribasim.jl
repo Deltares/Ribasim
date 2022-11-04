@@ -1,4 +1,4 @@
-module Bach
+module Ribasim
 
 import BasicModelInterface as BMI
 import ModflowInterface as MF
@@ -29,4 +29,4 @@ include("construction.jl")
 include("bmi.jl")
 include("io.jl")
 
-end # module Bach
+end  # module Ribasim

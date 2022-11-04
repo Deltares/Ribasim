@@ -16,8 +16,8 @@ docs/site/
 Manifest.toml
 
 data/
-compile/bach_cli/create_app/bach_cli/
-compile/libbach/create_lib/libbach/
+compile/ribasim_cli/create_app/ribasim_cli/
+compile/libribasim/create_lib/libribasim/
 
 .vscode
 JuliaSysimage.dll

@@ -1,10 +1,10 @@
-module bach_cli
+module ribasim_cli
 
-using Bach
+using Ribasim
 
 function help(x)::Cint
     println(x)
-    println("Usage: bach_cli path/to/config.toml")
+    println("Usage: ribasim_cli path/to/config.toml")
     return 1
 end
 
@@ -19,7 +19,7 @@ function julia_main()::Cint
     end
 
     try
-        Bach.run(toml_path)
+        Ribasim.run(toml_path)
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1
@@ -29,7 +29,7 @@ function julia_main()::Cint
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    Bach.run()
+    Ribasim.run()
 end
 
 end # module

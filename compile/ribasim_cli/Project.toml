@@ -1,4 +1,4 @@
-name = "bach_cli"
+name = "ribasim_cli"
 uuid = "e45c999e-e944-4589-a8e6-7d0b7a60140a"
 authors = ["Deltares and contributors"]
 version = "0.1.0"

@@ -172,17 +172,17 @@ of course, more detail requires more parameters.
 
 ## Installing the compiled executable
 
-Binaries of `bach_cli` can be downloaded from
-[bach-artifacts](https://github.com/visr/bach-artifacts/releases), and are currently
+Binaries of `ribasim_cli` can be downloaded from
+[ribasim-artifacts](https://github.com/visr/ribasim-artifacts/releases), and are currently
 available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
 however it is important that the contents of the zip file are kept together in a directory.
-The `bach_cli` executable is in the `bin` directory.
+The `ribasim_cli` executable is in the `bin` directory.
 
-To check whether the installation was performed successfully, run `bach_cli` with no
+To check whether the installation was performed successfully, run `ribasim_cli` with no
 arguments in the command line will give the following message:
 
 ```
-Usage: bach_cli 'path/to/config.toml'
+Usage: ribasim_cli 'path/to/config.toml'
 ```
 
 ## Installing as a Julia package
@@ -220,7 +220,7 @@ julia> Bach.run("path/to/config.toml")
 Again, there will be considerable latency. For this reason, if you expect to run Bach
 a lot, we recommend to:
 
-- Use `bach_cli` if you only need `Bach.run` and don't need to do developments.
+- Use `ribasim_cli` if you only need `Bach.run` and don't need to do developments.
 - Adapt a workflow that keeps you session active; the first `Bach.run("model.toml")` will
   take considerably more time than the second one, since more code needs to be compiled.
 - Use a system image, explained in the [developer documentation](#developer.qmd), to reduce latency further
@@ -487,7 +487,7 @@ for a given model you may not know the water balance components ahead of time.
 
 ## Example input files
 
-From [this link](https://github.com/visr/bach-artifacts/releases/download/v0.1.0/schematization.zip)
+From [this link](https://github.com/visr/ribasim-artifacts/releases/download/v0.1.0/schematization.zip)
 you can download an existing schematization for the Netherlands that was used for testing
 purposes during development. It is provided here as an example to help people get started.
 Based on the description of the input files above, you can also generate your own

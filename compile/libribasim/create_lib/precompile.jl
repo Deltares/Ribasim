@@ -1,5 +1,5 @@
 # Workflow that will compile a lot of the code we will need.
-# With the purpose of reducing the latency for libbach.
+# With the purpose of reducing the latency for libribasim.
 
 using Bach
 

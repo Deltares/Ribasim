@@ -112,7 +112,7 @@ is negligible. Taking the example from above, the emptying of the surface
 waters would result in lower water levels and recuded infiltration in the
 second iteration. Mass is conserved, but at a higher computational cost.
 
-Currently, we have only implemented the sequential scheme for coupling bach to
+Currently, we have only implemented the sequential scheme for coupling Ribasim to
 MODFLOW6. However, the iterative solution is relatively easy to implement: it
 is in essence a repeated sequential step.
 
