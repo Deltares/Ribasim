@@ -59,7 +59,7 @@ function add_levellink!(systems, eqs, src_sys::ODESystem, dst_sys::ODESystem,
 end
 
 function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, target_levels,
-                       used_state, all_users, curve_dict, add_levelcontrol, name)
+                       used_state, all_users, curve_dict, add_levelcontrol, inputs, name)
     eqs = Equation[]
     systems = ODESystem[]
 
@@ -86,6 +86,11 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
         @named lsw[lsw_id] = Bach.LSW(; C = C0, S = S0, lsw_level, lsw_area)
         lsw_dict[lsw_id] = lsw
         push!(systems, lsw)
+        push!(inputs, lsw.P)
+        push!(inputs, lsw.E_pot)
+        push!(inputs, lsw.drainage)
+        push!(inputs, lsw.infiltration)
+        push!(inputs, lsw.urban_runoff)
 
         # add cumulative flows for all LSW waterbalance terms
         add_cumulative!(systems, eqs, lsw.Q_prec)
@@ -152,6 +157,8 @@ function NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes, targe
                 weir = weir_dict[lsw_id]
                 push!(eqs, connect(weir.b, dsbound.x))
                 push!(systems, dsbound)
+                push!(inputs, dsbound.h)
+                push!(inputs, dsbound.C)
             else
                 # TODO this is probably only needed when there is nothing attached to
                 # the LSW connector. It should be harmless to add in any case, though

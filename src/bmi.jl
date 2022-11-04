@@ -470,11 +470,15 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
     fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 
+    # store all MTK.unbound_inputs here to speed up structural simplify,
+    # avoiding some quadratic scaling
+    inputs = []
     @named netsys = NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes,
                                   target_levels,
-                                  used_state, all_users, curve_dict, add_levelcontrol)
+                                  used_state, all_users, curve_dict, add_levelcontrol,
+                                  inputs)
 
-    sim = structural_simplify(netsys)
+    sim, input_idxs = structural_simplify(netsys, (; inputs, outputs = []))
 
     sysnames = Bach.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
