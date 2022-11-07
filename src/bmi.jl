@@ -523,13 +523,14 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # find the range of the current timestep, and the associated parameter indices,
     # and update all the corresponding parameter values
-    # captures used_time_unix, used_param_index, used_value
+    # captures used_time_unix, used_param_index, used_value, param_hist
     function update_forcings!(integrator)
         (; t, p) = integrator
         r = searchsorted(used_time_unix, t)
         i = used_param_index[r]
         v = used_value[r]
         p[i] .= v
+        Ribasim.save!(param_hist, t, p)
         return nothing
     end
 
@@ -604,10 +605,17 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         end
     end
 
+    # To retain all information, we need to save before and after callbacks that affect the
+    # system, meaning we get multiple outputs on the same timestep. Make it configurable
+    # to be able to disable callback saving as needed.
+    # TODO: Check if regular saveat saving is before or after the callbacks.
+    save_positions = Tuple(get(config, "save_positions", (true, true)))::Tuple{Bool, Bool}
+    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!;
+                                    save_positions)
+    allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true, save_positions)
     Δt_output = Float64(get(config, "output_timestep", 86400.0))
-    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
-    allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true)
-    output_cb = PeriodicCallback(write_output!, Δt_output; initial_affect = true)
+    output_cb = PeriodicCallback(write_output!, Δt_output; initial_affect = true,
+                                 save_positions = (false, false))
 
     cb = if run_modflow
         modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)

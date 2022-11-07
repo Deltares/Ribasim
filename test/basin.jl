@@ -4,34 +4,30 @@ using SciMLBase
 
 @testset "single basin" begin
     config = Ribasim.parsefile("testrun.toml")
-    ## Simulate
     reg = BMI.initialize(Ribasim.Register, config)
     solve!(reg.integrator)
 
-    t = reg.integrator.sol.t
-
-    # Test the output parameters are as expected
-    S = reg.integrator.sol(t, idxs = 1) # TODO: improve ease of using usyms names
-    Prec = reg.integrator.sol(t, idxs = 2)
-    Eact = reg.integrator.sol(t, idxs = 3)
-    Drainage = reg.integrator.sol(t, idxs = 4)
-    Infilt = reg.integrator.sol(t, idxs = 5)
-    Uroff = reg.integrator.sol(t, idxs = 6)
+    S = Ribasim.savedvalues(reg, :lsw_151358₊S)
+    P = Ribasim.savedvalues(reg, :lsw_151358₊P)
+    Q_eact = Ribasim.savedvalues(reg, :lsw_151358₊Q_eact)
+    drainage = Ribasim.savedvalues(reg, :lsw_151358₊drainage)
+    infiltration = Ribasim.savedvalues(reg, :lsw_151358₊infiltration)
+    urban_runoff = Ribasim.savedvalues(reg, :lsw_151358₊urban_runoff)
 
     # Check outputs at start and end of simulation
     @test S[1] ≈ 14855.394135012128f0
-    @test Prec[1] == 0.0
-    @test Eact[1] == 0.0
-    @test Drainage[1] == 0.0
-    @test Infilt[1] == 0.0
-    @test Uroff[1] == 0.0
+    @test P[1] ≈ 2.2454861111111112f-8
+    @test Q_eact[1] == 0.0
+    @test drainage[1] ≈ 0.045615f0
+    @test infiltration[1] ≈ 0.0014644999999999999f0
+    @test urban_runoff[1] ≈ 0.0027895224861111114f0
 
-    @test S[1455] ≈ 15775.665361786349f0
-    @test Prec[1455] ≈ 221.9856491224938f0
-    @test Eact[1455] == 0.0
-    @test Drainage[1455] ≈ 8966.047679993437f0
-    @test Infilt[1455] ≈ 77.32972799994339f0
-    @test Uroff[1455] ≈ 299.2528291997809f0
+    @test S[end] ≈ 15934.6692189651f0
+    @test P[end] ≈ 2.146464646464646f-8
+    @test Q_eact[end] == 0.0
+    @test drainage[end] ≈ 0.10595547000210437f0
+    @test infiltration[end] ≈ 0.00064752f0
+    @test urban_runoff[end] ≈ 0.0026665101010101013f0
 end
 
 # TODO: add test set for multiple LSWs in a network
