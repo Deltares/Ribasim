@@ -275,6 +275,8 @@ function plot_series(reg::Ribasim.Register,
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
     ylabel = level ? "water level / m + NAP" : "storage volume / m³"
     ax2 = time!(Axis(fig[2, 1]; ylabel), timespan.left, timespan.right)
+    ylabel = "salinity / kg m⁻³"
+    ax3 = time!(Axis(fig[3, 1]; ylabel), timespan.left, timespan.right)
 
     # TODO plot users/agriculture
     name = Symbol(:lsw_, lsw_id, :₊)
@@ -305,9 +307,10 @@ function plot_series(reg::Ribasim.Register,
            label = "urban_runoff")
 
     fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
-    #axislegend(ax1, position = :rt)
+    # axislegend(ax1, position = :rt)
 
     hidexdecorations!(ax1, grid = false)
+    hidexdecorations!(ax2, grid = false)
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
         target_level = Symbol(:levelcontrol_, lsw_id, :₊target_level)
@@ -321,7 +324,8 @@ function plot_series(reg::Ribasim.Register,
             lines!(ax2, timespan, interpolator(reg, target_volume))
         end
     end
-    linkxaxes!(ax1, ax2)
+    lines!(ax3, timespan, interpolator(reg, Symbol(name, :C)))
+    linkxaxes!(ax1, ax2, ax3)
     return fig
 end
 

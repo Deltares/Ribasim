@@ -4,8 +4,7 @@ using SciMLBase
 
 @testset "single basin" begin
     config = Ribasim.parsefile("testrun.toml")
-    reg = BMI.initialize(Ribasim.Register, config)
-    solve!(reg.integrator)
+    reg = Ribasim.run(config)
 
     S = Ribasim.savedvalues(reg, :lsw_151358₊S)
     P = Ribasim.savedvalues(reg, :lsw_151358₊P)

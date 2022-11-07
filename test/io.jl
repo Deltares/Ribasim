@@ -1,4 +1,3 @@
-# Testing utility functions
 using Ribasim
 
 @testset "parsename" begin
@@ -12,7 +11,7 @@ end
     dict = Dict("state" => "path/to/file")
     output = Ribasim.relative_path!(dict, "state", "mydir")
     @test output["state"] == joinpath("mydir", "path", "to", "file")
-    @test typeof(output) == Dict{String, String}
+    @test output isa Dict{String, String}
 end
 
 @testset "relativepaths" begin
@@ -20,7 +19,7 @@ end
     output = Ribasim.relative_paths!(dict, "mydir")
     @test output["state"] == joinpath("mydir", "path", "to", "statefile")
     @test output["forcing"] == joinpath("mydir", "path", "to", "forcingfile")
-    @test typeof(output) == Dict{String, String}
+    @test output isa Dict{String, String}
 end
 
 # @testset "tsview" begin

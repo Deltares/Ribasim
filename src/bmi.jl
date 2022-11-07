@@ -660,7 +660,6 @@ BMI.get_current_time(reg::Register) = reg.integrator.t
 run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::AbstractDict)
-    @info "Initializing Ribasim model"
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
     if haskey(config, "waterbalance")
