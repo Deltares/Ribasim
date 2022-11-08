@@ -2,9 +2,9 @@ using Ribasim
 
 @testset "parsename" begin
     test_sym = Symbol(:sys_151358₊agric₊alloc)
-    output = Ribasim.parsename(test_sym)
-    @test output[1] == Symbol("agric.alloc")
-    @test output[2] == 151358
+    variable, location = Ribasim.parsename(test_sym)
+    @test variable === Symbol("agric.alloc")
+    @test location === 151358
 end
 
 @testset "relativepath" begin

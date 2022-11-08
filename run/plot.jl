@@ -288,10 +288,10 @@ function plot_series(reg::Ribasim.Register,
            interpolator(reg, Symbol(:weir_, lsw_id, :₊, :Q)),
            label = "outflow")
     # TODO update for link numbering
-    # haskey(reg, Symbol(:link_, lsw_id, :₊a₊, :Q)) && lines!(ax1,
-    #        timespan,
-    #        interpolator(reg, Symbol(:link_, lsw_id, :₊a₊, :Q)),
-    #        label = "link")
+    haskey(reg, Symbol(:link_, 1, :₊a₊, :Q)) && lines!(ax1,
+           timespan,
+           interpolator(reg, Symbol(:link_, 1, :₊a₊, :Q)),
+           label = "link")
     haskey(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q)) && lines!(ax1,
            timespan,
            interpolator(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q), -1),

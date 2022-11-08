@@ -123,13 +123,13 @@ function find_modflow_indices(mf_locs, p_vars, p_locs)
 end
 
 "Collect the indices, locations and names of all integrals, for writing to output"
-function prepare_waterbalance(sysnames)
+function prepare_waterbalance(syms::Vector{Symbol})
     # fluxes integrated over time
     wbal_entries = (; location = Int[], variable = String[], index = Int[], flip = Bool[])
     # initial values are handled in callback
-    prev_state = fill(NaN, length(sysnames.u_symbol))
-    for (i, u_name) in enumerate(sysnames.u_symbol)
-        varname, location = Ribasim.parsename(u_name)
+    prev_state = fill(NaN, length(syms))
+    for (i, sym) in enumerate(syms)
+        varname, location = Ribasim.parsename(sym)
         varname = String(varname)
         if endswith(varname, ".sum.x")
             variable = replace(varname, r".sum.x$" => "")
@@ -209,61 +209,63 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # create a vector of vectors of all non zero general users within all the lsws
     all_users = fill([:agric], length(lsw_ids))
 
-    # captures sysnames
     function getstate(integrator, s)::Real
         (; u) = integrator
+        (; syms) = integrator.sol.prob.f
         sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), sysnames.u_symbol)
+        i = findfirst(==(sym), syms)
+        if i === nothing
+            error(lazy"not found: $sym")
+        end
         return u[i]
     end
 
-    # captures sysnames
     function param(integrator, s)::Real
         (; p) = integrator
+        (; paramsyms) = integrator.sol.prob.f
         sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), sysnames.p_symbol)
+        i = findfirst(==(sym), paramsyms)
+        if i === nothing
+            error(lazy"not found: $sym")
+        end
         return p[i]
     end
 
-    # captures sysnames
     function param!(integrator, s, x::Real)::Real
         (; p) = integrator
-        @debug "param!" integrator.t
+        (; paramsyms) = integrator.sol.prob.f
         sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), sysnames.p_symbol)
+        i = findfirst(==(sym), paramsyms)
         if i === nothing
-            @error "parameter name not found" sym sysnames.p_symbol
+            error(lazy"not found: $sym")
         end
         return p[i] = x
     end
 
-    # captures sysnames
     function allocate!(integrator)
-        # update all forcing
         # exchange with Modflow and Metaswap here
-        (; t, p, sol) = integrator
+        (; t, p) = integrator
 
-        for (i, lsw_id) in enumerate(lsw_ids)
+        for (i, id) in enumerate(lsw_ids)
             lswusers = copy(all_users[i])
             type = types[i]
-            name = Symbol(:lsw_, lsw_id, :₊)
-            S = getstate(integrator, Symbol(name, :S))
+            S = getstate(integrator, name_t(:lsw, id, :S))
 
             # forcing values
-            P = param(integrator, Symbol(name, :P))
-            E_pot = param(integrator, Symbol(name, :E_pot))
-            drainage = param(integrator, Symbol(name, :drainage))
-            infiltration = param(integrator, Symbol(name, :infiltration))
-            urban_runoff = param(integrator, Symbol(name, :urban_runoff))
-            demand_agric = param(integrator, Symbol(:usersys_, lsw_id, :₊demand))
-            prio_agric = param(integrator, Symbol(:usersys_, lsw_id, :₊prio))
+            P = param(integrator, name_t(:lsw, id, :P))
+            E_pot = param(integrator, name_t(:lsw, id, :E_pot))
+            drainage = param(integrator, name_t(:lsw, id, :drainage))
+            infiltration = param(integrator, name_t(:lsw, id, :infiltration))
+            urban_runoff = param(integrator, name_t(:lsw, id, :urban_runoff))
+            demand_agric = param(integrator, name(:usersys, id, :demand))
+            prio_agric = param(integrator, name(:usersys, id, :prio))
 
             demandlsw = [demand_agric]
             priolsw = [prio_agric]
 
             # area: it's much faster to do the area lookup ourselves than to generate the
             # observed function for area and get it from there
-            curve = curve_dict[lsw_id]
+            curve = curve_dict[id]
             lsw_area = LinearInterpolation(curve.a, curve.s)
             area = lsw_area(S)
 
@@ -273,7 +275,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                     prio_wm = 0
 
                     # set the Q_wm for the coming day based on the expected storage
-                    tv_name = Symbol(:levelcontrol_, lsw_id, :₊target_volume)
+                    tv_name = Symbol(:levelcontrol_, id, :₊target_volume)
                     target_volume = param(integrator, tv_name)
 
                     # what is the expected storage difference at the end of the period
@@ -295,7 +297,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
                 allocate_P!(;
                             integrator,
-                            lsw_id,
+                            lsw_id = id,
                             P,
                             area,
                             E_pot,
@@ -310,7 +312,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                 # allocate to different users for a free flowing LSW
                 allocate_V!(;
                             integrator,
-                            lsw_id,
+                            lsw_id = id,
                             P,
                             area,
                             E_pot,
@@ -323,14 +325,14 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             end
 
             # update parameters
-            param!(integrator, Symbol(name, :P), P)
-            param!(integrator, Symbol(name, :E_pot), E_pot)
-            param!(integrator, Symbol(name, :drainage), drainage)
-            param!(integrator, Symbol(name, :infiltration), infiltration)
-            param!(integrator, Symbol(name, :urban_runoff), urban_runoff)
+            param!(integrator, name_t(:lsw, id, :P), P)
+            param!(integrator, name_t(:lsw, id, :E_pot), E_pot)
+            param!(integrator, name_t(:lsw, id, :drainage), drainage)
+            param!(integrator, name_t(:lsw, id, :infiltration), infiltration)
+            param!(integrator, name_t(:lsw, id, :urban_runoff), urban_runoff)
 
             # Allocate water to flushing (only external water. Flush in = Flush out)
-            # outname_flush = Symbol(:flushing_, lsw_id, :₊)
+            # outname_flush = Symbol(:flushing_, id, :₊)
             # param!(integrator, Symbol(outname_flush, :Q), demand_flush)
 
         end
@@ -380,12 +382,12 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
             end
 
             # update parameters
-            symalloc = Symbol(:usersys_, lsw_id, :₊alloc)
+            symalloc = name(:usersys, lsw_id, :alloc)
             param!(integrator, symalloc, -user.alloc[])
             # The following are not essential for the simulation
-            symdemand = Symbol(:usersys_, lsw_id, :₊demand)
+            symdemand = name(:usersys, lsw_id, :demand)
             param!(integrator, symdemand, -user.demand[])
-            symprio = Symbol(:usersys_, lsw_id, :₊prio)
+            symprio = name(:usersys, lsw_id, :prio)
             param!(integrator, symprio, user.priority[])
         end
 
@@ -458,9 +460,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
             # update parameters
             # TODO generalize for new user naming
-            symalloc = Symbol(:usersys_, lsw_id, :₊alloc_a)
+            symalloc = name(:usersys, lsw_id, :alloc_a)
             param!(integrator, symalloc, -user.alloc_a[])
-            symalloc = Symbol(:usersys_, lsw_id, :₊alloc_b)
+            symalloc = name(:usersys, lsw_id, :alloc_b)
             param!(integrator, symalloc, -user.alloc_b[])
         end
 
@@ -480,7 +482,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     sim, input_idxs = structural_simplify(netsys, (; inputs, outputs = []))
 
-    sysnames = Ribasim.Names(sim)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
     prob = ODAEProblem(sim, [], tspan; sparse = true)
@@ -503,12 +504,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         pop!(paramvars, :infiltration)
     end
 
+    # add (t) to make it the same with the syms as stored in the integrator
+    syms = [Symbol(getname(s), "(t)") for s in states(sim)]
+    paramsyms = getname.(parameters(sim))
     # take only the forcing data we need, and add the system's parameter index
-    # split out the variables and locations to make it easier to find the right p_symbol index
-    p_symbol = sysnames.p_symbol
-    u_symbol = sysnames.u_symbol
-    pf_vars = [get(paramvars, Ribasim.parsename(p)[1], :none) for p in p_symbol]
-    pf_locs = getindex.(Ribasim.parsename.(p_symbol), 2)
+    # split out the variables and locations to make it easier to find the right param index
+    pf_vars = [get(paramvars, Ribasim.parsename(p)[1], :none) for p in paramsyms]
+    pf_locs = getindex.(Ribasim.parsename.(paramsyms), 2)
 
     param_index = find_param_index(forcing.variable, forcing.location, pf_vars, pf_locs)
     used_param_index = filter(!=(0), param_index)
@@ -542,13 +544,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
         # get the index into the system state vector for each coupled LSW
         mf_locs = collect(keys(rme.basin_volume))
-        u_vars = getindex.(Ribasim.parsename.(u_symbol), 1)
-        u_locs = getindex.(Ribasim.parsename.(u_symbol), 2)
+        u_vars = getindex.(Ribasim.parsename.(syms), 1)
+        u_locs = getindex.(Ribasim.parsename.(syms), 2)
         volume_index = find_volume_index(mf_locs, u_vars, u_locs)
 
         # similarly for the index into the system parameter vector
-        pmf_vars = getindex.(Ribasim.parsename.(p_symbol), 1)
-        pmf_locs = getindex.(Ribasim.parsename.(p_symbol), 2)
+        pmf_vars = getindex.(Ribasim.parsename.(paramsyms), 1)
+        pmf_locs = getindex.(Ribasim.parsename.(paramsyms), 2)
         drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars,
                                                                   pmf_locs)
     else
@@ -580,7 +582,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         p[infiltration_index] .= rme.basin_infiltration.values ./ 86400.0
     end
 
-    wbal_entries, prev_state = prepare_waterbalance(sysnames)
+    wbal_entries, prev_state = prepare_waterbalance(syms)
     waterbalance = DataFrame(time = DateTime[], variable = String[], location = Int[],
                              value = Float64[])
     # captures waterbalance, wbal_entries, prev_state, tspan
@@ -633,7 +635,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
                       abstol = 1e-6,
                       reltol = 1e-3)
 
-    return Register(integrator, param_hist, sysnames, waterbalance)
+    return Register(integrator, param_hist, waterbalance)
 end
 
 function BMI.update(reg::Register)

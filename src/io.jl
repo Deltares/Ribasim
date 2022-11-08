@@ -103,8 +103,9 @@ function samples_long(reg::Ribasim.Register)::DataFrame
     df = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
                    value = Float64[])
 
-    (; p_symbol, obs_symbol, u_symbol) = reg.sysnames
-    symbols = vcat(u_symbol, obs_symbol, p_symbol)
+    (; syms, paramsyms) = names(reg)
+    obssyms = observed_names(reg)
+    symbols = vcat(syms, paramsyms, obssyms)
     t = reg.integrator.sol.t
     time = unix2datetime.(t)
 

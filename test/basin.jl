@@ -1,4 +1,5 @@
 using Ribasim
+using Ribasim: name
 import BasicModelInterface as BMI
 using SciMLBase
 
@@ -6,12 +7,12 @@ using SciMLBase
     config = Ribasim.parsefile("testrun.toml")
     reg = Ribasim.run(config)
 
-    S = Ribasim.savedvalues(reg, :lsw_151358₊S)
-    P = Ribasim.savedvalues(reg, :lsw_151358₊P)
-    Q_eact = Ribasim.savedvalues(reg, :lsw_151358₊Q_eact)
-    drainage = Ribasim.savedvalues(reg, :lsw_151358₊drainage)
-    infiltration = Ribasim.savedvalues(reg, :lsw_151358₊infiltration)
-    urban_runoff = Ribasim.savedvalues(reg, :lsw_151358₊urban_runoff)
+    S = Ribasim.savedvalues(reg, name(:lsw, 151358, :S))
+    P = Ribasim.savedvalues(reg, name(:lsw, 151358, :P))
+    Q_eact = Ribasim.savedvalues(reg, name(:lsw, 151358, :Q_eact))
+    drainage = Ribasim.savedvalues(reg, name(:lsw, 151358, :drainage))
+    infiltration = Ribasim.savedvalues(reg, name(:lsw, 151358, :infiltration))
+    urban_runoff = Ribasim.savedvalues(reg, name(:lsw, 151358, :urban_runoff))
 
     # Check outputs at start and end of simulation
     @test S[1] ≈ 14855.394135012128f0

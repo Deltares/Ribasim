@@ -98,67 +98,6 @@ end
 
 parentname(s::Symbol) = Symbol(first(eachsplit(String(s), "₊")))
 
-# SymbolicUtils.Sym{Real} and Term{Real} with MTK Metadata
-const SymReal = Sym{Real, Base.ImmutableDict{DataType, Any}}
-const TermReal = Term{Real, Base.ImmutableDict{DataType, Any}}
-
-"""
-    Names(sys::MTK.AbstractODESystem)
-
-Collection of names of the system, used for looking up values.
-"""
-struct Names
-    u_syms::Vector{TermReal}  # states(sys)
-    # parameters are normally SymReal, but TermReal if moved by inputs_to_parameters!
-    p_syms::Vector{Union{SymReal, TermReal}}  # parameters(sys)
-    obs_eqs::Vector{Equation}  # observed(sys)
-    obs_syms::Vector{TermReal}  # lhs of observed(sys)
-    u_symbol::Vector{Symbol}  # Symbol versions, used as names...
-    p_symbol::Vector{Symbol}
-    obs_symbol::Vector{Symbol}
-    function Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
-        @assert length(u_syms) == length(u_symbol)
-        @assert length(p_syms) == length(p_symbol)
-        @assert length(obs_syms) == length(obs_eqs) == length(obs_symbol)
-        @assert length(obs_eqs) == length(obs_symbol)
-        new(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
-    end
-end
-
-function Names(sys::MTK.AbstractODESystem)
-    # some values are duplicated, e.g. the same stream as observed from connected components
-    # obs terms contains duplicates, e.g. we want user₊Q and bucket₊o₊Q but not user₊x₊Q
-    u_syms = states(sys)
-    p_syms = parameters(sys)
-    obs_eqs = observed(sys)
-    obs_syms = [obs.lhs for obs in obs_eqs]
-    u_symbol = Symbol[getname(s) for s in u_syms]
-    p_symbol = Symbol[getname(s) for s in p_syms]
-    obs_symbol = Symbol[getname(s) for s in obs_syms]
-
-    # For some reason these are returned by states, but are not an actual state, i.e.
-    # the integrator.u does not include them after structural_simplify, as expected.
-    # For now we filter them out here such that our indices are correct.
-    i = findall(x -> !endswith(x, "₊sum₊input₊u"), String.(u_symbol))
-    u_syms = u_syms[i]
-    u_symbol = u_symbol[i]
-
-    return Names(u_syms, p_syms, obs_eqs, obs_syms, u_symbol, p_symbol, obs_symbol)
-end
-
-function Base.haskey(sysnames::Names, sym)::Bool
-    s = getname(sym)
-    return if s in sysnames.u_symbol
-        true
-    elseif s in sysnames.p_symbol
-        true
-    elseif s in sysnames.obs_symbol
-        true
-    else
-        false
-    end
-end
-
 """
     Register(sys::MTK.AbstractODESystem, integrator::SciMLBase.AbstractODEIntegrator)
 
@@ -172,19 +111,41 @@ https://discourse.julialang.org/t/update-parameters-in-modelingtoolkit-using-cal
 struct Register{T}
     integrator::T  # SciMLBase.AbstractODEIntegrator
     param_hist::ForwardFill
-    sysnames::Names
     waterbalance::DataFrame
     function Register(integrator::T,
                       param_hist,
-                      sysnames,
                       waterbalance) where {T <: SciMLBase.AbstractODEIntegrator}
-        @assert length(integrator.u) == length(sysnames.u_syms)
-        @assert length(integrator.p) == length(sysnames.p_syms)
-        new{T}(integrator, param_hist, sysnames, waterbalance)
+        new{T}(integrator, param_hist, waterbalance)
     end
 end
 
 timesteps(reg::Register) = reg.integrator.sol.t
+system(reg::Register) = reg.integrator.sol.prob.f.sys
+
+function Base.names(reg::Register)
+    sys = system(reg)
+    syms = getname.(states(sys))
+    paramsyms = getname.(parameters(sys))
+    return (; syms, paramsyms)
+end
+
+function observed_symbolic(reg::Register)
+    sys = system(reg)
+    obs_eqs = observed(sys)
+    return [obs.lhs for obs in obs_eqs]
+end
+
+function observed_names(reg::Register)::Vector{Symbol}
+    obs_syms = observed_symbolic(reg)
+    return Symbol[getname(s) for s in obs_syms]
+end
+
+# Generally we work with Symbols that are created from symbolics with Symbolics.getname(),
+# which leaves out (t) at the end. In the callbacks however we want to use names already
+# cached in the integrator, which have (t) if they originate as a time dependent variable.
+# These can be retrieved like `(; syms, paramsyms) = integrator.sol.prob.f`
+name_t(component, id, var) = Symbol(component, :_, id, :₊, var, "(t)")
+name(component, id, var) = Symbol(component, :_, id, :₊, var)
 
 function Base.show(io::IO, reg::Register)
     t = unix2datetime(reg.integrator.t)
@@ -192,69 +153,77 @@ function Base.show(io::IO, reg::Register)
     println(io, "Register(ts: $nsaved, t: $t)")
 end
 
-Base.haskey(reg::Register, sym) = haskey(reg.sysnames, sym)
-
 """
     interpolator(reg::Register, sym)::Function
 
 Return a time interpolating function for the given symbol or symbolic term.
 """
 function interpolator(reg::Register, sym, scale = 1)::Function
-    (; sysnames, integrator, param_hist) = reg
+    (; integrator, param_hist) = reg
+    (; syms, paramsyms) = names(reg)
     sol = integrator.sol
     s = getname(sym)
-    return if s in sysnames.u_symbol
-        i = findfirst(==(s), sysnames.u_symbol)
+    return if s in syms
+        i = findfirst(==(s), syms)
         # use solution as normal
         t -> sol(t, idxs = i) * scale
-    elseif s in sysnames.p_symbol
+    elseif s in paramsyms
         # use param_hist
-        i = findfirst(==(s), sysnames.p_symbol)
+        i = findfirst(==(s), paramsyms)
         t -> param_hist(t, i) * scale
-    elseif s in sysnames.obs_symbol
+    else
+        obssymbolics = observed_symbolic(reg)
+        obssyms = Symbol[getname(s) for s in obssymbolics]
+
         # combine solution and param_hist
         f = SciMLBase.getobserved(sol)  # generated function
         # sym must be symbolic here
         if sym isa Symbol
-            i = findfirst(==(sym), sysnames.obs_symbol)
-            sym = sysnames.obs_syms[i]
+            i = findfirst(==(sym), obssyms)
+            i === nothing && error(lazy"$s not found in system")
+            sym = obssymbolics[i]
+        else
+            sym in obssymbolics || error(lazy"$s not found in system")
         end
         # the observed will be interpolated if the state it gets is interpolated
         # and the parameters are current
         t -> f(sym, sol(t), param_hist(t), t) * scale
-    else
-        error(lazy"Symbol $s not found in system.")
     end
 end
 
 "Give the results on saved timesteps."
 function savedvalue(reg::Register, sym, ts::Int)::Float64
-    (; sysnames, integrator, param_hist) = reg
+    (; integrator, param_hist) = reg
+    (; syms, paramsyms) = names(reg)
     sol = integrator.sol
     s = getname(sym)
-    return if s in sysnames.u_symbol
-        i = findfirst(==(s), sysnames.u_symbol)
+    return if s in syms
+        i = findfirst(==(s), syms)
         # use solution as normal
         sol[ts, i]
-    elseif s in sysnames.p_symbol
+    elseif s in paramsyms
         # use param_hist
         t = sol.t[ts]
-        i = findfirst(==(s), sysnames.p_symbol)
+        i = findfirst(==(s), paramsyms)
         param_hist(t, i)
-    elseif s in sysnames.obs_symbol
+    else
+        obssymbolics = observed_symbolic(reg)
+        obssyms = Symbol[getname(s) for s in obssymbolics]
+
         # combine solution and param_hist
         f = SciMLBase.getobserved(sol)  # generated function
         # sym must be symbolic here
         if sym isa Symbol
-            i = findfirst(==(sym), sysnames.obs_symbol)
-            sym = sysnames.obs_syms[i]
+            i = findfirst(==(sym), obssyms)
+            i === nothing && error(lazy"$s not found in system")
+            sym = obssymbolics[i]
+        else
+            sym in obssymbolics || error(lazy"$s not found in system")
         end
         # the observed will be interpolated if the state it gets is interpolated
         # and the parameters are current
         t = sol.t[ts]
         f(sym, sol[ts], param_hist(t), t)
-    else
-        error(lazy"Symbol $s not found in system.")
     end
 end
 
@@ -271,44 +240,62 @@ end
 
 "Give the results on all saved timesteps."
 function savedvalues(reg::Register, sym)::Vector{Float64}
-    (; sysnames, integrator, param_hist) = reg
+    (; integrator, param_hist) = reg
+    (; syms, paramsyms) = names(reg)
     sol = integrator.sol
     s = getname(sym)
-    return if s in sysnames.u_symbol
-        i = findfirst(==(s), sysnames.u_symbol)
+    return if s in syms
+        i = findfirst(==(s), syms)
         getindex.(reg.integrator.sol.u, i)
-    elseif s in sysnames.p_symbol
+    elseif s in paramsyms
         # use param_hist
-        i = findfirst(==(s), sysnames.p_symbol)
+        i = findfirst(==(s), paramsyms)
         param_hist.(sol.t, i)
-    elseif s in sysnames.obs_symbol
+    else
+        obssymbolics = observed_symbolic(reg)
+        obssyms = Symbol[getname(s) for s in obssymbolics]
+
         # combine solution and param_hist
         f = SciMLBase.getobserved(sol)  # generated function
         # sym must be symbolic here
         if sym isa Symbol
-            i = findfirst(==(sym), sysnames.obs_symbol)
-            sym = sysnames.obs_syms[i]
+            i = findfirst(==(sym), obssyms)
+            i === nothing && error(lazy"$s not found in system")
+            sym = obssymbolics[i]
+        else
+            sym in obssymbolics || error(lazy"$s not found in system")
         end
         # the observed will be interpolated if the state it gets is interpolated
         # and the parameters are current
         n = length(sol.t)
         [f(sym, sol[i], param_hist(sol.t[i]), sol.t[i]) for i in 1:n]
-    else
-        error(lazy"Symbol $s not found in system.")
     end
 end
 
-function identify(sysnames::Names, sym)::Symbol
+function Base.haskey(reg::Register, sym)::Bool
     s = getname(sym)
-    return if s in sysnames.u_symbol
+    (; syms, paramsyms) = names(reg)
+    return if s in syms
+        true
+    elseif s in paramsyms
+        true
+    elseif s in observed_names(reg)
+        true
+    else
+        false
+    end
+end
+
+function identify(reg::Register, sym)::Symbol
+    s = getname(sym)
+    (; syms, paramsyms) = names(reg)
+    return if s in syms
         :states
-    elseif s in sysnames.p_symbol
+    elseif s in paramsyms
         :parameters
-    elseif s in sysnames.obs_symbol
+    elseif s in observed_names(reg)
         :observed
     else
         error(lazy"Symbol $s not found in system.")
     end
 end
-
-identify(reg::Register, sym)::Symbol = identify(reg.sysnames, sym)
