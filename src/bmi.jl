@@ -19,6 +19,13 @@ function relative_paths!(dict, dir)
         relative_path!(dict["modflow"], "simulation", dir)
         relative_path!(dict["modflow"]["models"]["gwf"], "dataset", dir)
     end
+    # Append pkg version to cache filename
+    if haskey(dict, "cache")
+        v = pkgversion(Ribasim)
+        n, ext = splitext(dict["cache"])
+        dict["cache"] = "$(n)_$(string(v))$ext"
+        relative_path!(dict, "cache", dir)
+    end
     return dict
 end
 
@@ -155,6 +162,39 @@ function prepare_waterbalance(syms::Vector{Symbol})
     return wbal_entries, prev_state
 end
 
+function getstate(integrator, s)::Real
+    (; u) = integrator
+    (; syms) = integrator.sol.prob.f
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), syms)
+    if i === nothing
+        error(lazy"not found: $sym")
+    end
+    return u[i]
+end
+
+function param(integrator, s)::Real
+    (; p) = integrator
+    (; paramsyms) = integrator.sol.prob.f
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), paramsyms)
+    if i === nothing
+        error(lazy"not found: $sym")
+    end
+    return p[i]
+end
+
+function param!(integrator, s, x::Real)::Real
+    (; p) = integrator
+    (; paramsyms) = integrator.sol.prob.f
+    sym = Symbolics.getname(s)::Symbol
+    i = findfirst(==(sym), paramsyms)
+    if i === nothing
+        error(lazy"not found: $sym")
+    end
+    return p[i] = x
+end
+
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # support either paths to Arrow files or tables
     forcing = read_table(config["forcing"])
@@ -198,7 +238,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # read state data
     used_rows = findall(in(lsw_ids), state.location)
-    used_state = (; volume = state.volume[used_rows], salinity = state.salinity[used_rows])
+    used_state = (; volume = state.volume[used_rows],
+                  salinity = state.salinity[used_rows])
 
     # read static data
     static_rows = findall(in(lsw_ids), static.location)
@@ -208,39 +249,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # create a vector of vectors of all non zero general users within all the lsws
     all_users = fill([:agric], length(lsw_ids))
-
-    function getstate(integrator, s)::Real
-        (; u) = integrator
-        (; syms) = integrator.sol.prob.f
-        sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), syms)
-        if i === nothing
-            error(lazy"not found: $sym")
-        end
-        return u[i]
-    end
-
-    function param(integrator, s)::Real
-        (; p) = integrator
-        (; paramsyms) = integrator.sol.prob.f
-        sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), paramsyms)
-        if i === nothing
-            error(lazy"not found: $sym")
-        end
-        return p[i]
-    end
-
-    function param!(integrator, s, x::Real)::Real
-        (; p) = integrator
-        (; paramsyms) = integrator.sol.prob.f
-        sym = Symbolics.getname(s)::Symbol
-        i = findfirst(==(sym), paramsyms)
-        if i === nothing
-            error(lazy"not found: $sym")
-        end
-        return p[i] = x
-    end
 
     function allocate!(integrator)
         # exchange with Modflow and Metaswap here
@@ -469,22 +477,35 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         return nothing
     end
 
-    graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
-    fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
-
-    # store all MTK.unbound_inputs here to speed up structural simplify,
-    # avoiding some quadratic scaling
-    inputs = []
-    @named netsys = NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes,
-                                  target_levels,
-                                  used_state, all_users, curve_dict, add_levelcontrol,
-                                  inputs)
-
-    sim, input_idxs = structural_simplify(netsys, (; inputs, outputs = []))
-
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
-    prob = ODAEProblem(sim, [], tspan; sparse = true)
+
+    if !(haskey(config, "cache") && isfile(config["cache"]))
+        graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
+        fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
+
+        # store all MTK.unbound_inputs here to speed up structural simplify,
+        # avoiding some quadratic scaling
+        inputs = []
+        @named netsys = NetworkSystem(; lsw_ids, types, graph, fractions, target_volumes,
+                                      target_levels,
+                                      used_state, all_users, curve_dict, add_levelcontrol,
+                                      inputs)
+
+        sim, input_idxs = structural_simplify(netsys, (; inputs, outputs = []))
+
+        prob = ODAEProblem(sim, [], tspan; sparse = true)
+        if haskey(config, "cache")
+            @warn "Cache is specified, but path $(config["cache"])
+                doesn't exist yet; creating it now."
+            open(config["cache"], "w") do io
+                serialize(io, prob)
+            end
+        end
+    else
+        @info "Using cached problem from $(config["cache"])."
+        prob = deserialize(config["cache"])
+    end
 
     # subset of parameters that we possibly have forcing data for
     # map from variable symbols from Ribasim.parsename to forcing.variable symbols
@@ -505,8 +526,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     # add (t) to make it the same with the syms as stored in the integrator
-    syms = [Symbol(getname(s), "(t)") for s in states(sim)]
-    paramsyms = getname.(parameters(sim))
+    syms = [Symbol(getname(s), "(t)") for s in states(prob.f.sys)]
+    paramsyms = getname.(parameters(prob.f.sys))
     # take only the forcing data we need, and add the system's parameter index
     # split out the variables and locations to make it easier to find the right param index
     pf_vars = [get(paramvars, Ribasim.parsename(p)[1], :none) for p in paramsyms]

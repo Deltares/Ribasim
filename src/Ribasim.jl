@@ -19,9 +19,11 @@ using ModelingToolkit: getname
 using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEq
 using SciMLBase
+using Serialization
 
 export interpolator, Register, ForwardFill
 
+include("utils.jl")
 include("modflow.jl")
 include("lib.jl")
 include("system.jl")

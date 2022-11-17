@@ -5,6 +5,9 @@ endtime = 2019-03-01
 add_levelcontrol = false
 run_modflow = false
 
+# this will use the cache file if it exists, otherwise it will create it
+cache = "cache.jl"
+
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
 saveat = 86400.0
