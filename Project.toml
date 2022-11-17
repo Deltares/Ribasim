@@ -19,6 +19,7 @@ NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 PlyIO = "42171d58-473b-503a-8d5f-782019eb09ec"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
