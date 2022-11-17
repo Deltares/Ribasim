@@ -480,7 +480,10 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
 
-    if !(haskey(config, "cache") && isfile(config["cache"]))
+    if haskey(config, "cache") && isfile(config["cache"])
+        @info "Using cached problem from $(config["cache"])."
+        prob = deserialize(config["cache"])
+    else
         graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)
         fractions = fraction_dict(graph_all, fractions_all, lsw_all, lsw_ids)
 
@@ -496,15 +499,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
         prob = ODAEProblem(sim, [], tspan; sparse = true)
         if haskey(config, "cache")
-            @warn "Cache is specified, but path $(config["cache"])
-                doesn't exist yet; creating it now."
+            @info "Caching initialized problem" path=config["cache"]
             open(config["cache"], "w") do io
                 serialize(io, prob)
             end
         end
-    else
-        @info "Using cached problem from $(config["cache"])."
-        prob = deserialize(config["cache"])
     end
 
     # subset of parameters that we possibly have forcing data for

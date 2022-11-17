@@ -6,7 +6,7 @@ datadir = joinpath(testdir, "data")
 isdir(datadir) || mkpath(datadir)
 
 "Download a test data file if it does not already exist"
-function testdata(source_filename, target_filename=source_filename)
+function testdata(source_filename, target_filename = source_filename)
     target_path = joinpath(datadir, target_filename)
     base_url = "https://github.com/visr/ribasim-artifacts/releases/download/v0.1.0/"
     url = string(base_url, source_filename)
