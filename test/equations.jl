@@ -6,7 +6,7 @@ using Arrow
 import BasicModelInterface as BMI
 using SciMLBase
 
-datadir = normpath(@__DIR__, "../data/input/6")
+datadir = normpath(@__DIR__, "data")
 
 @testset "qh_relation" begin
     # LSW without forcing
@@ -69,7 +69,7 @@ end
     config["state"] = DataFrame(location = lsw_id, volume = 1e6, salinity = 0.1)
     config["static"] = DataFrame(location = lsw_id, target_level = NaN, target_volume = NaN,
                                  depth_surface_water = NaN, local_surface_water_type = 'V')
-    config["forcing"] = normpath(datadir, "forcing.arrow")
+    config["forcing"] = normpath(datadir, "lhm/forcing.arrow")
     config["profile"] = DataFrame(location = lsw_id, volume = [0.0, 1e6], area = [1e6, 1e6],
                                   discharge = [0.0, 1e0], level = [10.0, 11.0])
 

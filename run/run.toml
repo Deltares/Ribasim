@@ -14,13 +14,13 @@ lsw_ids = [151358, 151371, 151309]
 # lsw_ids = [200164]
 # lsw_ids = [200164, 200165]
 
-forcing = "../data/input/6/forcing.arrow"
-state = "../data/input/6/state.arrow"
-static = "../data/input/6/static.arrow"
-profile = "../data/input/6/profile.arrow"
-network_path = "../data/input/6/network.ply"
+forcing = "../test/data/lhm/forcing.arrow"
+state = "../test/data/lhm/state.arrow"
+static = "../test/data/lhm/static.arrow"
+profile = "../test/data/lhm/profile.arrow"
+network_path = "../test/data/lhm/network.ply"
 
-waterbalance = "../data/output/waterbalance.arrow"
+waterbalance = "../test/data/lhm/waterbalance.arrow"
 
 # entire district around Hupsel
 # lsw_ids = [
