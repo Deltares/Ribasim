@@ -481,7 +481,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
 
     if haskey(config, "cache") && isfile(config["cache"])
-        @info "Using cached problem from $(config["cache"])."
+        @info "Using cached problem" path=config["cache"]
         prob = deserialize(config["cache"])
     else
         graph, graph_all, fractions_all, lsw_all = subgraph(network, lsw_ids)

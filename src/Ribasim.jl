@@ -19,7 +19,7 @@ using ModelingToolkit: getname
 using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEq
 using SciMLBase
-import Serialization: serialize, deserialize
+using Serialization: serialize, deserialize
 
 export interpolator, Register, ForwardFill
 
