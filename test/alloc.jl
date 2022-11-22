@@ -51,7 +51,7 @@ end
 
 @testset "allocation_P" begin
     config = Ribasim.parsefile(toml_path)
-    config["lsw_ids"] = [200164]
+    config["ids"] = [200164]
     config["add_levelcontrol"] = true
     config["waterbalance"] = "output/waterbalance_alloc_P.arrow"
 

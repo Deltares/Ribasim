@@ -85,7 +85,7 @@ end
 
 "Get a view on the time and value of a timeseries of a variable at a location"
 function tsview(t, var::Symbol, loc::Int)
-    i = Ribasim.searchsorted_forcing(t.variable, t.location, var, loc)
+    i = searchsorted_forcing(t.variable, t.location, var, loc)
     return view(t.time, i), view(t.value, i)
 end
 
@@ -99,7 +99,7 @@ function parsename(sym)::Tuple{Symbol, Int}
 end
 
 "Create a long form DataFrame of all variables on every saved timestep."
-function samples_long(reg::Ribasim.Register)::DataFrame
+function samples_long(reg::Register)::DataFrame
     df = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
                    value = Float64[])
 
@@ -110,7 +110,7 @@ function samples_long(reg::Ribasim.Register)::DataFrame
     time = unix2datetime.(t)
 
     for symbol in symbols
-        value = Ribasim.interpolator(reg, symbol).(t)
+        value = interpolator(reg, symbol).(t)
         variable, location = parsename(symbol)
         batch = DataFrame(; time, variable, location, value)
         append!(df, batch)

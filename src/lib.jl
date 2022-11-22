@@ -25,6 +25,12 @@ function StorageCurve(df)
     return StorageCurve(df.volume, df.area, df.discharge, df.level)
 end
 
+function StorageCurve(df, id::Int)
+    profile_rows = searchsorted(df.id, id)
+    profile = @view df[profile_rows, :]
+    return StorageCurve(profile)
+end
+
 Base.length(curve::StorageCurve) = length(curve.s)
 
 """

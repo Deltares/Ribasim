@@ -11,7 +11,7 @@ reg = Ribasim.run(config)
 
 using GLMakie
 GLMakie.activate!()
-plot_series(reg, config["lsw_ids"][1]; level = true)
+plot_series(reg, config["ids"][1]; level = true)
 using CairoMakie
 CairoMakie.activate!()
-plot_series(reg, config["lsw_ids"][1]; level = false)
+plot_series(reg, config["ids"][1]; level = false)

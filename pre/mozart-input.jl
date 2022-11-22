@@ -281,8 +281,9 @@ function expanded_network()
     # n = 1: Bifurcation
     # n = 2: GeneralUser / GeneralUser_P
     # n = 3: LevelControl
-    # n = 4: OutFlowTable / LevelLink
+    # n = 4: OutFlowTable
     # n = 5: HeadBoundary
+    # LevelLink goes between the LSWs it connects
 
     types = Char.(only.(lswdik.local_surface_water_type))
 
@@ -299,22 +300,11 @@ function expanded_network()
     # add all the nodes and the inner edges that connect the LSW sub-system
     for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
         out_vertices = outneighbors(graph, v)
-        out_lsw_ids = [lsw_ids[v] for v in out_vertices]
 
         lswcoord = (xcoord, ycoord)
-        lsw_seq = id
+        lsw_seq = id  # save the LSW ID to use create inner edges from
         push!(df, (lswcoord, "LSW", id, lsw_id))
         id += 1
-
-        if length(out_vertices) == 0 && type == 'V'
-            coord = move_location(xcoord, ycoord, 5)
-            push!(df, (coord, "HeadBoundary", id, lsw_id))
-            push!(t,
-                  (; geometry = [lswcoord, coord], from_id = lsw_seq, from_node = "LSW",
-                   from_connector = "x", to_id = id, to_node = "HeadBoundary",
-                   to_connector = "x"))
-            id += 1
-        end
 
         if type == 'V'
             coord = move_location(xcoord, ycoord, 2)
@@ -342,7 +332,16 @@ function expanded_network()
                    from_connector = "s", to_id = id, to_node = "OutflowTable",
                    to_connector = "s"))
             id += 1
-            if length(out_vertices) >= 2 && type == 'V'
+            if length(out_vertices) == 0
+                coord = move_location(xcoord, ycoord, 5)
+                push!(df, (coord, "HeadBoundary", id, lsw_id))
+                push!(t,
+                      (; geometry = [lswcoord, coord], from_id = outflowtable_id,
+                       from_node = "OutflowTable",
+                       from_connector = "b", to_id = id, to_node = "HeadBoundary",
+                       to_connector = "x"))
+                id += 1
+            elseif length(out_vertices) >= 2
                 # this goes from the outflowtable to the bifurcation
                 coord = move_location(xcoord, ycoord, 1)
                 push!(df, (coord, "Bifurcation", id, lsw_id))
@@ -358,13 +357,13 @@ function expanded_network()
             push!(df, (coord, "GeneralUser_P", id, lsw_id))
             push!(t,
                   (; geometry = [lswcoord, coord], from_id = lsw_seq, from_node = "LSW",
-                   from_connector = "x", to_id = id, to_node = "OutflowTable",
+                   from_connector = "x", to_id = id, to_node = "GeneralUser_P",
                    to_connector = "a"))
             push!(t,
                   (; geometry = arc([lswcoord, coord]), from_id = lsw_seq,
                    from_node = "LSW",
-                   from_connector = "s", to_id = id, to_node = "OutflowTable",
-                   to_connector = "s"))
+                   from_connector = "s", to_id = id, to_node = "GeneralUser_P",
+                   to_connector = "s_a"))
             id += 1
             coord = move_location(xcoord, ycoord, 3)
             push!(df, (coord, "LevelControl", id, lsw_id))
@@ -373,17 +372,10 @@ function expanded_network()
                    from_connector = "x", to_id = id, to_node = "LevelControl",
                    to_connector = "a"))
             id += 1
-            coord = move_location(xcoord, ycoord, 4)
-            push!(df, (coord, "LevelLink", id, lsw_id))
-            push!(t,
-                  (; geometry = [lswcoord, coord], from_id = lsw_seq, from_node = "LSW",
-                   from_connector = "x", to_id = id, to_node = "LevelLink",
-                   to_connector = "a"))
-            id += 1
         end
     end
 
-    # add edges between lsws
+    # add edges between lsws, with LevelLink in between for type P
     for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
         out_vertices = outneighbors(graph, v)
         length(out_vertices) == 0 && continue
@@ -391,32 +383,14 @@ function expanded_network()
 
         # find from_node
         if type == 'V'
+            # connect from OutflowTable or Bifurcation depending on the number of downstream
+            # nodes
             if length(out_vertices) == 1
                 from_node = only(@subset(df, :org_id==lsw_id, :node=="OutflowTable"))
                 from_connector = "b"
-            else
-                from_node = only(@subset(df, :org_id==lsw_id, :node=="Bifurcation"))
-                from_connector = "dst"
-            end
-        else
-            from_node = only(@subset(df, :org_id==lsw_id, :node=="LevelLink"))
-            from_connector = "b"
-        end
 
-        if length(out_vertices) == 1
-            out_lsw_id = only(out_lsw_ids)
-            to_node = only(@subset(df, :org_id==out_lsw_id, :node=="LSW"))
-            to_connector = "x"
-
-            nt = (; geometry = [from_node.geometry, to_node.geometry],
-                  from_id = from_node.id,
-                  from_node = from_node.node, from_connector, to_id = to_node.id,
-                  to_node = to_node.node, to_connector)
-            push!(t, nt)
-        else
-            for (i, out_lsw_id) in enumerate(out_lsw_ids)
+                out_lsw_id = only(out_lsw_ids)
                 to_node = only(@subset(df, :org_id==out_lsw_id, :node=="LSW"))
-                from_connector = string(from_connector, '_', i)  # Bifurcation supports n dst connectors
                 to_connector = "x"
 
                 nt = (; geometry = [from_node.geometry, to_node.geometry],
@@ -424,11 +398,55 @@ function expanded_network()
                       from_node = from_node.node, from_connector, to_id = to_node.id,
                       to_node = to_node.node, to_connector)
                 push!(t, nt)
+            else
+                from_node = only(@subset(df, :org_id==lsw_id, :node=="Bifurcation"))
+
+                for (i, out_lsw_id) in enumerate(out_lsw_ids)
+                    to_node = only(@subset(df, :org_id==out_lsw_id, :node=="LSW"))
+                    from_connector = string("dst_", i)  # Bifurcation supports n dst connectors
+                    to_connector = "x"
+
+                    nt = (; geometry = [from_node.geometry, to_node.geometry],
+                          from_id = from_node.id,
+                          from_node = from_node.node, from_connector, to_id = to_node.id,
+                          to_node = to_node.node, to_connector)
+                    push!(t, nt)
+                end
+            end
+
+        else
+            # add a LevelLink node in between, and hook it up, for each edge
+            for out_lsw_id in out_lsw_ids
+                idx = findfirst(==(out_lsw_id), lsw_ids)
+                srccoord = (xcoord, ycoord)
+                dstcoord = (x[idx], y[idx])
+                midcoord = ((srccoord[1] + dstcoord[1]) / 2,
+                            (srccoord[2] + dstcoord[2]) / 2)
+
+                # add LevelLink node
+                push!(df, (midcoord, "LevelLink", id, lsw_id))
+                id += 1
+
+                # add edges to LSW on either side
+                lsw_node = only(@subset(df, :org_id==lsw_id, :node=="LSW"))
+                out_lsw_node = only(@subset(df, :org_id==out_lsw_id, :node=="LSW"))
+                push!(t,
+                      (; geometry = [srccoord, midcoord], from_id = lsw_node.id,
+                       from_node = "LSW",
+                       from_connector = "x", to_id = id, to_node = "LevelLink",
+                       to_connector = "a"))
+                push!(t,
+                      (; geometry = [midcoord, dstcoord], from_id = id,
+                       from_node = "LevelLink",
+                       from_connector = "b", to_id = out_lsw_node.id, to_node = "LSW",
+                       to_connector = "x"))
             end
         end
     end
 
-    write_geoarrow(normpath(output_dir, "node.arrow"), df[:, Not(:org_id)], "point")
+    # the org_id is not needed in Ribasim: df[:, Not(:org_id)]
+    # but kept now for convenience with the old schematization
+    write_geoarrow(normpath(output_dir, "node.arrow"), df, "point")
     write_geoarrow(normpath(output_dir, "edge.arrow"), t, "linestring")
 
     # Create the expanded graph as well from the edge table, not needed by Ribasim,

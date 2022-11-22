@@ -15,7 +15,7 @@ using Graphs
 using DataInterpolations: LinearInterpolation
 using DiffEqCallbacks
 using ModelingToolkit
-using ModelingToolkit: getname
+using ModelingToolkit: getname, renamespace
 using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEq
 using SciMLBase

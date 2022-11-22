@@ -5,3 +5,6 @@ function pkgversion(m::Module)
     pkgorigin = get(Base.pkgorigins, pkg, nothing)
     return pkgorigin === nothing ? nothing : pkgorigin.version
 end
+
+# avoid errors with show
+Base.nameof(::LinearInterpolation) = :LinearInterpolation

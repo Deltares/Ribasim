@@ -45,10 +45,9 @@ function OutflowTable(; name, lsw_discharge)
     ODESystem(eqs, t, vars, []; systems = [a, b, s], name)
 end
 
-function LevelControl(; name, target_volume, target_level)
+function LevelControl(; name, target_volume)
     @named a = FluidPort()  # lsw
     pars = @parameters(target_volume=target_volume,
-                       target_level=target_level,
                        alloc_a=0.0, # lsw
                        alloc_b=0.0,)
     eqs = Equation[a.Q ~ alloc_a + alloc_b
@@ -64,8 +63,8 @@ constant input fluxes. Dynamic exchange fluxes can be defined in
 connected components.
 
 # State or observed variables
-- C [kg m⁻³]: salinity
 - S [m³]: storage volume
+- C [kg m⁻³]: salinity
 - area [m²]: open water surface area
 - Q_prec [m³ s⁻¹]: precipitation inflow
 - Q_eact [m³ s⁻¹]: evaporation outflow
@@ -77,27 +76,35 @@ connected components.
 - infiltration [m³ s⁻¹]: infiltration to Modflow
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 """
-function LSW(; name, C, S, lsw_level, lsw_area)
+function LSW(; name,
+             # state
+             S::Real = 0.0, C::Real = 0.0,
+             # profile
+             lsw_level, lsw_area,
+             # input
+             P::Real = 0.0, E_pot::Real = 0.0, drainage::Real = 0.0,
+             infiltration::Real = 0.0,
+             urban_runoff::Real = 0.0)
     @named x = FluidPort(; C)
     @named s = Storage(; S)
 
     vars = @variables(h(t),
-                      C(t)=C,
                       S(t)=S,
+                      C(t)=C,
                       Q_ex(t),  # upstream, downstream, users
-                      Q_prec(t)=0,
-                      Q_eact(t)=0,
-                      infiltration_act(t)=0,
+                      Q_prec(t),
+                      Q_eact(t),
+                      infiltration_act(t),
                       area(t),
-                      P(t)=0,
+                      P(t)=P,
                       [input = true],
-                      E_pot(t)=0,
+                      E_pot(t)=E_pot,
                       [input = true],
-                      drainage(t)=0,
+                      drainage(t)=drainage,
                       [input = true],
-                      infiltration(t)=0,
+                      infiltration(t)=infiltration,
                       [input = true],
-                      urban_runoff(t)=0,
+                      urban_runoff(t)=urban_runoff,
                       [input = true],)
 
     D = Differential(t)
@@ -129,14 +136,16 @@ function LSW(; name, C, S, lsw_level, lsw_area)
     ODESystem(eqs, t, vars, []; systems = [x, s], name)
 end
 
-function GeneralUser(; name)
+function GeneralUser(; name,
+                     demand::Real = 0.0,
+                     priority::Real = 0.0)
     @named x = FluidPort()
     @named s = Storage()
 
     vars = @variables(abs(t)=0,)
     pars = @parameters(alloc=0.0,
-                       demand=0.0,
-                       prio=0.0,
+                       demand=demand,
+                       priority=priority,
                        # shortage = 0.0,
                        # [output = true],
                        )
@@ -151,7 +160,9 @@ function GeneralUser(; name)
 end
 
 # Function to assign general users in a level controlled LSW. Demand can be met from external source
-function GeneralUser_P(; name)
+function GeneralUser_P(; name,
+                       demand::Real = 0.0,
+                       priority::Real = 0.0)
     @named a = FluidPort()  # from lsw source
     @named s_a = Storage()
     # @named b = FluidPort()  # from external source
@@ -163,8 +174,8 @@ function GeneralUser_P(; name)
 
     pars = @parameters(alloc_a=0.0,
                        alloc_b=0.0,
-                       demand=0.0,
-                       prio=0.0,)
+                       demand=demand,
+                       priority=priority,)
     eqs = Equation[
                    # in callback set the flow rate
                    # connectors
@@ -190,7 +201,7 @@ function FlushingUser(; name)
     ODESystem(eqs, t, [], pars; systems = [x], name)
 end
 
-function HeadBoundary(; name, h, C)
+function HeadBoundary(; name, h::Real = 0.0, C::Real = 0.0)
     @named x = FluidPort(; h)
     vars = @variables h(t)=h [input = true] C(t)=C [input = true]
 
@@ -206,10 +217,15 @@ function NoFlowBoundary(; name)
 end
 
 # Fractional bifurcation
-function Bifurcation(; name, fractions)
+function Bifurcation(; name, fractions...)
+    # the length of fractions determines the number of outflows
     @named src = FluidPort()
 
-    if !(sum(fractions) ≈ 1)
+    if length(fractions) < 2
+        @error "Invalid Bifurcation, must have at least two outflows" name fractions
+        error("Invalid Bifurcation")
+    end
+    if !(sum(values(fractions)) ≈ 1)
         @error "Invalid Bifurcation, fractions must add up to 1" name fractions
         error("Invalid Bifurcation")
     end
@@ -217,9 +233,12 @@ function Bifurcation(; name, fractions)
     ports = [src]
     eqs = Equation[src.C ~ instream(src.C)]
     pars = Num[]
-    for (i, fraction) in enumerate(fractions)
+    for (parname, fraction) in pairs(fractions)
+        # get 2 from :fraction_2, to create connector :dst_2
+        parts = rsplit(String(parname), '_'; limit = 2)
+        @assert parts[1] == "fraction"
+        i = parse(Int, parts[2])
         port = FluidPort(; name = Symbol(:dst_, i))
-        parname = Symbol(:fraction_, i)
         # from @macroexpand @parameters a = 1.0, to make symbol interpolation easy
         defaultval = Symbolics.setdefaultval(Sym{Real}(parname), fraction)
         fracpar = MTK.toparam(Symbolics.wrap(MTK.setmetadata(defaultval,
@@ -235,16 +254,16 @@ function Bifurcation(; name, fractions)
     ODESystem(eqs, t, [], pars; systems = ports, name)
 end
 
-function LevelLink(; name, cond)
+function LevelLink(; name, conductance::Real = 0.1)
     @named a = FluidPort()
     @named b = FluidPort()
 
-    pars = @parameters cond = cond
+    pars = @parameters conductance = conductance
 
     eqs = Equation[
                    # conservation of flow
                    a.Q + b.Q ~ 0
-                   a.Q ~ cond * (a.h - b.h)
+                   a.Q ~ conductance * (a.h - b.h)
                    b.C ~ instream(a.C)
                    a.C ~ instream(b.C)]
     ODESystem(eqs, t, [], pars; systems = [a, b], name)
