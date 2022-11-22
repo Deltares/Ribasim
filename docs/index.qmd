@@ -185,6 +185,11 @@ arguments in the command line will give the following message:
 Usage: ribasim_cli 'path/to/config.toml'
 ```
 
+:::{.callout-note}
+The binaries are currently not up to date with the latest developments; we suggest
+installing as a Julia package instead.
+:::
+
 ## Installing as a Julia package
 
 Ribasim is a [Julia](https://julialang.org/) package, that can be installed using Julia's
@@ -258,8 +263,6 @@ It contains settings, as well as paths to other input and output files.
 starttime = 2019-01-01
 endtime = 2021-01-01
 
-# maintain target waterlevel in level controlled basins
-add_levelcontrol = true  # default is true
 # run a coupled Ribasim - Modflow simulation
 run_modflow = false  # default is false
 
@@ -273,16 +276,17 @@ output_timestep = 86400.0  # default is 86400.0
 # https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Output-Control
 saveat = 86400.0  # default is to save every step
 
-# location IDs that will be included in the simulation
-# these location IDs are referenced in the input files below
-lsw_ids = [151358, 151371, 151309]
+# node IDs that will be included in the simulation
+# these node IDs are referenced in the input files below
+ids = [1, 2, 3]
 
 # input files
 forcing = "input/forcing.arrow"
 state = "input/state.arrow"
 static = "input/static.arrow"
 profile = "input/profile.arrow"
-network_path = "input/network.ply"
+node = "input/node.arrow"
+edge = "input/edge.arrow"
 
 # output file
 waterbalance = "output/waterbalance.arrow"
@@ -290,54 +294,6 @@ waterbalance = "output/waterbalance.arrow"
 
 Additionally, if `run_modflow = true`, a Modflow specific section needs to be added to
 the configuration file. This part is documented in [the Modflow coupling demo](#coupling-demo.qmd).
-
-### Network
-
-The network, as set with `network_path` in the configuration file, is the path to a
-[PLY file](https://en.wikipedia.org/wiki/PLY_(file_format)). This network is a directed
-graph, that links the different basins to each other, as described in @sec-space.
-
-The PLY format is a relatively simple file format that comes in binary and ASCII flavors,
-both of which are supported. To support viewing the network as a mesh layer in
-[QGIS](https://docs.qgis.org/latest/en/docs/user_manual/working_with_mesh/mesh_properties.html),
-we recommend adding a comment specifying the coordinate reference system (CRS) as documented by
-[MDAL](https://www.mdal.xyz/drivers/ply.html) and shown below. In this example, only the
-first and last two vertices are shown, just like for the edges.
-
-```
-ply
-format ascii 1.0
-comment crs: EPSG:28992
-element vertex 8531
-property float64 x
-property float64 y
-property float64 location
-element edge 6318
-property int32 vertex1
-property int32 vertex2
-property float32 fractions
-end_header
-140702.897 414305.632 10020.0
-157416.633 424082.847 10037.0
-⋮
-47343.505 371868.984 991896.0
-45651.526 372390.837 991908.0
-0 11 1.0
-1 25 1.0
-⋮
-8512 7572 1.0
-8516 7677 1.0
-```
-
-For each vertex, the x and y coordinates are given, followed by the location ID. For each
-edge, the source and destination vertex are given, followed by the fraction. The vertex
-here refers not to the location ID, but to the zero-based index of the vertices as ordered
-in the file. The fraction is typically 1.0, but can be divided into smaller parts if there
-is a bifurcation from one basin to two downstream basins. This then represents the fraction
-of water flowing from the source along this edge.
-
-The network file is allowed to be a superset of the locations IDs that you simulate (the
-`lsw_ids` configuration). A sub-network will be derived automatically.
 
 ### Arrow files
 
@@ -352,17 +308,17 @@ like this:
 
 column    | type    | restriction
 --------- | ------- | -----------
-location  | Int     | -
+id        | Int     | -
 volume    | Float64 | non-negative
 
 
-This means that two columns are required, one named `location`, that contained elements
+This means that two columns are required, one named `id`, that contained elements
 of type `Int`, and a column named `volume` that contains elements of type `Float64`. The
 order of the columns does not matter, and the files are also allowed to have extra columns,
 which will be ignored. In some cases there may be restrictions on the values or the ordering
 of the rows. This is indicated under `restriction`.
 
-Tables are also allowed to have rows for locations, variables or times that are not part of
+Tables are also allowed to have rows for IDs, variables or times that are not part of
 the simulation, these will be ignored. That makes it easy to prepare data for a larger
 region once, and test models on a subset of the basins.
 
@@ -372,40 +328,151 @@ sizes it may be a good idea to apply
 [dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
 to those columns.
 
+### Node
+
+Since we build Ribasim on top of ModelingToolkit, we can do
+[component-based modeling](https://docs.sciml.ai/ModelingToolkit/stable/tutorials/spring_mass/).
+The components here are [systems](https://docs.sciml.ai/ModelingToolkit/stable/basics/AbstractSystem/),
+typically `ODESystem`. These components are connected together to form a larger system.
+This is similar to the way a network has **nodes** that are connected along **edges**. We
+mostly use the terms node and edge in this text.
+
+Useful nodes can be water body storages that keep their own water balance, weirs, pumps,
+users or suppliers of water. Counter intuitively, even systems you may think of as edges,
+such as a canal, are nodes in Ribasim. This is because edges only define direct
+instantaneous couplings between nodes, and never have storage of their own.
+
+column    | type     | restriction
+--------- | -------- | -----------
+id        | Int      | unique
+node      | String   | known type
+geometry  | geoarrow | (optional)
+
+The schema of the node table shows that only a unique ID and known node type need to be
+given. The known node types as of this writing are:
+
+- LSW
+- GeneralUser_P
+- LevelControl
+- GeneralUser
+- OutflowTable
+- HeadBoundary
+- Bifurcation
+- LevelLink
+
+Adding a geometry to the node table can be helpful to examine models in
+[QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
+Geometries can be encoded in Arrow files according to the
+[geoarrow specifications](https://github.com/geoarrow/geoarrow) (still in flux).
+The geometry is not used by Ribasim.
+
+### Edge
+
+Edges define so called connections, created in ModelingToolkit using the `connect` function.
+If defined between two flow connectors, they equate the level $h$, conserve the flux $Q$,
+and carry the salinity $C$ in the flow direction. When defined between storage connectors,
+they can function simply as a way to share available storage $S$ information from a
+reservoir to a water user, such that it can avoid overextraction.
+
+column         | type     | restriction
+-------------- | -------- | -----------
+from_id        | Int      | -
+from_node      | String   | known type
+from_connector | String   | exists for node
+to_id          | Int      | -
+to_node        | String   | known type
+to_connector   | String   | exists for node
+geometry       | geoarrow | (optional)
+
+The names of the connectors need to match the available connectors per node type, which
+are outlined below.
+
+- LSW
+  - x: flow
+  - s: storage
+- GeneralUser_P
+  - a: flow
+  - s_a: storage
+- LevelControl
+  - a: flow
+- GeneralUser
+  - x: flow
+  - s: storage
+- OutflowTable
+  - a: upstream flow
+  - b: downstream flow
+  - s: storage
+- HeadBoundary
+  - x: flow
+- Bifurcation
+  - src: inflow
+  - dst_{i}: split outflow in n parts
+- LevelLink
+  - a: flow on one side
+  - b: flow on other side
+
+Similarly to the node table, you can use a geometry to visualize the connections between
+the nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
+
 ### State
 
 The state table aims to capture the full state of the system, such that it can be used
 as an initial condition, that is potentially the outcome of an earlier simulation.
-Currently the only states are the volume and salinity of storage.
+Currently the only states are the volume $S$ and salinity $C$ of the LSW node.
 
 column    | type    | restriction
 --------- | ------- | -----------
-location  | Int     | -
-volume    | Float64 | non-negative
-salinity  | Float64 | non-negative
+id        | Int     | -
+S         | Float64 | non-negative
+C         | Float64 | non-negative
 
-
-Each location specified in `lsw_ids` needs to be in the table.
+Each used ID needs to be in the table.
 
 ### Static
 
-The static table provides data that is fixed per location. The `local_surface_water_type`
-can be either `V` for free draining basins or `P` for level controlled basins.
+The static table can be used to set the **initial** value of variables. The forcing table
+has a similar schema, with the time column added. If a variable is in the static table,
+it can still be added to the forcing as well, which will update the inital value when
+the given timestamp is reached.
 
-column                   | type    | restriction
------------------------- | ------- | -----------
-location                 | Int     | -
-target_level             | Float64 | -
-target_volume            | Float64 | -
-local_surface_water_type | Char    | 'V' or 'P'
+column   | type     | restriction
+-------- | -------- | -----------
+id       | Int      | -
+variable | String   | -
+value    | Float64  | depending on variable
 
-Each location specified in `lsw_ids` needs to be in the table.
+Note that if variables are not set in the static table, default values are used when
+possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
+to have a reasonable and safe default, a value must be provided in the static table.
+An example of this is the `target_volume` from the LevelLink node.
 
-:::{.callout-note}
-Of `target_level` and `target_volume`, currently only `target_volume` is used, and only
-for level controlled basins. This variable should be moved to the forcing table to allow
-dynamic targets.
-:::
+### Forcing
+
+All dynamic data can be added to the forcing table.
+
+column   | type     | restriction
+-------- | -------- | -----------
+time     | DateTime | sorted
+id       | Int      | -
+variable | String   | -
+value    | Float64  | depending on variable
+
+Here is an example of the first and last two rows of a forcing table:
+
+time                |       id | variable      | value
+------------------- |--------- |-------------- |-------
+2019-01-01T00:00:00 |        6 | P             | 2.89352e-10
+2019-01-01T00:00:00 |       16 | P             | 2.89352e-10
+⋮                   | ⋮        | ⋮              | ⋮
+2020-12-31T00:00:00 |       90 | E\_pot        | 1.15741e-9
+2020-12-31T00:00:00 |        7 | E\_pot        | 1.15741e-9
+
+The forcing table is a [narrow table](https://en.wikipedia.org/wiki/Wide_and_narrow_data#Narrow).
+When the simulation arrives at a time given in the forcing data, it will update all the
+values given for that time. These values then stay constant until the next update, there
+is no interpolation in between. This also means that if a value is defined before the start
+of the simulation, it is completely ignored. This format give maximum flexibility to update
+different variables at different times.
 
 ### Profile
 
@@ -416,18 +483,18 @@ to levels for output. For level controlled basins, the discharge is not used.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
-location  | Int     | -            | sorted
-volume    | Float64 | $m^3$        | sorted per location and start at 0
-area      | Float64 | $m^2$        | sorted per location and non-negative
-discharge | Float64 | $m^3 s^{-1}$ | sorted per location and non-negative
-level     | Float64 | $m$          | sorted per location
+id        | Int     | -            | sorted
+volume    | Float64 | $m^3$        | sorted per ID and start at 0
+area      | Float64 | $m^2$        | sorted per ID and non-negative
+discharge | Float64 | $m^3 s^{-1}$ | sorted per ID and non-negative
+level     | Float64 | $m$          | sorted per ID
 
 The level is in meters above a datum that is the same for the entire model.
 An example of the first 5 rows of such a table is given below. The first 4 rows define the
-profile of location `10020`. The number of rows can vary per location. Using a very large
+profile of ID `10020`. The number of rows can vary per ID. Using a very large
 number of rows may impact performance.
 
-location |  volume        | area          | discharge  | level
+id       | volume         | area          | discharge  | level
 -------- |--------------- |-------------- |----------- |-------
    10020 |      0.0       |     1.36404e5 | 0.0        | -0.105
    10020 |  24726.2       |     1.36404e5 | 0.0        |  0.095
@@ -435,34 +502,11 @@ location |  volume        | area          | discharge  | level
    10020 |      2.49735e6 |     1.36404e5 | 0.942702   | 20.095
    10037 |      0.0       | 50663.3       | 0.0        |  2.129
 
-Each location specified in `lsw_ids` needs to be in the table at least once.
-
-### Forcing
-
-All dynamic data can be added to the forcing table.
-
-column   | type     | restriction
--------- | -------- | -----------
-time     | DateTime | sorted
-variable | String   | -
-location | Int      | -
-value    | Float64  | depending on variable
-
-Here is an example of the first and last two rows of a forcing table:
-
-time                | variable      | location | value
-------------------- |-------------- |--------- |-------
-2019-01-01T00:00:00 | precipitation |   150006 | 2.89352e-10
-2019-01-01T00:00:00 | precipitation |   150016 | 2.89352e-10
-⋮                   | ⋮             | ⋮         | ⋮
-2020-12-31T00:00:00 | evaporation   |   151690 | 1.15741e-9
-2020-12-31T00:00:00 | evaporation   |   151707 | 1.15741e-9
-
-The forcing table is a [narrow table](https://en.wikipedia.org/wiki/Wide_and_narrow_data#Narrow).
-When the simulation arrives at a time given in the forcing data, it will update all the
-values given for that time. These values then stay constant until the next update, there
-is no interpolation in between. This format give maximum flexibility to update different
-variables at different times.
+:::{.callout-note}
+Profiles need to be defined for all LSW and OutflowTable node. OutflowTable uses only
+volume and discharge, whereas LSW uses volume, area and level. These may be split up in
+the future.
+:::
 
 ### Water balance
 
@@ -476,8 +520,8 @@ components to verify the closure of the water balance.
 column   | type     | restriction
 -------- | -------- | -----------
 time     | DateTime | sorted
+id       | Int      | -
 variable | String   | -
-location | Int      | -
 value    | Float64  | non-negative volume ($m^3$)
 
 The water balance table has the same schema as the forcing table. Since the output frequency
@@ -487,7 +531,7 @@ for a given model you may not know the water balance components ahead of time.
 
 ## Example input files
 
-From [this link](https://github.com/visr/ribasim-artifacts/releases/download/v0.1.0/schematization.zip)
+From [this link](https://github.com/visr/ribasim-artifacts/releases)
 you can download an existing schematization for the Netherlands that was used for testing
 purposes during development. It is provided here as an example to help people get started.
 Based on the description of the input files above, you can also generate your own
