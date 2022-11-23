@@ -12,12 +12,16 @@ lsw_ids = Int.(nc["node"][:])
 
 edge = DataFrame(Arrow.Table(read(normpath(output_dir, "edge.arrow"))))
 nodes = DataFrame(Arrow.Table(read(normpath(output_dir, "node.arrow"))))
-types = collect(DataFrame(Arrow.Table(read(normpath(output_dir, "static-mozart.arrow")))).local_surface_water_type)
+types = collect(
+    DataFrame(
+        Arrow.Table(read(normpath(output_dir, "static-mozart.arrow"))),
+    ).local_surface_water_type,
+)
 
 # not the LSW IDs but IDs that are unique to the node
-ids_lsw = @subset(nodes, :node=="LSW").id
-ids_levelcontrol = @subset(nodes, :node=="LevelControl").id
-ids_weir = @subset(nodes, :node=="OutflowTable").id
+ids_lsw = @subset(nodes, :node == "LSW").id
+ids_levelcontrol = @subset(nodes, :node == "LevelControl").id
+ids_weir = @subset(nodes, :node == "OutflowTable").id
 @assert length(ids_levelcontrol) == count(!=('V'), types)
 @assert length(ids_weir) == count(==('V'), types)
 @assert nodes.id == 1:nrow(nodes)
@@ -27,9 +31,9 @@ idmap = Dictionary(nodes.id, nodes.org_id)
 # LSW ID to node ID
 rev_idmap = Dictionary(lsw_ids, ids_lsw)
 # lsw ID to connected weir ID
-edges_lsw_outflowtable = @subset(edge, :to_node=="OutflowTable", :to_connector=="a")
-idmap_outflowtable = Dictionary(edges_lsw_outflowtable.from_id,
-                                edges_lsw_outflowtable.to_id)
+edges_lsw_outflowtable = @subset(edge, :to_node == "OutflowTable", :to_connector == "a")
+idmap_outflowtable =
+    Dictionary(edges_lsw_outflowtable.from_id, edges_lsw_outflowtable.to_id)
 
 # state
 begin
@@ -51,21 +55,25 @@ end
 begin
     # target_volume for each level controlled LSW
     target_volume = Float64.(nc["target_volume"][:])[findall(!=('V'), types)]
-    static = DataFrame(; id = ids_levelcontrol, variable = "target_volume",
-                       value = target_volume)
+    static = DataFrame(;
+        id = ids_levelcontrol,
+        variable = "target_volume",
+        value = target_volume,
+    )
 
-    lswrouting = read_lswrouting(normpath(normpath(@__DIR__, "../data/lhm-output/mozart"),
-                                          "lswrouting.dik"))
+    lswrouting = read_lswrouting(
+        normpath(normpath(@__DIR__, "../data/lhm-output/mozart"), "lswrouting.dik"),
+    )
 
     # fraction_{i} for each bifurcation outflow
-    fractional_edges = @subset(edge, :from_node=="Bifurcation")
+    fractional_edges = @subset(edge, :from_node == "Bifurcation")
     for fractional_edge in eachrow(fractional_edges)
         # get 2 from "dst_2", since that will become parameter "fraction_2"
         i = parse(Int, rsplit(fractional_edge.from_connector, '_'; limit = 2)[2])
         id = fractional_edge.from_id
         from_lsw = idmap[id]
         to_lsw = idmap[fractional_edge.to_id]
-        value = only(@subset(lswrouting, :lsw_from==from_lsw, :lsw_to==to_lsw)).fraction
+        value = only(@subset(lswrouting, :lsw_from == from_lsw, :lsw_to == to_lsw)).fraction
         push!(static, (; id, variable = string("fraction_", i), value))
     end
     # Sort by ID, so we can searchsorted to find each node's data
@@ -80,8 +88,13 @@ begin
     @assert !any(isnan.(profile_3d))
     n_prof = length(nc["profile_row"])
 
-    profiles = DataFrame(id = Int[], volume = Float64[], area = Float64[],
-                         discharge = Float64[], level = Float64[])
+    profiles = DataFrame(;
+        id = Int[],
+        volume = Float64[],
+        area = Float64[],
+        discharge = Float64[],
+        level = Float64[],
+    )
     for (id, profile_2d, type) in zip(ids_lsw, eachslice(profile_3d; dims = 3), types)
         append!(profiles.id, fill(id, n_prof))
         append!(profiles.volume, profile_2d[:, 1])
@@ -110,15 +123,17 @@ begin
     forcing = DataFrame(Arrow.Table(read(normpath(output_dir, "forcing-old.arrow"))))
 
     # TODO support priority_watermanagement
-    forcing = @subset(forcing, :variable!=Symbol("priority_watermanagement"))
+    forcing = @subset(forcing, :variable != Symbol("priority_watermanagement"))
 
-    varmap = Dict{Symbol, String}(:demand_agriculture => "demand",
-                                  :drainage => "drainage",
-                                  :evaporation => "E_pot",
-                                  :infiltration => "infiltration",
-                                  :precipitation => "P",
-                                  :priority_agriculture => "priority",
-                                  :urban_runoff => "urban_runoff")
+    varmap = Dict{Symbol, String}(
+        :demand_agriculture => "demand",
+        :drainage => "drainage",
+        :evaporation => "E_pot",
+        :infiltration => "infiltration",
+        :precipitation => "P",
+        :priority_agriculture => "priority",
+        :urban_runoff => "urban_runoff",
+    )
 
     forcing[!, :id] = [rev_idmap[id] for id in forcing.location]
     forcing[!, :variable] = [varmap[id] for id in forcing.variable]

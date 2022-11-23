@@ -3,10 +3,12 @@ Convenience method (missing from XMI?) to get the adress and return the
 pointer.
 """
 function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_name = "")
-    tag = MF.get_var_address(model,
-                             component,
-                             modelname,
-                             subcomponent_name = subcomponent_name)
+    tag = MF.get_var_address(
+        model,
+        component,
+        modelname;
+        subcomponent_name = subcomponent_name,
+    )
     return BMI.get_value_ptr(model, tag)
 end
 
@@ -16,8 +18,8 @@ end
 # Vector{Float64} forces a contiguous block of memory and Julia will create
 # a new array, rather than a view on the MODFLOW6 memory. This type is the
 # appropriate one for a view.
-const BoundView = SubArray{Float64, 1, Matrix{Float64},
-                           Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
+const BoundView =
+    SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
 """
 Memory views on a single MODFLOW6 Drainage package.
@@ -44,10 +46,10 @@ struct ModflowDrainagePackage <: ModflowPackage
 end
 
 function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
-    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
-    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
-    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name = subcomponent)
-    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name = subcomponent)
+    nodelist = get_var_ptr(model, modelname, "NODELIST"; subcomponent_name = subcomponent)
+    bound = get_var_ptr(model, modelname, "BOUND"; subcomponent_name = subcomponent)
+    hcof = get_var_ptr(model, modelname, "HCOF"; subcomponent_name = subcomponent)
+    rhs = get_var_ptr(model, modelname, "RHS"; subcomponent_name = subcomponent)
 
     elevation = view(bound, 1, :)
     conductance = view(bound, 2, :)
@@ -78,23 +80,25 @@ struct ModflowRiverPackage <: ModflowPackage
 end
 
 function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
-    nodelist = get_var_ptr(model, modelname, "NODELIST", subcomponent_name = subcomponent)
-    bound = get_var_ptr(model, modelname, "BOUND", subcomponent_name = subcomponent)
-    hcof = get_var_ptr(model, modelname, "HCOF", subcomponent_name = subcomponent)
-    rhs = get_var_ptr(model, modelname, "RHS", subcomponent_name = subcomponent)
+    nodelist = get_var_ptr(model, modelname, "NODELIST"; subcomponent_name = subcomponent)
+    bound = get_var_ptr(model, modelname, "BOUND"; subcomponent_name = subcomponent)
+    hcof = get_var_ptr(model, modelname, "HCOF"; subcomponent_name = subcomponent)
+    rhs = get_var_ptr(model, modelname, "RHS"; subcomponent_name = subcomponent)
 
     stage = view(bound, 1, :)
     conductance = view(bound, 2, :)
     bottom_elevation = view(bound, 3, :)
     budget = zeros(size(hcof))
 
-    return ModflowRiverPackage(nodelist,
-                               hcof,
-                               rhs,
-                               conductance,
-                               stage,
-                               bottom_elevation,
-                               budget)
+    return ModflowRiverPackage(
+        nodelist,
+        hcof,
+        rhs,
+        conductance,
+        stage,
+        bottom_elevation,
+        budget,
+    )
 end
 
 """
@@ -110,10 +114,12 @@ struct ModflowRiverDrainagePackage <: ModflowPackage
     nodelist::Vector{Int32}
 end
 
-function ModflowRiverDrainagePackage(model::MF.ModflowModel,
-                                     modelname::AbstractString,
-                                     subcomponent_river::AbstractString,
-                                     subcomponent_drainage::AbstractString)
+function ModflowRiverDrainagePackage(
+    model::MF.ModflowModel,
+    modelname::AbstractString,
+    subcomponent_river::AbstractString,
+    subcomponent_drainage::AbstractString,
+)
     river = ModflowRiverPackage(model, modelname, subcomponent_river)
     drainage = ModflowDrainagePackage(model, modelname, subcomponent_drainage)
     if river.nodelist != drainage.nodelist
@@ -186,11 +192,13 @@ Create volume-level profiles for a single MODFLOW6 boundary.
 - `node_reduced::Vector{Int}`: The MODFLOW6 NODE_REDUCED node numbering.
 
 """
-function VolumeLevelProfiles(basins,
-                             boundary,
-                             profile,
-                             ribasim_ids,
-                             node_reduced::Vector{Int32})
+function VolumeLevelProfiles(
+    basins,
+    boundary,
+    profile,
+    ribasim_ids,
+    node_reduced::Vector{Int32},
+)
     I = LinearIndices(basins)
     indices = CartesianIndex{2}[]
     basin_ids = Int[]
@@ -233,8 +241,10 @@ function set_modflow_levels!(exchange, basin_volume)
         basin_id = profile.basin_id[i]
         boundary_index = profile.boundary_index[i]
         volume = basin_volume[basin_id]
-        nodelevel = LinearInterpolation(view(profile.level, :, i),
-                                        view(profile.volume, :, i))(volume)
+        nodelevel =
+            LinearInterpolation(view(profile.level, :, i), view(profile.volume, :, i))(
+                volume,
+            )
         set_level!(boundary, boundary_index, nodelevel)
     end
 end
@@ -306,14 +316,18 @@ function RibasimModflowExchange(config, ribasim_ids)
         !isfile(path_dataset) && error("Dataset not found")
         dataset = NCDatasets.NCDataset(path_dataset)
         basins = Matrix{Union{Int, Missing}}(dataset[model_config["basins"]][:])
-        node_reduced = get_var_ptr(model, modelname, "NODEREDUCED",
-                                   subcomponent_name = "DIS")
+        node_reduced =
+            get_var_ptr(model, modelname, "NODEREDUCED"; subcomponent_name = "DIS")
 
         for bound_config in model_config["bounds"]
             config_keys = keys(bound_config)
             if "river" in config_keys && "drain" in config_keys
-                bound = ModflowRiverDrainagePackage(model, modelname, bound_config["river"],
-                                                    bound_config["drain"])
+                bound = ModflowRiverDrainagePackage(
+                    model,
+                    modelname,
+                    bound_config["river"],
+                    bound_config["drain"],
+                )
             elseif "river" in config_keys
                 bound = ModflowRiverPackage(model, modelname, bound_config["river"])
             elseif "drain" in config_keys
@@ -331,15 +345,19 @@ function RibasimModflowExchange(config, ribasim_ids)
 
     # TODO: multiple models
     (modelname, _) = first(config["models"])
-    simulation = Modflow6Simulation(model,
-                                    only(get_var_ptr(model, "SLN_1", "MXITER")),
-                                    get_var_ptr(model, modelname, "X"))
+    simulation = Modflow6Simulation(
+        model,
+        only(get_var_ptr(model, "SLN_1", "MXITER")),
+        get_var_ptr(model, modelname, "X"),
+    )
     n = length(ribasim_ids)
-    return RibasimModflowExchange(simulation,
-                                  exchanges,
-                                  Dictionary(ribasim_ids, zeros(n)),
-                                  Dictionary(ribasim_ids, zeros(n)),
-                                  Dictionary(ribasim_ids, zeros(n)))
+    return RibasimModflowExchange(
+        simulation,
+        exchanges,
+        Dictionary(ribasim_ids, zeros(n)),
+        Dictionary(ribasim_ids, zeros(n)),
+        Dictionary(ribasim_ids, zeros(n)),
+    )
 end
 
 function exchange_ribasim_to_modflow!(m::RibasimModflowExchange)

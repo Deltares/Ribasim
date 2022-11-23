@@ -2,7 +2,7 @@ using ModelingToolkit, OrdinaryDiffEq
 
 @parameters t
 @connector function Pin(; name)
-    sts = @variables v(t)=1.0 i(t)=1.0 [connect = Flow]
+    sts = @variables v(t) = 1.0 i(t) = 1.0 [connect = Flow]
     ODESystem(Equation[], t, sts, []; name = name)
 end
 
@@ -15,10 +15,12 @@ end
 function OnePort(; name)
     @named p = Pin()
     @named n = Pin()
-    sts = @variables v(t)=1.0 i(t)=1.0
-    eqs = [v ~ p.v - n.v
-           0 ~ p.i + n.i
-           i ~ p.i]
+    sts = @variables v(t) = 1.0 i(t) = 1.0
+    eqs = [
+        v ~ p.v - n.v
+        0 ~ p.i + n.i
+        i ~ p.i
+    ]
     compose(ODESystem(eqs, t, sts, []; name = name), p, n)
 end
 

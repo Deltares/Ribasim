@@ -90,12 +90,14 @@ end
 
 """ModelingToolkit.connect, but save both the equations and systems
 to avoid errors when forgetting to match the eqs and systems manually."""
-function join!(eqs::Vector{Equation},
-               systems::Set{ODESystem},
-               sys1::ODESystem,
-               connector1::Symbol,
-               sys2::ODESystem,
-               connector2::Symbol)
+function join!(
+    eqs::Vector{Equation},
+    systems::Set{ODESystem},
+    sys1::ODESystem,
+    connector1::Symbol,
+    sys2::ODESystem,
+    connector2::Symbol,
+)
     eq = connect(getproperty(sys1, connector1), getproperty(sys2, connector2))
     push!(eqs, eq)
     push!(systems, sys1, sys2)
@@ -118,9 +120,11 @@ struct Register{T}
     integrator::T  # SciMLBase.AbstractODEIntegrator
     param_hist::ForwardFill
     waterbalance::DataFrame
-    function Register(integrator::T,
-                      param_hist,
-                      waterbalance) where {T <: SciMLBase.AbstractODEIntegrator}
+    function Register(
+        integrator::T,
+        param_hist,
+        waterbalance,
+    ) where {T <: SciMLBase.AbstractODEIntegrator}
         new{T}(integrator, param_hist, waterbalance)
     end
 end
@@ -172,7 +176,7 @@ function interpolator(reg::Register, sym, scale = 1)::Function
     return if s in syms
         i = findfirst(==(s), syms)
         # use solution as normal
-        t -> sol(t, idxs = i) * scale
+        t -> sol(t; idxs = i) * scale
     elseif s in paramsyms
         # use param_hist
         i = findfirst(==(s), paramsyms)

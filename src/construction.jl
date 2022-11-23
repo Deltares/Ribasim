@@ -1,6 +1,5 @@
 "Load all Arrow input data to SubDataFrames that are filtered for used IDs"
-function load_data(config::Dict, starttime::DateTime,
-                   endtime::DateTime)
+function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
     node = DataFrame(read_table(config["node"]))
     edge = DataFrame(read_table(config["edge"]))
     state = DataFrame(read_table(config["state"]))
@@ -132,28 +131,14 @@ function get_nested_var(sys, s)
 end
 
 # can we automate this, e.g. pick up all variables named Q?
-waterbalance_terms::Dict{String, Vector{Symbol}} = Dict{String, Vector{Symbol}}("LevelLink" => [
-                                                                                    :b₊Q,
-                                                                                ],
-                                                                                "LSW" => [
-                                                                                    :Q_prec,
-                                                                                    :Q_eact,
-                                                                                    :drainage,
-                                                                                    :infiltration_act,
-                                                                                    :urban_runoff,
-                                                                                ],
-                                                                                "OutflowTable" => [
-                                                                                    :Q,
-                                                                                ],
-                                                                                "GeneralUser" => [
-                                                                                    :x₊Q,
-                                                                                ],
-                                                                                "LevelControl" => [
-                                                                                    :a₊Q,
-                                                                                ],
-                                                                                "GeneralUser_P" => [
-                                                                                    :a₊Q,
-                                                                                ])
+waterbalance_terms::Dict{String, Vector{Symbol}} = Dict{String, Vector{Symbol}}(
+    "LevelLink" => [:b₊Q],
+    "LSW" => [:Q_prec, :Q_eact, :drainage, :infiltration_act, :urban_runoff],
+    "OutflowTable" => [:Q],
+    "GeneralUser" => [:x₊Q],
+    "LevelControl" => [:a₊Q],
+    "GeneralUser_P" => [:a₊Q],
+)
 
 """
     add_waterbalance_cumulatives(sysdict, nodetypes, waterbalance_terms)
@@ -189,17 +174,10 @@ function add_waterbalance_cumulatives(sysdict, nodetypes, waterbalance_terms)
 end
 
 # TODO when running modflow drainage and infiltration should not be included
-input_terms::Dict{String, Vector{Symbol}} = Dict{String, Vector{Symbol}}("LSW" => [
-                                                                             :P,
-                                                                             :E_pot,
-                                                                             :drainage,
-                                                                             :infiltration,
-                                                                             :urban_runoff,
-                                                                         ],
-                                                                         "HeadBoundary" => [
-                                                                             :h,
-                                                                             :C,
-                                                                         ])
+input_terms::Dict{String, Vector{Symbol}} = Dict{String, Vector{Symbol}}(
+    "LSW" => [:P, :E_pot, :drainage, :infiltration, :urban_runoff],
+    "HeadBoundary" => [:h, :C],
+)
 """
     find_unbound_inputs(sysdict, nodetypes, input_terms)
 

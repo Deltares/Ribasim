@@ -29,7 +29,8 @@ function lswrouting_graph(lsw_ids, lswrouting)
     for edge in edges(graph)
         src_lsw = lsw_ids[src(edge)]
         dst_lsw = lsw_ids[dst(edge)]
-        fraction = only(@subset(lswrouting, :lsw_from==src_lsw, :lsw_to==dst_lsw).fraction)
+        fraction =
+            only(@subset(lswrouting, :lsw_from == src_lsw, :lsw_to == dst_lsw).fraction)
         push!(fractions, fraction)
     end
     return graph, fractions
@@ -72,7 +73,7 @@ function cutout(aoi::String, lsw::Int)
     ]
     mkpath("cutout/$aoi")
     for (name, table) in tables
-        table_aoi = @subset(table, :lsw==lsw)
+        table_aoi = @subset(table, :lsw == lsw)
         tsv("cutout/$aoi/$name.tsv", table_aoi)
     end
 end

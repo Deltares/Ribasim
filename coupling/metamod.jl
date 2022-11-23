@@ -9,7 +9,7 @@ using Sparse
 const solution_id = 1
 const Float = Float64
 
-@enum METHOD sum=1 average=2
+@enum METHOD sum = 1 average = 2
 
 function normalize_columns!(S::SparseCSCMatrix)
     for (column, summed) in enumerate(sum(S, 1))
@@ -40,8 +40,7 @@ struct Exchange
     msw_to_mf::Any
 end
 
-function Exchange(path_mod2svat, path_nodenr2svat, path_rchindex2svat)
-end
+function Exchange(path_mod2svat, path_nodenr2svat, path_rchindex2svat) end
 
 struct MetaMod
     mf6::String
@@ -83,21 +82,23 @@ function MetaMod(mf6, msw, mf6modelname)
     msw_storage = get_value_ptr(msw, "dsc1sim")
     msw_time = get_value_ptr(msw, "currenttime")
 
-    return MetaMod(mf6,
-                   msw,
-                   mf6modelname,
-                   maxiter,
-                   head,
-                   recharge,
-                   storage,
-                   area,
-                   top,
-                   bot,
-                   maxiter,
-                   msw_head,
-                   msw_volume,
-                   msw_storage,
-                   msw_time)
+    return MetaMod(
+        mf6,
+        msw,
+        mf6modelname,
+        maxiter,
+        head,
+        recharge,
+        storage,
+        area,
+        top,
+        bot,
+        maxiter,
+        msw_head,
+        msw_volume,
+        msw_storage,
+        msw_time,
+    )
 end
 
 function update!(metamod::MetaMod)

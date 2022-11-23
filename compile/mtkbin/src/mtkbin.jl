@@ -6,7 +6,7 @@ using Serialization
 
 @connector function Pin(; name)
     @parameters t
-    sts = @variables v(t)=1.0 i(t)=1.0 [connect = Flow]
+    sts = @variables v(t) = 1.0 i(t) = 1.0 [connect = Flow]
     ODESystem(Equation[], t, sts, []; name = name)
 end
 
@@ -21,10 +21,12 @@ function OnePort(; name)
     @parameters t
     @named p = Pin()
     @named n = Pin()
-    sts = @variables v(t)=1.0 i(t)=1.0
-    eqs = [v ~ p.v - n.v
-           0 ~ p.i + n.i
-           i ~ p.i]
+    sts = @variables v(t) = 1.0 i(t) = 1.0
+    eqs = [
+        v ~ p.v - n.v
+        0 ~ p.i + n.i
+        i ~ p.i
+    ]
     compose(ODESystem(eqs, t, sts, []; name = name), p, n)
 end
 
@@ -75,28 +77,30 @@ function rc_model(capacitance)
         R = 1.0
         C = capacitance
         V = 1.0
-        @named resistor = Resistor(R = R)
-        @named capacitor = Capacitor(C = C)
-        @named source = ConstantVoltage(V = V)
+        @named resistor = Resistor(; R = R)
+        @named capacitor = Capacitor(; C = C)
+        @named source = ConstantVoltage(; V = V)
         @named ground = Ground()
 
-        rc_eqs = [connect(source.p, resistor.p)
-                  connect(resistor.n, capacitor.p)
-                  connect(capacitor.n, source.n)
-                  connect(capacitor.n, ground.g)]
+        rc_eqs = [
+            connect(source.p, resistor.p)
+            connect(resistor.n, capacitor.p)
+            connect(capacitor.n, source.n)
+            connect(capacitor.n, ground.g)
+        ]
 
         @named rc_model = ODESystem(rc_eqs, t)
         rc_model = compose(rc_model, [resistor, capacitor, source, ground])
     end
 
-    @timeit to "structural_simplify" sys=structural_simplify(rc_model)
+    @timeit to "structural_simplify" sys = structural_simplify(rc_model)
 
     @timeit to "create ODAEProblem" begin
         u0 = [capacitor.v => 0.0]
         prob = ODAEProblem(sys, u0, (0, 10.0))
     end
 
-    @timeit to "solve" sol=solve(prob, Tsit5())
+    @timeit to "solve" sol = solve(prob, Tsit5())
 
     println("Solver return code: ", sol.retcode, "\n")
     show(sol.destats)
@@ -110,7 +114,7 @@ end
 function rc_deserialize(prob)
     to = TimerOutput()
 
-    @timeit to "solve" sol=solve(prob, Tsit5())
+    @timeit to "solve" sol = solve(prob, Tsit5())
 
     println("Solver return code: ", sol.retcode, "\n")
     show(sol.destats)

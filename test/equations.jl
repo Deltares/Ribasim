@@ -25,27 +25,26 @@ datadir = normpath(@__DIR__, "data")
     config["save_positions"] = (false, false)
     config["starttime"] = Date("2021-01-01")
     config["endtime"] = Date("2021-02-01")
-    config["state"] = DataFrame(id = [id_lsw, id_lsw_end], S = 1e6, C = 0.1)
-    config["node"] = DataFrame(id = ids, node = ["LSW", "OutflowTable", "LSW"])
-    config["edge"] = DataFrame(from_id = [id_lsw, id_lsw, id_out],
-                               from_node = ["LSW", "LSW", "OutflowTable"],
-                               from_connector = ["x", "s", "b"],
-                               to_id = [id_out, id_out, id_lsw_end],
-                               to_node = ["OutflowTable", "OutflowTable", "LSW"],
-                               to_connector = ["a", "s", "x"])
-    config["static"] = DataFrame(id = [], variable = [], value = [])
-    config["forcing"] = DataFrame(time = DateTime[], variable = Symbol[], id = Int[],
-                                  value = Float64[])
-    config["profile"] = DataFrame(id = [
-                                      id_lsw,
-                                      id_lsw,
-                                      id_out,
-                                      id_out,
-                                      id_lsw_end,
-                                      id_lsw_end,
-                                  ], volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6], area = 1e6,
-                                  discharge = [0.0, 1e0, 0.0, 1e0, 0.0, 1e0],
-                                  level = [10.0, 11.0, 10.0, 11.0, 10.0, 11.0])
+    config["state"] = DataFrame(; id = [id_lsw, id_lsw_end], S = 1e6, C = 0.1)
+    config["node"] = DataFrame(; id = ids, node = ["LSW", "OutflowTable", "LSW"])
+    config["edge"] = DataFrame(;
+        from_id = [id_lsw, id_lsw, id_out],
+        from_node = ["LSW", "LSW", "OutflowTable"],
+        from_connector = ["x", "s", "b"],
+        to_id = [id_out, id_out, id_lsw_end],
+        to_node = ["OutflowTable", "OutflowTable", "LSW"],
+        to_connector = ["a", "s", "x"],
+    )
+    config["static"] = DataFrame(; id = [], variable = [], value = [])
+    config["forcing"] =
+        DataFrame(; time = DateTime[], variable = Symbol[], id = Int[], value = Float64[])
+    config["profile"] = DataFrame(;
+        id = [id_lsw, id_lsw, id_out, id_out, id_lsw_end, id_lsw_end],
+        volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6],
+        area = 1e6,
+        discharge = [0.0, 1e0, 0.0, 1e0, 0.0, 1e0],
+        level = [10.0, 11.0, 10.0, 11.0, 10.0, 11.0],
+    )
 
     ## Simulate
     reg = Ribasim.run(config)
@@ -80,27 +79,26 @@ end
     config["save_positions"] = (false, false)
     config["starttime"] = Date("2019-01-01")
     config["endtime"] = Date("2020-01-01")
-    config["state"] = DataFrame(id = [14908, 14784], S = 1e6, C = 0.1)
-    config["node"] = DataFrame(id = ids,
-                               node = ["LSW", "GeneralUser", "OutflowTable", "LSW"])
-    config["edge"] = DataFrame(from_id = [14908, 14908, 14908, 14908, 14910],
-                               from_node = ["LSW", "LSW", "LSW", "LSW", "OutflowTable"],
-                               from_connector = ["x", "s", "x", "s", "b"],
-                               to_id = [14909, 14909, 14910, 14910, 14784],
-                               to_node = [
-                                   "GeneralUser",
-                                   "GeneralUser",
-                                   "OutflowTable",
-                                   "OutflowTable",
-                                   "LSW",
-                               ],
-                               to_connector = ["x", "s", "a", "s", "x"])
-    config["static"] = DataFrame(id = [], variable = [], value = [])
+    config["state"] = DataFrame(; id = [14908, 14784], S = 1e6, C = 0.1)
+    config["node"] =
+        DataFrame(; id = ids, node = ["LSW", "GeneralUser", "OutflowTable", "LSW"])
+    config["edge"] = DataFrame(;
+        from_id = [14908, 14908, 14908, 14908, 14910],
+        from_node = ["LSW", "LSW", "LSW", "LSW", "OutflowTable"],
+        from_connector = ["x", "s", "x", "s", "b"],
+        to_id = [14909, 14909, 14910, 14910, 14784],
+        to_node = ["GeneralUser", "GeneralUser", "OutflowTable", "OutflowTable", "LSW"],
+        to_connector = ["x", "s", "a", "s", "x"],
+    )
+    config["static"] = DataFrame(; id = [], variable = [], value = [])
     config["forcing"] = normpath(datadir, "lhm/forcing.arrow")
-    config["profile"] = DataFrame(id = [14784, 14784, 14908, 14908, 14910, 14910],
-                                  volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6], area = 1e6,
-                                  discharge = [0.0, 1e0, 0.0, 1e0, 0.0, 1e0],
-                                  level = [10.0, 11.0, 10.0, 11.0, 10.0, 11.0])
+    config["profile"] = DataFrame(;
+        id = [14784, 14784, 14908, 14908, 14910, 14910],
+        volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6],
+        area = 1e6,
+        discharge = [0.0, 1e0, 0.0, 1e0, 0.0, 1e0],
+        level = [10.0, 11.0, 10.0, 11.0, 10.0, 11.0],
+    )
 
     # Simulate
     reg = Ribasim.run(config)

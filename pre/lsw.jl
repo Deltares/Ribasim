@@ -1,18 +1,20 @@
 # Read data for a Ribasim-Mozart reference run
 
 # see open_water_factor(t)
-evap_factor::Matrix{Float64} = [0.00 0.50 0.70
-                                0.80 1.00 1.00
-                                1.20 1.30 1.30
-                                1.30 1.30 1.30
-                                1.31 1.31 1.31
-                                1.30 1.30 1.30
-                                1.29 1.27 1.24
-                                1.21 1.19 1.18
-                                1.17 1.17 1.17
-                                1.00 0.90 0.80
-                                0.80 0.70 0.60
-                                0.00 0.00 0.00]
+evap_factor::Matrix{Float64} = [
+    0.00 0.50 0.70
+    0.80 1.00 1.00
+    1.20 1.30 1.30
+    1.30 1.30 1.30
+    1.31 1.31 1.31
+    1.30 1.30 1.30
+    1.29 1.27 1.24
+    1.21 1.19 1.18
+    1.17 1.17 1.17
+    1.00 0.90 0.80
+    0.80 0.70 0.60
+    0.00 0.00 0.00
+]
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As in Mozart.
@@ -192,8 +194,11 @@ function read_mzwaterbalance_compare(path, lsw_sel::Int)
 end
 
 # create a Ribasim timeseries input from the mozart water balance output
-function create_series(mzwb::AbstractDataFrame, col::Union{Symbol, String};
-                       flipsign = false)
+function create_series(
+    mzwb::AbstractDataFrame,
+    col::Union{Symbol, String};
+    flipsign = false,
+)
     # convert m3/timestep to m3/s for Ribasim
     v = mzwb[!, col] ./ mzwb.period
     if flipsign
@@ -214,7 +219,7 @@ end
 function create_user_dict(uslswdem::DataFrame, usercode::String)
     demand_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
     prio_dict = Dict{Int, ForwardFill{Vector{Float64}, Vector{Float64}}}()
-    uslswdem_user = @subset(uslswdem, :usercode==usercode)
+    uslswdem_user = @subset(uslswdem, :usercode == usercode)
     for (key, df) in pairs(groupby(uslswdem_user, :lsw))
         times = datetime2unix.(df.time_start)
         demand_dict[key.lsw] = ForwardFill(times, copy(df.user_surfacewater_demand))
@@ -330,20 +335,24 @@ function add_level(df, depth_surface_water)
     return df
 end
 
-function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame,
-                        ladvalue::DataFrame)::DataFrame
-    lswdik_lsw = @subset(lswdik, :lsw==lsw_id)
+function create_profile(
+    lsw_id::Int,
+    lswdik::DataFrame,
+    vadvalue::DataFrame,
+    ladvalue::DataFrame,
+)::DataFrame
+    lswdik_lsw = @subset(lswdik, :lsw == lsw_id)
     depth_surface_water = only(lswdik_lsw.depth_surface_water)
     type = only(only(lswdik_lsw.local_surface_water_type))
     if type == 'P' || type == 'O'
-        df = @subset(ladvalue, :lsw==lsw_id)[:, [:area, :discharge, :level]]
+        df = @subset(ladvalue, :lsw == lsw_id)[:, [:area, :discharge, :level]]
         # force that the numbers always go up, ignoring relations
         sort!(df.area)
         sort!(df.discharge)
         sort!(df.level)
         df = add_volume(df, depth_surface_water)
     else
-        df = @subset(vadvalue, :lsw==lsw_id)[:, [:volume, :area, :discharge]]
+        df = @subset(vadvalue, :lsw == lsw_id)[:, [:volume, :area, :discharge]]
         # force that the numbers always go up, ignoring relations
         sort!(df.volume)
         sort!(df.area)
@@ -357,10 +366,12 @@ function create_profile(lsw_id::Int, lswdik::DataFrame, vadvalue::DataFrame,
     return df
 end
 
-function create_profile_dict(lsw_ids::Vector{Int},
-                             lswdik::DataFrame,
-                             vadvalue::DataFrame,
-                             ladvalue::DataFrame)::Dict{Int, DataFrame}
+function create_profile_dict(
+    lsw_ids::Vector{Int},
+    lswdik::DataFrame,
+    vadvalue::DataFrame,
+    ladvalue::DataFrame,
+)::Dict{Int, DataFrame}
     profile_dict = Dict{Int, DataFrame}()
     for lsw_id in lsw_ids
         profile = create_profile(lsw_id, lswdik, vadvalue, ladvalue)
@@ -388,13 +399,14 @@ function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing
         push!(ply, PlyComment(string("crs: ", convert(String, crs))))
     end
 
-    vertex = PlyElement("vertex",
-                        array_properties(node_table)...)
+    vertex = PlyElement("vertex", array_properties(node_table)...)
     push!(ply, vertex)
-    edge = PlyElement("edge",
-                      ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
-                      ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
-                      array_properties(edge_table)...)
+    edge = PlyElement(
+        "edge",
+        ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
+        ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
+        array_properties(edge_table)...,
+    )
     push!(ply, edge)
     save_ply(ply, path; ascii)
 end

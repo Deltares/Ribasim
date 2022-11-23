@@ -31,14 +31,16 @@ function read_lswvalue(path)
         "alien_water_ratio",
     ]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -47,25 +49,29 @@ end
 "Read lsw routing"
 function read_lswrouting(path)
     names = ["lsw_from", "lsw_to", "usercode", "fraction"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read lsw routing dbc"
 function read_lswrouting_dbc(path)
     names = ["lsw_from", "lsw_to", "usercode", "fraction"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read local surface water"
@@ -90,22 +96,26 @@ function read_lsw(path)
         "sum_all_plot_areas_not_in_DB",
         "salt_concentration_groundwater",
     ]
-    types = Dict("target_level" => Float64,
-                 "target_volume" => Float64,
-                 "maximum_level" => Float64,
-                 "fraction" => Float64,
-                 "priority" => Float64,
-                 "alien_waterquality_standard" => Float64,
-                 "salt_waterquality_standard" => Float64,
-                 "sum_all_plot_areas_not_in_DB" => Float64)
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    types,
-                    strict = true)
+    types = Dict(
+        "target_level" => Float64,
+        "target_volume" => Float64,
+        "maximum_level" => Float64,
+        "fraction" => Float64,
+        "priority" => Float64,
+        "alien_waterquality_standard" => Float64,
+        "salt_waterquality_standard" => Float64,
+        "sum_all_plot_areas_not_in_DB" => Float64,
+    )
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
 end
 
 "Read district water value"
@@ -121,14 +131,16 @@ function read_dwvalue(path)
         "alien_water_ratio",
     ]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -137,49 +149,57 @@ end
 "Read weir area"
 function read_weirarea(path)
     names = ["weirarea", "lsw"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read level area discharge value"
 function read_ladvalue(path)
     names = ["level", "lsw", "area", "discharge"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read volume area discharge"
 function read_vadvalue(path)
     names = ["lsw", "volume", "area", "discharge"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read volume level"
 function read_vlvalue(path)
     names = ["lsw", "weirarea", "volume_lsw", "level", "level_slope"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read district water"
@@ -196,13 +216,15 @@ function read_dw(path)
         "debiet",
         "upstream_factor",
     ]
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
     df[!, "districtwatername"] .= String.(strip.(df.districtwatername))
     return df
 end
@@ -211,13 +233,15 @@ end
 function read_drpl(path)
     # TODO find name of last columns (always 0)
     names = ["plot", "drain", "draintype", "x1", "x2", "x3"]
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
     @assert all(iszero, df.x1)
     @assert all(iszero, df.x2)
     @assert all(iszero, df.x3)
@@ -229,14 +253,16 @@ function read_drplval(path)
     # TODO find name of last column (always 0)
     names = ["drain", "plot", "time_start", "time_end", "x1"]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     @assert all(iszero, df.x1)
@@ -249,14 +275,16 @@ function read_plbound(path)
     # 030984 19660101.000000 19680101.000000 -1.260000000 0.1000 0.0000 0.0000000000
     names = ["plot", "time_start", "time_end", "x1", "x2", "x3", "x4"]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     @assert all(iszero, df.x3)
@@ -270,13 +298,15 @@ function read_plot(path)
     # 030984 0002 0002 030984 R 0002 236875.00 0.0000000 0.5800 -9.420 0.40 5.10 00000039 0000 16 S 0.0015 1.50 0.000000
     # 030985 0002 0002 030985 R 0002 237862.00 12138.000 0.3200 -9.680 0.40 5.10 00000033 0000 17 N 0.0015 1.50 0.000000
     names = vcat("plot", [string('x', i) for i in 1:18])
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read plot segment value"
@@ -303,14 +333,16 @@ function read_plsgval(path)
         "x13",
     ]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -346,14 +378,16 @@ function read_plvalue(path)
         "x19",
     ]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -362,13 +396,15 @@ end
 "Read user per lsw"
 function read_uslsw(path)
     names = ["lsw", "usercode"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    delim = ' ',
-                    ignorerepeated = true,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read user demand per lsw"
@@ -387,14 +423,16 @@ function read_uslswdem(path)
         "level_real_time_control",
     ]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -412,12 +450,14 @@ end
 "Read MODFLOW LSW coupling"
 function read_mftolsw(path)
     names = ["col", "row", "lsw", "weirarea", "oppw_correctie"]
-    return CSV.read(path,
-                    DataFrame;
-                    header = names,
-                    skipto = 2,
-                    stringtype = String,
-                    strict = true)
+    return CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        skipto = 2,
+        stringtype = String,
+        strict = true,
+    )
 end
 
 "Read plot LSW coupling"
@@ -439,14 +479,16 @@ function read_meteo(path)
     # type 1 is evaporation, 2 is precipitation
     names = ["type", "lsw", "time_start", "time_end", "value"]
     types = Dict("time_start" => String, "time_end" => String)
-    df = CSV.read(path,
-                  DataFrame;
-                  header = names,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  stringtype = String,
-                  types,
-                  strict = true)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = names,
+        delim = ' ',
+        ignorerepeated = true,
+        stringtype = String,
+        types,
+        strict = true,
+    )
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
     return df
@@ -455,28 +497,32 @@ end
 function read_mzwaterbalance(path, lsw_sel::Union{Integer, Nothing} = nothing)
     types = Dict("TIMESTART" => String, "TIMEEND" => String)
 
-    df = CSV.read(path,
-                  DataFrame;
-                  header = 2,
-                  stringtype = String,
-                  delim = ' ',
-                  ignorerepeated = true,
-                  strict = true,
-                  types = types)
+    df = CSV.read(
+        path,
+        DataFrame;
+        header = 2,
+        stringtype = String,
+        delim = ' ',
+        ignorerepeated = true,
+        strict = true,
+        types = types,
+    )
 
     # change some column names to be more in line with the other tables
     rename!(lowercase, df)
-    rename!(df,
-            [
-                "lswnr" => "lsw",
-                "dw" => "districtwatercode",
-                "t" => "type",
-                "timestart" => "time_start",
-                "timeend" => "time_end",
-            ])
+    rename!(
+        df,
+        [
+            "lswnr" => "lsw",
+            "dw" => "districtwatercode",
+            "t" => "type",
+            "timestart" => "time_start",
+            "timeend" => "time_end",
+        ],
+    )
 
     if lsw_sel !== nothing
-        df = @subset(df, :lsw==lsw_sel)
+        df = @subset(df, :lsw == lsw_sel)
     end
     df[!, "time_start"] = datestring.(df.time_start)
     df[!, "time_end"] = datestring.(df.time_end)
@@ -491,7 +537,7 @@ end
 "Read local surface water value output"
 function read_lswvalue(path, lsw_sel::Integer)
     df = read_lswvalue(path)
-    df = @subset(df, :lsw==lsw_sel)
+    df = @subset(df, :lsw == lsw_sel)
     return df
 end
 

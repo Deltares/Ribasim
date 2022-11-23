@@ -14,8 +14,12 @@ toml_path = normpath(@__DIR__, "testrun.toml")
     config["waterbalance"] = "output/waterbalance_alloc_V.arrow"
 
     # Load dummmy forcing
-    df = CSV.read(normpath(@__DIR__, "data/dummyforcing_151358_V.csv"),
-                  DataFrame; stringtype = String, strict = true)
+    df = CSV.read(
+        normpath(@__DIR__, "data/dummyforcing_151358_V.csv"),
+        DataFrame;
+        stringtype = String,
+        strict = true,
+    )
 
     config["forcing"] = df
     reg = Ribasim.run(config)
@@ -57,8 +61,12 @@ end
 
     # Load dummmy input forcing
     # TODO change this file to 200164
-    df = CSV.read(normpath(datadir, "dummyforcing_151358_P.csv"),
-                  DataFrame; stringtype = String, strict = true)
+    df = CSV.read(
+        normpath(datadir, "dummyforcing_151358_P.csv"),
+        DataFrame;
+        stringtype = String,
+        strict = true,
+    )
 
     config["forcing"] = df
     reg = Ribasim.run(config)

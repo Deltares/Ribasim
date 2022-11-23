@@ -108,13 +108,17 @@ function graph_system(systems::Set, eqs::Vector, reg::Ribasim.Register)
     layout_time = fig[1, 2]
 
     # left column: graph
-    menu = Menu(fig, options = vars)
+    menu = Menu(fig; options = vars)
     layout_graph[1, 1] = menu
-    sg = SliderGrid(layout_graph[2, 1],
-                    (label = "time:",
-                     range = times,
-                     format = x -> @sprintf("%.1f s", x),
-                     startvalue = times[end]))
+    sg = SliderGrid(
+        layout_graph[2, 1],
+        (
+            label = "time:",
+            range = times,
+            format = x -> @sprintf("%.1f s", x),
+            startvalue = times[end],
+        ),
+    )
     ax = Axis(layout_graph[3, 1])
 
     # create labels for each node
@@ -127,9 +131,10 @@ function graph_system(systems::Set, eqs::Vector, reg::Ribasim.Register)
     # e.g. labels don't need to be interpolated
     function create_nlabels(var, ts)
         labelvars = string.(labelnames, "₊$var")
-        return [string(col, @sprintf(": %.2f", savedvalue_nan(reg, Symbol(col), ts)))
-                for
-                col in labelvars]
+        return [
+            string(col, @sprintf(": %.2f", savedvalue_nan(reg, Symbol(col), ts))) for
+            col in labelvars
+        ]
     end
 
     nlabels = create_nlabels(var, ts)
@@ -142,28 +147,30 @@ function graph_system(systems::Set, eqs::Vector, reg::Ribasim.Register)
     # layout = NetworkLayout.Spring() # ok
     layout = NetworkLayout.Stress() # good (doesn't seem to work for disconnected graphs)
 
-    p = graphplot!(ax,
-                   g;
-                   nlabels,
-                   nlabels_textsize,
-                   node_size,
-                   node_color,
-                   edge_width,
-                   edge_color,
-                   layout)
+    p = graphplot!(
+        ax,
+        g;
+        nlabels,
+        nlabels_textsize,
+        node_size,
+        node_color,
+        edge_width,
+        edge_color,
+        layout,
+    )
 
     # right column: timeseries
-    h = Axis(layout_time[1, 1], ylabel = "h [m]")
-    hidexdecorations!(h, grid = false)
+    h = Axis(layout_time[1, 1]; ylabel = "h [m]")
+    hidexdecorations!(h; grid = false)
     # axislegend()
-    s = Axis(layout_time[2, 1], ylabel = "S [m³]")
-    hidexdecorations!(s, grid = false)
+    s = Axis(layout_time[2, 1]; ylabel = "S [m³]")
+    hidexdecorations!(s; grid = false)
     # axislegend()
-    q = Axis(layout_time[3, 1], ylabel = "Q [m³s⁻¹]")
-    hidexdecorations!(q, grid = false)
+    q = Axis(layout_time[3, 1]; ylabel = "Q [m³s⁻¹]")
+    hidexdecorations!(q; grid = false)
     # axislegend()
-    c = Axis(layout_time[4, 1], ylabel = "C [kg m⁻³]")
-    hidexdecorations!(c, grid = false)
+    c = Axis(layout_time[4, 1]; ylabel = "C [kg m⁻³]")
+    hidexdecorations!(c; grid = false)
     # axislegend()
 
     linkxaxes!(h, s, q, c)
@@ -194,22 +201,22 @@ function graph_system(systems::Set, eqs::Vector, reg::Ribasim.Register)
         for label_sel in label_sels
             col = Symbol(string(label_sel, "₊h"))
             ifunc = interpolator(reg, col)
-            lines!(h, t, ifunc, label = label_sel)
+            lines!(h, t, ifunc; label = label_sel)
 
             # storage is not always defined
             col = Symbol(string(label_sel, "₊S"))
             if haskey(reg, col)
                 ifunc = interpolator(reg, col)
-                lines!(s, t, ifunc, label = label_sel)
+                lines!(s, t, ifunc; label = label_sel)
             end
 
             col = Symbol(string(label_sel, "₊Q"))
             ifunc = interpolator(reg, col)
-            lines!(q, t, ifunc, label = label_sel)
+            lines!(q, t, ifunc; label = label_sel)
 
             col = Symbol(string(label_sel, "₊C"))
             ifunc = interpolator(reg, col)
-            lines!(c, t, ifunc, label = label_sel)
+            lines!(c, t, ifunc; label = label_sel)
         end
 
         # TODO remove the old lines
@@ -266,10 +273,12 @@ wong_colors = [
 ]
 
 "Plot timeseries of several key variables."
-function plot_series(reg::Ribasim.Register,
-                     lsw_id::Int,
-                     timespan::ClosedInterval{Float64};
-                     level = true)
+function plot_series(
+    reg::Ribasim.Register,
+    lsw_id::Int,
+    timespan::ClosedInterval{Float64};
+    level = true,
+)
     fig = Figure()
     ylabel = "flow rate / m³ s⁻¹"
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
@@ -280,37 +289,51 @@ function plot_series(reg::Ribasim.Register,
 
     # TODO plot users/agriculture
     name = Symbol(:lsw_, lsw_id, :₊)
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)), label = "precipitation")
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_eact), -1),
-           label = "evaporation")
-    haskey(reg, Symbol(:weir_, lsw_id, :₊, :Q)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:weir_, lsw_id, :₊, :Q)),
-           label = "outflow")
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :Q_prec)); label = "precipitation")
+    lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(name, :Q_eact), -1);
+        label = "evaporation",
+    )
+    haskey(reg, Symbol(:weir_, lsw_id, :₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:weir_, lsw_id, :₊, :Q));
+        label = "outflow",
+    )
     # TODO update for link numbering
-    haskey(reg, Symbol(:link_, 1, :₊a₊, :Q)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:link_, 1, :₊a₊, :Q)),
-           label = "link")
-    haskey(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q), -1),
-           label = "watermanagement")
-    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)), label = "drainage")
-    lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(name, :infiltration), -1),
-           label = "infiltration")
-    lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(name, :urban_runoff)),
-           label = "urban_runoff")
+    haskey(reg, Symbol(:link_, 1, :₊a₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:link_, 1, :₊a₊, :Q));
+        label = "link",
+    )
+    haskey(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:levelcontrol_, lsw_id, :₊a₊, :Q), -1);
+        label = "watermanagement",
+    )
+    lines!(ax1, timespan, interpolator(reg, Symbol(name, :drainage)); label = "drainage")
+    lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(name, :infiltration), -1);
+        label = "infiltration",
+    )
+    lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(name, :urban_runoff));
+        label = "urban_runoff",
+    )
 
-    fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
+    fig[1, 2] = Legend(fig, ax1, ""; framevisible = true)
     # axislegend(ax1, position = :rt)
 
-    hidexdecorations!(ax1, grid = false)
-    hidexdecorations!(ax2, grid = false)
+    hidexdecorations!(ax1; grid = false)
+    hidexdecorations!(ax2; grid = false)
     if level
         lines!(ax2, timespan, interpolator(reg, Symbol(name, :h)))
         target_level = Symbol(:levelcontrol_, lsw_id, :₊target_level)
@@ -330,17 +353,21 @@ function plot_series(reg::Ribasim.Register,
 end
 
 function plot_series(reg::Ribasim.Register, lsw_id::Int; level = false)
-    plot_series(reg,
-                lsw_id,
-                reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
-                level)
+    plot_series(
+        reg,
+        lsw_id,
+        reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
+        level,
+    )
 end
 
 "Plot timeseries of wm external and LSW source allocation"
-function plot_wm_source(reg::Ribasim.Register,
-                        lsw_id::Int,
-                        timespan::ClosedInterval{Float64};
-                        level = true)
+function plot_wm_source(
+    reg::Ribasim.Register,
+    lsw_id::Int,
+    timespan::ClosedInterval{Float64};
+    level = true,
+)
     fig = Figure()
     ylabel = "flow rate / m³ s⁻¹"
     ax1 = time!(Axis(fig[1, 1]; ylabel), timespan.left, timespan.right)
@@ -348,32 +375,40 @@ function plot_wm_source(reg::Ribasim.Register,
     # TODO plot users/agriculture
     name = Symbol(:sys_, lsw_id, :₊lsw₊)
 
-    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1),
-           label = "Total watermanagement")
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊a₊, :Q), -1);
+        label = "Total watermanagement",
+    )
 
-    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1),
-           label = "LSW sourced")
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_a), -1);
+        label = "LSW sourced",
+    )
 
-    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b)) && lines!(ax1,
-           timespan,
-           interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b), -1),
-           label = "Externally sourced")
-    fig[1, 2] = Legend(fig, ax1, "", framevisible = true)
+    haskey(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:sys_, lsw_id, :₊levelcontrol₊, :alloc_b), -1);
+        label = "Externally sourced",
+    )
+    fig[1, 2] = Legend(fig, ax1, ""; framevisible = true)
 
     #axislegend(ax1)
-    hidexdecorations!(ax1, grid = false)
+    hidexdecorations!(ax1; grid = false)
     return fig
 end
 
 function plot_wm_source(reg::Ribasim.Register, lsw_id::Int; level = false)
-    plot_wm_source(reg,
-                   lsw_id,
-                   reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
-                   level)
+    plot_wm_source(
+        reg,
+        lsw_id,
+        reg.integrator.sol.t[begin] .. reg.integrator.sol.t[end];
+        level,
+    )
 end
 
 "long format daily waterbalance dataframe for comparing mozart and Ribasim"
@@ -407,54 +442,65 @@ function plot_waterbalance_comparison(wb)
     dodge = [x == "mozart" ? 1 : 2 for x in wb.model]
 
     fig = Figure()
-    ax = Axis(fig[1, 1],
-              # label the first and last day
-              xticks = (collect(extrema(x)), string.([startdate, enddate])),
-              xlabel = "time / day",
-              ylabel = "volume / m³",
-              title = "Mozart and Ribasim daily water balance")
+    ax = Axis(
+        fig[1, 1];
+        # label the first and last day
+        xticks = (collect(extrema(x)), string.([startdate, enddate])),
+        xlabel = "time / day",
+        ylabel = "volume / m³",
+        title = "Mozart and Ribasim daily water balance",
+    )
 
-    barplot!(ax,
-             x,
-             wb.value;
-             dodge,
-             stack = stacks,
-             color = stacks,
-             colormap = Duet.wong_colors)
+    barplot!(
+        ax,
+        x,
+        wb.value;
+        dodge,
+        stack = stacks,
+        color = stacks,
+        colormap = Duet.wong_colors,
+    )
 
-    elements = vcat([MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
-                    [PolyElement(polycolor = Duet.wong_colors[i])
-                     for i in 1:length(allvars)])
+    elements = vcat(
+        [MarkerElement(; marker = 'L'), MarkerElement(; marker = 'R')],
+        [PolyElement(; polycolor = Duet.wong_colors[i]) for i in 1:length(allvars)],
+    )
     Legend(fig[1, 2], elements, vcat("mozart", "Ribasim", allvars))
 
     return fig
 end
 
-function plot_series_comparison(reg::Ribasim.Register,
-                                type::Char,
-                                mz_lswval,
-                                ribasimvar::Symbol,
-                                mzvar::Symbol,
-                                timespan::ClosedInterval{Float64},
-                                target = nothing)
+function plot_series_comparison(
+    reg::Ribasim.Register,
+    type::Char,
+    mz_lswval,
+    ribasimvar::Symbol,
+    mzvar::Symbol,
+    timespan::ClosedInterval{Float64},
+    target = nothing,
+)
     fig = Figure()
     ax = time!(Axis(fig[1, 1]), timespan.left, timespan.right)
 
     # plot all the calculated data points
-    scatter!(ax,
-             Ribasim.timesteps(reg),
-             Ribasim.savedvalues(reg, ribasimvar);
-             markersize = 4,
-             color = :blue,
-             label = "$ribasimvar Ribasim")
-    stairs!(ax,
-            datetime2unix.(mz_lswval.time_start),
-            mz_lswval[!, mzvar];
-            color = :black,
-            step = :post,
-            label = "$mzvar mozart")
+    scatter!(
+        ax,
+        Ribasim.timesteps(reg),
+        Ribasim.savedvalues(reg, ribasimvar);
+        markersize = 4,
+        color = :blue,
+        label = "$ribasimvar Ribasim",
+    )
+    stairs!(
+        ax,
+        datetime2unix.(mz_lswval.time_start),
+        mz_lswval[!, mzvar];
+        color = :black,
+        step = :post,
+        label = "$mzvar mozart",
+    )
     if type == 'P' && target !== nothing
-        hlines!(ax, target, label = "target")
+        hlines!(ax, target; label = "target")
     end
     axislegend(ax)
     return fig
@@ -469,40 +515,47 @@ function plot_series_comparison(reg::Ribasim.Register, timespan::ClosedInterval{
 end
 
 "Plot timeseries of key variables related to user allocation and demand"
-function plot_Qavailable_series(reg::Ribasim.Register, timespan::ClosedInterval{Float64},
-                                mzwb)
+function plot_Qavailable_series(
+    reg::Ribasim.Register,
+    timespan::ClosedInterval{Float64},
+    mzwb,
+)
     fig = Figure()
-    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax3 = time!(Axis(fig[3, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax4 = time!(Axis(fig[4, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax1 = time!(Axis(fig[1, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
+    ax3 = time!(Axis(fig[3, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
+    ax4 = time!(Axis(fig[4, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Ribasim Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol); label = "Ribasim Q_avail_vol")
     #lines!(ax1, timespan, interpolator(reg, :abs_agric), label = "Ribasim Agric_use")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Mz Agric_demand")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric); label = "Ribasim Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :dem_agric); label = "Mz Agric_demand")
 
-    stairs!(ax2,
-            timespan,
-            mzwb.dem_agric / 864000;
-            color = :black,
-            step = :post,
-            label = "Mz Agric_demamd")
-    stairs!(ax2,
-            timespan,
-            mzwb.alloc_agric / 864000;
-            color = :red,
-            step = :post,
-            label = "Mz Agric_alloc")
+    stairs!(
+        ax2,
+        timespan,
+        mzwb.dem_agric / 864000;
+        color = :black,
+        step = :post,
+        label = "Mz Agric_demamd",
+    )
+    stairs!(
+        ax2,
+        timespan,
+        mzwb.alloc_agric / 864000;
+        color = :red,
+        step = :post,
+        label = "Mz Agric_alloc",
+    )
 
-    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric); label = "Ribasim Agric_alloc")
 
-    lines!(ax3, timespan, interpolator(reg, :infiltration), label = "Ribasim Infiltration")
-    lines!(ax3, timespan, interpolator(reg, :drainage), label = "Ribasim Drainage")
-    lines!(ax3, timespan, interpolator(reg, :urban_runoff), label = "Ribasim runoff")
+    lines!(ax3, timespan, interpolator(reg, :infiltration); label = "Ribasim Infiltration")
+    lines!(ax3, timespan, interpolator(reg, :drainage); label = "Ribasim Drainage")
+    lines!(ax3, timespan, interpolator(reg, :urban_runoff); label = "Ribasim runoff")
 
-    lines!(ax4, timespan, interpolator(reg, :P), label = "Ribasim Precip")
-    lines!(ax4, timespan, interpolator(reg, :E_pot), label = "Ribasim Evap")
+    lines!(ax4, timespan, interpolator(reg, :P); label = "Ribasim Precip")
+    lines!(ax4, timespan, interpolator(reg, :E_pot); label = "Ribasim Evap")
 
     axislegend(ax1)
     axislegend(ax2)
@@ -514,20 +567,22 @@ end
 
 "Plot timeseries of key variables related to user allocation and demand -- to check if multiple users can be modelled correctly
 Industry data is made up"
-function plot_Qavailable_dummy_series(reg::Ribasim.Register,
-                                      timespan::ClosedInterval{Float64})
+function plot_Qavailable_dummy_series(
+    reg::Ribasim.Register,
+    timespan::ClosedInterval{Float64},
+)
     fig = Figure()
-    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    ax2 = time!(Axis(fig[2, 1], ylabel = "m³/s"), timespan.left, timespan.right)
+    ax1 = time!(Axis(fig[1, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
+    ax2 = time!(Axis(fig[2, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
 
-    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol), label = "Ribasim Q_avail_vol")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
+    lines!(ax1, timespan, interpolator(reg, :Q_avail_vol); label = "Ribasim Q_avail_vol")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric); label = "Ribasim Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus); label = "Ribasim Indus_alloc")
 
-    lines!(ax2, timespan, interpolator(reg, :dem_agric), label = "Ribasim Agric_dem")
-    lines!(ax2, timespan, interpolator(reg, :dem_indus), label = "Ribasim Indus_dem")
-    lines!(ax2, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
-    lines!(ax2, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
+    lines!(ax2, timespan, interpolator(reg, :dem_agric); label = "Ribasim Agric_dem")
+    lines!(ax2, timespan, interpolator(reg, :dem_indus); label = "Ribasim Indus_dem")
+    lines!(ax2, timespan, interpolator(reg, :alloc_agric); label = "Ribasim Agric_alloc")
+    lines!(ax2, timespan, interpolator(reg, :alloc_indus); label = "Ribasim Indus_alloc")
 
     axislegend(ax1)
     axislegend(ax2)
@@ -536,35 +591,37 @@ function plot_Qavailable_dummy_series(reg::Ribasim.Register,
 end
 
 "Plot user total demand and shortage"
-function plot_user_demand(reg::Ribasim.Register,
-                          timespan::ClosedInterval{Float64},
-                          ribasimwb,
-                          mzwb,
-                          lsw_id)
+function plot_user_demand(
+    reg::Ribasim.Register,
+    timespan::ClosedInterval{Float64},
+    ribasimwb,
+    mzwb,
+    lsw_id,
+)
     fig = Figure()
-    ax1 = time!(Axis(fig[1, 1], ylabel = "m³/s"), timespan.left, timespan.right)
-    lines!(ax1, timespan, interpolator(reg, :dem_agric), label = "Ribasim Agric_dem")
-    lines!(ax1, timespan, interpolator(reg, :dem_indus), label = "Ribasim Indus_dem")
-    lines!(ax1, timespan, interpolator(reg, :alloc_agric), label = "Ribasim Agric_alloc")
-    lines!(ax1, timespan, interpolator(reg, :alloc_indus), label = "Ribasim Indus_alloc")
+    ax1 = time!(Axis(fig[1, 1]; ylabel = "m³/s"), timespan.left, timespan.right)
+    lines!(ax1, timespan, interpolator(reg, :dem_agric); label = "Ribasim Agric_dem")
+    lines!(ax1, timespan, interpolator(reg, :dem_indus); label = "Ribasim Indus_dem")
+    lines!(ax1, timespan, interpolator(reg, :alloc_agric); label = "Ribasim Agric_alloc")
+    lines!(ax1, timespan, interpolator(reg, :alloc_indus); label = "Ribasim Indus_alloc")
 
     axislegend(ax1)
 
     # long format daily waterbalance dataframe for Ribasim
-    mzwblsw = @subset(mzwb, :lsw==lsw_id)
+    mzwblsw = @subset(mzwb, :lsw == lsw_id)
     time_start = intersect(mzwblsw.time_start, ribasimwb.time_start)
     mzwblsw = @subset(mzwblsw, :time_start in time_start)
     ribasimwb = @subset(ribasimwb, :time_start in time_start)
     ribasimwb.dem_agric = mzwblsw.dem_agric
     ribasimwb.dem_indus = mzwblsw.dem_agric * 1.3 # as in one.jl. needs updating
     wb = vcat(stack(ribasimwb))
-    wb = @subset(wb, :variable!="balancecheck")
+    wb = @subset(wb, :variable != "balancecheck")
 
     vars_user = ["alloc_agric", "alloc_indus", "dem_agric", "dem_indus"]
 
     for v in wb.variable
         if !(v in vars_user)
-            wb = @subset(wb, :variable!=v)
+            wb = @subset(wb, :variable != v)
         end
     end
     # TODO - update script to automatically detect part of string
@@ -603,18 +660,22 @@ function plot_user_demand(reg::Ribasim.Register,
     # use days since start as x
     wb.value = wb.value .* -1
 
-    ax2 = Axis(fig[2, 1],
-               # label the first and last day
-               xticks = (collect(extrema(x)), string.([startdate, enddate])),
-               xlabel = "time / day",
-               ylabel = "volume / m³",
-               title = "Ribasim user supply-demand water balance")
+    ax2 = Axis(
+        fig[2, 1];
+        # label the first and last day
+        xticks = (collect(extrema(x)), string.([startdate, enddate])),
+        xlabel = "time / day",
+        ylabel = "volume / m³",
+        title = "Ribasim user supply-demand water balance",
+    )
     # TODO - fix x axis time
     cols = Duet.wong_colors[1:2]
 
     barplot!(ax2, x, wb.value; dodge, stack = stacks, color = stacks, colormap = cols)
-    elements = vcat([MarkerElement(marker = 'L'), MarkerElement(marker = 'R')],
-                    [PolyElement(polycolor = cols[i]) for i in 1:length(users)])
+    elements = vcat(
+        [MarkerElement(; marker = 'L'), MarkerElement(; marker = 'R')],
+        [PolyElement(; polycolor = cols[i]) for i in 1:length(users)],
+    )
     Legend(fig[2, 2], elements, vcat("Demand", "Supply", users))
 
     return fig

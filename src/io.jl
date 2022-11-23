@@ -100,8 +100,12 @@ end
 
 "Create a long form DataFrame of all variables on every saved timestep."
 function samples_long(reg::Register)::DataFrame
-    df = DataFrame(time = DateTime[], variable = Symbol[], location = Int[],
-                   value = Float64[])
+    df = DataFrame(;
+        time = DateTime[],
+        variable = Symbol[],
+        location = Int[],
+        value = Float64[],
+    )
 
     (; syms, paramsyms) = names(reg)
     obssyms = observed_names(reg)

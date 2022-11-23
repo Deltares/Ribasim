@@ -7,12 +7,14 @@ cd(@__DIR__)
 
 appdir = "./ribasim_cli"
 
-create_app("..",
-           appdir;
-           # map from binary name to julia function name
-           executables = ["ribasim_cli" => "julia_main"],
-           precompile_execution_file = "precompile.jl",
-           filter_stdlibs = false)
+create_app(
+    "..",
+    appdir;
+    # map from binary name to julia function name
+    executables = ["ribasim_cli" => "julia_main"],
+    precompile_execution_file = "precompile.jl",
+    filter_stdlibs = false,
+)
 
 """
 Add the following metadata files to the newly created build:
@@ -33,13 +35,13 @@ function add_metadata()
 
     # a stripped Project.toml is already added in the same location by PackageCompiler
     # however it is better to copy the original, since it includes the version and compat
-    cp("../Project.toml", normpath(appdir, "share/julia/Project.toml"), force = true)
+    cp("../Project.toml", normpath(appdir, "share/julia/Project.toml"); force = true)
     # the Manifest.toml always gives the exact version of Ribasim that was built
-    cp("../Manifest.toml", normpath(appdir, "share/julia/Manifest.toml"), force = true)
+    cp("../Manifest.toml", normpath(appdir, "share/julia/Manifest.toml"); force = true)
 
     # put the LICENSE in the top level directory
-    cp("../../../LICENSE", normpath(appdir, "LICENSE"), force = true)
-    cp("../README.md", normpath(appdir, "README.md"), force = true)
+    cp("../../../LICENSE", normpath(appdir, "LICENSE"); force = true)
+    cp("../README.md", normpath(appdir, "README.md"); force = true)
     open(normpath(appdir, "README.md"), "a") do io
         # since the exact Ribasim version may be hard to find in the Manifest.toml file
         # we can also extract that information, and add it to the README.md

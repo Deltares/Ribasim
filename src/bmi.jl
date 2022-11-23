@@ -205,8 +205,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     endtime = DateTime(config["endtime"])
     run_modflow = get(config, "run_modflow", false)::Bool
 
-    (; ids, edge, node, state, static, profile, forcing) = load_data(config, starttime,
-                                                                     endtime)
+    (; ids, edge, node, state, static, profile, forcing) =
+        load_data(config, starttime, endtime)
     nodetypes = Dictionary(node.id, node.node)
 
     function allocate!(integrator)
@@ -229,13 +229,13 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
 
     if haskey(config, "cache") && isfile(config["cache"])
-        @info "Using cached problem" path=config["cache"]
+        @info "Using cached problem" path = config["cache"]
         prob = deserialize(config["cache"])
     else
         sysdict = create_nodes(node, state, profile, static)
         connect_eqs = connect_systems(edge, sysdict)
-        output_eqs, output_systems = add_waterbalance_cumulatives(sysdict, nodetypes,
-                                                                  waterbalance_terms)
+        output_eqs, output_systems =
+            add_waterbalance_cumulatives(sysdict, nodetypes, waterbalance_terms)
         inputs = find_unbound_inputs(sysdict, nodetypes, input_terms)
 
         # combine the network and output systems into one
@@ -248,7 +248,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
         prob = ODAEProblem(sim, [], tspan; sparse = true)
         if haskey(config, "cache")
-            @info "Caching initialized problem" path=config["cache"]
+            @info "Caching initialized problem" path = config["cache"]
             open(config["cache"], "w") do io
                 serialize(io, prob)
             end
@@ -302,8 +302,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # similarly for the index into the system parameter vector
         pmf_vars = first.(parsename.(paramsyms))
         pmf_locs = last.(parsename.(paramsyms))
-        drainage_index, infiltration_index = find_modflow_indices(mf_locs, pmf_vars,
-                                                                  pmf_locs)
+        drainage_index, infiltration_index =
+            find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
     else
         rme = nothing
     end
@@ -334,8 +334,12 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     wbal_entries, prev_state = prepare_waterbalance(syms)
-    waterbalance = DataFrame(time = DateTime[], variable = String[], location = Int[],
-                             value = Float64[])
+    waterbalance = DataFrame(;
+        time = DateTime[],
+        variable = String[],
+        location = Int[],
+        value = Float64[],
+    )
     # captures waterbalance, wbal_entries, prev_state, tspan
     function write_output!(integrator)
         (; t, u) = integrator
@@ -363,12 +367,16 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # to be able to disable callback saving as needed.
     # TODO: Check if regular saveat saving is before or after the callbacks.
     save_positions = Tuple(get(config, "save_positions", (true, true)))::Tuple{Bool, Bool}
-    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!;
-                                    save_positions)
+    forcing_cb =
+        PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!; save_positions)
     allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true, save_positions)
     Δt_output = Float64(get(config, "output_timestep", 86400.0))
-    output_cb = PeriodicCallback(write_output!, Δt_output; initial_affect = true,
-                                 save_positions = (false, false))
+    output_cb = PeriodicCallback(
+        write_output!,
+        Δt_output;
+        initial_affect = true,
+        save_positions = (false, false),
+    )
 
     callback = if run_modflow
         modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
@@ -378,14 +386,16 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     saveat = get(config, "saveat", [])
-    integrator = init(prob,
-                      AutoTsit5(Rosenbrock23());
-                      progress = true,
-                      progress_name = "Simulating",
-                      callback,
-                      saveat,
-                      abstol = 1e-6,
-                      reltol = 1e-3)
+    integrator = init(
+        prob,
+        AutoTsit5(Rosenbrock23());
+        progress = true,
+        progress_name = "Simulating",
+        callback,
+        saveat,
+        abstol = 1e-6,
+        reltol = 1e-3,
+    )
 
     return Register(integrator, param_hist, waterbalance)
 end
