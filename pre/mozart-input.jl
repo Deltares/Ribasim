@@ -555,7 +555,6 @@ function expanded_network()
 
                 # add LevelLink node
                 push!(df, (midcoord, "LevelLink", id, lsw_id))
-                id += 1
 
                 # add edges to LSW on either side
                 lsw_node = only(@subset(df, :org_id == lsw_id, :node == "LSW"))
@@ -584,6 +583,7 @@ function expanded_network()
                         to_connector = "x",
                     ),
                 )
+                id += 1
             end
         end
     end
