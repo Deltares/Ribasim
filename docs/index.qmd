@@ -172,7 +172,7 @@ of course, more detail requires more parameters.
 
 ## Installing the compiled executable
 
-Binaries of Ribasim CLI can be downloaded from
+Binaries of Ribasim CLI (command-line interface) can be downloaded from
 [ribasim-artifacts](https://github.com/visr/ribasim-artifacts/releases), and are currently
 available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
 however it is important that the contents of the zip file are kept together in a directory.
