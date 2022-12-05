@@ -4,9 +4,9 @@ title: "Dev docs"
 
 # System image
 
-The `ribasim_cli` is an executable that can be used without needing to install julia itself.
+The Ribasim CLI is an executable that can be used without needing to install julia itself.
 If you want to work from julia, but want to reduce the latency when working with Ribasim.jl,
-an effective option is to work with system images. Like `ribasim_cli`, they can also be created
+an effective option is to work with system images. Like Ribasim CLI, they can also be created
 by PackageCompiler, see the [sysimage docs](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html).
 
 In the Ribasim repository under `compile/sysimage` is a project prepared that allows you to

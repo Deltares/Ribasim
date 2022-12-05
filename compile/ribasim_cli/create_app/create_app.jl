@@ -11,7 +11,7 @@ create_app(
     "..",
     appdir;
     # map from binary name to julia function name
-    executables = ["ribasim_cli" => "julia_main"],
+    executables = ["ribasim" => "julia_main"],
     precompile_execution_file = "precompile.jl",
     filter_stdlibs = false,
 )
@@ -62,7 +62,7 @@ function add_metadata()
 
         ## Version
 
-        This ribasim_cli build uses the Ribasim version mentioned below.
+        This Ribasim CLI build uses the Ribasim version mentioned below.
 
         ```toml
         version = "$version"

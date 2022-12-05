@@ -1,4 +1,4 @@
-# ribasim_cli
+# Ribasim CLI
 
 This is a [Julia](https://julialang.org/) project that uses the
 [Ribasim.jl](https://github.com/Deltares/Ribasim.jl) Julia package, puts a simple command line
@@ -16,8 +16,8 @@ line as follows:
 julia -e 'using Ribasim; Ribasim.run()' path/to/config.toml
 ```
 
-With a ribasim_cli build this becomes:
+With a Ribasim CLI build this becomes:
 
 ```
-ribasim_cli path/to/config.toml
+ribasim path/to/config.toml
 ```
