@@ -76,7 +76,7 @@ function find_param_index(forcing, p_vars, p_ids)
         var = variable[i]
         id_ = id[i]
         for (j, (p_var, p_id)) in enumerate(zip(p_vars, p_ids))
-            if (p_var, p_id) == (var, id_)
+            if (p_id == id_) && (p_var == var)
                 param_index[i] = j
             end
         end
@@ -259,7 +259,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # split out the variables and IDs to make it easier to find the right param index
     param_vars, param_ids = parse_paramsyms(paramsyms)
     # add the system's parameter index to the forcing table
-    param_vars, param_ids = parse_paramsyms(paramsyms)
     param_index = find_param_index(forcing, param_vars, param_ids)
 
     used_param_index = filter(!=(0), param_index)
