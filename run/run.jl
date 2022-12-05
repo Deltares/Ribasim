@@ -27,6 +27,6 @@ reg = Ribasim.run("run/run.toml")
 
 ##
 
-plot_series(reg, config["lsw_ids"][1]; level = false)
+plot_series(reg, config["ids"][1]; level = false)
 
 ##
