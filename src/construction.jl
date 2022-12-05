@@ -185,7 +185,7 @@ Store all MTK.unbound_inputs here to speed up structural simplify, avoiding some
 scaling.
 """
 function find_unbound_inputs(sysdict, nodetypes, input_terms)
-    inputs = []
+    inputs = Num[]
 
     for (id, sys) in pairs(sysdict)
         nodetype = nodetypes[id]
