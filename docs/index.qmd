@@ -172,17 +172,18 @@ of course, more detail requires more parameters.
 
 ## Installing the compiled executable
 
-Binaries of `ribasim_cli` can be downloaded from
+Binaries of Ribasim CLI (command-line interface) can be downloaded from
 [ribasim-artifacts](https://github.com/visr/ribasim-artifacts/releases), and are currently
 available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
 however it is important that the contents of the zip file are kept together in a directory.
-The `ribasim_cli` executable is in the `bin` directory.
+The Ribasim CLI executable is in the `bin` directory.
 
-To check whether the installation was performed successfully, run `ribasim_cli` with no
-arguments in the command line will give the following message:
+To check whether the installation was performed successfully, run `ribasim` with no
+arguments in the command line.
+This will give the following message:
 
 ```
-Usage: ribasim_cli 'path/to/config.toml'
+Usage: ribasim 'path/to/config.toml'
 ```
 
 :::{.callout-note}
@@ -225,7 +226,7 @@ julia> Ribasim.run("path/to/config.toml")
 Again, there will be considerable latency. For this reason, if you expect to run Ribasim
 a lot, we recommend to:
 
-- Use `ribasim_cli` if you only need `Ribasim.run` and don't need to do developments.
+- Use Ribasim CLI if you only need `Ribasim.run` and don't need to do developments.
 - Adapt a workflow that keeps you session active; the first `Ribasim.run("model.toml")` will
   take considerably more time than the second one, since more code needs to be compiled.
 - Use a system image, explained in the [developer documentation](#developer.qmd), to reduce latency further

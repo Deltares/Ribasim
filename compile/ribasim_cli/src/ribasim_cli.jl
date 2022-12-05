@@ -4,7 +4,7 @@ using Ribasim
 
 function help(x)::Cint
     println(x)
-    println("Usage: ribasim_cli path/to/config.toml")
+    println("Usage: ribasim path/to/config.toml")
     return 1
 end
 
