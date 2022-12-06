@@ -126,12 +126,10 @@ function prepare_waterbalance(syms::Vector{Symbol})
     for (i, sym) in enumerate(syms)
         varname, location = parsename(sym)
         varname = String(varname)
-        if endswith(varname, ".sum.x")
-            variable = replace(varname, r".sum.x$" => "")
+        if endswith(varname, ".sum.x(t)")
+            variable = replace(varname, ".sum.x(t)" => "")
             # flip the sign of the loss terms
-            flip = if endswith(variable, ".x.Q")
-                true
-            elseif variable in ("weir.Q", "lsw.Q_eact", "lsw.infiltration_act")
+            flip = if variable in ("x.Q", "Q_eact", "infiltration_act")
                 true
             else
                 false
@@ -140,11 +138,11 @@ function prepare_waterbalance(syms::Vector{Symbol})
             push!(wbal_entries.variable, variable)
             push!(wbal_entries.index, i)
             push!(wbal_entries.flip, flip)
-        elseif varname == "lsw.S"
+        elseif varname == "S(t)"
             push!(wbal_entries.location, location)
             push!(wbal_entries.variable, varname)
             push!(wbal_entries.index, i)
-            push!(wbal_entries.flip, false)
+            push!(wbal_entries.flip, true)
         end
     end
     return wbal_entries, prev_state
