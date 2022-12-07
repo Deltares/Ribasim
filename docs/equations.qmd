@@ -40,17 +40,17 @@ surface may change as well, depending on the slopes of the surface waters.
 The evaporation term is given by:
 
 $$
-Q_E = E_{pot} A(S) * (0.5 \tanh(S - 50.0) / 10.0) + 0.5
+Q_E = E_{pot} \cdot A(S) \cdot (0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5
 $$
 
 Where $E_{pot}$ is the potential evaporation rate and $A$ is the wetted area.
-The $(0.5 \tanh(S - 50.0) / 10.0) + 0.5$ term ensures no evaporation occurs
+The $(0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5$ term ensures no evaporation occurs
 when $S <= 0$ and is a sigmoid function which provides a smooth gradient as $S
 \rightarrow 0$.
 
 A straightforward formulation $Q_E = \mathrm{max}(E_{pot} A(S),
-0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}$ is $\infty$ at $S =
-0$. A hyperbolic tangent is a commonly used activation function
+0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}(S=0)$ is $\infty$.
+A hyperbolic tangent is a commonly used activation function
 [@enwiki:1106669904] to approximate on-off behavior while preserving a smooth
 derivative.
 
@@ -66,28 +66,28 @@ constant wetted surface (a rectangular profile), evaporation only stops at $S =
 ## Infiltration and Drainage
 
 Infiltration is provided as a lump sum for the basin. If Ribasim is coupled with
-MODFLOW6, the infiltration is computed as the sum of all **positive** flows of the
-MODFLOW6 boundary conditions in the basin:
+MODFLOW 6, the infiltration is computed as the sum of all **positive** flows of the
+MODFLOW 6 boundary conditions in the basin:
 
 $$
 Q_{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
 $$
 
-Where $i$ is the index of the boundary condition, $j$ the MODFLOW6 cell index,
-$n$ the number of boundary conditions, and $m$ the number of MODFLOW6 cells in
-the basin. $Q_{\mathrm{mf6}_{i,j}}$ is the flow computed by MODFLOW6 for cell $j$
+Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index,
+$n$ the number of boundary conditions, and $m$ the number of MODFLOW 6 cells in
+the basin. $Q_{\mathrm{mf6}_{i,j}}$ is the flow computed by MODFLOW 6 for cell $j$
 for boundary condition $i$.
 
 Drainage is a lump sump for the basin, and consists of the sum of the absolute
-value of all **negative** flows of the MODFLOW6 boundary conditions in the
+value of all **negative** flows of the MODFLOW 6 boundary conditions in the
 basin.
 
 $$
 Q_{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0) \right|
 $$
 
-The interaction with MODFLOW6 boundary conditions is explained in greater
-detail in the MODFLOW Coupling section of this documentation.
+The interaction with MODFLOW 6 boundary conditions is explained in greater
+detail in the [the MODFLOW coupling section](coupling-demo.qmd) of this documentation.
 
 ## Upstream and downstream flow
 
@@ -204,7 +204,7 @@ balance sinks, negative storage is avoided and smooth numerical behavior is
 ensured via an activation function:
 
 $$
-Q_{user} = Q_{alloc} * (0.5 \tanh(S - 50.0) / 10.0) + 0.5
+Q_{user} = Q_{alloc} \cdot (0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5
 $$
 
 ## Level Control
@@ -250,7 +250,7 @@ $$ {#eq-flushing}
 Ribasim uses ModelingToolkit.jl to provide a numerical solution to the water
 balance equations. Changes to forcings or parameters such as precipitation, but
 also the allocated water abstraction is managed through the use of CallBack
-functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW6 are also
+functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW 6 are also
 managed via the use of a callback function.
 
 # Performance
@@ -262,7 +262,7 @@ free-flowing basins for a period of 2 years in about 10 seconds.
 
 For a real scaling test we would need to do a national simulation, but we expect these
 computation times not to be problematic, considering that simulating those same 40 basins
-in MODFLOW6 takes minutes.
+in MODFLOW 6 takes minutes.
 
 There are many things that can influence the calculations times, for instance:
 
@@ -276,7 +276,7 @@ There are many things that can influence the calculations times, for instance:
     Moreover, the larger the forcing fluxes are, the bigger the shock to the system,
     leading to smaller timesteps and thus longer simulation times.
 
-Similarly to other models that solve using a system of equations, like MODFLOW6, if one
+Similarly to other models that solve using a system of equations, like MODFLOW 6, if one
 basin takes longer to converge due to extreme forcing, or bad schematization, the system as
 a whole need to iterate longer. It is important to be mindful of this, as poor
 schematization choices can slow down the model.

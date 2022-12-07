@@ -77,8 +77,8 @@ connected components.
 # Input parameters
 - P [m s⁻¹]: precipitation rate
 - E_pot [m s⁻¹]: evaporation rate
-- drainage [m³ s⁻¹]: drainage from Modflow
-- infiltration [m³ s⁻¹]: infiltration to Modflow
+- drainage [m³ s⁻¹]: drainage from MODFLOW 6
+- infiltration [m³ s⁻¹]: infiltration to MODFLOW 6
 - urban_runoff [m³ s⁻¹]: runoff from Metaswap
 """
 function LSW(;

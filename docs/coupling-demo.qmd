@@ -1,5 +1,5 @@
 ---
-title: "Ribasim-Modflow Demonstration"
+title: "Ribasim-MODFLOW 6 Demonstration"
 ---
 
 ## Example: parametrization
@@ -103,7 +103,7 @@ with the bottom elevation.
 
 ## Example: Configuration
 
-An example of the MODFLOW6 section of TOML configuration required for a coupled
+An example of the MODFLOW 6 section of TOML configuration required for a coupled
 run can be seen below:
 
 ```TOML
@@ -134,13 +134,13 @@ drain = "DRN_T"
 profile = "profile_tertiary"
 ```
 
-The section starts by stating the path to the MODFLOW6 simulation name file
+The section starts by stating the path to the MODFLOW 6 simulation name file
 (`simulation`). The next section contains the information regarding the
-MODFLOW6 model(s) to couple to Ribasim's basins. Per model, a path to the coupling
+MODFLOW 6 model(s) to couple to Ribasim's basins. Per model, a path to the coupling
 parameter dataset is provided (`dataset`), along with the variable to use as
 the basin identification number (`basins`). Next, for every boundary condition
 that should be coupled to Ribasim, the package names (`river`, `drain`) used by
-MODFLOW6 must be specified (as we look for these names in the MODFLOW6 memory),
+MODFLOW 6 must be specified (as we look for these names in the MODFLOW 6 memory),
 along with the name of the variable in the coupling dataset which provides the
 volume-level relationship (`profile`).
 
@@ -155,10 +155,10 @@ does not equal drainage conductance) both (`river` and `drain` entry).
 
 To test the coupling, the following simulations have been setup and run:
 
-1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
+1. A standalone MODFLOW 6 run of sequential steady-states (i.e. no storage) with
 differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated by the Ribasim coupler
-process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW6
+2. A coupled run where the MODFLOW 6 stages are updated by the Ribasim coupler
+process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW 6
 water levels are set equal to bed elevation.
 3. A coupled run where the water levels are updated by Ribasim.
 
@@ -169,7 +169,7 @@ From these tests, we expect the following behavior:
 2. In case of negative recharge (evapotranspiration), infiltration occurs in the surface waters.
   Infiltration should be zero when the basin volume is 0.
 
-![Water balance of the MODFLOW6 boundary conditions for the Hupsel basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715341-fd99dc06-2eda-4b84-a201-650dc7220574.png){#fig-hupsel-gwb-steady}
+![Water balance of the MODFLOW 6 boundary conditions for the Hupsel basin for a standalone MODFLOW 6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715341-fd99dc06-2eda-4b84-a201-650dc7220574.png){#fig-hupsel-gwb-steady}
 
 @fig-hupsel-gwb-steady shows the water balance of steady-state for submodel of the
 LHM that has been by selecting the cells belonging to the district containing
@@ -194,7 +194,7 @@ steady-state model), the surface waters provide mostly inflow, and recharge is
 a negative term. In this case, the secondary system provides a small amount of
 infiltration; most of the water is drawn from the surroundings instead.
 
-![Water balance of the MODFLOW6 boundary conditions for the Hupsel basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715349-9eee8830-9b03-4a88-b7c9-b16004c694f6.png){#fig-hupsel-gwb-volume0}
+![Water balance of the MODFLOW 6 boundary conditions for the Hupsel basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187715349-9eee8830-9b03-4a88-b7c9-b16004c694f6.png){#fig-hupsel-gwb-volume0}
 
 @fig-hupsel-gwb-volume0 shows the same model, with 0-basin volume which causes
 water levels to be set equal to bed elevation. Consequently, primary and
@@ -202,20 +202,20 @@ secondary outflow terms are larger for positive groundwater recharge as they
 drain at a lower level and intercept the water before the tertiary system does.
 Secondly, with negative groundwater recharge, no infiltration occurs and the
 water is drawn from the surroundings instead. This shows the coupling mechanism
-adjusting MODFLOW6 water levels succesfully.
+adjusting MODFLOW 6 water levels succesfully.
 
 ## Test case: de Tol
 
 To test the coupling, the following simulations have been setup and run:
 
-1. A standalone MODFLOW6 run of sequential steady-states (i.e. no storage) with
+1. A standalone MODFLOW 6 run of sequential steady-states (i.e. no storage) with
 differing groundwater recharge values.
-2. A coupled run where the MODFLOW6 stages are updated by the Ribasim coupler
-process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW6
+2. A coupled run where the MODFLOW 6 stages are updated by the Ribasim coupler
+process, but without Ribasim. This results in volumes of 0.0, so all MODFLOW 6
 water levels are set equal to bed elevation.
 3. A coupled run where the water levels are updated by Ribasim.
 
-![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a standalone MODFLOW6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769185-f63a5821-dfe8-4d99-b43e-780962e73870.png){#fig-tol-gwb-steady}
+![Water balance of the MODFLOW 6 boundary conditions for De Tol basin for a standalone MODFLOW 6 run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769185-f63a5821-dfe8-4d99-b43e-780962e73870.png){#fig-tol-gwb-steady}
 
 @fig-tol-gwb-steady shows the water balance of steady-state for a submodel of
 the LHM for the Polder de Tol and its surroundings. While groundwater recharge
@@ -228,7 +228,7 @@ ephemeral tertiary ditches, but by the permanently water-bearing ditches of the
 primary and secondary system. Unlike the Hupsel, the water balance does not
 shrink to very small discharges, as there is sizable regional groundwater flow.
 
-![Water balance of the MODFLOW6 boundary conditions for De Tol basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769180-91f6344c-3489-4200-8a0c-d5e82a28ebaf.png){#fig-tol-gwb-volume0}
+![Water balance of the MODFLOW 6 boundary conditions for De Tol basin for a zero volume run. The four sequential steady states (01, 02, 03, 04) use net groundwater recharge values of 1.0, 0.5, -0.05 and -0.1 mm/d.](https://user-images.githubusercontent.com/13662783/187769180-91f6344c-3489-4200-8a0c-d5e82a28ebaf.png){#fig-tol-gwb-volume0}
 
 @fig-tol-gwb-volume0 shows the same model, with 0-basin volume which causes
 water levels to be set equal to bed elevation. The total discharge is larger:
@@ -236,4 +236,4 @@ the primary and secondary systems are set to lower levels, and so the head
 difference is larger. While De Tol's evapotranspiration excess can be fed by
 the regional groundwater, the primary and secondary ditches also provide some
 part; as expected, they do not feed when the coupling mechanism adjusts
-MODFLOW6's water levels.
+MODFLOW 6's water levels.

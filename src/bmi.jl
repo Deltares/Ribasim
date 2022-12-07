@@ -285,7 +285,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     if run_modflow
-        # initialize Modflow model
+        # initialize MODFLOW 6 model
         config_modflow = config["modflow"]
         Δt_modflow = Float64(config_modflow["timestep"])
         rme = RibasimModflowExchange(config_modflow, ids)

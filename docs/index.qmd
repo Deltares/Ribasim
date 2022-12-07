@@ -42,7 +42,7 @@ from [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) to get results.
 ## Water balance equations
 
 The water balance equation for a drainage basin [@enwiki:1099736933] can be
-defined a first-order ordinary differential equation (ODE), where the change of
+defined by a first-order ordinary differential equation (ODE), where the change of
 the storage $S$ over time is determined by the inflow fluxes minus the outflow
 fluxes.
 
@@ -52,8 +52,8 @@ $$
 
 We can split out the fluxes into separate terms, such as precipitation $P$,
 evapotranspiration $ET$ and runoff $R$. For now other fluxes are combined into
-$Q_{rest}$. If define all fluxes entering our reservoir as positive, and those
-leaving the system to be negative, all fluxes can be summed up.
+$Q_{rest}$. If we define all fluxes entering our reservoir as positive, and those
+leaving the system as negative, all fluxes can be summed up.
 
 $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = R + P + ET + Q_{rest}
@@ -75,15 +75,15 @@ can solve this, we need to create an `ODEProblem`, that provides information abo
 timespan of the simulation, as well as the initial conditions.
 
 Ribasim can be used as a Julia package running in a Julia session or as an
-application initialized via TOML configuration files. Both uses are
-demonstrated in the demonstrations.
+application initialized via a TOML configuration file. Both use cases are
+shown in the demonstrations.
 
 ## Time
 
 The water balance equation can be applied on many timescales; years, weeks, days or hours.
 Depending on the application and available data any of these can be the best choice.
-In Ribasim, we make use of DifferentialEquations.jl and can use any of its [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/).
-Many of these solvers make use of adaptive time stepping, which means the solver will
+In Ribasim, we make use of DifferentialEquations.jl and its [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/).
+Many of these solvers are based on adaptive time stepping, which means the solver will
 decide how large the time steps can be depending on the state of the system.
 
 The forcing, like precipitation, is generally provided as a time series. Ribasim is set up
@@ -124,7 +124,7 @@ graph LR;
 Internally a directed graph is used. The direction is defined to be the
 positive flow direction, and is generally set in the dominant flow direction.
 The basins are the nodes of the network graph. Basin states and properties such
-storage volume, wetted area are associated with the nodes (A, B, C, D), as are
+storage volume and wetted area are associated with the nodes (A, B, C, D), as are
 most forcing data such as precipitation, evaporation, or water demand. Basin
 connection properties and interbasin flows are associated with the edges (the
 lines between A, B, C, and D) instead. 
@@ -198,14 +198,14 @@ built in package manager, `Pkg`. For more information on how to use `Pkg`, see t
 [Getting Started](https://pkgdocs.julialang.org/v1/getting-started/) page in its documentation.
 
 Since Ribasim is not yet registered in the General registry, you have to install it using the
-full url. Note that here suggest `dev` to do a development install.
+full url. Note that we here use `dev` to do a development install.
 
-```julia-repl
+```julia
 pkg> dev https://github.com/Deltares/Ribasim.jl
 ```
 
 This will clone the git repository, put it under your home directory in `.julia/dev/Ribasim`,
-and add the Ribasim package to your project environment. Note that to receive updates, you
+and add the Ribasim package to your project environment. In order to receive updates, you
 have to pull in the latest changes yourself using `git pull`.
 
 Installation may take a while since Pkg is also installing and pre-compiling the dependencies
@@ -213,13 +213,13 @@ of Ribasim.
 
 Once it is done, you can go back the Julia REPL and try to load Ribasim:
 
-```julia-repl
+```julia
 julia> using Ribasim
 ```
 
 If you already have a simulation prepared, you can run it using:
 
-```julia-repl
+```julia
 julia> Ribasim.run("path/to/config.toml")
 ```
 
@@ -227,15 +227,15 @@ Again, there will be considerable latency. For this reason, if you expect to run
 a lot, we recommend to:
 
 - Use Ribasim CLI if you only need `Ribasim.run` and don't need to do developments.
-- Adapt a workflow that keeps you session active; the first `Ribasim.run("model.toml")` will
+- Adapt a workflow that keeps your session active; the first `Ribasim.run("model.toml")` will
   take considerably more time than the second one, since more code needs to be compiled.
-- Use a system image, explained in the [developer documentation](#developer.qmd), to reduce latency further
+- Use a system image as explained in the [developer documentation](#developer.qmd) to reduce latency further
 
 :::{.callout-tip}
 ## Tip: Visual Studio Code
 
 There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll
-down to see it. We use and recommend Microsoft's free and open source [Visual Studio
+down to see it. We use and recommend Microsoft's free editor [Visual Studio
 Code](https://code.visualstudio.com/). When combined with the [Julia
 extension](https://www.julia-vscode.org/) it provides a powerful and interactive
 development experience.
@@ -264,7 +264,7 @@ It contains settings, as well as paths to other input and output files.
 starttime = 2019-01-01
 endtime = 2021-01-01
 
-# run a coupled Ribasim - Modflow simulation
+# run a coupled Ribasim - MODFLOW 6 simulation
 run_modflow = false  # default is false
 
 # all timesteps are in seconds
@@ -293,16 +293,16 @@ edge = "input/edge.arrow"
 waterbalance = "output/waterbalance.arrow"
 ```
 
-Additionally, if `run_modflow = true`, a Modflow specific section needs to be added to
-the configuration file. This part is documented in [the Modflow coupling demo](#coupling-demo.qmd).
+Additionally, if `run_modflow = true`, a MODFLOW 6 specific section needs to be added to
+the configuration file. This part is documented in [the MODFLOW 6 coupling demo](coupling-demo.qmd).
 
 ### Arrow files
 
 The input and output files described below all share that they are tabular files, stored 
-in the [Apache Arrow](https://arrow.apache.org/) IPC file format, also known as Feather
+in the [Apache Arrow](https://arrow.apache.org/) file format, also known as Feather
 files. This format has been chosen since it is standardized, fast, simple and flexible.
-It can be read and written by many different software packages and libraries in different
-languages. In Ribasim we use [Arrow.jl](https://arrow.juliadata.org/dev/).
+It can be read and written by many different software packages.
+In Ribasim we use [Arrow.jl](https://arrow.juliadata.org/dev/).
 
 Below we give details per file, in which we describe the schema of the table using a syntax
 like this:

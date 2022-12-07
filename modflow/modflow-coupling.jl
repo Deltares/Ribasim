@@ -1,4 +1,4 @@
-# The components needed for coupling Ribasim and Modflow
+# The components needed for coupling Ribasim and MODFLOW 6
 
 ##
 import BasicModelInterface as BMI
@@ -15,7 +15,7 @@ using DataFrames
 struct UsefulModflowModel
     model::MF.ModflowModel
     modelname::String
-    maxiter::Int  # Is a copy of the initial value in MODFLOW6
+    maxiter::Int  # Is a copy of the initial value in MODFLOW 6
     head::Vector{Float64}
 end
 
@@ -96,7 +96,7 @@ head = BMI.get_value_ptr(model, headtag)
 
 ##
 
-# MODFLOW6 does not support an infiltration factor like iMODFLOW does. Instead,
+# MODFLOW 6 does not support an infiltration factor like iMODFLOW does. Instead,
 # a Drainage boundary is stacked on top a river to generate the same behavior.
 # The different river and drainage systems are organized as follows:
 #
@@ -129,7 +129,7 @@ const BoundView =
     SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
 """
-Memory views on a single MODFLOW6 Drainage package.
+Memory views on a single MODFLOW 6 Drainage package.
 
 To get an overview of the memory addresses specify in the simulation namefile options:
 
@@ -161,7 +161,7 @@ function ModflowDrainagePackage(model::MF.ModflowModel, modelname, subcomponent)
 end
 
 """
-Memory views on a single MODFLOW6 River package.
+Memory views on a single MODFLOW 6 River package.
 
 To get an overview of the memory addresses specify in the simulation namefile options:
 
@@ -232,7 +232,7 @@ Flow from outside of the aquifer (cell) may be represented by:
 
 a = ph + q
 
-(Equation 2-6 in the MODFLOW6 manual.)
+(Equation 2-6 in the MODFLOW 6 manual.)
 
 For e.g. a general head boundary, the flow is head dependent:
 
@@ -249,13 +249,13 @@ So that:
 
 a = -ch + cs = hcof * h - rhs
 
-During formulation, MODFLOW6 will set the appropriate terms. For a fixed flux
+During formulation, MODFLOW 6 will set the appropriate terms. For a fixed flux
 situation (e.g. head below river bottom), hcof will be set to zero.
 
 A NEGATIVE budget value means water is going OUT of the model.
 A POSITIVE budget value means water is going INTO the model.
 
-To check, from the MODFLOW6 gwf3riv8.f90 file:
+To check, from the MODFLOW 6 gwf3riv8.f90 file:
 
       hriv=this%bound(1,i)
       criv=this%bound(2,i)
@@ -402,8 +402,8 @@ function WeirAreaExchangeData(
 end
 
 """
-Contains data per MODFLOW6 node.
-nbound == number of drainage/river cells in this MODFLOW6 package.
+Contains data per MODFLOW 6 node.
+nbound == number of drainage/river cells in this MODFLOW 6 package.
 """
 struct ModflowExchangeData{T}
     boundary::T
@@ -629,7 +629,7 @@ function exchange_ribasim_to_modflow!(coupledmodel)
         # lswvolume: is a vector in canonical order of every
         compute_stage!(exchange, ribamodel.lswvolume)
         # This sets the stage in MODFLOW as well, as the exchange holds a view
-        # on the MODFLOW6 memory.
+        # on the MODFLOW 6 memory.
         set_stage!(exchange)
     end
     return nothing
@@ -671,7 +671,7 @@ end
 
 function update!(coupledmodel::IterativeCoupledModel)
     (; mfmodel, ribamodel, exchanges, previous_state) = coupledmodel
-    # 0.0 is a dummy value. MODFLOW6 just goes forward.
+    # 0.0 is a dummy value. MODFLOW 6 just goes forward.
     MF.prepare_time_step(mfmodel.model, 0.0)
     Δt = MF.get_time_step(mfmodel.model)
 
