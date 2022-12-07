@@ -12,17 +12,17 @@ function get_var_ptr(model::MF.ModflowModel, modelname, component; subcomponent_
     return BMI.get_value_ptr(model, tag)
 end
 
-# The MODFLOW6 boundaries are memory-contiguous, rowwise. This means that the
+# The MODFLOW 6 boundaries are memory-contiguous, rowwise. This means that the
 # different parameters are next to each other (e.g. conductance and elevation).
 # It is more convenient for us to group by kind of parameter. Using a simple
 # Vector{Float64} forces a contiguous block of memory and Julia will create
-# a new array, rather than a view on the MODFLOW6 memory. This type is the
+# a new array, rather than a view on the MODFLOW 6 memory. This type is the
 # appropriate one for a view.
 const BoundView =
     SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}
 
 """
-Memory views on a single MODFLOW6 Drainage package.
+Memory views on a single MODFLOW 6 Drainage package.
 
 To get an overview of the memory addresses specify in the simulation namefile options:
 
@@ -34,7 +34,7 @@ secondary rivers.
 abstract type ModflowPackage end
 
 """
-Views on the arrays of interest of a MODFLOW6 Drainage package.
+Views on the arrays of interest of a MODFLOW 6 Drainage package.
 """
 struct ModflowDrainagePackage <: ModflowPackage
     nodelist::Vector{Int32}
@@ -64,7 +64,7 @@ function set_level!(boundary::ModflowDrainagePackage, index, level)
 end
 
 """
-Views on the arrays of interest of a MODFLOW6 River package.
+Views on the arrays of interest of a MODFLOW 6 River package.
 
 Not to be used directly if "infiltration factors" are used via an additional
 drainage package.
@@ -102,7 +102,7 @@ function ModflowRiverPackage(model::MF.ModflowModel, modelname, subcomponent)
 end
 
 """
-Contains the combined MODFLOW6 River and Drainage package, where the drainage
+Contains the combined MODFLOW 6 River and Drainage package, where the drainage
 package is "stacked" to achieve a differing drainage/infiltration conductance.
 
 See: https://github.com/MODFLOW-USGS/modflow6/issues/419
@@ -178,18 +178,18 @@ struct VolumeLevelProfiles
 end
 
 """
-Create volume-level profiles for a single MODFLOW6 boundary.
+Create volume-level profiles for a single MODFLOW 6 boundary.
 
 # Arguments
 - `basin::Matrix{Union{Int, Missing}}`: the basin identification number.
   these values must accord with the Ribasim IDs.
 - `boundary::B where B <: ModflowPackage`: struct holding views on the
-  MODFLOW6 memory.
+  MODFLOW 6 memory.
 - `profile`::Array{Union{Float64, Missing}}`: the volumes and levels for
   every cell.
 - `ribasim_ids::Vector{Int}`: the basin identification numbers present in the
   Ribasim model.
-- `node_reduced::Vector{Int}`: The MODFLOW6 NODE_REDUCED node numbering.
+- `node_reduced::Vector{Int}`: The MODFLOW 6 NODE_REDUCED node numbering.
 
 """
 function VolumeLevelProfiles(
@@ -272,7 +272,7 @@ end
 
 struct Modflow6Simulation
     bmi::MF.ModflowModel
-    maxiter::Int  # Is a copy of the initial value in MODFLOW6
+    maxiter::Int  # Is a copy of the initial value in MODFLOW 6
     head::Vector{Float64}
 end
 

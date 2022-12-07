@@ -66,7 +66,7 @@ def LHM_model(xmin=None, xmax=None, ymin=None, ymax=None):
     # Boundary conditions
     #gwf["rch"] = imod.mf6.Recharge.from_file("netcdf/rch_sys1.nc")
     gwf["ghb"] = imod.mf6.GeneralHeadBoundary.from_file("netcdf/ghb_sys1.nc")
-    # Note that MODFLOW6 does not have "infiltration factors". Instead, Drainage is
+    # Note that MODFLOW 6 does not have "infiltration factors". Instead, Drainage is
     # "stacked" on top of the River to achieve the same behavior.
     gwf["drn_sys1"] = imod.mf6.Drainage.from_file("netcdf/drn_sys1.nc")
     gwf["drn_sys2"] = imod.mf6.Drainage.from_file("netcdf/drn_sys2.nc")

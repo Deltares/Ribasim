@@ -4,8 +4,8 @@ title: "Dev docs"
 
 # System image
 
-The Ribasim CLI is an executable that can be used without needing to install julia itself.
-If you want to work from julia, but want to reduce the latency when working with Ribasim.jl,
+The Ribasim CLI is an executable that can be used without needing to install Julia itself.
+If you want to work from Julia, but want to reduce the latency when working with Ribasim.jl,
 an effective option is to work with system images. Like Ribasim CLI, they can also be created
 by PackageCompiler, see the [sysimage docs](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html).
 
@@ -36,6 +36,6 @@ If successful, this will create a "JuliaSysimage" shared library file under
 repository in VS Code, it will use this system image based on the conditions described
 [here](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/#Using-custom-sysimages).
 
-If you want to use this system image when starting julia from the command line, use
-`-J, --sysimage <file>` to start up with the given system image file. See all julia
+If you want to use this system image when starting Julia from the command line, use
+`-J, --sysimage <file>` to start up with the given system image file. See all Julia
 command-line switches [here](https://docs.julialang.org/en/v1/manual/command-line-options/#Command-line-switches-for-Julia).
