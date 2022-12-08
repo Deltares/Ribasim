@@ -343,7 +343,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         time = unix2datetime(t)
         first_step = t == tspan[begin]
         for (; variable, location, index, flip) in Tables.rows(wbal_entries)
-            if variable == "lsw.S"
+            if variable == "S(t)"
                 S = u[index]
                 if first_step
                     prev_state[index] = S
@@ -385,7 +385,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     saveat = get(config, "saveat", [])
     integrator = init(
         prob,
-        AutoTsit5(Rosenbrock23());
+        TRBDF2();
         progress = true,
         progress_name = "Simulating",
         callback,
