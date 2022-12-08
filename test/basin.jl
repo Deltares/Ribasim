@@ -22,7 +22,7 @@ using SciMLBase
     @test infiltration[1] ≈ 0.0014644999999999999f0
     @test urban_runoff[1] ≈ 0.0027895224861111114f0
 
-    @test S[end] ≈ 15934.6692189651f0
+    @test S[end] ≈ 15934.669380934576f0
     @test P[end] ≈ 2.146464646464646f-8
     @test Q_eact[end] == 0.0
     @test drainage[end] ≈ 0.10595547000210437f0

@@ -89,6 +89,8 @@ function node_system(node, state, profile, static)
         @named bifurcation[id] = Bifurcation(; kwargs...)
     elseif node == "LevelLink"
         @named level_link[id] = LevelLink(; kwargs...)
+    elseif node == "NoFlowBoundary"
+        @named no_flow_boundary[id] = NoFlowBoundary(; kwargs...)
     else
         error(lazy"Unknown node type $node")
     end

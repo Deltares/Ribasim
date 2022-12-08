@@ -79,7 +79,7 @@ end
     config["save_positions"] = (false, false)
     config["starttime"] = Date("2019-01-01")
     config["endtime"] = Date("2020-01-01")
-    config["state"] = DataFrame(; id = [14908, 14784], S = 1e6, C = 0.1)
+    config["state"] = DataFrame(; id = [14908, 14784], S = 1e8, C = 0.1)
     config["node"] =
         DataFrame(; id = ids, node = ["LSW", "GeneralUser", "OutflowTable", "LSW"])
     config["edge"] = DataFrame(;
@@ -94,8 +94,8 @@ end
     config["forcing"] = normpath(datadir, "lhm/forcing.arrow")
     config["profile"] = DataFrame(;
         id = [14784, 14784, 14908, 14908, 14910, 14910],
-        volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6],
-        area = 1e6,
+        volume = [0.0, 1e8, 0.0, 1e8, 0.0, 1e8],
+        area = 1e8,
         discharge = [0.0, 1e0, 0.0, 1e0, 0.0, 1e0],
         level = [10.0, 11.0, 10.0, 11.0, 10.0, 11.0],
     )
@@ -112,13 +112,13 @@ end
     infiltration_act = Ribasim.savedvalues(reg, name(:lsw, id_lsw, :infiltration_act))
     infiltration = Ribasim.savedvalues(reg, name(:lsw, id_lsw, :infiltration))
     urban_runoff = Ribasim.savedvalues(reg, name(:lsw, id_lsw, :urban_runoff))
-    area = 1e6
+    area = 1e8
 
     # precipitation
     @test Q_prec ≈ P .* area
     # evaporation reduction
     reduction_factor = @. (0.5 * tanh((S - 50.0) / 10.0) + 0.5)
-    @test minimum(reduction_factor) ≈ 0.13632300214245657f0
+    @test minimum(reduction_factor) ≈ 1.0
     @test maximum(reduction_factor) ≈ 1.0
     @test Q_eact ≈ area .* E_pot .* reduction_factor
     # infiltration reduction
