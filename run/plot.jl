@@ -302,6 +302,12 @@ function plot_series(
         interpolator(reg, Symbol(:weir_, lsw_id, :₊, :Q));
         label = "outflow",
     )
+    haskey(reg, Symbol(:lsw_, lsw_id, :₊x₊Q)) && lines!(
+        ax1,
+        timespan,
+        interpolator(reg, Symbol(:lsw_, lsw_id, :₊x₊Q));
+        label = "exchange",
+    )
     # TODO update for link numbering
     haskey(reg, Symbol(:link_, 1, :₊a₊, :Q)) && lines!(
         ax1,
