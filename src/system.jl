@@ -216,8 +216,7 @@ end
 
 function NoFlowBoundary(; name)
     @named x = FluidPort()
-    @unpack Q, C = x
-    eqs = Equation[Q ~ 0, C ~ 0]
+    eqs = Equation[x.Q ~ 0, x.C ~ 0]
     ODESystem(eqs, t, [], []; systems = [x], name)
 end
 

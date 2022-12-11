@@ -92,7 +92,7 @@ function node_system(node, state, profile, static)
     elseif node == "NoFlowBoundary"
         @named no_flow_boundary[id] = NoFlowBoundary(; kwargs...)
     else
-        error(lazy"Unknown node type $node")
+        error("Unknown node type $node")
     end
 end
 

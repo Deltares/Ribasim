@@ -393,6 +393,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         abstol = 1e-6,
         reltol = 1e-3,
     )
+    # save at least the initial parameter values if none of the callbacks do so already
+    save!(param_hist, integrator.t, integrator.p)
 
     return Register(integrator, param_hist, waterbalance)
 end
