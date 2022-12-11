@@ -44,3 +44,54 @@ function isolated_nodegroups(edges)
     end
     return sort!(subgraphs; by = length, rev = true)
 end
+
+"""
+    edgepairs(edges::Vector{Pair})::DataFrame
+
+Create a edge DataFrame from a more readable data structure, a vector of Pairs, where
+each Pair represents one edge.
+
+    edges = [
+        (id_lsw, "LSW", "x") => (id_out, "OutflowTable", "a"),
+        (id_lsw, "LSW", "s") => (id_out, "OutflowTable", "s"),
+        (id_out, "OutflowTable", "b") => (id_lsw_end, "LSW", "x"),
+    ]
+"""
+function edgepairs(edges::Vector{<:Pair})::DataFrame
+    df = DataFrame(;
+        from_id = Int[],
+        from_node = String[],
+        from_connector = String[],
+        to_id = Int[],
+        to_node = String[],
+        to_connector = String[],
+    )
+    for edge in edges
+        push!(df, (edge.first..., edge.second...))
+    end
+    return df
+end
+
+"""
+    profilesets(; ids, volume, area, discharge, level)::DataFrame
+
+Create a profile DataFrame for a set id ID based on a single profile.
+
+This copies a single profile for ID 1, 2 and 3.
+
+    Ribasim.profilesets(;
+        ids=[1,2,3], volume=[0.0, 1e6], area=[1e6, 1e6],
+        discharge=[0.0, 1e0], level=[10.0, 11.0])
+"""
+function profilesets(; ids, volume, area, discharge, level)::DataFrame
+    n = length(volume)
+    n_id = length(ids)
+    @assert n == length(area) == length(discharge) == length(level)
+    return DataFrame(;
+        id = repeat(ids; inner = n),
+        volume = repeat(volume, n_id),
+        area = repeat(area, n_id),
+        discharge = repeat(discharge, n_id),
+        level = repeat(level, n_id),
+    )
+end
