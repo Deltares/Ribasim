@@ -1,5 +1,6 @@
 ##
 using Arrow
+using Dates
 using DataFrames
 using Dictionaries
 using DifferentialEquations
@@ -464,12 +465,12 @@ end
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
 config = Dict(
-    "node" => "../data/node.arrow",
-    "edge" => "../data/edge.arrow",
-    "forcing" => "../data/forcing.arrow",
-    "profile" => "../data/profile.arrow",
-    "state" => "../data/state.arrow",
-    "static" => "../data/static.arrow",
+    "node" => "test/data/lhm/node.arrow",
+    "edge" => "test/data/lhm/edge.arrow",
+    "forcing" => "test/data/lhm/forcing.arrow",
+    "profile" => "test/data/lhm/profile.arrow",
+    "state" => "test/data/lhm/state.arrow",
+    "static" => "test/data/lhm/static.arrow",
 )
 
 node = DataFrame(read_table(config["node"]))
@@ -481,13 +482,40 @@ forcing = DataFrame(read_table(config["forcing"]))
 
 ##
 
-parameters = create_parameters(node, edge, profile)
-parameters.precipitation.value .= 0.001
-u0 = ones(length(parameters.area)) .* 10.0
-tspan = (0.0, 0.1)
+# find the range of the current timestep, and the associated parameter indices,
+# and update all the corresponding parameter values
+# captures forcing
+function update_forcings!(integrator)
+    (; t, p) = integrator
+    r = searchsorted(forcing.time, unix2datetime(t))
+    current_forcing = @view forcing[r, :]
+    for (id, variable, value) in
+        zip(current_forcing.id, current_forcing.variable, current_forcing.value)
+        if variable == "P"
+            state_idx = p.connectivity.basin_nodemap[id]
+            idx = findfirst(==(state_idx), p.precipitation.index)
+            p.precipitation.value[idx] = value
+        elseif variable == "E_pot"
+            state_idx = p.connectivity.basin_nodemap[id]
+            idx = findfirst(==(state_idx), p.evaporation.index)
+            p.evaporation.value[idx] = value
+        else
+            # TODO throw an error here, once we added missing parameters like drainage
+        end
+    end
+    return nothing
+end
+
+used_time_uniq = unique(forcing.time)
+forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
+
+parameters = create_parameters(node, edge, profile);
+u0 = fill(100.0, length(parameters.area))
+t0 = datetime2unix(DateTime(2019))
+tspan = (t0, t0 + 3600.0)
 
 problem = ODEProblem(water_balance!, u0, tspan, parameters)
-sol = solve(problem; abstol = 1.0)
+sol = solve(problem; abstol = 1.0, callback = forcing_cb)
 
 ##
 
