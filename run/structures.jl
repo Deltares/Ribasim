@@ -3,7 +3,6 @@ using Arrow
 using DataFrames
 using Dictionaries
 using DifferentialEquations
-using UnPack
 using Graphs
 using SparseArrays
 using DataInterpolations: LinearInterpolation
@@ -15,7 +14,7 @@ const Float = Float64
 const Interpolation = LinearInterpolation{Vector{Float}, Vector{Float}, true, Float}
 
 """
-Store the connectivity information 
+Store the connectivity information
 """
 struct Connectivity
     flow::SparseMatrixCSC{Float64, Int64}
@@ -28,7 +27,7 @@ struct Connectivity
 end
 
 """
-Requirements: 
+Requirements:
 
 * Must be positive
 * Index points to a reservoir
@@ -57,7 +56,7 @@ struct StorageTables
 end
 
 """
-Requirements: 
+Requirements:
 
 * Must be positive
 * Index points to a reservoir
@@ -170,7 +169,7 @@ function create_connectivity(node, edge)
     basin_nodemap = create_basin_nodemap(node)
     # Skip toposort for now, only a single set of bifurcations.
     #toposort = topological_sort_by_dfs(g)
-    #nodemap = Dictionary(keys(vxdict), toposort) 
+    #nodemap = Dictionary(keys(vxdict), toposort)
 
     I = Int[]
     J = Int[]
@@ -343,7 +342,7 @@ function create_parameters(node, edge, profile)
     )
 end
 
-## 
+##
 
 function formulate!(du, precipitation::Precipitation, area)
     for (index, value) in zip(precipitation.index, precipitation.value)
@@ -370,7 +369,7 @@ end
 Directed graph: outflow is positive!
 """
 function formulate!(flow, level_links::LevelLinks, u)
-    @unpack index_a, index_b, connection_index, conductance = level_links
+    (; index_a, index_b, connection_index, conductance) = level_links
     for (a, b, nzindex, c) in zip(index_a, index_b, eachcol(connection_index), conductance)
         q = c * u[a] - u[b]
         flow.nzval[nzindex[1]] = q
@@ -383,7 +382,7 @@ end
 Directed graph: outflow is positive!
 """
 function formulate!(flow, outflow_links::OutflowLinks, u)
-    @unpack index, connection_index, tables = outflow_links
+    (; index, connection_index, tables) = outflow_links
     for (a, nzindex, table) in zip(index, eachcol(connection_index), tables)
         q = table.discharge_interpolation(u[a])
         flow.nzval[nzindex[1]] = q
@@ -429,15 +428,17 @@ function formulate!(du, connectivity::Connectivity)
 end
 
 function water_balance!(du, u, p, t)
-    @unpack connectivity,
-    storage_tables,
-    area,
-    level,
-    precipitation,
-    evaporation,
-    level_links,
-    outflow_links,
-    furcations = p
+    (;
+        connectivity,
+        storage_tables,
+        area,
+        level,
+        precipitation,
+        evaporation,
+        level_links,
+        outflow_links,
+        furcations,
+    ) = p
 
     # Update level and area
     for (index, table) in zip(storage_tables.index, storage_tables.tables)
@@ -494,4 +495,4 @@ time = sol.t
 states = reduce(vcat, transpose.(sol.u))
 plot(time, states[:, 1])
 
-## 
+##
