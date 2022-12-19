@@ -421,7 +421,7 @@ function expanded_network()
                 push!(
                     t,
                     (;
-                        geometry = [lswcoord, coord],
+                        geometry = [move_location(xcoord, ycoord, 4), coord],
                         from_id = outflowtable_id,
                         from_node = "OutflowTable",
                         from_connector = "b",
