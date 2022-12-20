@@ -12,19 +12,19 @@ using Plots
 ##
 
 const Float = Float64
-const Interpolation = LinearInterpolation{Vector{Float}, Vector{Float}, true, Float}
+const Interpolation = LinearInterpolation{Vector{Float},Vector{Float},true,Float}
 
 """
 Store the connectivity information
 """
 struct Connectivity
-    flow::SparseMatrixCSC{Float64, Int64}
+    flow::SparseMatrixCSC{Float64,Int64}
     from_basin::BitVector  # sized nnz
     to_basin::BitVector  # sized nnz
-    nodemap::Dictionary{Int, Int}
-    basin_nodemap::Dictionary{Int, Int}
-    connection_map::Dictionary{Tuple{Int, Int}, Int}
-    node_to_basin::Dictionary{Int, Int}
+    nodemap::Dictionary{Int,Int}
+    basin_nodemap::Dictionary{Int,Int}
+    connection_map::Dictionary{Tuple{Int,Int},Int}
+    node_to_basin::Dictionary{Int,Int}
 end
 
 """
@@ -111,6 +111,25 @@ struct Furcations
     fraction::Vector{Float}
 end
 
+
+struct LevelControl
+    index::Vector{Int}
+    volume::Vector{Float}
+    conductance::Vector{Float}
+end
+
+
+struct Infiltration
+    index::Vector{Int}
+    value::Vector{Float}
+end
+
+struct Drainage
+    index::Vector{Int}
+    value::Vector{Float}
+end
+
+
 struct Parameters
     connectivity::Connectivity
     storage_tables::StorageTables
@@ -121,6 +140,10 @@ struct Parameters
     level_links::LevelLinks
     outflow_links::OutflowLinks
     furcations::Furcations
+    level_control::LevelControl
+    infiltration::Infiltration
+    drainage::Drainage
+    forcing::DataFrame
 end
 
 """
@@ -130,7 +153,7 @@ TODO: deal with isolated nodes: add those as separate vertices at the end.
 """
 function graph(edge)
     vxset = unique(vcat(edge.from_id, edge.to_id))
-    vxdict = Dict{Int, Int}()
+    vxdict = Dict{Int,Int}()
     vxdict = Dictionary(vxset, 1:length(vxset))
 
     n_v = length(vxset)
@@ -239,7 +262,7 @@ function create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
         "LevelLink",
     )
     _, n = size(index)
-    conductance = fill(100.0, n)
+    conductance = fill(100.0 / (3600.0 * 24), n)
     return LevelLinks(source, target, index, conductance)
 end
 
@@ -312,7 +335,17 @@ function create_furcations(node, edge, nodemap, connection_map)
     return Furcations(source_connection, target_connection, fraction)
 end
 
-function create_parameters(node, edge, profile)
+function create_level_control(static, edge, basin_nodemap)
+    control_nodes = filter(:variable => v -> v == "target_volume", static)
+    control_edges = filter(:to_node => v -> v == "LevelControl", edge)
+    volume_lookup = Dictionary(control_nodes.id, control_nodes.value)
+    index = [basin_nodemap[i] for i in control_edges.from_id]
+    volume = [volume_lookup[i] for i in control_edges.to_id]
+    conductance = fill(1.0 / (3600.0 * 24), length(index))
+    return LevelControl(index, volume, conductance)
+end
+
+function create_parameters(node, edge, profile, static, forcing)
     connectivity = create_connectivity(node, edge)
     nodemap = connectivity.nodemap
     basin_nodemap = connectivity.basin_nodemap
@@ -323,12 +356,15 @@ function create_parameters(node, edge, profile)
     level = zeros(n)
     precipitation = Precipitation(1:n, zeros(n))
     evaporation = Evaporation(1:n, zeros(n))
+    infiltration = Infiltration(1:n, zeros(n))
+    drainage = Drainage(1:n, zeros(n))
 
     storage_tables = create_storage_tables(profile, basin_nodemap)
     level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
     outflow_links =
         create_outflow_links(node, edge, profile, nodemap, basin_nodemap, connection_map)
     furcations = create_furcations(node, edge, nodemap, connection_map)
+    level_control = create_level_control(static, edge, basin_nodemap)
 
     return Parameters(
         connectivity,
@@ -340,6 +376,10 @@ function create_parameters(node, edge, profile)
         level_links,
         outflow_links,
         furcations,
+        level_control,
+        infiltration,
+        drainage,
+        forcing,
     )
 end
 
@@ -400,13 +440,38 @@ function formulate!(flow, furcations::Furcations)
     return
 end
 
+function formulate!(du, level_control::LevelControl, u)
+    for (index, volume, cond) in
+        zip(level_control.index, level_control.volume, level_control.conductance)
+        du[index] += cond * (volume - u[index])
+    end
+    return
+end
+
+function formulate!(du, drainage::Drainage)
+    for (index, value) in zip(drainage.index, drainage.value)
+        du[index] += value
+    end
+    return
+end
+
+function formulate!(du, infiltration::Infiltration, area, u)
+    for (index, value) in zip(infiltration.index, infiltration.value)
+        a = area[index]
+        depth = u[index] / a
+        f = min(depth, 0.1) / 0.1
+        du[index] -= f * value
+    end
+    return
+end
+
 function formulate!(du, connectivity::Connectivity)
     flow = connectivity.flow
     node_to_basin = connectivity.node_to_basin
     from_basin = connectivity.from_basin
     to_basin = connectivity.to_basin
     _, n = size(flow)
-    for j in 1:n
+    for j = 1:n
         # nzi is non-zero index
         for nzi in nzrange(flow, j)
             i = flow.rowval[nzi]
@@ -439,7 +504,14 @@ function water_balance!(du, u, p, t)
         level_links,
         outflow_links,
         furcations,
+        level_control,
+        infiltration,
+        drainage,
+        forcing,
     ) = p
+
+    du .= 0.0
+    u[u.<0.0] .= 0.0
 
     # Update level and area
     for (index, table) in zip(storage_tables.index, storage_tables.tables)
@@ -457,20 +529,50 @@ function water_balance!(du, u, p, t)
     # Now formulate du
     formulate!(du, precipitation, area)
     formulate!(du, evaporation, area, u)
+    formulate!(du, infiltration)
+    formulate!(du, drainage, area, u)
+    formulate!(du, level_control, u)
     formulate!(du, connectivity)
     return
+end
+
+function update_forcings!(integrator)
+    (; t, p) = integrator
+    forcing = p.forcing
+    r = searchsorted(forcing.time, unix2datetime(t))
+    current_forcing = @view forcing[r, :]
+    for (id, variable, value) in
+        zip(current_forcing.id, current_forcing.variable, current_forcing.value)
+        state_idx = p.connectivity.basin_nodemap[id]
+        if variable == "P"
+            idx = findfirst(==(state_idx), p.precipitation.index)
+            p.precipitation.value[idx] = value
+        elseif variable == "E_pot"
+            idx = findfirst(==(state_idx), p.evaporation.index)
+            p.evaporation.value[idx] = value
+        elseif variable == "drainage"
+            idx = findfirst(==(state_idx), p.drainage.index)
+            p.drainage.value[idx] = value
+        elseif variable == "infiltration"
+            idx = findfirst(==(state_idx), p.infiltration.index)
+            p.infiltration.value[idx] = value
+        else
+            # TODO throw an error here, once we added missing parameters like drainage
+        end
+    end
+    return nothing
 end
 
 ##
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
 config = Dict(
-    "node" => "test/data/lhm/node.arrow",
-    "edge" => "test/data/lhm/edge.arrow",
-    "forcing" => "test/data/lhm/forcing.arrow",
-    "profile" => "test/data/lhm/profile.arrow",
-    "state" => "test/data/lhm/state.arrow",
-    "static" => "test/data/lhm/static.arrow",
+    "node" => "../data/node.arrow",
+    "edge" => "../data/edge.arrow",
+    "forcing" => "../data/forcing.arrow",
+    "profile" => "../data/profile.arrow",
+    "state" => "../data/state.arrow",
+    "static" => "../data/static.arrow",
 )
 
 node = DataFrame(read_table(config["node"]))
@@ -482,45 +584,20 @@ forcing = DataFrame(read_table(config["forcing"]))
 
 ##
 
-# find the range of the current timestep, and the associated parameter indices,
-# and update all the corresponding parameter values
-# captures forcing
-function update_forcings!(integrator)
-    (; t, p) = integrator
-    r = searchsorted(forcing.time, unix2datetime(t))
-    current_forcing = @view forcing[r, :]
-    for (id, variable, value) in
-        zip(current_forcing.id, current_forcing.variable, current_forcing.value)
-        if variable == "P"
-            state_idx = p.connectivity.basin_nodemap[id]
-            idx = findfirst(==(state_idx), p.precipitation.index)
-            p.precipitation.value[idx] = value
-        elseif variable == "E_pot"
-            state_idx = p.connectivity.basin_nodemap[id]
-            idx = findfirst(==(state_idx), p.evaporation.index)
-            p.evaporation.value[idx] = value
-        else
-            # TODO throw an error here, once we added missing parameters like drainage
-        end
-    end
-    return nothing
-end
-
+parameters = create_parameters(node, edge, profile, static, forcing);
 used_time_uniq = unique(forcing.time)
 forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
-
-parameters = create_parameters(node, edge, profile);
-u0 = fill(100.0, length(parameters.area))
+u0 = ones(length(parameters.area)) .* 10.0
 t0 = datetime2unix(DateTime(2019))
-tspan = (t0, t0 + 3600.0)
+tspan = (t0, t0 + 3600.0 * 24 * 365.0 * 2)
 
 problem = ODEProblem(water_balance!, u0, tspan, parameters)
-sol = solve(problem; abstol = 1.0, callback = forcing_cb)
+sol = solve(problem, Euler(), dt = 3600.0, callback = forcing_cb)
 
 ##
 
-time = sol.t
+time = unix2datetime.(sol.t)
 states = reduce(vcat, transpose.(sol.u))
-plot(time, states[:, 1])
+plot(time, states[:, end])
 
 ##
