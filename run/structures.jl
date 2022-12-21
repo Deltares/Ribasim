@@ -1,5 +1,6 @@
 ##
 using Arrow
+using BenchmarkTools
 using Dates
 using DataFrames
 using Dictionaries
@@ -143,7 +144,7 @@ struct Parameters
     level_control::LevelControl
     infiltration::Infiltration
     drainage::Drainage
-    forcing::DataFrame
+    forcing::Dict{DateTime,Any}
 end
 
 """
@@ -366,6 +367,9 @@ function create_parameters(node, edge, profile, static, forcing)
     furcations = create_furcations(node, edge, nodemap, connection_map)
     level_control = create_level_control(static, edge, basin_nodemap)
 
+    grouped = groupby(forcing, :time)
+    timed_forcing = Dict([k[1] for k in keys(grouped)] .=> collect(grouped))
+
     return Parameters(
         connectivity,
         storage_tables,
@@ -379,7 +383,7 @@ function create_parameters(node, edge, profile, static, forcing)
         level_control,
         infiltration,
         drainage,
-        forcing,
+        timed_forcing,
     )
 end
 
@@ -460,7 +464,8 @@ function formulate!(du, infiltration::Infiltration, area, u)
         a = area[index]
         depth = u[index] / a
         f = min(depth, 0.1) / 0.1
-        du[index] -= f * value
+        maxvalue = min(value, 0.1 * a)
+        du[index] -= f * maxvalue
     end
     return
 end
@@ -529,8 +534,8 @@ function water_balance!(du, u, p, t)
     # Now formulate du
     formulate!(du, precipitation, area)
     formulate!(du, evaporation, area, u)
-    formulate!(du, infiltration)
-    formulate!(du, drainage, area, u)
+    formulate!(du, infiltration, area, u)
+    formulate!(du, drainage)
     formulate!(du, level_control, u)
     formulate!(du, connectivity)
     return
@@ -543,17 +548,20 @@ function update_forcings!(integrator)
     current_forcing = @view forcing[r, :]
     for (id, variable, value) in
         zip(current_forcing.id, current_forcing.variable, current_forcing.value)
-        state_idx = p.connectivity.basin_nodemap[id]
         if variable == "P"
+            state_idx = p.connectivity.basin_nodemap[id]
             idx = findfirst(==(state_idx), p.precipitation.index)
             p.precipitation.value[idx] = value
         elseif variable == "E_pot"
+            state_idx = p.connectivity.basin_nodemap[id]
             idx = findfirst(==(state_idx), p.evaporation.index)
             p.evaporation.value[idx] = value
         elseif variable == "drainage"
+            state_idx = p.connectivity.basin_nodemap[id]
             idx = findfirst(==(state_idx), p.drainage.index)
             p.drainage.value[idx] = value
         elseif variable == "infiltration"
+            state_idx = p.connectivity.basin_nodemap[id]
             idx = findfirst(==(state_idx), p.infiltration.index)
             p.infiltration.value[idx] = value
         else
@@ -563,8 +571,92 @@ function update_forcings!(integrator)
     return nothing
 end
 
+
+"""
+This should work as a function barrier to avoid slow dispatch on the dataframe.
+"""
+function update_forcing!(forcing, ids, values, basin_nodemap)
+    for (id, value) in zip(ids, values)
+        state_idx = basin_nodemap[id]
+        forcing.value[state_idx] = value
+    end
+    return
+end
+
+
+function update_forcings2!(integrator)
+    (; t, p) = integrator
+    df = p.forcing[unix2datetime(t)]
+    basin_nodemap = p.connectivity.basin_nodemap
+
+    for (var, forcing) in zip(
+        ("P", "E_pot", "drainage", "infiltration"),
+        (p.precipitation, p.evaporation, p.drainage, p.infiltration),
+    )
+        vardf = filter(:variable => v -> v == var, df; view = true)
+        update_forcing!(forcing, vardf.id, vardf.value, basin_nodemap)
+    end
+    return
+end
+
 ##
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
+
+
+function create_output(solution, node, basin_nodemap)
+    # Do not reorder u. The keys of basin_nodemap are always in the right
+    # order, as the values of basin_nodemap are strictly 1:n. Set the geometry
+    # in the right order.
+
+    time = unix2datetime.(solution.t)
+    ntime = length(time)
+    external_id = [k for k in keys(basin_nodemap)]
+    nnode = length(external_id)
+    lookup = Dictionary(node.id, node.geometry)
+    geometry = [lookup[id] for id in external_id]
+    x = [p[1] for p in geometry]
+    y = [p[2] for p in geometry]
+
+    output = DataFrame(
+        x = repeat(x, outer = ntime),
+        y = repeat(y, outer = ntime),
+        id = repeat(external_id, outer = ntime),
+        time = repeat(time, inner = nnode),
+        storage = reduce(vcat, solution.u),
+    )
+    return output
+end
+
+function initialize(config, t0, duration)
+    node = DataFrame(read_table(config["node"]))
+    edge = DataFrame(read_table(config["edge"]))
+    static = DataFrame(read_table(config["static"]))
+    profile = DataFrame(read_table(config["profile"]))
+    forcing = DataFrame(read_table(config["forcing"]))
+    parameters = create_parameters(node, edge, profile, static, forcing)
+
+    used_time_uniq = unique(forcing.time)
+    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings2!)
+    u0 = ones(length(parameters.area)) .* 10.0
+    tspan = (t0, t0 + duration)
+
+    problem = ODEProblem(water_balance!, u0, tspan, parameters)
+    return problem, forcing_cb
+end
+
+function run!(problem, forcing_cb, dt)
+    sol = solve(problem, Euler(), dt = dt, callback = forcing_cb, save_everystep = false)
+    return sol
+end
+
+function write_output(path, sol, parameters, node)
+    output = create_output(sol, node, parameters.connectivity.basin_nodemap)
+    Arrow.write(path, output)
+    return output
+end
+
+
+##
 
 config = Dict(
     "node" => "../data/node.arrow",
@@ -574,30 +666,26 @@ config = Dict(
     "state" => "../data/state.arrow",
     "static" => "../data/static.arrow",
 )
-
 node = DataFrame(read_table(config["node"]))
-edge = DataFrame(read_table(config["edge"]))
-state = DataFrame(read_table(config["state"]))
-static = DataFrame(read_table(config["static"]))
-profile = DataFrame(read_table(config["profile"]))
-forcing = DataFrame(read_table(config["forcing"]))
-
-##
-
-parameters = create_parameters(node, edge, profile, static, forcing);
-used_time_uniq = unique(forcing.time)
-forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!)
-u0 = ones(length(parameters.area)) .* 10.0
 t0 = datetime2unix(DateTime(2019))
-tspan = (t0, t0 + 3600.0 * 24 * 365.0 * 2)
+duration = 3600.0 * 24 * 365.0 * 2
+dt = 3600.0 * 12
 
-problem = ODEProblem(water_balance!, u0, tspan, parameters)
-sol = solve(problem, Euler(), dt = 3600.0, callback = forcing_cb)
-
-##
-
-time = unix2datetime.(sol.t)
-states = reduce(vcat, transpose.(sol.u))
-plot(time, states[:, end])
+problem, callback = initialize(config, t0, duration)
+solution = run!(problem, callback, dt)
+output = write_output("output.arrow", solution, problem.p, node)
 
 ##
+
+hupsel = filter(:id => id -> id == 14908, output)
+plot(hupsel.time, hupsel.storage)
+
+##
+# Benchmark
+
+@btime problem, callback = initialize(config, t0, duration);
+
+dt = 3600.0 * 24
+solution = run!(problem, callback, dt);
+@btime output = write_output("output.arrow", solution, problem.p, node);
+output = write_output("output.arrow", solution, problem.p, node);
