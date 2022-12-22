@@ -24,6 +24,7 @@ struct Connectivity
     to_basin::BitVector  # sized nnz
     nodemap::Dictionary{Int, Int}
     basin_nodemap::Dictionary{Int, Int}
+    inverse_basin_nodemap::Dictionary{Int, Int}
     connection_map::Dictionary{Tuple{Int, Int}, Int}
     node_to_basin::Dictionary{Int, Int}
 end
@@ -37,6 +38,7 @@ Requirements:
 struct Precipitation
     index::Vector{Int}
     value::Vector{Float64}
+    total::Vector{Float64}
 end
 
 """
@@ -66,6 +68,7 @@ Requirements:
 struct Evaporation
     index::Vector{Int}
     value::Vector{Float64}
+    total::Vector{Float64}
 end
 
 """
@@ -121,11 +124,13 @@ end
 struct Infiltration
     index::Vector{Int}
     value::Vector{Float64}
+    total::Vector{Float64}
 end
 
 struct Drainage
     index::Vector{Int}
     value::Vector{Float64}
+    total::Vector{Float64}
 end
 
 struct Parameters
@@ -133,6 +138,7 @@ struct Parameters
     storage_tables::StorageTables
     area::Vector{Float64}
     level::Vector{Float64}
+    storage_diff::Vector{Float64}
     precipitation::Precipitation
     evaporation::Evaporation
     level_links::LevelLinks
@@ -181,17 +187,19 @@ function create_connection_map(flow)
 end
 
 function create_connectivity(node, edge)
-    # nodemap: external ID to flow graph ID
-    # inverse_nodemap: flow graph ID to external ID
-    # basin_nodemap: external ID to state ID
-    # connection_map: (flow graph ID1, flow graph ID2) to non-zero index in sparse matrix.
-    # node_to_basin: flow graph ID to state ID
+    # nodemap: external ID to flow graph index
+    # inverse_nodemap: flow graph index to external ID
+    # basin_nodemap: external ID to state index
+    # inverse_basin_nodemap: state index to external ID
+    # connection_map: (flow graph index1, flow graph index2) to non-zero index in sparse matrix.
+    # node_to_basin: flow graph index to state index
     g, nodemap = graph(edge)
     inverse_nodemap = Dictionary(values(nodemap), keys(nodemap))
     basin_nodemap = create_basin_nodemap(node)
+    inverse_basin_nodemap = Dictionary(values(basin_nodemap), keys(basin_nodemap))
     # Skip toposort for now, only a single set of bifurcations.
-    #toposort = topological_sort_by_dfs(g)
-    #nodemap = Dictionary(keys(vxdict), toposort)
+    # toposort = topological_sort_by_dfs(g)
+    # nodemap = Dictionary(keys(vxdict), toposort)
 
     I = Int[]
     J = Int[]
@@ -215,6 +223,7 @@ function create_connectivity(node, edge)
         to_basin,
         nodemap,
         basin_nodemap,
+        inverse_basin_nodemap,
         connection_map,
         node_to_basin,
     )
@@ -352,10 +361,11 @@ function create_parameters(node, edge, profile, static, forcing)
     n = length(basin_nodemap)
     area = zeros(n)
     level = zeros(n)
-    precipitation = Precipitation(1:n, zeros(n))
-    evaporation = Evaporation(1:n, zeros(n))
-    infiltration = Infiltration(1:n, zeros(n))
-    drainage = Drainage(1:n, zeros(n))
+    storage_diff = zeros(n)
+    precipitation = Precipitation(1:n, zeros(n), zeros(n))
+    evaporation = Evaporation(1:n, zeros(n), zeros(n))
+    infiltration = Infiltration(1:n, zeros(n), zeros(n))
+    drainage = Drainage(1:n, zeros(n), zeros(n))
 
     storage_tables = create_storage_tables(profile, basin_nodemap)
     level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
@@ -372,6 +382,7 @@ function create_parameters(node, edge, profile, static, forcing)
         storage_tables,
         area,
         level,
+        storage_diff,
         precipitation,
         evaporation,
         level_links,
@@ -408,10 +419,10 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, level_links::LevelLinks, u)
+function formulate!(flow, level_links::LevelLinks, level)
     (; index_a, index_b, connection_index, conductance) = level_links
     for (a, b, nzindex, c) in zip(index_a, index_b, eachcol(connection_index), conductance)
-        q = c * u[a] - u[b]
+        q = c * level[a] - level[b]
         flow.nzval[nzindex[1]] = q
         flow.nzval[nzindex[2]] = q
     end
@@ -511,7 +522,6 @@ function water_balance!(du, u, p, t)
     ) = p
 
     du .= 0.0
-    u[u .< 0.0] .= 0.0
 
     # Update level and area
     for (index, table) in zip(storage_tables.index, storage_tables.tables)
@@ -522,7 +532,7 @@ function water_balance!(du, u, p, t)
     # First formulate intermediate flows
     flow = connectivity.flow
     flow.nzval .= 0.0
-    formulate!(flow, level_links, u)
+    formulate!(flow, level_links, level)
     formulate!(flow, outflow_links, u)
     formulate!(flow, furcations)
 
@@ -533,6 +543,15 @@ function water_balance!(du, u, p, t)
     formulate!(du, drainage)
     formulate!(du, level_control, u)
     formulate!(du, connectivity)
+
+    # Negative storage musn't decrease, based on Shampine's et. al. advice
+    # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
+    for i in eachindex(u)
+        if u[i] < 0
+            du[i] = max(du[i], 0.0)
+        end
+    end
+
     return nothing
 end
 
@@ -592,6 +611,56 @@ function update_forcings2!(integrator)
     return nothing
 end
 
+function save_waterbalance!(integrator)
+    (; u, t, p) = integrator
+    (; connectivity, storage_diff, precipitation, evaporation, infiltration, drainage) = p
+    (; inverse_basin_nodemap) = connectivity
+    time = unix2datetime(t)
+
+    variable = "storage"
+    for i in eachindex(storage_diff)
+        id = inverse_basin_nodemap[i]
+        value = storage_diff[i]
+        push!(wbal, (; time, id, variable, value))
+        storage_diff[i] = 0.0
+    end
+
+    variable = "precipitation"
+    for i in eachindex(precipitation.total)
+        id = inverse_basin_nodemap[precipitation.index[i]]
+        value = precipitation.total[i]
+        push!(wbal, (; time, id, variable, value))
+        precipitation.total[i] = 0.0
+    end
+
+    variable = "evaporation"
+    for i in eachindex(evaporation.total)
+        id = inverse_basin_nodemap[evaporation.index[i]]
+        value = evaporation.total[i]
+        push!(wbal, (; time, id, variable, value))
+        evaporation.total[i] = 0.0
+    end
+
+    variable = "infiltration"
+    for i in eachindex(infiltration.total)
+        id = inverse_basin_nodemap[infiltration.index[i]]
+        value = infiltration.total[i]
+        push!(wbal, (; time, id, variable, value))
+        infiltration.total[i] = 0.0
+    end
+
+    variable = "drainage"
+    for i in eachindex(drainage.total)
+        id = inverse_basin_nodemap[drainage.index[i]]
+        value = drainage.total[i]
+        push!(wbal, (; time, id, variable, value))
+        drainage.total[i] = 0.0
+    end
+
+    # push!(wbal, (;time, id, variable, value))
+    return nothing
+end
+
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
 function create_output(solution, node, basin_nodemap)
@@ -618,6 +687,24 @@ function create_output(solution, node, basin_nodemap)
     return output
 end
 
+# is_storage_empty(u, t, integrator) = any(iszero, u)
+# function set_storage_empty!(integrator)
+#     integrator.u .= 0.0
+#     return nothing
+# end
+
+function track_waterbalance!(u, t, integrator)
+    (; p, tprev, uprev) = integrator
+    dt = t - tprev
+    du = u - uprev
+    p.storage_diff .+= du
+    p.precipitation.total .+= p.precipitation.value .* dt
+    p.evaporation.total .+= p.evaporation.value .* dt
+    p.infiltration.total .+= p.infiltration.value .* dt
+    p.drainage.total .+= p.drainage.value .* dt
+    return nothing
+end
+
 function initialize(config, t0, duration)
     node = DataFrame(read_table(config["node"]))
     edge = DataFrame(read_table(config["edge"]))
@@ -627,16 +714,27 @@ function initialize(config, t0, duration)
     parameters = create_parameters(node, edge, profile, static, forcing)
 
     used_time_uniq = unique(forcing.time)
+    # put new forcing in the parameters
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings2!)
+    # add a single time step's contribution to the water balance step's totals
+    trackwb_cb = FunctionCallingCallback(track_waterbalance!)
+    # save the water balance totals periodically
+    balance_cb = PeriodicCallback(save_waterbalance!, 86400.0 * 2)
+    # isempty_cb = ContinuousCallback(is_storage_empty, set_storage_empty!)
+    # decrease the time step if storages fall dry
+    # isempty_cb = PositiveDomain()
+    # callback = CallbackSet(forcing_cb, trackwb_cb, balance_cb, isempty_cb)
+    callback = CallbackSet(forcing_cb, trackwb_cb, balance_cb)
+
     u0 = ones(length(parameters.area)) .* 10.0
     tspan = (t0, t0 + duration)
 
     problem = ODEProblem(water_balance!, u0, tspan, parameters)
-    return problem, forcing_cb
+    return problem, callback
 end
 
-function run!(problem, forcing_cb, dt)
-    sol = solve(problem, Euler(); dt = dt, callback = forcing_cb, save_everystep = false)
+function run!(problem, callback, dt)
+    sol = solve(problem, Euler(); dt = dt, callback, save_everystep = false)
     return sol
 end
 
@@ -661,9 +759,13 @@ t0 = datetime2unix(DateTime(2019))
 duration = 3600.0 * 24 * 365.0 * 2
 dt = 3600.0 * 12
 
+wbal::DataFrame =
+    DataFrame(; time = DateTime[], id = Int[], variable = String[], value = Float64[])
 problem, callback = initialize(config, t0, duration);
 solution = run!(problem, callback, dt)
 output = write_output("output.arrow", solution, problem.p, node)
+
+wbal
 
 ## postprocessing
 
