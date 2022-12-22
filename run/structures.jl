@@ -12,14 +12,13 @@ using Plots
 
 ##
 
-const Float = Float64
-const Interpolation = LinearInterpolation{Vector{Float}, Vector{Float}, true, Float}
+const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
 
 """
 Store the connectivity information
 """
 struct Connectivity
-    flow::SparseMatrixCSC{Float64, Int64}
+    flow::SparseMatrixCSC{Float64, Int}
     from_basin::BitVector  # sized nnz
     to_basin::BitVector  # sized nnz
     nodemap::Dictionary{Int, Int}
@@ -36,7 +35,7 @@ Requirements:
 """
 struct Precipitation
     index::Vector{Int}
-    value::Vector{Float}
+    value::Vector{Float64}
 end
 
 """
@@ -45,9 +44,9 @@ Requirements:
 * volume, area, level must all be positive and monotonic increasing.
 """
 struct StorageTable
-    volume::Vector{Float}
-    area::Vector{Float}
-    level::Vector{Float}
+    volume::Vector{Float64}
+    area::Vector{Float64}
+    level::Vector{Float64}
     area_interpolation::Interpolation
     level_interpolation::Interpolation
 end
@@ -65,7 +64,7 @@ Requirements:
 """
 struct Evaporation
     index::Vector{Int}
-    value::Vector{Float}
+    value::Vector{Float64}
 end
 
 """
@@ -75,8 +74,8 @@ Requirements:
 * to: must be a (Bifurcation, LSW) node.
 """
 struct OutflowTable
-    volume::Vector{Float}
-    discharge::Vector{Float}
+    volume::Vector{Float64}
+    discharge::Vector{Float64}
     discharge_interpolation::Interpolation
 end
 
@@ -96,7 +95,7 @@ struct LevelLinks
     index_a::Vector{Int}
     index_b::Vector{Int}
     connection_index::Matrix{Int}
-    conductance::Vector{Float}
+    conductance::Vector{Float64}
 end
 
 """
@@ -109,30 +108,30 @@ Requirements:
 struct Furcations
     source_connection::Vector{Int}
     target_connection::Vector{Int}
-    fraction::Vector{Float}
+    fraction::Vector{Float64}
 end
 
 struct LevelControl
     index::Vector{Int}
-    volume::Vector{Float}
-    conductance::Vector{Float}
+    volume::Vector{Float64}
+    conductance::Vector{Float64}
 end
 
 struct Infiltration
     index::Vector{Int}
-    value::Vector{Float}
+    value::Vector{Float64}
 end
 
 struct Drainage
     index::Vector{Int}
-    value::Vector{Float}
+    value::Vector{Float64}
 end
 
 struct Parameters
     connectivity::Connectivity
     storage_tables::StorageTables
-    area::Vector{Float}
-    level::Vector{Float}
+    area::Vector{Float64}
+    level::Vector{Float64}
     precipitation::Precipitation
     evaporation::Evaporation
     level_links::LevelLinks
@@ -319,7 +318,7 @@ function create_furcations(node, edge, nodemap, connection_map)
 
     source_connection = Int[]
     target_connection = Int[]
-    fraction = Float[]
+    fraction = Float64[]
     for (a, b) in zip(source.from_id, source.to_id)
         src = connection_map[(nodemap[a], nodemap[b])]
         for c in grouped[(b,)].to_id
@@ -390,7 +389,7 @@ function formulate!(du, precipitation::Precipitation, area)
     for (index, value) in zip(precipitation.index, precipitation.value)
         du[index] += area[index] * value
     end
-    return
+    return nothing
 end
 
 """
@@ -404,7 +403,7 @@ function formulate!(du, evaporation::Evaporation, area, u)
         f = min(depth, 0.1) / 0.1
         du[index] += f * a * value
     end
-    return
+    return nothing
 end
 
 """
@@ -417,7 +416,7 @@ function formulate!(flow, level_links::LevelLinks, u)
         flow.nzval[nzindex[1]] = q
         flow.nzval[nzindex[2]] = q
     end
-    return
+    return nothing
 end
 
 """
@@ -430,7 +429,7 @@ function formulate!(flow, outflow_links::OutflowLinks, u)
         flow.nzval[nzindex[1]] = q
         flow.nzval[nzindex[2]] = q
     end
-    return
+    return nothing
 end
 
 function formulate!(flow, furcations::Furcations)
@@ -438,7 +437,7 @@ function formulate!(flow, furcations::Furcations)
         zip(furcations.source_connection, furcations.target_connection, furcations.fraction)
         flow[target] = flow[source] * fraction
     end
-    return
+    return nothing
 end
 
 function formulate!(du, level_control::LevelControl, u)
@@ -446,14 +445,14 @@ function formulate!(du, level_control::LevelControl, u)
         zip(level_control.index, level_control.volume, level_control.conductance)
         du[index] += cond * (volume - u[index])
     end
-    return
+    return nothing
 end
 
 function formulate!(du, drainage::Drainage)
     for (index, value) in zip(drainage.index, drainage.value)
         du[index] += value
     end
-    return
+    return nothing
 end
 
 function formulate!(du, infiltration::Infiltration, area, u)
@@ -464,7 +463,7 @@ function formulate!(du, infiltration::Infiltration, area, u)
         maxvalue = min(value, 0.1 * a)
         du[index] -= f * maxvalue
     end
-    return
+    return nothing
 end
 
 function formulate!(du, connectivity::Connectivity)
@@ -492,7 +491,7 @@ function formulate!(du, connectivity::Connectivity)
             end
         end
     end
-    return
+    return nothing
 end
 
 function water_balance!(du, u, p, t)
@@ -535,7 +534,7 @@ function water_balance!(du, u, p, t)
     formulate!(du, drainage)
     formulate!(du, level_control, u)
     formulate!(du, connectivity)
-    return
+    return nothing
 end
 
 function update_forcings!(integrator)
@@ -576,7 +575,7 @@ function update_forcing!(forcing, ids, values, basin_nodemap)
         state_idx = basin_nodemap[id]
         forcing.value[state_idx] = value
     end
-    return
+    return nothing
 end
 
 function update_forcings2!(integrator)
@@ -591,7 +590,7 @@ function update_forcings2!(integrator)
         vardf = filter(:variable => v -> v == var, df; view = true)
         update_forcing!(forcing, vardf.id, vardf.value, basin_nodemap)
     end
-    return
+    return nothing
 end
 
 ##
