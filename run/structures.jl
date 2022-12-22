@@ -1,4 +1,5 @@
-##
+## imports
+
 using Arrow
 using BenchmarkTools
 using Dates
@@ -10,7 +11,7 @@ using SparseArrays
 using DataInterpolations: LinearInterpolation
 using Plots
 
-##
+## types and functions
 
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
 
@@ -383,8 +384,6 @@ function create_parameters(node, edge, profile, static, forcing)
     )
 end
 
-##
-
 function formulate!(du, precipitation::Precipitation, area)
     for (index, value) in zip(precipitation.index, precipitation.value)
         du[index] += area[index] * value
@@ -593,7 +592,6 @@ function update_forcings2!(integrator)
     return nothing
 end
 
-##
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
 function create_output(solution, node, basin_nodemap)
@@ -648,7 +646,7 @@ function write_output(path, sol, parameters, node)
     return output
 end
 
-##
+## run
 
 config = Dict(
     "node" => "../data/node.arrow",
@@ -663,17 +661,16 @@ t0 = datetime2unix(DateTime(2019))
 duration = 3600.0 * 24 * 365.0 * 2
 dt = 3600.0 * 12
 
-problem, callback = initialize(config, t0, duration)
+problem, callback = initialize(config, t0, duration);
 solution = run!(problem, callback, dt)
 output = write_output("output.arrow", solution, problem.p, node)
 
-##
+## postprocessing
 
 hupsel = filter(:id => id -> id == 14908, output)
 plot(hupsel.time, hupsel.storage)
 
-##
-# Benchmark
+## benchmark
 
 @btime problem, callback = initialize(config, t0, duration);
 
