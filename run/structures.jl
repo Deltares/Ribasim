@@ -13,19 +13,19 @@ using Plots
 ##
 
 const Float = Float64
-const Interpolation = LinearInterpolation{Vector{Float},Vector{Float},true,Float}
+const Interpolation = LinearInterpolation{Vector{Float}, Vector{Float}, true, Float}
 
 """
 Store the connectivity information
 """
 struct Connectivity
-    flow::SparseMatrixCSC{Float64,Int64}
+    flow::SparseMatrixCSC{Float64, Int64}
     from_basin::BitVector  # sized nnz
     to_basin::BitVector  # sized nnz
-    nodemap::Dictionary{Int,Int}
-    basin_nodemap::Dictionary{Int,Int}
-    connection_map::Dictionary{Tuple{Int,Int},Int}
-    node_to_basin::Dictionary{Int,Int}
+    nodemap::Dictionary{Int, Int}
+    basin_nodemap::Dictionary{Int, Int}
+    connection_map::Dictionary{Tuple{Int, Int}, Int}
+    node_to_basin::Dictionary{Int, Int}
 end
 
 """
@@ -112,13 +112,11 @@ struct Furcations
     fraction::Vector{Float}
 end
 
-
 struct LevelControl
     index::Vector{Int}
     volume::Vector{Float}
     conductance::Vector{Float}
 end
-
 
 struct Infiltration
     index::Vector{Int}
@@ -129,7 +127,6 @@ struct Drainage
     index::Vector{Int}
     value::Vector{Float}
 end
-
 
 struct Parameters
     connectivity::Connectivity
@@ -144,7 +141,7 @@ struct Parameters
     level_control::LevelControl
     infiltration::Infiltration
     drainage::Drainage
-    forcing::Dict{DateTime,Any}
+    forcing::Dict{DateTime, Any}
 end
 
 """
@@ -154,7 +151,7 @@ TODO: deal with isolated nodes: add those as separate vertices at the end.
 """
 function graph(edge)
     vxset = unique(vcat(edge.from_id, edge.to_id))
-    vxdict = Dict{Int,Int}()
+    vxdict = Dict{Int, Int}()
     vxdict = Dictionary(vxset, 1:length(vxset))
 
     n_v = length(vxset)
@@ -476,7 +473,7 @@ function formulate!(du, connectivity::Connectivity)
     from_basin = connectivity.from_basin
     to_basin = connectivity.to_basin
     _, n = size(flow)
-    for j = 1:n
+    for j in 1:n
         # nzi is non-zero index
         for nzi in nzrange(flow, j)
             i = flow.rowval[nzi]
@@ -516,7 +513,7 @@ function water_balance!(du, u, p, t)
     ) = p
 
     du .= 0.0
-    u[u.<0.0] .= 0.0
+    u[u .< 0.0] .= 0.0
 
     # Update level and area
     for (index, table) in zip(storage_tables.index, storage_tables.tables)
@@ -571,7 +568,6 @@ function update_forcings!(integrator)
     return nothing
 end
 
-
 """
 This should work as a function barrier to avoid slow dispatch on the dataframe.
 """
@@ -582,7 +578,6 @@ function update_forcing!(forcing, ids, values, basin_nodemap)
     end
     return
 end
-
 
 function update_forcings2!(integrator)
     (; t, p) = integrator
@@ -602,7 +597,6 @@ end
 ##
 read_table(entry::AbstractString) = Arrow.Table(read(entry))
 
-
 function create_output(solution, node, basin_nodemap)
     # Do not reorder u. The keys of basin_nodemap are always in the right
     # order, as the values of basin_nodemap are strictly 1:n. Set the geometry
@@ -617,11 +611,11 @@ function create_output(solution, node, basin_nodemap)
     x = [p[1] for p in geometry]
     y = [p[2] for p in geometry]
 
-    output = DataFrame(
-        x = repeat(x, outer = ntime),
-        y = repeat(y, outer = ntime),
-        id = repeat(external_id, outer = ntime),
-        time = repeat(time, inner = nnode),
+    output = DataFrame(;
+        x = repeat(x; outer = ntime),
+        y = repeat(y; outer = ntime),
+        id = repeat(external_id; outer = ntime),
+        time = repeat(time; inner = nnode),
         storage = reduce(vcat, solution.u),
     )
     return output
@@ -645,7 +639,7 @@ function initialize(config, t0, duration)
 end
 
 function run!(problem, forcing_cb, dt)
-    sol = solve(problem, Euler(), dt = dt, callback = forcing_cb, save_everystep = false)
+    sol = solve(problem, Euler(); dt = dt, callback = forcing_cb, save_everystep = false)
     return sol
 end
 
@@ -654,7 +648,6 @@ function write_output(path, sol, parameters, node)
     Arrow.write(path, output)
     return output
 end
-
 
 ##
 
