@@ -73,7 +73,12 @@ begin
         id = fractional_edge.from_id
         from_lsw = idmap[id]
         to_lsw = idmap[fractional_edge.to_id]
-        value = only(@subset(lswrouting, :lsw_from == from_lsw, :lsw_to == to_lsw)).fraction
+        subrouting = @subset(lswrouting, :lsw_from == from_lsw, :lsw_to == to_lsw)
+        if nrow(subrouting) != 1
+            value = 1.0
+        else
+            value = only(subrouting).fraction
+        end
         push!(static, (; id, variable = string("fraction_", i), value))
     end
     # Sort by ID, so we can searchsorted to find each node's data

@@ -244,7 +244,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         # TODO use input_idxs rather than parse_paramsyms
         sim, input_idxs = structural_simplify(sys, (; inputs, outputs = []))
 
-        prob = ODEProblem(sim, [], tspan; sparse = true)
+        prob = ODAEProblem(sim, [], tspan; sparse = true)
         if haskey(config, "cache")
             @info "Caching initialized problem" path = config["cache"]
             open(config["cache"], "w") do io
