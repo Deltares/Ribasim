@@ -1,4 +1,5 @@
 # Backported from Julia 1.9
+# TODO Doesn't support dev'd modules
 function pkgversion(m::Module)
     rootmodule = Base.moduleroot(m)
     pkg = Base.PkgId(rootmodule)
@@ -29,20 +30,57 @@ function inverse(d::Dict{K, V}) where {K, V}
 end
 
 """
-    isolated_nodegroups(edges)
+    isolated_nodegroups(edges; cyclic=false)
 
 Return a list of lists of isolated node groups, based on the edge table.
+When `cyclic` is true, only the cycles of the isolated node groups are returned.
 """
-function isolated_nodegroups(edges)
+function isolated_nodegroups(edges; cyclic = false)
     g, vxdict = graph(edges)
     xvdict = inverse(vxdict)
-    subgraphs = connected_components(g)
+    subgraphs = cyclic ? cycle_basis(g) : connected_components(g)
     for sub in subgraphs
         for (i, node) in enumerate(sub)
             sub[i] = xvdict[node]
         end
     end
     return sort!(subgraphs; by = length, rev = true)
+end
+
+"""
+    findsortedfirst(x, i)
+
+Return the index of the first element in `x` that is equal to `i`, or `length(x) + 1`.
+Like searchsortedfirst, but only for matching elements.
+"""
+function findsortedfirst(x, i)
+    index = searchsortedfirst(x, i)
+    if index > lastindex(x) || x[index] != i
+        return length(x) + 1
+    else
+        return index
+    end
+end
+
+"""
+    findnodegroups(ids, ng)
+
+Given a list of node `ids` and nodegroups `ng` (from `isolated_nodegroups`) return a
+a unique isolated group number for each id. Returns zero for ids not in any group.
+"""
+function findnodegroups(ids, ng)
+    nids = reduce(vcat, ng)
+    gids = zeros(Int, length(nids))
+    i = 1
+    for (gi, nodes) in enumerate(ng)
+        gids[i:(i + length(nodes) - 1)] .= gi
+        i += length(nodes)
+    end
+    p = sortperm(nids)
+    nids = nids[p]
+    gids = gids[p]
+    push!(gids, 0)
+    return gids[findsortedfirst.(Ref(nids), ids)]
 end
 
 """
