@@ -1,7 +1,7 @@
 "Load all Arrow input data to SubDataFrames that are filtered for used IDs"
 function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
-    node = DataFrame(read_table(config["node"]))
-    edge = DataFrame(read_table(config["edge"]))
+    node = DataFrame(read_table(config["node"]; schema = NodeV1SchemaVersion))
+    edge = DataFrame(read_table(config["edge"]; schema = EdgeV1SchemaVersion))
     state = DataFrame(read_table(config["state"]))
     static = DataFrame(read_table(config["static"]))
     profile = DataFrame(read_table(config["profile"]))

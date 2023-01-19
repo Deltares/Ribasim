@@ -59,11 +59,19 @@ end
 # Read into memory for now with read, to avoid locking the file, since it mmaps otherwise.
 # We could pass Mmap.mmap(path) ourselves and make sure it gets closed, since Arrow.Table
 # does not have an io handle to close.
-read_table(entry::AbstractString) = Arrow.Table(read(entry))
+_read_table(entry::AbstractString) = Arrow.Table(read(entry))
+_read_table(entry) = entry
 
-function read_table(entry)
-    @assert Tables.istable(entry)
-    return entry
+function read_table(entry; schema = nothing)
+    table = _read_table(entry)
+    @assert Tables.istable(table)
+    if !isnothing(schema)
+        sv = schema()
+        validate(Tables.schema(table), sv)
+        R = Legolas.record_type(sv)
+        foreach(R, Tables.rows(table))  # construct each row
+    end
+    return DataFrame(table)
 end
 
 "Create an extra column in the forcing which is 0 or the index into the system parameters"
