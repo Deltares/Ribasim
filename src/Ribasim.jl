@@ -14,8 +14,7 @@ using Dictionaries
 using Graphs
 using DataInterpolations: LinearInterpolation
 using DiffEqCallbacks
-import Legolas
-using Legolas: @schema, @version, validate
+using Legolas: Legolas, @schema, @version, validate
 using ModelingToolkit
 using ModelingToolkit: getname, renamespace
 using ModelingToolkitStandardLibrary.Blocks
