@@ -1,0 +1,61 @@
+name: docs
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  publish:
+    name: Julia ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        version:
+          - "1.8" # make sure to keep this in sync with _quarto.yml
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+
+      # setup Python / Jupyter
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - run: pip install jupyter
+
+      - name: Install IJulia
+        run: julia -e 'using Pkg; Pkg.add("IJulia")'
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Check Quarto kernels
+        run: quarto check jupyter
+
+      - name: Render Quarto Project
+        run: "quarto render docs --to html --execute"
+
+      - name: Publish Quarto Project
+        if: github.event_name != 'pull_request'
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          path: docs
+          render: false
+          target: gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

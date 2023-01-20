@@ -5,7 +5,7 @@ using DataFrames
 import BasicModelInterface as BMI
 using SciMLBase
 
-datadir = normpath(@__DIR__, "data")
+datadir = normpath(@__DIR__, "..", "data")
 toml_path = normpath(@__DIR__, "testrun.toml")
 
 @testset "allocation_V" begin
@@ -15,7 +15,7 @@ toml_path = normpath(@__DIR__, "testrun.toml")
 
     # Load dummmy forcing
     df = CSV.read(
-        normpath(@__DIR__, "data/dummyforcing_151358_V.csv"),
+        normpath(datadir, "dummyforcing_151358_V.csv"),
         DataFrame;
         stringtype = String,
         strict = true,
