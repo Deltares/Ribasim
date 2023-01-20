@@ -20,14 +20,14 @@ saveat = 86400.0
 ids = [14908, 14909, 14910, 14784]
 # ids = [1, 2, 3]  # one P
 
-forcing = "../test/data/lhm/forcing.arrow"
-state = "../test/data/lhm/state.arrow"
-static = "../test/data/lhm/static.arrow"
-profile = "../test/data/lhm/profile.arrow"
-node = "../test/data/lhm/node.arrow"
-edge = "../test/data/lhm/edge.arrow"
+forcing = "../data/lhm/forcing.arrow"
+state = "../data/lhm/state.arrow"
+static = "../data/lhm/static.arrow"
+profile = "../data/lhm/profile.arrow"
+node = "../data/lhm/node.arrow"
+edge = "../data/lhm/edge.arrow"
 
-waterbalance = "../test/data/lhm/waterbalance.arrow"
+waterbalance = "../data/lhm/waterbalance.arrow"
 
 # entire district around Hupsel
 # lsw_ids = [
