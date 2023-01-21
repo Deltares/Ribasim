@@ -21,4 +21,5 @@ compile/libribasim/create_lib/libribasim/
 
 .vscode
 JuliaSysimage.dll
+LocalPreferences.toml
 .ipynb_checkpoints
