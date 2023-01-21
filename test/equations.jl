@@ -6,7 +6,7 @@ using Arrow
 import BasicModelInterface as BMI
 using SciMLBase
 
-datadir = normpath(@__DIR__, "data")
+datadir = normpath(@__DIR__, "..", "data")
 
 @testset "qh_relation" begin
     # LSW without forcing
