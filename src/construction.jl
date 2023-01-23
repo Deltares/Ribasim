@@ -1,11 +1,14 @@
 "Load all Arrow input data to SubDataFrames that are filtered for used IDs"
 function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
-    node = DataFrame(read_table(config["node"]; schema = NodeV1SchemaVersion))
-    edge = DataFrame(read_table(config["edge"]; schema = EdgeV1SchemaVersion))
-    state = DataFrame(read_table(config["state"]))
-    static = DataFrame(read_table(config["static"]))
-    profile = DataFrame(read_table(config["profile"]))
-    forcing = DataFrame(read_table(config["forcing"]))
+    # Load data and validate schema + rows for required field tyopes and values
+    node = read_table(config["node"]; schema = NodeV1SchemaVersion)
+    edge = read_table(config["edge"]; schema = EdgeV1SchemaVersion)
+    state = read_table(config["state"])
+    static = read_table(config["static"])
+    profile = read_table(config["profile"])
+    forcing = read_table(config["forcing"])
+
+    # Validate consistency in the data
 
     if haskey(config, "ids")
         ids = config["ids"]::Vector{Int}
