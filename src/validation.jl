@@ -1,5 +1,9 @@
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
+@schema "ribasim.state" State
+@schema "ribasim.static" Static
+@schema "ribasim.profile" Profile
+@schema "ribasim.forcing" Forcing
 
 # TODO Ideally, these are structs in a Module
 # which we can check, and even derive @named connectors
@@ -35,4 +39,60 @@ end
     to_connector::String =
         in(to_connector, to_connectors) ? to_connector :
         error("Unknown to_connector type $to_connector")
+end
+
+@version StateV1 begin
+    id::Int
+    S::Float64
+    C::Float64
+end
+
+@version StaticV1 begin
+    id::Int
+    variable::String = isempty(variable) ? error("Empty variable") : variable
+    value::Float64
+end
+
+@version ProfileV1 begin
+    id::Int
+    volume::Float64
+    area::Float64
+    discharge::Float64
+    level::Float64
+end
+
+@version ForcingV1 begin
+    id::Int
+    time::DateTime
+    variable::String = isempty(variable) ? error("Empty variable") : variable
+    value::Float64
+end
+
+function is_consistent(node, edge, state, static, profile, forcing)
+
+    # Check that node ids exist
+    # TODO Do we need to check the reverse as well? All ids in use?
+    ids = node.id
+    @assert edge.from_id ⊆ ids "Edge from_id not in node ids"
+    @assert edge.to_id ⊆ ids "Edge to_id not in node ids"
+    @assert state.id ⊆ ids "State id not in node ids"
+    @assert static.id ⊆ ids "Static id not in node ids"
+    @assert profile.id ⊆ ids "Profile id not in node ids"
+    @assert forcing.id ⊆ ids "Forcing id not in node ids"
+
+    # Check edges for uniqueness
+    for sub in groupby(edge, [:from_id, :to_id])
+        @assert allunique(sub.from_connector) "Duplicate from_connector in edge $(first(sub.from_id))-$(first(sub.to_id))"
+        @assert allunique(sub.to_connector) "Duplicate from_connector in edge $(first(sub.from_id))-$(first(sub.to_id))"
+    end
+
+    # TODO Check states
+
+    # TODO Check statics
+
+    # TODO Check profiles
+
+    # TODO Check forcings
+
+    true
 end

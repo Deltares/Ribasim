@@ -3,19 +3,22 @@ function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
     # Load data and validate schema + rows for required field tyopes and values
     node = read_table(config["node"]; schema = NodeV1SchemaVersion)
     edge = read_table(config["edge"]; schema = EdgeV1SchemaVersion)
-    state = read_table(config["state"])
-    static = read_table(config["static"])
-    profile = read_table(config["profile"])
-    forcing = read_table(config["forcing"])
+    state = read_table(config["state"]; schema = StateV1SchemaVersion)
+    static = read_table(config["static"]; schema = StaticV1SchemaVersion)
+    profile = read_table(config["profile"]; schema = ProfileV1SchemaVersion)
+    forcing = read_table(config["forcing"]; schema = ForcingV1SchemaVersion)
 
     # Validate consistency in the data
+    @assert is_consistent(node, edge, state, static, profile, forcing) "Data is not consistent"
 
     if haskey(config, "ids")
         ids = config["ids"]::Vector{Int}
     else
         # use all ids in the node table if it is not given in the TOML file
         ids = Vector{Int}(node.id)
+        # ids = reduce(vcat, isolated_nodegroups(edge)[1000:end])
     end
+    @debug "Using $(length(ids)) nodes"
 
     # keep only IDs we use
     node = filter(:id => in(ids), node; view = true)
@@ -32,15 +35,16 @@ function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
     profile = filter(:id => in(ids), profile; view = true)
 
     # for forcing first get the right time range out
+    @assert issorted(forcing.time)
     startrow = searchsortedfirst(forcing.time, starttime)
     endrow = searchsortedlast(forcing.time, endtime)
     forcing = @view forcing[startrow:endrow, :]
     # then keep only IDs we use
     forcing = filter(:id => in(ids), forcing; view = true)
 
+    # TODO Is order required for ids?
     @assert issorted(profile.id)
     @assert issorted(static.id)
-    @assert issorted(forcing.time)
 
     return (; ids, edge, node, state, static, profile, forcing)
 end
@@ -105,7 +109,7 @@ function create_nodes(node, state, profile, static)::Dictionary{Int, ODESystem}
     emptysys = ODESystem(Equation[], t, [], []; name = :empty)
     sysdict = Dictionary{Int, ODESystem}(node.id, fill(emptysys, nrow(node)))
     # create all node systems
-    for node in eachrow(node)
+    for node in Tables.rows(node)
         sys = node_system(node, state, profile, static)
         sysdict[node.id] = sys
     end
@@ -115,7 +119,7 @@ end
 "Add connections along edges."
 function connect_systems(edge, sysdict)::Vector{Equation}
     eqs = Equation[]
-    for edge in eachrow(edge)
+    for edge in Tables.rows(edge)
         from = getproperty(sysdict[edge.from_id], Symbol(edge.from_connector))
         to = getproperty(sysdict[edge.to_id], Symbol(edge.to_connector))
         eq = connect(from, to)

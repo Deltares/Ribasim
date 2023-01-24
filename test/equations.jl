@@ -35,9 +35,9 @@ datadir = normpath(@__DIR__, "data")
         to_node = ["OutflowTable", "OutflowTable", "LSW"],
         to_connector = ["a", "s", "x"],
     )
-    config["static"] = DataFrame(; id = [], variable = [], value = [])
+    config["static"] = DataFrame(; id = Int64[], variable = String[], value = Float64[])
     config["forcing"] =
-        DataFrame(; time = DateTime[], variable = Symbol[], id = Int[], value = Float64[])
+        DataFrame(; time = DateTime[], variable = String[], id = Int[], value = Float64[])
     config["profile"] = DataFrame(;
         id = [id_lsw, id_lsw, id_out, id_out, id_lsw_end, id_lsw_end],
         volume = [0.0, 1e6, 0.0, 1e6, 0.0, 1e6],
@@ -90,8 +90,11 @@ end
         to_node = ["GeneralUser", "GeneralUser", "OutflowTable", "OutflowTable", "LSW"],
         to_connector = ["x", "s", "a", "s", "x"],
     )
-    config["static"] = DataFrame(; id = [], variable = [], value = [])
-    config["forcing"] = normpath(datadir, "lhm/forcing.arrow")
+    config["static"] = DataFrame(; id = Int64[], variable = String[], value = Float64[])
+    config["forcing"] = subset(
+        Ribasim.read_table(normpath(datadir, "lhm/forcing.arrow")),
+        :id => id -> in.(id, Ref(ids)),
+    )
     config["profile"] = DataFrame(;
         id = [14784, 14784, 14908, 14908, 14910, 14910],
         volume = [0.0, 1e8, 0.0, 1e8, 0.0, 1e8],
