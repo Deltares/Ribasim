@@ -170,8 +170,6 @@ of course, more detail requires more parameters.
 
 # Usage
 
-## Installing the compiled executable
-
 Binaries of Ribasim CLI (command-line interface) can be downloaded from
 [ribasim-artifacts](https://github.com/visr/ribasim-artifacts/releases), and are currently
 available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
@@ -186,70 +184,6 @@ This will give the following message:
 Usage: ribasim 'path/to/config.toml'
 ```
 
-:::{.callout-note}
-The binaries are currently not up to date with the latest developments; we suggest
-installing as a Julia package instead.
-:::
-
-## Installing as a Julia package
-
-Ribasim is a [Julia](https://julialang.org/) package, that can be installed using Julia's
-built in package manager, `Pkg`. For more information on how to use `Pkg`, see the
-[Getting Started](https://pkgdocs.julialang.org/v1/getting-started/) page in its documentation.
-
-Since Ribasim is not yet registered in the General registry, you have to install it using the
-full url. Note that we here use `dev` to do a development install.
-
-```julia
-pkg> dev https://github.com/Deltares/Ribasim.jl
-```
-
-This will clone the git repository, put it under your home directory in `.julia/dev/Ribasim`,
-and add the Ribasim package to your project environment. In order to receive updates, you
-have to pull in the latest changes yourself using `git pull`.
-
-Installation may take a while since Pkg is also installing and pre-compiling the dependencies
-of Ribasim.
-
-Once it is done, you can go back the Julia REPL and try to load Ribasim:
-
-```julia
-julia> using Ribasim
-```
-
-If you already have a simulation prepared, you can run it using:
-
-```julia
-julia> Ribasim.run("path/to/config.toml")
-```
-
-Again, there will be considerable latency. For this reason, if you expect to run Ribasim
-a lot, we recommend to:
-
-- Use Ribasim CLI if you only need `Ribasim.run` and don't need to do developments.
-- Adapt a workflow that keeps your session active; the first `Ribasim.run("model.toml")` will
-  take considerably more time than the second one, since more code needs to be compiled.
-- Use a system image as explained in the [developer documentation](#developer.qmd) to reduce latency further
-
-:::{.callout-tip}
-## Tip: Visual Studio Code
-
-There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll
-down to see it. We use and recommend Microsoft's free editor [Visual Studio
-Code](https://code.visualstudio.com/). When combined with the [Julia
-extension](https://www.julia-vscode.org/) it provides a powerful and interactive
-development experience.
-:::
-
-:::{.callout-tip}
-## Tip: Revise.jl
-
-If you plan to make changes to the code of Ribasim, we recommend installing the `Revise.jl`
-package. This package allows you to modify code and use the changes without restarting
-Julia. Install it with `add Revise` from the Pkg REPL. Then create a file called
-`.julia/config/startup.jl`, and put `using Revise` there. This will load Revise every
-time you start a Julia session.
-:::
 
 ## Input and output files
 
