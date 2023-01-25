@@ -91,7 +91,7 @@ Say yes, and a browser tab will open with Jupyter loaded.
 
 ```julia
 julia> using IJulia
-julia> jupyterlab(".")
+julia> jupyterlab(dir=".")
 ```
 
 :::{.callout-tip}
