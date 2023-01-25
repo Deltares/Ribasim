@@ -27,7 +27,7 @@ You can let it start automatically by following these [instructions](https://tim
 ## Install Quarto
 
 Quarto is the publishing system that builds our documentation.
-The installation instructions can be found on their [web page](https://quarto.org/docs/download/).
+The installation instructions can be found on their [web page](https://quarto.org/docs/get-started/).
 
 ## Clone Ribasim
 
@@ -52,7 +52,7 @@ When combined with the [Julia extension](https://www.julia-vscode.org/) it provi
 
 You will want to run the testsuite on a regular basis to check if your changes had unexpected side effects.
 It is also a good way to find out if your development environment is set up correctly.
-In order to run the tests open the Julia REPL and execute the following command:
+While not technically required, it is advised to import Ribasim first to get installation issues early on.
 
 ```julia
 julia> using Ribasim
@@ -62,6 +62,12 @@ Then open the Pkg REPL by typing `]` and execute:
 
 ```julia
 pkg> test
+```
+
+If you are in a different environment that depends on Ribasim (like the `run` environment mentioned [later](./developer.html#run-ribasim-simulations)), you can test Ribasim with the following command:
+
+```julia
+pkg> test Ribasim
 ```
 
 :::{.callout-tip}
@@ -85,8 +91,12 @@ Say yes, and a browser tab will open with Jupyter loaded.
 
 ```julia
 julia> using IJulia
-julia> jupyterlab()
+julia> jupyterlab(".")
 ```
+
+:::{.callout-tip}
+The Jupyter VS Code [extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) allows you to run Jupyter notebooks directly in VS Code.
+:::
 
 ## Run Ribasim simulations
 
