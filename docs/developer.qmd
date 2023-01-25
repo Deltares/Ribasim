@@ -52,7 +52,7 @@ When combined with the [Julia extension](https://www.julia-vscode.org/) it provi
 
 You will want to run the testsuite on a regular basis to check if your changes had unexpected side effects.
 It is also a good way to find out if your development environment is set up correctly.
-While not technically required, it is advised to import Ribasim first to get installation issues early on.
+While not technically required, it is advised to import Ribasim first to catch installation issues early on.
 
 ```julia
 julia> using Ribasim
