@@ -14,6 +14,7 @@ using Dictionaries
 using Graphs
 using DataInterpolations: LinearInterpolation
 using DiffEqCallbacks
+using Legolas: Legolas, @schema, @version, validate
 using ModelingToolkit
 using ModelingToolkit: getname, renamespace
 using ModelingToolkitStandardLibrary.Blocks
@@ -23,6 +24,7 @@ using Serialization: serialize, deserialize
 
 export interpolator, Register, ForwardFill
 
+include("validation.jl")
 include("utils.jl")
 include("modflow.jl")
 include("lib.jl")

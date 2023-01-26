@@ -372,7 +372,7 @@ the given timestamp is reached.
 
 column   | type     | restriction
 -------- | -------- | -----------
-id       | Int      | -
+id       | Int      | sorted
 variable | String   | -
 value    | Float64  | depending on variable
 
