@@ -1,6 +1,6 @@
 "Load all Arrow input data to SubDataFrames that are filtered for used IDs"
 function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
-    # Load data and validate schema + rows for required field tyopes and values
+    # Load data and validate schema + rows for required field types and values
     node = read_table(config["node"]; schema = NodeV1SchemaVersion)
     edge = read_table(config["edge"]; schema = EdgeV1SchemaVersion)
     state = read_table(config["state"]; schema = StateV1SchemaVersion)
@@ -16,7 +16,6 @@ function load_data(config::Dict, starttime::DateTime, endtime::DateTime)
     else
         # use all ids in the node table if it is not given in the TOML file
         ids = Vector{Int}(node.id)
-        # ids = reduce(vcat, isolated_nodegroups(edge)[1000:end])
     end
     @debug "Using $(length(ids)) nodes"
 
