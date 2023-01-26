@@ -992,6 +992,12 @@ git-tree-sha1 = "cef2dd16402718cf5f412e610813e2ec20d94a64"
 uuid = "0fc2ff8b-aaa3-5acd-a817-1944a5e08891"
 version = "0.8.4"
 
+[[deps.Legolas]]
+deps = ["Arrow", "Tables", "UUIDs"]
+git-tree-sha1 = "c835083ce03cb396248bb680b786cd5c31ef03b2"
+uuid = "741b9549-f6ed-4911-9fbf-4a1c0c97f0cd"
+version = "0.5.7"
+
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
@@ -1621,7 +1627,7 @@ uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
 version = "3.5.0"
 
 [[deps.Ribasim]]
-deps = ["Arrow", "BasicModelInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "Graphs", "ModelingToolkit", "ModelingToolkitStandardLibrary", "ModflowInterface", "NCDatasets", "OrdinaryDiffEq", "PlyIO", "SciMLBase", "Serialization", "TOML"]
+deps = ["Arrow", "BasicModelInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "Graphs", "Legolas", "ModelingToolkit", "ModelingToolkitStandardLibrary", "ModflowInterface", "NCDatasets", "OrdinaryDiffEq", "PlyIO", "SciMLBase", "Serialization", "TOML", "Tables"]
 path = ".."
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "0.1.0"
