@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - "1.8" # make sure to keep this in sync with _quarto.yml
+          - "~1.9.0-0" # make sure to keep this in sync with _quarto.yml
         arch:
           - x64
     steps:
@@ -22,6 +22,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/julia-buildpkg@v1
+        env:
+          JULIA_PKG_SERVER: "pkg.julialang.org"
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
@@ -36,13 +38,17 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: pip install jupyter
+      # avoid jupyter-client 8: https://github.com/quarto-dev/quarto-cli/issues/4122
+      - run: pip install jupyter jupyter-client==7.4.9
 
       - name: Install IJulia
         run: julia -e 'using Pkg; Pkg.add("IJulia")'
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Check Quarto install
+        run: quarto check install
 
       - name: Check Quarto kernels
         run: quarto check jupyter

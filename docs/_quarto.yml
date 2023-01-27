@@ -19,5 +19,5 @@ format:
     code-fold: true
 
 bibliography: references.bib
-juypter: julia-1.8
+juypter: julia-1.9
 number-sections: true
