@@ -46,6 +46,9 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
+      - name: Check Quarto kernels
+        run: quarto check jupyter
+
       - name: Render Quarto Project
         run: "quarto render docs --to html --execute"
 
