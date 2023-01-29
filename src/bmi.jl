@@ -393,7 +393,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     saveat = get(config, "saveat", [])
     integrator = init(
         prob,
-        TRBDF2();
+        QNDF(autodiff=false);
         progress = true,
         progress_name = "Simulating",
         callback,
