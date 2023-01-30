@@ -21,8 +21,12 @@ using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEq
 using SciMLBase
 using Serialization: serialize, deserialize
+using TimerOutputs
 
 export interpolator, Register, ForwardFill
+
+const to = TimerOutput()
+TimerOutputs.complement!()
 
 include("validation.jl")
 include("utils.jl")
