@@ -25,6 +25,7 @@ testdata("static.arrow", "lhm/static.arrow")
 
     # @safetestset "Water allocation" begin include("alloc.jl") end
     @safetestset "Equations" begin
+        include("../utils/testdata.jl")  # to include Teamcity specific utils
         include("equations.jl")
     end
 
