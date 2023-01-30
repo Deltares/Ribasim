@@ -5,8 +5,6 @@
 """
     FluidPort(; name, h = 0.0, Q = 0.0, C = 0.0)
 
-Similar to FluidPort, but leaving out concentration for now.
-
 - h [m]: hydraulic head above reference level
 - Q [m³ s⁻¹]: volumetric flux
 - C [kg m⁻³]: salinity
@@ -221,47 +219,20 @@ function NoFlowBoundary(; name)
 end
 
 # Fractional bifurcation
-function Bifurcation(; name, fractions...)
-    # the length of fractions determines the number of outflows
+function Bifurcation(; name, fraction_1, fraction_2)
     @named src = FluidPort()
+    @named dst_1 = FluidPort()
+    @named dst_2 = FluidPort()
+    pars = @parameters(fraction_1 = fraction_1, fraction_2 = fraction_2)
 
-    if length(fractions) < 2
-        @error "Invalid Bifurcation, must have at least two outflows" name fractions
-        error("Invalid Bifurcation")
-    end
-    if !(sum(values(fractions)) ≈ 1)
-        @error "Invalid Bifurcation, fractions must add up to 1" name fractions
-        error("Invalid Bifurcation")
-    end
-
-    ports = [src]
-    eqs = Equation[src.C ~ instream(src.C)]
-    pars = Num[]
-    for (parname, fraction) in pairs(fractions)
-        # get 2 from :fraction_2, to create connector :dst_2
-        parts = rsplit(String(parname), '_'; limit = 2)
-        @assert parts[1] == "fraction"
-        i = parse(Int, parts[2])
-        port = FluidPort(; name = Symbol(:dst_, i))
-        # from @macroexpand @parameters a = 1.0, to make symbol interpolation easy
-        defaultval = Symbolics.setdefaultval(Sym{Real}(parname), fraction)
-        fracpar = MTK.toparam(
-            Symbolics.wrap(
-                MTK.setmetadata(
-                    defaultval,
-                    Symbolics.VariableSource,
-                    (:parameters, parname),
-                ),
-            ),
-        )
-
-        neweqs = Equation[port.Q ~ fracpar * src.Q, port.C ~ instream(src.C)]
-        push!(ports, port)
-        append!(eqs, neweqs)
-        push!(pars, fracpar)
-    end
-
-    ODESystem(eqs, t, [], pars; systems = ports, name)
+    eqs = Equation[
+        dst_1.Q ~ fraction_1 * src.Q
+        dst_2.Q ~ fraction_2 * src.Q
+        src.C ~ instream(src.C)
+        dst_1.C ~ instream(src.C)
+        dst_2.C ~ instream(src.C)
+    ]
+    ODESystem(eqs, t, [], pars; systems = [src, dst_1, dst_2], name)
 end
 
 function LevelLink(; name, conductance::Real = 0.1)
