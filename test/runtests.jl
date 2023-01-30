@@ -15,8 +15,6 @@ testdata("static.arrow", "lhm/static.arrow")
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin
-        using TestReports
-        recordproperty("name", "Input/Output")  # TODO To check in TeamCity
         include("io.jl")
     end
     @safetestset "Configuration" begin
@@ -25,7 +23,6 @@ testdata("static.arrow", "lhm/static.arrow")
 
     # @safetestset "Water allocation" begin include("alloc.jl") end
     @safetestset "Equations" begin
-        include("../utils/testdata.jl")  # to include Teamcity specific utils
         include("equations.jl")
     end
 

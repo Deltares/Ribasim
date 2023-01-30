@@ -1,4 +1,7 @@
 using Ribasim
+using TestReports
+
+recordproperty("name", "Input/Output")  # TODO To check in TeamCity
 
 @testset "parsename" begin
     test_sym = Symbol(:sys_151358₊agric₊alloc)
