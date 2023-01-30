@@ -1654,7 +1654,7 @@ uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
 version = "3.5.0"
 
 [[deps.Ribasim]]
-deps = ["Arrow", "BasicModelInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "Graphs", "Legolas", "ModelingToolkit", "ModelingToolkitStandardLibrary", "ModflowInterface", "NCDatasets", "OrdinaryDiffEq", "PlyIO", "SciMLBase", "Serialization", "TOML", "Tables"]
+deps = ["Arrow", "BasicModelInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "Graphs", "Legolas", "ModelingToolkit", "ModelingToolkitStandardLibrary", "ModflowInterface", "NCDatasets", "OrdinaryDiffEq", "PlyIO", "SciMLBase", "Serialization", "TOML", "Tables", "TimerOutputs"]
 path = ".."
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "0.1.0"
