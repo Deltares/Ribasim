@@ -1,7 +1,7 @@
 using Ribasim
 
 @testset "config" begin
-    config = Ribasim.parsefile("testrun.toml")
+    config = Ribasim.parsefile(joinpath(@__DIR__, "testrun.toml"))
     @test typeof(config) == Dict{String, Any}
     @test config["update_timestep"] == 86400.0
     @test length(config["ids"]) > 0

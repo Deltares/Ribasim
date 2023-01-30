@@ -1,4 +1,4 @@
-using Ribasim, Test, SafeTestsets, Aqua
+using Ribasim, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../utils/testdata.jl")
 
@@ -20,10 +20,12 @@ testdata("static.arrow", "lhm/static.arrow")
     @safetestset "Configuration" begin
         include("config.jl")
     end
+
     # @safetestset "Water allocation" begin include("alloc.jl") end
     @safetestset "Equations" begin
         include("equations.jl")
     end
+
     @safetestset "Basin" begin
         include("basin.jl")
     end

@@ -211,8 +211,15 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     endtime = DateTime(config["endtime"])
     run_modflow = get(config, "run_modflow", false)::Bool
 
-    (; ids, edge, node, state, static, profile, forcing) =
-        load_data(config, starttime, endtime)
+    @timeit_debug to "Load and validate data" (;
+        ids,
+        edge,
+        node,
+        state,
+        static,
+        profile,
+        forcing,
+    ) = load_data(config, starttime, endtime)
     nodetypes = Dictionary(node.id, node.node)
 
     function allocate!(integrator)
@@ -236,7 +243,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     if haskey(config, "cache") && isfile(config["cache"])
         @info "Using cached problem" path = config["cache"]
-        prob = deserialize(config["cache"])
+        @timeit_debug to "Deserialize problem" prob = deserialize(config["cache"])
     else
         sysdict = create_nodes(node, state, profile, static)
         connect_eqs = connect_systems(edge, sysdict)
@@ -250,9 +257,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         @named sys = ODESystem(eqs, t, [], []; systems)
 
         # TODO use input_idxs rather than parse_paramsyms
-        sim, input_idxs = structural_simplify(sys, (; inputs, outputs = []))
+        @timeit_debug to "Structural simplify" sim, input_idxs =
+            structural_simplify(sys, (; inputs, outputs = []))
 
-        prob = ODAEProblem(sim, [], tspan; sparse = true)
+        @timeit_debug to "Setup ODAEProblem" prob =
+            ODAEProblem(sim, [], tspan; sparse = true)
         if haskey(config, "cache")
             @info "Caching initialized problem" path = config["cache"]
             open(config["cache"], "w") do io
@@ -338,7 +347,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         p[infiltration_index] .= rme.basin_infiltration.values ./ 86400.0
     end
 
-    wbal_entries, prev_state = prepare_waterbalance(syms)
+    @timeit_debug to "Prepare waterbalance" wbal_entries, prev_state =
+        prepare_waterbalance(syms)
     waterbalance = DataFrame(;
         time = DateTime[],
         variable = String[],
@@ -383,7 +393,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         save_positions = (false, false),
     )
 
-    callback = if run_modflow
+    @timeit_debug to "Setup callbackset" callback = if run_modflow
         modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
         CallbackSet(forcing_cb, allocation_cb, output_cb, modflow_cb)
     else
@@ -391,7 +401,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     end
 
     saveat = get(config, "saveat", [])
-    integrator = init(
+    @timeit_debug to "Setup integrator" integrator = init(
         prob,
         QNDF(autodiff=false);
         progress = true,

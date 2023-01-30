@@ -5,10 +5,15 @@ using Ribasim: name
 using Arrow
 import BasicModelInterface as BMI
 using SciMLBase
+using TimerOutputs
+
+include("../utils/testdata.jl")  # to include Teamcity specific utils
 
 datadir = normpath(@__DIR__, "..", "data")
 
-@testset "qh_relation" begin
+TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
+
+@timeit_debug to "qh_relation" @testset "qh_relation" begin
     # LSW without forcing
     config = Dict{String, Any}()
     id_lsw = 1
@@ -64,7 +69,12 @@ datadir = normpath(@__DIR__, "..", "data")
     @test diff(S) ≈ -diff(S2)
 end
 
-@testset "forcing_eqs" begin
+show(Ribasim.to)
+println()
+is_running_under_teamcity() && teamcity_message("qh_relation", TimerOutputs.todict(to))
+reset_timer!(Ribasim.to)
+
+@timeit_debug to "forcing_eqs" @testset "forcing_eqs" begin
     config = Dict{String, Any}()
     # 151358 with downstream LSW
     id_lsw = 14908
@@ -130,6 +140,11 @@ end
     @test all(urban_runoff[1:10] .≈ 0.0027895224861111114f0)
     @test all(urban_runoff[11:20] .≈ 0.003847473439814815f0)
 end
+
+show(Ribasim.to)
+println()
+is_running_under_teamcity() && teamcity_message("forcing_eqs", TimerOutputs.todict(to))
+TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 
 # @testset "bifurcation" begin
 
