@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - "~1.9.0-0" # make sure to keep this in sync with _quarto.yml
+          - "1.8" # make sure to keep this in sync with _quarto.yml
         arch:
           - x64
     steps:
