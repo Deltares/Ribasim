@@ -118,7 +118,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         prob = ODEProblem(water_balance!, u0, tspan, parameters)
     end
 
-    @assert issorted(used_time) "time column in forcing must be sorted"
     # this is how often we need to callback
     used_time_uniq = unique(forcing.time)
 
@@ -146,9 +145,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         abstol = 1e-6,
         reltol = 1e-3,
     )
-    # save at least the initial parameter values if none of the callbacks do so already
-    save!(param_hist, integrator.t, integrator.p)
 
+    waterbalance = DataFrame()  # not used at the moment
     return Register(integrator, param_hist, waterbalance)
 end
 
@@ -182,7 +180,6 @@ function run(config::AbstractDict)
         path = config["waterbalance"]
         # create directory if needed
         mkpath(dirname(path))
-        Arrow.write(path, reg.waterbalance)
     end
     return reg
 end
