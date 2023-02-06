@@ -138,7 +138,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         Euler();
-        dt = 3600.0
+        dt = 3600.0,
         progress = true,
         progress_name = "Simulating",
         callback,
