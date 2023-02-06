@@ -16,10 +16,6 @@ function relative_paths!(dict, dir)
     relative_path!(dict, "edge", dir)
     relative_path!(dict, "node", dir)
     relative_path!(dict, "waterbalance", dir)
-    if haskey(dict, "modflow")
-        relative_path!(dict["modflow"], "simulation", dir)
-        relative_path!(dict["modflow"]["models"]["gwf"], "dataset", dir)
-    end
     # Append pkg version to cache filename
     if haskey(dict, "cache")
         v = pkgversion(Ribasim)
@@ -92,46 +88,12 @@ function find_param_index(forcing, p_vars, p_ids)
     return param_index
 end
 
-"Get the indices of modflow-coupled LSWs into the system state vector"
-function find_volume_index(mf_locs, u_vars, u_locs)
-    volume_index = zeros(Int, length(mf_locs))
-
-    for (i, mf_loc) in enumerate(mf_locs)
-        for (j, (u_var, u_loc)) in enumerate(zip(u_vars, u_locs))
-            if (u_var, u_loc) == (Symbol("lsw.S"), mf_loc)
-                volume_index[i] = j
-            end
-        end
-        @assert volume_index[i] != 0
-    end
-    return volume_index
-end
-
-function find_modflow_indices(mf_locs, p_vars, p_locs)
-    drainage_index = zeros(Int, length(mf_locs))
-    infiltration_index = zeros(Int, length(mf_locs))
-
-    for (i, mf_loc) in enumerate(mf_locs)
-        for (j, (p_var, p_loc)) in enumerate(zip(p_vars, p_locs))
-            if (p_var, p_loc) == (Symbol("lsw.drainage"), mf_loc)
-                drainage_index[i] = j
-            elseif (p_var, p_loc) == (Symbol("lsw.infiltration"), mf_loc)
-                infiltration_index[i] = j
-            end
-        end
-        @assert drainage_index[i] != 0
-        @assert infiltration_index[i] != 0
-    end
-    return drainage_index, infiltration_index
-end
-
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # Δt for periodic update frequency, including user horizons
     Δt = Float64(config["update_timestep"])
     starttime = DateTime(config["starttime"])
     endtime = DateTime(config["endtime"])
-    run_modflow = get(config, "run_modflow", false)::Bool
 
     @timeit_debug to "Load and validate data" (;
         ids,
@@ -198,52 +160,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # this is how often we need to callback
     used_time_uniq = unique(used_time)
 
-    if run_modflow
-        # initialize MODFLOW 6 model
-        config_modflow = config["modflow"]
-        Δt_modflow = Float64(config_modflow["timestep"])
-        rme = RibasimModflowExchange(config_modflow, ids)
-
-        # get the index into the system state vector for each coupled LSW
-        mf_locs = collect(keys(rme.basin_volume))
-        u_vars = first.(parsename.(syms))
-        u_locs = last.(parsename.(syms))
-        volume_index = find_volume_index(mf_locs, u_vars, u_locs)
-
-        # similarly for the index into the system parameter vector
-        pmf_vars = first.(parsename.(paramsyms))
-        pmf_locs = last.(parsename.(paramsyms))
-        drainage_index, infiltration_index =
-            find_modflow_indices(mf_locs, pmf_vars, pmf_locs)
-    else
-        rme = nothing
-    end
-
-    # captures volume_index, drainage_index, infiltration_index, rme, tspan
-    function exchange_modflow!(integrator)
-        (; t, u, p) = integrator
-
-        # set basin_volume from Ribasim
-        # mutate the underlying vector, we know the keys are equal
-        rme.basin_volume.values .= u[volume_index]
-
-        # convert basin_volume to modflow levels
-        exchange_ribasim_to_modflow!(rme)
-
-        # run modflow timestep
-        first_step = t == tspan[begin]
-        update!(rme.modflow, first_step)
-
-        # sets basin_infiltration and basin_drainage from modflow
-        exchange_modflow_to_ribasim!(rme)
-
-        # put basin_infiltration and basin_drainage into Ribasim
-        # convert modflow m3/d to Ribasim m3/s, both positive
-        # TODO don't use infiltration and drainage from forcing
-        p[drainage_index] .= rme.basin_drainage.values ./ 86400.0
-        p[infiltration_index] .= rme.basin_infiltration.values ./ 86400.0
-    end
-
     @timeit_debug to "Prepare waterbalance" wbal_entries, prev_state =
         prepare_waterbalance(syms)
     waterbalance = DataFrame(;
@@ -289,12 +205,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         save_positions = (false, false),
     )
 
-    @timeit_debug to "Setup callbackset" callback = if run_modflow
-        modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
-        CallbackSet(forcing_cb, output_cb, modflow_cb)
-    else
-        CallbackSet(forcing_cb, output_cb)
-    end
+    @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, output_cb)
 
     saveat = get(config, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
