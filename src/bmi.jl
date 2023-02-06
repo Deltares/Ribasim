@@ -160,36 +160,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     # this is how often we need to callback
     used_time_uniq = unique(used_time)
 
-    @timeit_debug to "Prepare waterbalance" wbal_entries, prev_state =
-        prepare_waterbalance(syms)
-    waterbalance = DataFrame(;
-        time = DateTime[],
-        variable = String[],
-        location = Int[],
-        value = Float64[],
-    )
-    # captures waterbalance, wbal_entries, prev_state, tspan
-    function write_output!(integrator)
-        (; t, u) = integrator
-        time = unix2datetime(t)
-        first_step = t == tspan[begin]
-        for (; variable, location, index, flip) in Tables.rows(wbal_entries)
-            if variable == "S(t)"
-                S = u[index]
-                if first_step
-                    prev_state[index] = S
-                end
-                value = prev_state[index] - S
-                prev_state[index] = S
-            else
-                value = flip ? -u[index] : u[index]
-                u[index] = 0.0  # reset cumulative back to 0 to get m3 since previous record
-            end
-            record = (; time, variable, location, value)
-            push!(waterbalance, record)
-        end
-    end
-
     # To retain all information, we need to save before and after callbacks that affect the
     # system, meaning we get multiple outputs on the same timestep. Make it configurable
     # to be able to disable callback saving as needed.
@@ -197,15 +167,10 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     save_positions = Tuple(get(config, "save_positions", (true, true)))::Tuple{Bool, Bool}
     forcing_cb =
         PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!; save_positions)
-    Δt_output = Float64(get(config, "output_timestep", 86400.0))
-    output_cb = PeriodicCallback(
-        write_output!,
-        Δt_output;
-        initial_affect = true,
-        save_positions = (false, false),
-    )
+    # add a single time step's contribution to the water balance step's totals
+    trackwb_cb = FunctionCallingCallback(track_waterbalance!)
 
-    @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, output_cb)
+    @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, trackwb_cb)
 
     saveat = get(config, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
