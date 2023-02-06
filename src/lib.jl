@@ -88,24 +88,6 @@ function save!(param_hist::ForwardFill, t::Float64, p::Vector{Float64})
     return param_hist
 end
 
-"""ModelingToolkit.connect, but save both the equations and systems
-to avoid errors when forgetting to match the eqs and systems manually."""
-function join!(
-    eqs::Vector{Equation},
-    systems::Set{ODESystem},
-    sys1::ODESystem,
-    connector1::Symbol,
-    sys2::ODESystem,
-    connector2::Symbol,
-)
-    eq = connect(getproperty(sys1, connector1), getproperty(sys2, connector2))
-    push!(eqs, eq)
-    push!(systems, sys1, sys2)
-    return nothing
-end
-
-parentname(s::Symbol) = Symbol(first(eachsplit(String(s), "₊")))
-
 """
     Register(sys::MTK.AbstractODESystem, integrator::SciMLBase.AbstractODEIntegrator)
 
