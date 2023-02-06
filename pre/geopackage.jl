@@ -1,18 +1,27 @@
-# Starting from a GeoPackage with node and edge layers, add non-spatial tables from
-# the Arrow files to the new layout from https://github.com/Deltares/Ribasim.jl/issues/54
+# Create a GeoPackage from Arrow files according to the new layout from
+# https://github.com/Deltares/Ribasim.jl/issues/54
 
-# The initial GeoPackage was created with these commands
-# ogr2ogr -f GPKG -a_srs EPSG:28992 lhm.gpkg Ribasim\test\data\lhm\node.arrow -nln ribasim_node
-# ogr2ogr -append -a_srs EPSG:28992 lhm.gpkg Ribasim\test\data\lhm\edge.arrow -nln ribasim_edge
+using Dates, Arrow, SQLite, DataFrames, DBInterface, Tables, Dictionaries, GDAL_jll
 
-using Dates, Arrow, SQLite, DataFrames, DBInterface, Tables, Dictionaries
+datadir = "test/data/lhm"
+path_node = normpath(datadir, "node.arrow")
+path_edge = normpath(datadir, "edge.arrow")
+path_arrow = "data/lhm/forcing.arrow"
+forcing_in_geopackage = false
 
-add_forcing = false
-db = SQLite.DB("lhm.gpkg")
-tables = SQLite.tables(db)
-foreach(println, [t.name for t in tables])
+path_gpkg = if forcing_in_geopackage
+    "data/lhm/model_with_forcing.gpkg"
+else
+    "data/lhm/model.gpkg"
+end
 
-datadir = raw"d:\visser_mn\.julia\dev\Ribasim\test\data\lhm"
+# Create a new GeoPackage with node and edge layers from existing Arrow tables
+run(
+    `$(ogr2ogr_path()) -f GPKG -overwrite -a_srs EPSG:28992 $path_gpkg $path_node -nln ribasim_node`,
+)
+run(`$(ogr2ogr_path()) -append -a_srs EPSG:28992 $path_gpkg $path_edge -nln ribasim_edge`)
+
+db = SQLite.DB(path_gpkg)
 
 read_arrow(path) = DataFrame(Arrow.Table(read(path)))
 
@@ -50,13 +59,13 @@ function create_tables!(db)
         (
             DateTime,
             Int,
-            Union{Missing,Float64},
-            Union{Missing,Float64},
-            Union{Missing,Float64},
-            Union{Missing,Float64},
-            Union{Missing,Float64},
-            Union{Missing,Float64},
-            Union{Missing,Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
+            Union{Missing, Float64},
         ),
     )
     SQLite.createtable!(db, "ribasim_forcing_LSW", schema_forcing_lsw)
@@ -89,11 +98,14 @@ lookup_outflowtable =
 SQLite.load!(lookup_lsw, db, "ribasim_lookup_LSW")
 SQLite.load!(lookup_outflowtable, db, "ribasim_lookup_OutflowTable")
 
-if add_forcing
-    # load forcing (all forcing is currently on LSW)
-    forcing = read_arrow(joinpath(datadir, "forcing.arrow"))
-    forcing_lsw = disallowmissing(unstack(forcing); error = false)
+# load forcing (all forcing is currently on LSW)
+forcing = read_arrow(joinpath(datadir, "forcing.arrow"))
+forcing_lsw = disallowmissing(unstack(forcing); error = false)
+
+if forcing_in_geopackage
     SQLite.load!(forcing_lsw, db, "ribasim_forcing_LSW")
+else
+    Arrow.write(path_arrow, forcing_lsw; compress = :lz4)
 end
 
 # drop tables
