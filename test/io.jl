@@ -3,13 +3,6 @@ using TestReports
 
 recordproperty("name", "Input/Output")  # TODO To check in TeamCity
 
-@testset "parsename" begin
-    test_sym = Symbol(:sys_151358₊agric₊alloc)
-    variable, location = Ribasim.parsename(test_sym)
-    @test variable === Symbol("agric.alloc")
-    @test location === 151358
-end
-
 @testset "relativepath" begin
     dict = Dict("state" => "path/to/file")
     output = Ribasim.relative_path!(dict, "state", "mydir")
