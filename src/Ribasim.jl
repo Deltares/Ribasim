@@ -2,7 +2,6 @@ module Ribasim
 
 import BasicModelInterface as BMI
 import ModflowInterface as MF
-import ModelingToolkit as MTK
 import NCDatasets
 
 using Dates
@@ -32,6 +31,7 @@ include("utils.jl")
 include("modflow.jl")
 include("lib.jl")
 include("solve.jl")
+include("create.jl")
 include("construction.jl")
 include("bmi.jl")
 include("io.jl")

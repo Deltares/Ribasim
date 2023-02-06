@@ -144,6 +144,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     ) = load_data(config, starttime, endtime)
     nodetypes = Dictionary(node.id, node.node)
 
+    parameters = create_parameters(node, edge, profile, static, forcing)
+
     # We update parameters with forcing data. Only the current value per parameter is
     # stored in the solution object, so we track the history ourselves.
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
@@ -195,19 +197,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     used_value = forcing.value[used_rows]
     # this is how often we need to callback
     used_time_uniq = unique(used_time)
-
-    # find the range of the current timestep, and the associated parameter indices,
-    # and update all the corresponding parameter values
-    # captures used_time_unix, used_param_index, used_value, param_hist
-    function update_forcings!(integrator)
-        (; t, p) = integrator
-        r = searchsorted(used_time_unix, t)
-        i = used_param_index[r]
-        v = used_value[r]
-        p[i] .= v
-        save!(param_hist, t, p)
-        return nothing
-    end
 
     if run_modflow
         # initialize MODFLOW 6 model
@@ -292,7 +281,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     save_positions = Tuple(get(config, "save_positions", (true, true)))::Tuple{Bool, Bool}
     forcing_cb =
         PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!; save_positions)
-    allocation_cb = PeriodicCallback(allocate!, Δt; initial_affect = true, save_positions)
     Δt_output = Float64(get(config, "output_timestep", 86400.0))
     output_cb = PeriodicCallback(
         write_output!,
@@ -303,9 +291,9 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     @timeit_debug to "Setup callbackset" callback = if run_modflow
         modflow_cb = PeriodicCallback(exchange_modflow!, Δt_modflow; initial_affect = true)
-        CallbackSet(forcing_cb, allocation_cb, output_cb, modflow_cb)
+        CallbackSet(forcing_cb, output_cb, modflow_cb)
     else
-        CallbackSet(forcing_cb, allocation_cb, output_cb)
+        CallbackSet(forcing_cb, output_cb)
     end
 
     saveat = get(config, "saveat", [])
