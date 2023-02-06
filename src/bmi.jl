@@ -125,84 +125,6 @@ function find_modflow_indices(mf_locs, p_vars, p_locs)
     return drainage_index, infiltration_index
 end
 
-"Collect the indices, locations and names of all integrals, for writing to output"
-function prepare_waterbalance(syms::Vector{Symbol})
-    # fluxes integrated over time
-    wbal_entries = (; location = Int[], variable = String[], index = Int[], flip = Bool[])
-    # initial values are handled in callback
-    prev_state = fill(NaN, length(syms))
-    for (i, sym) in enumerate(syms)
-        varname, location = parsename(sym)
-        varname = String(varname)
-        if endswith(varname, ".sum.x(t)")
-            variable = replace(varname, ".sum.x(t)" => "")
-            # flip the sign of the loss terms
-            flip = if variable in ("x.Q", "Q_eact", "infiltration_act")
-                true
-            else
-                false
-            end
-            push!(wbal_entries.location, location)
-            push!(wbal_entries.variable, variable)
-            push!(wbal_entries.index, i)
-            push!(wbal_entries.flip, flip)
-        elseif varname == "S(t)"
-            push!(wbal_entries.location, location)
-            push!(wbal_entries.variable, varname)
-            push!(wbal_entries.index, i)
-            push!(wbal_entries.flip, true)
-        end
-    end
-    return wbal_entries, prev_state
-end
-
-function getstate(integrator, s)::Real
-    (; u) = integrator
-    (; syms) = integrator.sol.prob.f
-    sym = Symbolics.getname(s)::Symbol
-    i = findfirst(==(sym), syms)
-    if i === nothing
-        error(lazy"not found: $sym")
-    end
-    return u[i]
-end
-
-function param(integrator, s)::Real
-    (; p) = integrator
-    (; paramsyms) = integrator.sol.prob.f
-    sym = Symbolics.getname(s)::Symbol
-    i = findfirst(==(sym), paramsyms)
-    if i === nothing
-        error(lazy"not found: $sym")
-    end
-    return p[i]
-end
-
-function param!(integrator, s, x::Real)::Real
-    (; p) = integrator
-    (; paramsyms) = integrator.sol.prob.f
-    sym = Symbolics.getname(s)::Symbol
-    i = findfirst(==(sym), paramsyms)
-    if i === nothing
-        error(lazy"not found: $sym")
-    end
-    return p[i] = x
-end
-
-"""Parse the system parameters into a vector of variables and a vector of IDs in the same
-order. These can be used to map forcing data to the right index in the integrator's
-parameter vector p."""
-function parse_paramsyms(paramsyms)::Tuple{Vector{String}, Vector{Int}}
-    param_vars = String[]
-    param_ids = Int[]
-    for paramsym in paramsyms
-        varsym, id = parsename(paramsym)
-        push!(param_vars, String(varsym))
-        push!(param_ids, id)
-    end
-    return param_vars, param_ids
-end
-
 function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     # Δt for periodic update frequency, including user horizons
@@ -221,20 +143,6 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         forcing,
     ) = load_data(config, starttime, endtime)
     nodetypes = Dictionary(node.id, node.node)
-
-    function allocate!(integrator)
-        # TODO bring back user allocation
-        (; t, p) = integrator
-
-        # for (i, id) in enumerate(ids)
-        #     S = getstate(integrator, name_t(:lsw, id, :S))
-        #     # forcing values
-        #     P = param(integrator, name_t(:lsw, id, :P))
-        # end
-
-        # save!(param_hist, t, p)
-        return nothing
-    end
 
     # We update parameters with forcing data. Only the current value per parameter is
     # stored in the solution object, so we track the history ourselves.

@@ -1,16 +1,3 @@
-## imports
-
-using Arrow
-using BenchmarkTools
-using Dates
-using DataFrames
-using Dictionaries
-using DifferentialEquations
-using Graphs
-using SparseArrays
-using DataInterpolations: LinearInterpolation
-using Plots
-
 ## types and functions
 
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
@@ -148,25 +135,6 @@ struct Parameters
     infiltration::Infiltration
     drainage::Drainage
     forcing::Dict{DateTime, Any}
-end
-
-"""
-Return a directed graph, and a mapping from external ID to new ID.
-
-TODO: deal with isolated nodes: add those as separate vertices at the end.
-"""
-function graph(edge)
-    vxset = unique(vcat(edge.from_id, edge.to_id))
-    vxdict = Dict{Int, Int}()
-    vxdict = Dictionary(vxset, 1:length(vxset))
-
-    n_v = length(vxset)
-    g = Graphs.SimpleDiGraph(n_v)
-    # TODO: duplicate edges are not included?
-    for (u, v) in zip(edge.from_id, edge.to_id)
-        add_edge!(g, vxdict[u], vxdict[v])
-    end
-    return g, vxdict
 end
 
 function create_basin_nodemap(node)
@@ -743,40 +711,3 @@ function write_output(path, sol, parameters, node)
     Arrow.write(path, output)
     return output
 end
-
-## run
-
-config = Dict(
-    "node" => "../data/node.arrow",
-    "edge" => "../data/edge.arrow",
-    "forcing" => "../data/forcing.arrow",
-    "profile" => "../data/profile.arrow",
-    "state" => "../data/state.arrow",
-    "static" => "../data/static.arrow",
-)
-node = DataFrame(read_table(config["node"]))
-t0 = datetime2unix(DateTime(2019))
-duration = 3600.0 * 24 * 365.0 * 2
-dt = 3600.0 * 12
-
-wbal::DataFrame =
-    DataFrame(; time = DateTime[], id = Int[], variable = String[], value = Float64[])
-problem, callback = initialize(config, t0, duration);
-solution = run!(problem, callback, dt)
-output = write_output("output.arrow", solution, problem.p, node)
-
-wbal
-
-## postprocessing
-
-hupsel = filter(:id => id -> id == 14908, output)
-plot(hupsel.time, hupsel.storage)
-
-## benchmark
-
-@btime problem, callback = initialize(config, t0, duration);
-
-dt = 3600.0 * 24
-solution = run!(problem, callback, dt);
-@btime output = write_output("output.arrow", solution, problem.p, node);
-output = write_output("output.arrow", solution, problem.p, node);
