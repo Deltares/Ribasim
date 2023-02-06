@@ -323,56 +323,6 @@ function update_forcings!(integrator)
     return nothing
 end
 
-function save_waterbalance!(integrator)
-    (; u, t, p) = integrator
-    (; connectivity, storage_diff, precipitation, evaporation, infiltration, drainage) = p
-    (; inverse_basin_nodemap) = connectivity
-    time = unix2datetime(t)
-
-    variable = "storage"
-    for i in eachindex(storage_diff)
-        id = inverse_basin_nodemap[i]
-        value = storage_diff[i]
-        push!(wbal, (; time, id, variable, value))
-        storage_diff[i] = 0.0
-    end
-
-    variable = "precipitation"
-    for i in eachindex(precipitation.total)
-        id = inverse_basin_nodemap[precipitation.index[i]]
-        value = precipitation.total[i]
-        push!(wbal, (; time, id, variable, value))
-        precipitation.total[i] = 0.0
-    end
-
-    variable = "evaporation"
-    for i in eachindex(evaporation.total)
-        id = inverse_basin_nodemap[evaporation.index[i]]
-        value = evaporation.total[i]
-        push!(wbal, (; time, id, variable, value))
-        evaporation.total[i] = 0.0
-    end
-
-    variable = "infiltration"
-    for i in eachindex(infiltration.total)
-        id = inverse_basin_nodemap[infiltration.index[i]]
-        value = infiltration.total[i]
-        push!(wbal, (; time, id, variable, value))
-        infiltration.total[i] = 0.0
-    end
-
-    variable = "drainage"
-    for i in eachindex(drainage.total)
-        id = inverse_basin_nodemap[drainage.index[i]]
-        value = drainage.total[i]
-        push!(wbal, (; time, id, variable, value))
-        drainage.total[i] = 0.0
-    end
-
-    # push!(wbal, (;time, id, variable, value))
-    return nothing
-end
-
 function create_output(solution, node, basin_nodemap)
     # Do not reorder u. The keys of basin_nodemap are always in the right
     # order, as the values of basin_nodemap are strictly 1:n. Set the geometry
@@ -426,8 +376,6 @@ function initialize(config, t0, duration)
     used_time_uniq = unique(forcing.time)
     # put new forcing in the parameters
     forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings2!)
-    # add a single time step's contribution to the water balance step's totals
-    trackwb_cb = FunctionCallingCallback(track_waterbalance!)
     # save the water balance totals periodically
     balance_cb = PeriodicCallback(save_waterbalance!, 86400.0 * 2)
     # isempty_cb = ContinuousCallback(is_storage_empty, set_storage_empty!)
