@@ -15,12 +15,11 @@ using Graphs
 using DataInterpolations: LinearInterpolation
 using DiffEqCallbacks
 using Legolas: Legolas, @schema, @version, validate
-using ModelingToolkit
-using ModelingToolkit: getname, renamespace
-using ModelingToolkitStandardLibrary.Blocks
+using DifferentialEquations
 using OrdinaryDiffEq
 using SciMLBase
 using Serialization: serialize, deserialize
+using SparseArrays
 using TimerOutputs
 
 export interpolator, Register, ForwardFill

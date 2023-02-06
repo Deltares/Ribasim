@@ -150,13 +150,6 @@ function observed_names(reg::Register)::Vector{Symbol}
     return Symbol[getname(s) for s in obs_syms]
 end
 
-# Generally we work with Symbols that are created from symbolics with Symbolics.getname(),
-# which leaves out (t) at the end. In the callbacks however we want to use names already
-# cached in the integrator, which have (t) if they originate as a time dependent variable.
-# These can be retrieved like `(; syms, paramsyms) = integrator.sol.prob.f`
-name_t(component, id, var) = Symbol(component, :_, id, :₊, var, "(t)")
-name(component, id, var) = Symbol(component, :_, id, :₊, var)
-
 function Base.show(io::IO, reg::Register)
     t = unix2datetime(reg.integrator.t)
     nsaved = length(reg.integrator.sol.t)

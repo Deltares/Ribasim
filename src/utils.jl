@@ -10,12 +10,14 @@ end
 # avoid errors with show
 Base.nameof(::LinearInterpolation) = :LinearInterpolation
 
+"""
+Return a directed graph, and a mapping from external ID to new ID.
+
+TODO: deal with isolated nodes: add those as separate vertices at the end.
+"""
 function graph(edges)
     vxset = unique(vcat(edges.from_id, edges.to_id))
-    vxdict = Dict{Int, Int}()
-    for (v, k) in enumerate(vxset)
-        vxdict[k] = v
-    end
+    vxdict = Dictionary(vxset, 1:length(vxset))
 
     n_v = length(vxset)
     g = Graphs.Graph(n_v)

@@ -24,7 +24,3 @@ end
     @test output["forcing"] == joinpath("mydir", "path", "to", "forcingfile")
     @test output isa Dict{String, String}
 end
-
-# @testset "tsview" begin
-
-# end
