@@ -365,37 +365,6 @@ function track_waterbalance!(u, t, integrator)
     return nothing
 end
 
-function initialize(config, t0, duration)
-    node = DataFrame(read_table(config["node"]))
-    edge = DataFrame(read_table(config["edge"]))
-    static = DataFrame(read_table(config["static"]))
-    profile = DataFrame(read_table(config["profile"]))
-    forcing = DataFrame(read_table(config["forcing"]))
-    parameters = create_parameters(node, edge, profile, static, forcing)
-
-    used_time_uniq = unique(forcing.time)
-    # put new forcing in the parameters
-    forcing_cb = PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings2!)
-    # save the water balance totals periodically
-    balance_cb = PeriodicCallback(save_waterbalance!, 86400.0 * 2)
-    # isempty_cb = ContinuousCallback(is_storage_empty, set_storage_empty!)
-    # decrease the time step if storages fall dry
-    # isempty_cb = PositiveDomain()
-    # callback = CallbackSet(forcing_cb, trackwb_cb, balance_cb, isempty_cb)
-    callback = CallbackSet(forcing_cb, trackwb_cb, balance_cb)
-
-    u0 = ones(length(parameters.area)) .* 10.0
-    tspan = (t0, t0 + duration)
-
-    problem = ODEProblem(water_balance!, u0, tspan, parameters)
-    return problem, callback
-end
-
-function run!(problem, callback, dt)
-    sol = solve(problem, Euler(); dt = dt, callback, save_everystep = false)
-    return sol
-end
-
 function write_output(path, sol, parameters, node)
     output = create_output(sol, node, parameters.connectivity.basin_nodemap)
     Arrow.write(path, output)

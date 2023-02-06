@@ -132,8 +132,10 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         @timeit_debug to "Structural simplify" sim, input_idxs =
             structural_simplify(sys, (; inputs, outputs = []))
 
-        @timeit_debug to "Setup ODAEProblem" prob =
-            ODAEProblem(sim, [], tspan; sparse = true)
+        @timeit_debug to "Setup ODEProblem" begin
+            u0 = ones(length(parameters.area)) .* 10.0
+            prob = ODEProblem(water_balance!, u0, tspan, parameters)
+        end
         if haskey(config, "cache")
             @info "Caching initialized problem" path = config["cache"]
             open(config["cache"], "w") do io
@@ -175,7 +177,8 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     saveat = get(config, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
-        QNDF(autodiff=false);
+        Euler();
+        dt = 3600.0
         progress = true,
         progress_name = "Simulating",
         callback,
