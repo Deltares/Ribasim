@@ -113,54 +113,14 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(starttime), datetime2unix(endtime))
 
-    if haskey(config, "cache") && isfile(config["cache"])
-        @info "Using cached problem" path = config["cache"]
-        @timeit_debug to "Deserialize problem" prob = deserialize(config["cache"])
-    else
-        sysdict = create_nodes(node, state, profile, static)
-        connect_eqs = connect_systems(edge, sysdict)
-        output_eqs, output_systems =
-            add_waterbalance_cumulatives(sysdict, nodetypes, waterbalance_terms)
-        inputs = find_unbound_inputs(sysdict, nodetypes, input_terms)
-
-        # combine the network and output systems into one
-        systems = vcat(collect(sysdict), output_systems)
-        eqs = vcat(connect_eqs, output_eqs)
-        @named sys = ODESystem(eqs, t, [], []; systems)
-
-        # TODO use input_idxs rather than parse_paramsyms
-        @timeit_debug to "Structural simplify" sim, input_idxs =
-            structural_simplify(sys, (; inputs, outputs = []))
-
-        @timeit_debug to "Setup ODEProblem" begin
-            u0 = ones(length(parameters.area)) .* 10.0
-            prob = ODEProblem(water_balance!, u0, tspan, parameters)
-        end
-        if haskey(config, "cache")
-            @info "Caching initialized problem" path = config["cache"]
-            open(config["cache"], "w") do io
-                serialize(io, prob)
-            end
-        end
+    @timeit_debug to "Setup ODEProblem" begin
+        u0 = ones(length(parameters.area)) .* 10.0
+        prob = ODEProblem(water_balance!, u0, tspan, parameters)
     end
 
-    # add (t) to make it the same with the syms as stored in the integrator
-    syms = [Symbol(getname(s), "(t)") for s in states(prob.f.sys)]
-    paramsyms = getname.(parameters(prob.f.sys))
-    # split out the variables and IDs to make it easier to find the right param index
-    param_vars, param_ids = parse_paramsyms(paramsyms)
-    # add the system's parameter index to the forcing table
-    param_index = find_param_index(forcing, param_vars, param_ids)
-
-    used_param_index = filter(!=(0), param_index)
-    used_rows = findall(!=(0), param_index)
-    # consider usign views here
-    used_time = forcing.time[used_rows]
     @assert issorted(used_time) "time column in forcing must be sorted"
-    used_time_unix = datetime2unix.(used_time)
-    used_value = forcing.value[used_rows]
     # this is how often we need to callback
-    used_time_uniq = unique(used_time)
+    used_time_uniq = unique(forcing.time)
 
     # To retain all information, we need to save before and after callbacks that affect the
     # system, meaning we get multiple outputs on the same timestep. Make it configurable
