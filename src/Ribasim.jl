@@ -17,8 +17,6 @@ using SciMLBase
 using SparseArrays
 using TimerOutputs
 
-export interpolator, Register, ForwardFill
-
 const to = TimerOutput()
 TimerOutputs.complement!()
 
