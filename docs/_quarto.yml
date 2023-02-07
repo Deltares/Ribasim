@@ -7,7 +7,7 @@ website:
     left:
       - equations.qmd
       - modflow.qmd
-      # - demo.ipynb
+      - demo.ipynb
       - coupling-demo.qmd
       - developer.qmd
 

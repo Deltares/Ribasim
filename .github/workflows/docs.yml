@@ -54,7 +54,7 @@ jobs:
         run: quarto check jupyter
 
       - name: Render Quarto Project
-        run: "quarto render docs --to html --execute"
+        run: "quarto render docs --to html"  # TODO add --execute back
 
       - name: Publish Quarto Project
         if: github.event_name != 'pull_request'
