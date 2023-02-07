@@ -4,5 +4,6 @@ authors = ["Deltares and contributors"]
 version = "0.1.0"
 
 [deps]
-Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
+PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
