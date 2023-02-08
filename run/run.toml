@@ -20,7 +20,7 @@ saveat = 86400.0
 ids = [14908, 14909, 14910, 14784]
 # ids = [1, 2, 3]  # one P
 
-forcing = "../data/lhm/forcing-long.arrow"
+forcing = "../data/lhm/forcing.arrow"
 state = "../data/lhm/state.arrow"
 static = "../data/lhm/static.arrow"
 profile = "../data/lhm/profile.arrow"

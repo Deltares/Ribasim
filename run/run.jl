@@ -18,7 +18,7 @@ include("../utils/testdata.jl")
 
 ##
 
-testdata("forcing-long.arrow", "lhm/forcing-long.arrow")
+testdata("forcing-long.arrow", "lhm/forcing.arrow")
 testdata("state.arrow", "lhm/state.arrow")
 testdata("static.arrow", "lhm/static.arrow")
 testdata("profile.arrow", "lhm/profile.arrow")
