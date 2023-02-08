@@ -14,6 +14,7 @@ create_app(
     executables = ["ribasim" => "julia_main"],
     precompile_execution_file = "precompile.jl",
     filter_stdlibs = false,
+    force = true,
 )
 
 """
