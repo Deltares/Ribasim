@@ -14,6 +14,17 @@ using SciMLBase
 using CairoMakie
 
 include("../run/plot.jl")
+include("../utils/testdata.jl")
+
+##
+
+testdata("forcing-long.arrow", "lhm/forcing-long.arrow")
+testdata("state.arrow", "lhm/state.arrow")
+testdata("static.arrow", "lhm/static.arrow")
+testdata("profile.arrow", "lhm/profile.arrow")
+testdata("node.arrow", "lhm/node.arrow")
+testdata("edge.arrow", "lhm/edge.arrow")
+testdata("waterbalance.arrow", "lhm/waterbalance.arrow")
 
 ##
 
