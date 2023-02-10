@@ -61,7 +61,4 @@ else
     Arrow.write(path_arrow, forcing_lsw; compress = :lz4)
 end
 
-# get the table from the database
-DBInterface.execute(DataFrame, db, "select * from ribasim_state_LSW")
-
 close(db)
