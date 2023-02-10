@@ -25,53 +25,6 @@ db = SQLite.DB(path_gpkg)
 
 read_arrow(path) = DataFrame(Arrow.Table(read(path)))
 
-"Create empty tables based on schemas"
-function create_tables!(db)
-    # create an empty table based on a schema
-    schema_state = Tables.Schema((:id, :S, :C), (Int, Float64, Float64))
-    SQLite.createtable!(db, "ribasim_state_LSW", schema_state)
-
-    schema_static_levelcontrol = Tables.Schema((:id, :target_volume), (Int, Float64))
-    SQLite.createtable!(db, "ribasim_static_LevelControl", schema_static_levelcontrol)
-    schema_static_bifurcation =
-        Tables.Schema((:id, :fraction_1, :fraction_2), (Int, Float64, Float64))
-    SQLite.createtable!(db, "ribasim_static_Bifurcation", schema_static_bifurcation)
-
-    schema_lookup_lsw =
-        Tables.Schema((:id, :volume, :area, :level), (Int, Float64, Float64, Float64))
-    SQLite.createtable!(db, "ribasim_lookup_LSW", schema_lookup_lsw)
-    schema_lookup_outflowtable =
-        Tables.Schema((:id, :level, :discharge), (Int, Float64, Float64))
-    SQLite.createtable!(db, "ribasim_lookup_OutflowTable", schema_lookup_outflowtable)
-
-    schema_forcing_lsw = Tables.Schema(
-        (
-            :time,
-            :id,
-            :demand,
-            :drainage,
-            :E_pot,
-            :infiltration,
-            :P,
-            :priority,
-            :urban_runoff,
-        ),
-        (
-            DateTime,
-            Int,
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-            Union{Missing, Float64},
-        ),
-    )
-    SQLite.createtable!(db, "ribasim_forcing_LSW", schema_forcing_lsw)
-    return db
-end
-
 # create map from ID to node type
 node = DBInterface.execute(DataFrame, db, "select id,node from ribasim_node")
 nodemap = Dictionary(node.id, node.node)
@@ -107,9 +60,6 @@ if forcing_in_geopackage
 else
     Arrow.write(path_arrow, forcing_lsw; compress = :lz4)
 end
-
-# drop tables
-# DBInterface.execute(DataFrame, db, "drop table ribasim_state_LSW")
 
 # get the table from the database
 DBInterface.execute(DataFrame, db, "select * from ribasim_state_LSW")
