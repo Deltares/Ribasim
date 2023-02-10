@@ -1,7 +1,7 @@
 
-function create_basin_nodemap(node)
+function create_basin_nodemap(db::DB)::Dictionary{Int, Int}
     # Enumerate the nodes that have state: the reservoirs.
-    basin_id = filter(:node => n -> n == "LSW", node; view = true).id
+    basin_id = get_ids(db, "LSW")
     return Dictionary(basin_id, 1:length(basin_id))
 end
 
@@ -16,16 +16,16 @@ function create_connection_map(flow)
     return Dictionary([(i, j) for (i, j) in zip(I, J)], 1:length(I))
 end
 
-function create_connectivity(node, edge)
+function create_connectivity(db::DB)::Connectivity
     # nodemap: external ID to flow graph index
     # inverse_nodemap: flow graph index to external ID
     # basin_nodemap: external ID to state index
     # inverse_basin_nodemap: state index to external ID
     # connection_map: (flow graph index1, flow graph index2) to non-zero index in sparse matrix.
     # node_to_basin: flow graph index to state index
-    g, nodemap = graph(edge)
+    g, nodemap = graph(db)
     inverse_nodemap = Dictionary(values(nodemap), keys(nodemap))
-    basin_nodemap = create_basin_nodemap(node)
+    basin_nodemap = create_basin_nodemap(db)
     inverse_basin_nodemap = Dictionary(values(basin_nodemap), keys(basin_nodemap))
     # Skip toposort for now, only a single set of bifurcations.
     # toposort = topological_sort_by_dfs(g)

@@ -10,19 +10,18 @@ end
 # avoid errors with show
 Base.nameof(::LinearInterpolation) = :LinearInterpolation
 
-"""
-Return a directed graph, and a mapping from external ID to new ID.
-
-TODO: deal with isolated nodes: add those as separate vertices at the end.
-"""
-function graph(edges)
-    vxset = unique(vcat(edges.from_id, edges.to_id))
+"Return a directed graph, and a mapping from external ID to new ID."
+function graph(db::DB)
+    vxset = get_ids(db)
     vxdict = Dictionary(vxset, 1:length(vxset))
 
     n_v = length(vxset)
     g = Graphs.Graph(n_v)
-    for (u, v) in zip(edges.from_id, edges.to_id)
-        add_edge!(g, vxdict[u], vxdict[v])
+    rows = execute(db, "select from_id, to_id from ribasim_edge")
+    for row in rows
+        from = vxdict[row.from_id]
+        to = vxdict[row.to_id]
+        add_edge!(g, from, to)
     end
     return g, vxdict
 end

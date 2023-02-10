@@ -6,6 +6,7 @@ using Dates
 using TOML
 using Arrow
 using DataFrames
+using DBInterface: execute
 using Dictionaries
 using Graphs
 using DataInterpolations: LinearInterpolation
@@ -15,11 +16,14 @@ using DifferentialEquations
 using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
+using SQLite: DB, Query
+using Tables: columntable
 using TimerOutputs
 
 const to = TimerOutput()
 TimerOutputs.complement!()
 
+include("io.jl")
 include("validation.jl")
 include("utils.jl")
 include("lib.jl")
@@ -27,6 +31,5 @@ include("solve.jl")
 include("create.jl")
 include("construction.jl")
 include("bmi.jl")
-include("io.jl")
 
 end  # module Ribasim
