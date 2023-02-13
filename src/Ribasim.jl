@@ -4,7 +4,7 @@ import BasicModelInterface as BMI
 
 using Dates
 using TOML
-using Arrow
+using Arrow: Arrow, Table
 using DataFrames
 using DBInterface: execute
 using Dictionaries
@@ -16,7 +16,7 @@ using DifferentialEquations
 using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
-using SQLite: DB, Query
+using SQLite: SQLite, DB, Query
 using Tables: columntable
 using TimerOutputs
 

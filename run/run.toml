@@ -2,29 +2,16 @@ starttime = 2019-01-01
 endtime = 2019-03-01
 # endtime = 2021-01-01
 
-run_modflow = false
-
-# use this cache file if it exists, otherwise create it
-# only valid if the model schematization does not change between runs
-# cache = "cache.jls"
-
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
 saveat = 86400.0
 
-# ids = [151358]
-# ids = [151358, 151371, 151309]
-# ids = [200164]
-# ids = [200164, 200165]
-# 151358 with downstream LSW
-ids = [14908, 14909, 14910, 14784]
-# ids = [1, 2, 3]  # one P
+# optional, default is the path of the TOML
+dir_input = "../data/lhm"
+dir_output = "../data/lhm"
 
-forcing = "../data/lhm/forcing.arrow"
-state = "../data/lhm/state.arrow"
-static = "../data/lhm/static.arrow"
-profile = "../data/lhm/profile.arrow"
-node = "../data/lhm/node.arrow"
-edge = "../data/lhm/edge.arrow"
+geopackage = "model.gpkg"
+waterbalance = "waterbalance.arrow"
 
-waterbalance = "../data/lhm/waterbalance.arrow"
+[forcing]
+LSW = "forcing.arrow"

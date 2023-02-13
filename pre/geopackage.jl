@@ -34,7 +34,7 @@ state = read_arrow(joinpath(datadir, "state.arrow"))
 SQLite.load!(state, db, "ribasim_state_LSW")
 
 # load static (split LevelControl and Bifurcation)
-static = read_arrow(joinpath(datadir, "static.arrow"))
+static = unique(read_arrow(joinpath(datadir, "static.arrow")))
 static_levelcontrol =
     disallowmissing(unstack(filter(row -> row.variable == "target_volume", static)))
 static_bifurcation =
@@ -52,7 +52,7 @@ SQLite.load!(lookup_lsw, db, "ribasim_lookup_LSW")
 SQLite.load!(lookup_outflowtable, db, "ribasim_lookup_OutflowTable")
 
 # load forcing (all forcing is currently on LSW)
-forcing = read_arrow(joinpath(datadir, "forcing.arrow"))
+forcing = read_arrow(joinpath(datadir, "forcing-long.arrow"))
 forcing_lsw = disallowmissing(unstack(forcing); error = false)
 
 if forcing_in_geopackage

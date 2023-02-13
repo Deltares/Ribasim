@@ -174,10 +174,10 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, outflow_links::OutflowLinks, u)
+function formulate!(flow, outflow_links::OutflowLinks, level)
     (; index, connection_index, tables) = outflow_links
     for (a, nzindex, table) in zip(index, eachcol(connection_index), tables)
-        q = table.discharge_interpolation(u[a])
+        q = table.discharge_interpolation(level[a])
         flow.nzval[nzindex[1]] = q
         flow.nzval[nzindex[2]] = q
     end
@@ -275,7 +275,7 @@ function water_balance!(du, u, p, t)
     flow = connectivity.flow
     flow.nzval .= 0.0
     formulate!(flow, level_links, level)
-    formulate!(flow, outflow_links, u)
+    formulate!(flow, outflow_links, level)
     formulate!(flow, furcations)
 
     # Now formulate du
@@ -297,28 +297,17 @@ function water_balance!(du, u, p, t)
     return nothing
 end
 
-"""
-This should work as a function barrier to avoid slow dispatch on the dataframe.
-"""
-function update_forcing!(forcing, ids, values, basin_nodemap)
-    for (id, value) in zip(ids, values)
-        state_idx = basin_nodemap[id]
-        forcing.value[state_idx] = value
-    end
-    return nothing
-end
-
 function update_forcings!(integrator)
     (; t, p) = integrator
     df = p.forcing[unix2datetime(t)]
     basin_nodemap = p.connectivity.basin_nodemap
 
-    for (var, forcing) in zip(
-        ("P", "E_pot", "drainage", "infiltration"),
-        (p.precipitation, p.evaporation, p.drainage, p.infiltration),
-    )
-        vardf = filter(:variable => v -> v == var, df; view = true)
-        update_forcing!(forcing, vardf.id, vardf.value, basin_nodemap)
+    for row in Tables.rows(df)
+        state_idx = basin_nodemap[row.id]
+        p.precipitation.value[state_idx] = row.P
+        p.evaporation.value[state_idx] = row.E_pot
+        p.drainage.value[state_idx] = row.drainage
+        p.infiltration.value[state_idx] = row.infiltration
     end
     return nothing
 end

@@ -1,3 +1,7 @@
+# keep the config directory around to resolve paths relative to it
+const Config = NamedTuple{(:toml, :tomldir)}
+const TableName = Tuple{String, String}
+
 """
 Searchsorted on an Arrow.DictEncoded vector.
 
