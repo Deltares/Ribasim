@@ -2,16 +2,9 @@ using Ribasim, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../utils/testdata.jl")
 
-testdata("dummyforcing_151358_P.csv")
-testdata("dummyforcing_151358_V.csv")
-
 # a schematization for all of the Netherlands
-testdata("node.arrow", "lhm/node.arrow")
-testdata("edge.arrow", "lhm/edge.arrow")
-testdata("forcing.arrow", "lhm/forcing.arrow")
-testdata("profile.arrow", "lhm/profile.arrow")
-testdata("state.arrow", "lhm/state.arrow")
-testdata("static.arrow", "lhm/static.arrow")
+testdata("model.gpkg", normpath(@__DIR__, "../data/lhm/model.gpkg"))
+testdata("forcing.arrow", normpath(@__DIR__, "../data/lhm/forcing.arrow"))
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin

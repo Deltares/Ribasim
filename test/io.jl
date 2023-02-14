@@ -4,16 +4,18 @@ using TestReports
 recordproperty("name", "Input/Output")  # TODO To check in TeamCity
 
 @testset "relativepath" begin
-    dict = Dict("state" => "path/to/file")
-    output = Ribasim.relative_path!(dict, "state", "mydir")
-    @test output["state"] == joinpath("mydir", "path", "to", "file")
-    @test output isa Dict{String, String}
-end
-
-@testset "relativepaths" begin
-    dict = Dict("state" => "path/to/statefile", "forcing" => "path/to/forcingfile")
-    output = Ribasim.relative_paths!(dict, "mydir")
-    @test output["state"] == joinpath("mydir", "path", "to", "statefile")
-    @test output["forcing"] == joinpath("mydir", "path", "to", "forcingfile")
-    @test output isa Dict{String, String}
+    toml = Dict("path" => "path/to/file")
+    config = (; toml, tomldir = ".")
+    @test Ribasim.input_path(config, toml["path"]) == normpath("path", "to", "file")
+    # relative to tomldir
+    config = (; toml, tomldir = "model")
+    @test Ribasim.input_path(config, toml["path"]) ==
+          normpath("model", "path", "to", "file")
+    # also relative to inputdir
+    toml["dir_input"] = "input"
+    @test Ribasim.input_path(config, toml["path"]) ==
+          normpath("model", "input", "path", "to", "file")
+    # absolute path
+    toml["path"] = "/path/to/file"
+    @test Ribasim.input_path(config, toml["path"]) == abspath("/path/to/file")
 end

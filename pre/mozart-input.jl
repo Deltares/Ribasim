@@ -589,8 +589,7 @@ function expanded_network()
     end
 
     # the org_id is not needed in Ribasim: df[:, Not(:org_id)]
-    # but kept now for convenience with the old schematization
-    write_geoarrow(normpath(output_dir, "node.arrow"), df, "point")
+    write_geoarrow(normpath(output_dir, "node.arrow"), df[:, Not(:org_id)], "point")
     write_geoarrow(normpath(output_dir, "edge.arrow"), t, "linestring")
 
     # Create the expanded graph as well from the edge table, not needed by Ribasim,

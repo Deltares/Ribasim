@@ -1,42 +1,25 @@
-"Change a dictionary entry to be relative to `dir` if is is not an abolute path"
-function relative_path!(dict, key, dir)
-    if haskey(dict, key)
-        val = dict[key]
-        dict[key] = normpath(dir, val)
-    end
-    return dict
+"Construct a path relative to both the TOML directory and the optional `dir_input`"
+function input_path(config::Config, path::String)
+    (; toml, tomldir) = config
+    dir = get(toml, "dir_input", ".")
+    return normpath(tomldir, dir, path)
 end
 
-"Make all possible path entries relative to `dir`."
-function relative_paths!(dict, dir)
-    relative_path!(dict, "forcing", dir)
-    relative_path!(dict, "state", dir)
-    relative_path!(dict, "static", dir)
-    relative_path!(dict, "profile", dir)
-    relative_path!(dict, "edge", dir)
-    relative_path!(dict, "node", dir)
-    relative_path!(dict, "waterbalance", dir)
-    # Append pkg version to cache filename
-    if haskey(dict, "cache")
-        v = pkgversion(Ribasim)
-        n, ext = splitext(dict["cache"])
-        dict["cache"] = "$(n)_$(string(v))$ext"
-        relative_path!(dict, "cache", dir)
-    end
-    return dict
+"Construct a path relative to both the TOML directory and the optional `dir_output`"
+function output_path(config::Config, path::String)
+    (; toml, tomldir) = config
+    dir = get(toml, "dir_output", ".")
+    return normpath(tomldir, dir, path)
 end
 
-"Parse the TOML configuration file, updating paths to be relative to the TOML file."
-function parsefile(config_file::AbstractString)
-    config = TOML.parsefile(config_file)
-    dir = dirname(config_file)
-    return relative_paths!(config, dir)
+function parsefile(config_path::AbstractString)
+    toml = TOML.parsefile(config_path)
+    tomldir = dirname(config_path)
+    return (; toml, tomldir)
 end
 
-function BMI.initialize(T::Type{Register}, config_file::AbstractString)
-    config = TOML.parsefile(config_file)
-    dir = dirname(config_file)
-    config = relative_paths!(config, dir)
+function BMI.initialize(T::Type{Register}, config_path::AbstractString)
+    config = parsefile(config_path)
     BMI.initialize(T, config)
 end
 
@@ -88,25 +71,20 @@ function find_param_index(forcing, p_vars, p_ids)
     return param_index
 end
 
-function BMI.initialize(T::Type{Register}, config::AbstractDict)
-
+function BMI.initialize(T::Type{Register}, config::Config)
+    (; toml) = config
     # Δt for periodic update frequency, including user horizons
-    Δt = Float64(config["update_timestep"])
-    starttime = DateTime(config["starttime"])
-    endtime = DateTime(config["endtime"])
+    Δt = Float64(toml["update_timestep"])
+    starttime = DateTime(toml["starttime"])
+    endtime = DateTime(toml["endtime"])
 
-    @timeit_debug to "Load and validate data" (;
-        ids,
-        edge,
-        node,
-        state,
-        static,
-        profile,
-        forcing,
-    ) = load_data(config, starttime, endtime)
-    nodetypes = Dictionary(node.id, node.node)
+    gpkg_path = input_path(config, toml["geopackage"])
+    if !isfile(gpkg_path)
+        throw(SystemError("GeoPackage file not found: ", gpkg_path))
+    end
+    db = DB(gpkg_path)
 
-    parameters = create_parameters(node, edge, profile, static, forcing)
+    parameters, used_time_uniq = create_parameters(db, config)
 
     # We update parameters with forcing data. Only the current value per parameter is
     # stored in the solution object, so we track the history ourselves.
@@ -118,14 +96,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         prob = ODEProblem(water_balance!, u0, tspan, parameters)
     end
 
-    # this is how often we need to callback
-    used_time_uniq = unique(forcing.time)
-
     # To retain all information, we need to save before and after callbacks that affect the
     # system, meaning we get multiple outputs on the same timestep. Make it configurable
     # to be able to disable callback saving as needed.
     # TODO: Check if regular saveat saving is before or after the callbacks.
-    save_positions = Tuple(get(config, "save_positions", (true, true)))::Tuple{Bool, Bool}
+    save_positions = Tuple(get(toml, "save_positions", (true, true)))::Tuple{Bool, Bool}
     forcing_cb =
         PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!; save_positions)
     # add a single time step's contribution to the water balance step's totals
@@ -133,11 +108,11 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
 
     @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, trackwb_cb)
 
-    saveat = get(config, "saveat", [])
+    saveat = get(toml, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         Euler();
-        dt = 3600.0,
+        dt = Δt,
         progress = true,
         progress_name = "Simulating",
         callback,
@@ -171,9 +146,9 @@ end
 
 BMI.get_current_time(reg::Register) = reg.integrator.t
 
-run(config_file::AbstractString) = run(parsefile(config_file))
+run(config_file::AbstractString) = run(TOML.parsefile(config_file))
 
-function run(config::AbstractDict)
+function run(config::Config)
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
     if haskey(config, "waterbalance")

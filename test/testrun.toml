@@ -1,23 +1,16 @@
 starttime = 2019-01-01
 endtime = 2019-12-31
-# endtime = 2019-03-01
-# endtime = 2021-01-01
-
-run_modflow = false
 
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
 saveat = 86400.0
 
-# 151358 with downstream LSW
-ids = [14908, 14909, 14910, 14784]
+# optional, default is the path of the TOML
+dir_input = "../data/lhm"
+dir_output = "../data/lhm"
 
+geopackage = "model.gpkg"
+waterbalance = "waterbalance.arrow"
 
-forcing = "../data/lhm/forcing.arrow"
-state = "../data/lhm/state.arrow"
-static = "../data/lhm/static.arrow"
-profile = "../data/lhm/profile.arrow"
-edge = "../data/lhm/edge.arrow"
-node = "../data/lhm/node.arrow"
-
-waterbalance = "../data/lhm/waterbalance.arrow"
+[forcing]
+LSW = "forcing.arrow"
