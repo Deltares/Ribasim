@@ -3,10 +3,10 @@
 
 using Dates, Arrow, SQLite, DataFrames, DBInterface, Tables, Dictionaries, GDAL_jll
 
-datadir = "test/data/lhm"
+datadir = normpath(@__DIR__, "../data/lhm")
 path_node = normpath(datadir, "node.arrow")
 path_edge = normpath(datadir, "edge.arrow")
-path_arrow = "data/lhm/forcing.arrow"
+path_arrow = normpath(datadir, "forcing.arrow")  # output
 forcing_in_geopackage = false
 
 path_gpkg = if forcing_in_geopackage
@@ -30,11 +30,11 @@ node = DBInterface.execute(DataFrame, db, "select id,node from ribasim_node")
 nodemap = Dictionary(node.id, node.node)
 
 # load state
-state = read_arrow(joinpath(datadir, "state.arrow"))
+state = read_arrow(normpath(datadir, "state.arrow"))
 SQLite.load!(state, db, "ribasim_state_LSW")
 
 # load static (split LevelControl and Bifurcation)
-static = unique(read_arrow(joinpath(datadir, "static.arrow")))
+static = unique(read_arrow(normpath(datadir, "static.arrow")))
 static_levelcontrol =
     disallowmissing(unstack(filter(row -> row.variable == "target_volume", static)))
 static_bifurcation =
@@ -43,7 +43,7 @@ SQLite.load!(static_levelcontrol, db, "ribasim_static_LevelControl")
 SQLite.load!(static_bifurcation, db, "ribasim_static_Bifurcation")
 
 # load profile (rename to lookup, split LSW and OutflowTable)
-profile = read_arrow(joinpath(datadir, "profile.arrow"))
+profile = read_arrow(normpath(datadir, "profile.arrow"))
 lookup_lsw =
     filter(row -> nodemap[row.id] == "LSW", profile)[:, [:id, :volume, :area, :level]]
 lookup_outflowtable =
@@ -52,12 +52,14 @@ SQLite.load!(lookup_lsw, db, "ribasim_lookup_LSW")
 SQLite.load!(lookup_outflowtable, db, "ribasim_lookup_OutflowTable")
 
 # load forcing (all forcing is currently on LSW)
-forcing = read_arrow(joinpath(datadir, "forcing-long.arrow"))
+forcing = read_arrow(normpath(datadir, "forcing-long.arrow"))
 forcing_lsw = disallowmissing(unstack(forcing); error = false)
 
 if forcing_in_geopackage
     SQLite.load!(forcing_lsw, db, "ribasim_forcing_LSW")
 else
+    # avoid adding JuliaLang metadata that polars errors on
+    forcing_lsw.time = convert.(Arrow.DATETIME, forcing_lsw.time)
     Arrow.write(path_arrow, forcing_lsw; compress = :lz4)
 end
 
