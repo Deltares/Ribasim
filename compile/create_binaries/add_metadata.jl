@@ -52,7 +52,7 @@ function add_metadata(project_dir, license_file, output_dir, git_repo)
 
         ## Version
 
-        This Ribasim CLI build uses the Ribasim version mentioned below.
+        This build uses the Ribasim version mentioned below.
 
         ```toml
         version = "$version"
