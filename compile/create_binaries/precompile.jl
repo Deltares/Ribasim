@@ -3,5 +3,4 @@
 
 using Ribasim
 
-config = Ribasim.parsefile("../../../run/run.toml")
-reg = Ribasim.run(config)
+Ribasim.run("../../run/run.toml")
