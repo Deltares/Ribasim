@@ -16,8 +16,8 @@ docs/site/
 /Manifest.toml
 
 /data/
-compile/ribasim_cli/create_app/ribasim_cli/
-compile/libribasim/create_lib/libribasim/
+compile/create_binaries/ribasim_cli/
+compile/create_binaries/libribasim/
 
 .vscode
 JuliaSysimage.dll
