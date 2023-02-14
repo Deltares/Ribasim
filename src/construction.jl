@@ -13,7 +13,7 @@ function load_data(db::DB, config::Config, table::TableName)::Union{Table, Query
         path = get(section, nodetype, nothing)
         if path !== nothing
             table_path = input_path(config, path)
-            return Table(table_path)
+            return Table(read(table_path))
         end
     end
 
