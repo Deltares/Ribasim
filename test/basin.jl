@@ -10,5 +10,5 @@ end
     reg = BMI.initialize(Ribasim.Register, normpath(@__DIR__, "testrun.toml"))
     @test reg isa Ribasim.Register
     sol = Ribasim.solve!(reg.integrator)
-    @test sol.retcode == Ribasim.ReturnCode.Success broken=true  # currently Unstable
+    @test sol.retcode == Ribasim.ReturnCode.Success broken = true  # currently Unstable
 end

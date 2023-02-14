@@ -79,6 +79,9 @@ function BMI.initialize(T::Type{Register}, config::Config)
     endtime = DateTime(toml["endtime"])
 
     gpkg_path = input_path(config, toml["geopackage"])
+    if !isfile(gpkg_path)
+        throw(SystemError("GeoPackage file not found: ", gpkg_path))
+    end
     db = DB(gpkg_path)
 
     parameters, used_time_uniq = create_parameters(db, config)

@@ -3,8 +3,8 @@ using Ribasim, Test, SafeTestsets, TimerOutputs, Aqua
 include("../utils/testdata.jl")
 
 # a schematization for all of the Netherlands
-testdata("model.gpkg", "lhm/model.gpkg")
-testdata("forcing.arrow", "lhm/forcing.arrow")
+testdata("model.gpkg", normpath(@__DIR__, "data/lhm/model.gpkg"))
+testdata("forcing.arrow", normpath(@__DIR__, "data/lhm/forcing.arrow"))
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin
