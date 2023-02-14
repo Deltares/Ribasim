@@ -240,8 +240,8 @@ function create_parameters(db::DB, config::Config)
     drainage = Drainage(1:n, zeros(n), zeros(n))
 
     storage_tables = create_storage_tables(db, config, basin_nodemap)
-    node = DataFrame(arrow_table(execute(db, "select * from ribasim_node")))
-    edge = DataFrame(arrow_table(execute(db, "select * from ribasim_edge")))
+    node = DataFrame(execute(db, "select * from ribasim_node"))
+    edge = DataFrame(execute(db, "select * from ribasim_edge"))
     level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
     outflow_links =
         create_outflow_links(db, config, node, edge, nodemap, basin_nodemap, connection_map)

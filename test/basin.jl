@@ -6,4 +6,9 @@ using SciMLBase
     # TODO test single basin
 end
 
-# TODO: add test set for multiple LSWs in a network
+@testset "LHM" begin
+    reg = BMI.initialize(Ribasim.Register, normpath(@__DIR__, "testrun.toml"))
+    @test reg isa Ribasim.Register
+    sol = Ribasim.solve!(reg.integrator)
+    @test sol.retcode == Ribasim.ReturnCode.Success broken=true  # currently Unstable
+end

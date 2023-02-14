@@ -1,10 +1,10 @@
 """
-    load_data(db::DB, config::Config, table::TableName)::Union{Table, Nothing}
+    load_data(db::DB, config::Config, table::TableName)::Union{Table, Query, Nothing}
 
 Load data from Arrow files if available, otherwise the GeoPackage.
-Returns either an `Arrow.Table` or `nothing` if the data is not present.
+Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
 """
-function load_data(db::DB, config::Config, table::TableName)::Union{Table, Nothing}
+function load_data(db::DB, config::Config, table::TableName)::Union{Table, Query, Nothing}
     datatype, nodetype = table
     (; toml) = config
 
@@ -19,14 +19,17 @@ function load_data(db::DB, config::Config, table::TableName)::Union{Table, Nothi
 
     tblname = tablename(datatype, nodetype)
     if tblname in tablenames(db)
-        query = execute(db, string("select * from ", tblname))
-        return arrow_table(query)
+        return execute(db, string("select * from ", tblname))
     end
 
     return nothing
 end
 
-function load_required_data(db::DB, config::Config, table::TableName)::Union{Table, Nothing}
+function load_required_data(
+    db::DB,
+    config::Config,
+    table::TableName,
+)::Union{Table, Query, Nothing}
     data = load_data(db, config, table)
     if data === nothing
         error("Cannot find ", datatype, " data for ", nodetype)
