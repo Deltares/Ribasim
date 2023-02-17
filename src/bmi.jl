@@ -1,22 +1,15 @@
 "Construct a path relative to both the TOML directory and the optional `dir_input`"
 function input_path(config::Config, path::String)
-    (; toml, tomldir) = config
-    dir = get(toml, "dir_input", ".")
-    return normpath(tomldir, dir, path)
+    return normpath(config.toml_dir, config.dir_input, path)
 end
 
 "Construct a path relative to both the TOML directory and the optional `dir_output`"
 function output_path(config::Config, path::String)
-    (; toml, tomldir) = config
-    dir = get(toml, "dir_output", ".")
-    return normpath(tomldir, dir, path)
+    return normpath(config.toml_dir, config.dir_output, path)
 end
 
-function parsefile(config_path::AbstractString)
-    toml = TOML.parsefile(config_path)
-    tomldir = dirname(config_path)
-    return (; toml, tomldir)
-end
+parsefile(config_path::AbstractString) =
+    from_toml(Config, config_path; toml_dir = dirname(normpath(config_path)))
 
 function BMI.initialize(T::Type{Register}, config_path::AbstractString)
     config = parsefile(config_path)
@@ -72,24 +65,18 @@ function find_param_index(forcing, p_vars, p_ids)
 end
 
 function BMI.initialize(T::Type{Register}, config::Config)
-    (; toml) = config
-    # Δt for periodic update frequency, including user horizons
-    Δt = Float64(toml["update_timestep"])
-    starttime = DateTime(toml["starttime"])
-    endtime = DateTime(toml["endtime"])
-
-    gpkg_path = input_path(config, toml["geopackage"])
+    gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: ", gpkg_path))
     end
-    db = DB(gpkg_path)
+    db = DB(gpkg_path)  # sqlite DB
 
     parameters, used_time_uniq = create_parameters(db, config)
 
     # We update parameters with forcing data. Only the current value per parameter is
     # stored in the solution object, so we track the history ourselves.
     param_hist = ForwardFill(Float64[], Vector{Float64}[])
-    tspan = (datetime2unix(starttime), datetime2unix(endtime))
+    tspan = (datetime2unix(config.starttime), datetime2unix(config.endtime))
 
     @timeit_debug to "Setup ODEProblem" begin
         u0 = ones(length(parameters.area)) .* 10.0
@@ -100,23 +87,24 @@ function BMI.initialize(T::Type{Register}, config::Config)
     # system, meaning we get multiple outputs on the same timestep. Make it configurable
     # to be able to disable callback saving as needed.
     # TODO: Check if regular saveat saving is before or after the callbacks.
-    save_positions = Tuple(get(toml, "save_positions", (true, true)))::Tuple{Bool, Bool}
-    forcing_cb =
-        PresetTimeCallback(datetime2unix.(used_time_uniq), update_forcings!; save_positions)
+    forcing_cb = PresetTimeCallback(
+        datetime2unix.(used_time_uniq),
+        update_forcings!;
+        config.save_positions,
+    )
     # add a single time step's contribution to the water balance step's totals
     trackwb_cb = FunctionCallingCallback(track_waterbalance!)
 
     @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, trackwb_cb)
 
-    saveat = get(toml, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         Euler();
-        dt = Δt,
+        dt = config.update_timestep,
         progress = true,
         progress_name = "Simulating",
         callback,
-        saveat,
+        config.saveat,
         abstol = 1e-6,
         reltol = 1e-3,
     )
