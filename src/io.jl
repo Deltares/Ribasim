@@ -1,5 +1,4 @@
 # keep the config directory around to resolve paths relative to it
-const Config = NamedTuple{(:toml, :tomldir)}
 const TableName = Tuple{String, String}
 
 function get_ids(db::DB)::Vector{Int}

@@ -225,11 +225,14 @@ function create_level_control(
 end
 
 function create_parameters(db::DB, config::Config)
+
+    # Setup node/edges graph, so validate in `create_connectivity`?
     connectivity = create_connectivity(db)
     nodemap = connectivity.nodemap
     basin_nodemap = connectivity.basin_nodemap
     connection_map = connectivity.connection_map
 
+    # Setup output(?)
     n = length(basin_nodemap)
     area = zeros(n)
     level = zeros(n)
@@ -240,8 +243,10 @@ function create_parameters(db::DB, config::Config)
     drainage = Drainage(1:n, zeros(n), zeros(n))
 
     storage_tables = create_storage_tables(db, config, basin_nodemap)
+    # Not in `connectivity`?
     node = DataFrame(execute(db, "select * from ribasim_node"))
     edge = DataFrame(execute(db, "select * from ribasim_edge"))
+
     level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
     outflow_links =
         create_outflow_links(db, config, node, edge, nodemap, basin_nodemap, connection_map)

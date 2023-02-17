@@ -6,15 +6,11 @@ Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not 
 """
 function load_data(db::DB, config::Config, table::TableName)::Union{Table, Query, Nothing}
     datatype, nodetype = table
-    (; toml) = config
 
-    section = get(toml, datatype, nothing)
-    if section !== nothing
-        path = get(section, nodetype, nothing)
-        if path !== nothing
-            table_path = input_path(config, path)
-            return Table(read(table_path))
-        end
+    path = getfield(getfield(config, Symbol(datatype)), Symbol(nodetype))
+    if !isnothing(path)
+        table_path = input_path(config, path)
+        return Table(read(table_path))
     end
 
     tblname = tablename(datatype, nodetype)
@@ -31,6 +27,7 @@ function load_required_data(
     table::TableName,
 )::Union{Table, Query, Nothing}
     data = load_data(db, config, table)
+    datatype, nodetype = table
     if data === nothing
         error("Cannot find ", datatype, " data for ", nodetype)
     end
