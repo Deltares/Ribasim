@@ -139,11 +139,6 @@ run(config_file::AbstractString) = run(parsefile(config_file))
 function run(config::Config)
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
-    if haskey(config, "waterbalance")
-        path = config["waterbalance"]
-        # create directory if needed
-        mkpath(dirname(path))
-    end
     return reg
 end
 
