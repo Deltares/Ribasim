@@ -5,29 +5,13 @@
 @schema "ribasim.profile" Profile
 @schema "ribasim.forcing" Forcing
 
-# TODO Ideally, these are structs in a Module
-# which we can check, and even derive @named connectors
-# from. Since it's unclear how plan B would look like,
-# we just hardcode them for now.
-const nodetypes = (
-    "LSW",
-    "GeneralUser_P",
-    "LevelControl",
-    "GeneralUser",
-    "OutflowTable",
-    "HeadBoundary",
-    "Bifurcation",
-    "LevelLink",
-    "NoFlowBoundary",
-)
-
 # TODO These should be coupled to the nodetypes
 const from_connectors = ("b", "dst", "dst_1", "dst_2", "s", "x")
 const to_connectors = ("a", "s", "s_a", "src", "x")
 
 @version NodeV1 begin
     id::Int
-    node::String = in(node, nodetypes) ? node : error("Unknown node type $node")
+    node::String = in(Symbol(node), nodetypes) ? node : error("Unknown node type $node")
 end
 
 @version EdgeV1 begin
