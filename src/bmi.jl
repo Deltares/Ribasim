@@ -67,7 +67,7 @@ end
 function BMI.initialize(T::Type{Register}, config::Config)
     gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
-        throw(SystemError("GeoPackage file not found: ", gpkg_path))
+        throw(SystemError("GeoPackage file not found: $gpkg_path"))
     end
     db = SQLite.DB(gpkg_path)
 
