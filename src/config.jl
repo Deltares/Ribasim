@@ -1,4 +1,4 @@
-const nodetypes = (
+nodetypes::Vector{Symbol} = [
     :Bifurcation,
     :GeneralUser,
     :GeneralUser_P,
@@ -8,7 +8,7 @@ const nodetypes = (
     :LSW,
     :NoFlowBoundary,
     :OutflowTable,
-)
+]
 
 """
 Add nodetype as fields to struct expression. Requires @option use before it.

@@ -69,7 +69,7 @@ function BMI.initialize(T::Type{Register}, config::Config)
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: ", gpkg_path))
     end
-    db = DB(gpkg_path)  # sqlite DB
+    db = SQLite.DB(gpkg_path)
 
     parameters, used_time_uniq = create_parameters(db, config)
 

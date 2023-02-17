@@ -1,6 +1,6 @@
 using Ribasim
 using Dates
-using Configurations
+using Configurations: UndefKeywordError
 
 @testset "config" begin
     config = Ribasim.parsefile(joinpath(@__DIR__, "testrun.toml"))
@@ -8,8 +8,8 @@ using Configurations
     @test config.update_timestep == 86400.0
     @test config.endtime > config.starttime
 
-    @test_throws Configurations.UndefKeywordError Ribasim.Config()
-    @test_throws Configurations.UndefKeywordError Ribasim.Config(
+    @test_throws UndefKeywordError Ribasim.Config()
+    @test_throws UndefKeywordError Ribasim.Config(
         startime = now(),
         endtime = now(),
         geopackage = "",
