@@ -12,3 +12,8 @@ end
     sol = Ribasim.solve!(reg.integrator)
     @test sol.retcode == Ribasim.ReturnCode.Success broken = true  # currently Unstable
 end
+
+@testset "run" begin
+    reg = Ribasim.run(normpath(@__DIR__, "testrun.toml"))
+    @test reg isa Ribasim.Register
+end

@@ -134,7 +134,7 @@ end
 
 BMI.get_current_time(reg::Register) = reg.integrator.t
 
-run(config_file::AbstractString) = run(TOML.parsefile(config_file))
+run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::Config)
     reg = BMI.initialize(Register, config)
