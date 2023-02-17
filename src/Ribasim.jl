@@ -3,7 +3,7 @@ module Ribasim
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
-using Configurations
+using Configurations: Configurations, Maybe, @option, from_toml, from_dict
 using DataFrames
 using DataInterpolations: LinearInterpolation
 using Dates
@@ -19,7 +19,6 @@ using SparseArrays
 using SQLite: SQLite, DB, Query
 using Tables: columntable
 using TimerOutputs
-using TOML
 
 const to = TimerOutput()
 TimerOutputs.complement!()
