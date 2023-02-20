@@ -1,54 +1,40 @@
 # Prepare all input files based on a Mozart run.
 
-using Dates
-using DataFrames
-using DataFrameMacros
-using Chain
-using IntervalSets
-using Graphs
-using NCDatasets
-using AxisKeys
-using Statistics
-using CFTime
 using Arrow
+using Chain
 using CSV
+using DataFrameMacros
+using DataFrames
+using Dates
 using DBFTables
-using PlyIO
+using DBInterface: execute
+using Graphs
+using IntervalSets
 using JSON3
+using SQLite: SQLite, DB, Query
+using Statistics
 
 include("mozart-files.jl")
 include("mozart-data.jl")
 include("lsw.jl")
 
-output_dir = normpath(@__DIR__, "../data/input/7")
+output_dir = normpath(@__DIR__, "../data/input/8")
 
 # read data from Mozart for all lsws
-reference_model = "decadal"
-if reference_model == "daily"
-    simdir = normpath(@__DIR__, "../data/lhm-daily/LHM41_dagsom")
-    mozart_dir = normpath(simdir, "work/mozart")
-    mozartout_dir = mozart_dir
-    # this must be after mozartin has run, or the VAD relations are not correct
-    mozartin_dir = normpath(simdir, "tmp")
-    meteo_dir = normpath(simdir, "config", "meteo", "mozart")
-elseif reference_model == "decadal"
-    simdir = normpath(@__DIR__, "../data/lhm-input/")
-    mozart_dir = normpath(@__DIR__, "../data/lhm-input/mozart/mozartin") # duplicate of mozartin now
-    mozartout_dir = normpath(@__DIR__, "../data/lhm-output/mozart")
-    # this must be after mozartin has run, or the VAD relations are not correct
-    mozartin_dir = mozartout_dir
-    meteo_dir = normpath(
-        @__DIR__,
-        "../data",
-        "lhm-input",
-        "control",
-        "control_LHM4_2_2019_2020",
-        "meteo",
-        "mozart",
-    )
-else
-    error("unknown reference model")
-end
+simdir = normpath(@__DIR__, "../data/lhm-input/")
+mozart_dir = normpath(@__DIR__, "../data/lhm-input/mozart/mozartin") # duplicate of mozartin now
+mozartout_dir = normpath(@__DIR__, "../data/lhm-output/mozart")
+# this must be after mozartin has run, or the VAD relations are not correct
+mozartin_dir = mozartout_dir
+meteo_dir = normpath(
+    @__DIR__,
+    "../data",
+    "lhm-input",
+    "control",
+    "control_LHM4_2_2019_2020",
+    "meteo",
+    "mozart",
+)
 
 coupling_dir = normpath(@__DIR__, "../data/lhm-input/coupling")
 
@@ -59,7 +45,6 @@ lswvalue = read_lswvalue(normpath(mozartout_dir, "lswvalue.out"))
 uslswdem = read_uslswdem(normpath(mozartin_dir, "uslswdem.dik"))
 lswrouting = read_lswrouting(normpath(mozartin_dir, "lswrouting.dik"))
 lswdik_unsorted = read_lsw(normpath(mozartin_dir, "lsw.dik"))
-# uslsw = read_uslsw(normpath(mozartin_dir, "uslsw.dik"))
 
 # prepare the input data from Mozart files for all of the Netherlands
 # sort the lsws as integer to make it easy to match other data sources
@@ -91,11 +76,6 @@ enddate::DateTime = unix2datetime(times[end])
 dates::Vector{DateTime} = unix2datetime.(times)
 timespan::ClosedInterval{Float64} = times[begin] .. times[end]
 datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
-
-# The profiles for each node are all stored together in an Arrow IPC file
-# we can enforce that IDs are contiguous, and that all values are increasing
-# and then compute the row indices for each ID using
-# i = searchsorted(profiles.id, lsw_id)  # e.g. 1:25
 
 function long_profiles(; lsw_ids, profile_dict)
     profiles = DataFrame(;
@@ -261,22 +241,6 @@ begin
 end
 
 x, y = lsw_centers(normpath(coupling_dir, "lsws.dbf"), lsw_ids)
-node_table = (; x, y, location = Float64.(lsw_ids))
-edge_table = (; fractions)
-write_ply(
-    normpath(output_dir, "network-lsw.ply"),
-    graph,
-    node_table,
-    edge_table;
-    ascii = true,
-    crs = "EPSG:28992",
-)
-
-open(normpath(output_dir, "lsw_ids.txt"), "w") do io
-    for lsw_id in lsw_ids
-        println(io, lsw_id)
-    end
-end
 
 # each LSW sub-system is shown as nodes in a circle around the LSW centroid
 function move_location(x, y, n)
@@ -601,16 +565,6 @@ function expanded_network()
         add_edge!(g, edge.from_id, edge.to_id)
     end
 
-    node_table = (; x = first.(df.geometry), y = last.(df.geometry), id = Float64.(df.id))
-    edge_table = (;)
-    write_ply(
-        normpath(output_dir, "network.ply"),
-        g,
-        node_table,
-        edge_table;
-        ascii = true,
-        crs = "EPSG:28992",
-    )
     return nothing
 end
 
