@@ -380,35 +380,4 @@ function create_profile_dict(
     return profile_dict
 end
 
-"Convert the columns of table into a Vector{ArrayProperty}"
-function array_properties(table)
-    columns = Tables.columns(table)
-    names = Tables.columnnames(columns)
-    return [ArrayProperty(name, Tables.getcolumn(columns, name)) for name in names]
-end
-
-# write graph as a PLY file; simple and loads fast in QGIS
-function write_ply(path, g, node_table, edge_table; ascii = false, crs = nothing)
-    # graph g provides the edges and has vertices 1:n
-    # `node_table` provides the vertices and has rows 1:n, and needs at least x and y columns
-    # `edge_table` provides data on the edges, like fractions
-    # https://www.mdal.xyz/drivers/ply.html
-    # note that integer data is not yet supported by MDAL
-    ply = Ply()
-    if crs !== nothing
-        push!(ply, PlyComment(string("crs: ", convert(String, crs))))
-    end
-
-    vertex = PlyElement("vertex", array_properties(node_table)...)
-    push!(ply, vertex)
-    edge = PlyElement(
-        "edge",
-        ArrayProperty("vertex1", Int32[src(edge) - 1 for edge in edges(g)]),
-        ArrayProperty("vertex2", Int32[dst(edge) - 1 for edge in edges(g)]),
-        array_properties(edge_table)...,
-    )
-    push!(ply, edge)
-    save_ply(ply, path; ascii)
-end
-
 nothing
