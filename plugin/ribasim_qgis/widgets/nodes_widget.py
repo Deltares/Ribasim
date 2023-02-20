@@ -11,7 +11,7 @@ class NodesWidget(QWidget):
 
         self.node_buttons = {}
         for node in NODES:
-            if node in ("Edges", "Basins"):
+            if node in ("node", "edge"):
                 continue
             button = QPushButton(node)
             button.clicked.connect(partial(self.new_node_layer, node_type=node))
@@ -53,14 +53,12 @@ class NodesWidget(QWidget):
         """
         klass = NODES[node_type]
         names = self.parent.selection_names()
-        node = klass.dialog(
-            self.parent.path, self.parent.crs, self.parent.iface, klass, names
-        )
-        if node is None:  # dialog cancelled
-            return
+        node = klass.create(self.parent.path, self.parent.crs, names)
         # Write to geopackage
         node.write()
         # Add to QGIS
-        self.parent.add_layer(node.timml_layer, "timml", node.renderer())
+        self.parent.add_layer(
+            node.layer, "Ribasim Input", node.renderer, labels=node.labels
+        )
         # Add to dataset tree
-        self.parent.add_node(node)
+        self.parent.add_node_layer(node)

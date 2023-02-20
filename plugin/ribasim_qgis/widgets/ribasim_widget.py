@@ -55,6 +55,12 @@ class RibasimWidget(QWidget):
     def add_node_layer(self, element: Any):
         self.dataset_widget.add_node_layer(element)
 
+    def toggle_node_buttons(self, state: bool) -> None:
+        self.nodes_widget.toggle_node_buttons(state)
+
+    def selection_names(self):
+        return self.dataset_widget.selection_names()
+
     # QGIS layers
     # -----------
     def create_subgroup(self, name: str, part: str) -> None:
@@ -73,7 +79,7 @@ class RibasimWidget(QWidget):
         """
         root = QgsProject.instance().layerTreeRoot()
         self.group = root.addGroup(name)
-        self.create_subgroup(name, "Ribasim")
+        self.create_subgroup(name, "Ribasim Input")
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """
@@ -102,6 +108,7 @@ class RibasimWidget(QWidget):
         renderer: Any = None,
         suppress: bool = None,
         on_top: bool = False,
+        labels: Any = None,
     ) -> QgsMapLayer:
         """
         Add a layer to the Layers Panel
@@ -121,6 +128,8 @@ class RibasimWidget(QWidget):
         on_top: optional, bool. Default value is False.
             Whether to place the layer on top in the destination legend group.
             Handy for transparent layers such as contours.
+        labels: optional
+            Whether to place labels, based on which column, styling, etc.
 
         Returns
         -------
@@ -132,10 +141,14 @@ class RibasimWidget(QWidget):
         maplayer = QgsProject.instance().addMapLayer(layer, add_to_legend)
         if suppress is not None:
             config = maplayer.editFormConfig()
-            config.setSuppress(1)
+            config.setSuppress(1 if suppress else 0)
             maplayer.setEditFormConfig(config)
         if renderer is not None:
             maplayer.setRenderer(renderer)
+        if labels is not None:
+            layer.setLabeling(labels)
+            layer.setLabelsEnabled(True)
         if destination is not None:
             self.add_to_group(maplayer, destination, on_top)
+
         return maplayer

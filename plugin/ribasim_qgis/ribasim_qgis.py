@@ -36,7 +36,7 @@ class RibasimPlugin:
 
     def initGui(self):
         icon_name = "icon.png"
-        self.action_timml = self.add_action(
+        self.action_ribasim = self.add_action(
             icon_name, "Ribasim", self.toggle_ribasim, True
         )
 

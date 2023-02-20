@@ -1,18 +1,13 @@
 """
-This widgets displays the available elements in the GeoPackage.
+This widgets displays the available input layers in the GeoPackage.
 
 This widget also allows enabling or disabling individual elements for a
-computation. It also forms the link between the geometry layers and the
-associated layers for homogeneities, or for timeseries layers for ttim
-elements.
-
-Not every TimML element has a TTim equivalent (yet). This means that when a
-user chooses the transient simulation mode, a number of elements must be
-disabled (such as inhomogeneities).
+computation.
 """
 from pathlib import Path
 from typing import Any, List, Set
 
+import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -30,7 +25,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 from qgis.core import QgsMapLayer, QgsProject
-from ribasim_qgis.core.nodes import load_nodes_from_geopackage
+from qgis.core.additions.edit import edit
+from ribasim_qgis.core.nodes import Edges, Lsw, load_nodes_from_geopackage
+from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -40,50 +37,32 @@ class DatasetTreeWidget(QTreeWidget):
         self.setHeaderHidden(True)
         self.setSortingEnabled(True)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        self.setHeaderLabels(["", "steady", "", "transient"])
+        self.setHeaderLabels(["", ""])
         self.setHeaderHidden(False)
         header = self.header()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionsMovable(False)
-        self.setColumnCount(4)
+        self.setColumnCount(2)
         self.setColumnWidth(0, 1)
         self.setColumnWidth(2, 1)
-        self.domain = None
 
     def items(self) -> List[QTreeWidgetItem]:
         root = self.invisibleRootItem()
         return [root.child(i) for i in range(root.childCount())]
 
-    def add_item(self, timml_name: str, ttim_name: str = None, enabled: bool = True):
+    def add_item(self, name: str, enabled: bool = True):
         item = QTreeWidgetItem()
         self.addTopLevelItem(item)
-        item.timml_checkbox = QCheckBox()
-        item.timml_checkbox.setChecked(True)
-        item.timml_checkbox.setEnabled(enabled)
-        self.setItemWidget(item, 0, item.timml_checkbox)
-        item.setText(1, timml_name)
-        item.ttim_checkbox = QCheckBox()
-        item.ttim_checkbox.setChecked(True)
-        item.ttim_checkbox.setEnabled(enabled)
-        if ttim_name is None:
-            item.ttim_checkbox.setChecked(False)
-            item.ttim_checkbox.setEnabled(False)
-        self.setItemWidget(item, 2, item.ttim_checkbox)
-        item.setText(3, ttim_name)
-        # Disable ttim layer when timml layer is unticked
-        # as timml layer is always required for ttim layer
-        item.timml_checkbox.toggled.connect(
-            lambda checked: not checked and item.ttim_checkbox.setChecked(False)
-        )
-        item.assoc_item = None
+        item.checkbox = QCheckBox()
+        item.checkbox.setChecked(True)
+        item.checkbox.setEnabled(enabled)
+        self.setItemWidget(item, 0, item.checkbox)
+        item.setText(1, name)
         return item
 
     def add_node_layer(self, element) -> None:
         # These are mandatory elements, cannot be unticked
-        item = self.add_item(
-            timml_name=element.timml_name, ttim_name=element.ttim_name, enabled=True
-        )
+        item = self.add_item(name=element.name, enabled=True)
         item.element = element
 
     def remove_geopackage_layers(self) -> None:
@@ -119,24 +98,20 @@ class DatasetTreeWidget(QTreeWidget):
         qgs_instance = QgsProject.instance()
 
         for element in elements:
-            for layer in [
-                element.timml_layer,
-                element.ttim_layer,
-                element.assoc_layer,
-            ]:
-                # QGIS layers
-                if layer is None:
-                    continue
-                try:
-                    qgs_instance.removeMapLayer(layer.id())
-                except (RuntimeError, AttributeError) as e:
-                    if e.args[0] in (
-                        "wrapped C/C++ object of type QgsVectorLayer has been deleted",
-                        "'NoneType' object has no attribute 'id'",
-                    ):
-                        pass
-                    else:
-                        raise
+            layer = element.layer
+            # QGIS layers
+            if layer is None:
+                continue
+            try:
+                qgs_instance.removeMapLayer(layer.id())
+            except (RuntimeError, AttributeError) as e:
+                if e.args[0] in (
+                    "wrapped C/C++ object of type QgsVectorLayer has been deleted",
+                    "'NoneType' object has no attribute 'id'",
+                ):
+                    pass
+                else:
+                    raise
 
             # Geopackage
             element.remove_from_geopackage()
@@ -167,6 +142,8 @@ class DatasetWidget(QWidget):
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
         self.add_button.clicked.connect(self.add_selection_to_qgis)
+        self.edge_layer = None
+        self.node_layer = None
         # Layout
         dataset_layout = QVBoxLayout()
         dataset_row = QHBoxLayout()
@@ -187,6 +164,50 @@ class DatasetWidget(QWidget):
         """Returns currently active path to GeoPackage"""
         return self.dataset_line_edit.text()
 
+    def explode_and_connect(self) -> None:
+        node = self.node_layer
+        edge = self.edge_layer
+        explode_lines(edge)
+
+        n_node = node.featureCount()
+        n_edge = edge.featureCount()
+        if n_node == 0 or n_edge == 0:
+            return
+
+        node_xy = np.empty((n_node, 2), dtype=float)
+        node_index = np.empty(n_node, dtype=int)
+        for i, feature in enumerate(node.getFeatures()):
+            point = feature.geometry().asPoint()
+            node_xy[i, 0] = point.x()
+            node_xy[i, 1] = point.y()
+            node_index[i] = feature.attribute(0)  # Store the feature id
+
+        edge_xy = np.empty((n_edge, 2, 2), dtype=float)
+        for i, feature in enumerate(edge.getFeatures()):
+            geometry = feature.geometry().asPolyline()
+            for j, point in enumerate(geometry):
+                edge_xy[i, j, 0] = point.x()
+                edge_xy[i, j, 1] = point.y()
+        edge_xy = edge_xy.reshape((-1, 2))
+        from_id, to_id = derive_connectivity(node_index, node_xy, edge_xy)
+
+        fields = edge.fields()
+        field1 = fields.indexFromName("from_node_fid")
+        field2 = fields.indexFromName("to_node_fid")
+        try:
+            # Avoid infinite recursion
+            edge.blockSignals(True)
+            with edit(edge):
+                for feature, id1, id2 in zip(edge.getFeatures(), from_id, to_id):
+                    fid = feature.id()
+                    # Nota bene: will fail with numpy integers, has to be Python type!
+                    edge.changeAttributeValue(fid, field1, int(id1))
+                    edge.changeAttributeValue(fid, field2, int(id2))
+        finally:
+            edge.blockSignals(False)
+
+        return
+
     def add_layer(
         self,
         layer: Any,
@@ -194,6 +215,7 @@ class DatasetWidget(QWidget):
         renderer: Any = None,
         suppress: bool = None,
         on_top: bool = False,
+        labels: Any = None,
     ) -> QgsMapLayer:
         return self.parent.add_layer(
             layer,
@@ -201,15 +223,19 @@ class DatasetWidget(QWidget):
             renderer,
             suppress,
             on_top,
+            labels,
         )
 
     def add_item_to_qgis(self, item) -> None:
-        layers = item.element.from_geopackage()
+        element = item.element
+        layer, renderer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        timml_layer, renderer = layers[0]
-        maplayer = self.add_layer(timml_layer, "timml", renderer, suppress)
-        self.add_layer(layers[1][0], "ttim")
-        self.add_layer(layers[2][0], "timml")
+        if element.input_type == "edge":
+            suppress = True
+        self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
+        element.set_editor_widget()
+        element.set_read_only()
+        return
 
     def add_selection_to_qgis(self) -> None:
         selection = self.dataset_tree.selectedItems()
@@ -222,12 +248,18 @@ class DatasetWidget(QWidget):
         """
         self.dataset_tree.clear()
         nodes = load_nodes_from_geopackage(self.path)
-        for node_layer in nodes:
+        for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
         name = str(Path(self.path).stem)
         self.parent.create_groups(name)
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
+
+        # Connect node and edge layer to derive connectivities.
+        self.node_layer = nodes["node"].layer
+        self.edge_layer = nodes["edge"].layer
+        self.edge_layer.afterCommitChanges.connect(self.explode_and_connect)
+        return
 
     def new_geopackage(self) -> None:
         """
@@ -236,22 +268,23 @@ class DatasetWidget(QWidget):
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.gpkg")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
+            for input_type in (Lsw, Edges):
+                instance = input_type.create(path, self.parent.crs, names=[])
+                instance.write()
             self.load_geopackage()
-            self.parent.toggle_element_buttons(True)
-        self.parent.on_transient_changed()
+            self.parent.toggle_node_buttons(True)
 
     def open_geopackage(self) -> None:
         """
-        Open a GeoPackage file, containing qgis-tim
+        Open a GeoPackage file, containing Ribasim input.
         """
         self.dataset_tree.clear()
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.gpkg")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
-            self.parent.toggle_element_buttons(True)
+            self.parent.toggle_node_buttons(True)
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
-        self.parent.on_transient_changed()
 
     def remove_geopackage_layer(self) -> None:
         """
@@ -265,25 +298,25 @@ class DatasetWidget(QWidget):
     def suppress_popup_changed(self):
         suppress = self.suppress_popup_checkbox.isChecked()
         for item in self.dataset_tree.items():
-            layer = item.element.timml_layer
+            layer = item.element.layer
             if layer is not None:
                 config = layer.editFormConfig()
-                config.setSuppress(suppress)
+                # Always suppress the attribute form pop-up for edges.
+                if item.element.input_type == "edge":
+                    config.setSuppress(True)
+                else:
+                    config.setSuppress(suppress)
                 layer.setEditFormConfig(config)
 
     def active_nodes(self):
         active_nodes = {}
         for item in self.dataset_tree.items():
-            active_nodes[item.text(1)] = not (item.timml_checkbox.isChecked() == 0)
-            active_nodes[item.text(3)] = not (item.ttim_checkbox.isChecked() == 0)
+            active_nodes[item.text(1)] = not (item.checkbox.isChecked() == 0)
         return active_nodes
 
     def selection_names(self) -> Set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        for item in selection:
-            if item.assoc_item is not None and item.assoc_item not in selection:
-                selection.append(item.assoc_item)
         return set([item.element.name for item in selection])
 
     def add_node_layer(self, element) -> None:

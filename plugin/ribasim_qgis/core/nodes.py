@@ -21,9 +21,10 @@ Each node layer is (optionally) represented in multiple places:
 """
 
 import abc
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from PyQt5.QtCore import QVariant
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -33,38 +34,24 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 from qgis.core import (
+    QgsCategorizedSymbolRenderer,
     QgsDefaultValue,
+    QgsEditorWidgetSetup,
     QgsFeature,
     QgsField,
     QgsFillSymbol,
     QgsGeometry,
     QgsLineSymbol,
+    QgsMarkerSymbol,
+    QgsPalLayerSettings,
     QgsPointXY,
+    QgsRendererCategory,
+    QgsSimpleMarkerSymbolLayerBase,
     QgsSingleSymbolRenderer,
     QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
 )
 from ribasim_qgis.core import geopackage
-
-
-class NameDialog(QDialog):
-    def __init__(self, parent=None):
-        super(NameDialog, self).__init__(parent)
-        self.name_line_edit = QLineEdit()
-        self.ok_button = QPushButton("OK")
-        self.cancel_button = QPushButton("Cancel")
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button.clicked.connect(self.reject)
-        first_row = QHBoxLayout()
-        first_row.addWidget(QLabel("Layer name"))
-        first_row.addWidget(self.name_line_edit)
-        second_row = QHBoxLayout()
-        second_row.addStretch()
-        second_row.addWidget(self.ok_button)
-        second_row.addWidget(self.cancel_button)
-        layout = QVBoxLayout()
-        layout.addLayout(first_row)
-        layout.addLayout(second_row)
-        self.setLayout(layout)
 
 
 class RibasimInput(abc.ABC):
@@ -72,178 +59,259 @@ class RibasimInput(abc.ABC):
     Abstract base class for Ribasim input layers.
     """
 
-    element_type = None
-    geometry_type = None
-    attributes = []
-
-    def _initialize_default(self, path, name):
-        """Things to always initialize for every input layer."""
-        self.name = name
+    def __init__(self, path: str):
+        self.name = f"ribasim_{self.input_type}"
         self.path = path
-        self.ribasim_name = f"Ribasim {self.element_type}:{name}"
         self.layer = None
 
-    @abc.abstractmethod
-    def _initialize(self, path, name):
-        pass
-
-    def __init__(self, path: str, name: str):
-        self._initialize_default(path, name)
-        self._initialize()
-
-    @staticmethod
-    def dialog(
-        path: str, crs: Any, iface: Any, klass: type, names: List[str]
-    ) -> Tuple[Any]:
-        dialog = NameDialog()
-        dialog.show()
-        ok = dialog.exec_()
-        if not ok:
-            return
-
-        name = dialog.name_line_edit.text()
-        if name in names:
-            raise ValueError(f"Name already exists in geopackage: {name}")
-
-        instance = klass(path, name)
-        instance.create_layers(crs)
+    @classmethod
+    def create(cls, path: str, crs: Any, names: List[str]) -> "RibasimInput":
+        instance = cls(path)
+        if instance.name in names:
+            raise ValueError(f"Name already exists in geopackage: {instance.name}")
+        instance.layer = instance.new_layer(crs)
         return instance
 
-    def new_layer(self, crs: Any, geometry_type: str, name: str, attributes: List):
-        layer = QgsVectorLayer(geometry_type, name, "memory")
+    def new_layer(self, crs: Any) -> Any:
+        """
+        Separate creation of the instance with creating the layer, since the
+        layer might also come from an existing geopackage.
+        """
+        layer = QgsVectorLayer(self.geometry_type, self.name, "memory")
         provider = layer.dataProvider()
-        provider.addAttributes(attributes)
+        provider.addAttributes(self.attributes)
         layer.updateFields()
         layer.setCrs(crs)
-        self.layer = layer
+        return layer
+
+    def set_defaults(self):
+        layer = self.layer
+        defaults = getattr(self, "defaults", None)
+        if layer is None or defaults is None:
+            return
+        fields = layer.fields()
+        for name, definition in defaults.items():
+            index = fields.indexFromName(name)
+            layer.setDefaultValueDefinition(index, definition)
         return
 
-    def renderer(self):
+    def set_read_only(self) -> None:
+        return
+
+    @property
+    def renderer(self) -> None:
+        return
+
+    @property
+    def labels(self) -> None:
         return
 
     def layer_from_geopackage(self) -> QgsVectorLayer:
-        self.timml_layer = QgsVectorLayer(
-            f"{self.path}|layername={self.ribasim_name}", self.ribasim_name
-        )
+        self.layer = QgsVectorLayer(f"{self.path}|layername={self.name}", self.name)
         return
 
-    def from_geopackage(self):
+    def from_geopackage(self) -> Tuple[Any, Any]:
         self.layer_from_geopackage()
-        return (self.layer, self.renderer())
+        return (self.layer, self.renderer, self.labels)
 
-    def write(self):
-        self.layer = geopackage.write_layer(self.path, self.layer, self.ribasim_name)
+    def write(self) -> None:
+        self.layer = geopackage.write_layer(self.path, self.layer, self.name)
+        self.set_defaults()
         return
 
-    def remove_from_geopackage(self):
-        geopackage.remove_layer(self.path, self.ribasim_name)
+    def remove_from_geopackage(self) -> None:
+        geopackage.remove_layer(self.path, self.name)
+        return
 
-
-class Edges(RibasimInput):
-    def _initialize(self):
-        self.element_type = "edge"
-        self.geometry_type = "Linestring"
-        self.attributes = [
-            QgsField("from_id", QVariant.Int),
-            QgsField("from_node", QVariant.String),
-            QgsField("to_id", QVariant.Int),
-            QgsField("to_node", QVariant.String),
-        ]
+    def set_editor_widget(self) -> None:
+        """Calling during new_layer doesn't have any effect..."""
+        return
 
 
 class Lsw(RibasimInput):
-    def _initialize(self):
-        self.element_type = "node"
-        self.geometry_type = "Point"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-        ]
+    input_type = "node"
+    geometry_type = "Point"
+    attributes = [
+        # TODO: node should be a ComboBox?
+        QgsField("node", QVariant.String),  # TODO discuss
+    ]
+
+    def write(self) -> None:
+        """
+        Special the LSW layer write because it needs to generate a new file.
+        """
+        self.layer = geopackage.write_layer(
+            self.path, self.layer, self.name, newfile=True
+        )
+        self.set_defaults()
+        return
+
+    def set_editor_widget(self) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName("node")
+        setup = QgsEditorWidgetSetup(
+            "ValueMap",
+            {
+                "map": {
+                    "LSW": "LSW",
+                    "Bifurcation": "Bifurcation",
+                    "OutflowTable": "OutflowTable",
+                    "LevelControl": "LevelControl",
+                },
+            },
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
+        layer_form_config = layer.editFormConfig()
+        layer_form_config.setReuseLastValue(1, True)
+        layer.setEditFormConfig(layer_form_config)
+
+        return
+
+    @property
+    def renderer(self) -> QgsCategorizedSymbolRenderer:
+        shape = QgsSimpleMarkerSymbolLayerBase
+        markers = {
+            "LSW": (QColor("blue"), "LSW", shape.Circle),
+            "Bifurcation": (QColor("red"), "Bifurcation", shape.Triangle),
+            "OutflowTable": (QColor("green"), "OutflowTable", shape.Diamond),
+            "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
+            "": (
+                QColor("white"),
+                "",
+                shape.Circle,
+            ),  # All other nodes, or incomplete input
+        }
+
+        categories = []
+        for value, (colour, label, shape) in markers.items():
+            symbol = QgsMarkerSymbol()
+            symbol.symbolLayer(0).setShape(shape)
+            symbol.setColor(QColor(colour))
+            symbol.setSize(4)
+            category = QgsRendererCategory(value, symbol, label, shape)
+            categories.append(category)
+
+        renderer = QgsCategorizedSymbolRenderer(attrName="node", categories=categories)
+        return renderer
+
+    @property
+    def labels(self) -> Any:
+        pal_layer = QgsPalLayerSettings()
+        pal_layer.fieldName = "fid"
+        pal_layer.enabled = True
+        pal_layer.dist = 2.0
+        labels = QgsVectorLayerSimpleLabeling(pal_layer)
+        return labels
+
+
+class Edges(RibasimInput):
+    input_type = "edge"
+    geometry_type = "Linestring"
+    attributes = [
+        QgsField("from_node_fid", QVariant.Int),
+        QgsField("to_node_fid", QVariant.Int),
+    ]
+
+    @property
+    def renderer(self) -> QgsSingleSymbolRenderer:
+        symbol = QgsLineSymbol.createSimple(
+            {
+                "color": "#3690c0",  # lighter blue
+                "width": "0.5",
+            }
+        )
+        return QgsSingleSymbolRenderer(symbol)
+
+    def set_read_only(self) -> None:
+        layer = self.layer
+        config = layer.editFormConfig()
+        for index in range(len(layer.fields())):
+            config.setReadOnly(index, True)
+        layer.setEditFormConfig(config)
+        return
 
 
 class LswLookup(RibasimInput):
-    def _initialize(self):
-        self.element_type = "lookup_LSW"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("volume", QVariant.Double),
-            QgsField("area", QVariant.Double),
-            QgsField("level", QVariant.Double),
-        ]
+    input_type = "lookup_LSW"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_fid", QVariant.Int),
+        QgsField("volume", QVariant.Double),
+        QgsField("area", QVariant.Double),
+        QgsField("level", QVariant.Double),
+    ]
 
 
 class OutflowTableLookup(RibasimInput):
-    def _initialize(self):
-        self.element_type = "lookup_OutflowTable"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("level", QVariant.Double),
-            QgsField("discharge", QVariant.Double),
-        ]
+    input_type = "lookup_OutflowTable"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_fid", QVariant.Int),
+        QgsField("level", QVariant.Double),
+        QgsField("discharge", QVariant.Double),
+    ]
 
 
 class Bifurcation(RibasimInput):
-    def _initialize(self):
-        self.element_type = "static_Bifurcation"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("fraction_1", QVariant.Double),
-            QgsField("fraction_2", QVariant.Double),
-        ]
+    input_type = "static_Bifurcation"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_fid", QVariant.Int),
+        QgsField("fraction_1", QVariant.Double),
+        QgsField("fraction_2", QVariant.Double),
+    ]
 
 
 class LevelControl(RibasimInput):
-    def _initialize(self):
-        self.element_type = "static_LevelControl"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("target_volume", QVariant.Double),
-        ]
+    input_type = "static_LevelControl"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_fid", QVariant.Int),
+        QgsField("target_volume", QVariant.Double),
+    ]
 
 
 class LswState(RibasimInput):
-    def _initialize(self):
-        self.element_type = "state_LSW"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("S", QVariant.Double),
-            QgsField("C", QVariant.Double),
-        ]
+    input_type = "state_LSW"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_fid", QVariant.Int),
+        QgsField("S", QVariant.Double),
+        QgsField("C", QVariant.Double),
+    ]
 
 
 class LswForcing(RibasimInput):
-    def _initialize(self):
-        self.element_type = "forcing_LSW"
-        self.geometry_type = "No Geometry"
-        self.attributes = [
-            QgsField("id", QVariant.Int),
-            QgsField("time", QVariant.QDateTime),
-            QgsField("P", QVariant.Double),
-            QgsField("ET", QVariant.Double),
-        ]
+    input_type = "forcing_LSW"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_fid", QVariant.Int),
+        QgsField("demand", QVariant.Double),
+        QgsField("drainage", QVariant.Double),
+        QgsField("E_pot", QVariant.Double),
+        QgsField("infiltration", QVariant.Double),
+        QgsField("P", QVariant.Double),
+        QgsField("priority", QVariant.Double),
+        QgsField("urban_runoff", QVariant.Double),
+    ]
 
 
 NODES = {
-    "Edges": Edges,
-    "LSW": Lsw,
-    "lookup LSW": LswLookup,
-    "lookup OutflowTable": OutflowTableLookup,
-    "static Bifurcation": Bifurcation,
-    "static LevelControl": LevelControl,
+    "node": Lsw,
+    "edge": Edges,
+    "lookup_LSW": LswLookup,
+    "lookup_OutflowTable": OutflowTableLookup,
+    "static_Bifurcation": Bifurcation,
+    "static_LevelControl": LevelControl,
+    "forcing_LSW": LswForcing,
 }
 
 
 def parse_name(layername: str) -> Tuple[str, str]:
     """
-    Based on the layer name find out:
-
-    * whether it's a Ribasim input layer;
-    * which element type it is;
-    * what the user provided name is.
+    Based on the layer name find out which type it is.
 
     For example:
     parse_name("Ribasim Edges: network") -> ("Edges", "network")
@@ -262,19 +330,17 @@ def parse_name(layername: str) -> Tuple[str, str]:
     return kind, nodetype
 
 
-def load_nodes_from_geopackage(path: str) -> List[RibasimInput]:
+def load_nodes_from_geopackage(path: str) -> Dict[str, RibasimInput]:
     # List the names in the geopackage
     gpkg_names = geopackage.layers(path)
-
-    # Group them on the basis of name
-    nodes = []
+    nodes = {}
     for layername in gpkg_names:
         if layername.startswith("ribasim_"):
             kind, nodetype = parse_name(layername)
             if kind in ("node", "edge"):
                 key = kind
             else:
-                key = f"{kind} {nodetype}"
-            nodes.append(NODES[key](path))
+                key = f"{kind}_{nodetype}"
+            nodes[key] = NODES[key](path)
 
     return nodes
