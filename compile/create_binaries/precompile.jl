@@ -3,6 +3,8 @@
 
 using Ribasim
 
+include("../../utils/testdata.jl")
+
 testdata("model.gpkg", normpath(@__DIR__, "../../data/lhm/model.gpkg"))
 testdata("forcing.arrow", normpath(@__DIR__, "../../data/lhm/forcing.arrow"))
 
