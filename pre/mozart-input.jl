@@ -13,10 +13,12 @@ using IntervalSets
 using JSON3
 using SQLite: SQLite, DB, Query
 using Statistics
+using Revise
+import GeoDataFrames as GDF
 
-include("mozart-files.jl")
-include("mozart-data.jl")
-include("lsw.jl")
+includet("mozart-files.jl")
+includet("mozart-data.jl")
+includet("lsw.jl")
 
 output_dir = normpath(@__DIR__, "../data/input/8")
 
@@ -52,192 +54,21 @@ lsw_idxs = sortperm(Vector{Int}(lswdik_unsorted.lsw))
 lswdik = lswdik_unsorted[lsw_idxs, :]
 lsw_ids = Vector{Int}(lswdik.lsw)
 
-profile_dict = create_profile_dict(lsw_ids, lswdik, vadvalue, ladvalue)
 graph, fractions = lswrouting_graph(lsw_ids, lswrouting)
 
+# forcing
 mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
-mzwb = read_mzwaterbalance(mzwaterbalance_path)
+mzwb = read_forcing_waterbalance(mzwaterbalance_path)
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
-prec_dict, evap_dict = meteo_dicts(meteo_path, lsw_ids)
-drainage_dict = create_dict(mzwb, :drainage_sh)
-infiltration_dict = create_dict(mzwb, :infiltr_sh; flipsign = true)
-urban_runoff_dict = create_dict(mzwb, :urban_runoff)
-demand_agric_dict, prio_agric_dict = create_user_dict(uslswdem, "A")
-demand_wm_dict, prio_wm_dict = create_user_dict(uslswdem, "WM")
-demand_flush_dict, prio_flush_dict = create_user_dict(uslswdem, "WF")
-# use "A" instead of "I" for industry since that doesn't exist in the data
-# demand_indus_dict, prio_indus_dict = create_user_dict(uslswdem, "A")
+meteo = @subset(read_forcing_meteo(meteo_path), :node_fid in lsw_ids)
 
-# set Ribasim runtimes equal to the mozart reference run
-times::Vector{Float64} = prec_dict[first(lsw_ids)].t
-startdate::DateTime = unix2datetime(times[begin])
-enddate::DateTime = unix2datetime(times[end])
-dates::Vector{DateTime} = unix2datetime.(times)
-timespan::ClosedInterval{Float64} = times[begin] .. times[end]
-datespan::ClosedInterval{DateTime} = dates[begin] .. dates[end]
-
-function long_profiles(; lsw_ids, profile_dict)
-    profiles = DataFrame(;
-        location = Int[],
-        volume = Float64[],
-        area = Float64[],
-        discharge = Float64[],
-        level = Float64[],
-    )
-    for lsw_id in lsw_ids
-        profile = profile_dict[lsw_id]
-        append!(profiles.location, fill(lsw_id, nrow(profile)))
-        append!(profiles.volume, profile.volume)
-        append!(profiles.area, profile.area)
-        append!(profiles.discharge, profile.discharge)
-        append!(profiles.level, profile.level)
-    end
-
-    Arrow.write(normpath(output_dir, "profile-mozart.arrow"), profiles)
-end
-
-function append_equidistant_forcing!(forcing, series_dict, variable::Symbol)
-    for (lsw_id, ff) in series_dict
-        value = fill(NaN, n_time)
-        for (i, t) in enumerate(days)
-            value[i] = ff(datetime2unix(t))
-        end
-
-        var = fill(variable, n_time)
-        location = fill(lsw_id, n_time)
-        append!(forcing.time, days)
-        append!(forcing.variable, var)
-        append!(forcing.location, location)
-        append!(forcing.value, value)
-    end
-    return forcing
-end
-
-function long_equidistant_forcing(
-    path;
-    prec_dict,
-    evap_dict,
-    drainage_dict,
-    infiltration_dict,
-    urban_runoff_dict,
-    demand_agric_dict,
-    prio_agric_dict,
-    prio_wm_dict,
-)
-
-    # all dynamic input is stored here, one number per row
-    forcing = DataFrame(;
-        time = DateTime[],
-        variable = Symbol[],
-        location = Int[],
-        value = Float64[],
-    )
-    append_equidistant_forcing!(forcing, prec_dict, :precipitation)
-    append_equidistant_forcing!(forcing, evap_dict, :evaporation)
-    append_equidistant_forcing!(forcing, drainage_dict, :drainage)
-    append_equidistant_forcing!(forcing, infiltration_dict, :infiltration)
-    append_equidistant_forcing!(forcing, urban_runoff_dict, :urban_runoff)
-    append_equidistant_forcing!(forcing, demand_agric_dict, :demand_agriculture)
-    append_equidistant_forcing!(forcing, prio_agric_dict, :priority_agriculture)
-    append_equidistant_forcing!(forcing, prio_wm_dict, :priority_watermanagement)
-
-    forcing.variable = Arrow.DictEncode(forcing.variable)
-    forcing.location = Arrow.DictEncode(forcing.location)
-    Arrow.write(path, forcing)
-end
-
-function append_forcing!(forcing, series_dict, variable::Symbol)
-    for (lsw_id, ff) in series_dict
-        n = length(ff.t)
-        time = unix2datetime.(ff.t)
-        var = fill(variable, n)
-        location = fill(lsw_id, n)
-        value = ff.v
-        append!(forcing.time, time)
-        append!(forcing.variable, var)
-        append!(forcing.location, location)
-        append!(forcing.value, value)
-    end
-    return forcing
-end
-
-function long_forcing(
-    path;
-    prec_dict,
-    evap_dict,
-    drainage_dict,
-    infiltration_dict,
-    urban_runoff_dict,
-    demand_agric_dict,
-    prio_agric_dict,
-    prio_wm_dict,
-)
-
-    # all dynamic input is stored here, one number per row
-    forcing = DataFrame(;
-        time = DateTime[],
-        variable = Symbol[],
-        location = Int[],
-        value = Float64[],
-    )
-    append_forcing!(forcing, prec_dict, :precipitation)
-    append_forcing!(forcing, evap_dict, :evaporation)
-    append_forcing!(forcing, drainage_dict, :drainage)
-    append_forcing!(forcing, infiltration_dict, :infiltration)
-    append_forcing!(forcing, urban_runoff_dict, :urban_runoff)
-    append_forcing!(forcing, demand_agric_dict, :demand_agriculture)
-    append_forcing!(forcing, prio_agric_dict, :priority_agriculture)
-    append_forcing!(forcing, prio_wm_dict, :priority_watermanagement)
-
-    # right now we only rely on time being sorted
-    sort!(forcing, [:time, :location, :variable])
-    # these will reduce the size of the file considerably, but also seem to confuse QGIS
-    # forcing.time = Arrow.DictEncode(forcing.time)
-    # forcing.variable = Arrow.DictEncode(forcing.variable)
-    # forcing.location = Arrow.DictEncode(forcing.location)
-    Arrow.write(path, forcing)
-end
-
-long_profiles(; lsw_ids, profile_dict)
-
-long_forcing(
-    normpath(output_dir, "forcing-old.arrow");
-    prec_dict,
-    evap_dict,
-    drainage_dict,
-    infiltration_dict,
-    urban_runoff_dict,
-    demand_agric_dict,
-    prio_agric_dict,
-    prio_wm_dict,
-)
-
-# not needed anymore
-# long_equidistant_forcing(normpath(output_dir, "forcing-daily.arrow"); prec_dict, evap_dict,
-#                          drainage_dict, infiltration_dict,
-#                          urban_runoff_dict, demand_agric_dict, prio_agric_dict,
-#                          prio_wm_dict)
-
+forcing_lsw = hcat(meteo, mzwb[:, Not([:time, :node_fid])])
+# avoid adding JuliaLang metadata that polars errors on
 begin
-    static = lswdik[
-        :,
-        [:lsw, :districtwatercode, :target_volume, :target_level, :depth_surface_water],
-    ]
-    rename!(static, :lsw => :location)
-    static.local_surface_water_type =
-        Arrow.DictEncode(only.(lswdik.local_surface_water_type))
-    Arrow.write(normpath(output_dir, "static-mozart.arrow"), static)
-end
-
-begin
-    initial_condition = @subset(lswvalue, :time_start == startdate, in(:lsw, lsw_ids))
-    @assert DataFrames.nrow(initial_condition) == length(lsw_ids)
-    # get the lsws out in the same order
-    lsw_idxs = findall(in(lsw_ids), initial_condition.lsw)
-    volume = Float64.(initial_condition[lsw_idxs, :volume])
-    state = DataFrame(; location = lsw_ids, volume)
-    Arrow.write(normpath(output_dir, "state-mozart.arrow"), state)
+    forcing_lsw_arrow = copy(forcing_lsw)
+    forcing_lsw_arrow.time = convert.(Arrow.DATETIME, forcing_lsw_arrow.time)
+    Arrow.write(normpath(output_dir, "forcing.arrow"), forcing_lsw_arrow; compress = :lz4)
 end
 
 x, y = lsw_centers(normpath(coupling_dir, "lsws.dbf"), lsw_ids)
@@ -297,8 +128,8 @@ function expanded_network()
     # create the nodes table
     df = DataFrame(;
         geometry = NTuple{2, Float64}[],
-        node = String[],
-        id = Int[],
+        type = String[],
+        fid = Int[],
         org_id = Int[],
     )
     id = 1
@@ -306,11 +137,11 @@ function expanded_network()
     # create the edges table
     t = DataFrame(;
         geometry = linestringtype[],
-        from_id = Int[],
-        from_node = String[],
+        from_node_fid = Int[],
+        from_node_type = String[],
         from_connector = String[],
-        to_id = Int[],
-        to_node = String[],
+        to_node_fid = Int[],
+        to_node_type = String[],
         to_connector = String[],
     )
 
@@ -330,11 +161,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = [lswcoord, coord],
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "x",
-                    to_id = id,
-                    to_node = "GeneralUser",
+                    to_node_fid = id,
+                    to_node_type = "GeneralUser",
                     to_connector = "x",
                 ),
             )
@@ -342,11 +173,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = arc([lswcoord, coord]),
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "s",
-                    to_id = id,
-                    to_node = "GeneralUser",
+                    to_node_fid = id,
+                    to_node_type = "GeneralUser",
                     to_connector = "s",
                 ),
             )
@@ -358,11 +189,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = [lswcoord, coord],
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "x",
-                    to_id = id,
-                    to_node = "OutflowTable",
+                    to_node_fid = id,
+                    to_node_type = "OutflowTable",
                     to_connector = "a",
                 ),
             )
@@ -370,11 +201,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = arc([lswcoord, coord]),
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "s",
-                    to_id = id,
-                    to_node = "OutflowTable",
+                    to_node_fid = id,
+                    to_node_type = "OutflowTable",
                     to_connector = "s",
                 ),
             )
@@ -386,11 +217,11 @@ function expanded_network()
                     t,
                     (;
                         geometry = [move_location(xcoord, ycoord, 4), coord],
-                        from_id = outflowtable_id,
-                        from_node = "OutflowTable",
+                        from_node_fid = outflowtable_id,
+                        from_node_type = "OutflowTable",
                         from_connector = "b",
-                        to_id = id,
-                        to_node = "HeadBoundary",
+                        to_node_fid = id,
+                        to_node_type = "HeadBoundary",
                         to_connector = "x",
                     ),
                 )
@@ -403,11 +234,11 @@ function expanded_network()
                     t,
                     (;
                         geometry = [lswcoord, coord],
-                        from_id = outflowtable_id,
-                        from_node = "OutflowTable",
+                        from_node_fid = outflowtable_id,
+                        from_node_type = "OutflowTable",
                         from_connector = "b",
-                        to_id = id,
-                        to_node = "Bifurcation",
+                        to_node_fid = id,
+                        to_node_type = "Bifurcation",
                         to_connector = "src",
                     ),
                 )
@@ -420,11 +251,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = [lswcoord, coord],
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "x",
-                    to_id = id,
-                    to_node = "GeneralUser_P",
+                    to_node_fid = id,
+                    to_node_type = "GeneralUser_P",
                     to_connector = "a",
                 ),
             )
@@ -432,11 +263,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = arc([lswcoord, coord]),
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "s",
-                    to_id = id,
-                    to_node = "GeneralUser_P",
+                    to_node_fid = id,
+                    to_node_type = "GeneralUser_P",
                     to_connector = "s_a",
                 ),
             )
@@ -447,11 +278,11 @@ function expanded_network()
                 t,
                 (;
                     geometry = [lswcoord, coord],
-                    from_id = lsw_seq,
-                    from_node = "LSW",
+                    from_node_fid = lsw_seq,
+                    from_node_type = "LSW",
                     from_connector = "x",
-                    to_id = id,
-                    to_node = "LevelControl",
+                    to_node_fid = id,
+                    to_node_type = "LevelControl",
                     to_connector = "a",
                 ),
             )
@@ -470,38 +301,38 @@ function expanded_network()
             # connect from OutflowTable or Bifurcation depending on the number of downstream
             # nodes
             if length(out_vertices) == 1
-                from_node = only(@subset(df, :org_id == lsw_id, :node == "OutflowTable"))
+                from_node = only(@subset(df, :org_id == lsw_id, :type == "OutflowTable"))
                 from_connector = "b"
 
                 out_lsw_id = only(out_lsw_ids)
-                to_node = only(@subset(df, :org_id == out_lsw_id, :node == "LSW"))
+                to_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
                 to_connector = "x"
 
                 nt = (;
                     geometry = [from_node.geometry, to_node.geometry],
-                    from_id = from_node.id,
-                    from_node = from_node.node,
+                    from_node_fid = from_node.fid,
+                    from_node_type = from_node.type,
                     from_connector,
-                    to_id = to_node.id,
-                    to_node = to_node.node,
+                    to_node_fid = to_node.fid,
+                    to_node_type = to_node.type,
                     to_connector,
                 )
                 push!(t, nt)
             else
-                from_node = only(@subset(df, :org_id == lsw_id, :node == "Bifurcation"))
+                from_node = only(@subset(df, :org_id == lsw_id, :type == "Bifurcation"))
 
                 for (i, out_lsw_id) in enumerate(out_lsw_ids)
-                    to_node = only(@subset(df, :org_id == out_lsw_id, :node == "LSW"))
+                    to_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
                     from_connector = string("dst_", i)  # Bifurcation supports n dst connectors
                     to_connector = "x"
 
                     nt = (;
                         geometry = [from_node.geometry, to_node.geometry],
-                        from_id = from_node.id,
-                        from_node = from_node.node,
+                        from_node_fid = from_node.fid,
+                        from_node_type = from_node.type,
                         from_connector,
-                        to_id = to_node.id,
-                        to_node = to_node.node,
+                        to_node_fid = to_node.fid,
+                        to_node_type = to_node.type,
                         to_connector,
                     )
                     push!(t, nt)
@@ -521,17 +352,17 @@ function expanded_network()
                 push!(df, (midcoord, "LevelLink", id, lsw_id))
 
                 # add edges to LSW on either side
-                lsw_node = only(@subset(df, :org_id == lsw_id, :node == "LSW"))
-                out_lsw_node = only(@subset(df, :org_id == out_lsw_id, :node == "LSW"))
+                lsw_node = only(@subset(df, :org_id == lsw_id, :type == "LSW"))
+                out_lsw_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
                 push!(
                     t,
                     (;
                         geometry = [srccoord, midcoord],
-                        from_id = lsw_node.id,
-                        from_node = "LSW",
+                        from_node_fid = lsw_node.fid,
+                        from_node_type = "LSW",
                         from_connector = "x",
-                        to_id = id,
-                        to_node = "LevelLink",
+                        to_node_fid = id,
+                        to_node_type = "LevelLink",
                         to_connector = "a",
                     ),
                 )
@@ -539,11 +370,11 @@ function expanded_network()
                     t,
                     (;
                         geometry = [midcoord, dstcoord],
-                        from_id = id,
-                        from_node = "LevelLink",
+                        from_node_fid = id,
+                        from_node_type = "LevelLink",
                         from_connector = "b",
-                        to_id = out_lsw_node.id,
-                        to_node = "LSW",
+                        to_node_fid = out_lsw_node.fid,
+                        to_node_type = "LSW",
                         to_connector = "x",
                     ),
                 )
@@ -552,20 +383,13 @@ function expanded_network()
         end
     end
 
-    # the org_id is not needed in Ribasim: df[:, Not(:org_id)]
-    write_geoarrow(normpath(output_dir, "node.arrow"), df[:, Not(:org_id)], "point")
-    write_geoarrow(normpath(output_dir, "edge.arrow"), t, "linestring")
-
-    # Create the expanded graph as well from the edge table, not needed by Ribasim,
-    # but for completeness and QGIS visualization.
-    g = DiGraph(nrow(df))
-    for edge in eachrow(t)
-        # we can use id as a graph node id, since we know they are the same
-        # some edges have Q and salinity so will be added twice, not possible to distinguish
-        add_edge!(g, edge.from_id, edge.to_id)
-    end
-
-    return nothing
+    node = df[:, Not(:org_id)]
+    edge = t
+    return node, edge
 end
 
-expanded_network()
+node, edge = expanded_network()
+# TODO save to GeoPackage using GeoDataFrames
+node
+edge
+nothing
