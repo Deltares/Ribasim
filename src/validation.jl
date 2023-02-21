@@ -6,8 +6,9 @@
 @schema "ribasim.forcing" Forcing
 
 # TODO These should be coupled to the nodetypes
-const from_connectors = ("b", "dst", "dst_1", "dst_2", "s", "x")
-const to_connectors = ("a", "s", "s_a", "src", "x")
+const from_connectors =
+    ("b-side", "downstream", "downstream_1", "downstream_2", "storage", "flow")
+const to_connectors = ("a-side", "storage", "upstream", "flow")
 
 @version NodeV1 begin
     fid::Int
