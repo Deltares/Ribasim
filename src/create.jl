@@ -70,7 +70,7 @@ function create_connection_index(
     link_ids = get_ids(db, linktype)
     ab = sort(
         filter(
-            [:to_node_id, :to_connector] => (x, y) -> x in (link_ids) && y == "s",
+            [:to_node_id, :to_connector] => (x, y) -> x in (link_ids) && y == "storage",
             edge;
             view = true,
         ),
