@@ -55,13 +55,13 @@ function read_forcing_meteo(path)
     # prepare empty dictionaries
     time = DateTime[]
     node_fid = Int[]
-    P = Float64[]
-    E_pot = Float64[]
-    df = DataFrame(; time, node_fid, P, E_pot, copycols = false)
+    precipitation = Float64[]
+    potential_evaporation = Float64[]
+    df = DataFrame(; time, node_fid, precipitation, potential_evaporation, copycols = false)
 
     # fill them with data, going over each line once
     for line in eachline(path)
-        parse_meteo_line!(time, node_fid, P, E_pot, line)
+        parse_meteo_line!(time, node_fid, precipitation, potential_evaporation, line)
     end
     sort!(df, [:time, :node_fid])
     return df
