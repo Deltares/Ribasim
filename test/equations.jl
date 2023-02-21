@@ -13,7 +13,7 @@ datadir = normpath(@__DIR__, "..", "data")
 TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
 
 @timeit_debug to "qh_relation" @testset "qh_relation" begin
-    # LSW without forcing
+    # Basin without forcing
     # TODO test QH relation
     sleep(0.1)
 end

@@ -61,8 +61,8 @@ end
 """
 Requirements:
 
-* from: must be (LSW,) node.
-* to: must be a (Bifurcation, LSW) node.
+* from: must be (Basin,) node.
+* to: must be a (Bifurcation, Basin) node.
 """
 struct OutflowTable
     volume::Vector{Float64}
@@ -79,8 +79,8 @@ end
 """
 Requirements:
 
-* from: must be (LSW,) node
-* to: must be (LSW,) node
+* from: must be (Basin,) node
+* to: must be (Basin,) node
 """
 struct LevelLinks
     index_a::Vector{Int}
@@ -93,7 +93,7 @@ end
 Requirements:
 
 * from: must be (OutflowTable,) node
-* to: must be (LSW,) node
+* to: must be (Basin,) node
 * fraction must be positive.
 """
 struct Furcations

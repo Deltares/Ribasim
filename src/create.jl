@@ -1,7 +1,7 @@
 
 function create_basin_nodemap(db::DB)::Dictionary{Int, Int}
     # Enumerate the nodes that have state: the reservoirs.
-    basin_id = get_ids(db, "LSW")
+    basin_id = get_ids(db, "Basin")
     return Dictionary(basin_id, 1:length(basin_id))
 end
 
@@ -148,7 +148,7 @@ function create_storage_tables(
     config::Config,
     basin_nodemap::Dictionary{Int64, Int64},
 )
-    table = load_required_data(db, config, ("lookup", "LSW"))
+    table = load_required_data(db, config, ("lookup", "Basin"))
     df = DataFrame(table)
     tables = StorageTable[]
     grouped = groupby(df, :node_id)
@@ -250,7 +250,7 @@ function create_parameters(db::DB, config::Config)
     level_control = create_level_control(db, config, edge, basin_nodemap)
 
     # TODO support forcing for other nodetypes, make optional
-    forcing = DataFrame(load_required_data(db, config, ("forcing", "LSW")))
+    forcing = DataFrame(load_required_data(db, config, ("forcing", "Basin")))
     grouped = groupby(forcing, :time)
     timed_forcing = Dict([k[1] for k in keys(grouped)] .=> collect(grouped))
     # this is how often we need to callback

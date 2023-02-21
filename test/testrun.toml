@@ -13,4 +13,4 @@ geopackage = "model.gpkg"
 waterbalance = "waterbalance.arrow"
 
 [forcing]
-LSW = "forcing.arrow"
+Basin = "forcing.arrow"
