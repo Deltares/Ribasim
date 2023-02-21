@@ -60,10 +60,6 @@ function BMI.initialize(T::Type{Register}, config::Config)
     db = SQLite.DB(gpkg_path)
 
     parameters, used_time_uniq = create_parameters(db, config)
-
-    # We update parameters with forcing data. Only the current value per parameter is
-    # stored in the solution object, so we track the history ourselves.
-    param_hist = ForwardFill(Float64[], Vector{Float64}[])
     tspan = (datetime2unix(config.starttime), datetime2unix(config.endtime))
 
     @timeit_debug to "Setup ODEProblem" begin
@@ -98,7 +94,7 @@ function BMI.initialize(T::Type{Register}, config::Config)
     )
 
     waterbalance = DataFrame()  # not used at the moment
-    return Register(integrator, param_hist, waterbalance)
+    return Register(integrator, waterbalance)
 end
 
 function BMI.update(reg::Register)

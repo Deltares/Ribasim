@@ -303,9 +303,9 @@ function update_forcings!(integrator)
     basin_nodemap = p.connectivity.basin_nodemap
 
     for row in Tables.rows(df)
-        state_idx = basin_nodemap[row.id]
-        p.precipitation.value[state_idx] = row.P
-        p.evaporation.value[state_idx] = row.E_pot
+        state_idx = basin_nodemap[row.node_id]
+        p.precipitation.value[state_idx] = row.precipitation
+        p.evaporation.value[state_idx] = row.potential_evaporation
         p.drainage.value[state_idx] = row.drainage
         p.infiltration.value[state_idx] = row.infiltration
     end

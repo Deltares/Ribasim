@@ -23,6 +23,8 @@ function graph(db::DB)
         to = vxdict[row.to_node_id]
         add_edge!(g, from, to)
     end
+    # TODO vxdict basically comes down to 0 => 1, ..., n-1:n, can we rely on fid for
+    # being 0:n-1 and remove the mapping?
     return g, vxdict
 end
 
