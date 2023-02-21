@@ -1,5 +1,6 @@
 # Prepare all input files based on a Mozart run.
 
+import GeoDataFrames as GDF
 using Arrow
 using Chain
 using CSV
@@ -8,13 +9,13 @@ using DataFrames
 using Dates
 using DBFTables
 using DBInterface: execute
+using GDAL_jll
 using Graphs
 using IntervalSets
 using JSON3
+using Revise
 using SQLite: SQLite, DB, Query
 using Statistics
-using Revise
-import GeoDataFrames as GDF
 
 includet("mozart-files.jl")
 includet("mozart-data.jl")
@@ -81,21 +82,6 @@ function move_location(x, y, n)
     return x + r * cos(θ), y + r * sin(θ)
 end
 
-function write_geoarrow(path, t, geomtype)
-    col_metadata =
-        Dict{String, Any}("encoding" => string("geoarrow.", geomtype), "crs" => nothing)
-    geo_metadata = Dict(
-        "schema_version" => v"0.3.0",
-        "primary_column" => "geometry",
-        "columns" => Dict("geometry" => col_metadata),
-        "creator" => (library = "Arrow.jl", version = v"2.4.0"),
-    )
-    metadata = ["geo" => JSON3.write(geo_metadata)]
-    colmetadata =
-        Dict(:geometry => ["ARROW:extension:name" => string("geoarrow.", geomtype)])
-    Arrow.write(path, t; metadata, colmetadata)
-end
-
 # for storage edges, avoid plotting them on top of flow edges
 # since it is a linestring, add a middle point that is off center
 function arc(line)
@@ -127,7 +113,7 @@ function expanded_network()
 
     # create the nodes table
     df = DataFrame(;
-        geometry = NTuple{2, Float64}[],
+        geom = NTuple{2, Float64}[],
         type = String[],
         fid = Int[],
         org_id = Int[],
@@ -136,7 +122,7 @@ function expanded_network()
     linestringtype = typeof([(10.0, 20.0), (30.0, 40.0)])
     # create the edges table
     t = DataFrame(;
-        geometry = linestringtype[],
+        geom = linestringtype[],
         from_node_fid = Int[],
         from_node_type = String[],
         from_connector = String[],
@@ -160,7 +146,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = [lswcoord, coord],
+                    geom = [lswcoord, coord],
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
@@ -172,7 +158,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = arc([lswcoord, coord]),
+                    geom = arc([lswcoord, coord]),
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
@@ -188,7 +174,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = [lswcoord, coord],
+                    geom = [lswcoord, coord],
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
@@ -200,7 +186,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = arc([lswcoord, coord]),
+                    geom = arc([lswcoord, coord]),
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
@@ -216,7 +202,7 @@ function expanded_network()
                 push!(
                     t,
                     (;
-                        geometry = [move_location(xcoord, ycoord, 4), coord],
+                        geom = [move_location(xcoord, ycoord, 4), coord],
                         from_node_fid = outflowtable_id,
                         from_node_type = "OutflowTable",
                         from_connector = "b",
@@ -233,7 +219,7 @@ function expanded_network()
                 push!(
                     t,
                     (;
-                        geometry = [lswcoord, coord],
+                        geom = [lswcoord, coord],
                         from_node_fid = outflowtable_id,
                         from_node_type = "OutflowTable",
                         from_connector = "b",
@@ -250,7 +236,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = [lswcoord, coord],
+                    geom = [lswcoord, coord],
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
@@ -262,7 +248,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = arc([lswcoord, coord]),
+                    geom = arc([lswcoord, coord]),
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
@@ -277,7 +263,7 @@ function expanded_network()
             push!(
                 t,
                 (;
-                    geometry = [lswcoord, coord],
+                    geom = [lswcoord, coord],
                     from_node_fid = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
@@ -309,7 +295,7 @@ function expanded_network()
                 to_connector = "x"
 
                 nt = (;
-                    geometry = [from_node.geometry, to_node.geometry],
+                    geom = [from_node.geom, to_node.geom],
                     from_node_fid = from_node.fid,
                     from_node_type = from_node.type,
                     from_connector,
@@ -327,7 +313,7 @@ function expanded_network()
                     to_connector = "x"
 
                     nt = (;
-                        geometry = [from_node.geometry, to_node.geometry],
+                        geom = [from_node.geom, to_node.geom],
                         from_node_fid = from_node.fid,
                         from_node_type = from_node.type,
                         from_connector,
@@ -357,7 +343,7 @@ function expanded_network()
                 push!(
                     t,
                     (;
-                        geometry = [srccoord, midcoord],
+                        geom = [srccoord, midcoord],
                         from_node_fid = lsw_node.fid,
                         from_node_type = "LSW",
                         from_connector = "x",
@@ -369,7 +355,7 @@ function expanded_network()
                 push!(
                     t,
                     (;
-                        geometry = [midcoord, dstcoord],
+                        geom = [midcoord, dstcoord],
                         from_node_fid = id,
                         from_node_type = "LevelLink",
                         from_connector = "b",
@@ -388,8 +374,42 @@ function expanded_network()
     return node, edge
 end
 
+
+"Write GeoPackage from scratch, first the nodes and edges using GeoDataFrames"
+function create_gpkg(path::String, node::DataFrame, edge::DataFrame)
+    rm(path; force = true)
+
+    # convert
+    node = copy(node)
+    edge = copy(edge)
+    node.geom = GDF.createpoint.(node.geom)
+    edge.geom = GDF.createlinestring.(edge.geom)
+
+    # perhaps use ASPATIAL_VARIANT: https://gdal.org/drivers/vector/gpkg.html
+    # with LIST_ALL_TABLES
+    # let GDAL generate the fid for us, to avoid this GDAL error:
+    # "Inconsistent values of FID and field of same name"
+    @assert node.fid == 1:nrow(node)
+    kwargs = (crs = GDF.GFT.EPSG(28992), geom_column = :geom)
+    GDF.write(path, node[:, Not(:fid)]; layer_name = "ribasim_node", kwargs...)
+
+    # GeoDataFrames doesn't currently support append, so write to a temporary GeoPackage,
+    # then use ogr2ogr to append that
+    tmp_path = normpath(dirname(path), "tmp.gpkg")
+    rm(tmp_path; force = true)
+    GDF.write(tmp_path, edge; layer_name = "ribasim_edge", kwargs...)
+    run(`$(ogr2ogr_path()) -append $path $tmp_path`)
+    rm(tmp_path; force = true)
+    return nothing
+end
+
 node, edge = expanded_network()
-# TODO save to GeoPackage using GeoDataFrames
-node
-edge
-nothing
+
+gpkg_path = normpath(output_dir, "model.gpkg")
+create_gpkg(gpkg_path, node, edge)
+
+# then SQLite for the other tables
+db = SQLite.DB(gpkg_path)
+SQLite.load!(node, db, "ribasim_node")
+SQLite.load!(edge, db, "ribasim_edge")
+close(db)
