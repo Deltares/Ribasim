@@ -9,6 +9,7 @@ using DataFrames
 using Dates
 using DBFTables
 using DBInterface: execute
+using Dictionaries
 using GDAL_jll
 using Graphs
 using IntervalSets
@@ -57,21 +58,6 @@ lswdik = lswdik_unsorted[lsw_idxs, :]
 lsw_ids = Vector{Int}(lswdik.lsw)
 
 graph, fractions = lswrouting_graph(lsw_ids, lswrouting)
-
-# forcing
-mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
-mzwb = read_forcing_waterbalance(mzwaterbalance_path)
-
-meteo_path = normpath(meteo_dir, "metocoef.ext")
-meteo = @subset(read_forcing_meteo(meteo_path), :node_id in lsw_ids)
-
-forcing_lsw = hcat(meteo, mzwb[:, Not([:time, :node_id])])
-# avoid adding JuliaLang metadata that polars errors on
-begin
-    forcing_lsw_arrow = copy(forcing_lsw)
-    forcing_lsw_arrow.time = convert.(Arrow.DATETIME, forcing_lsw_arrow.time)
-    Arrow.write(normpath(output_dir, "forcing.arrow"), forcing_lsw_arrow; compress = :lz4)
-end
 
 x, y = lsw_centers(normpath(coupling_dir, "lsws.dbf"), lsw_ids)
 
@@ -370,9 +356,13 @@ function expanded_network()
         end
     end
 
+    # mapping from LSW to Basin id
+    basins = @subset(df, :type == "Basin")
+    lswmap = Dictionary{Int, Int}(basins.org_id, basins.fid .- 1)
+
     node = df[:, Not(:org_id)]
     edge = t
-    return node, edge
+    return node, edge, lswmap
 end
 
 "Write GeoPackage from scratch, first the nodes and edges using GeoDataFrames"
@@ -390,6 +380,9 @@ function create_gpkg(path::String, node::DataFrame, edge::DataFrame)
     # let GDAL generate the fid for us, to avoid this GDAL error:
     # "Inconsistent values of FID and field of same name"
     @assert node.fid == 1:nrow(node)
+    # fid's start at 0, not 1
+    edge.from_node_id .-= 1
+    edge.to_node_id .-= 1
     kwargs = (crs = GDF.GFT.EPSG(28992), geom_column = :geom)
     GDF.write(path, node[:, Not(:fid)]; layer_name = "ribasim_node", kwargs...)
 
@@ -429,7 +422,24 @@ function load_old_gpkg(output_dir)
     lookup_OutflowTable
 end
 
-node, edge = expanded_network()
+node, edge, lswmap = expanded_network()
+
+# forcing
+mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
+mzwb = read_forcing_waterbalance(mzwaterbalance_path)
+
+meteo_path = normpath(meteo_dir, "metocoef.ext")
+meteo = @subset(read_forcing_meteo(meteo_path), :node_id in lsw_ids)
+
+forcing_lsw = hcat(meteo, mzwb[:, Not([:time, :node_id])])
+# avoid adding JuliaLang metadata that polars errors on
+begin
+    forcing_lsw = copy(forcing_lsw)
+    forcing_lsw.node_id = [lswmap[id] for id in forcing_lsw.node_id]
+    forcing_lsw.time = convert.(Arrow.DATETIME, forcing_lsw.time)
+    Arrow.write(normpath(output_dir, "forcing.arrow"), forcing_lsw; compress = :lz4)
+end
+
 gpkg_path = normpath(output_dir, "model.gpkg")
 create_gpkg(gpkg_path, node, edge)
 
@@ -442,6 +452,12 @@ static_LevelControl2 = rename(static_LevelControl, rnfid)
 static_Bifurcation2 = select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)
 lookup_LSW2 = rename(lookup_LSW, rnfid)
 lookup_OutflowTable2 = rename(lookup_OutflowTable, rnfid)
+# fid's start at 0, not 1
+state_LSW2.node_id .-= 1
+static_LevelControl2.node_id .-= 1
+static_Bifurcation2.node_id .-= 1
+lookup_LSW2.node_id .-= 1
+lookup_OutflowTable2.node_id .-= 1
 # add tables to the GeoPackage
 db = SQLite.DB(gpkg_path)
 SQLite.load!(state_LSW2, db, "ribasim_state_Basin")

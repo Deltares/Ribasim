@@ -311,11 +311,11 @@ reservoir to a water user, such that it can avoid overextraction.
 
 column         | type     | restriction
 -------------- | -------- | -----------
-from_id        | Int      | -
-from_node      | String   | known type
+from_node_id   | Int      | -
+from_node_type | String   | known type
 from_connector | String   | exists for node
-to_id          | Int      | -
-to_node        | String   | known type
+to_node_id     | Int      | -
+to_node_type   | String   | known type
 to_connector   | String   | exists for node
 geometry       | geoarrow | (optional)
 

@@ -129,7 +129,7 @@ function create_outflow_links(
     )
     tables = OutflowTable[]
     df = DataFrame(load_data(db, config, ("lookup", "OutflowTable")))
-    grouped = groupby(df, :id)
+    grouped = groupby(df, :node_id)
     for id in link_ids
         # Index with a tuple to get a group.
         group = grouped[(id,)]
@@ -212,7 +212,7 @@ function create_level_control(
     else
         control_nodes = unique(DataFrame(static))
     end
-    control_edges = filter(:to_node => v -> v == "LevelControl", edge)
+    control_edges = filter(:to_node_type => ==("LevelControl"), edge)
     volume_lookup = Dictionary(control_nodes.node_id, control_nodes.target_volume)
     index = [basin_nodemap[i] for i in control_edges.from_node_id]
     volume = [volume_lookup[i] for i in control_edges.to_node_id]
@@ -240,10 +240,9 @@ function create_parameters(db::DB, config::Config)
 
     storage_tables = create_storage_tables(db, config, basin_nodemap)
     # Not in `connectivity`?
-    node = DataFrame(execute(db, "select * from ribasim_node"))
     edge = DataFrame(execute(db, "select * from ribasim_edge"))
 
-    level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
+    level_links = create_level_links(db, edge, nodemap, basin_nodemap, connection_map)
     outflow_links =
         create_outflow_links(db, config, edge, nodemap, basin_nodemap, connection_map)
     furcations = create_furcations(db, edge, nodemap, connection_map)
