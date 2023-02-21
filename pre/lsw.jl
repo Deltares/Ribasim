@@ -33,7 +33,7 @@ end
 
 open_water_factor(t::Real) = open_water_factor(unix2datetime(t))
 
-function parse_meteo_line!(times, node_fid, prec, evap, line)
+function parse_meteo_line!(times, node_id, prec, evap, line)
     is_evap = line[2] == '1'  # if not, precipitation
     time = DateTime(line[11:18], dateformat"yyyymmdd")
     t = datetime2unix(time)
@@ -43,7 +43,7 @@ function parse_meteo_line!(times, node_fid, prec, evap, line)
     if is_evap
         push!(times, time)
         lsw_id = parse(Int, line[4:9])
-        push!(node_fid, lsw_id)
+        push!(node_id, lsw_id)
         push!(evap, v * open_water_factor(t))
     else
         push!(prec, v)
@@ -54,16 +54,16 @@ end
 function read_forcing_meteo(path)
     # prepare empty dictionaries
     time = DateTime[]
-    node_fid = Int[]
+    node_id = Int[]
     precipitation = Float64[]
     potential_evaporation = Float64[]
-    df = DataFrame(; time, node_fid, precipitation, potential_evaporation, copycols = false)
+    df = DataFrame(; time, node_id, precipitation, potential_evaporation, copycols = false)
 
     # fill them with data, going over each line once
     for line in eachline(path)
-        parse_meteo_line!(time, node_fid, precipitation, potential_evaporation, line)
+        parse_meteo_line!(time, node_id, precipitation, potential_evaporation, line)
     end
-    sort!(df, [:time, :node_fid])
+    sort!(df, [:time, :node_id])
     return df
 end
 
@@ -75,7 +75,7 @@ function read_forcing_waterbalance(mzwaterbalance_path)
         mzwb,
         [
             :time_start => :time,
-            :lsw => :node_fid,
+            :lsw => :node_id,
             :drainage_sh => :drainage,
             :infiltr_sh => :infiltration,
             :urban_runoff => :urban_runoff,
@@ -85,7 +85,7 @@ function read_forcing_waterbalance(mzwaterbalance_path)
     df.drainage ./= mzwb.period
     df.infiltration ./= -mzwb.period  # also flip sign
     df.urban_runoff ./= mzwb.period
-    sort!(df, [:time, :node_fid])
+    sort!(df, [:time, :node_id])
     return df
 end
 
