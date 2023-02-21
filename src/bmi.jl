@@ -16,18 +16,6 @@ function BMI.initialize(T::Type{Register}, config_path::AbstractString)
     BMI.initialize(T, config)
 end
 
-# create a subgraph, with fractions on the edges we use
-function subgraph(network, ids)
-    # defined for every edge in the ply file
-    fractions_all = network.edge_table.fractions
-    lsw_all = Int.(network.node_table.location)
-    graph_all = network.graph
-    lsw_indices = [findfirst(==(lsw_id), lsw_all) for lsw_id in ids]
-    graph, _ = induced_subgraph(graph_all, lsw_indices)
-
-    return graph, graph_all, fractions_all, lsw_all
-end
-
 # Read into memory for now with read, to avoid locking the file, since it mmaps otherwise.
 # We could pass Mmap.mmap(path) ourselves and make sure it gets closed, since Arrow.Table
 # does not have an io handle to close.

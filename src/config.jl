@@ -5,7 +5,7 @@ nodetypes::Vector{Symbol} = [
     :HeadBoundary,
     :LevelControl,
     :LevelLink,
-    :LSW,
+    :Basin,
     :NoFlowBoundary,
     :OutflowTable,
 ]

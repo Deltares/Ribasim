@@ -102,13 +102,13 @@ Create 1:1 input per node, instead of aggregated per LSW, see
 https://github.com/Deltares/Ribasim.jl/issues/18
 """
 function expanded_network()
-    # LSWs stay in the center
+    # Basins stay in the center
     # n = 1: Bifurcation
     # n = 2: GeneralUser / GeneralUser_P
     # n = 3: LevelControl
     # n = 4: OutFlowTable
     # n = 5: HeadBoundary
-    # LevelLink goes between the LSWs it connects
+    # LevelLink goes between the Basins it connects
 
     types = Char.(only.(lswdik.local_surface_water_type))
 
@@ -138,7 +138,7 @@ function expanded_network()
 
         lswcoord = (xcoord, ycoord)
         lsw_seq = id  # save the LSW ID to use create inner edges from
-        push!(df, (lswcoord, "LSW", id, lsw_id))
+        push!(df, (lswcoord, "Basin", id, lsw_id))
         id += 1
 
         if type == 'V'
@@ -149,7 +149,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "flow",
                     to_node_id = id,
                     to_node_type = "GeneralUser",
@@ -161,7 +161,7 @@ function expanded_network()
                 (;
                     geom = arc([lswcoord, coord]),
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "storage",
                     to_node_id = id,
                     to_node_type = "GeneralUser",
@@ -177,7 +177,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "flow",
                     to_node_id = id,
                     to_node_type = "OutflowTable",
@@ -189,7 +189,7 @@ function expanded_network()
                 (;
                     geom = arc([lswcoord, coord]),
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "storage",
                     to_node_id = id,
                     to_node_type = "OutflowTable",
@@ -239,7 +239,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "flow",
                     to_node_id = id,
                     to_node_type = "GeneralUser_P",
@@ -251,7 +251,7 @@ function expanded_network()
                 (;
                     geom = arc([lswcoord, coord]),
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "storage",
                     to_node_id = id,
                     to_node_type = "GeneralUser_P",
@@ -266,7 +266,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "LSW",
+                    from_node_type = "Basin",
                     from_connector = "flow",
                     to_node_id = id,
                     to_node_type = "LevelControl",
@@ -292,7 +292,7 @@ function expanded_network()
                 from_connector = "downstream"
 
                 out_lsw_id = only(out_lsw_ids)
-                to_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
+                to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
                 to_connector = "flow"
 
                 nt = (;
@@ -309,7 +309,7 @@ function expanded_network()
                 from_node = only(@subset(df, :org_id == lsw_id, :type == "Bifurcation"))
 
                 for (i, out_lsw_id) in enumerate(out_lsw_ids)
-                    to_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
+                    to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
                     from_connector = string("downstream_", i)  # Bifurcation supports n downstream connectors
                     to_connector = "flow"
 
@@ -339,14 +339,14 @@ function expanded_network()
                 push!(df, (midcoord, "LevelLink", id, lsw_id))
 
                 # add edges to LSW on either side
-                lsw_node = only(@subset(df, :org_id == lsw_id, :type == "LSW"))
-                out_lsw_node = only(@subset(df, :org_id == out_lsw_id, :type == "LSW"))
+                lsw_node = only(@subset(df, :org_id == lsw_id, :type == "Basin"))
+                out_lsw_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
                 push!(
                     t,
                     (;
                         geom = [srccoord, midcoord],
                         from_node_id = lsw_node.fid,
-                        from_node_type = "LSW",
+                        from_node_type = "Basin",
                         from_connector = "flow",
                         to_node_id = id,
                         to_node_type = "LevelLink",
@@ -361,7 +361,7 @@ function expanded_network()
                         from_node_type = "LevelLink",
                         from_connector = "b-side",
                         to_node_id = out_lsw_node.fid,
-                        to_node_type = "LSW",
+                        to_node_type = "Basin",
                         to_connector = "flow",
                     ),
                 )
@@ -444,9 +444,9 @@ lookup_LSW2 = rename(lookup_LSW, rnfid)
 lookup_OutflowTable2 = rename(lookup_OutflowTable, rnfid)
 # add tables to the GeoPackage
 db = SQLite.DB(gpkg_path)
-SQLite.load!(state_LSW2, db, "ribasim_state_LSW")
+SQLite.load!(state_LSW2, db, "ribasim_state_Basin")
 SQLite.load!(static_LevelControl2, db, "ribasim_static_LevelControl")
 SQLite.load!(static_Bifurcation2, db, "ribasim_static_Bifurcation")
-SQLite.load!(lookup_LSW2, db, "ribasim_lookup_LSW")
+SQLite.load!(lookup_LSW2, db, "ribasim_lookup_Basin")
 SQLite.load!(lookup_OutflowTable2, db, "ribasim_lookup_OutflowTable")
 close(db)

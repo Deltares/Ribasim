@@ -286,7 +286,7 @@ geometry  | geoarrow | (optional)
 The schema of the node table shows that only a unique ID and known node type need to be
 given. The known node types as of this writing are:
 
-- LSW
+- Basin
 - GeneralUser_P
 - LevelControl
 - GeneralUser
@@ -322,29 +322,29 @@ geometry       | geoarrow | (optional)
 The names of the connectors need to match the available connectors per node type, which
 are outlined below.
 
-- LSW
-  - x: flow
-  - s: storage
+- Basin
+  - flow
+  - storage
 - GeneralUser_P
-  - a: flow
-  - s_a: storage
+  - flow
+  - storage
 - LevelControl
-  - a: flow
+  - flow
 - GeneralUser
-  - x: flow
-  - s: storage
+  - flow
+  - storage
 - OutflowTable
-  - a: upstream flow
-  - b: downstream flow
-  - s: storage
+  - upstream: flow
+  - downstream: flow
+  - storage: upstream storage
 - HeadBoundary
-  - x: flow
+  - flow
 - Bifurcation
-  - src: inflow
-  - dst_{i}: split outflow in n parts
+  - upstream: flow
+  - downstream_{i}: split flow in n parts
 - LevelLink
-  - a: flow on one side
-  - b: flow on other side
+  - a-side: flow on one side
+  - b-side: flow on other side
 
 Similarly to the node table, you can use a geometry to visualize the connections between
 the nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
@@ -353,7 +353,7 @@ the nodes in QGIS. For instance, you can draw a line connecting the two node coo
 
 The state table aims to capture the full state of the system, such that it can be used
 as an initial condition, that is potentially the outcome of an earlier simulation.
-Currently the only states are the volume $S$ and salinity $C$ of the LSW node.
+Currently the only states are the volume $S$ and salinity $C$ of the Basin node.
 
 column    | type    | restriction
 --------- | ------- | -----------
@@ -438,8 +438,8 @@ id       | volume         | area          | discharge  | level
    10037 |      0.0       | 50663.3       | 0.0        |  2.129
 
 :::{.callout-note}
-Profiles need to be defined for all LSW and OutflowTable node. OutflowTable uses only
-volume and discharge, whereas LSW uses volume, area and level. These may be split up in
+Profiles need to be defined for all Basin and OutflowTable node. OutflowTable uses only
+volume and discharge, whereas Basin uses volume, area and level. These may be split up in
 the future.
 :::
 
