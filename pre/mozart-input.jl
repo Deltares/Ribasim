@@ -20,6 +20,7 @@ using Statistics
 includet("mozart-files.jl")
 includet("mozart-data.jl")
 includet("lsw.jl")
+includet("../utils/testdata.jl")
 
 output_dir = normpath(@__DIR__, "../data/input/8")
 
@@ -374,7 +375,6 @@ function expanded_network()
     return node, edge
 end
 
-
 "Write GeoPackage from scratch, first the nodes and edges using GeoDataFrames"
 function create_gpkg(path::String, node::DataFrame, edge::DataFrame)
     rm(path; force = true)
@@ -403,13 +403,50 @@ function create_gpkg(path::String, node::DataFrame, edge::DataFrame)
     return nothing
 end
 
-node, edge = expanded_network()
+function load_old_gpkg(output_dir)
+    # The other tables would ideally also be created directly from LHM input, but for now
+    # we use this as a starting point: https://github.com/visr/ribasim-artifacts/releases/tag/v0.2.0
+    version = v"0.2.0"
+    old_gpkg_path = normpath(output_dir, "model_v$version.gpkg")
+    testdata("model.gpkg", old_gpkg_path; version)
 
+    # then SQLite for the other tables
+    old_db = SQLite.DB(old_gpkg_path)
+    state_LSW = DataFrame(execute(old_db, "select * from ribasim_state_LSW"))
+    static_LevelControl =
+        DataFrame(execute(old_db, "select * from ribasim_static_LevelControl"))
+    static_Bifurcation =
+        DataFrame(execute(old_db, "select * from ribasim_static_Bifurcation"))
+    lookup_LSW = DataFrame(execute(old_db, "select * from ribasim_lookup_LSW"))
+    lookup_OutflowTable =
+        DataFrame(execute(old_db, "select * from ribasim_lookup_OutflowTable"))
+    close(old_db)
+
+    return state_LSW,
+    static_LevelControl,
+    static_Bifurcation,
+    lookup_LSW,
+    lookup_OutflowTable
+end
+
+node, edge = expanded_network()
 gpkg_path = normpath(output_dir, "model.gpkg")
 create_gpkg(gpkg_path, node, edge)
 
-# then SQLite for the other tables
+state_LSW, static_LevelControl, static_Bifurcation, lookup_LSW, lookup_OutflowTable =
+    load_old_gpkg(output_dir)
+# update column names
+rnfid = :id => :node_fid
+state_LSW2 = rename(state_LSW, rnfid, :S => :storage, :C => :salinity)
+static_LevelControl2 = rename(static_LevelControl, rnfid)
+static_Bifurcation2 = select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)
+lookup_LSW2 = rename(lookup_LSW, rnfid)
+lookup_OutflowTable2 = rename(lookup_OutflowTable, rnfid)
+# add tables to the GeoPackage
 db = SQLite.DB(gpkg_path)
-SQLite.load!(node, db, "ribasim_node")
-SQLite.load!(edge, db, "ribasim_edge")
+SQLite.load!(state_LSW2, db, "ribasim_state_LSW")
+SQLite.load!(static_LevelControl2, db, "ribasim_static_LevelControl")
+SQLite.load!(static_Bifurcation2, db, "ribasim_static_Bifurcation")
+SQLite.load!(lookup_LSW2, db, "ribasim_lookup_LSW")
+SQLite.load!(lookup_OutflowTable2, db, "ribasim_lookup_OutflowTable")
 close(db)
