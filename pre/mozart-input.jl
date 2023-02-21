@@ -63,9 +63,9 @@ mzwaterbalance_path = normpath(mozartout_dir, "lswwaterbalans.out")
 mzwb = read_forcing_waterbalance(mzwaterbalance_path)
 
 meteo_path = normpath(meteo_dir, "metocoef.ext")
-meteo = @subset(read_forcing_meteo(meteo_path), :node_fid in lsw_ids)
+meteo = @subset(read_forcing_meteo(meteo_path), :node_id in lsw_ids)
 
-forcing_lsw = hcat(meteo, mzwb[:, Not([:time, :node_fid])])
+forcing_lsw = hcat(meteo, mzwb[:, Not([:time, :node_id])])
 # avoid adding JuliaLang metadata that polars errors on
 begin
     forcing_lsw_arrow = copy(forcing_lsw)
@@ -124,10 +124,10 @@ function expanded_network()
     # create the edges table
     t = DataFrame(;
         geom = linestringtype[],
-        from_node_fid = Int[],
+        from_node_id = Int[],
         from_node_type = String[],
         from_connector = String[],
-        to_node_fid = Int[],
+        to_node_id = Int[],
         to_node_type = String[],
         to_connector = String[],
     )
@@ -148,10 +148,10 @@ function expanded_network()
                 t,
                 (;
                     geom = [lswcoord, coord],
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "GeneralUser",
                     to_connector = "x",
                 ),
@@ -160,10 +160,10 @@ function expanded_network()
                 t,
                 (;
                     geom = arc([lswcoord, coord]),
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "GeneralUser",
                     to_connector = "s",
                 ),
@@ -176,10 +176,10 @@ function expanded_network()
                 t,
                 (;
                     geom = [lswcoord, coord],
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "OutflowTable",
                     to_connector = "a",
                 ),
@@ -188,10 +188,10 @@ function expanded_network()
                 t,
                 (;
                     geom = arc([lswcoord, coord]),
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "OutflowTable",
                     to_connector = "s",
                 ),
@@ -204,10 +204,10 @@ function expanded_network()
                     t,
                     (;
                         geom = [move_location(xcoord, ycoord, 4), coord],
-                        from_node_fid = outflowtable_id,
+                        from_node_id = outflowtable_id,
                         from_node_type = "OutflowTable",
                         from_connector = "b",
-                        to_node_fid = id,
+                        to_node_id = id,
                         to_node_type = "HeadBoundary",
                         to_connector = "x",
                     ),
@@ -221,10 +221,10 @@ function expanded_network()
                     t,
                     (;
                         geom = [lswcoord, coord],
-                        from_node_fid = outflowtable_id,
+                        from_node_id = outflowtable_id,
                         from_node_type = "OutflowTable",
                         from_connector = "b",
-                        to_node_fid = id,
+                        to_node_id = id,
                         to_node_type = "Bifurcation",
                         to_connector = "src",
                     ),
@@ -238,10 +238,10 @@ function expanded_network()
                 t,
                 (;
                     geom = [lswcoord, coord],
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "GeneralUser_P",
                     to_connector = "a",
                 ),
@@ -250,10 +250,10 @@ function expanded_network()
                 t,
                 (;
                     geom = arc([lswcoord, coord]),
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "s",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "GeneralUser_P",
                     to_connector = "s_a",
                 ),
@@ -265,10 +265,10 @@ function expanded_network()
                 t,
                 (;
                     geom = [lswcoord, coord],
-                    from_node_fid = lsw_seq,
+                    from_node_id = lsw_seq,
                     from_node_type = "LSW",
                     from_connector = "x",
-                    to_node_fid = id,
+                    to_node_id = id,
                     to_node_type = "LevelControl",
                     to_connector = "a",
                 ),
@@ -297,10 +297,10 @@ function expanded_network()
 
                 nt = (;
                     geom = [from_node.geom, to_node.geom],
-                    from_node_fid = from_node.fid,
+                    from_node_id = from_node.fid,
                     from_node_type = from_node.type,
                     from_connector,
-                    to_node_fid = to_node.fid,
+                    to_node_id = to_node.fid,
                     to_node_type = to_node.type,
                     to_connector,
                 )
@@ -315,10 +315,10 @@ function expanded_network()
 
                     nt = (;
                         geom = [from_node.geom, to_node.geom],
-                        from_node_fid = from_node.fid,
+                        from_node_id = from_node.fid,
                         from_node_type = from_node.type,
                         from_connector,
-                        to_node_fid = to_node.fid,
+                        to_node_id = to_node.fid,
                         to_node_type = to_node.type,
                         to_connector,
                     )
@@ -345,10 +345,10 @@ function expanded_network()
                     t,
                     (;
                         geom = [srccoord, midcoord],
-                        from_node_fid = lsw_node.fid,
+                        from_node_id = lsw_node.fid,
                         from_node_type = "LSW",
                         from_connector = "x",
-                        to_node_fid = id,
+                        to_node_id = id,
                         to_node_type = "LevelLink",
                         to_connector = "a",
                     ),
@@ -357,10 +357,10 @@ function expanded_network()
                     t,
                     (;
                         geom = [midcoord, dstcoord],
-                        from_node_fid = id,
+                        from_node_id = id,
                         from_node_type = "LevelLink",
                         from_connector = "b",
-                        to_node_fid = out_lsw_node.fid,
+                        to_node_id = out_lsw_node.fid,
                         to_node_type = "LSW",
                         to_connector = "x",
                     ),
@@ -436,7 +436,7 @@ create_gpkg(gpkg_path, node, edge)
 state_LSW, static_LevelControl, static_Bifurcation, lookup_LSW, lookup_OutflowTable =
     load_old_gpkg(output_dir)
 # update column names
-rnfid = :id => :node_fid
+rnfid = :id => :node_id
 state_LSW2 = rename(state_LSW, rnfid, :S => :storage, :C => :salinity)
 static_LevelControl2 = rename(static_LevelControl, rnfid)
 static_Bifurcation2 = select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)
@@ -450,3 +450,5 @@ SQLite.load!(static_Bifurcation2, db, "ribasim_static_Bifurcation")
 SQLite.load!(lookup_LSW2, db, "ribasim_lookup_LSW")
 SQLite.load!(lookup_OutflowTable2, db, "ribasim_lookup_OutflowTable")
 close(db)
+
+# TODO rename connectors, LSW -> Basin

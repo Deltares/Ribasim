@@ -60,26 +60,26 @@ function create_connectivity(db::DB)::Connectivity
 end
 
 function create_connection_index(
-    node::DataFrame,
+    db::DB,
     edge::DataFrame,
     nodemap,
     basin_nodemap,
     connection_map,
     linktype::String,
 )
-    link_ids = filter(:node => n -> n == linktype, node).id
+    link_ids = get_ids(db, linktype)
     ab = sort(
         filter(
-            [:to_id, :to_connector] => (x, y) -> x in (link_ids) && y == "s",
+            [:to_node_id, :to_connector] => (x, y) -> x in (link_ids) && y == "s",
             edge;
             view = true,
         ),
-        :to_id,
+        :to_node_id,
     )
-    bc = sort(filter(:from_id => in(link_ids), edge; view = true), :from_id)
-    a = [nodemap[i] for i in ab.from_id]
-    b = [nodemap[i] for i in ab.to_id]
-    c = [nodemap[i] for i in bc.to_id]
+    bc = sort(filter(:from_node_id => in(link_ids), edge; view = true), :from_node_id)
+    a = [nodemap[i] for i in ab.from_node_id]
+    b = [nodemap[i] for i in ab.to_node_id]
+    c = [nodemap[i] for i in bc.to_node_id]
     index_ab = [connection_map[(i, j)] for (i, j) in zip(a, b)]
     # TODO fix edge direction
     index_bc = Int[]
@@ -92,20 +92,14 @@ function create_connection_index(
     end
     index = transpose(hcat(index_ab, index_bc))
 
-    source = [basin_nodemap[i] for i in ab.from_id]
-    target = [get(basin_nodemap, i, -1) for i in bc.to_id]
-    return ab.to_id, source, target, index
+    source = [basin_nodemap[i] for i in ab.from_node_id]
+    target = [get(basin_nodemap, i, -1) for i in bc.to_node_id]
+    return ab.to_node_id, source, target, index
 end
 
-function create_level_links(
-    node::DataFrame,
-    edge::DataFrame,
-    nodemap,
-    basin_nodemap,
-    connection_map,
-)
+function create_level_links(db::DB, edge::DataFrame, nodemap, basin_nodemap, connection_map)
     _, source, target, index = create_connection_index(
-        node,
+        db,
         edge,
         nodemap,
         basin_nodemap,
@@ -120,14 +114,13 @@ end
 function create_outflow_links(
     db::DB,
     config::Config,
-    node::DataFrame,
     edge::DataFrame,
     nodemap,
     basin_nodemap,
     connection_map,
 )
     link_ids, source, _, index = create_connection_index(
-        node,
+        db,
         edge,
         nodemap,
         basin_nodemap,
@@ -158,7 +151,7 @@ function create_storage_tables(
     table = load_required_data(db, config, ("lookup", "LSW"))
     df = DataFrame(table)
     tables = StorageTable[]
-    grouped = groupby(df, :id)
+    grouped = groupby(df, :node_id)
     index = Int[]
     for (key, group) in zip(keys(grouped), grouped)
         order = sortperm(group.volume)
@@ -171,25 +164,28 @@ function create_storage_tables(
 
         table = StorageTable(volume, area, level, area_interp, level_interp)
         push!(tables, table)
-        push!(index, basin_nodemap[key.id])
+        push!(index, basin_nodemap[key.node_id])
     end
     order = sortperm(index)
     return StorageTables(index[order], tables[order])
 end
 
-function create_furcations(node::DataFrame, edge::DataFrame, nodemap, connection_map)
-    furcation_ids = filter(:node => n -> n == "Bifurcation", node).id
+function create_furcations(db::DB, edge::DataFrame, nodemap, connection_map)
+    furcation_ids = get_ids(db, "Bifurcation")
     # target is larger than source if a flow splits.
-    source = filter(:to_id => in(furcation_ids), edge; view = true)
-    target = filter(:from_id => in(furcation_ids), edge; view = true)
-    grouped = groupby(target, :from_id)
+    source = filter(:to_node_id => in(furcation_ids), edge; view = true)
+    target = filter(:from_node_id => in(furcation_ids), edge; view = true)
+    grouped = groupby(target, :from_node_id)
 
     source_connection = Int[]
     target_connection = Int[]
     fraction = Float64[]
-    for (a, b) in zip(source.from_id, source.to_id)
+    # a = basin node
+    # b = furcation node
+    # c = downstreams of furcation
+    for (a, b) in zip(source.from_node_id, source.to_node_id)
         src = connection_map[(nodemap[a], nodemap[b])]
-        for c in grouped[(b,)].to_id
+        for c in grouped[(b,)].to_node_id
             push!(source_connection, src)
             # TODO fix edge direction
             target = get(connection_map, (nodemap[b], nodemap[c]), 0)
@@ -217,9 +213,9 @@ function create_level_control(
         control_nodes = unique(DataFrame(static))
     end
     control_edges = filter(:to_node => v -> v == "LevelControl", edge)
-    volume_lookup = Dictionary(control_nodes.id, control_nodes.target_volume)
-    index = [basin_nodemap[i] for i in control_edges.from_id]
-    volume = [volume_lookup[i] for i in control_edges.to_id]
+    volume_lookup = Dictionary(control_nodes.node_id, control_nodes.target_volume)
+    index = [basin_nodemap[i] for i in control_edges.from_node_id]
+    volume = [volume_lookup[i] for i in control_edges.to_node_id]
     conductance = fill(1.0 / (3600.0 * 24), length(index))
     return LevelControl(index, volume, conductance)
 end
@@ -249,8 +245,8 @@ function create_parameters(db::DB, config::Config)
 
     level_links = create_level_links(node, edge, nodemap, basin_nodemap, connection_map)
     outflow_links =
-        create_outflow_links(db, config, node, edge, nodemap, basin_nodemap, connection_map)
-    furcations = create_furcations(node, edge, nodemap, connection_map)
+        create_outflow_links(db, config, edge, nodemap, basin_nodemap, connection_map)
+    furcations = create_furcations(db, edge, nodemap, connection_map)
     level_control = create_level_control(db, config, edge, basin_nodemap)
 
     # TODO support forcing for other nodetypes, make optional

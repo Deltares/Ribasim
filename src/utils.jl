@@ -17,10 +17,10 @@ function graph(db::DB)
 
     n_v = length(vxset)
     g = Graphs.Graph(n_v)
-    rows = execute(db, "select from_id, to_id from ribasim_edge")
+    rows = execute(db, "select from_node_id, to_node_id from ribasim_edge")
     for row in rows
-        from = vxdict[row.from_id]
-        to = vxdict[row.to_id]
+        from = vxdict[row.from_node_id]
+        to = vxdict[row.to_node_id]
         add_edge!(g, from, to)
     end
     return g, vxdict
@@ -98,10 +98,10 @@ each Pair represents one edge.
 """
 function edgepairs(edges::Vector{<:Pair})::DataFrame
     df = DataFrame(;
-        from_id = Int[],
+        from_node_id = Int[],
         from_node = String[],
         from_connector = String[],
-        to_id = Int[],
+        to_node_id = Int[],
         to_node = String[],
         to_connector = String[],
     )
