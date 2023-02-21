@@ -20,7 +20,7 @@
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_551" name="Build executable" type="simpleRunner">
+      <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
         <parameters>
           <param name="script.content" value="julia +release --project create_lib.jl" />
           <param name="teamcity.build.workingDir" value="compile/create_binaries" />
