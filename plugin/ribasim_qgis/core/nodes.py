@@ -141,6 +141,7 @@ class Node(Input):
                     "FractionalFlow": "FractionalFlow",
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelControl": "LevelControl",
+                    "LinearLevelConnection": "LinearLevelConnection",
                 },
             },
         )
@@ -158,6 +159,11 @@ class Node(Input):
         markers = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
             "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
+            "LinearLevelConnection": (
+                QColor("green"),
+                "LinearLevelConnection",
+                shape.Triangle,
+            ),
             "TabulatedRatingCurve": (
                 QColor("green"),
                 "TabulatedRatingCurve",
@@ -259,7 +265,7 @@ class BasinForcing(Input):
 
 
 class BasinState(Input):
-    input_type = "LSW / state"
+    input_type = "Basin / state"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -273,7 +279,7 @@ class TabulatedRatingCurve(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
-        QgsField("level", QVariant.Double),
+        QgsField("storage", QVariant.Double),
         QgsField("discharge", QVariant.Double),
     ]
 
@@ -284,6 +290,15 @@ class FractionalFlow(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("fraction", QVariant.Double),
+    ]
+
+
+class LinearLevelConnection(Input):
+    input_type = "LinearLevelConnection"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("conductance", QVariant.Double),
     ]
 
 
@@ -305,6 +320,7 @@ NODES = {
     "Basin / forcing": BasinForcing,
     "TabulatedRatingCurve": TabulatedRatingCurve,
     "FractionalFlow": FractionalFlow,
+    "LinearLevelConnection": LinearLevelConnection,
     "LevelControl": LevelControl,
 }
 
@@ -315,5 +331,4 @@ def load_nodes_from_geopackage(path: str) -> Dict[str, Input]:
     nodes = {}
     for layername in gpkg_names:
         nodes[layername] = NODES[layername](path)
-
     return nodes
