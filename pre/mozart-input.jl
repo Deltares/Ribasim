@@ -95,11 +95,7 @@ function expanded_network()
     id = 1
     linestringtype = typeof([(10.0, 20.0), (30.0, 40.0)])
     # create the edges table
-    t = DataFrame(;
-        geom = linestringtype[],
-        from_node_id = Int[],
-        to_node_id = Int[],
-    )
+    t = DataFrame(; geom = linestringtype[], from_node_id = Int[], to_node_id = Int[])
 
     # add all the nodes and the inner edges that connect the LSW sub-system
     for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
@@ -113,26 +109,12 @@ function expanded_network()
         if type == 'V'
             coord = move_location(xcoord, ycoord, 2)
             push!(df, (coord, "WaterUser", id, lsw_id))
-            push!(
-                t,
-                (;
-                    geom = [lswcoord, coord],
-                    from_node_id = lsw_seq,
-                    to_node_id = id,
-                ),
-            )
+            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
             coord = move_location(xcoord, ycoord, 4)
             push!(df, (coord, "OutflowTable", id, lsw_id))
             outflowtable_id = id
-            push!(
-                t,
-                (;
-                    geom = [lswcoord, coord],
-                    from_node_id = lsw_seq,
-                    to_node_id = id,
-                ),
-            )
+            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
             if length(out_vertices) == 0
                 coord = move_location(xcoord, ycoord, 5)
@@ -164,25 +146,11 @@ function expanded_network()
         else
             coord = move_location(xcoord, ycoord, 2)
             push!(df, (coord, "WaterUser", id, lsw_id))
-            push!(
-                t,
-                (;
-                    geom = [lswcoord, coord],
-                    from_node_id = lsw_seq,
-                    to_node_id = id,
-                ),
-            )
+            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
             coord = move_location(xcoord, ycoord, 3)
             push!(df, (coord, "LevelControl", id, lsw_id))
-            push!(
-                t,
-                (;
-                    geom = [lswcoord, coord],
-                    from_node_id = lsw_seq,
-                    to_node_id = id,
-                ),
-            )
+            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
         end
     end
@@ -345,6 +313,7 @@ begin
     forcing_lsw = copy(forcing_lsw)
     forcing_lsw.node_id = [lswmap[id] for id in forcing_lsw.node_id]
     forcing_lsw.time = convert.(Arrow.DATETIME, forcing_lsw.time)
+    sort!(forcing_lsw, :node_id)
     Arrow.write(normpath(output_dir, "forcing.arrow"), forcing_lsw; compress = :lz4)
 end
 
@@ -355,11 +324,15 @@ state_LSW, static_LevelControl, static_Bifurcation, lookup_LSW, lookup_OutflowTa
     load_old_gpkg(output_dir)
 # update column names
 rnfid = :id => :node_id
-state_LSW2 = rename(state_LSW, rnfid, :S => :storage, :C => :salinity)
-static_LevelControl2 = rename(static_LevelControl, rnfid)
-static_Bifurcation2 = select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)
-lookup_LSW2 = rename(lookup_LSW, rnfid)
-lookup_OutflowTable2 = rename(lookup_OutflowTable, rnfid)
+state_LSW2 =
+    sort(unique(rename(state_LSW, rnfid, :S => :storage, :C => :salinity)), :node_id)
+static_LevelControl2 = sort(unique(rename(static_LevelControl, rnfid)), :node_id)
+static_Bifurcation2 = sort(
+    unique(select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)),
+    :node_id,
+)
+lookup_LSW2 = sort(unique(rename(lookup_LSW, rnfid)), :node_id)
+lookup_OutflowTable2 = sort(unique(rename(lookup_OutflowTable, rnfid)), :node_id)
 # fid's start at 0, not 1
 state_LSW2.node_id .-= 1
 static_LevelControl2.node_id .-= 1

@@ -19,43 +19,22 @@ end
 """
 Requirements:
 
-* Must be positive
-* Index points to a reservoir
-"""
-struct Precipitation
-    index::Vector{Int}
-    value::Vector{Float64}
-    total::Vector{Float64}
-end
-
-"""
-Requirements:
-
+* Must be positive: precipitation, evaporation, infiltration, drainage
+* Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 """
-struct StorageTable
-    volume::Vector{Float64}
-    area::Vector{Float64}
-    level::Vector{Float64}
-    area_interpolation::Interpolation
-    level_interpolation::Interpolation
-end
-
-struct StorageTables
-    index::Vector{Int}
-    tables::Vector{StorageTable}
-end
-
-"""
-Requirements:
-
-* Must be positive
-* Index points to a reservoir
-"""
-struct Evaporation
-    index::Vector{Int}
-    value::Vector{Float64}
-    total::Vector{Float64}
+struct Basin
+    # cache these to avoid recomputation
+    current_area::Vector{Float64}
+    current_level::Vector{Float64}
+    # f(storage)
+    area::Vector{Interpolation}
+    level::Vector{Interpolation}
+    # f(time)
+    precipitation::Vector{Interpolation}
+    potential_evaporation::Vector{Interpolation}
+    drainage::Vector{Interpolation}
+    infiltration::Vector{Interpolation}
 end
 
 """
@@ -65,15 +44,9 @@ Requirements:
 * to: must be a (Bifurcation, Basin) node.
 """
 struct TabulatedRatingCurve
-    volume::Vector{Float64}
-    discharge::Vector{Float64}
-    discharge_interpolation::Interpolation
-end
-
-struct OutflowLinks
     index::Vector{Int}
     connection_index::Matrix{Int}
-    tables::Vector{TabulatedRatingCurve}
+    tables::Vector{Interpolation}
 end
 
 """
@@ -108,52 +81,36 @@ struct LevelControl
     conductance::Vector{Float64}
 end
 
-struct Infiltration
-    index::Vector{Int}
-    value::Vector{Float64}
-    total::Vector{Float64}
-end
-
-struct Drainage
-    index::Vector{Int}
-    value::Vector{Float64}
-    total::Vector{Float64}
-end
-
 struct Parameters
     connectivity::Connectivity
-    storage_tables::StorageTables
-    area::Vector{Float64}
-    level::Vector{Float64}
-    storage_diff::Vector{Float64}
-    precipitation::Precipitation
-    evaporation::Evaporation
+    basin::Basin
     level_links::LevelLinks
-    outflow_links::OutflowLinks
+    tabulated_rating_curve::TabulatedRatingCurve
     furcations::Furcations
     level_control::LevelControl
-    infiltration::Infiltration
-    drainage::Drainage
-    forcing::Dict{DateTime, Any}
-end
-
-function formulate!(du, precipitation::Precipitation, area)
-    for (index, value) in zip(precipitation.index, precipitation.value)
-        du[index] += area[index] * value
-    end
-    return nothing
 end
 
 """
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate!(du, evaporation::Evaporation, area, u)
-    for (index, value) in zip(evaporation.index, evaporation.value)
-        a = area[index]
-        depth = u[index] / a
-        f = min(depth, 0.1) / 0.1
-        du[index] += f * a * value
+function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)
+    for i in eachindex(du)
+        storage = u[i]
+        area = basin.area[i](storage)
+        level = basin.level[i](storage)
+        basin.current_area[i] = area
+        basin.current_level[i] = level
+        bottom = first(basin.level[i].u)
+        depth = max(level - bottom, 0.0)
+        reduction_factor = min(depth, 0.1) / 0.1
+
+        precipitation = area * basin.precipitation[i](t)
+        evaporation = area * reduction_factor * basin.potential_evaporation[i](t)
+        drainage = basin.drainage[i](t)
+        infiltration = reduction_factor * basin.infiltration[i](t)
+
+        du[i] += precipitation - evaporation + drainage - infiltration
     end
     return nothing
 end
@@ -174,10 +131,10 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, outflow_links::OutflowLinks, level)
-    (; index, connection_index, tables) = outflow_links
+function formulate!(flow, tabulated_rating_curve::TabulatedRatingCurve, level)
+    (; index, connection_index, tables) = tabulated_rating_curve
     for (a, nzindex, table) in zip(index, eachcol(connection_index), tables)
-        q = table.discharge_interpolation(level[a])
+        q = table(level[a])
         flow.nzval[nzindex[1]] = q
         flow.nzval[nzindex[2]] = q
     end
@@ -196,24 +153,6 @@ function formulate!(du, level_control::LevelControl, u)
     for (index, volume, cond) in
         zip(level_control.index, level_control.volume, level_control.conductance)
         du[index] += cond * (volume - u[index])
-    end
-    return nothing
-end
-
-function formulate!(du, drainage::Drainage)
-    for (index, value) in zip(drainage.index, drainage.value)
-        du[index] += value
-    end
-    return nothing
-end
-
-function formulate!(du, infiltration::Infiltration, area, u)
-    for (index, value) in zip(infiltration.index, infiltration.value)
-        a = area[index]
-        depth = u[index] / a
-        f = min(depth, 0.1) / 0.1
-        maxvalue = min(value, 0.1 * a)
-        du[index] -= f * maxvalue
     end
     return nothing
 end
@@ -249,40 +188,25 @@ end
 function water_balance!(du, u, p, t)
     (;
         connectivity,
-        storage_tables,
-        area,
-        level,
-        precipitation,
-        evaporation,
+        basin,
         level_links,
-        outflow_links,
+        tabulated_rating_curve,
         furcations,
         level_control,
-        infiltration,
-        drainage,
-        forcing,
     ) = p
 
     du .= 0.0
-
-    # Update level and area
-    for (index, table) in zip(storage_tables.index, storage_tables.tables)
-        area[index] = table.area_interpolation(u[index])
-        level[index] = table.level_interpolation(u[index])
-    end
+    # ensures current_level and current_area are current
+    formulate!(du, basin, u, t)
 
     # First formulate intermediate flows
     flow = connectivity.flow
     flow.nzval .= 0.0
-    formulate!(flow, level_links, level)
-    formulate!(flow, outflow_links, level)
+    formulate!(flow, level_links, basin.current_level)
+    formulate!(flow, tabulated_rating_curve, basin.current_level)
     formulate!(flow, furcations)
 
     # Now formulate du
-    formulate!(du, precipitation, area)
-    formulate!(du, evaporation, area, u)
-    formulate!(du, infiltration, area, u)
-    formulate!(du, drainage)
     formulate!(du, level_control, u)
     formulate!(du, connectivity)
 
@@ -294,21 +218,6 @@ function water_balance!(du, u, p, t)
         end
     end
 
-    return nothing
-end
-
-function update_forcings!(integrator)
-    (; t, p) = integrator
-    df = p.forcing[unix2datetime(t)]
-    basin_nodemap = p.connectivity.basin_nodemap
-
-    for row in Tables.rows(df)
-        state_idx = basin_nodemap[row.node_id]
-        p.precipitation.value[state_idx] = row.precipitation
-        p.evaporation.value[state_idx] = row.potential_evaporation
-        p.drainage.value[state_idx] = row.drainage
-        p.infiltration.value[state_idx] = row.infiltration
-    end
     return nothing
 end
 

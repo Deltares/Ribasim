@@ -7,7 +7,13 @@ function get_ids(db::DB, nodetype)::Vector{Int}
     return only(execute(columntable, db, sql))
 end
 
-tablenames(db::DB)::Vector{String} = [t.name for t in SQLite.tables(db)]
+function exists(db::DB, tablename::String)
+    query = execute(
+        db,
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='$tablename'",
+    )
+    return !isempty(query)
+end
 
 tablename(nodetype, kind) = string(nodetype, " / ", kind)
 

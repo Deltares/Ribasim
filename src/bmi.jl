@@ -59,27 +59,27 @@ function BMI.initialize(T::Type{Register}, config::Config)
     end
     db = SQLite.DB(gpkg_path)
 
-    parameters, used_time_uniq = create_parameters(db, config)
+    parameters = create_parameters(db, config)
     tspan = (datetime2unix(config.starttime), datetime2unix(config.endtime))
 
     @timeit_debug to "Setup ODEProblem" begin
-        u0 = ones(length(parameters.area)) .* 10.0
+        # use state
+        state = load_data(db, config, "Basin / state")
+        u0 = if state === nothing
+            # default to nearly empty basins, perhaps make required input
+            n = length(parameters.basin.current_area)
+            fill(1.0, n)
+        else
+            # get state in the right order
+            sort(DataFrame(state), :node_id)[!, :storage]::Vector{Float64}
+        end
         prob = ODEProblem(water_balance!, u0, tspan, parameters)
     end
 
-    # To retain all information, we need to save before and after callbacks that affect the
-    # system, meaning we get multiple outputs on the same timestep. Make it configurable
-    # to be able to disable callback saving as needed.
-    # TODO: Check if regular saveat saving is before or after the callbacks.
-    forcing_cb = PresetTimeCallback(
-        datetime2unix.(used_time_uniq),
-        update_forcings!;
-        config.save_positions,
-    )
     # add a single time step's contribution to the water balance step's totals
     trackwb_cb = FunctionCallingCallback(track_waterbalance!)
 
-    @timeit_debug to "Setup callbackset" callback = CallbackSet(forcing_cb, trackwb_cb)
+    @timeit_debug to "Setup callbackset" callback = nothing
 
     @timeit_debug to "Setup integrator" integrator = init(
         prob,

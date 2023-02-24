@@ -13,8 +13,8 @@ function load_data(db::DB, config::Config, tablename::String)::Union{Table, Quer
         return Table(read(table_path))
     end
 
-    if tblname in tablenames(db)
-        return execute(db, string("select * from ", tblname))
+    if exists(db, tablename)
+        return execute(db, string("select * from '$tablename'"))
     end
 
     return nothing
@@ -27,7 +27,7 @@ function load_required_data(
 )::Union{Table, Query, Nothing}
     data = load_data(db, config, tablename)
     if data === nothing
-        error("Cannot find $tablename")
+        error("Cannot find data for '$tablename' in Arrow or GeoPackage.")
     end
     return data
 end

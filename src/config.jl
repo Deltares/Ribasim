@@ -24,7 +24,7 @@ abstract type TableOption end
 @option @addnodetypes struct Forcing <: TableOption end
 @option @addnodetypes struct State <: TableOption end
 @option @addnodetypes struct Static <: TableOption end
-@option @addnodetypes struct Lookup <: TableOption end
+@option @addnodetypes struct Profile <: TableOption end
 
 @option struct Config
     starttime::DateTime
@@ -46,17 +46,12 @@ abstract type TableOption end
     waterbalance::String = "waterbalance.arrow"
     outstate::Maybe{String}
 
-    save_positions::Tuple{Bool, Bool} = (true, true)
-
     # optional definitions for tables normally in `geopackage`
     forcing::Forcing = Forcing()
     state::State = State()
     static::Static = Static()
-    lookup::Lookup = Lookup()
+    profile::Profile = Profile()
 end
-
-Configurations.from_dict(::Type{Config}, ::Type{Tuple{Bool, Bool}}, s) =
-    length(s) == 2 ? (s[1], s[2]) : error("`save_positions` must be [Bool, Bool]")
 
 # TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
