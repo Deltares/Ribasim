@@ -5,5 +5,10 @@ from ribasim.types import DataFrame
 
 
 class Bifurcation(BaseModel, ArrowInputMixin):
-    _input_type = "static_Bifurcation"
+    _input_type = "Bifurcation"
+    dataframe: DataFrame
+
+
+class BifurcationForcing(BaseModel, ArrowInputMixin):
+    _input_type = "Bifurcation / forcing"
     dataframe: DataFrame

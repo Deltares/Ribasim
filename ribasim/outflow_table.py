@@ -4,6 +4,6 @@ from ribasim.input_base import ArrowInputMixin
 from ribasim.types import DataFrame
 
 
-class OutflowTable(BaseModel, ArrowInputMixin):
-    _input_type = "lookup_OutflowTable"
+class TabulatedRatingCurve(BaseModel, ArrowInputMixin):
+    _input_type = "TabulatedRatingCurve"
     dataframe: DataFrame

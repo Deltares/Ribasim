@@ -6,5 +6,5 @@ from ribasim.types import DataFrame
 
 
 class Edge(BaseModel, InputMixin):
-    _input_type = "edge"
+    _input_type = "Edge"
     dataframe: DataFrame

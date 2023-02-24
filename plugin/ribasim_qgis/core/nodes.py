@@ -128,7 +128,7 @@ class RibasimInput(abc.ABC):
         return
 
 
-class Lsw(RibasimInput):
+class Basin(RibasimInput):
     input_type = "node"
     geometry_type = "Point"
     attributes = [
@@ -232,7 +232,7 @@ class Edges(RibasimInput):
         return
 
 
-class LswLookup(RibasimInput):
+class BasinLookup(RibasimInput):
     input_type = "lookup_LSW"
     geometry_type = "No Geometry"
     attributes = [
@@ -272,7 +272,7 @@ class LevelControl(RibasimInput):
     ]
 
 
-class LswState(RibasimInput):
+class BasinState(RibasimInput):
     input_type = "state_LSW"
     geometry_type = "No Geometry"
     attributes = [
@@ -282,7 +282,7 @@ class LswState(RibasimInput):
     ]
 
 
-class LswForcing(RibasimInput):
+class BasinForcing(RibasimInput):
     input_type = "forcing_LSW"
     geometry_type = "No Geometry"
     attributes = [
@@ -299,13 +299,13 @@ class LswForcing(RibasimInput):
 
 
 NODES = {
-    "node": Lsw,
+    "node": Basin,
     "edge": Edges,
-    "lookup_LSW": LswLookup,
+    "lookup_LSW": BasinLookup,
     "lookup_OutflowTable": OutflowTableLookup,
     "static_Bifurcation": Bifurcation,
     "static_LevelControl": LevelControl,
-    "forcing_LSW": LswForcing,
+    "forcing_LSW": BasinForcing,
 }
 
 

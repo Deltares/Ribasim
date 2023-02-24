@@ -5,7 +5,7 @@ import abc
 class InputMixin(abc.ABC):
     def _write_geopackage(self, directory: Path, modelname: str) -> None:
         self.dataframe.to_file(
-            directory / f"{modelname}.gpkg", layer=f"ribasim_{self.input_type}"
+            directory / f"{modelname}.gpkg", layer=f"{self.input_type}"
         )
         return
 

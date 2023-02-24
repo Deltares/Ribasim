@@ -6,5 +6,5 @@ from ribasim.types import DataFrame
 
 
 class Node(BaseModel, InputMixin):
-    _input_type = "node"
+    _input_type = "Node"
     dataframe: DataFrame
