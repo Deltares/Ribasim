@@ -96,24 +96,9 @@ function create_connection_index(
         idx = get(connection_map, (i, j), 0)
         if idx == 0
             idx = connection_map[(j, i)]
-            if linktype == "TabulatedRatingCurve"
-                @info "aa" i j connection_map linktype
-                error("stoph")
-            end
-            # LevelLink only hits this branch (why reversed?)
-            # TabulatedRatingCurve hits both branches, look into HeadBoundary; no downstream needed
-            # also check how connection_map is made, and look at QGIS, do DB query checks
-            # as extra validation
-        else
-            if linktype == "TabulatedRatingCurve"
-                # @info "bb" i j connection_map linktype
-                # error("stoph")
-            end
-            # happens for TabulatedRatingCurve
         end
         push!(index_bc, idx)
     end
-    # @info "connection" index_ab index_bc a b c
     index = transpose(hcat(index_ab, index_bc))
 
     source = [basin_nodemap[i] for i in ab.from_node_id]
@@ -143,7 +128,7 @@ function create_tabulated_rating_curve(
         connection_map,
         "TabulatedRatingCurve",
     )
-    tables = TabulatedRatingCurve[]
+    tables = Interpolation[]
     df = DataFrame(load_data(db, config, "TabulatedRatingCurve"))
     grouped = groupby(df, :node_id; sort = true)
     for id in link_ids
@@ -153,9 +138,8 @@ function create_tabulated_rating_curve(
         level = group.level[order]
         discharge = group.discharge[order]
         interp = LinearInterpolation(discharge, level)
-        push!(tables, TabulatedRatingCurve(level, discharge, interp))
+        push!(tables, interp)
     end
-
     return TabulatedRatingCurve(source, index, tables)
 end
 
@@ -165,10 +149,10 @@ function create_storage_tables(db::DB, config::Config)
     level = Interpolation[]
     grouped = groupby(df, :node_id; sort = true)
     for group in grouped
-        order = sortperm(group.volume)
-        volume = group.volume[order]
-        area_itp = LinearInterpolation(group.area[order], volume)
-        level_itp = LinearInterpolation(group.level[order], volume)
+        order = sortperm(group.storage)
+        storage = group.storage[order]
+        area_itp = LinearInterpolation(group.area[order], storage)
+        level_itp = LinearInterpolation(group.level[order], storage)
         push!(area, area_itp)
         push!(level, level_itp)
     end

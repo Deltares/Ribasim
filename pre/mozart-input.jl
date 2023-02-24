@@ -331,7 +331,7 @@ static_Bifurcation2 = sort(
     unique(select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)),
     :node_id,
 )
-lookup_LSW2 = sort(unique(rename(lookup_LSW, rnfid)), :node_id)
+lookup_LSW2 = sort(unique(rename(lookup_LSW, rnfid, :volume => :storage)), :node_id)
 lookup_OutflowTable2 = sort(unique(rename(lookup_OutflowTable, rnfid)), :node_id)
 # fid's start at 0, not 1
 state_LSW2.node_id .-= 1
