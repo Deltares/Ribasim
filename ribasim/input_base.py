@@ -11,9 +11,6 @@ class InputMixin(abc.ABC):
     def fields(cls):
         return cls.__fields__.keys()
 
-    def values(self):
-        return self._dict().values()
-
     def _write_geopackage(self, directory: Path, modelname: str) -> None:
         self.dataframe.to_file(
             directory / f"{modelname}.gpkg", layer=f"{self.input_type}"
