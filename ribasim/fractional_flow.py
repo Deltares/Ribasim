@@ -8,14 +8,14 @@ from ribasim.input_base import InputMixin
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field()
-    fraction: Series[float] = pa.Field()
+    node_id: Series[int]
+    fraction: Series[float]
 
 
 class ForcingSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field()
-    time: Series[pa.dtypes.DateTime] = pa.Field()
-    fraction: Series[float] = pa.Field()
+    node_id: Series[int]
+    time: Series[pa.dtypes.DateTime]
+    fraction: Series[float]
 
 
 class FractionalFlow(BaseModel, InputMixin):

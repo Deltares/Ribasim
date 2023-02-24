@@ -7,7 +7,7 @@ from ribasim.input_base import InputMixin
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(unique=True)
-    conductance: Series[float] = pa.Field()
+    conductance: Series[float]
 
 
 class LinearLevelConnection(BaseModel, InputMixin):

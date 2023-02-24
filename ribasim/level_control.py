@@ -7,7 +7,7 @@ from ribasim.input_base import InputMixin
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(unique=True)
-    target_level: Series[float] = pa.Field()
+    target_level: Series[float]
 
 
 class LevelControl(BaseModel, InputMixin):

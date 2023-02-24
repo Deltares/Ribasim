@@ -1,13 +1,14 @@
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.typing import DataFrame, GeoSeries, Series
 from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 
 
 class StaticSchema(pd.SchemaModel):
-    type: Series[str] = pa.Field()
+    type: Series[str]
+    geometry: GeoSeries
 
 
 class Node(BaseModel, InputMixin):
