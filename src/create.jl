@@ -61,22 +61,25 @@ end
 
 function create_connection_index(
     db::DB,
-    edge::DataFrame,
     nodemap,
     basin_nodemap,
     connection_map,
     linktype::String,
 )
-    link_ids = get_ids(db, linktype)
-    ab = sort(
-        filter(
-            [:to_node_id, :to_connector] => (x, y) -> x in (link_ids) && y == "storage",
-            edge;
-            view = true,
-        ),
-        :to_node_id,
-    )
-    bc = sort(filter(:from_node_id => in(link_ids), edge; view = true), :from_node_id)
+    # a = source of edge going into b
+    # b = link node of type linktype
+    # c = destination of edge going out of b
+    ab = columntable(execute(db, """select from_node_id, to_node_id from ribasim_edge
+        inner join ribasim_node on ribasim_edge.to_node_id = ribasim_node.fid
+        where type = '$linktype'
+        order by to_node_id"""))
+    bc = columntable(execute(db, """select from_node_id, to_node_id from ribasim_edge
+        inner join ribasim_node on ribasim_edge.from_node_id = ribasim_node.fid
+        where type = '$linktype'
+        order by from_node_id"""))
+    # TODO add to validation
+    @assert ab.to_node_id == bc.from_node_id "node type $linktype must always have both \
+        incoming and outgoing edges"
     a = [nodemap[i] for i in ab.from_node_id]
     b = [nodemap[i] for i in ab.to_node_id]
     c = [nodemap[i] for i in bc.to_node_id]
@@ -97,10 +100,9 @@ function create_connection_index(
     return ab.to_node_id, source, target, index
 end
 
-function create_level_links(db::DB, edge::DataFrame, nodemap, basin_nodemap, connection_map)
+function create_level_links(db::DB, nodemap, basin_nodemap, connection_map)
     _, source, target, index = create_connection_index(
         db,
-        edge,
         nodemap,
         basin_nodemap,
         connection_map,
@@ -114,14 +116,12 @@ end
 function create_outflow_links(
     db::DB,
     config::Config,
-    edge::DataFrame,
     nodemap,
     basin_nodemap,
     connection_map,
 )
     link_ids, source, _, index = create_connection_index(
         db,
-        edge,
         nodemap,
         basin_nodemap,
         connection_map,
@@ -193,6 +193,7 @@ function create_furcations(db::DB, edge::DataFrame, nodemap, connection_map)
                 target = connection_map[(nodemap[c], nodemap[b])]
             end
             push!(target_connection, target)
+            # TODO use fraction value
             push!(fraction, 0.5)
         end
     end
@@ -203,7 +204,6 @@ end
 function create_level_control(
     db::DB,
     config::Config,
-    edge::DataFrame,
     basin_nodemap::Dictionary{Int64, Int64},
 )
     static = load_data(db, config, ("static", "LevelControl"))
@@ -212,7 +212,11 @@ function create_level_control(
     else
         control_nodes = unique(DataFrame(static))
     end
-    control_edges = filter(:to_node_type => ==("LevelControl"), edge)
+    control_edges = columntable(execute(db, """select from_node_id, to_node_id
+        from ribasim_edge
+        inner join ribasim_node on ribasim_edge.to_node_id = ribasim_node.fid
+        where type = 'LevelControl'"""))
+
     volume_lookup = Dictionary(control_nodes.node_id, control_nodes.target_volume)
     index = [basin_nodemap[i] for i in control_edges.from_node_id]
     volume = [volume_lookup[i] for i in control_edges.to_node_id]
@@ -242,11 +246,11 @@ function create_parameters(db::DB, config::Config)
     # Not in `connectivity`?
     edge = DataFrame(execute(db, "select * from ribasim_edge"))
 
-    level_links = create_level_links(db, edge, nodemap, basin_nodemap, connection_map)
+    level_links = create_level_links(db, nodemap, basin_nodemap, connection_map)
     outflow_links =
-        create_outflow_links(db, config, edge, nodemap, basin_nodemap, connection_map)
+        create_outflow_links(db, config, nodemap, basin_nodemap, connection_map)
     furcations = create_furcations(db, edge, nodemap, connection_map)
-    level_control = create_level_control(db, config, edge, basin_nodemap)
+    level_control = create_level_control(db, config, basin_nodemap)
 
     # TODO support forcing for other nodetypes, make optional
     forcing = DataFrame(load_required_data(db, config, ("forcing", "Basin")))

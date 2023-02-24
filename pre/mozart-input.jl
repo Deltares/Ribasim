@@ -69,20 +69,6 @@ function move_location(x, y, n)
     return x + r * cos(θ), y + r * sin(θ)
 end
 
-# for storage edges, avoid plotting them on top of flow edges
-# since it is a linestring, add a middle point that is off center
-function arc(line)
-    from, to = line
-    # offset in the direction of the smallest delta for visibility
-    newp = (((from[1] + to[1]) / 2), ((from[2] + to[2]) / 2))
-    if abs(from[1] - to[1]) > abs(from[2] - to[2])
-        newp = (newp[1], newp[2] + 20.0)
-    else
-        newp = (newp[1] + 20.0, newp[2])
-    end
-    return [from, newp, to]
-end
-
 """
 Create 1:1 input per node, instead of aggregated per LSW, see
 https://github.com/Deltares/Ribasim.jl/issues/18
@@ -111,11 +97,7 @@ function expanded_network()
     t = DataFrame(;
         geom = linestringtype[],
         from_node_id = Int[],
-        from_node_type = String[],
-        from_connector = String[],
         to_node_id = Int[],
-        to_node_type = String[],
-        to_connector = String[],
     )
 
     # add all the nodes and the inner edges that connect the LSW sub-system
@@ -135,23 +117,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "flow",
                     to_node_id = id,
-                    to_node_type = "GeneralUser",
-                    to_connector = "flow",
-                ),
-            )
-            push!(
-                t,
-                (;
-                    geom = arc([lswcoord, coord]),
-                    from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "storage",
-                    to_node_id = id,
-                    to_node_type = "GeneralUser",
-                    to_connector = "storage",
                 ),
             )
             id += 1
@@ -163,23 +129,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "flow",
                     to_node_id = id,
-                    to_node_type = "OutflowTable",
-                    to_connector = "upstream",
-                ),
-            )
-            push!(
-                t,
-                (;
-                    geom = arc([lswcoord, coord]),
-                    from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "storage",
-                    to_node_id = id,
-                    to_node_type = "OutflowTable",
-                    to_connector = "storage",
                 ),
             )
             id += 1
@@ -191,11 +141,7 @@ function expanded_network()
                     (;
                         geom = [move_location(xcoord, ycoord, 4), coord],
                         from_node_id = outflowtable_id,
-                        from_node_type = "OutflowTable",
-                        from_connector = "downstream",
                         to_node_id = id,
-                        to_node_type = "HeadBoundary",
-                        to_connector = "flow",
                     ),
                 )
                 id += 1
@@ -206,13 +152,10 @@ function expanded_network()
                 push!(
                     t,
                     (;
+                        # TODO lswcoord should be outflowtable coord?
                         geom = [lswcoord, coord],
                         from_node_id = outflowtable_id,
-                        from_node_type = "OutflowTable",
-                        from_connector = "downstream",
                         to_node_id = id,
-                        to_node_type = "Bifurcation",
-                        to_connector = "upstream",
                     ),
                 )
                 id += 1
@@ -225,23 +168,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "flow",
                     to_node_id = id,
-                    to_node_type = "GeneralUser_P",
-                    to_connector = "flow",
-                ),
-            )
-            push!(
-                t,
-                (;
-                    geom = arc([lswcoord, coord]),
-                    from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "storage",
-                    to_node_id = id,
-                    to_node_type = "GeneralUser_P",
-                    to_connector = "storage",
                 ),
             )
             id += 1
@@ -252,11 +179,7 @@ function expanded_network()
                 (;
                     geom = [lswcoord, coord],
                     from_node_id = lsw_seq,
-                    from_node_type = "Basin",
-                    from_connector = "flow",
                     to_node_id = id,
-                    to_node_type = "LevelControl",
-                    to_connector = "flow",
                 ),
             )
             id += 1
@@ -284,11 +207,7 @@ function expanded_network()
                 nt = (;
                     geom = [from_node.geom, to_node.geom],
                     from_node_id = from_node.fid,
-                    from_node_type = from_node.type,
-                    from_connector,
                     to_node_id = to_node.fid,
-                    to_node_type = to_node.type,
-                    to_connector,
                 )
                 push!(t, nt)
             else
@@ -302,11 +221,7 @@ function expanded_network()
                     nt = (;
                         geom = [from_node.geom, to_node.geom],
                         from_node_id = from_node.fid,
-                        from_node_type = from_node.type,
-                        from_connector,
                         to_node_id = to_node.fid,
-                        to_node_type = to_node.type,
-                        to_connector,
                     )
                     push!(t, nt)
                 end
@@ -332,11 +247,7 @@ function expanded_network()
                     (;
                         geom = [srccoord, midcoord],
                         from_node_id = lsw_node.fid,
-                        from_node_type = "Basin",
-                        from_connector = "flow",
                         to_node_id = id,
-                        to_node_type = "LevelLink",
-                        to_connector = "a-side",
                     ),
                 )
                 push!(
@@ -344,11 +255,7 @@ function expanded_network()
                     (;
                         geom = [midcoord, dstcoord],
                         from_node_id = id,
-                        from_node_type = "LevelLink",
-                        from_connector = "b-side",
                         to_node_id = out_lsw_node.fid,
-                        to_node_type = "Basin",
-                        to_connector = "flow",
                     ),
                 )
                 id += 1

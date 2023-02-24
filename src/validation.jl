@@ -5,11 +5,6 @@
 @schema "ribasim.profile" Profile
 @schema "ribasim.forcing" Forcing
 
-# TODO These should be coupled to the nodetypes
-const from_connectors =
-    ("b-side", "downstream", "downstream_1", "downstream_2", "storage", "flow")
-const to_connectors = ("a-side", "storage", "upstream", "flow")
-
 @version NodeV1 begin
     fid::Int
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
@@ -17,13 +12,7 @@ end
 
 @version EdgeV1 begin
     from_node_id::Int
-    from_connector::String =
-        in(from_connector, from_connectors) ? from_connector :
-        error("Unknown from_connector type $from_connector")
     to_node_id::Int
-    to_connector::String =
-        in(to_connector, to_connectors) ? to_connector :
-        error("Unknown to_connector type $to_connector")
 end
 
 @version StateV1 begin
@@ -66,10 +55,7 @@ function is_consistent(node, edge, state, static, profile, forcing)
     @assert forcing.node_id ⊆ ids "Forcing id not in node ids"
 
     # Check edges for uniqueness
-    for sub in groupby(edge, [:from_node_id, :to_node_id])
-        @assert allunique(sub.from_connector) "Duplicate from_connector in edge $(first(sub.from_node_id))-$(first(sub.to_node_id))"
-        @assert allunique(sub.to_connector) "Duplicate from_connector in edge $(first(sub.from_node_id))-$(first(sub.to_node_id))"
-    end
+    @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
 
     # TODO Check states
 

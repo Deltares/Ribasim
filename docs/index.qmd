@@ -310,39 +310,8 @@ reservoir to a water user, such that it can avoid overextraction.
 column         | type     | restriction
 -------------- | -------- | -----------
 from_node_id   | Int      | -
-from_node_type | String   | known type
-from_connector | String   | exists for node
 to_node_id     | Int      | -
-to_node_type   | String   | known type
-to_connector   | String   | exists for node
-geometry       | geoarrow | (optional)
-
-The names of the connectors need to match the available connectors per node type, which
-are outlined below.
-
-- Basin
-  - flow
-  - storage
-- GeneralUser_P
-  - flow
-  - storage
-- LevelControl
-  - flow
-- GeneralUser
-  - flow
-  - storage
-- OutflowTable
-  - upstream: flow
-  - downstream: flow
-  - storage: upstream storage
-- HeadBoundary
-  - flow
-- Bifurcation
-  - upstream: flow
-  - downstream_{i}: split flow in n parts
-- LevelLink
-  - a-side: flow on one side
-  - b-side: flow on other side
+geom           | geometry | (optional)
 
 Similarly to the node table, you can use a geometry to visualize the connections between
 the nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.

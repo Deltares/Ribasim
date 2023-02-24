@@ -33,33 +33,6 @@ function inverse(d::Dict{K, V}) where {K, V}
 end
 
 """
-    edgepairs(edges::Vector{Pair})::DataFrame
-
-Create a edge DataFrame from a more readable data structure, a vector of Pairs, where
-each Pair represents one edge.
-
-    edges = [
-        (id_lsw, "Basin", "x") => (id_out, "OutflowTable", "a"),
-        (id_lsw, "Basin", "s") => (id_out, "OutflowTable", "s"),
-        (id_out, "OutflowTable", "b") => (id_lsw_end, "Basin", "x"),
-    ]
-"""
-function edgepairs(edges::Vector{<:Pair})::DataFrame
-    df = DataFrame(;
-        from_node_id = Int[],
-        from_node_type = String[],
-        from_connector = String[],
-        to_node_id = Int[],
-        to_node_type = String[],
-        to_connector = String[],
-    )
-    for edge in edges
-        push!(df, (edge.first..., edge.second...))
-    end
-    return df
-end
-
-"""
     profilesets(; ids, volume, area, discharge, level)::DataFrame
 
 Create a profile DataFrame for a set id ID based on a single profile.
