@@ -118,7 +118,7 @@ class Input(abc.ABC):
 class Node(Input):
     input_type = "Node"
     geometry_type = "Point"
-    attributes = (QgsField("Node", QVariant.String),)
+    attributes = (QgsField("type", QVariant.String),)
 
     def write(self) -> None:
         """
@@ -132,7 +132,7 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("Node")
+        index = layer.fields().indexFromName("node")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {
