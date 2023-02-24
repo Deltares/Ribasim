@@ -14,7 +14,7 @@ from ribasim import (
 )
 
 
-class RibasimModel(BaseModel):
+class Model(BaseModel):
     node: Node
     edge: Edge
     basin_state: Optional[BasinState] = None

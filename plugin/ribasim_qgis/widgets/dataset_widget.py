@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
 )
 from qgis.core import QgsMapLayer, QgsProject
 from qgis.core.additions.edit import edit
-from ribasim_qgis.core.nodes import Edges, Basin, load_nodes_from_geopackage
+from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
@@ -76,10 +76,6 @@ class DatasetTreeWidget(QTreeWidget):
 
         # Collect the selected items
         selection = self.selectedItems()
-        # Append associated items
-        for item in selection:
-            if item.assoc_item is not None and item.assoc_item not in selection:
-                selection.append(item.assoc_item)
 
         # Warn before deletion
         message = "\n".join([f"- {item.text(1)}" for item in selection])
@@ -192,8 +188,8 @@ class DatasetWidget(QWidget):
         from_id, to_id = derive_connectivity(node_index, node_xy, edge_xy)
 
         fields = edge.fields()
-        field1 = fields.indexFromName("from_node_fid")
-        field2 = fields.indexFromName("to_node_fid")
+        field1 = fields.indexFromName("from_node_id")
+        field2 = fields.indexFromName("to_node_id")
         try:
             # Avoid infinite recursion
             edge.blockSignals(True)
@@ -230,7 +226,7 @@ class DatasetWidget(QWidget):
         element = item.element
         layer, renderer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        if element.input_type == "edge":
+        if element.input_type == "Edge":
             suppress = True
         self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
         element.set_editor_widget()
@@ -256,8 +252,8 @@ class DatasetWidget(QWidget):
             self.add_item_to_qgis(item)
 
         # Connect node and edge layer to derive connectivities.
-        self.node_layer = nodes["node"].layer
-        self.edge_layer = nodes["edge"].layer
+        self.node_layer = nodes["Node"].layer
+        self.edge_layer = nodes["Edge"].layer
         self.edge_layer.afterCommitChanges.connect(self.explode_and_connect)
         return
 
@@ -268,7 +264,7 @@ class DatasetWidget(QWidget):
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.gpkg")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
-            for input_type in (Basin, Edges):
+            for input_type in (Node, Edge):
                 instance = input_type.create(path, self.parent.crs, names=[])
                 instance.write()
             self.load_geopackage()
@@ -302,7 +298,7 @@ class DatasetWidget(QWidget):
             if layer is not None:
                 config = layer.editFormConfig()
                 # Always suppress the attribute form pop-up for edges.
-                if item.element.input_type == "edge":
+                if item.element.input_type == "Edge":
                     config.setSuppress(True)
                 else:
                     config.setSuppress(suppress)

@@ -11,7 +11,7 @@ class NodesWidget(QWidget):
 
         self.node_buttons = {}
         for node in NODES:
-            if node in ("node", "edge"):
+            if node in ("Node", "Edge"):
                 continue
             button = QPushButton(node)
             button.clicked.connect(partial(self.new_node_layer, node_type=node))

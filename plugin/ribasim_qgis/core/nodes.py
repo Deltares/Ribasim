@@ -25,26 +25,13 @@ from typing import Any, Dict, List, Tuple
 
 from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import (
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-)
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
-    QgsDefaultValue,
     QgsEditorWidgetSetup,
-    QgsFeature,
     QgsField,
-    QgsFillSymbol,
-    QgsGeometry,
     QgsLineSymbol,
     QgsMarkerSymbol,
     QgsPalLayerSettings,
-    QgsPointXY,
     QgsRendererCategory,
     QgsSimpleMarkerSymbolLayerBase,
     QgsSingleSymbolRenderer,
@@ -54,18 +41,18 @@ from qgis.core import (
 from ribasim_qgis.core import geopackage
 
 
-class RibasimInput(abc.ABC):
+class Input(abc.ABC):
     """
     Abstract base class for Ribasim input layers.
     """
 
     def __init__(self, path: str):
-        self.name = f"ribasim_{self.input_type}"
+        self.name = self.input_type
         self.path = path
         self.layer = None
 
     @classmethod
-    def create(cls, path: str, crs: Any, names: List[str]) -> "RibasimInput":
+    def create(cls, path: str, crs: Any, names: List[str]) -> "Input":
         instance = cls(path)
         if instance.name in names:
             raise ValueError(f"Name already exists in geopackage: {instance.name}")
@@ -128,17 +115,14 @@ class RibasimInput(abc.ABC):
         return
 
 
-class Basin(RibasimInput):
-    input_type = "node"
+class Node(Input):
+    input_type = "Node"
     geometry_type = "Point"
-    attributes = [
-        # TODO: node should be a ComboBox?
-        QgsField("node", QVariant.String),  # TODO discuss
-    ]
+    attributes = []
 
     def write(self) -> None:
         """
-        Special the LSW layer write because it needs to generate a new file.
+        Special the Basin layer write because it needs to generate a new file.
         """
         self.layer = geopackage.write_layer(
             self.path, self.layer, self.name, newfile=True
@@ -148,14 +132,14 @@ class Basin(RibasimInput):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("node")
+        index = layer.fields().indexFromName("Node")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {
                 "map": {
-                    "LSW": "LSW",
+                    "Basin": "Basin",
                     "Bifurcation": "Bifurcation",
-                    "OutflowTable": "OutflowTable",
+                    "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelControl": "LevelControl",
                 },
             },
@@ -172,9 +156,9 @@ class Basin(RibasimInput):
     def renderer(self) -> QgsCategorizedSymbolRenderer:
         shape = QgsSimpleMarkerSymbolLayerBase
         markers = {
-            "LSW": (QColor("blue"), "LSW", shape.Circle),
+            "Basin": (QColor("blue"), "Basin", shape.Circle),
             "Bifurcation": (QColor("red"), "Bifurcation", shape.Triangle),
-            "OutflowTable": (QColor("green"), "OutflowTable", shape.Diamond),
+            "TabulatedRatingCurve": (QColor("green"), "TabulatedRatingCurve", shape.Diamond),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "": (
                 QColor("white"),
@@ -192,7 +176,7 @@ class Basin(RibasimInput):
             category = QgsRendererCategory(value, symbol, label, shape)
             categories.append(category)
 
-        renderer = QgsCategorizedSymbolRenderer(attrName="node", categories=categories)
+        renderer = QgsCategorizedSymbolRenderer(attrName="Node", categories=categories)
         return renderer
 
     @property
@@ -205,12 +189,28 @@ class Basin(RibasimInput):
         return labels
 
 
-class Edges(RibasimInput):
-    input_type = "edge"
+
+class Basin(Input):
+    input_type = "Basin"
+    geometry_type = "No geometry"
+    attributes = [
+        # TODO: node should be a ComboBox?
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_id", QVariant.Int),
+        QgsField("drainage", QVariant.Double),
+        QgsField("potential_evaporation", QVariant.Double),
+        QgsField("infiltration", QVariant.Double),
+        QgsField("precipitation", QVariant.Double),
+        QgsField("urban_runoff", QVariant.Double),
+    ]
+
+
+class Edge(Input):
+    input_type = "Edge"
     geometry_type = "Linestring"
     attributes = [
-        QgsField("from_node_fid", QVariant.Int),
-        QgsField("to_node_fid", QVariant.Int),
+        QgsField("from_node_id", QVariant.Int),
+        QgsField("to_node_id", QVariant.Int),
     ]
 
     @property
@@ -232,115 +232,87 @@ class Edges(RibasimInput):
         return
 
 
-class BasinLookup(RibasimInput):
-    input_type = "lookup_LSW"
+class BasinProfile(Input):
+    input_type = "Basin / profile"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_fid", QVariant.Int),
-        QgsField("volume", QVariant.Double),
+        QgsField("node_id", QVariant.Int),
+        QgsField("storage", QVariant.Double),
         QgsField("area", QVariant.Double),
         QgsField("level", QVariant.Double),
     ]
 
 
-class OutflowTableLookup(RibasimInput):
-    input_type = "lookup_OutflowTable"
+class TabulatedRatingCurve(Input):
+    input_type = "TabulatedRatingCurve"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_fid", QVariant.Int),
+        QgsField("node_id", QVariant.Int),
         QgsField("level", QVariant.Double),
         QgsField("discharge", QVariant.Double),
     ]
 
 
-class Bifurcation(RibasimInput):
-    input_type = "static_Bifurcation"
+class FractionalFlow(Input):
+    input_type = "FractionalFlow"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_fid", QVariant.Int),
-        QgsField("fraction_1", QVariant.Double),
-        QgsField("fraction_2", QVariant.Double),
+        QgsField("node_id", QVariant.Int),
+        QgsField("fraction", QVariant.Double),
     ]
 
 
-class LevelControl(RibasimInput):
-    input_type = "static_LevelControl"
+class LevelControl(Input):
+    input_type = "LevelControl"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_fid", QVariant.Int),
-        QgsField("target_volume", QVariant.Double),
+        QgsField("node_id", QVariant.Int),
+        QgsField("target_level", QVariant.Double),
     ]
 
 
-class BasinState(RibasimInput):
-    input_type = "state_LSW"
+class BasinState(Input):
+    input_type = "LSW / state"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_fid", QVariant.Int),
-        QgsField("S", QVariant.Double),
-        QgsField("C", QVariant.Double),
+        QgsField("node_id", QVariant.Int),
+        QgsField("storage", QVariant.Double),
+        QgsField("concentration", QVariant.Double),
     ]
 
 
-class BasinForcing(RibasimInput):
-    input_type = "forcing_LSW"
+class BasinForcing(Input):
+    input_type = "Basin / forcing"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("time", QVariant.DateTime),
-        QgsField("node_fid", QVariant.Int),
-        QgsField("demand", QVariant.Double),
+        QgsField("node_id", QVariant.Int),
         QgsField("drainage", QVariant.Double),
-        QgsField("E_pot", QVariant.Double),
+        QgsField("potential_evaporation", QVariant.Double),
         QgsField("infiltration", QVariant.Double),
-        QgsField("P", QVariant.Double),
-        QgsField("priority", QVariant.Double),
+        QgsField("precipitation", QVariant.Double),
         QgsField("urban_runoff", QVariant.Double),
     ]
 
 
 NODES = {
-    "node": Basin,
-    "edge": Edges,
-    "lookup_LSW": BasinLookup,
-    "lookup_OutflowTable": OutflowTableLookup,
-    "static_Bifurcation": Bifurcation,
-    "static_LevelControl": LevelControl,
-    "forcing_LSW": BasinForcing,
+    "Node": Node,
+    "Edge": Edge,
+    "Basin": Basin,
+    "Basin / state": BasinState,
+    "Basin / profile": BasinProfile,
+    "Basin / forcing": BasinForcing,
+    "TabulatedRatingCurve": TabulatedRatingCurve,
+    "FractionalFlow": FractionalFlow,
+    "LevelControl": LevelControl,
 }
 
 
-def parse_name(layername: str) -> Tuple[str, str]:
-    """
-    Based on the layer name find out which type it is.
-
-    For example:
-    parse_name("Ribasim Edges: network") -> ("Edges", "network")
-    """
-    values = layername.split("_")
-    if len(values) == 2:
-        _, kind = values
-        nodetype = None
-    elif len(values) == 3:
-        _, kind, nodetype = values
-    else:
-        raise ValueError(
-            'Expected layer name of "ribasim_{kind}_{nodetype}", '
-            f'"ribasim_node", "ribasim_edge". Received {layername}'
-        )
-    return kind, nodetype
-
-
-def load_nodes_from_geopackage(path: str) -> Dict[str, RibasimInput]:
+def load_nodes_from_geopackage(path: str) -> Dict[str, Input]:
     # List the names in the geopackage
     gpkg_names = geopackage.layers(path)
     nodes = {}
     for layername in gpkg_names:
-        if layername.startswith("ribasim_"):
-            kind, nodetype = parse_name(layername)
-            if kind in ("node", "edge"):
-                key = kind
-            else:
-                key = f"{kind}_{nodetype}"
-            nodes[key] = NODES[key](path)
+        nodes[layername] = NODES[layername](path)
 
     return nodes
