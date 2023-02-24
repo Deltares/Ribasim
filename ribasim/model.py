@@ -1,47 +1,83 @@
+import datetime
 from pathlib import Path
 from typing import Optional
 
+import tomli
 import tomli_w
 from pydantic import BaseModel
 
-from ribasim import BasinLookup, BasinState, Bifurcation, Edge, Node, OutflowTable
+from ribasim import (
+    Basin,
+    Edge,
+    FractionalFlow,
+    LevelControl,
+    LinearLevelConnection,
+    Node,
+    TabulatedRatingCurve,
+)
+
+_NODES = (
+    (Node, "node"),
+    (Edge, "edge"),
+    (Basin, "basin"),
+    (FractionalFlow, "fractional_flow"),
+    (LevelControl, "level_control"),
+    (LinearLevelConnection, "linear_level_connection"),
+    (TabulatedRatingCurve, "tabulated_rating_curve"),
+)
 
 
 class Model(BaseModel):
+    modelname: str
     node: Node
     edge: Edge
-    basin_state: Optional[BasinState] = None
-    basin_lookup: Optional[BasinLookup] = None
-    bifurcation: Optional[Bifurcation] = None
-    outflow_table: Optional[OutflowTable] = None
+    basin: Basin
+    fractional_flow: Optional[FractionalFlow]
+    level_control: Optional[LevelControl]
+    linear_level_connection: Optional[LinearLevelConnection]
+    tabulated_rating_curve: Optional[TabulatedRatingCurve]
+    starttime: datetime.datetime
+    endtime: datetime.datetime
 
-    def __iter__(self):
-        return iter(self.__root__)
+    @classmethod
+    def fields(cls):
+        return cls.__fields__.keys()
 
-    def items(self):
-        return self.__root__.items()
-
-    def values(self):
-        return self.__root__.values()
-
-    def _write_toml(self, directory: Path, modelname: str):
-        content = {}
-        with open(directory / f"{modelname}.toml", "w") as f:
+    def _write_toml(self, directory: Path):
+        content = {
+            "starttime": self.starttime,
+            "endtime": self.endtime,
+            "geopackage": f"{self.modelname}.gpkg",
+        }
+        with open(directory / f"{self.modelname}.toml", "w") as f:
             tomli_w.dump(content, f)
         return
 
-    def _write_tables(self, directory: Path, modelname: str) -> None:
+    def _write_tables(self, directory: Path) -> None:
         """
         Write the input to GeoPackage and Arrow tables.
         """
-        for input_table in self.values():
-            input_table.write(directory, modelname)
+        for input_table in self.dict().values():
+            input_table.write(directory, self.modelname)
         return
 
-    def write(self, directory, modelname: str) -> None:
+    def write(self, directory) -> None:
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-
-        self._write_toml(directory, modelname)
-        self._write_tables(directory, modelname)
+        self._write_toml(directory)
+        self._write_tables(directory)
         return
+
+    @staticmethod
+    def from_toml(path):
+        with open(path, "rb") as f:
+            config = tomli.load(f)
+
+        kwargs = {}
+        for cls, kwarg_name in _NODES.items():
+            kwargs[kwarg_name] = cls.from_config(config)
+
+        kwargs["start_time"] = config["start_time"]
+        kwargs["end_time"] = config["end_time"]
+
+        return Model(**kwargs)

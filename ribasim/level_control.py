@@ -1,14 +1,15 @@
+import pandera as pa
+from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
-from ribasim.input_base import ArrowInputMixin
-from ribasim.types import DataFrame
+from ribasim.input_base import InputMixin
 
 
-class LevelControl(BaseModel, ArrowInputMixin):
+class StaticSchema(pa.SchemaModel):
+    node_id: Series[int] = pa.Field(unique=True)
+    target_level: Series[float] = pa.Field()
+
+
+class LevelControl(BaseModel, InputMixin):
     _input_type = "LevelControl"
-    dataframe: DataFrame
-
-
-class LevelControlForcing(BaseModel, ArrowInputMixin):
-    _input_type = "LevelControl / forcing"
-    dataframe: DataFrame
+    static: DataFrame[StaticSchema]

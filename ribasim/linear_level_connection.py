@@ -6,10 +6,10 @@ from ribasim.input_base import InputMixin
 
 
 class StaticSchema(pa.SchemaModel):
-    from_node_id: Series[int] = pa.Field()
-    to_node_id: Series[int] = pa.Field()
+    node_id: Series[int] = pa.Field(unique=True)
+    conductance: Series[float] = pa.Field()
 
 
-class Edge(BaseModel, InputMixin):
-    _input_type = "Edge"
+class LinearLevelConnection(BaseModel, InputMixin):
+    _input_type = "LinearLevelConnection"
     static: DataFrame[StaticSchema]
