@@ -2,11 +2,11 @@
 const TableName = Tuple{String, String}
 
 function get_ids(db::DB)::Vector{Int}
-    return only(execute(columntable, db, "select fid from ribasim_node"))
+    return only(execute(columntable, db, "select fid from Node"))
 end
 
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "select fid from ribasim_node where type = '$nodetype'"
+    sql = "select fid from Node where type = '$nodetype'"
     return only(execute(columntable, db, sql))
 end
 

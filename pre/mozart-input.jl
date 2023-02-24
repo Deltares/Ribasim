@@ -75,12 +75,13 @@ https://github.com/Deltares/Ribasim.jl/issues/18
 """
 function expanded_network()
     # Basins stay in the center
-    # n = 1: Bifurcation
-    # n = 2: GeneralUser / GeneralUser_P
+    # TODO place FractionFlow in between like LinearLevelConnection
+    # n = 1: FractionalFlow
+    # n = 2: WaterUser
     # n = 3: LevelControl
-    # n = 4: OutFlowTable
+    # n = 4: TabulatedRatingCurve
     # n = 5: HeadBoundary
-    # LevelLink goes between the Basins it connects
+    # LinearLevelConnection goes between the Basins it connects
 
     types = Char.(only.(lswdik.local_surface_water_type))
 
@@ -111,7 +112,7 @@ function expanded_network()
 
         if type == 'V'
             coord = move_location(xcoord, ycoord, 2)
-            push!(df, (coord, "GeneralUser", id, lsw_id))
+            push!(df, (coord, "WaterUser", id, lsw_id))
             push!(
                 t,
                 (;
@@ -162,7 +163,7 @@ function expanded_network()
             end
         else
             coord = move_location(xcoord, ycoord, 2)
-            push!(df, (coord, "GeneralUser_P", id, lsw_id))
+            push!(df, (coord, "WaterUser", id, lsw_id))
             push!(
                 t,
                 (;
@@ -291,13 +292,13 @@ function create_gpkg(path::String, node::DataFrame, edge::DataFrame)
     edge.from_node_id .-= 1
     edge.to_node_id .-= 1
     kwargs = (crs = GDF.GFT.EPSG(28992), geom_column = :geom)
-    GDF.write(path, node[:, Not(:fid)]; layer_name = "ribasim_node", kwargs...)
+    GDF.write(path, node[:, Not(:fid)]; layer_name = "Node", kwargs...)
 
     # GeoDataFrames doesn't currently support append, so write to a temporary GeoPackage,
     # then use ogr2ogr to append that
     tmp_path = normpath(dirname(path), "tmp.gpkg")
     rm(tmp_path; force = true)
-    GDF.write(tmp_path, edge; layer_name = "ribasim_edge", kwargs...)
+    GDF.write(tmp_path, edge; layer_name = "Edge", kwargs...)
     run(`$(ogr2ogr_path()) -append $path $tmp_path`)
     rm(tmp_path; force = true)
     return nothing
@@ -367,9 +368,9 @@ lookup_LSW2.node_id .-= 1
 lookup_OutflowTable2.node_id .-= 1
 # add tables to the GeoPackage
 db = SQLite.DB(gpkg_path)
-SQLite.load!(state_LSW2, db, "ribasim_state_Basin")
-SQLite.load!(static_LevelControl2, db, "ribasim_static_LevelControl")
-SQLite.load!(static_Bifurcation2, db, "ribasim_static_Bifurcation")
-SQLite.load!(lookup_LSW2, db, "ribasim_lookup_Basin")
-SQLite.load!(lookup_OutflowTable2, db, "ribasim_lookup_OutflowTable")
+SQLite.load!(state_LSW2, db, "Basin / state")
+SQLite.load!(static_LevelControl2, db, "LevelControl")
+SQLite.load!(static_Bifurcation2, db, "Bifurcation")
+SQLite.load!(lookup_LSW2, db, "Basin / profile")
+SQLite.load!(lookup_OutflowTable2, db, "TabulatedRatingCurve")
 close(db)

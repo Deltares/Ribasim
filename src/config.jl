@@ -1,13 +1,10 @@
 nodetypes::Vector{Symbol} = [
-    :Bifurcation,
-    :GeneralUser,
-    :GeneralUser_P,
-    :HeadBoundary,
-    :LevelControl,
-    :LevelLink,
     :Basin,
-    :NoFlowBoundary,
-    :OutflowTable,
+    :FractionalFlow,
+    :LevelControl,
+    :LinearLevelConnection,
+    :TabulatedRatingCurve,
+    :WaterUser,
 ]
 
 """

@@ -17,7 +17,7 @@ function graph(db::DB)
 
     n_v = length(vxset)
     g = Graphs.Graph(n_v)
-    rows = execute(db, "select from_node_id, to_node_id from ribasim_edge")
+    rows = execute(db, "select from_node_id, to_node_id from Edge")
     for row in rows
         from = vxdict[row.from_node_id]
         to = vxdict[row.to_node_id]

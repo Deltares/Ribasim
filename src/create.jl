@@ -69,12 +69,12 @@ function create_connection_index(
     # a = source of edge going into b
     # b = link node of type linktype
     # c = destination of edge going out of b
-    ab = columntable(execute(db, """select from_node_id, to_node_id from ribasim_edge
-        inner join ribasim_node on ribasim_edge.to_node_id = ribasim_node.fid
+    ab = columntable(execute(db, """select from_node_id, to_node_id from Edge
+        inner join Node on Edge.to_node_id = Node.fid
         where type = '$linktype'
         order by to_node_id"""))
-    bc = columntable(execute(db, """select from_node_id, to_node_id from ribasim_edge
-        inner join ribasim_node on ribasim_edge.from_node_id = ribasim_node.fid
+    bc = columntable(execute(db, """select from_node_id, to_node_id from Edge
+        inner join Node on Edge.from_node_id = Node.fid
         where type = '$linktype'
         order by from_node_id"""))
     # TODO add to validation
@@ -213,8 +213,8 @@ function create_level_control(
         control_nodes = unique(DataFrame(static))
     end
     control_edges = columntable(execute(db, """select from_node_id, to_node_id
-        from ribasim_edge
-        inner join ribasim_node on ribasim_edge.to_node_id = ribasim_node.fid
+        from Edge
+        inner join Node on Edge.to_node_id = Node.fid
         where type = 'LevelControl'"""))
 
     volume_lookup = Dictionary(control_nodes.node_id, control_nodes.target_volume)
@@ -244,7 +244,7 @@ function create_parameters(db::DB, config::Config)
 
     storage_tables = create_storage_tables(db, config, basin_nodemap)
     # Not in `connectivity`?
-    edge = DataFrame(execute(db, "select * from ribasim_edge"))
+    edge = DataFrame(execute(db, "select * from Edge"))
 
     level_links = create_level_links(db, nodemap, basin_nodemap, connection_map)
     outflow_links =
