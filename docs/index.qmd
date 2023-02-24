@@ -289,7 +289,7 @@ given. The known node types as of this writing are:
 - Basin
 - LevelControl
 - WaterUser
-- TabulatedWeir
+- TabulatedRatingCurve
 - Bifurcation
 - LinearLevelConnection
 
