@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 import pandas as pd
+from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 from ribasim.types import DataFrame

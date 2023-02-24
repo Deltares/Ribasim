@@ -1,6 +1,6 @@
 import geopandas as gpd
-import shapely.geometry as sg
 import pytest
+import shapely.geometry as sg
 
 from ribasim.edge import Edge
 

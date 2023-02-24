@@ -1,17 +1,10 @@
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from pydantic import BaseModel
 import tomli_w
+from pydantic import BaseModel
 
-from ribasim import (
-    Node,
-    Edge,
-    Bifurcation,
-    BasinLookup,
-    BasinState,
-    OutflowTable,
-)
+from ribasim import BasinLookup, BasinState, Bifurcation, Edge, Node, OutflowTable
 
 
 class Model(BaseModel):

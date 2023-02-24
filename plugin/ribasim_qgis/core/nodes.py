@@ -118,7 +118,7 @@ class Input(abc.ABC):
 class Node(Input):
     input_type = "Node"
     geometry_type = "Point"
-    attributes = []
+    attributes = (QgsField("Node", QVariant.String),)
 
     def write(self) -> None:
         """
@@ -138,7 +138,7 @@ class Node(Input):
             {
                 "map": {
                     "Basin": "Basin",
-                    "Bifurcation": "Bifurcation",
+                    "FractionalFlow": "FractionalFlow",
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelControl": "LevelControl",
                 },
@@ -157,8 +157,12 @@ class Node(Input):
         shape = QgsSimpleMarkerSymbolLayerBase
         markers = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
-            "Bifurcation": (QColor("red"), "Bifurcation", shape.Triangle),
-            "TabulatedRatingCurve": (QColor("green"), "TabulatedRatingCurve", shape.Diamond),
+            "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
+            "TabulatedRatingCurve": (
+                QColor("green"),
+                "TabulatedRatingCurve",
+                shape.Diamond,
+            ),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "": (
                 QColor("white"),
@@ -187,22 +191,6 @@ class Node(Input):
         pal_layer.dist = 2.0
         labels = QgsVectorLayerSimpleLabeling(pal_layer)
         return labels
-
-
-
-class Basin(Input):
-    input_type = "Basin"
-    geometry_type = "No geometry"
-    attributes = [
-        # TODO: node should be a ComboBox?
-        QgsField("time", QVariant.DateTime),
-        QgsField("node_id", QVariant.Int),
-        QgsField("drainage", QVariant.Double),
-        QgsField("potential_evaporation", QVariant.Double),
-        QgsField("infiltration", QVariant.Double),
-        QgsField("precipitation", QVariant.Double),
-        QgsField("urban_runoff", QVariant.Double),
-    ]
 
 
 class Edge(Input):
@@ -243,6 +231,43 @@ class BasinProfile(Input):
     ]
 
 
+class Basin(Input):
+    input_type = "Basin"
+    geometry_type = "No geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("drainage", QVariant.Double),
+        QgsField("potential_evaporation", QVariant.Double),
+        QgsField("infiltration", QVariant.Double),
+        QgsField("precipitation", QVariant.Double),
+        QgsField("urban_runoff", QVariant.Double),
+    ]
+
+
+class BasinForcing(Input):
+    input_type = "Basin / forcing"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_id", QVariant.Int),
+        QgsField("drainage", QVariant.Double),
+        QgsField("potential_evaporation", QVariant.Double),
+        QgsField("infiltration", QVariant.Double),
+        QgsField("precipitation", QVariant.Double),
+        QgsField("urban_runoff", QVariant.Double),
+    ]
+
+
+class BasinState(Input):
+    input_type = "LSW / state"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("storage", QVariant.Double),
+        QgsField("concentration", QVariant.Double),
+    ]
+
+
 class TabulatedRatingCurve(Input):
     input_type = "TabulatedRatingCurve"
     geometry_type = "No Geometry"
@@ -268,30 +293,6 @@ class LevelControl(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("target_level", QVariant.Double),
-    ]
-
-
-class BasinState(Input):
-    input_type = "LSW / state"
-    geometry_type = "No Geometry"
-    attributes = [
-        QgsField("node_id", QVariant.Int),
-        QgsField("storage", QVariant.Double),
-        QgsField("concentration", QVariant.Double),
-    ]
-
-
-class BasinForcing(Input):
-    input_type = "Basin / forcing"
-    geometry_type = "No Geometry"
-    attributes = [
-        QgsField("time", QVariant.DateTime),
-        QgsField("node_id", QVariant.Int),
-        QgsField("drainage", QVariant.Double),
-        QgsField("potential_evaporation", QVariant.Double),
-        QgsField("infiltration", QVariant.Double),
-        QgsField("precipitation", QVariant.Double),
-        QgsField("urban_runoff", QVariant.Double),
     ]
 
 

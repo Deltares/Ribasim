@@ -1,5 +1,5 @@
-from pathlib import Path
 import abc
+from pathlib import Path
 
 
 class InputMixin(abc.ABC):
