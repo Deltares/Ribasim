@@ -64,7 +64,7 @@ Requirements:
 * from: must be (Basin,) node.
 * to: must be a (Bifurcation, Basin) node.
 """
-struct OutflowTable
+struct TabulatedRatingCurve
     volume::Vector{Float64}
     discharge::Vector{Float64}
     discharge_interpolation::Interpolation
@@ -73,7 +73,7 @@ end
 struct OutflowLinks
     index::Vector{Int}
     connection_index::Matrix{Int}
-    tables::Vector{OutflowTable}
+    tables::Vector{TabulatedRatingCurve}
 end
 
 """
@@ -92,7 +92,7 @@ end
 """
 Requirements:
 
-* from: must be (OutflowTable,) node
+* from: must be (TabulatedRatingCurve,) node
 * to: must be (Basin,) node
 * fraction must be positive.
 """

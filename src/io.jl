@@ -1,6 +1,3 @@
-# keep the config directory around to resolve paths relative to it
-const TableName = Tuple{String, String}
-
 function get_ids(db::DB)::Vector{Int}
     return only(execute(columntable, db, "select fid from Node"))
 end
@@ -10,14 +7,18 @@ function get_ids(db::DB, nodetype)::Vector{Int}
     return only(execute(columntable, db, sql))
 end
 
-function tablenames(db::DB)::Vector{String}
-    tables = String[]
-    for t in SQLite.tables(db)
-        if startswith(t.name, "ribasim_")
-            push!(tables, t.name)
-        end
-    end
-    return tables
-end
+tablenames(db::DB)::Vector{String} = [t.name for t in SQLite.tables(db)]
 
-tablename(tabletype, nodetype) = string("ribasim_", tabletype, '_', nodetype)
+tablename(nodetype, kind) = string(nodetype, " / ", kind)
+
+function split_tablename(tablename)
+    parts = split(tablename, " / ")
+    if length(parts) == 1
+        nodetype = only(parts)
+        kind = "static"
+    else
+        @assert length(parts) == 2 "Invalid table name"
+        nodetype, kind = parts
+    end
+    return Symbol(nodetype), Symbol(kind)
+end

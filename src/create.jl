@@ -125,10 +125,10 @@ function create_outflow_links(
         nodemap,
         basin_nodemap,
         connection_map,
-        "OutflowTable",
+        "TabulatedRatingCurve",
     )
-    tables = OutflowTable[]
-    df = DataFrame(load_data(db, config, ("lookup", "OutflowTable")))
+    tables = TabulatedRatingCurve[]
+    df = DataFrame(load_data(db, config, "TabulatedRatingCurve"))
     grouped = groupby(df, :node_id)
     for id in link_ids
         # Index with a tuple to get a group.
@@ -137,7 +137,7 @@ function create_outflow_links(
         level = group.level[order]
         discharge = group.discharge[order]
         interp = LinearInterpolation(discharge, level)
-        push!(tables, OutflowTable(level, discharge, interp))
+        push!(tables, TabulatedRatingCurve(level, discharge, interp))
     end
 
     return OutflowLinks(source, index, tables)
@@ -206,7 +206,7 @@ function create_level_control(
     config::Config,
     basin_nodemap::Dictionary{Int64, Int64},
 )
-    static = load_data(db, config, ("static", "LevelControl"))
+    static = load_data(db, config, "LevelControl")
     if static === nothing
         return LevelControl([], [], [])
     else
