@@ -287,13 +287,11 @@ The schema of the node table shows that only a unique ID and known node type nee
 given. The known node types as of this writing are:
 
 - Basin
-- GeneralUser_P
 - LevelControl
-- GeneralUser
-- OutflowTable
-- HeadBoundary
+- WaterUser
+- TabulatedWeir
 - Bifurcation
-- LevelLink
+- LinearLevelConnection
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
