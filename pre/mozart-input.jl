@@ -75,13 +75,12 @@ https://github.com/Deltares/Ribasim.jl/issues/18
 """
 function expanded_network()
     # Basins stay in the center
-    # TODO place FractionFlow in between like LinearLevelConnection
     # n = 1: FractionalFlow
     # n = 2: WaterUser
     # n = 3: LevelControl
     # n = 4: TabulatedRatingCurve
-    # n = 5: HeadBoundary
     # LinearLevelConnection goes between the Basins it connects
+    # FractionalFlow goes between the TabulatedRatingCurve and Basins
 
     types = Char.(only.(lswdik.local_surface_water_type))
 
@@ -98,56 +97,23 @@ function expanded_network()
     t = DataFrame(; geom = linestringtype[], from_node_id = Int[], to_node_id = Int[])
 
     # add all the nodes and the inner edges that connect the LSW sub-system
-    for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
-        out_vertices = outneighbors(graph, v)
-
+    for (lsw_id, type, xcoord, ycoord) in zip(lsw_ids, types, x, y)
         lswcoord = (xcoord, ycoord)
         lsw_seq = id  # save the LSW ID to use create inner edges from
         push!(df, (lswcoord, "Basin", id, lsw_id))
         id += 1
 
+        coord = move_location(xcoord, ycoord, 2)
+        push!(df, (coord, "WaterUser", id, lsw_id))
+        push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
+        id += 1
+
         if type == 'V'
-            coord = move_location(xcoord, ycoord, 2)
-            push!(df, (coord, "WaterUser", id, lsw_id))
-            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
-            id += 1
             coord = move_location(xcoord, ycoord, 4)
             push!(df, (coord, "TabulatedRatingCurve", id, lsw_id))
-            tabulated_rating_curve_id = id
             push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
-            if length(out_vertices) == 0
-                coord = move_location(xcoord, ycoord, 5)
-                push!(df, (coord, "HeadBoundary", id, lsw_id))
-                push!(
-                    t,
-                    (;
-                        geom = [move_location(xcoord, ycoord, 4), coord],
-                        from_node_id = tabulated_rating_curve_id,
-                        to_node_id = id,
-                    ),
-                )
-                id += 1
-            elseif length(out_vertices) >= 2
-                # this goes from the tabulated_rating_curve to the bifurcation
-                coord = move_location(xcoord, ycoord, 1)
-                push!(df, (coord, "Bifurcation", id, lsw_id))
-                push!(
-                    t,
-                    (;
-                        # TODO lswcoord should be tabulated_rating_curve coord?
-                        geom = [lswcoord, coord],
-                        from_node_id = tabulated_rating_curve_id,
-                        to_node_id = id,
-                    ),
-                )
-                id += 1
-            end
         else
-            coord = move_location(xcoord, ycoord, 2)
-            push!(df, (coord, "WaterUser", id, lsw_id))
-            push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
-            id += 1
             coord = move_location(xcoord, ycoord, 3)
             push!(df, (coord, "LevelControl", id, lsw_id))
             push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
@@ -155,7 +121,7 @@ function expanded_network()
         end
     end
 
-    # add edges between lsws, with LevelLink in between for type P
+    # add edges between lsws, with LinearLevelConnection in between for type P
     for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
         out_vertices = outneighbors(graph, v)
         length(out_vertices) == 0 && continue
@@ -163,12 +129,13 @@ function expanded_network()
 
         # find from_node
         if type == 'V'
-            # connect from TabulatedRatingCurve or Bifurcation depending on the number of downstream
-            # nodes
-            if length(out_vertices) == 1
-                from_node =
-                    only(@subset(df, :org_id == lsw_id, :type == "TabulatedRatingCurve"))
+            from_node =
+                only(@subset(df, :org_id == lsw_id, :type == "TabulatedRatingCurve"))
 
+            # if there is one downstream node, connect TabulatedRatingCurve directly to Basin
+            # otherwise, connect it via a FractionalFlow for each downstream node, to act
+            # like a bifurcation
+            if length(out_vertices) == 1
                 out_lsw_id = only(out_lsw_ids)
                 to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
 
@@ -179,22 +146,41 @@ function expanded_network()
                 )
                 push!(t, nt)
             else
-                from_node = only(@subset(df, :org_id == lsw_id, :type == "Bifurcation"))
+                # add a FractionalFlow node in between, and hook it up, for each edge
+                for out_lsw_id in out_lsw_ids
+                    idx = findfirst(==(out_lsw_id), lsw_ids)
+                    srccoord = from_node.geom
+                    dstcoord = (x[idx], y[idx])
+                    midcoord =
+                        ((srccoord[1] + dstcoord[1]) / 2, (srccoord[2] + dstcoord[2]) / 2)
 
-                for (i, out_lsw_id) in enumerate(out_lsw_ids)
-                    to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
+                    # add FractionalFlow node and add edges on either side
+                    push!(df, (midcoord, "FractionalFlow", id, lsw_id))
 
-                    nt = (;
-                        geom = [from_node.geom, to_node.geom],
-                        from_node_id = from_node.fid,
-                        to_node_id = to_node.fid,
+                    out_lsw_node =
+                        only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
+                    push!(
+                        t,
+                        (;
+                            geom = [srccoord, midcoord],
+                            from_node_id = from_node.fid,
+                            to_node_id = id,
+                        ),
                     )
-                    push!(t, nt)
+                    push!(
+                        t,
+                        (;
+                            geom = [midcoord, dstcoord],
+                            from_node_id = id,
+                            to_node_id = out_lsw_node.fid,
+                        ),
+                    )
+                    id += 1
                 end
             end
 
         else
-            # add a LevelLink node in between, and hook it up, for each edge
+            # add a LinearLevelConnection node in between, and hook it up, for each edge
             for out_lsw_id in out_lsw_ids
                 idx = findfirst(==(out_lsw_id), lsw_ids)
                 srccoord = (xcoord, ycoord)
@@ -202,8 +188,8 @@ function expanded_network()
                 midcoord =
                     ((srccoord[1] + dstcoord[1]) / 2, (srccoord[2] + dstcoord[2]) / 2)
 
-                # add LevelLink node
-                push!(df, (midcoord, "LevelLink", id, lsw_id))
+                # add LinearLevelConnection node
+                push!(df, (midcoord, "LinearLevelConnection", id, lsw_id))
 
                 # add edges to LSW on either side
                 lsw_node = only(@subset(df, :org_id == lsw_id, :type == "Basin"))
@@ -311,6 +297,7 @@ end
 gpkg_path = normpath(output_dir, "model.gpkg")
 create_gpkg(gpkg_path, node, edge)
 
+# TODO the node ids probably no longer match here, derive these from source
 basin_state, levelcontrol, bifurcation, basin_profile, tabulated_rating_curve =
     load_old_gpkg(output_dir)
 # update column names
@@ -320,8 +307,7 @@ basin_state2 =
 levelcontrol2 = sort(unique(rename(levelcontrol, rnfid)), :node_id)
 bifurcation2 =
     sort(unique(select(bifurcation, rnfid, :fraction_1 => :fraction_dst_1)), :node_id)
-basin_profile2 =
-    sort(unique(rename(basin_profile, rnfid, :volume => :storage)), :node_id)
+basin_profile2 = sort(unique(rename(basin_profile, rnfid, :volume => :storage)), :node_id)
 tabulated_rating_curve2 = sort(unique(rename(tabulated_rating_curve, rnfid)), :node_id)
 # fid's start at 0, not 1
 basin_state2.node_id .-= 1
