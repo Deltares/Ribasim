@@ -106,12 +106,17 @@ function create_connection_index(
     return ab.to_node_id, source, target, index
 end
 
-function create_level_links(db::DB, nodemap, basin_nodemap, connection_map)
-    _, source, target, index =
-        create_connection_index(db, nodemap, basin_nodemap, connection_map, "LevelLink")
+function create_linear_level_connection(db::DB, nodemap, basin_nodemap, connection_map)
+    _, source, target, index = create_connection_index(
+        db,
+        nodemap,
+        basin_nodemap,
+        connection_map,
+        "LinearLevelConnection",
+    )
     _, n = size(index)
     conductance = fill(100.0 / (3600.0 * 24), n)
-    return LevelLinks(source, target, index, conductance)
+    return LinearLevelConnection(source, target, index, conductance)
 end
 
 function create_tabulated_rating_curve(
@@ -159,8 +164,8 @@ function create_storage_tables(db::DB, config::Config)
     return area, level
 end
 
-function create_furcations(db::DB, edge::DataFrame, nodemap, connection_map)
-    furcation_ids = get_ids(db, "Bifurcation")
+function create_fractional_flow(db::DB, edge::DataFrame, nodemap, connection_map)
+    furcation_ids = get_ids(db, "FractionalFlow")
     # target is larger than source if a flow splits.
     source = filter(:to_node_id => in(furcation_ids), edge; view = true)
     target = filter(:from_node_id => in(furcation_ids), edge; view = true)
@@ -187,7 +192,7 @@ function create_furcations(db::DB, edge::DataFrame, nodemap, connection_map)
         end
     end
 
-    return Furcations(source_connection, target_connection, fraction)
+    return FractionalFlow(source_connection, target_connection, fraction)
 end
 
 function create_level_control(
@@ -351,10 +356,11 @@ function create_parameters(db::DB, config::Config)
     # Not in `connectivity`?
     edge = DataFrame(execute(db, "select * from Edge"))
 
-    level_links = create_level_links(db, nodemap, basin_nodemap, connection_map)
+    linear_level_connection =
+        create_linear_level_connection(db, nodemap, basin_nodemap, connection_map)
     tabulated_rating_curve =
         create_tabulated_rating_curve(db, config, nodemap, basin_nodemap, connection_map)
-    furcations = create_furcations(db, edge, nodemap, connection_map)
+    fractional_flow = create_fractional_flow(db, edge, nodemap, connection_map)
     level_control = create_level_control(db, config, basin_nodemap)
 
     basin = create_basin(db, config, basin_nodemap)
@@ -362,9 +368,9 @@ function create_parameters(db::DB, config::Config)
     return Parameters(
         connectivity,
         basin,
-        level_links,
+        linear_level_connection,
         tabulated_rating_curve,
-        furcations,
+        fractional_flow,
         level_control,
     )
 end

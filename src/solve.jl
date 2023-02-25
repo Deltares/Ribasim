@@ -55,7 +55,7 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 """
-struct LevelLinks
+struct LinearLevelConnection
     index_a::Vector{Int}
     index_b::Vector{Int}
     connection_index::Matrix{Int}
@@ -69,7 +69,7 @@ Requirements:
 * to: must be (Basin,) node
 * fraction must be positive.
 """
-struct Furcations
+struct FractionalFlow
     source_connection::Vector{Int}
     target_connection::Vector{Int}
     fraction::Vector{Float64}
@@ -84,9 +84,9 @@ end
 struct Parameters
     connectivity::Connectivity
     basin::Basin
-    level_links::LevelLinks
+    linear_level_connection::LinearLevelConnection
     tabulated_rating_curve::TabulatedRatingCurve
-    furcations::Furcations
+    fractional_flow::FractionalFlow
     level_control::LevelControl
 end
 
@@ -118,8 +118,8 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, level_links::LevelLinks, level)
-    (; index_a, index_b, connection_index, conductance) = level_links
+function formulate!(flow, linear_level_connection::LinearLevelConnection, level)
+    (; index_a, index_b, connection_index, conductance) = linear_level_connection
     for (a, b, nzindex, c) in zip(index_a, index_b, eachcol(connection_index), conductance)
         q = c * level[a] - level[b]
         flow.nzval[nzindex[1]] = q
@@ -141,9 +141,12 @@ function formulate!(flow, tabulated_rating_curve::TabulatedRatingCurve, level)
     return nothing
 end
 
-function formulate!(flow, furcations::Furcations)
-    for (source, target, fraction) in
-        zip(furcations.source_connection, furcations.target_connection, furcations.fraction)
+function formulate!(flow, fractional_flow::FractionalFlow)
+    for (source, target, fraction) in zip(
+        fractional_flow.source_connection,
+        fractional_flow.target_connection,
+        fractional_flow.fraction,
+    )
         flow[target] = flow[source] * fraction
     end
     return nothing
@@ -189,9 +192,9 @@ function water_balance!(du, u, p, t)
     (;
         connectivity,
         basin,
-        level_links,
+        linear_level_connection,
         tabulated_rating_curve,
-        furcations,
+        fractional_flow,
         level_control,
     ) = p
 
@@ -202,9 +205,9 @@ function water_balance!(du, u, p, t)
     # First formulate intermediate flows
     flow = connectivity.flow
     flow.nzval .= 0.0
-    formulate!(flow, level_links, basin.current_level)
+    formulate!(flow, linear_level_connection, basin.current_level)
     formulate!(flow, tabulated_rating_curve, basin.current_level)
-    formulate!(flow, furcations)
+    formulate!(flow, fractional_flow)
 
     # Now formulate du
     formulate!(du, level_control, u)
