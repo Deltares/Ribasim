@@ -112,8 +112,8 @@ function expanded_network()
             push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
             coord = move_location(xcoord, ycoord, 4)
-            push!(df, (coord, "OutflowTable", id, lsw_id))
-            outflowtable_id = id
+            push!(df, (coord, "TabulatedRatingCurve", id, lsw_id))
+            tabulated_rating_curve_id = id
             push!(t, (; geom = [lswcoord, coord], from_node_id = lsw_seq, to_node_id = id))
             id += 1
             if length(out_vertices) == 0
@@ -123,21 +123,21 @@ function expanded_network()
                     t,
                     (;
                         geom = [move_location(xcoord, ycoord, 4), coord],
-                        from_node_id = outflowtable_id,
+                        from_node_id = tabulated_rating_curve_id,
                         to_node_id = id,
                     ),
                 )
                 id += 1
             elseif length(out_vertices) >= 2
-                # this goes from the outflowtable to the bifurcation
+                # this goes from the tabulated_rating_curve to the bifurcation
                 coord = move_location(xcoord, ycoord, 1)
                 push!(df, (coord, "Bifurcation", id, lsw_id))
                 push!(
                     t,
                     (;
-                        # TODO lswcoord should be outflowtable coord?
+                        # TODO lswcoord should be tabulated_rating_curve coord?
                         geom = [lswcoord, coord],
-                        from_node_id = outflowtable_id,
+                        from_node_id = tabulated_rating_curve_id,
                         to_node_id = id,
                     ),
                 )
@@ -163,15 +163,14 @@ function expanded_network()
 
         # find from_node
         if type == 'V'
-            # connect from OutflowTable or Bifurcation depending on the number of downstream
+            # connect from TabulatedRatingCurve or Bifurcation depending on the number of downstream
             # nodes
             if length(out_vertices) == 1
-                from_node = only(@subset(df, :org_id == lsw_id, :type == "OutflowTable"))
-                from_connector = "downstream"
+                from_node =
+                    only(@subset(df, :org_id == lsw_id, :type == "TabulatedRatingCurve"))
 
                 out_lsw_id = only(out_lsw_ids)
                 to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
-                to_connector = "flow"
 
                 nt = (;
                     geom = [from_node.geom, to_node.geom],
@@ -184,8 +183,6 @@ function expanded_network()
 
                 for (i, out_lsw_id) in enumerate(out_lsw_ids)
                     to_node = only(@subset(df, :org_id == out_lsw_id, :type == "Basin"))
-                    from_connector = string("downstream_", i)  # Bifurcation supports n downstream connectors
-                    to_connector = "flow"
 
                     nt = (;
                         geom = [from_node.geom, to_node.geom],
@@ -281,21 +278,15 @@ function load_old_gpkg(output_dir)
 
     # then SQLite for the other tables
     old_db = SQLite.DB(old_gpkg_path)
-    state_LSW = DataFrame(execute(old_db, "select * from ribasim_state_LSW"))
-    static_LevelControl =
-        DataFrame(execute(old_db, "select * from ribasim_static_LevelControl"))
-    static_Bifurcation =
-        DataFrame(execute(old_db, "select * from ribasim_static_Bifurcation"))
-    lookup_LSW = DataFrame(execute(old_db, "select * from ribasim_lookup_LSW"))
-    lookup_OutflowTable =
+    basin_state = DataFrame(execute(old_db, "select * from ribasim_state_LSW"))
+    levelcontrol = DataFrame(execute(old_db, "select * from ribasim_static_LevelControl"))
+    bifurcation = DataFrame(execute(old_db, "select * from ribasim_static_Bifurcation"))
+    basin_profile = DataFrame(execute(old_db, "select * from ribasim_lookup_LSW"))
+    tabulated_rating_curve =
         DataFrame(execute(old_db, "select * from ribasim_lookup_OutflowTable"))
     close(old_db)
 
-    return state_LSW,
-    static_LevelControl,
-    static_Bifurcation,
-    lookup_LSW,
-    lookup_OutflowTable
+    return basin_state, levelcontrol, bifurcation, basin_profile, tabulated_rating_curve
 end
 
 node, edge, lswmap = expanded_network()
@@ -320,30 +311,29 @@ end
 gpkg_path = normpath(output_dir, "model.gpkg")
 create_gpkg(gpkg_path, node, edge)
 
-state_LSW, static_LevelControl, static_Bifurcation, lookup_LSW, lookup_OutflowTable =
+basin_state, levelcontrol, bifurcation, basin_profile, tabulated_rating_curve =
     load_old_gpkg(output_dir)
 # update column names
 rnfid = :id => :node_id
-state_LSW2 =
-    sort(unique(rename(state_LSW, rnfid, :S => :storage, :C => :salinity)), :node_id)
-static_LevelControl2 = sort(unique(rename(static_LevelControl, rnfid)), :node_id)
-static_Bifurcation2 = sort(
-    unique(select(static_Bifurcation, rnfid, :fraction_1 => :fraction_dst_1)),
-    :node_id,
-)
-lookup_LSW2 = sort(unique(rename(lookup_LSW, rnfid, :volume => :storage)), :node_id)
-lookup_OutflowTable2 = sort(unique(rename(lookup_OutflowTable, rnfid)), :node_id)
+basin_state2 =
+    sort(unique(rename(basin_state, rnfid, :S => :storage, :C => :salinity)), :node_id)
+levelcontrol2 = sort(unique(rename(levelcontrol, rnfid)), :node_id)
+bifurcation2 =
+    sort(unique(select(bifurcation, rnfid, :fraction_1 => :fraction_dst_1)), :node_id)
+basin_profile2 =
+    sort(unique(rename(basin_profile, rnfid, :volume => :storage)), :node_id)
+tabulated_rating_curve2 = sort(unique(rename(tabulated_rating_curve, rnfid)), :node_id)
 # fid's start at 0, not 1
-state_LSW2.node_id .-= 1
-static_LevelControl2.node_id .-= 1
-static_Bifurcation2.node_id .-= 1
-lookup_LSW2.node_id .-= 1
-lookup_OutflowTable2.node_id .-= 1
+basin_state2.node_id .-= 1
+levelcontrol2.node_id .-= 1
+bifurcation2.node_id .-= 1
+basin_profile2.node_id .-= 1
+tabulated_rating_curve2.node_id .-= 1
 # add tables to the GeoPackage
 db = SQLite.DB(gpkg_path)
-SQLite.load!(state_LSW2, db, "Basin / state")
-SQLite.load!(static_LevelControl2, db, "LevelControl")
-SQLite.load!(static_Bifurcation2, db, "Bifurcation")
-SQLite.load!(lookup_LSW2, db, "Basin / profile")
-SQLite.load!(lookup_OutflowTable2, db, "TabulatedRatingCurve")
+SQLite.load!(basin_state2, db, "Basin / state")
+SQLite.load!(levelcontrol2, db, "LevelControl")
+SQLite.load!(bifurcation2, db, "Bifurcation")
+SQLite.load!(basin_profile2, db, "Basin / profile")
+SQLite.load!(tabulated_rating_curve2, db, "TabulatedRatingCurve")
 close(db)
