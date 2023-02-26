@@ -1,0 +1,16 @@
+name: ribasim
+
+channels:
+  - conda-forge
+    
+dependencies:
+  - python >= 3.9
+  - pandas
+  - geopandas
+  - pandera
+  - pyarrow
+  - pydantic
+  - pyogrio
+  - shapely >=2.0
+  - tomli
+  - tomli-w

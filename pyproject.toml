@@ -20,10 +20,11 @@ dependencies = [
     "geopandas",
     "pandas",
     "pandera",
-    "pyogrio",
     "pyarrow",
     "pydantic",
+    "pyogrio",
     "shapely >= 2.0",
+    "tomli",
     "tomli-w",
 ]
 dynamic = ["version"]
