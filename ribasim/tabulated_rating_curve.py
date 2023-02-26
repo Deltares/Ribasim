@@ -1,4 +1,5 @@
 import pandera as pa
+from pandera.dtypes import Int
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
@@ -8,7 +9,7 @@ __all__ = ("TabulatedRatingCurve",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int]
+    node_id: Series[Int]
     storage: Series[float]
     discharge: Series[float]
 
