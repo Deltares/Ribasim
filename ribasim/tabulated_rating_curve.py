@@ -4,6 +4,8 @@ from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 
+__all__ = ("TabulatedRatingCurve",)
+
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int]
@@ -11,6 +13,6 @@ class StaticSchema(pa.SchemaModel):
     discharge: Series[float]
 
 
-class TabulatedRatingCurve(BaseModel, InputMixin):
+class TabulatedRatingCurve(InputMixin, BaseModel):
     _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]

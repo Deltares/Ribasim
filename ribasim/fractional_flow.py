@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 
+__all__ = ("FractionalFlow",)
+
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int]
@@ -18,7 +20,7 @@ class ForcingSchema(pa.SchemaModel):
     fraction: Series[float]
 
 
-class FractionalFlow(BaseModel, InputMixin):
+class FractionalFlow(InputMixin, BaseModel):
     _input_type = "FractionalFlow"
     static: DataFrame[StaticSchema]
     forcing: Optional[DataFrame[ForcingSchema]] = None

@@ -122,7 +122,8 @@ class Node(Input):
 
     def write(self) -> None:
         """
-        Special the Basin layer write because it needs to generate a new file.
+        Special case the Node layer write because it needs to generate a new
+        file.
         """
         self.layer = geopackage.write_layer(
             self.path, self.layer, self.name, newfile=True
@@ -132,7 +133,7 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("node")
+        index = layer.fields().indexFromName("type")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {
@@ -186,7 +187,7 @@ class Node(Input):
             category = QgsRendererCategory(value, symbol, label, shape)
             categories.append(category)
 
-        renderer = QgsCategorizedSymbolRenderer(attrName="Node", categories=categories)
+        renderer = QgsCategorizedSymbolRenderer(attrName="type", categories=categories)
         return renderer
 
     @property

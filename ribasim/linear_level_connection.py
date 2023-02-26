@@ -4,12 +4,14 @@ from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 
+__all__ = ("LinearLevelConnection",)
+
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(unique=True)
     conductance: Series[float]
 
 
-class LinearLevelConnection(BaseModel, InputMixin):
+class LinearLevelConnection(InputMixin, BaseModel):
     _input_type = "LinearLevelConnection"
     static: DataFrame[StaticSchema]
