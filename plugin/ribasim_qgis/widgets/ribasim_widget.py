@@ -8,11 +8,11 @@ Ribasim layers there.
 from pathlib import Path
 from typing import Any
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from qgis.core import QgsMapLayer, QgsProject
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
+from ribasim_qgis.widgets.output_widget import OutputWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
@@ -26,6 +26,7 @@ class RibasimWidget(QWidget):
 
         self.dataset_widget = DatasetWidget(self)
         self.nodes_widget = NodesWidget(self)
+        self.output_widget = OutputWidget(self)
 
         # Layout
         self.layout = QVBoxLayout()
@@ -33,6 +34,7 @@ class RibasimWidget(QWidget):
         self.layout.addWidget(self.tabwidget)
         self.tabwidget.addTab(self.dataset_widget, "GeoPackage")
         self.tabwidget.addTab(self.nodes_widget, "Nodes")
+        self.tabwidget.addTab(self.output_widget, "Output")
         self.setLayout(self.layout)
 
         # QGIS Layers Panel groups
