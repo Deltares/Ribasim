@@ -58,8 +58,7 @@ function create_level_control(db::DB, config::Config)
     df = DataFrame()
     # TODO add LevelControl conductance to LHM dataset
     conductance = fill(1.0 / (3600.0 * 24), nrow(df))
-    # TODO rename struct field volume to target_volume, or target_level
-    return LevelControl(df.node_id, df.target_volume, conductance)
+    return LevelControl(df.node_id, df.target_level, conductance)
 end
 
 function push_time_interpolation!(

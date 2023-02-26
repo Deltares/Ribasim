@@ -72,12 +72,12 @@ end
 
 """
 node_id: node ID of the LevelControl node
-volume: target volume for the connected Basin
+target_level: target level for the connected Basin
 conductance: conductance on how quickly the target volume can be reached
 """
 struct LevelControl
     node_id::Vector{Int}
-    volume::Vector{Float64}
+    target_level::Vector{Float64}
     conductance::Vector{Float64}
 end
 
@@ -168,16 +168,16 @@ function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, level_control::LevelControl, u)
+function formulate!(connectivity::Connectivity, level_control::LevelControl, level)
     (; graph, flow, u_index) = connectivity
-    (; node_id, volume, conductance) = level_control
+    (; node_id, target_level, conductance) = level_control
     for (i, id) in enumerate(node_id)
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
-            flow[basin_id, id] = conductance[i] * (volume[i] - u[u_index[basin_id]])
+            flow[basin_id, id] = conductance[i] * (target_level[i] - level[u_index[basin_id]])
         end
         for basin_id in outneighbors(graph, id)
-            flow[id, basin_id] = conductance[i] * (volume[i] - u[u_index[basin_id]])
+            flow[id, basin_id] = conductance[i] * (target_level[i] - level[u_index[basin_id]])
         end
     end
     return nothing
@@ -219,7 +219,7 @@ function water_balance!(du, u, p, t)
     formulate!(connectivity, linear_level_connection, basin.current_level)
     formulate!(connectivity, tabulated_rating_curve, u)  # TODO use level?
     formulate!(connectivity, fractional_flow)
-    formulate!(connectivity, level_control, u)
+    formulate!(connectivity, level_control, basin.current_level)
 
     # Now formulate du
     formulate!(du, connectivity)
