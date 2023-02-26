@@ -183,7 +183,7 @@ function formulate!(connectivity::Connectivity, level_control::LevelControl, lev
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
             flow[basin_id, id] =
-                conductance[i] * (target_level[i] - level[u_index[basin_id]])
+                conductance[i] * (level[u_index[basin_id]] - target_level[i])
         end
         for basin_id in outneighbors(graph, id)
             flow[id, basin_id] =
