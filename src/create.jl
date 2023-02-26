@@ -1,159 +1,40 @@
-
-function create_basin_nodemap(db::DB)::Dictionary{Int, Int}
-    # Enumerate the nodes that have state: the reservoirs.
-    basin_id = get_ids(db, "Basin")
-    return Dictionary(basin_id, 1:length(basin_id))
-end
-
-"""
-Creation of a sparse matrix sorts the indices.
-
-Create a map of every (from, to) => connection to the nonzero values in the
-sparse matrix.
-"""
-function create_connection_map(flow)
-    I, J, _ = findnz(flow)
-    return Dictionary([(i, j) for (i, j) in zip(I, J)], 1:length(I))
-end
-
 function create_connectivity(db::DB)::Connectivity
-    # nodemap: external ID to flow graph index
-    # inverse_nodemap: flow graph index to external ID
-    # basin_nodemap: external ID to state index
-    # inverse_basin_nodemap: state index to external ID
-    # connection_map: (flow graph index1, flow graph index2) to non-zero index in sparse matrix.
-    # node_to_basin: flow graph index to state index
-    g, nodemap = graph(db)
-    inverse_nodemap = Dictionary(values(nodemap), keys(nodemap))
-    basin_nodemap = create_basin_nodemap(db)
-    inverse_basin_nodemap = Dictionary(values(basin_nodemap), keys(basin_nodemap))
-    # Skip toposort for now, only a single set of bifurcations.
-    # toposort = topological_sort_by_dfs(g)
-    # nodemap = Dictionary(keys(vxdict), toposort)
+    graph = create_graph(db)
 
-    I = Int[]
-    J = Int[]
-    for e in edges(g)
-        push!(I, e.src)
-        push!(J, e.dst)
-    end
+    flow = adjacency_matrix(graph, Float64)
+    flow.nzval .= 0.0
 
-    basin_ids = keys(basin_nodemap)
-    # for each connection
-    from_basin = in.([inverse_nodemap[i] for i in I], [basin_ids])
-    to_basin = in.([inverse_nodemap[j] for j in J], [basin_ids])
+    basin_id = get_ids(db, "Basin")
+    u_index = Dictionary(basin_id, 1:length(basin_id))
 
-    flow = sparse(I, J, zeros(length(I)))
-    connection_map = create_connection_map(flow)
-    node_to_basin = Dictionary([nodemap[k] for k in basin_ids], values(basin_nodemap))
-
-    return Connectivity(
-        flow,
-        from_basin,
-        to_basin,
-        nodemap,
-        basin_nodemap,
-        inverse_basin_nodemap,
-        connection_map,
-        node_to_basin,
-    )
+    return Connectivity(graph, flow, u_index)
 end
 
-function create_connection_index(
-    db::DB,
-    nodemap,
-    basin_nodemap,
-    connection_map,
-    linktype::String,
-)
-    # a = source of edge going into b
-    # b = link node of type linktype
-    # c = destination of edge going out of b
-    ab = columntable(execute(
-        db,
-        """select from_node_id, to_node_id from Edge
-        inner join Node on Edge.to_node_id = Node.fid
-        where type = '$linktype'
-        order by to_node_id""",
-    ))
-    bc = columntable(execute(
-        db,
-        """select from_node_id, to_node_id from Edge
-        inner join Node on Edge.from_node_id = Node.fid
-        where type = '$linktype'
-        order by from_node_id""",
-    ))
-    # TODO add to validation
-    @assert ab.to_node_id == bc.from_node_id "node type $linktype must always have both \
-        incoming and outgoing edges"
-    a = [nodemap[i] for i in ab.from_node_id]
-    b = [nodemap[i] for i in ab.to_node_id]
-    c = [nodemap[i] for i in bc.to_node_id]
-    index_ab = [connection_map[(i, j)] for (i, j) in zip(a, b)]
-    # TODO fix edge direction
-    index_bc = Int[]
-    for (i, j) in zip(b, c)
-        idx = get(connection_map, (i, j), 0)
-        if idx == 0
-            idx = connection_map[(j, i)]
-        end
-        push!(index_bc, idx)
-    end
-    index = transpose(hcat(index_ab, index_bc))
-
-    source = [basin_nodemap[i] for i in ab.from_node_id]
-    target = [get(basin_nodemap, i, -1) for i in bc.to_node_id]
-    return ab.to_node_id, source, target, index
+function create_linear_level_connection(db::DB, config::Config)
+    df = DataFrame(load_data(db, config, "LinearLevelConnection"))
+    return LinearLevelConnection(df.node_id, df.conductance)
 end
 
-function create_linear_level_connection(db::DB, nodemap, basin_nodemap, connection_map)
-    _, source, target, index = create_connection_index(
-        db,
-        nodemap,
-        basin_nodemap,
-        connection_map,
-        "LinearLevelConnection",
-    )
-    _, n = size(index)
-    conductance = fill(100.0 / (3600.0 * 24), n)
-    return LinearLevelConnection(source, target, index, conductance)
-end
-
-function create_tabulated_rating_curve(
-    db::DB,
-    config::Config,
-    nodemap,
-    basin_nodemap,
-    connection_map,
-)
-    link_ids, source, _, index = create_connection_index(
-        db,
-        nodemap,
-        basin_nodemap,
-        connection_map,
-        "TabulatedRatingCurve",
-    )
+function create_tabulated_rating_curve(db::DB, config::Config)
+    node_id = get_ids(db, "TabulatedRatingCurve")
     tables = Interpolation[]
     df = DataFrame(load_data(db, config, "TabulatedRatingCurve"))
-    grouped = groupby(df, :node_id; sort = true)
-    for id in link_ids
-        # Index with a tuple to get a group.
-        group = grouped[(id,)]
-        order = sortperm(group.level)
-        level = group.level[order]
+    for group in groupby(df, :node_id; sort = true)
+        order = sortperm(group.storage)
+        storage = group.storage[order]
         discharge = group.discharge[order]
-        interp = LinearInterpolation(discharge, level)
+        interp = LinearInterpolation(discharge, storage)
         push!(tables, interp)
     end
-    return TabulatedRatingCurve(source, index, tables)
+    @assert length(node_id) == length(tables)
+    return TabulatedRatingCurve(node_id, tables)
 end
 
 function create_storage_tables(db::DB, config::Config)
     df = DataFrame(load_required_data(db, config, "Basin / profile"))
     area = Interpolation[]
     level = Interpolation[]
-    grouped = groupby(df, :node_id; sort = true)
-    for group in grouped
+    for group in groupby(df, :node_id; sort = true)
         order = sortperm(group.storage)
         storage = group.storage[order]
         area_itp = LinearInterpolation(group.area[order], storage)
@@ -164,61 +45,21 @@ function create_storage_tables(db::DB, config::Config)
     return area, level
 end
 
-function create_fractional_flow(db::DB, edge::DataFrame, nodemap, connection_map)
-    furcation_ids = get_ids(db, "FractionalFlow")
-    # target is larger than source if a flow splits.
-    source = filter(:to_node_id => in(furcation_ids), edge; view = true)
-    target = filter(:from_node_id => in(furcation_ids), edge; view = true)
-    grouped = groupby(target, :from_node_id; sort = true)
-
-    source_connection = Int[]
-    target_connection = Int[]
-    fraction = Float64[]
-    # a = basin node
-    # b = furcation node
-    # c = downstreams of furcation
-    for (a, b) in zip(source.from_node_id, source.to_node_id)
-        src = connection_map[(nodemap[a], nodemap[b])]
-        for c in grouped[(b,)].to_node_id
-            push!(source_connection, src)
-            # TODO fix edge direction
-            target = get(connection_map, (nodemap[b], nodemap[c]), 0)
-            if target == 0
-                target = connection_map[(nodemap[c], nodemap[b])]
-            end
-            push!(target_connection, target)
-            # TODO use fraction value
-            push!(fraction, 0.5)
-        end
-    end
-
-    return FractionalFlow(source_connection, target_connection, fraction)
+function create_fractional_flow(db::DB, config::Config)
+    df = DataFrame(load_data(db, config, "FractionalFlow"))
+    return FractionalFlow(df.node_id, df.fraction)
 end
 
-function create_level_control(
-    db::DB,
-    config::Config,
-    basin_nodemap::Dictionary{Int64, Int64},
-)
-    static = load_data(db, config, "LevelControl")
-    if static === nothing
-        return LevelControl([], [], [])
-    else
-        control_nodes = unique(DataFrame(static))
+function create_level_control(db::DB, config::Config)
+    table = load_data(db, config, "LevelControl")
+    if table === nothing
+        return LevelControl(Int[], Float64[], Float64[])
     end
-    control_edges = columntable(execute(
-        db,
-        """select from_node_id, to_node_id
-        from Edge
-        inner join Node on Edge.to_node_id = Node.fid
-        where type = 'LevelControl'""",
-    ))
-
-    volume_lookup = Dictionary(control_nodes.node_id, control_nodes.target_volume)
-    index = [basin_nodemap[i] for i in control_edges.from_node_id]
-    volume = [volume_lookup[i] for i in control_edges.to_node_id]
-    conductance = fill(1.0 / (3600.0 * 24), length(index))
-    return LevelControl(index, volume, conductance)
+    df = DataFrame()
+    # TODO add LevelControl conductance to LHM dataset
+    conductance = fill(1.0 / (3600.0 * 24), nrow(df))
+    # TODO rename struct field volume to target_volume, or target_level
+    return LevelControl(df.node_id, df.target_volume, conductance)
 end
 
 function push_time_interpolation!(
@@ -247,9 +88,10 @@ function push_time_interpolation!(
     push!(interpolations, interpolation)
 end
 
-function create_basin(db::DB, config::Config, basin_nodemap::Dictionary{Int, Int})
+function create_basin(db::DB, config::Config)
     # TODO support forcing for other nodetypes
-    n = length(basin_nodemap)
+    node_id = get_ids(db, "Basin")
+    n = length(node_id)
     current_area = zeros(n)
     current_level = zeros(n)
     area, level = create_storage_tables(db, config)
@@ -289,9 +131,7 @@ function create_basin(db::DB, config::Config, basin_nodemap::Dictionary{Int, Int
     drainage = Interpolation[]
     infiltration = Interpolation[]
 
-    # the basins are stored in the order of increasing node_id
-    basin_ids = sort(keys(basin_nodemap))
-    for id in basin_ids
+    for id in node_id
         # filter forcing for this ID and put it in an Interpolation, or use static as a
         # fallback option
         static_id = filter(:node_id => ==(id), static)
@@ -349,21 +189,13 @@ function create_parameters(db::DB, config::Config)
 
     # Setup node/edges graph, so validate in `create_connectivity`?
     connectivity = create_connectivity(db)
-    nodemap = connectivity.nodemap
-    basin_nodemap = connectivity.basin_nodemap
-    connection_map = connectivity.connection_map
 
-    # Not in `connectivity`?
-    edge = DataFrame(execute(db, "select * from Edge"))
+    linear_level_connection = create_linear_level_connection(db, config)
+    tabulated_rating_curve = create_tabulated_rating_curve(db, config)
+    fractional_flow = create_fractional_flow(db, config)
+    level_control = create_level_control(db, config)
 
-    linear_level_connection =
-        create_linear_level_connection(db, nodemap, basin_nodemap, connection_map)
-    tabulated_rating_curve =
-        create_tabulated_rating_curve(db, config, nodemap, basin_nodemap, connection_map)
-    fractional_flow = create_fractional_flow(db, edge, nodemap, connection_map)
-    level_control = create_level_control(db, config, basin_nodemap)
-
-    basin = create_basin(db, config, basin_nodemap)
+    basin = create_basin(db, config)
 
     return Parameters(
         connectivity,

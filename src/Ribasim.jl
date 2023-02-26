@@ -11,7 +11,7 @@ using DBInterface: execute
 using Dictionaries
 using DiffEqCallbacks
 using DifferentialEquations
-using Graphs
+using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate
 using OrdinaryDiffEq
 using SciMLBase

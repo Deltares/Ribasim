@@ -11,21 +11,14 @@ end
 Base.nameof(::LinearInterpolation) = :LinearInterpolation
 
 "Return a directed graph, and a mapping from external ID to new ID."
-function graph(db::DB)
-    vxset = get_ids(db)
-    vxdict = Dictionary(vxset, 1:length(vxset))
-
-    n_v = length(vxset)
-    g = Graphs.Graph(n_v)
+function create_graph(db::DB)
+    n = length(get_ids(db))
+    g = DiGraph(n)
     rows = execute(db, "select from_node_id, to_node_id from Edge")
-    for row in rows
-        from = vxdict[row.from_node_id]
-        to = vxdict[row.to_node_id]
-        add_edge!(g, from, to)
+    for (; from_node_id, to_node_id) in rows
+        add_edge!(g, from_node_id, to_node_id)
     end
-    # TODO vxdict basically comes down to 0 => 1, ..., n-1:n, can we rely on fid for
-    # being 0:n-1 and remove the mapping?
-    return g, vxdict
+    return g
 end
 
 function inverse(d::Dict{K, V}) where {K, V}

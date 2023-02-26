@@ -4,16 +4,15 @@ const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true
 
 """
 Store the connectivity information
+
+graph: directed graph with vertices equal to ids
+flow: store the flow on every edge
+u_index: get the index into u from the basin id
 """
 struct Connectivity
+    graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
-    from_basin::BitVector  # sized nnz
-    to_basin::BitVector  # sized nnz
-    nodemap::Dictionary{Int, Int}
-    basin_nodemap::Dictionary{Int, Int}
-    inverse_basin_nodemap::Dictionary{Int, Int}
-    connection_map::Dictionary{Tuple{Int, Int}, Int}
-    node_to_basin::Dictionary{Int, Int}
+    u_index::Dictionary{Int, Int}
 end
 
 """
@@ -44,8 +43,7 @@ Requirements:
 * to: must be a (Bifurcation, Basin) node.
 """
 struct TabulatedRatingCurve
-    index::Vector{Int}
-    connection_index::Matrix{Int}
+    node_id::Vector{Int}
     tables::Vector{Interpolation}
 end
 
@@ -56,9 +54,7 @@ Requirements:
 * to: must be (Basin,) node
 """
 struct LinearLevelConnection
-    index_a::Vector{Int}
-    index_b::Vector{Int}
-    connection_index::Matrix{Int}
+    node_id::Vector{Int}
     conductance::Vector{Float64}
 end
 
@@ -70,13 +66,17 @@ Requirements:
 * fraction must be positive.
 """
 struct FractionalFlow
-    source_connection::Vector{Int}
-    target_connection::Vector{Int}
+    node_id::Vector{Int}
     fraction::Vector{Float64}
 end
 
+"""
+node_id: node ID of the LevelControl node
+volume: target volume for the connected Basin
+conductance: conductance on how quickly the target volume can be reached
+"""
 struct LevelControl
-    index::Vector{Int}
+    node_id::Vector{Int}
     volume::Vector{Float64}
     conductance::Vector{Float64}
 end
@@ -118,12 +118,19 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, linear_level_connection::LinearLevelConnection, level)
-    (; index_a, index_b, connection_index, conductance) = linear_level_connection
-    for (a, b, nzindex, c) in zip(index_a, index_b, eachcol(connection_index), conductance)
-        q = c * level[a] - level[b]
-        flow.nzval[nzindex[1]] = q
-        flow.nzval[nzindex[2]] = q
+function formulate!(
+    connectivity::Connectivity,
+    linear_level_connection::LinearLevelConnection,
+    level,
+)
+    (; graph, flow, u_index) = connectivity
+    (; node_id, conductance) = linear_level_connection
+    for (i, id) in enumerate(node_id)
+        basin_a_id = only(inneighbors(graph, id))
+        basin_b_id = only(outneighbors(graph, id))
+        q = conductance[i] * (level[u_index[basin_a_id]] - level[u_index[basin_b_id]])
+        flow[basin_a_id, id] = q
+        flow[id, basin_b_id] = q
     end
     return nothing
 end
@@ -131,58 +138,62 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(flow, tabulated_rating_curve::TabulatedRatingCurve, level)
-    (; index, connection_index, tables) = tabulated_rating_curve
-    for (a, nzindex, table) in zip(index, eachcol(connection_index), tables)
-        q = table(level[a])
-        flow.nzval[nzindex[1]] = q
-        flow.nzval[nzindex[2]] = q
+function formulate!(
+    connectivity::Connectivity,
+    tabulated_rating_curve::TabulatedRatingCurve,
+    u,
+)
+    (; graph, flow, u_index) = connectivity
+    (; node_id, tables) = tabulated_rating_curve
+    for (i, id) in enumerate(node_id)
+        upstream_basin_id = only(inneighbors(graph, id))
+        downstream_ids = outneighbors(graph, id)
+        q = tables[i](u[u_index[upstream_basin_id]])
+        flow[upstream_basin_id, id] = q
+        for downstream_id in downstream_ids
+            flow[id, downstream_id] = q
+        end
     end
     return nothing
 end
 
-function formulate!(flow, fractional_flow::FractionalFlow)
-    for (source, target, fraction) in zip(
-        fractional_flow.source_connection,
-        fractional_flow.target_connection,
-        fractional_flow.fraction,
-    )
-        flow[target] = flow[source] * fraction
+function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)
+    (; graph, flow) = connectivity
+    (; node_id, fraction) = fractional_flow
+    for (i, id) in enumerate(node_id)
+        upstream_id = only(inneighbors(graph, id))
+        downstream_id = only(outneighbors(graph, id))
+        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
     end
     return nothing
 end
 
-function formulate!(du, level_control::LevelControl, u)
-    for (index, volume, cond) in
-        zip(level_control.index, level_control.volume, level_control.conductance)
-        du[index] += cond * (volume - u[index])
+function formulate!(connectivity::Connectivity, level_control::LevelControl, u)
+    (; graph, flow, u_index) = connectivity
+    (; node_id, volume, conductance) = level_control
+    for (i, id) in enumerate(node_id)
+        # support either incoming or outgoing edges
+        for basin_id in inneighbors(graph, id)
+            flow[basin_id, id] = conductance[i] * (volume[i] - u[u_index[basin_id]])
+        end
+        for basin_id in outneighbors(graph, id)
+            flow[id, basin_id] = conductance[i] * (volume[i] - u[u_index[basin_id]])
+        end
     end
     return nothing
 end
 
 function formulate!(du, connectivity::Connectivity)
-    flow = connectivity.flow
-    node_to_basin = connectivity.node_to_basin
-    from_basin = connectivity.from_basin
-    to_basin = connectivity.to_basin
-    _, n = size(flow)
-    for j in 1:n
-        # nzi is non-zero index
-        for nzi in nzrange(flow, j)
-            i = flow.rowval[nzi]
-            value = flow.nzval[nzi]
-            if from_basin[nzi]
-                ibasin = get(node_to_basin, i, -1)
-                if ibasin != -1
-                    du[ibasin] -= value
-                end
-            end
-            if to_basin[nzi]
-                jbasin = get(node_to_basin, j, -1)
-                if jbasin != -1
-                    du[jbasin] += value
-                end
-            end
+    # loop over basins
+    # subtract all outgoing flows
+    # add all ingoing flows
+    (; graph, flow, u_index) = connectivity
+    for (basin_id, i) in pairs(u_index)
+        for in_id in inneighbors(graph, basin_id)
+            du[i] += flow[in_id, basin_id]
+        end
+        for out_id in outneighbors(graph, basin_id)
+            du[i] -= flow[basin_id, out_id]
         end
     end
     return nothing
@@ -203,14 +214,13 @@ function water_balance!(du, u, p, t)
     formulate!(du, basin, u, t)
 
     # First formulate intermediate flows
-    flow = connectivity.flow
-    flow.nzval .= 0.0
-    formulate!(flow, linear_level_connection, basin.current_level)
-    formulate!(flow, tabulated_rating_curve, basin.current_level)
-    formulate!(flow, fractional_flow)
+    connectivity.flow.nzval .= 0.0
+    formulate!(connectivity, linear_level_connection, basin.current_level)
+    formulate!(connectivity, tabulated_rating_curve, u)  # TODO use level?
+    formulate!(connectivity, fractional_flow)
+    formulate!(connectivity, level_control, u)
 
     # Now formulate du
-    formulate!(du, level_control, u)
     formulate!(du, connectivity)
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
