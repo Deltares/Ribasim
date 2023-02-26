@@ -82,7 +82,7 @@ function BMI.initialize(T::Type{Register}, config::Config)
     # flows: save the flows over time, as a Vector of the nonzeros(flow)
     save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow)
+    save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
     @timeit_debug to "Setup callbackset" callback = save_flow_cb
 
