@@ -6,10 +6,10 @@ include("../utils/testdata.jl")
 testdata("model.gpkg", normpath(datadir, "lhm/model.gpkg"))
 testdata("forcing.arrow", normpath(datadir, "lhm/forcing.arrow"))
 
-# a simple test model
-toml_path = normpath(datadir, "test", "test.toml")
-gpkg_name = "test62.gpkg"
-testdata(gpkg_name, normpath(datadir, "test", gpkg_name))
+# a basic test model
+toml_path = normpath(datadir, "basic", "basic.toml")
+gpkg_name = "basic.gpkg"
+testdata(gpkg_name, normpath(datadir, "basic", gpkg_name))
 open(toml_path; write = true) do io
     dict = Dict{String, Any}(
         "starttime" => Date(2020),
