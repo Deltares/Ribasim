@@ -22,6 +22,7 @@ dependencies = [
     "pandera",
     "pyarrow",
     "pydantic",
+    "shapely >= 2.0",
     "tomli-w",
 ]
 dynamic = ["version"]
