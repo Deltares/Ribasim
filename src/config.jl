@@ -44,6 +44,8 @@ abstract type TableOption end
 
     # output, required
     waterbalance::String = "waterbalance.arrow"
+    basin::String = "basin.arrow"
+    flow::String = "flow.arrow"
     outstate::Maybe{String}
 
     # optional definitions for tables normally in `geopackage`

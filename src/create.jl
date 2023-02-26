@@ -2,7 +2,7 @@ function create_connectivity(db::DB)::Connectivity
     graph = create_graph(db)
 
     flow = adjacency_matrix(graph, Float64)
-    flow.nzval .= 0.0
+    nonzeros(flow) .= 0.0
 
     basin_id = get_ids(db, "Basin")
     u_index = Dictionary(basin_id, 1:length(basin_id))

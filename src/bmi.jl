@@ -79,8 +79,12 @@ function BMI.initialize(T::Type{Register}, config::Config)
 
     # add a single time step's contribution to the water balance step's totals
     trackwb_cb = FunctionCallingCallback(track_waterbalance!)
+    # flows: save the flows over time, as a Vector of the nonzeros(flow)
+    save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
+    saved_flow = SavedValues(Float64, Vector{Float64})
+    save_flow_cb = SavingCallback(save_flow, saved_flow)
 
-    @timeit_debug to "Setup callbackset" callback = nothing
+    @timeit_debug to "Setup callbackset" callback = save_flow_cb
 
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
@@ -95,7 +99,8 @@ function BMI.initialize(T::Type{Register}, config::Config)
     )
 
     waterbalance = DataFrame()  # not used at the moment
-    return Register(integrator, waterbalance)
+    close(db)
+    return Register(integrator, saved_flow, waterbalance)
 end
 
 function BMI.update(reg::Register)
@@ -124,6 +129,8 @@ run(config_file::AbstractString) = run(parsefile(config_file))
 function run(config::Config)
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
+    write_basin_output(reg, config)
+    write_flow_output(reg, config)
     return reg
 end
 

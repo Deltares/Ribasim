@@ -210,11 +210,12 @@ function water_balance!(du, u, p, t)
     ) = p
 
     du .= 0.0
+    nonzeros(connectivity.flow) .= 0.0
+
     # ensures current_level and current_area are current
     formulate!(du, basin, u, t)
 
     # First formulate intermediate flows
-    connectivity.flow.nzval .= 0.0
     formulate!(connectivity, linear_level_connection, basin.current_level)
     formulate!(connectivity, tabulated_rating_curve, u)  # TODO use level?
     formulate!(connectivity, fractional_flow)
@@ -234,30 +235,6 @@ function water_balance!(du, u, p, t)
     return nothing
 end
 
-function create_output(solution, node, basin_nodemap)
-    # Do not reorder u. The keys of basin_nodemap are always in the right
-    # order, as the values of basin_nodemap are strictly 1:n. Set the geometry
-    # in the right order.
-
-    time = unix2datetime.(solution.t)
-    ntime = length(time)
-    external_id = [k for k in keys(basin_nodemap)]
-    nnode = length(external_id)
-    lookup = Dictionary(node.id, node.geometry)
-    geometry = [lookup[id] for id in external_id]
-    x = [p[1] for p in geometry]
-    y = [p[2] for p in geometry]
-
-    output = DataFrame(;
-        x = repeat(x; outer = ntime),
-        y = repeat(y; outer = ntime),
-        id = repeat(external_id; outer = ntime),
-        time = repeat(time; inner = nnode),
-        storage = reduce(vcat, solution.u),
-    )
-    return output
-end
-
 # is_storage_empty(u, t, integrator) = any(iszero, u)
 # function set_storage_empty!(integrator)
 #     integrator.u .= 0.0
@@ -274,10 +251,4 @@ function track_waterbalance!(u, t, integrator)
     p.infiltration.total .+= p.infiltration.value .* dt
     p.drainage.total .+= p.drainage.value .* dt
     return nothing
-end
-
-function write_output(path, sol, parameters, node)
-    output = create_output(sol, node, parameters.connectivity.basin_nodemap)
-    Arrow.write(path, output)
-    return output
 end
