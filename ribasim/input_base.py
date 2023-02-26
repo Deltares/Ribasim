@@ -87,12 +87,13 @@ class InputMixin(abc.ABC):
             df = None
             layername = f"{cls._input_type} / {key}"
             if key == "static" and cls._input_type in layers:
-                df = gpd.read_file(path, layer=cls._input_type)
+                df = gpd.read_file(
+                    path, layer=cls._input_type, engine="pyogrio", fid_as_index=True
+                )
             elif layername in layers:
-                df = gpd.read_file(path, layer=layername)
-
-            if df is not None and df["geometry"].isnull().all():
-                df.pop("geometry")
+                df = gpd.read_file(
+                    path, layer=layername, engine="pyogrio", fid_as_index=True
+                )
 
             kwargs[key] = df
         return kwargs

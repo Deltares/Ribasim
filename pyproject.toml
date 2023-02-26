@@ -20,6 +20,7 @@ dependencies = [
     "geopandas",
     "pandas",
     "pandera",
+    "pyogrio",
     "pyarrow",
     "pydantic",
     "shapely >= 2.0",

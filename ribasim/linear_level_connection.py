@@ -1,5 +1,4 @@
 import pandera as pa
-from pandera.dtypes import Int
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
@@ -9,7 +8,7 @@ __all__ = ("LinearLevelConnection",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[Int] = pa.Field(unique=True)
+    node_id: Series[int] = pa.Field(coerce=True)
     conductance: Series[float]
 
 
