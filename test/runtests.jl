@@ -1,10 +1,23 @@
-using Ribasim, Test, SafeTestsets, TimerOutputs, Aqua
+using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../utils/testdata.jl")
 
 # a schematization for all of the Netherlands
-testdata("model.gpkg", normpath(@__DIR__, "../data/lhm/model.gpkg"))
-testdata("forcing.arrow", normpath(@__DIR__, "../data/lhm/forcing.arrow"))
+testdata("model.gpkg", normpath(datadir, "lhm/model.gpkg"))
+testdata("forcing.arrow", normpath(datadir, "lhm/forcing.arrow"))
+
+# a simple test model
+toml_path = normpath(datadir, "test", "test.toml")
+gpkg_name = "test62.gpkg"
+testdata(gpkg_name, normpath(datadir, "test", gpkg_name))
+open(toml_path; write = true) do io
+    dict = Dict{String, Any}(
+        "starttime" => Date(2020),
+        "endtime" => Date(2021),
+        "geopackage" => gpkg_name,
+    )
+    TOML.print(io, dict)
+end
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin
