@@ -1043,7 +1043,7 @@ uuid = "ae5879a3-cd67-5da8-be7f-38c6eb64a37b"
 version = "1.1.1"
 
 [[deps.Ribasim]]
-deps = ["Arrow", "BasicModelInterface", "Configurations", "DBInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "DifferentialEquations", "Graphs", "Legolas", "OrdinaryDiffEq", "SQLite", "SciMLBase", "SparseArrays", "Tables", "TimerOutputs"]
+deps = ["Arrow", "BasicModelInterface", "Configurations", "DBInterface", "DataFrames", "DataInterpolations", "Dates", "Dictionaries", "DiffEqCallbacks", "DifferentialEquations", "Graphs", "Legolas", "OrdinaryDiffEq", "SQLite", "SciMLBase", "SparseArrays", "Statistics", "Tables", "TimerOutputs"]
 path = "../.."
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "0.1.0"

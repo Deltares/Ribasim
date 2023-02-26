@@ -110,10 +110,11 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         basin.current_area[i] = area
         basin.current_level[i] = level
         bottom = first(basin.level[i].u)
+        fixed_area = median(basin.area[i].u)
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
-        precipitation = area * basin.precipitation[i](t)
+        precipitation = fixed_area * basin.precipitation[i](t)
         evaporation = area * reduction_factor * basin.potential_evaporation[i](t)
         drainage = basin.drainage[i](t)
         infiltration = reduction_factor * basin.infiltration[i](t)

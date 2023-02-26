@@ -17,6 +17,7 @@ using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query
+using Statistics: median
 using Tables: columntable
 using TimerOutputs
 
