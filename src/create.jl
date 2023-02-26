@@ -61,7 +61,7 @@ function create_level_control(db::DB, config::Config)
     data === nothing && return LevelControl()
     tbl = columntable(data)
     # TODO add LevelControl conductance to LHM / ribasim-python datasets
-    conductance = fill(1.0 / (3600.0 * 24), length(tbl.node_id))
+    conductance = fill(10.0 / (3600.0 * 24), length(tbl.node_id))
     return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
