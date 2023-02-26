@@ -47,6 +47,8 @@ struct TabulatedRatingCurve
     tables::Vector{Interpolation}
 end
 
+TabulatedRatingCurve() = TabulatedRatingCurve(Int[], Interpolation[])
+
 """
 Requirements:
 
@@ -57,6 +59,8 @@ struct LinearLevelConnection
     node_id::Vector{Int}
     conductance::Vector{Float64}
 end
+
+LinearLevelConnection() = LinearLevelConnection(Int[], Float64[])
 
 """
 Requirements:
@@ -70,6 +74,8 @@ struct FractionalFlow
     fraction::Vector{Float64}
 end
 
+FractionalFlow() = FractionalFlow(Int[], Float64[])
+
 """
 node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
@@ -80,6 +86,8 @@ struct LevelControl
     target_level::Vector{Float64}
     conductance::Vector{Float64}
 end
+
+LevelControl() = LevelControl(Int[], Float64[], Float64[])
 
 struct Parameters
     connectivity::Connectivity
@@ -174,10 +182,12 @@ function formulate!(connectivity::Connectivity, level_control::LevelControl, lev
     for (i, id) in enumerate(node_id)
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
-            flow[basin_id, id] = conductance[i] * (target_level[i] - level[u_index[basin_id]])
+            flow[basin_id, id] =
+                conductance[i] * (target_level[i] - level[u_index[basin_id]])
         end
         for basin_id in outneighbors(graph, id)
-            flow[id, basin_id] = conductance[i] * (target_level[i] - level[u_index[basin_id]])
+            flow[id, basin_id] =
+                conductance[i] * (target_level[i] - level[u_index[basin_id]])
         end
     end
     return nothing

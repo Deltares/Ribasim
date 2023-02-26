@@ -11,14 +11,18 @@ function create_connectivity(db::DB)::Connectivity
 end
 
 function create_linear_level_connection(db::DB, config::Config)
-    df = DataFrame(load_data(db, config, "LinearLevelConnection"))
-    return LinearLevelConnection(df.node_id, df.conductance)
+    data = load_data(db, config, "LinearLevelConnection")
+    data === nothing && return LinearLevelConnection()
+    tbl = columntable(data)
+    return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
 function create_tabulated_rating_curve(db::DB, config::Config)
+    data = load_data(db, config, "TabulatedRatingCurve")
+    data === nothing && return TabulatedRatingCurve()
+    df = DataFrame(data)
     node_id = get_ids(db, "TabulatedRatingCurve")
     tables = Interpolation[]
-    df = DataFrame(load_data(db, config, "TabulatedRatingCurve"))
     for group in groupby(df, :node_id; sort = true)
         order = sortperm(group.storage)
         storage = group.storage[order]
@@ -46,19 +50,19 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function create_fractional_flow(db::DB, config::Config)
-    df = DataFrame(load_data(db, config, "FractionalFlow"))
-    return FractionalFlow(df.node_id, df.fraction)
+    data = load_data(db, config, "FractionalFlow")
+    data === nothing && return FractionalFlow()
+    tbl = columntable(data)
+    return FractionalFlow(tbl.node_id, tbl.fraction)
 end
 
 function create_level_control(db::DB, config::Config)
-    table = load_data(db, config, "LevelControl")
-    if table === nothing
-        return LevelControl(Int[], Float64[], Float64[])
-    end
-    df = DataFrame()
-    # TODO add LevelControl conductance to LHM dataset
-    conductance = fill(1.0 / (3600.0 * 24), nrow(df))
-    return LevelControl(df.node_id, df.target_level, conductance)
+    data = load_data(db, config, "LevelControl")
+    data === nothing && return LevelControl()
+    tbl = columntable(data)
+    # TODO add LevelControl conductance to LHM / ribasim-python datasets
+    conductance = fill(1.0 / (3600.0 * 24), length(tbl.node_id))
+    return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
 function push_time_interpolation!(
