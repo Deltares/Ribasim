@@ -11,14 +11,14 @@ function create_connectivity(db::DB)::Connectivity
 end
 
 function create_linear_level_connection(db::DB, config::Config)
-    df = DataFrame(load_data(db, config, "LinearLevelConnection"))
+    df = load_dataframe(db, config, "LinearLevelConnection")
     return LinearLevelConnection(df.node_id, df.conductance)
 end
 
 function create_tabulated_rating_curve(db::DB, config::Config)
     node_id = get_ids(db, "TabulatedRatingCurve")
     tables = Interpolation[]
-    df = DataFrame(load_data(db, config, "TabulatedRatingCurve"))
+    df = load_dataframe(db, config, "TabulatedRatingCurve")
     for group in groupby(df, :node_id; sort = true)
         order = sortperm(group.storage)
         storage = group.storage[order]
@@ -46,20 +46,20 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function create_fractional_flow(db::DB, config::Config)
-    df = DataFrame(load_data(db, config, "FractionalFlow"))
+    df = load_dataframe(db, config, "FractionalFlow")
     return FractionalFlow(df.node_id, df.fraction)
 end
 
 function create_level_control(db::DB, config::Config)
-    table = load_data(db, config, "LevelControl")
-    if table === nothing
+    df = load_dataframe(db, config, "LevelControl")
+    if df === nothing
         return LevelControl(Int[], Float64[], Float64[])
     end
-    df = DataFrame()
-    # TODO add LevelControl conductance to LHM dataset
+    #df = DataFrame()
+    ## TODO add LevelControl conductance to LHM dataset
     conductance = fill(1.0 / (3600.0 * 24), nrow(df))
     # TODO rename struct field volume to target_volume, or target_level
-    return LevelControl(df.node_id, df.target_volume, conductance)
+    return LevelControl(df.node_id, df.target_level, conductance)
 end
 
 function push_time_interpolation!(
@@ -98,8 +98,8 @@ function create_basin(db::DB, config::Config)
     timespan = [datetime2unix(config.starttime), datetime2unix(config.endtime)]
 
     # both static and forcing are optional, but we need fallback defaults
-    static = load_data(db, config, "Basin")
-    forcing = load_data(db, config, "Basin / forcing")
+    static = load_dataframe(db, config, "Basin")
+    forcing = load_dataframe(db, config, "Basin / forcing")
     if forcing === nothing
         # empty forcing so nothing is found
         forcing = DataFrame(;
@@ -110,8 +110,6 @@ function create_basin(db::DB, config::Config)
             drainage = Float64[],
             infiltration = Float64[],
         )
-    else
-        forcing = DataFrame(forcing)
     end
     if static === nothing
         # empty static so nothing is found
@@ -122,8 +120,6 @@ function create_basin(db::DB, config::Config)
             drainage = Float64[],
             infiltration = Float64[],
         )
-    else
-        static = DataFrame(static)
     end
 
     precipitation = Interpolation[]
