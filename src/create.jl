@@ -103,6 +103,9 @@ function create_basin(db::DB, config::Config)
     # both static and forcing are optional, but we need fallback defaults
     static = load_dataframe(db, config, "Basin")
     forcing = load_dataframe(db, config, "Basin / forcing")
+    if static === forcing === nothing
+        error("Neither static or transient forcing found for Basin.")
+    end
     if forcing === nothing
         # empty forcing so nothing is found
         forcing = DataFrame(;

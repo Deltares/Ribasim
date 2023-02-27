@@ -9,7 +9,7 @@ Further development of the prototype in a software release is planned in 2022 an
 
 Ribasim is written in the [Julia programming language](https://julialang.org/) and is built
 on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
-libraries, notably [ModelingToolkit.jl](https://mtk.sciml.ai/stable/).
+libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
 ::: {layout-ncol=2 layout-valign="bottom"}
 <a href="https://www.deltares.nl/">
@@ -89,7 +89,7 @@ decide how large the time steps can be depending on the state of the system.
 The forcing, like precipitation, is generally provided as a time series. Ribasim is set up
 to support unevenly spaced timeseries. The solver will stop on timestamps where new forcing
 values are available, so they can be loaded as the new value.
- 
+
 Ribasim is essentially a continuous model, rather than daily or hourly. If you want to use
 hourly forcing, you only need to make sure that your forcing data contains hourly updates.
 The output frequency can be configured independently. To be able to write a closed water
@@ -127,7 +127,7 @@ The basins are the nodes of the network graph. Basin states and properties such
 storage volume and wetted area are associated with the nodes (A, B, C, D), as are
 most forcing data such as precipitation, evaporation, or water demand. Basin
 connection properties and interbasin flows are associated with the edges (the
-lines between A, B, C, and D) instead. 
+lines between A, B, C, and D) instead.
 
 Multiple basins may exist within the same spatial polygon, representing
 different aspects of the surface water system (perennial ditches, ephemeral
@@ -159,7 +159,7 @@ P, and P discharges to the downstream basin (B.)
 ```{mermaid}
 graph LR;
     T["basin T"] --> S["basin S"];
-    S --> P["basin P"]; 
+    S --> P["basin P"];
     P --> B["basin B"];
 ```
 
@@ -170,11 +170,10 @@ of course, more detail requires more parameters.
 
 # Usage
 
-Binaries of Ribasim CLI (command-line interface) can be downloaded from
-[ribasim-artifacts](https://github.com/visr/ribasim-artifacts/releases), and are currently
-available for Windows only. Download and unpack the `.zip` file. It can be placed anywhere,
-however it is important that the contents of the zip file are kept together in a directory.
-The Ribasim CLI executable is in the `bin` directory.
+Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
+archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
+important that the contents of the zip file are kept together in a directory. The Ribasim
+CLI executable is in the `bin` directory.
 
 To check whether the installation was performed successfully, run `ribasim` with no
 arguments in the command line.
@@ -189,123 +188,131 @@ Usage: ribasim 'path/to/config.toml'
 
 ### Configuration file
 
-Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/) format.
-It contains settings, as well as paths to other input and output files.
+Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
+format. It contains settings, as well as paths to other input and output files.
 
 ```toml
 # start- and endtime of the simulation
 # can also be set to a date-time like 1979-05-27T07:32:00
-starttime = 2019-01-01
-endtime = 2021-01-01
-
-# run a coupled Ribasim - MODFLOW 6 simulation
-run_modflow = false  # default is false
+starttime = 2019-01-01  # required
+endtime = 2021-01-01    # required
 
 # all timesteps are in seconds
-# do water allocation for this time horizon
-update_timestep = 86400.0
-# save output at this interval
-output_timestep = 86400.0  # default is 86400.0
+update_timestep = 86400.0  # optional, default 1 day
 # save timesteps at this interval
-# note that this is internal, and is forwarded to the DiffEq solver options
-# https://diffeq.sciml.ai/stable/basics/common_solver_opts/#Output-Control
-saveat = 86400.0  # default is to save every step
-
-# node IDs that will be included in the simulation
-# these node IDs are referenced in the input files below
-ids = [1, 2, 3]
+saveat = 86400.0  # optional, default is the value of update_timestep
 
 # input files
-forcing = "input/forcing.arrow"
-state = "input/state.arrow"
-static = "input/static.arrow"
-profile = "input/profile.arrow"
-node = "input/node.arrow"
-edge = "input/edge.arrow"
+geopackage = "model.gpkg"  # required
 
-# output file
-waterbalance = "output/waterbalance.arrow"
+# Specic tables can also go into Arrow files rather than the GeoPackage.
+# For large tables this can benefit from better compressed file sizes.
+# This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
+[forcing]
+Basin = "forcing.arrow"
+
+# These output files are always written
+flow = "output/flow.arrow"    # optional, default "output/flow.arrow"
+basin = "output/basin.arrow"  # optional, default "output/basin.arrow"
 ```
 
-Additionally, if `run_modflow = true`, a MODFLOW 6 specific section needs to be added to
-the configuration file. This part is documented in [the MODFLOW 6 coupling demo](coupling-demo.qmd).
+### GeoPackage and Arrow tables
 
-### Arrow files
+The input and output tables described below all share that they are tabular files. The Node
+and Edge tables always have to be in the [GeoPackage](https://www.geopackage.org/) file, and
+output is always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
+known as Feather files. All other tables can either be in the GeoPackage or in separate
+Arrow files that are listed in the TOML as described above.
 
-The input and output files described below all share that they are tabular files, stored 
-in the [Apache Arrow](https://arrow.apache.org/) file format, also known as Feather
-files. This format has been chosen since it is standardized, fast, simple and flexible.
-It can be read and written by many different software packages.
-In Ribasim we use [Arrow.jl](https://arrow.juliadata.org/dev/).
+For visualization, the Node and Edge tables typically have associated geometries. GeoPackage
+was used since it provides a standardized way to store tables with (and without) geometry
+columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a GeoPackage
+is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage
+can be updated in place when working on a model.
+
+Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
+written by many different software packages. In Ribasim we use
+[Arrow.jl](https://arrow.juliadata.org/dev/). Output is written to Arrow, since for long
+runs output can producs tables with many rows. Arrow is well suited for large tabular
+datasets, and file size is kept small by using compression. The Arrow input files can be
+compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
+of different values are repeated many times. To reduce file sizes it may be a good idea to
+apply [dictionary
+encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
+those columns.
 
 Below we give details per file, in which we describe the schema of the table using a syntax
 like this:
 
-column    | type    | restriction
---------- | ------- | -----------
-id        | Int     | -
-volume    | Float64 | non-negative
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int     | -            | sorted
+storage   | Float64 | $m^3$        | non-negative
 
+This means that two columns are required, one named `node_id`, that contained elements of
+type `Int`, and a column named `storage` that contains elements of type `Float64`. The order
+of the columns does not matter. In some cases there may be restrictions on the values. This
+is indicated under `restriction`.
 
-This means that two columns are required, one named `id`, that contained elements
-of type `Int`, and a column named `volume` that contains elements of type `Float64`. The
-order of the columns does not matter, and the files are also allowed to have extra columns,
-which will be ignored. In some cases there may be restrictions on the values or the ordering
-of the rows. This is indicated under `restriction`.
-
-Tables are also allowed to have rows for IDs, variables or times that are not part of
-the simulation, these will be ignored. That makes it easy to prepare data for a larger
-region once, and test models on a subset of the basins.
-
-The Arrow input files can be compressed with LZ4 or Zstd compression. Furthermore, in some
-of the columns, a small amount of different values are repeated many times. To reduce file
-sizes it may be a good idea to apply
-[dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
-to those columns.
+Tables are also allowed to have rows for timestamps that are not part of the simulation,
+these will be ignored. That makes it easy to prepare data for a larger period, and test
+models on a shorted period.
 
 ### Node
 
-Since we build Ribasim on top of ModelingToolkit, we can do
-[component-based modeling](https://docs.sciml.ai/ModelingToolkit/stable/tutorials/spring_mass/).
-The components here are [systems](https://docs.sciml.ai/ModelingToolkit/stable/basics/AbstractSystem/),
-typically `ODESystem`. These components are connected together to form a larger system.
-This is similar to the way a network has **nodes** that are connected along **edges**. We
-mostly use the terms node and edge in this text.
+Node is a table that specifies the ID and type of each node of a model. The ID must be
+unique among all nodes, and the type must be one of the available node types listed below.
 
-Useful nodes can be water body storages that keep their own water balance, weirs, pumps,
-users or suppliers of water. Counter intuitively, even systems you may think of as edges,
-such as a canal, are nodes in Ribasim. This is because edges only define direct
-instantaneous couplings between nodes, and never have storage of their own.
+Nodes are components that are connected together to form a larger system. The Basin is a
+central node type that stores water. The other node types influence the flow between Basins
+in some way. Counter intuitively, even systems you may think of as edges, such as a canal,
+are nodes in Ribasim. This is because edges only define direct instantaneous couplings
+between nodes, and never have storage of their own.
 
 column    | type     | restriction
 --------- | -------- | -----------
-id        | Int      | unique
-node      | String   | known type
+fid       | Int      | unique
+type      | String   | known node type
 geometry  | geoarrow | (optional)
 
-The schema of the node table shows that only a unique ID and known node type need to be
-given. The known node types as of this writing are:
+The available node types as of this writing are listed as the top level bullets below. The
+sub-bullets indicate which tables are associated to the node type. The table name is the
+name it must have in the GeoPackage if it is stored there.
 
-- Basin
-- FractionalFlow
-- LevelControl
-- LinearLevelConnection
-- TabulatedRatingCurve
-- WaterUser
+- Basin: stores water
+  - `Basin`: default forcing values, used if no dynamic data given in the forcing table
+  - `Basin / profile`: geometries of the basins
+  - `Basin / forcing`: time series of the forcing values
+  - `Basin / state`: used as initial condition of the basins
+- FractionalFlow: connect two of these from a Basin to get a fixed ratio bifurcation
+  - `FractionalFlow`: fractions
+- LevelControl: tries to keep a target water level in a connected Basin
+  - `LevelControl`: target levels
+- LinearLevelConnection: bidirectional flow based on water level difference between Basins
+  - `LinearLevelConnection`: conductances
+- TabulatedRatingCurve: Basin outflow relation
+  - `TabulatedRatingCurve`: rating curve
 
 Adding a geometry to the node table can be helpful to examine models in
-[QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
-Geometries can be encoded in Arrow files according to the
-[geoarrow specifications](https://github.com/geoarrow/geoarrow) (still in flux).
-The geometry is not used by Ribasim.
+[QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
+geometry is not used by Ribasim.
 
 ### Edge
 
-Edges define so called connections, created in ModelingToolkit using the `connect` function.
-If defined between two flow connectors, they equate the level $h$, conserve the flux $Q$,
-and carry the salinity $C$ in the flow direction. When defined between storage connectors,
-they can function simply as a way to share available storage $S$ information from a
-reservoir to a water user, such that it can avoid overextraction.
+Edges define connections between nodes. Flows between nodes are stored on edges. The only
+thing that defines an edge is the nodes it connects, and in what direction. The effect of
+the edge direction depends on the node type, Node types that have a notion of an upstream
+and downstream side use the incoming edge as the upstream side, and the outgoing edge as the
+downstream side. This means that edges should generally be drawn in the main flow direction.
+But for instance between two `LinearLevelConnections` the edge direction does not affect
+anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
+direction; a positive flow flows along the edge direction, a negative flow in the opposite
+way.
+
+Note that an edge does not only convey flow, but sometimes also information. For instance, a
+LevelControl node needs to be connected to a Basin node, and will get access to the current
+water level in the Basin to be able to determine the amount of water that needs to be added
+or removed.
 
 column         | type     | restriction
 -------------- | -------- | -----------
@@ -313,130 +320,114 @@ from_node_id   | Int      | -
 to_node_id     | Int      | -
 geom           | geometry | (optional)
 
-Similarly to the node table, you can use a geometry to visualize the connections between
-the nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
+Similarly to the node table, you can use a geometry to visualize the connections between the
+nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
 
-### State
+### Basin / state
 
-The state table aims to capture the full state of the system, such that it can be used
-as an initial condition, that is potentially the outcome of an earlier simulation.
-Currently the only states are the volume $S$ and salinity $C$ of the Basin node.
-
-column    | type    | restriction
---------- | ------- | -----------
-id        | Int     | -
-S         | Float64 | non-negative
-C         | Float64 | non-negative
-
-Each used ID needs to be in the table.
-
-### Static
-
-The static table can be used to set the **initial** value of variables. The forcing table
-has a similar schema, with the time column added. If a variable is in the static table,
-it can still be added to the forcing as well, which will update the inital value when
-the given timestamp is reached.
-
-column   | type     | restriction
--------- | -------- | -----------
-id       | Int      | sorted
-variable | String   | -
-value    | Float64  | depending on variable
-
-Note that if variables are not set in the static table, default values are used when
-possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
-to have a reasonable and safe default, a value must be provided in the static table.
-An example of this is the `target_volume` from the LevelLink node.
-
-### Forcing
-
-All dynamic data can be added to the forcing table.
-
-column   | type     | restriction
--------- | -------- | -----------
-time     | DateTime | sorted
-id       | Int      | -
-variable | String   | -
-value    | Float64  | depending on variable
-
-Here is an example of the first and last two rows of a forcing table:
-
-time                |       id | variable      | value
-------------------- |--------- |-------------- |-------
-2019-01-01T00:00:00 |        6 | P             | 2.89352e-10
-2019-01-01T00:00:00 |       16 | P             | 2.89352e-10
-⋮                   | ⋮        | ⋮              | ⋮
-2020-12-31T00:00:00 |       90 | E\_pot        | 1.15741e-9
-2020-12-31T00:00:00 |        7 | E\_pot        | 1.15741e-9
-
-The forcing table is a [narrow table](https://en.wikipedia.org/wiki/Wide_and_narrow_data#Narrow).
-When the simulation arrives at a time given in the forcing data, it will update all the
-values given for that time. These values then stay constant until the next update, there
-is no interpolation in between. This also means that if a value is defined before the start
-of the simulation, it is completely ignored. This format give maximum flexibility to update
-different variables at different times.
-
-### Profile
-
-The profile table defines the physical dimensions of the storage reservoir of each basin.
-Depending on the basin type, the columns are used differently. For free draining basins,
-the level is not used in the calculation, but may be used to convert calculated volumes
-to levels for output. For level controlled basins, the discharge is not used.
+The state table aims to capture the full state of the Basin, such that it can be used as an
+initial condition, potentially the outcome of an earlier simulation. Currently only the
+Basin node types have state.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
-id        | Int     | -            | sorted
-volume    | Float64 | $m^3$        | sorted per ID and start at 0
-area      | Float64 | $m^2$        | sorted per ID and non-negative
-discharge | Float64 | $m^3 s^{-1}$ | sorted per ID and non-negative
-level     | Float64 | $m$          | sorted per ID
+node_id   | Int     | -            | sorted
+storage   | Float64 | $m^3$        | non-negative
 
-The level is in meters above a datum that is the same for the entire model.
-An example of the first 5 rows of such a table is given below. The first 4 rows define the
-profile of ID `10020`. The number of rows can vary per ID. Using a very large
-number of rows may impact performance.
+Each Basin ID needs to be in the table.
 
-id       | volume         | area          | discharge  | level
--------- |--------------- |-------------- |----------- |-------
-   10020 |      0.0       |     1.36404e5 | 0.0        | -0.105
-   10020 |  24726.2       |     1.36404e5 | 0.0        |  0.095
-   10020 |  49452.5       |     1.36404e5 | 0.00942702 |  0.295
-   10020 |      2.49735e6 |     1.36404e5 | 0.942702   | 20.095
-   10037 |      0.0       | 50663.3       | 0.0        |  2.129
+### Basin
 
-:::{.callout-note}
-Profiles need to be defined for all Basin and OutflowTable node. OutflowTable uses only
-volume and discharge, whereas Basin uses volume, area and level. These may be split up in
-the future.
-:::
+The Basin table can be used to set the static value of variables. The forcing table has a
+similar schema, with the time column added. A static value for a variable is only used if
+there is no dynamic forcing data for that variable. Specifically, if there is either no
+forcing table, it is empty, or all timestamps of that variable are missing.
 
-### Water balance
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int     | -            | -
+precipitation         | Float64 | $m s^{-1}$   | non-negative
+potential_evaporation | Float64 | $m s^{-1}$   | non-negative
+drainage              | Float64 | $m^3 s^{-1}$ | non-negative
+infiltration          | Float64 | $m^3 s^{-1}$ | non-negative
+urban_runoff          | Float64 | $m^3 s^{-1}$ | non-negative
 
-The water balance table outputs all water balance terms at a regular output frequency, as
-defined by `output_timestep` in the configuration file. The units are $m^3$, which is the
-total volume of flow into the basin since the previous output timestep. The inital timestep
-of the simulation, with all values set to zero, is also written to the file. Since flow out
-of the basin is given a negative value, and the storage change is included, you can sum all
-components to verify the closure of the water balance.
+Note that if variables are not set in the static table, default values are used when
+possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
+to have a reasonable and safe default, a value must be provided in the static table. An
+example of this is the `target_volume` from the LevelLink node.
 
-column   | type     | restriction
--------- | -------- | -----------
-time     | DateTime | sorted
-id       | Int      | -
-variable | String   | -
-value    | Float64  | non-negative volume ($m^3$)
+### Basin / forcing
 
-The water balance table has the same schema as the forcing table. Since the output frequency
-is constant, and equal for all variables, you can pivot this table from [narrow](https://en.wikipedia.org/wiki/Wide_and_narrow_data) to wide data to get the different water balance
-components as columns. Having them as a narrow table can make it easier to process, since
-for a given model you may not know the water balance components ahead of time.
+This table is the transient form of the `Basin` table. The only difference is that a time
+column is added. A linear interpolation between the given timesteps is currently done if the
+solver takes timesteps between the given data points. More options will be avaiable later.
+
+### Basin / profile
+
+The profile table defines the physical dimensions of the storage reservoir of each basin.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int     | -            | sorted
+storage   | Float64 | $m^3$        | non-negative, start at 0
+area      | Float64 | $m^2$        | non-negative
+level     | Float64 | $m$          | -
+
+The level is in meters above a datum that is the same for the entire model. An example of
+the first 5 rows of such a table is given below. The first 4 rows define the profile of ID
+`2`. The number of rows can vary per ID. Using a very large number of rows may impact
+performance.
+
+node_id | storage        | area          | discharge  | level
+------- |--------------- |-------------- |----------- |-------
+      2 |      0.0       |     1.36404e5 | 0.0        | -0.105
+      2 |  24726.2       |     1.36404e5 | 0.0        |  0.095
+      2 |  49452.5       |     1.36404e5 | 0.00942702 |  0.295
+      2 |      2.49735e6 |     1.36404e5 | 0.942702   | 20.095
+      3 |      0.0       | 50663.3       | 0.0        |  2.129
+
+### TabulatedRatingCurve
+
+This table is similar in structure to the Basin profile. The TabulatedRatingCurve gives a
+relation between the storage of a connected Basin and its outflow.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int     | -            | sorted
+storage   | Float64 | $m^3$        | non-negative, start at 0
+discharge | Float64 | $m^3 s^{-1}$ | non-negative
+
+### Basin output
+
+The basin table contains outputs of the storage and level of each basin at every solver
+timestep. The inital condition is also written to the file.
+
+column   | type     | unit
+-------- | -------- | ----
+time     | DateTime | -
+node_id  | Int      | -
+storage  | Float64  | $m^3$
+level    | Float64  | $m$
+
+### Flow output
+
+The flow tables contains outputs of the flow on every edge in the model, for each solver
+timestep.
+
+column        | type     | unit
+------------- | -------- | ----
+time          | DateTime | -
+from_node_id  | Int      | -
+to_node_id    | Int      | -
+flow          | Float64  | $m^3 s^{-1}$
 
 ## Example input files
 
-From [this link](https://github.com/visr/ribasim-artifacts/releases)
-you can download an existing schematization for the Netherlands that was used for testing
-purposes during development. It is provided here as an example to help people get started.
-Based on the description of the input files above, you can also generate your own
-schematization using your tools of choice. We have used [DataFrames.jl](https://github.com/JuliaData/DataFrames.jl)
-and [Arrow.jl](https://github.com/JuliaData/Arrow.jl) to prepare the tables, but one can
-equally use for instance Python's [pandas](https://arrow.apache.org/docs/python/pandas.html).
+From [this link](https://github.com/visr/ribasim-artifacts/releases) you can download an
+existing schematization for the Netherlands that was used for testing purposes during
+development. It is provided here as an example to help people get started. Based on the
+description of the input files above, you can also generate your own schematization using
+your tools of choice. For Python users
+[ribasim-python](https://github.com/Deltares/ribasim-python) was created to make it easy to
+do pre- and postprocessing.

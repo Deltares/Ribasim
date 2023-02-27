@@ -1,11 +1,11 @@
-"Construct a path relative to both the TOML directory and the optional `dir_input`"
+"Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.dir_input, path)
+    return normpath(config.toml_dir, config.input_dir, path)
 end
 
-"Construct a path relative to both the TOML directory and the optional `dir_output`"
+"Construct a path relative to both the TOML directory and the optional `output_dir`"
 function output_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.dir_output, path)
+    return normpath(config.toml_dir, config.output_dir, path)
 end
 
 parsefile(config_path::AbstractString) =

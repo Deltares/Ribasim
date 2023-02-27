@@ -47,7 +47,9 @@ function write_basin_output(reg::Register, config::Config)
     end
 
     basin = DataFrame(; time, node_id, storage = vec(storage), level = vec(level))
-    Arrow.write(output_path(config, config.basin), basin; compress = :lz4)
+    path = output_path(config, config.basin)
+    mkpath(dirname(path))
+    Arrow.write(path, basin; compress = :lz4)
 end
 
 function write_flow_output(reg::Register, config::Config)
@@ -62,6 +64,9 @@ function write_flow_output(reg::Register, config::Config)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
+
     df = DataFrame(; time, from_node_id, to_node_id, flow)
-    Arrow.write(output_path(config, config.flow), df; compress = :lz4)
+    path = output_path(config, config.flow)
+    mkpath(dirname(path))
+    Arrow.write(path, df; compress = :lz4)
 end

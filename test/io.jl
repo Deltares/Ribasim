@@ -21,7 +21,7 @@ recordproperty("name", "Input/Output")  # TODO To check in TeamCity
         starttime = now(),
         endtime = now(),
         toml_dir = "model",
-        dir_input = "input",
+        input_dir = "input",
         geopackage = "path/to/file",
     )
     @test Ribasim.input_path(config, "path/to/file") ==

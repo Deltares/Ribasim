@@ -20,8 +20,11 @@ function load_data(db::DB, config::Config, tablename::String)::Union{Table, Quer
     return nothing
 end
 
-
-function load_dataframe(db::DB, config::Config, tablename::String)::Union{DataFrame, Nothing}
+function load_dataframe(
+    db::DB,
+    config::Config,
+    tablename::String,
+)::Union{DataFrame, Nothing}
     query = load_data(db, config, tablename)
     if isnothing(query)
         return nothing
@@ -33,7 +36,6 @@ function load_dataframe(db::DB, config::Config, tablename::String)::Union{DataFr
     end
     return df
 end
-
 
 function load_required_data(
     db::DB,

@@ -8,8 +8,8 @@ saveat = 86400
 save_positions = [true, true]
 
 # optional, default is the path of the TOML
-dir_input = "../data/lhm"
-dir_output = "../data/lhm"
+input_dir = "../data/lhm"
+output_dir = "../data/lhm"
 
 geopackage = "model.gpkg"
 waterbalance = "waterbalance.arrow"

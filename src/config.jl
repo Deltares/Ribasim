@@ -36,16 +36,16 @@ abstract type TableOption end
 
     # optional, default is the path of the TOML
     toml_dir::String = pwd()
-    dir_input::String = "."
-    dir_output::String = "."
+    input_dir::String = "."
+    output_dir::String = "."
 
     # input, required
     geopackage::String
 
     # output, required
     waterbalance::String = "waterbalance.arrow"
-    basin::String = "basin.arrow"
-    flow::String = "flow.arrow"
+    basin::String = "output/basin.arrow"
+    flow::String = "output/flow.arrow"
     outstate::Maybe{String}
 
     # optional definitions for tables normally in `geopackage`

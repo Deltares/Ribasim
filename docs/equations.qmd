@@ -247,10 +247,10 @@ $$ {#eq-flushing}
 
 # Numerical solution
 
-Ribasim uses ModelingToolkit.jl to provide a numerical solution to the water
+Ribasim uses OrdinaryDiffEq.jl to provide a numerical solution to the water
 balance equations. Changes to forcings or parameters such as precipitation, but
 also the allocated water abstraction is managed through the use of CallBack
-functions [@mtkevents]. In a coupled run, the exchanges with MODFLOW 6 are also
+functions [@callbacks]. In a coupled run, the exchanges with MODFLOW 6 are also
 managed via the use of a callback function.
 
 # Performance
