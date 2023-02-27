@@ -38,9 +38,14 @@ node_type = [
     "Basin",
     "LevelControl",
 ]
+
+# Make sure the feature id starts at 1: explicitly give an index.
 node = ribasim.Node(
     static=gpd.GeoDataFrame(
-        data={"type": node_type}, index=np.arange(len(xy)) + 1, geometry=node_xy
+        data={"type": node_type},
+        index=np.arange(len(xy)) + 1,
+        geometry=node_xy,
+        crs="EPSG:28992",
     )
 )
 
@@ -52,7 +57,9 @@ to_id = np.array([2, 3, 4, 5, 7, 6, 8, 9], dtype=np.int64)
 lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
 edge = ribasim.Edge(
     static=gpd.GeoDataFrame(
-        data={"from_node_id": from_id, "to_node_id": to_id, "geometry": lines}
+        data={"from_node_id": from_id, "to_node_id": to_id},
+        geometry=lines,
+        crs="EPSG:28992",
     )
 )
 
@@ -71,13 +78,21 @@ repeat = np.tile([0, 1], 4)
 profile = profile.iloc[repeat]
 profile["node_id"] = [1, 1, 3, 3, 6, 6, 8, 8]
 
+
+# Convert steady forcing to m/s
+# 2 mm/d precipitation, 1 mm/d evaporation
+seconds_in_day = 24 * 3600
+precipitation = 0.002 / seconds_in_day
+evaporation = 0.001 / seconds_in_day
+
+
 static = pd.DataFrame(
     data={
         "node_id": [0],
-        "drainage": [0.006],
-        "potential_evaporation": [0.0115],
+        "drainage": [0.0],
+        "potential_evaporation": [evaporation],
         "infiltration": [0.0],
-        "precipitation": [0.0],
+        "precipitation": [precipitation],
         "urban_runoff": [0.0],
     }
 )
