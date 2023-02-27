@@ -6,7 +6,9 @@ using Ribasim, Dates, TOML
 include("../../utils/testdata.jl")
 
 # a basic test model
-testdata("basic.gpkg", normpath(datadir, "basic", "basic.gpkg"))
-testdata("basic.toml", normpath(datadir, "basic", "basic.toml"))
+toml_path = normpath(datadir, "basic", "basic.toml")
+gpkg_path = normpath(datadir, "basic", "basic.gpkg")
+testdata("basic.toml", toml_path)
+testdata("basic.gpkg", gpkg_path)
 
 Ribasim.run(toml_path)
