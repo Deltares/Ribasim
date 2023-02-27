@@ -20,6 +20,21 @@ function load_data(db::DB, config::Config, tablename::String)::Union{Table, Quer
     return nothing
 end
 
+
+function load_dataframe(db::DB, config::Config, tablename::String)::Union{DataFrame, Nothing}
+    query = load_data(db, config, tablename)
+    if isnothing(query)
+        return nothing
+    end
+
+    df = DataFrame(query)
+    if hasproperty(df, :time)
+        df.time = DateTime.(df.time)
+    end
+    return df
+end
+
+
 function load_required_data(
     db::DB,
     config::Config,
