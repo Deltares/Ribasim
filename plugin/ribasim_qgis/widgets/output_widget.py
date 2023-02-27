@@ -1,9 +1,4 @@
-from PyQt5.QtWidgets import (
-    QFileDialog,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt5.QtWidgets import QFileDialog, QPushButton, QVBoxLayout, QWidget
 
 
 class OutputWidget(QWidget):

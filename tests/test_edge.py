@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pytest
 import shapely.geometry as sg
+from pydantic import ValidationError
 
 from ribasim.edge import Edge
 
@@ -13,5 +14,11 @@ def test():
     df = gpd.GeoDataFrame(
         data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=geometry
     )
-    edge = Edge(dataframe=df)
+    edge = Edge(static=df)
     assert isinstance(edge, Edge)
+
+    with pytest.raises(ValidationError):
+        df = gpd.GeoDataFrame(
+            data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=[None, None]
+        )
+        Edge(static=df)
