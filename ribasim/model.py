@@ -154,6 +154,7 @@ class Model(BaseModel):
             config = tomli.load(f)
 
         kwargs = {"modelname": path.stem}
+        config["geopackage"] = path.parent / config["geopackage"]
         for cls, kwarg_name in _NODES:
             kwargs[kwarg_name] = cls.from_config(config)
 
