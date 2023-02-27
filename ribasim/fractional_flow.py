@@ -49,5 +49,8 @@ class FractionalFlow(InputMixin, BaseModel):
     static: DataFrame[StaticSchema]
     forcing: Optional[DataFrame[ForcingSchema]] = None
 
-    def __init__(self, static: pd.DataFrame, forcing: Optional[pd.DataFrame]):
+    class Config:
+        validate_assignment = True
+
+    def __init__(self, static: pd.DataFrame, forcing: Optional[pd.DataFrame] = None):
         super().__init__(**locals())

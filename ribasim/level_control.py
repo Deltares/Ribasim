@@ -31,5 +31,8 @@ class LevelControl(InputMixin, BaseModel):
     _input_type = "LevelControl"
     static: DataFrame[StaticSchema]
 
+    class Config:
+        validate_assignment = True
+
     def __init__(self, static: pd.DataFrame):
         super().__init__(**locals())

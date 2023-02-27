@@ -1,3 +1,7 @@
+from typing import Any
+
+import matplotlib.pyplot as plt
+import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
@@ -32,3 +36,17 @@ class Edge(InputMixin, BaseModel):
 
     _input_type = "Edge"
     static: DataFrame[StaticSchema]
+
+    class Config:
+        validate_assignment = True
+
+    def __init__(self, static: pd.DataFrame):
+        super().__init__(**locals())
+
+    def plot(self, **kwargs) -> Any:
+        ax = kwargs.get("ax", None)
+        if ax is None:
+            _, ax = plt.subplots()
+            kwargs["ax"] = ax
+        self.static.plot(**kwargs)
+        return ax

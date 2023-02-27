@@ -1,7 +1,8 @@
 import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
+import matplotlib.pyplot as plt
 import tomli
 import tomli_w
 from pydantic import BaseModel
@@ -59,6 +60,9 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: datetime.datetime
     endtime: datetime.datetime
+
+    class Config:
+        validate_assignment = True
 
     def __init__(
         self,
@@ -162,3 +166,22 @@ class Model(BaseModel):
         kwargs["endtime"] = config["endtime"]
 
         return Model(**kwargs)
+
+    def plot(self, ax=None) -> Any:
+        """
+        Plot the nodes and edges of the model.
+
+        Parameters
+        ----------
+        ax: matplotlib.pyplot.Artist, optional
+            axes on which to draw the plot
+
+        Returns
+        -------
+        ax: matplotlib.pyplot.Artist
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+        self.edge.plot(ax=ax, zorder=2)
+        self.node.plot(ax=ax, zorder=3)
+        return ax

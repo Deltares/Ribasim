@@ -93,6 +93,9 @@ class Basin(InputMixin, BaseModel):
     forcing: Optional[DataFrame[ForcingSchema]] = None
     state: Optional[DataFrame[StateSchema]] = None
 
+    class Config:
+        validate_assignment = True
+
     def __init__(
         self,
         profile: pd.DataFrame,

@@ -32,5 +32,8 @@ class LinearLevelConnection(InputMixin, BaseModel):
     _input_type = "LinearLevelConnection"
     static: DataFrame[StaticSchema]
 
+    class Config:
+        validate_assignment = True
+
     def __init__(self, static: pd.DataFrame):
         super().__init__(**locals())

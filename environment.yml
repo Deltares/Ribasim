@@ -5,6 +5,7 @@ channels:
     
 dependencies:
   - python >= 3.9
+  - matplotlib
   - pandas
   - geopandas
   - pandera
@@ -14,3 +15,4 @@ dependencies:
   - shapely >=2.0
   - tomli
   - tomli-w
+  - xarray
