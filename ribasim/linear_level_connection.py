@@ -1,3 +1,4 @@
+import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
@@ -13,5 +14,23 @@ class StaticSchema(pa.SchemaModel):
 
 
 class LinearLevelConnection(InputMixin, BaseModel):
+    """
+    Flow through this connection linearly depends on the level difference
+    between the two connected basins.
+
+    Parameters
+    ----------
+    static: pd.DataFrame
+
+        With columns:
+
+        * node_id
+        * conductance
+
+    """
+
     _input_type = "LinearLevelConnection"
     static: DataFrame[StaticSchema]
+
+    def __init__(self, static: pd.DataFrame):
+        super().__init__(**locals())

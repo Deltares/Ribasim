@@ -11,7 +11,7 @@ from ribasim.types import FilePath
 
 T = TypeVar("T")
 
-__all__ = ()
+__all__ = ("InputMixin",)
 
 
 class InputMixin(abc.ABC):

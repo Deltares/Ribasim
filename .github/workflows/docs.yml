@@ -22,7 +22,7 @@ jobs:
 
       - run: pip install -e ".[docs]"
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
-      - run: pdoc -o docs/ ribasim
+      - run: pdoc -o docs/ ribasim --docformat numpy
 
       - uses: actions/upload-pages-artifact@v1
         with:

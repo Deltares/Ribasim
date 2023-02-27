@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import tomli
 import tomli_w
@@ -31,6 +31,24 @@ _NODES = (
 
 
 class Model(BaseModel):
+    """
+    Ribasim model containing the location of the nodes, the edges between the
+    nodes, and the node parametrization.
+
+    Parameters
+    ----------
+    modelname: str
+    node: Node
+    edge: Edge
+    basin: Basin
+    fractional_flow: Optional[FractionalFlow]
+    level_control: Optional[LevelControl]
+    linear_level_connection: Optional[LinearLevelConnection]
+    tabulated_rating_curve: Optional[TabulatedRatingCurve]
+    starttime: Union[str, datetime.datetime]
+    endtime: Union[str, datetime.datetime]
+    """
+
     modelname: str
     node: Node
     edge: Edge
@@ -41,6 +59,21 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: datetime.datetime
     endtime: datetime.datetime
+
+    def __init__(
+        self,
+        modelname: str,
+        starttime: Union[str, datetime.datetime],
+        endtime: Union[str, datetime.datetime],
+        node: Node,
+        edge: Edge,
+        basin: Basin,
+        fractional_flow: Optional[FractionalFlow] = None,
+        level_control: Optional[LevelControl] = None,
+        linear_level_connection: Optional[LinearLevelConnection] = None,
+        tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
+    ):
+        super().__init__(**locals())
 
     @classmethod
     def fields(cls):

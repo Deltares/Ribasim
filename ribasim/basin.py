@@ -1,5 +1,6 @@
 from typing import Optional
 
+import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
@@ -46,27 +47,44 @@ class Basin(InputMixin, BaseModel):
     Input for a (sub-)basin: an area of land where all flowing surface water
     converges to a single point.
 
-    A basin is defined by a tabulation of:
+    Parameters
+    ----------
+    profile: pandas.DataFrame
 
-    * storage
-    * area
-    * water level
+        A tabulation with the columns:
 
-    This data is provided by the ``profile`` DataFrame.
+        * storage
+        * area
+        * water level
 
-    In Ribasim, the basin receives water balance terms such as:
+    static: pandas.DataFrame, optional
 
-    * potential evaporation
-    * precipitation
-    * groundwater drainage
-    * groundwater infiltration
-    * urban runoff
+        Static forcing with columns:
 
-    This may be set in the ``static`` dataframe for constant data, or ``forcing``
-    for time varying data.
+        * potential evaporation
+        * precipitation
+        * groundwater drainage
+        * groundwater infiltration
+        * urban runoff
 
-    A basin may be initialized with an initial state for storage or
-    concentration. This is set in the ``state`` dataframe.
+    forcing: pandas.DataFrame, optional
+
+        Time varying forcing with columns:
+
+        * time
+        * potential evaporation
+        * precipitation
+        * groundwater drainage
+        * groundwater infiltration
+        * urban runoff
+
+    state: pandas.DataFrame, optional
+
+        Initial state with columns:
+
+        * storage
+        * concentration
+
     """
 
     _input_type = "Basin"
@@ -74,3 +92,12 @@ class Basin(InputMixin, BaseModel):
     static: Optional[DataFrame[StaticSchema]] = None
     forcing: Optional[DataFrame[ForcingSchema]] = None
     state: Optional[DataFrame[StateSchema]] = None
+
+    def __init__(
+        self,
+        profile: pd.DataFrame,
+        static: Optional[pd.DataFrame] = None,
+        forcing: Optional[pd.DataFrame] = None,
+        state: Optional[pd.DataFrame] = None,
+    ):
+        super().__init__(**locals())

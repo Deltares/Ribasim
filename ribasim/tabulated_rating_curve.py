@@ -1,3 +1,4 @@
+import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
@@ -14,5 +15,24 @@ class StaticSchema(pa.SchemaModel):
 
 
 class TabulatedRatingCurve(InputMixin, BaseModel):
+    """
+    Linearly interpolates discharge between a tabulation of storage and
+    discharge.
+
+    Parameters
+    ----------
+    static: pd.DataFrame
+
+        Tabulation with columns:
+
+        * node_id
+        * storage
+        * discharge
+
+    """
+
     _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]
+
+    def __init__(self, static: pd.DataFrame):
+        super().__init__(**locals())
