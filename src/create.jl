@@ -61,7 +61,7 @@ function create_level_control(db::DB, config::Config)
     data === nothing && return LevelControl()
     tbl = columntable(data)
     # TODO add LevelControl conductance to LHM / ribasim-python datasets
-    conductance = fill(10.0 / (3600.0 * 24), length(tbl.node_id))
+    conductance = fill(100.0 / (3600.0 * 24), length(tbl.node_id))
     return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
@@ -101,8 +101,8 @@ function create_basin(db::DB, config::Config)
     timespan = [datetime2unix(config.starttime), datetime2unix(config.endtime)]
 
     # both static and forcing are optional, but we need fallback defaults
-    static = load_data(db, config, "Basin")
-    forcing = load_data(db, config, "Basin / forcing")
+    static = load_dataframe(db, config, "Basin")
+    forcing = load_dataframe(db, config, "Basin / forcing")
     if forcing === nothing
         # empty forcing so nothing is found
         forcing = DataFrame(;
@@ -113,8 +113,6 @@ function create_basin(db::DB, config::Config)
             drainage = Float64[],
             infiltration = Float64[],
         )
-    else
-        forcing = DataFrame(forcing)
     end
     if static === nothing
         # empty static so nothing is found
@@ -125,8 +123,6 @@ function create_basin(db::DB, config::Config)
             drainage = Float64[],
             infiltration = Float64[],
         )
-    else
-        static = DataFrame(static)
     end
 
     precipitation = Interpolation[]

@@ -64,14 +64,14 @@ function BMI.initialize(T::Type{Register}, config::Config)
 
     @timeit_debug to "Setup ODEProblem" begin
         # use state
-        state = load_data(db, config, "Basin / state")
+        state = load_dataframe(db, config, "Basin / state")
         n = length(get_ids(db, "Basin"))
-        u0 = if state === nothing
+        if isnothing(state)
             # default to nearly empty basins, perhaps make required input
-            fill(1.0, n)
+            u0 = fill(1.0, n)
         else
             # get state in the right order
-            sort(DataFrame(state), :node_id)[!, :storage]::Vector{Float64}
+            u0 = sort(state, :node_id)[!, :storage]::Vector{Float64}
         end
         @assert length(u0) == n "Basin / state length differs from number of Basins"
         prob = ODEProblem(water_balance!, u0, tspan, parameters)
