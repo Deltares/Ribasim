@@ -18,6 +18,7 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "geopandas",
+    "matplotlib",
     "pandas",
     "pandera",
     "pyarrow",
