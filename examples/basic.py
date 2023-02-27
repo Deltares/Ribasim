@@ -20,9 +20,10 @@ xy = np.array(
         (3.0, 0.0),  # 4: TabulatedRatingCurve
         (3.0, 1.0),  # 5: FractionalFlow
         (3.0, 2.0),  # 6: Basin
-        (4.0, 0.0),  # 7: FractionalFlow
-        (5.0, 0.0),  # 8: Basin
-        (6.0, 0.0),  # 9: LevelControl
+        (3.0, 3.0),  # 7: TabulatedRatingCurve
+        (4.0, 0.0),  # 8: FractionalFlow
+        (5.0, 0.0),  # 9: Basin
+        (6.0, 0.0),  # 10: LevelControl
     ]
 )
 node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -34,6 +35,7 @@ node_type = [
     "TabulatedRatingCurve",
     "FractionalFlow",
     "Basin",
+    "TabulatedRatingCurve",
     "FractionalFlow",
     "Basin",
     "LevelControl",
@@ -52,8 +54,8 @@ node = ribasim.Node(
 # %%
 # Setup the edges:
 
-from_id = np.array([1, 2, 3, 4, 4, 5, 7, 8], dtype=np.int64)
-to_id = np.array([2, 3, 4, 5, 7, 6, 8, 9], dtype=np.int64)
+from_id = np.array([1, 2, 3, 4, 4, 5, 6, 8, 9], dtype=np.int64)
+to_id = np.array([2, 3, 4, 5, 8, 6, 7, 9, 10], dtype=np.int64)
 lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
 edge = ribasim.Edge(
     static=gpd.GeoDataFrame(
@@ -76,7 +78,7 @@ profile = pd.DataFrame(
 )
 repeat = np.tile([0, 1], 4)
 profile = profile.iloc[repeat]
-profile["node_id"] = [1, 1, 3, 3, 6, 6, 8, 8]
+profile["node_id"] = [1, 1, 3, 3, 6, 6, 9, 9]
 
 
 # Convert steady forcing to m/s
@@ -97,7 +99,7 @@ static = pd.DataFrame(
     }
 )
 static = static.iloc[[0, 0, 0, 0]]
-static["node_id"] = [1, 3, 6, 8]
+static["node_id"] = [1, 3, 6, 9]
 
 basin = ribasim.Basin(profile=profile, static=static)
 
@@ -110,14 +112,16 @@ linear_connection = ribasim.LinearLevelConnection(
 
 
 # %%
-# Set up a rating curve node:
+# Set up a rating curve node.
+# Discharge: lose 1% of storage volume per day at storage = 1000.0.
+q1000 = 1000.0 * 0.01 / seconds_in_day
 
 rating_curve = ribasim.TabulatedRatingCurve(
     static=pd.DataFrame(
         data={
-            "node_id": [4, 4],
-            "storage": [0.0, 1000.0],
-            "discharge": [0.0, 1.5e-4],
+            "node_id": [4, 4, 7, 7],
+            "storage": [0.0, 1000.0, 0.0, 1000.0],
+            "discharge": [0.0, q1000, 0.0, q1000],
         }
     )
 )
@@ -128,7 +132,7 @@ rating_curve = ribasim.TabulatedRatingCurve(
 fractional_flow = ribasim.FractionalFlow(
     static=pd.DataFrame(
         data={
-            "node_id": [5, 7],
+            "node_id": [5, 8],
             "fraction": [0.3, 0.7],
         }
     )
@@ -140,7 +144,7 @@ fractional_flow = ribasim.FractionalFlow(
 level_control = ribasim.LevelControl(
     static=pd.DataFrame(
         data={
-            "node_id": [9],
+            "node_id": [10],
             "target_level": [1.5],
         }
     )
