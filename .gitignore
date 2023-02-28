@@ -133,3 +133,7 @@ dmypy.json
 
 # VS Code settings
 *.vscode
+
+# Example models
+/examples/basic
+/examples/basic-transient
