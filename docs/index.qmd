@@ -59,25 +59,6 @@ $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = R + P + ET + Q_{rest}
 $$
 
-Such a water balance ODE can be represented in ModelingToolkit.jl as follows:
-
-```julia
-using ModelingToolkit
-
-@variables t S(t) R(t) P(t) ET(t) Q_rest(t)  # independent and dependent variables
-D = Differential(t)       # define an operator for the differentiation w.r.t. time
-
-sys = ODESystem([D(S) ~ R + P + ET + Q_rest])
-```
-
-On the last line, an `ODESystem` is created that consists of a single equation. Before we
-can solve this, we need to create an `ODEProblem`, that provides information about the
-timespan of the simulation, as well as the initial conditions.
-
-Ribasim can be used as a Julia package running in a Julia session or as an
-application initialized via a TOML configuration file. Both use cases are
-shown in the demonstrations.
-
 ## Time
 
 The water balance equation can be applied on many timescales; years, weeks, days or hours.
