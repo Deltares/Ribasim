@@ -126,6 +126,10 @@ function BMI.update_until(reg::Register, time)
 end
 
 BMI.get_current_time(reg::Register) = reg.integrator.t
+BMI.get_start_time(reg::Register) = 0.0
+BMI.get_end_time(reg::Register) = seconds_since(reg.config.endtime, reg.config.starttime)
+BMI.get_time_units(reg::Register) = "s"
+BMI.get_time_step(reg::Register) = get_proposed_dt(reg.integrator)
 
 run(config_file::AbstractString) = run(parsefile(config_file))
 
