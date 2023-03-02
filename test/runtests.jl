@@ -37,5 +37,9 @@ testdata(
         include("basin.jl")
     end
 
+    @safetestset "Basic Model Interface" begin
+        include("bmi.jl")
+    end
+
     Aqua.test_all(Ribasim; ambiguities = false)
 end
