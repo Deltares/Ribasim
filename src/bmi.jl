@@ -60,7 +60,6 @@ function BMI.initialize(T::Type{Register}, config::Config)
     db = SQLite.DB(gpkg_path)
 
     parameters = create_parameters(db, config)
-    tspan = (datetime2unix(config.starttime), datetime2unix(config.endtime))
 
     @timeit_debug to "Setup ODEProblem" begin
         # use state
@@ -74,7 +73,11 @@ function BMI.initialize(T::Type{Register}, config::Config)
             sort(state, :node_id).storage
         end::Vector{Float64}
         @assert length(u0) == n "Basin / state length differs from number of Basins"
-        prob = ODEProblem(water_balance!, u0, tspan, parameters)
+        t_end = seconds_since(config.endtime, config.starttime)
+        # for Float32 this method allows max ~1000 year simulations without accuracy issues
+        @assert eps(t_end) < 3600 "Simulation time too long"
+        timespan = (zero(t_end), t_end)
+        prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
     # add a single time step's contribution to the water balance step's totals
@@ -100,7 +103,7 @@ function BMI.initialize(T::Type{Register}, config::Config)
 
     waterbalance = DataFrame()  # not used at the moment
     close(db)
-    return Register(integrator, saved_flow, waterbalance)
+    return Register(integrator, config, saved_flow, waterbalance)
 end
 
 function BMI.update(reg::Register)
@@ -129,8 +132,8 @@ run(config_file::AbstractString) = run(parsefile(config_file))
 function run(config::Config)
     reg = BMI.initialize(Register, config)
     solve!(reg.integrator)
-    write_basin_output(reg, config)
-    write_flow_output(reg, config)
+    write_basin_output(reg)
+    write_flow_output(reg)
     return reg
 end
 

@@ -70,7 +70,7 @@ function push_time_interpolation!(
     col::Symbol,
     time::Vector{Float64},  # all float times for forcing_id
     forcing_id::DataFrame,
-    timespan::Vector{Float64},  # simulation timespan for static_id
+    t_end::Float64,
     static_id::DataFrame,
 )
     values = forcing_id[!, col]
@@ -84,10 +84,10 @@ function push_time_interpolation!(
         else
             only(values)
         end
-        interpolation = LinearInterpolation([value, value], timespan)
+        interpolation = LinearInterpolation([value, value], [zero(t_end), t_end])
     end
-    @assert interpolation.t[begin] <= timespan[begin] "Forcing for $col starts after simulation start."
-    @assert interpolation.t[end] >= timespan[end] "Forcing for $col stops before simulation end."
+    @assert interpolation.t[begin] <= 0 "Forcing for $col starts after simulation start."
+    @assert interpolation.t[end] >= t_end "Forcing for $col stops before simulation end."
     push!(interpolations, interpolation)
 end
 
@@ -98,7 +98,7 @@ function create_basin(db::DB, config::Config)
     current_area = zeros(n)
     current_level = zeros(n)
     area, level = create_storage_tables(db, config)
-    timespan = [datetime2unix(config.starttime), datetime2unix(config.endtime)]
+    t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
     static = load_dataframe(db, config, "Basin")
@@ -138,14 +138,14 @@ function create_basin(db::DB, config::Config)
         # fallback option
         static_id = filter(:node_id => ==(id), static)
         forcing_id = filter(:node_id => ==(id), forcing)
-        time = datetime2unix.(forcing_id.time)
+        time = seconds_since.(forcing_id.time, config.starttime)
 
         push_time_interpolation!(
             precipitation,
             :precipitation,
             time,
             forcing_id,
-            timespan,
+            t_end,
             static_id,
         )
         push_time_interpolation!(
@@ -153,7 +153,7 @@ function create_basin(db::DB, config::Config)
             :precipitation,
             time,
             forcing_id,
-            timespan,
+            t_end,
             static_id,
         )
         push_time_interpolation!(
@@ -161,16 +161,16 @@ function create_basin(db::DB, config::Config)
             :potential_evaporation,
             time,
             forcing_id,
-            timespan,
+            t_end,
             static_id,
         )
-        push_time_interpolation!(drainage, :drainage, time, forcing_id, timespan, static_id)
+        push_time_interpolation!(drainage, :drainage, time, forcing_id, t_end, static_id)
         push_time_interpolation!(
             infiltration,
             :infiltration,
             time,
             forcing_id,
-            timespan,
+            t_end,
             static_id,
         )
     end
