@@ -22,3 +22,22 @@ create_app(
 
 include("add_metadata.jl")
 add_metadata(project_dir, license_file, output_dir, git_repo)
+
+# On Windows, write ribasim.cmd in the output_dir, that starts ribasim.exe.
+# Since the bin dir contains a julia.exe and many DLLs that you may not want in your path,
+# with this script you can put output_dir in your path instead.
+if Sys.iswindows()
+    cmd = raw"""
+    @echo off
+    setlocal
+
+    set bindir=%~dp0bin
+    set path=%bindir%;%path%
+    "%bindir%\ribasim.exe" %*
+
+    endlocal
+    """
+    open(normpath(output_dir, "ribasim.cmd"); write = true) do io
+        print(io, cmd)
+    end
+end
