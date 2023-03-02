@@ -23,3 +23,6 @@ compile/create_binaries/libribasim/
 JuliaSysimage.dll
 LocalPreferences.toml
 .ipynb_checkpoints
+
+# Rust
+compile/cli_wrapper/target/
