@@ -29,13 +29,7 @@ add_metadata(project_dir, license_file, output_dir, git_repo)
 if Sys.iswindows()
     cmd = raw"""
     @echo off
-    setlocal
-
-    set bindir=%~dp0bin
-    set path=%bindir%;%path%
-    "%bindir%\ribasim.exe" %*
-
-    endlocal
+    "%~dp0bin\ribasim.exe" %*
     """
     open(normpath(output_dir, "ribasim.cmd"); write = true) do io
         print(io, cmd)
