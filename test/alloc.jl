@@ -22,18 +22,18 @@ toml_path = normpath(@__DIR__, "testrun.toml")
     )
 
     config["forcing"] = df
-    reg = Ribasim.run(config)
+    model = Ribasim.run(config)
 
-    demand = Ribasim.savedvalues(reg, name(:usersys, 151358, :demand))
-    alloc = Ribasim.savedvalues(reg, name(:usersys, 151358, :alloc))
-    abs = Ribasim.savedvalues(reg, name(:usersys, 151358, :abs))
-    area = Ribasim.savedvalues(reg, name(:lsw, 151358, :area))
-    P = Ribasim.savedvalues(reg, name(:lsw, 151358, :P))
-    E_pot = Ribasim.savedvalues(reg, name(:lsw, 151358, :E_pot))
-    S = Ribasim.savedvalues(reg, name(:lsw, 151358, :S))
-    drainage = Ribasim.savedvalues(reg, name(:lsw, 151358, :drainage))
-    infiltration = Ribasim.savedvalues(reg, name(:lsw, 151358, :infiltration))
-    urban_runoff = Ribasim.savedvalues(reg, name(:lsw, 151358, :urban_runoff))
+    demand = Ribasim.savedvalues(model, name(:usersys, 151358, :demand))
+    alloc = Ribasim.savedvalues(model, name(:usersys, 151358, :alloc))
+    abs = Ribasim.savedvalues(model, name(:usersys, 151358, :abs))
+    area = Ribasim.savedvalues(model, name(:lsw, 151358, :area))
+    P = Ribasim.savedvalues(model, name(:lsw, 151358, :P))
+    E_pot = Ribasim.savedvalues(model, name(:lsw, 151358, :E_pot))
+    S = Ribasim.savedvalues(model, name(:lsw, 151358, :S))
+    drainage = Ribasim.savedvalues(model, name(:lsw, 151358, :drainage))
+    infiltration = Ribasim.savedvalues(model, name(:lsw, 151358, :infiltration))
+    urban_runoff = Ribasim.savedvalues(model, name(:lsw, 151358, :urban_runoff))
 
     @test S[1] ≈ 14855.394135012128f0
     @test S[235] ≈ 7427.697265625f0
@@ -69,20 +69,20 @@ end
     )
 
     config["forcing"] = df
-    reg = Ribasim.run(config)
+    model = Ribasim.run(config)
 
     # Test the output parameters are as expected
-    demand = Ribasim.savedvalues(reg, name(:usersys, 200164, :demand))
-    alloc_a = Ribasim.savedvalues(reg, name(:usersys, 200164, :alloc_a))
-    alloc_b = Ribasim.savedvalues(reg, name(:usersys, 200164, :alloc_b))
-    abs = Ribasim.savedvalues(reg, name(:usersys, 200164, :abs))
-    area = Ribasim.savedvalues(reg, name(:lsw, 200164, :area))
-    P = Ribasim.savedvalues(reg, name(:lsw, 200164, :P))
-    E_pot = Ribasim.savedvalues(reg, name(:lsw, 200164, :E_pot))
-    S = Ribasim.savedvalues(reg, name(:lsw, 200164, :S))
-    drainage = Ribasim.savedvalues(reg, name(:lsw, 200164, :drainage))
-    infiltration = Ribasim.savedvalues(reg, name(:lsw, 200164, :infiltration))
-    urban_runoff = Ribasim.savedvalues(reg, name(:lsw, 200164, :urban_runoff))
+    demand = Ribasim.savedvalues(model, name(:usersys, 200164, :demand))
+    alloc_a = Ribasim.savedvalues(model, name(:usersys, 200164, :alloc_a))
+    alloc_b = Ribasim.savedvalues(model, name(:usersys, 200164, :alloc_b))
+    abs = Ribasim.savedvalues(model, name(:usersys, 200164, :abs))
+    area = Ribasim.savedvalues(model, name(:lsw, 200164, :area))
+    P = Ribasim.savedvalues(model, name(:lsw, 200164, :P))
+    E_pot = Ribasim.savedvalues(model, name(:lsw, 200164, :E_pot))
+    S = Ribasim.savedvalues(model, name(:lsw, 200164, :S))
+    drainage = Ribasim.savedvalues(model, name(:lsw, 200164, :drainage))
+    infiltration = Ribasim.savedvalues(model, name(:lsw, 200164, :infiltration))
+    urban_runoff = Ribasim.savedvalues(model, name(:lsw, 200164, :urban_runoff))
 
     @test S[1] ≈ 196926.89308441704f0
     @test S[235] ≈ 196926.89308441704f0

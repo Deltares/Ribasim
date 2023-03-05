@@ -1,9 +1,9 @@
-function BMI.initialize(T::Type{Register}, config_path::AbstractString)
+function BMI.initialize(T::Type{Model}, config_path::AbstractString)
     config = parsefile(config_path)
     BMI.initialize(T, config)
 end
 
-function BMI.initialize(T::Type{Register}, config::Config)
+function BMI.initialize(T::Type{Model}, config::Config)
     gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: $gpkg_path"))
@@ -54,42 +54,42 @@ function BMI.initialize(T::Type{Register}, config::Config)
 
     waterbalance = DataFrame()  # not used at the moment
     close(db)
-    return Register(integrator, config, saved_flow, waterbalance)
+    return Model(integrator, config, saved_flow, waterbalance)
 end
 
-function BMI.update(reg::Register)
-    step!(reg.integrator)
-    return reg
+function BMI.update(model::Model)
+    step!(model.integrator)
+    return model
 end
 
-function BMI.update_until(reg::Register, time)
-    integrator = reg.integrator
+function BMI.update_until(model::Model, time)
+    integrator = model.integrator
     t = integrator.t
     dt = time - t
     if dt < 0
         error("The model has already passed the given timestamp.")
     elseif dt == 0
-        return reg
+        return model
     else
         step!(integrator, dt)
     end
-    return reg
+    return model
 end
 
-BMI.get_current_time(reg::Register) = reg.integrator.t
-BMI.get_start_time(reg::Register) = 0.0
-BMI.get_end_time(reg::Register) = seconds_since(reg.config.endtime, reg.config.starttime)
-BMI.get_time_units(reg::Register) = "s"
-BMI.get_time_step(reg::Register) = get_proposed_dt(reg.integrator)
+BMI.get_current_time(model::Model) = model.integrator.t
+BMI.get_start_time(model::Model) = 0.0
+BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.config.starttime)
+BMI.get_time_units(model::Model) = "s"
+BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
 run(config_file::AbstractString) = run(parsefile(config_file))
 
 function run(config::Config)
-    reg = BMI.initialize(Register, config)
-    solve!(reg.integrator)
-    write_basin_output(reg)
-    write_flow_output(reg)
-    return reg
+    model = BMI.initialize(Model, config)
+    solve!(model.integrator)
+    write_basin_output(model)
+    write_flow_output(model)
+    return model
 end
 
 function run()

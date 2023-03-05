@@ -1,5 +1,5 @@
 """
-    Register(
+    Model(
         sys::MTK.AbstractODESystem,
         config::Config,
         saved_flow::SavedValues(Float64, Vector{Float64}),
@@ -9,12 +9,12 @@
 Struct that combines data from the System and Integrator that we will need during and after
 model construction.
 """
-struct Register{T}
+struct Model{T}
     integrator::T
     config::Config
     saved_flow::SavedValues{Float64, Vector{Float64}}
     waterbalance::DataFrame
-    function Register(
+    function Model(
         integrator::T,
         config,
         saved_flow,
@@ -24,11 +24,11 @@ struct Register{T}
     end
 end
 
-timesteps(reg::Register) = reg.integrator.sol.t
+timesteps(model::Model) = model.integrator.sol.t
 
-function Base.show(io::IO, reg::Register)
-    (; config, integrator) = reg
+function Base.show(io::IO, model::Model)
+    (; config, integrator) = model
     t = time_since(integrator.t, config.starttime)
-    nsaved = length(timesteps(reg))
-    println(io, "Register(ts: $nsaved, t: $t)")
+    nsaved = length(timesteps(model))
+    println(io, "Model(ts: $nsaved, t: $t)")
 end
