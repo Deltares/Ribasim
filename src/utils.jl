@@ -7,22 +7,15 @@ function pkgversion(m::Module)
     return pkgorigin === nothing ? nothing : pkgorigin.version
 end
 
-# avoid errors with show
-Base.nameof(::LinearInterpolation) = :LinearInterpolation
-
 "Return a directed graph, and a mapping from external ID to new ID."
-function create_graph(db::DB)
+function create_graph(db::DB)::DiGraph
     n = length(get_ids(db))
-    g = DiGraph(n)
+    graph = DiGraph(n)
     rows = execute(db, "select from_node_id, to_node_id from Edge")
     for (; from_node_id, to_node_id) in rows
-        add_edge!(g, from_node_id, to_node_id)
+        add_edge!(graph, from_node_id, to_node_id)
     end
-    return g
-end
-
-function inverse(d::Dict{K, V}) where {K, V}
-    return Dict{V, K}(v => k for (k, v) in d)
+    return graph
 end
 
 """
