@@ -1,5 +1,3 @@
-# reusable components that can be included in application scripts
-
 """
     Register(
         sys::MTK.AbstractODESystem,

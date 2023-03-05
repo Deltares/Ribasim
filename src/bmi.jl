@@ -1,55 +1,6 @@
-"Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.input_dir, path)
-end
-
-"Construct a path relative to both the TOML directory and the optional `output_dir`"
-function output_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.output_dir, path)
-end
-
-parsefile(config_path::AbstractString) =
-    from_toml(Config, config_path; toml_dir = dirname(normpath(config_path)))
-
 function BMI.initialize(T::Type{Register}, config_path::AbstractString)
     config = parsefile(config_path)
     BMI.initialize(T, config)
-end
-
-# Read into memory for now with read, to avoid locking the file, since it mmaps otherwise.
-# We could pass Mmap.mmap(path) ourselves and make sure it gets closed, since Arrow.Table
-# does not have an io handle to close.
-_read_table(entry::AbstractString) = Arrow.Table(read(entry))
-_read_table(entry) = entry
-
-function read_table(entry; schema = nothing)
-    table = _read_table(entry)
-    @assert Tables.istable(table)
-    if !isnothing(schema)
-        sv = schema()
-        validate(Tables.schema(table), sv)
-        R = Legolas.record_type(sv)
-        foreach(R, Tables.rows(table))  # construct each row
-    end
-    return DataFrame(table)
-end
-
-"Create an extra column in the forcing which is 0 or the index into the system parameters"
-function find_param_index(forcing, p_vars, p_ids)
-    (; variable, id) = forcing
-    # 0 means not in the model, skip
-    param_index = zeros(Int, length(variable))
-
-    for i in eachindex(variable, id, param_index)
-        var = variable[i]
-        id_ = id[i]
-        for (j, (p_var, p_id)) in enumerate(zip(p_vars, p_ids))
-            if (p_id == id_) && (p_var == var)
-                param_index[i] = j
-            end
-        end
-    end
-    return param_index
 end
 
 function BMI.initialize(T::Type{Register}, config::Config)

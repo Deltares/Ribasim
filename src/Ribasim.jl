@@ -31,7 +31,6 @@ include("io.jl")
 include("utils.jl")
 include("solve.jl")
 include("create.jl")
-include("construction.jl")
 include("bmi.jl")
 
 end  # module Ribasim
