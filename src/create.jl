@@ -1,4 +1,4 @@
-function create_connectivity(db::DB)::Connectivity
+function Connectivity(db::DB)::Connectivity
     graph = create_graph(db)
 
     flow = adjacency_matrix(graph, Float64)
@@ -10,14 +10,14 @@ function create_connectivity(db::DB)::Connectivity
     return Connectivity(graph, flow, u_index)
 end
 
-function create_linear_level_connection(db::DB, config::Config)
+function LinearLevelConnnection(db::DB, config::Config)
     data = load_data(db, config, "LinearLevelConnection")
     data === nothing && return LinearLevelConnection()
     tbl = columntable(data)
     return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
-function create_tabulated_rating_curve(db::DB, config::Config)
+function TabulatedRatingCurve(db::DB, config::Config)
     data = load_data(db, config, "TabulatedRatingCurve")
     data === nothing && return TabulatedRatingCurve()
     df = DataFrame(data)
@@ -49,14 +49,14 @@ function create_storage_tables(db::DB, config::Config)
     return area, level
 end
 
-function create_fractional_flow(db::DB, config::Config)
+function FractionalFlow(db::DB, config::Config)
     data = load_data(db, config, "FractionalFlow")
     data === nothing && return FractionalFlow()
     tbl = columntable(data)
     return FractionalFlow(tbl.node_id, tbl.fraction)
 end
 
-function create_level_control(db::DB, config::Config)
+function LevelControl(db::DB, config::Config)
     data = load_data(db, config, "LevelControl")
     data === nothing && return LevelControl()
     tbl = columntable(data)
@@ -91,7 +91,7 @@ function push_time_interpolation!(
     push!(interpolations, interpolation)
 end
 
-function create_basin(db::DB, config::Config)
+function Basin(db::DB, config::Config)
     # TODO support forcing for other nodetypes
     node_id = get_ids(db, "Basin")
     n = length(node_id)
@@ -187,17 +187,17 @@ function create_basin(db::DB, config::Config)
     )
 end
 
-function create_parameters(db::DB, config::Config)
+function Parameters(db::DB, config::Config)
 
-    # Setup node/edges graph, so validate in `create_connectivity`?
-    connectivity = create_connectivity(db)
+    # Setup node/edges graph, so validate in `Connectivity`?
+    connectivity = Connectivity(db)
 
-    linear_level_connection = create_linear_level_connection(db, config)
-    tabulated_rating_curve = create_tabulated_rating_curve(db, config)
-    fractional_flow = create_fractional_flow(db, config)
-    level_control = create_level_control(db, config)
+    linear_level_connection = LinearLevelConnnection(db, config)
+    tabulated_rating_curve = TabulatedRatingCurve(db, config)
+    fractional_flow = FractionalFlow(db, config)
+    level_control = LevelControl(db, config)
 
-    basin = create_basin(db, config)
+    basin = Basin(db, config)
 
     return Parameters(
         connectivity,
