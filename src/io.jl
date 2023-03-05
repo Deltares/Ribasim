@@ -127,13 +127,13 @@ function read_table(entry; schema = nothing)
     return DataFrame(table)
 end
 
-function write_basin_output(reg::Register)
-    (; config, integrator) = reg
+function write_basin_output(model::Model)
+    (; config, integrator) = model
     (; sol, p) = integrator
 
     basin_id = collect(keys(p.connectivity.u_index))
     nbasin = length(basin_id)
-    tsteps = time_since.(timesteps(reg), config.starttime)
+    tsteps = time_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
 
     time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
@@ -151,8 +151,8 @@ function write_basin_output(reg::Register)
     Arrow.write(path, basin; compress = :lz4)
 end
 
-function write_flow_output(reg::Register)
-    (; config, saved_flow, integrator) = reg
+function write_flow_output(model::Model)
+    (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
 
