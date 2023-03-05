@@ -59,7 +59,7 @@ function BMI.initialize(T::Type{Register}, config::Config)
     end
     db = SQLite.DB(gpkg_path)
 
-    parameters = create_parameters(db, config)
+    parameters = Parameters(db, config)
 
     @timeit_debug to "Setup ODEProblem" begin
         # use state
