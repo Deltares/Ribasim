@@ -7,4 +7,5 @@ A Python package for working with `Ribasim.jl <https://github.com/Deltares/Ribas
 Documentation
 -------------
 
-`Here <https://deltares.github.io/ribasim-python/ribasim.html>`_
+API documentation can be found `here <https://deltares.github.io/ribasim-python/ribasim.html>`_.
+See also the examples directory.
