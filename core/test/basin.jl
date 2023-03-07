@@ -3,7 +3,7 @@ import BasicModelInterface as BMI
 using SciMLBase
 
 @testset "basic model" begin
-    toml_path = normpath(@__DIR__, "../data/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -12,7 +12,7 @@ using SciMLBase
 end
 
 @testset "basic transient model" begin
-    toml_path = normpath(@__DIR__, "../data/basic-transient/basic-transient.toml")
+    toml_path = normpath(@__DIR__, "../../data/basic-transient/basic-transient.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model

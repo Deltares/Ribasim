@@ -5,7 +5,7 @@ using DataFrames
 import BasicModelInterface as BMI
 using SciMLBase
 
-datadir = normpath(@__DIR__, "..", "data")
+datadir = normpath(@__DIR__, "../../data")
 toml_path = normpath(@__DIR__, "testrun.toml")
 
 @testset "allocation_V" begin
