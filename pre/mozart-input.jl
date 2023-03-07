@@ -71,7 +71,7 @@ end
 
 """
 Create 1:1 input per node, instead of aggregated per LSW, see
-https://github.com/Deltares/Ribasim.jl/issues/18
+https://github.com/Deltares/Ribasim/issues/18
 """
 function expanded_network()
     # Basins stay in the center

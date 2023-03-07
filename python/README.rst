@@ -1,7 +1,7 @@
 ribasim-python
 ==============
 
-A Python package for working with `Ribasim.jl <https://github.com/Deltares/Ribasim.jl>`_.
+A Python package for working with `Ribasim <https://github.com/Deltares/Ribasim>`_.
 
 
 Documentation

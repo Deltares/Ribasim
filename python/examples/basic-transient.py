@@ -72,7 +72,7 @@ model.write("basic-transient")
 # %%
 # After running the model, read back the input:
 
-df = pd.read_feather(r"c:\src\ribasim.jl\examples\basic-transient\basin.arrow")
+df = pd.read_feather(r"c:\src\Ribasim\examples\basic-transient\basin.arrow")
 output = df.set_index(["time", "node_id"]).to_xarray()
 output["level"].plot(hue="node_id")
 # %%

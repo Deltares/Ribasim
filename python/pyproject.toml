@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ribasim"
-description = "Pre- and post-processs Ribasim.jl"
+description = "Pre- and post-processs Ribasim"
 readme = "README.md"
 authors = [
     {name = "Huite Bootsma", email = "Huite.Bootsma@deltares.nl"},
