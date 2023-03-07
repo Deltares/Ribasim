@@ -1,6 +1,6 @@
 # Ribasim
 
-**Documentation: https://deltares.github.io/Ribasim.jl/**
+**Documentation: https://deltares.github.io/Ribasim/**
 
 Ribasim is a water resources model, designed to be the replacement of the regional surface
 water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI). Ribasim is
