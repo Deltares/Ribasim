@@ -23,7 +23,7 @@
       <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
         <parameters>
           <param name="script.content" value="julia +release --project create_lib.jl" />
-          <param name="teamcity.build.workingDir" value="compile/create_binaries" />
+          <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
