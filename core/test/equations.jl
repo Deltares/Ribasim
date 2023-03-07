@@ -6,9 +6,9 @@ import BasicModelInterface as BMI
 using SciMLBase
 using TimerOutputs
 
-include("../utils/testdata.jl")  # to include Teamcity specific utils
+include("../../utils/testdata.jl")  # to include Teamcity specific utils
 
-datadir = normpath(@__DIR__, "..", "data")
+datadir = normpath(@__DIR__, "../../data")
 
 TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
 

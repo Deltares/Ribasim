@@ -41,10 +41,16 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@v1
+        with:
+          project: core
         env:
           JULIA_PKG_SERVER: "pkg.julialang.org"
       - uses: julia-actions/julia-runtest@v1
+        with:
+          project: core
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: core/src
       - uses: codecov/codecov-action@v3
         with:
           files: lcov.info

@@ -16,7 +16,7 @@ jobs:
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
@@ -37,9 +37,8 @@ jobs:
       # setup Python / Jupyter
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
-      # avoid jupyter-client 8: https://github.com/quarto-dev/quarto-cli/issues/4122
-      - run: pip install jupyter jupyter-client==7.4.9
+          python-version: '3.11'
+      - run: pip install jupyter
 
       - name: Install IJulia
         run: julia -e 'using Pkg; Pkg.add("IJulia")'

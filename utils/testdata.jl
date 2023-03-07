@@ -1,6 +1,6 @@
 using Downloads
 # ensure test data is present
-datadir = normpath(@__DIR__, "..", "data")
+datadir = normpath(@__DIR__, "../data")
 const teamcity_presence_env_var = "TEAMCITY_VERSION"
 
 "Download a test data file if it does not already exist"

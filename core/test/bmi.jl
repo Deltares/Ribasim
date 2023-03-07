@@ -1,7 +1,7 @@
 using Ribasim
 import BasicModelInterface as BMI
 
-toml_path = normpath(@__DIR__, "../data/basic/basic.toml")
+toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
 model = BMI.initialize(Ribasim.Model, toml_path)
 
 @testset "time" begin
