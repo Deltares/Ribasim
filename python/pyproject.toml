@@ -56,8 +56,8 @@ include = ["ribasim"]
 "ribasim" = ["py.typed"]
 
 [project.urls]
-Documentation = "https://deltares.github.io/ribasim-python/ribasim.html"
-Source = "https://github.com/Deltares/ribasim-python"
+Documentation = "https://deltares.github.io/Ribasim"
+Source = "https://github.com/Deltares/Ribasim"
 
 [tool.isort]
 profile = "black"

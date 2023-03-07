@@ -13,20 +13,20 @@ email=huitebootsma@gmail.com
 
 about=QGIS plugin to setup Ribasim models
 
-tracker=https://github.com/Deltares/ribasim-python/issues
-repository=https://github.com/Deltares/ribasim-python
+tracker=https://github.com/Deltares/Ribasim/issues
+repository=https://github.com/Deltares/Ribasim
 # End of mandatory metadata
 
 # Recommended items:
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=https://deltares.github.io/ribasim-python/changelog.html
+# changelog=https://deltares.github.io/Ribasim/changelog.html
 
 # Tags are comma separated with spaces allowed
 tags=julia, hydrology, water allocation
 
-homepage=https://github.com/Deltares/ribasim-python
+homepage=https://github.com/Deltares/Ribasim
 category=Plugins
 icon=icon.png
 # experimental flag
