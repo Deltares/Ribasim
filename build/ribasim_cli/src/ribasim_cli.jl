@@ -11,12 +11,12 @@ end
 function julia_main()::Cint
     n = length(ARGS)
     if n != 1
-        return help("Only 1 argument expected, got $n")
+        return help("Exactly 1 argument expected, got $n")
     end
     arg = only(ARGS)
 
     if arg == "--version"
-        version = pkgversion(@__MODULE__)
+        version = Ribasim.pkgversion(Ribasim)
         print(version)
         return 0
     end

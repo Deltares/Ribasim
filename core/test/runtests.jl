@@ -1,6 +1,7 @@
 using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../../utils/testdata.jl")
+include("../../build/ribasim_cli/src/ribasim_cli.jl")
 
 # a schematization for all of the Netherlands
 testdata("lhm.gpkg", normpath(datadir, "lhm/model.gpkg"))
@@ -39,6 +40,10 @@ testdata(
 
     @safetestset "Basic Model Interface" begin
         include("bmi.jl")
+    end
+
+    @safetestset "Command Line Interface" begin
+        include("cli.jl")
     end
 
     Aqua.test_all(Ribasim; ambiguities = false)
