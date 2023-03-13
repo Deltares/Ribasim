@@ -91,23 +91,3 @@ function run(config::Config)
     write_flow_output(model)
     return model
 end
-
-function run()
-    usage = "Usage: ribasim path/to/config.toml"
-    n = length(ARGS)
-    if n != 1
-        throw(ArgumentError(usage))
-    end
-    arg = only(ARGS)
-
-    if arg == "--version"
-        version = pkgversion(@__MODULE__)
-        print(version)
-        return
-    end
-
-    if !isfile(arg)
-        throw(ArgumentError("File not found: $(arg)\n" * usage))
-    end
-    run(arg)
-end

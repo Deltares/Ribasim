@@ -13,23 +13,26 @@ function julia_main()::Cint
     if n != 1
         return help("Only 1 argument expected, got $n")
     end
-    toml_path = only(ARGS)
-    if !isfile(toml_path)
-        return help("File not found: $toml_path")
+    arg = only(ARGS)
+
+    if arg == "--version"
+        version = pkgversion(@__MODULE__)
+        print(version)
+        return 0
+    end
+
+    if !isfile(arg)
+        return help("File not found: $arg")
     end
 
     try
-        Ribasim.run(toml_path)
+        Ribasim.run(arg)
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1
     end
 
     return 0
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    Ribasim.run()
 end
 
 end # module
