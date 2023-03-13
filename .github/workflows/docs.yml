@@ -22,8 +22,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/julia-buildpkg@v1
-        env:
-          JULIA_PKG_SERVER: "pkg.julialang.org"
+        with:
+          project: core
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
@@ -38,22 +38,24 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install jupyter
+      - run: pip install jupyter quartodoc xarray
 
-      - name: Install IJulia
-        run: julia -e 'using Pkg; Pkg.add("IJulia")'
+      - name: Install ribasim-python
+        working-directory: python
+        run: pip install -e .
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Check Quarto install
-        run: quarto check install
+      - name: Check Quarto installation and all engines
+        run: quarto check all
 
-      - name: Check Quarto kernels
-        run: quarto check jupyter
+      - name: Generate API pages
+        working-directory: docs
+        run: python -m quartodoc build
 
       - name: Render Quarto Project
-        run: "quarto render docs --to html"  # TODO add --execute back
+        run: "quarto render docs --to html --execute"
 
       - name: Publish Quarto Project
         if: github.event_name != 'pull_request'

@@ -1,5 +1,7 @@
 project:
   type: website
+  resources:
+    - objects.json
 
 website:
   title: "Ribasim"
@@ -7,17 +9,44 @@ website:
     left:
       - equations.qmd
       - modflow.qmd
-      - demo.ipynb
       - coupling-demo.qmd
       - developer.qmd
+      - python/index.qmd
 
 format:
   html:
     theme: cosmo
     css: styles.css
     toc: true
-    code-fold: true
 
 bibliography: references.bib
-juypter: julia-1.8
 number-sections: true
+
+quartodoc:
+  style: pkgdown
+  dir: python/reference
+  title: API Reference
+  package: ribasim
+  sections:
+    - title: Model
+      desc: The Model class represents an entire Ribasim model.
+      contents:
+        - Model
+    - title: Network
+      desc: The Node and Edge GeoPackage layers define the network layout.
+      contents:
+        - Node
+        - Edge
+    - title: Node types
+      desc: Available node types to model different situations.
+      contents:
+        - Basin
+        - TabulatedRatingCurve
+        - LinearLevelConnection
+        - FractionalFlow
+        - LevelControl
+    - title: Utility functions
+      desc: Collection of utility functions.
+      contents:
+        - utils.geometry_from_connectivity
+        - utils.connectivity_from_geometry
