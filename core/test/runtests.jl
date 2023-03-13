@@ -1,7 +1,6 @@
 using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../../utils/testdata.jl")
-include("../../build/ribasim_cli/src/ribasim_cli.jl")
 
 # a schematization for all of the Netherlands
 testdata("lhm.gpkg", normpath(datadir, "lhm/model.gpkg"))
