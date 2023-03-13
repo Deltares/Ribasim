@@ -91,16 +91,3 @@ function run(config::Config)
     write_flow_output(model)
     return model
 end
-
-function run()
-    usage = "Usage: julia -e 'using Ribasim; Ribasim.run()' 'path/to/config.toml'"
-    n = length(ARGS)
-    if n != 1
-        throw(ArgumentError(usage))
-    end
-    toml_path = only(ARGS)
-    if !isfile(toml_path)
-        throw(ArgumentError("File not found: $(toml_path)\n" * usage))
-    end
-    run(toml_path)
-end

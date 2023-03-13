@@ -41,5 +41,9 @@ testdata(
         include("bmi.jl")
     end
 
+    @safetestset "Command Line Interface" begin
+        include("cli.jl")
+    end
+
     Aqua.test_all(Ribasim; ambiguities = false)
 end
