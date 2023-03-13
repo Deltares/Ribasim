@@ -25,10 +25,11 @@ end
 end
 
 @testset "toml_path" begin
-    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+    model_path = normpath(@__DIR__, "../../data/basic/")
+    toml_path = normpath(model_path, "basic.toml")
     @test ispath(toml_path)
     empty!(ARGS)
     push!(ARGS, toml_path)
-    result, output = @capture_stdout(ribasim_cli.julia_main())
+    result, _output = @capture_stdout(ribasim_cli.julia_main())
     @test result == 0
 end
