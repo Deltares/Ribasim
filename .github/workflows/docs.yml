@@ -22,8 +22,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/julia-buildpkg@v1
-        env:
-          JULIA_PKG_SERVER: "pkg.julialang.org"
+        with:
+          project: core
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
