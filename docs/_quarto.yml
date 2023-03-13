@@ -9,7 +9,6 @@ website:
     left:
       - equations.qmd
       - modflow.qmd
-      - demo.ipynb
       - coupling-demo.qmd
       - developer.qmd
       - python/index.qmd
