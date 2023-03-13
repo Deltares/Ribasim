@@ -93,14 +93,21 @@ function run(config::Config)
 end
 
 function run()
-    usage = "Usage: julia -e 'using Ribasim; Ribasim.run()' 'path/to/config.toml'"
+    usage = "Usage: ribasim path/to/config.toml"
     n = length(ARGS)
     if n != 1
         throw(ArgumentError(usage))
     end
-    toml_path = only(ARGS)
-    if !isfile(toml_path)
-        throw(ArgumentError("File not found: $(toml_path)\n" * usage))
+    arg = only(ARGS)
+
+    if arg == "--version"
+        version = pkgversion(@__MODULE__)
+        print(version)
+        return
     end
-    run(toml_path)
+
+    if !isfile(arg)
+        throw(ArgumentError("File not found: $(arg)\n" * usage))
+    end
+    run(arg)
 end
