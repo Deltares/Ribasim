@@ -16,8 +16,8 @@ docs/site/
 /Manifest.toml
 
 /data/
-compile/create_binaries/ribasim_cli/
-compile/create_binaries/libribasim/
+build/create_binaries/ribasim_cli/
+build/create_binaries/libribasim/
 
 .vscode
 JuliaSysimage.dll
@@ -153,12 +153,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Generated docs
-/docs
-
 # VS Code settings
 *.vscode
-
-# Example models
-/examples/basic
-/examples/basic-transient
