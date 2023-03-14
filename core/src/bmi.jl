@@ -82,7 +82,7 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
-run(config_file::AbstractString) = run(parsefile(config_file))
+run(config_file::AbstractString)::Model = run(parsefile(config_file))
 
 function run(config::Config)::Model
     model = BMI.initialize(Model, config)
