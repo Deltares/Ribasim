@@ -1,4 +1,4 @@
 /.quarto/
 /_site/
-/docs/python/reference/
+python/reference/
 *.html
