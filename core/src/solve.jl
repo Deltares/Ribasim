@@ -102,7 +102,7 @@ end
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)
+function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)::Nothing
     for i in eachindex(du)
         storage = u[i]
         area = basin.area[i](storage)
@@ -131,7 +131,7 @@ function formulate!(
     connectivity::Connectivity,
     linear_level_connection::LinearLevelConnection,
     level,
-)
+)::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, conductance) = linear_level_connection
     for (i, id) in enumerate(node_id)
@@ -151,7 +151,7 @@ function formulate!(
     connectivity::Connectivity,
     tabulated_rating_curve::TabulatedRatingCurve,
     u,
-)
+)::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
@@ -166,7 +166,7 @@ function formulate!(
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)
+function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)::Nothing
     (; graph, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
@@ -177,7 +177,7 @@ function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, level_control::LevelControl, level)
+function formulate!(connectivity::Connectivity, level_control::LevelControl, level)::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, target_level, conductance) = level_control
     for (i, id) in enumerate(node_id)
@@ -194,7 +194,7 @@ function formulate!(connectivity::Connectivity, level_control::LevelControl, lev
     return nothing
 end
 
-function formulate!(du, connectivity::Connectivity)
+function formulate!(du, connectivity::Connectivity)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -210,7 +210,7 @@ function formulate!(du, connectivity::Connectivity)
     return nothing
 end
 
-function water_balance!(du, u, p, t)
+function water_balance!(du, u, p, t)::Nothing
     (;
         connectivity,
         basin,
@@ -246,13 +246,7 @@ function water_balance!(du, u, p, t)
     return nothing
 end
 
-# is_storage_empty(u, t, integrator) = any(iszero, u)
-# function set_storage_empty!(integrator)
-#     integrator.u .= 0.0
-#     return nothing
-# end
-
-function track_waterbalance!(u, t, integrator)
+function track_waterbalance!(u, t, integrator)::Nothing
     (; p, tprev, uprev) = integrator
     dt = t - tprev
     du = u - uprev
