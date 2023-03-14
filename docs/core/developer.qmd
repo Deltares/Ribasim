@@ -16,7 +16,7 @@ For more information on how to use `Pkg`, see the [Getting Started](https://pkgd
 There you can add `Revise` to your global environment.
 
 ```julia
-pkg> add Revise IJulia
+pkg> add Revise
 ```
 
 ## Setup Revise.jl
