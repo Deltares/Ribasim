@@ -10,7 +10,7 @@ function Connectivity(db::DB)::Connectivity
     return Connectivity(graph, flow, u_index)
 end
 
-function LinearLevelConnnection(db::DB, config::Config)
+function LinearLevelConnection(db::DB, config::Config)
     data = load_data(db, config, "LinearLevelConnection")
     data === nothing && return LinearLevelConnection()
     tbl = columntable(data)
@@ -192,7 +192,7 @@ function Parameters(db::DB, config::Config)
     # Setup node/edges graph, so validate in `Connectivity`?
     connectivity = Connectivity(db)
 
-    linear_level_connection = LinearLevelConnnection(db, config)
+    linear_level_connection = LinearLevelConnection(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
