@@ -10,14 +10,14 @@ function Connectivity(db::DB)::Connectivity
     return Connectivity(graph, flow, u_index)
 end
 
-function LinearLevelConnection(db::DB, config::Config)
+function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
     data = load_data(db, config, "LinearLevelConnection")
     data === nothing && return LinearLevelConnection()
     tbl = columntable(data)
     return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
-function TabulatedRatingCurve(db::DB, config::Config)
+function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     data = load_data(db, config, "TabulatedRatingCurve")
     data === nothing && return TabulatedRatingCurve()
     df = DataFrame(data)
@@ -49,14 +49,14 @@ function create_storage_tables(db::DB, config::Config)
     return area, level
 end
 
-function FractionalFlow(db::DB, config::Config)
+function FractionalFlow(db::DB, config::Config)::FractionalFlow
     data = load_data(db, config, "FractionalFlow")
     data === nothing && return FractionalFlow()
     tbl = columntable(data)
     return FractionalFlow(tbl.node_id, tbl.fraction)
 end
 
-function LevelControl(db::DB, config::Config)
+function LevelControl(db::DB, config::Config)::LevelControl
     data = load_data(db, config, "LevelControl")
     data === nothing && return LevelControl()
     tbl = columntable(data)
@@ -72,7 +72,7 @@ function push_time_interpolation!(
     forcing_id::DataFrame,
     t_end::Float64,
     static_id::DataFrame,
-)
+)::Vector{Interpolation}
     values = forcing_id[!, col]
     interpolation = LinearInterpolation(values, time)
     if isempty(interpolation)
@@ -91,7 +91,7 @@ function push_time_interpolation!(
     push!(interpolations, interpolation)
 end
 
-function Basin(db::DB, config::Config)
+function Basin(db::DB, config::Config)::Basin
     # TODO support forcing for other nodetypes
     node_id = get_ids(db, "Basin")
     n = length(node_id)
@@ -187,7 +187,7 @@ function Basin(db::DB, config::Config)
     )
 end
 
-function Parameters(db::DB, config::Config)
+function Parameters(db::DB, config::Config)::Parameters
 
     # Setup node/edges graph, so validate in `Connectivity`?
     connectivity = Connectivity(db)
