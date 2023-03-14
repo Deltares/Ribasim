@@ -1,0 +1,19 @@
+---
+title: "Coupled models"
+---
+
+Ribasim can be coupled to other software, for instance to model another process or domain,
+or to control a simulation from another process.
+
+To enable this, Ribasim can be compiled as a shared library (`libribasim`) instead of a
+command line interface (`ribasim`). This shared library exposes a C API in the form of the
+[Basic Model Interface](https://bmi.readthedocs.io/) (BMI). Other software can then load
+`libribasim` and load a Ribasim model, exchange data, and control the time stepping.
+
+An initial coupling to MODFLOW 6 was done in 2022 inside the [Julia core](../core/) as a
+proof of concept. Read about the [coupling setup](modflow.qmd) and see the
+[demonstration](modflow-demo.qmd). Going forward this and other coupling codes will be
+implemented outside of the core, by making use of
+[iMOD Coupler](https://deltares.github.io/iMOD-Documentation/coupler_index.html) and
+`libribasim`. iMOD Coupler is a generic coupling tool, and can be used to couple to other
+models as well.

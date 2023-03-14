@@ -1,5 +1,5 @@
 ---
-title: "Dev docs"
+title: "For developers"
 ---
 
 # Set up the developer environment

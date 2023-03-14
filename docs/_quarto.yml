@@ -7,31 +7,36 @@ website:
   navbar:
     logo: https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png
     left:
-      - text: "Equations"
-        file: equations.qmd
-      - text: "Modflow"
-        file: modflow.qmd
-      - text: "Coupling"
-        file: coupling-demo.qmd
-      - text: "Developer"
-        file: developer.qmd
-      - text: "Python"
+      - text: "Julia core"
+        file: core/index.qmd
+      - text: "Python tooling"
         file: python/index.qmd
       - text: "QGIS plugin"
         file: qgis/index.qmd
+      - text: "Coupled models"
+        file: couple/index.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim
         aria-label: GitHub
 
   sidebar:
-    - title: "Python"
+    - title: "Julia core"
+      contents:
+        - core/index.qmd
+        - core/usage.qmd
+        - core/equations.qmd
+        - core/developer.qmd
+    - title: "Python tooling"
       contents:
         - python/index.qmd
         - python/examples.ipynb
         - python/reference/index.qmd
-    - title: "To be continued"
-      contents: []
+    - title: "Coupled models"
+      contents:
+        - couple/index.qmd
+        - couple/modflow.qmd
+        - couple/modflow-demo.qmd
 
 format:
   html:

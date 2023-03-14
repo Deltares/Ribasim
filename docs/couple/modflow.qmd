@@ -1,5 +1,5 @@
 ---
-title: "MODFLOW 6 Coupling"
+title: "MODFLOW 6"
 ---
 
 Ribasim has been designed to provide a computationally efficient representation of
