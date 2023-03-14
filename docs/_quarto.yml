@@ -17,6 +17,8 @@ website:
         file: developer.qmd
       - text: "Python"
         file: python/index.qmd
+      - text: "QGIS plugin"
+        file: qgis/index.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim
