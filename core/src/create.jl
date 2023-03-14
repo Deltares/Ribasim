@@ -10,7 +10,7 @@ function Connectivity(db::DB)::Connectivity
     return Connectivity(graph, flow, u_index)
 end
 
-function LinearLevelConnnection(db::DB, config::Config)::LinearLevelConnection
+function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
     data = load_data(db, config, "LinearLevelConnection")
     data === nothing && return LinearLevelConnection()
     tbl = columntable(data)
