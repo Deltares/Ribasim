@@ -1,5 +1,5 @@
 ---
-title: "Water balance"
+title: "Equations"
 ---
 
 Ribasim currently simulates the following "natural" water balance terms:
@@ -87,7 +87,7 @@ Q_{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0)
 $$
 
 The interaction with MODFLOW 6 boundary conditions is explained in greater
-detail in the [the MODFLOW coupling section](coupling-demo.qmd) of this documentation.
+detail in the [the MODFLOW coupling section](../couple/modflow.qmd) of the documentation.
 
 ## Upstream and downstream flow
 

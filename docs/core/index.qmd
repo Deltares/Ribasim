@@ -1,0 +1,13 @@
+---
+title: "Julia core"
+---
+
+With the term "core", we mean the computational engine of Ribasim. As detailed in the
+[usage](usage.qmd) documentation, it is generally used as a command line tool.
+
+The theory is described on the [equations](equations.qmd) page.
+
+The core is implemented in the [Julia programming language](https://julialang.org/), and
+can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the
+`core/` folder. For developers we also advise to read the
+[developer documentation](developer.qmd).

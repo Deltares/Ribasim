@@ -1,8 +1,8 @@
 ---
-title: "Python package"
+title: "Python tooling"
 ---
 
-The Ribasim Python package aims to make it easy to build, update and analyze Ribasim models
+The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
 programmatically.
 
 The Ribasim QGIS plugin allows users to construct a model from scratch without programming.
@@ -14,3 +14,5 @@ setup is fully reproducible.
 
 The package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
 be installed with `pip install ribasim`.
+
+For documentation please see the [examples](examples.ipynb) and [API reference](reference/).
