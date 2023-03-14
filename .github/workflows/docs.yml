@@ -52,7 +52,10 @@ jobs:
 
       - name: Generate API pages
         working-directory: docs
-        run: python -m quartodoc build
+        # objects.json: https://github.com/machow/quartodoc/issues/63
+        run: |
+          python -m quartodoc build
+          rm objects.json
 
       - name: Render Quarto Project
         run: "quarto render docs --to html --execute"
