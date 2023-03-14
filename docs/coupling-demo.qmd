@@ -94,7 +94,7 @@ above is shared by all cells in a basin.
 
 @fig-grid-volume shows the water level corresponding to the normative storage
 volume based input for the primary system (it corresponds to the value shown in
-the first row of the primary colum in @tbl-hupsel-v-h). We see a clear gradient
+the first row of the primary column in @tbl-hupsel-v-h). We see a clear gradient
 from west to east: as our simplified parametrization assumes a constant water
 depth for all cells in a single system, water levels spatially fall and rise
 with the bottom elevation.
@@ -202,7 +202,7 @@ secondary outflow terms are larger for positive groundwater recharge as they
 drain at a lower level and intercept the water before the tertiary system does.
 Secondly, with negative groundwater recharge, no infiltration occurs and the
 water is drawn from the surroundings instead. This shows the coupling mechanism
-adjusting MODFLOW 6 water levels succesfully.
+adjusting MODFLOW 6 water levels successfully.
 
 ## Test case: de Tol
 
