@@ -186,7 +186,7 @@ saveat = 86400.0  # optional, default is the value of update_timestep
 # input files
 geopackage = "model.gpkg"  # required
 
-# Specic tables can also go into Arrow files rather than the GeoPackage.
+# Specific tables can also go into Arrow files rather than the GeoPackage.
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
 [forcing]
@@ -342,7 +342,7 @@ example of this is the `target_volume` from the LevelLink node.
 
 This table is the transient form of the `Basin` table. The only difference is that a time
 column is added. A linear interpolation between the given timesteps is currently done if the
-solver takes timesteps between the given data points. More options will be avaiable later.
+solver takes timesteps between the given data points. More options will be available later.
 
 ### Basin / profile
 
@@ -382,7 +382,7 @@ discharge | Float64 | $m^3 s^{-1}$ | non-negative
 ### Basin output
 
 The basin table contains outputs of the storage and level of each basin at every solver
-timestep. The inital condition is also written to the file.
+timestep. The initial condition is also written to the file.
 
 column   | type     | unit
 -------- | -------- | ----

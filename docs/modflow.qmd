@@ -246,7 +246,7 @@ When the head falls below the drainage elevation, the coefficients are 0.
 
 ### River
 
-From Ribasim's persective, infiltration is never limited when the head falls below
+From Ribasim's perspective, infiltration is never limited when the head falls below
 the bottom:
 
 $$
@@ -310,7 +310,7 @@ the level will be interpolated.
 Great care is required when parametrizing these volume-level relationships.
 As Ribasim does not know the properties of the surface water, it can perform
 very limited validation of the volume-level lookup tables. As the total
-volume of the basin is distributed accross **all** boundary conditions, it
+volume of the basin is distributed across **all** boundary conditions, it
 should be checked that the change of the water column for every boundary
 condition matches the total volume change of the basin.
 :::
