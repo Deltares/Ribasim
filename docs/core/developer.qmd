@@ -13,7 +13,7 @@ Install Julia via Juliaup as described in its [README](https://github.com/JuliaL
 Start the Julia [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) by executing `julia` in your terminal.
 Within the REPL type `]` to enter the Pkg REPL.
 For more information on how to use `Pkg`, see the [Getting Started](https://pkgdocs.julialang.org/v1/getting-started/) page in its documentation.
-There you can add `Revise` and `IJulia` to your global environment.
+There you can add `Revise` to your global environment.
 
 ```julia
 pkg> add Revise IJulia
@@ -34,7 +34,7 @@ The installation instructions can be found on their [web page](https://quarto.or
 In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
 
 ```bash
-git clone https://github.com/Deltares/Ribasim.jl.git
+git clone https://github.com/Deltares/Ribasim.git
 ```
 
 
@@ -64,35 +64,45 @@ Then open the Pkg REPL by typing `]` and execute:
 pkg> test
 ```
 
-If you are in a different environment that depends on Ribasim (like the `run` environment mentioned [later](./developer.html#run-ribasim-simulations)), you can test Ribasim with the following command:
+If you are in a different environment that depends on Ribasim, you can test Ribasim with the following command:
 
 ```julia
 pkg> test Ribasim
 ```
 
 :::{.callout-tip}
-The Julia VS Code extension allows you to [open a REPL](https://www.julia-vscode.org/docs/stable/userguide/runningcode/#The-Julia-REPL) with the Ribasim environment already activated.
-That way you don't have to type `using Ribasim` every time you open the REPL.
+The Julia VS Code extension allows you to [open a REPL](https://www.julia-vscode.org/docs/stable/userguide/runningcode/#The-Julia-REPL) with the Ribasim environment already activated: `"julia.environmentPath": "Ribasim/core"`.
+That way you don't have to type `activate core` every time you open the REPL.
 :::
 
 ## Render documentation
 
-In order to preview documentation you can run the following command at the root of this project.
-Afterwards, a browser tab will open with the rendered documentation.
+Example models are created and simulated as part of the rendering of the documentation.
+Therefore you need to have both the `ribasim` Python package and the Julia `Ribasim` package
+installed. Furthermore you need these 3 Python packages installed: `jupyter quartodoc xarray`.
+
+The Python API reference is created using quartodoc by running this command from the `docs/`
+folder:
 
 ```bash
-quarto preview docs
+python -m quartodoc build
+```
+
+You typically only have to run this once, or if you want to check out how it looks after
+changing Python docstrings.
+
+In order to preview documentation you can run the following command from the `docs/` folder.
+Afterwards, a browser tab will open with the rendered documentation, updating it as you
+make changes.
+
+```bash
+quarto preview
 ```
 
 The documentation also includes [Jupyter notebooks](https://jupyter.org/).
-To edit and execute them run the following commands in your Julia REPL.
-The first time, it will offer to download Conda and Jupyter for you.
-Say yes, and a browser tab will open with Jupyter loaded.
-
-```julia
-julia> using IJulia
-julia> jupyterlab(dir=".")
-```
+Note that they are stored in the repository without any output, and this should stay
+this way to keep the repository small. The documentation rendering process adds the output
+by running the notebooks.
 
 :::{.callout-tip}
 The Jupyter VS Code [extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) allows you to run Jupyter notebooks directly in VS Code.
@@ -100,31 +110,21 @@ The Jupyter VS Code [extension](https://marketplace.visualstudio.com/items?itemN
 
 ## Run Ribasim simulations
 
-We currently include a folder `run` which allows us to run Ribasim simulations and do post-processing.
 Assuming your working directory is the root of the repository,
 you can activate this project by entering the Pkg mode of the REPL with `]` and execute:
 
 ```julia
-pkg> activate run
+pkg> activate core
+pkg> instantiate
 ```
-
-The first time you do this, you will also have to tell it where it can find the Ribasim module itself.
-This can be done with `dev .` to tell it to develop the module in the current directory.
-
-```julia
-(run) pkg> dev .
-```
-
 
 Press backspace to go back to the Julia REPL.
-There you can execute the run file with:
+There you can run a model with:
 ```julia
-julia> include("run/run.jl")
+julia> Ribasim.run("path/to/model.toml")
 ```
 
 :::{.callout-tip}
 The Julia VS Code extension allows you to [execute code cells in REPL](https://www.julia-vscode.org/docs/stable/userguide/runningcode/#Running-code-in-the-Julia-REPL).
 This is a very convenient way of executing only parts of your source file.
-Per default that has the Ribasim environment activated not the run environment.
-However, you can change that as described in the [docs](https://www.julia-vscode.org/docs/stable/userguide/env/#Julia-Environments)
 :::
