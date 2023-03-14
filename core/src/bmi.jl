@@ -1,9 +1,9 @@
-function BMI.initialize(T::Type{Model}, config_path::AbstractString)
+function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
     config = parsefile(config_path)
     BMI.initialize(T, config)
 end
 
-function BMI.initialize(T::Type{Model}, config::Config)
+function BMI.initialize(T::Type{Model}, config::Config)::Model
     gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: $gpkg_path"))
@@ -57,12 +57,12 @@ function BMI.initialize(T::Type{Model}, config::Config)
     return Model(integrator, config, saved_flow, waterbalance)
 end
 
-function BMI.update(model::Model)
+function BMI.update(model::Model)::Model
     step!(model.integrator)
     return model
 end
 
-function BMI.update_until(model::Model, time)
+function BMI.update_until(model::Model, time)::Model
     integrator = model.integrator
     t = integrator.t
     dt = time - t
@@ -84,7 +84,7 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
 run(config_file::AbstractString) = run(parsefile(config_file))
 
-function run(config::Config)
+function run(config::Config)::Model
     model = BMI.initialize(Model, config)
     solve!(model.integrator)
     write_basin_output(model)
