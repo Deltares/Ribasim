@@ -1,11 +1,12 @@
-name: docs
+name: Docs
 on:
   push:
     branches: [main]
+    paths-ignore: [".teamcity/**"]
   pull_request:
 jobs:
   publish:
-    name: Julia Docs ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Docs ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

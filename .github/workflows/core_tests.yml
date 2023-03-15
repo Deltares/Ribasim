@@ -1,13 +1,13 @@
-name: CI
+name: Julia Tests
 on:
   push:
     branches: [main]
     tags: ["*"]
-    paths-ignore: [".teamcity/**"]
+    paths: [".github", "core"]
   pull_request:
 jobs:
   test:
-    name: Julia CI ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Julia Tests ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
