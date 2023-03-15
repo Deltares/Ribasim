@@ -19,7 +19,6 @@ docs/site/
 build/create_binaries/ribasim_cli/
 build/create_binaries/libribasim/
 
-.vscode
 JuliaSysimage.dll
 LocalPreferences.toml
 .ipynb_checkpoints
@@ -153,5 +152,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# VS Code settings
-*.vscode
+# vscode
+.vscode/settings.json

@@ -72,7 +72,7 @@ class InputMixin(abc.ABC):
 
             gdf = gpd.GeoDataFrame(data=dataframe)
             if "geometry" in gdf.columns:
-                gdf.set_geometry("geometry", inplace=True)
+                gdf = gdf.set_geometry("geometry")
             else:
                 gdf["geometry"] = None
             gdf.to_file(directory / f"{modelname}.gpkg", layer=name)

@@ -1,0 +1,45 @@
+name: Python Tests
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+    paths: [".github", "python"]
+  pull_request:
+jobs:
+  test:
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        python_version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          python_version: ${{ matrix.python_version }}
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./python/environment.yml
+
+      - name: Install ribasim
+        working-directory: python
+        run: pip install -e .
+
+      - name: Run tests
+        working-directory: python
+        run: pytest tests

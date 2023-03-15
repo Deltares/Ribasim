@@ -7,10 +7,10 @@ name = "ribasim"
 description = "Pre- and post-process Ribasim"
 readme = "README.md"
 authors = [
-    {name = "Huite Bootsma", email = "Huite.Bootsma@deltares.nl"},
-    {name = "Julian Hofer", email = "Julian.Hofer@deltares.nl"},
+    { name = "Huite Bootsma", email = "Huite.Bootsma@deltares.nl" },
+    { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
 ]
-license = {text = "MIT"}
+license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
@@ -31,24 +31,15 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-tests = [
-    "pytest",
-    "pytest-cov",
-]
-lint = [
-    "black",
-    "ruff",
-    "mypy",
-]
-docs = [
-    "pdoc",
-]
+tests = ["pytest", "pytest-cov"]
+lint = ["black", "ruff", "mypy"]
 
 [tool.setuptools]
 zip-safe = true
 
 [tool.setuptools.dynamic]
-version = {attr = "ribasim.__version__"}
+version = { attr = "ribasim.__version__" }
+
 [tool.setuptools.packages.find]
 include = ["ribasim"]
 
@@ -59,6 +50,7 @@ include = ["ribasim"]
 Documentation = "https://deltares.github.io/Ribasim"
 Source = "https://github.com/Deltares/Ribasim"
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
+[tool.ruff]
+select = ["E", "F", "NPY", "PD", "C4", "I"]
+ignore = ["E501", "PD901"]
+fixable = ["I"]

@@ -1,0 +1,43 @@
+name: Python Lint
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+    paths: [".github", "python"]
+  pull_request:
+jobs:
+  lint:
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        python_version:
+          - "3.11"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          python_version: ${{ matrix.python_version }}
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./python/environment.yml
+
+      - name: Run black
+        working-directory: python
+        run: black --check .
+
+      # Include `--format=github` to enable automatic inline annotations.
+      - name: Run ruff
+        working-directory: python
+        run: ruff check --format=github .

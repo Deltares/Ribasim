@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "julialang.language-julia",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "njpwerner.autodocstring"
+    ]
+}
