@@ -59,3 +59,9 @@ To run the tests execute:
 ```bash
 pytest tests
 ```
+
+## Setup Visual Studio Code (optional)
+
+1. Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and [autoDocstring](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) extensions.
+
+2. Copy `.vscode/settings_template.json` into `.vscode/settings.json`

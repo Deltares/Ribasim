@@ -1,0 +1,16 @@
+{
+    "[julia]": {
+        "editor.formatOnSave": true
+    },
+    "julia.environmentPath": "core",
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": true
+        }
+    },
+    "python.formatting.provider": "black",
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": true,
+    "cSpell.enabled": false,
+}
