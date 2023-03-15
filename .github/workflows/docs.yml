@@ -6,21 +6,23 @@ on:
   pull_request:
 jobs:
   publish:
-    name: Docs ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Docs Julia ${{ matrix.julia_version }} - Python ${{ matrix.python_version }}  - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     strategy:
       matrix:
-        version:
-          - "1.8" # make sure to keep this in sync with _quarto.yml
+        julia_version:
+          - "1.8"
+        python_version:
+          - "3.11"
         arch:
           - x64
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.version }}
+          version: ${{ matrix.julia_version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/julia-buildpkg@v1
         with:
@@ -38,7 +40,7 @@ jobs:
       # setup Python / Jupyter
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "${{ matrix.python_version }}"
       - run: pip install jupyter quartodoc xarray
 
       - name: Install ribasim-python

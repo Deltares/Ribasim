@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   lint:
-    name: Python Lint ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     continue-on-error: true
     runs-on: ${{ matrix.os }}
     defaults:
@@ -20,12 +20,15 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        python_version:
+          - "3.11"
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup Micromamba
         uses: mamba-org/provision-with-micromamba@main
         with:
+          python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
           environment-file: ./python/environment.yml
