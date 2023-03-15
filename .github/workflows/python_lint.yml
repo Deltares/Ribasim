@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   lint:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     continue-on-error: true
     runs-on: ${{ matrix.os }}
     defaults:

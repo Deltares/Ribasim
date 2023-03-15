@@ -6,7 +6,7 @@ on:
   pull_request:
 jobs:
   publish:
-    name: Docs Julia ${{ matrix.julia_version }} - Python ${{ matrix.python_version }}  - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Docs Julia ${{ matrix.julia_version }} - Python ${{ matrix.python_version }}  - ${{ matrix.arch }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
