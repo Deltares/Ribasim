@@ -105,6 +105,8 @@ class Model(BaseModel):
             "starttime": self.starttime,
             "endtime": self.endtime,
             "geopackage": f"{self.modelname}.gpkg",
+            # TODO support all solver options
+            "solver": {"autodiff": False},
         }
         with open(directory / f"{self.modelname}.toml", "wb") as f:
             tomli_w.dump(content, f)

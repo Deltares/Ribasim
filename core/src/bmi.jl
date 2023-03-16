@@ -4,6 +4,7 @@ function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
 end
 
 function BMI.initialize(T::Type{Model}, config::Config)::Model
+    alg = algorithm(config.solver)
     gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: $gpkg_path"))
@@ -38,18 +39,17 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
-    @timeit_debug to "Setup callbackset" callback = save_flow_cb
-
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
-        Euler();
-        dt = config.update_timestep,
+        alg;
         progress = true,
         progress_name = "Simulating",
-        callback,
-        config.saveat,
-        abstol = 1e-6,
-        reltol = 1e-3,
+        callback = save_flow_cb,
+        config.solver.saveat,
+        config.solver.dt,
+        config.solver.abstol,
+        config.solver.reltol,
+        config.solver.maxiters,
     )
 
     close(db)

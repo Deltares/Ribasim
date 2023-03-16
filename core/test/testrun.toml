@@ -3,7 +3,6 @@ endtime = 2019-12-31
 
 # [s] Δt for periodic update frequency, including user horizons
 update_timestep = 86400.0
-saveat = 86400.0
 
 # optional, default is the path of the TOML
 input_dir = "../data/lhm"
@@ -14,3 +13,7 @@ waterbalance = "waterbalance.arrow"
 
 [forcing]
 Basin = "forcing.arrow"
+
+[solver]
+saveat = 86400
+autodiff = false
