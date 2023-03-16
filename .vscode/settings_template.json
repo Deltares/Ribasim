@@ -11,6 +11,5 @@
     },
     "python.formatting.provider": "black",
     "python.linting.mypyEnabled": true,
-    "python.linting.enabled": true,
-    "cSpell.enabled": false,
+    "python.linting.enabled": true
 }
