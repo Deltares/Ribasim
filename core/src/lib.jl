@@ -13,14 +13,12 @@ struct Model{T}
     integrator::T
     config::Config
     saved_flow::SavedValues{Float64, Vector{Float64}}
-    waterbalance::DataFrame
     function Model(
         integrator::T,
         config,
         saved_flow,
-        waterbalance,
     ) where {T <: SciMLBase.AbstractODEIntegrator}
-        new{T}(integrator, config, saved_flow, waterbalance)
+        new{T}(integrator, config, saved_flow)
     end
 end
 

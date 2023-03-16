@@ -28,7 +28,6 @@ testdata(
         include("config.jl")
     end
 
-    # @safetestset "Water allocation" begin include("alloc.jl") end
     @safetestset "Equations" begin
         include("equations.jl")
     end

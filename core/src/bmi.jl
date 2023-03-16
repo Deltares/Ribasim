@@ -32,7 +32,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
 
     # add a single time step's contribution to the water balance step's totals
-    trackwb_cb = FunctionCallingCallback(track_waterbalance!)
+    # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
     # flows: save the flows over time, as a Vector of the nonzeros(flow)
     save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
     saved_flow = SavedValues(Float64, Vector{Float64})
@@ -52,9 +52,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         reltol = 1e-3,
     )
 
-    waterbalance = DataFrame()  # not used at the moment
     close(db)
-    return Model(integrator, config, saved_flow, waterbalance)
+    return Model(integrator, config, saved_flow)
 end
 
 function BMI.update(model::Model)::Model
