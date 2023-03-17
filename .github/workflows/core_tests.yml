@@ -3,9 +3,9 @@ on:
   push:
     branches: [main]
     tags: ["*"]
-    paths: [".github", "core"]
+    paths: [".github/**", "core/**"]
   pull_request:
-    paths: [".github", "core"]
+    paths: [".github/**", "core/**"]
 jobs:
   test:
     name: Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
