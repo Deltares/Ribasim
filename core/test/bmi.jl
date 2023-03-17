@@ -17,5 +17,5 @@ model = BMI.initialize(Ribasim.Model, toml_path)
     BMI.update_until(model, 86400.0)
     # TODO it oversteps here to 103995.266f0
     @test BMI.get_current_time(model) == 86400.0 broken = true
-    # TODO test fixed timestep, and determin correct update_until behavior for both cases
+    # TODO test fixed timestep, and determine correct update_until behavior for both cases
 end
