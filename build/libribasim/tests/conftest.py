@@ -8,7 +8,7 @@ from xmipy import XmiWrapper
 @pytest.fixture(scope="session")
 def libribasim_paths() -> tuple[Path, Path]:
     test_dir = Path(__file__).parent.resolve()
-    lib_folder = test_dir.parent.parent / "create_binaries" / "libribasim" / "bin"
+    lib_folder = test_dir.parents[1] / "create_binaries" / "libribasim" / "bin"
     lib_path = lib_folder / "libribasim"
     return lib_path, lib_folder
 
@@ -29,7 +29,7 @@ def ribasim_basic(libribasim_paths, request) -> tuple[XmiWrapper, str]:
     # If initialized, call finalize() at end of use
     request.addfinalizer(libribasim.__del__)
 
-    repo_root = Path(__file__).parent.parent.parent.parent.resolve()
+    repo_root = Path(__file__).parents[3].resolve()
     config_file = str(repo_root / "data" / "basic" / "basic.toml")
 
     return libribasim, config_file
