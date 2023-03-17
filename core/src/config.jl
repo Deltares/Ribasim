@@ -108,7 +108,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     # not all algorithms support this keyword
-    return try
+    try
         algotype(; solver.autodiff)
     catch
         algotype()
