@@ -3,9 +3,9 @@ on:
   push:
     branches: [main]
     tags: ["*"]
-    paths: [".github", "python"]
+    paths: [".github/**", "python/**"]
   pull_request:
-    paths: [".github", "python"]
+    paths: [".github/**", "python/**"]
 jobs:
   test:
     name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
