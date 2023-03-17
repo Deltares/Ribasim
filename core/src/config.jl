@@ -33,7 +33,7 @@ abstract type TableOption end
     dt::Float64 = 0.0
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-3
-    maxiters::Int = typemax(Int)
+    maxiters::Int = 1e9
 end
 
 @option struct Config

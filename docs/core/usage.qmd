@@ -31,11 +31,13 @@ endtime = 2021-01-01    # required
 
 # all timesteps are in seconds
 update_timestep = 86400.0  # optional, default 1 day
-# save timesteps at this interval
-saveat = 86400.0  # optional, default is the value of update_timestep
 
 # input files
 geopackage = "model.gpkg"  # required
+
+# These output files are always written
+flow = "output/flow.arrow"    # optional, default "output/flow.arrow"
+basin = "output/basin.arrow"  # optional, default "output/basin.arrow"
 
 # Specific tables can also go into Arrow files rather than the GeoPackage.
 # For large tables this can benefit from better compressed file sizes.
@@ -43,10 +45,23 @@ geopackage = "model.gpkg"  # required
 [forcing]
 Basin = "forcing.arrow"
 
-# These output files are always written
-flow = "output/flow.arrow"    # optional, default "output/flow.arrow"
-basin = "output/basin.arrow"  # optional, default "output/basin.arrow"
+
+[solver]
+algorithm = "QNDF"  # optional, default "QNDF"
+# autodiff can only be set for implicit solvers, where it defaults to true
+# since autodiff is not yet supported, set it to false in this case.
+autodiff = false  # optional, default not set
+# saveat can be a number, which is the saving interval in seconds, or
+# it can be a list of numbers, which are the times in seconds since start that are saved
+saveat = []  # optional, default [], which will save every timestep
+dt = 0.0  # optional, default 0.0
+abstol = 1e-6  # optional, default 1e-6
+reltol = 1e-3  # optional, default 1e-3
+maxiters = 1e9  # optional, default 1e9
 ```
+
+For more information on the solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
+Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 ### GeoPackage and Arrow tables
 

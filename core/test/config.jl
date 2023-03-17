@@ -9,7 +9,7 @@ using OrdinaryDiffEq: alg_autodiff
     @test config.update_timestep == 86400.0
     @test config.endtime > config.starttime
     @test config.solver ==
-          Ribasim.Solver("QNDF", false, 86400.0, 0, 1.0e-6, 0.001, typemax(Int))
+          Ribasim.Solver("QNDF", false, 86400.0, 0, 1.0e-6, 0.001, Int(1e9))
 
     @test_throws UndefKeywordError Ribasim.Config()
     @test_throws UndefKeywordError Ribasim.Config(
@@ -22,7 +22,7 @@ end
 
 @testset "Solver" begin
     @test Ribasim.Solver() ==
-          Ribasim.Solver("QNDF", nothing, Float64[], 0, 1.0e-6, 0.001, typemax(Int))
+          Ribasim.Solver("QNDF", nothing, Float64[], 0, 1.0e-6, 0.001, Int(1e9))
     @test Ribasim.Solver(;
         algorithm = "Rosenbrock23",
         autodiff = false,

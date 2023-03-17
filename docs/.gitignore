@@ -1,4 +1,5 @@
 /.quarto/
 /_site/
+/site_libs/
 python/reference/
 *.html
