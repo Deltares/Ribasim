@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         julia_version:
