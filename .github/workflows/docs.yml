@@ -20,13 +20,16 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v3
+
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia_version }}
           arch: ${{ matrix.arch }}
+
       - uses: julia-actions/julia-buildpkg@v1
         with:
           project: core
+
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
@@ -37,11 +40,13 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
 
-      # setup Python / Jupyter
-      - uses: actions/setup-python@v4
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
         with:
-          python-version: "${{ matrix.python_version }}"
-      - run: pip install jupyter quartodoc xarray
+          python_version: ${{ matrix.python_version }}
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./python/environment.yml
 
       - name: Install ribasim-python
         working-directory: python

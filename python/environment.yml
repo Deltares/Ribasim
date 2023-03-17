@@ -6,10 +6,15 @@ channels:
 dependencies:
   - black
   - geopandas
+  - jupyterlab
   - matplotlib
   - mypy
   - pandas
   - pandera
+  - pip
+  - pip:
+    - xmipy
+    - quartodoc
   - pyarrow
   - pydantic
   - pyogrio
