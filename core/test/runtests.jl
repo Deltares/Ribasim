@@ -2,10 +2,6 @@ using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
 
 include("../../utils/testdata.jl")
 
-# a schematization for all of the Netherlands
-testdata("lhm.gpkg", normpath(datadir, "lhm/model.gpkg"))
-testdata("lhm-forcing.arrow", normpath(datadir, "lhm/forcing.arrow"))
-
 # a basic test model
 testdata("basic.gpkg", normpath(datadir, "basic", "basic.gpkg"))
 testdata("basic.toml", normpath(datadir, "basic", "basic.toml"))
@@ -28,7 +24,6 @@ testdata(
         include("config.jl")
     end
 
-    # @safetestset "Water allocation" begin include("alloc.jl") end
     @safetestset "Equations" begin
         include("equations.jl")
     end

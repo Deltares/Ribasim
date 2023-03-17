@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 import matplotlib.pyplot as plt
 import tomli
@@ -31,6 +31,16 @@ _NODES = (
 )
 
 
+class Solver(BaseModel):
+    algorithm: Optional[str]
+    autodiff: Optional[bool]
+    saveat: Optional[List[float]]
+    dt: Optional[float]
+    abstol: Optional[float]
+    reltol: Optional[float]
+    maxiters: Optional[int]
+
+
 class Model(BaseModel):
     """
     Ribasim model containing the location of the nodes, the edges between the
@@ -48,6 +58,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: Union[str, datetime.datetime]
     endtime: Union[str, datetime.datetime]
+    solver: Optional[Solver]
     """
 
     modelname: str
@@ -60,6 +71,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: datetime.datetime
     endtime: datetime.datetime
+    solver: Optional[Solver]
 
     class Config:
         validate_assignment = True
@@ -76,6 +88,7 @@ class Model(BaseModel):
         level_control: Optional[LevelControl] = None,
         linear_level_connection: Optional[LinearLevelConnection] = None,
         tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
+        solver: Optional[Solver] = None,
     ):
         super().__init__(**locals())
 
@@ -106,6 +119,10 @@ class Model(BaseModel):
             "endtime": self.endtime,
             "geopackage": f"{self.modelname}.gpkg",
         }
+        if self.solver is not None:
+            section = {k: v for k, v in self.solver.dict().items() if v is not None}
+            content["solver"] = section
+
         with open(directory / f"{self.modelname}.toml", "wb") as f:
             tomli_w.dump(content, f)
         return
@@ -164,6 +181,7 @@ class Model(BaseModel):
 
         kwargs["starttime"] = config["starttime"]
         kwargs["endtime"] = config["endtime"]
+        kwargs["solver"] = config.get("solver")
 
         return Model(**kwargs)
 
