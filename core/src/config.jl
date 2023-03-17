@@ -4,7 +4,7 @@ nodetypes::Vector{Symbol} = [
     :LevelControl,
     :LinearLevelConnection,
     :TabulatedRatingCurve,
-    :WaterUser,
+    :Pump,
 ]
 
 """

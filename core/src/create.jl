@@ -65,6 +65,13 @@ function LevelControl(db::DB, config::Config)::LevelControl
     return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
+function Pump(db::DB, config::Config)::Pump
+    data = load_data(db, config, "Pump")
+    data === nothing && return Pump()
+    tbl = columntable(data)
+    return Pump(tbl.node_id, tbl.flow_rate)
+end
+
 function push_time_interpolation!(
     interpolations::Vector{Interpolation},
     col::Symbol,
@@ -196,6 +203,7 @@ function Parameters(db::DB, config::Config)::Parameters
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
+    pump = Pump(db, config)
 
     basin = Basin(db, config)
 
@@ -206,5 +214,6 @@ function Parameters(db::DB, config::Config)::Parameters
         tabulated_rating_curve,
         fractional_flow,
         level_control,
+        pump,
     )
 end
