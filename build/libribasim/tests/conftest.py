@@ -10,7 +10,6 @@ def libribasim_paths() -> tuple[Path, Path]:
     test_dir = Path(__file__).parent.resolve()
     lib_folder = test_dir.parent.parent / "create_binaries" / "libribasim" / "bin"
     lib_path = lib_folder / "libribasim"
-
     return lib_path, lib_folder
 
 
