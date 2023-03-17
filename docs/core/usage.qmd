@@ -48,9 +48,8 @@ Basin = "forcing.arrow"
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
-# autodiff can only be set for implicit solvers, where it defaults to true
-# since autodiff is not yet supported, set it to false in this case.
-autodiff = false  # optional, default not set
+# autodiff can only be set to true for implicit solvers, but is not yet supported
+autodiff = false  # optional, default false
 # saveat can be a number, which is the saving interval in seconds, or
 # it can be a list of numbers, which are the times in seconds since start that are saved
 saveat = []  # optional, default [], which will save every timestep

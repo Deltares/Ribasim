@@ -28,7 +28,7 @@ abstract type TableOption end
 
 @option struct Solver
     algorithm::String = "QNDF"
-    autodiff::Maybe{Bool}
+    autodiff::Bool = false
     saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
     dt::Float64 = 0.0
     abstol::Float64 = 1e-6
@@ -108,9 +108,9 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     # not all algorithms support this keyword
-    return if isnothing(solver.autodiff)
-        algotype()
-    else
+    return try
         algotype(; solver.autodiff)
+    catch
+        algotype()
     end
 end

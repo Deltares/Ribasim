@@ -181,6 +181,7 @@ class Model(BaseModel):
 
         kwargs["starttime"] = config["starttime"]
         kwargs["endtime"] = config["endtime"]
+        kwargs["solver"] = config.get("solver")
 
         return Model(**kwargs)
 
