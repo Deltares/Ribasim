@@ -17,6 +17,7 @@ from ribasim.input_base import InputMixin
 from ribasim.level_control import LevelControl
 from ribasim.linear_level_connection import LinearLevelConnection
 from ribasim.node import Node
+from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.types import FilePath
 
@@ -28,6 +29,7 @@ _NODES = (
     (LevelControl, "level_control"),
     (LinearLevelConnection, "linear_level_connection"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
+    (Pump, "pump"),
 )
 
 
@@ -69,6 +71,7 @@ class Model(BaseModel):
     level_control: Optional[LevelControl]
     linear_level_connection: Optional[LinearLevelConnection]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
+    pump: Optional[Pump]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -88,6 +91,7 @@ class Model(BaseModel):
         level_control: Optional[LevelControl] = None,
         linear_level_connection: Optional[LinearLevelConnection] = None,
         tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
+        pump: Optional[Pump] = None,
         solver: Optional[Solver] = None,
     ):
         super().__init__(**locals())

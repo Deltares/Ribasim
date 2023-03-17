@@ -244,6 +244,19 @@ node_id   | Int     | -            | sorted
 storage   | Float64 | $m^3$        | non-negative, start at 0
 discharge | Float64 | $m^3 s^{-1}$ | non-negative
 
+### Pump
+
+Pump water from a source node to a destination node.
+The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
+in which case the flow rate will be linearly reduced to $0~m^3/s$.
+A negative flow rate means pumping against the edge direction.
+Note that the intake must always be a Basin.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int     | -            | -
+flow_rate             | Float64 | $m^3 s^{-1}$ | -
+
 ### Basin output
 
 The basin table contains outputs of the storage and level of each basin at every solver

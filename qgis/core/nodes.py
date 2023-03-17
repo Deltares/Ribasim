@@ -25,6 +25,8 @@ from typing import Any, Dict, List, Tuple
 
 from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QColor
+from ribasim_qgis.core import geopackage
+
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsEditorWidgetSetup,
@@ -38,7 +40,6 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from ribasim_qgis.core import geopackage
 
 
 class Input(abc.ABC):
@@ -143,6 +144,7 @@ class Node(Input):
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelControl": "LevelControl",
                     "LinearLevelConnection": "LinearLevelConnection",
+                    "Pump": "Pump",
                 },
             },
         )
@@ -171,6 +173,7 @@ class Node(Input):
                 shape.Diamond,
             ),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
+            "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "": (
                 QColor("white"),
                 "",
@@ -312,6 +315,15 @@ class LevelControl(Input):
     ]
 
 
+class Pump(Input):
+    input_type = "Pump"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("flow_rate", QVariant.Double),
+    ]
+
+
 NODES = {
     "Node": Node,
     "Edge": Edge,
@@ -323,6 +335,7 @@ NODES = {
     "FractionalFlow": FractionalFlow,
     "LinearLevelConnection": LinearLevelConnection,
     "LevelControl": LevelControl,
+    "Pump": Pump,
 }
 
 

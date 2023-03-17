@@ -89,6 +89,17 @@ end
 
 LevelControl() = LevelControl(Int[], Float64[], Float64[])
 
+"""
+node_id: node ID of the Pump node
+flow_rate: target flow rate
+"""
+struct Pump
+    node_id::Vector{Int}
+    flow_rate::Vector{Float64}
+end
+
+Pump() = Pump(Int[], Float64[])
+
 struct Parameters
     connectivity::Connectivity
     basin::Basin
@@ -96,6 +107,7 @@ struct Parameters
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
+    pump::Pump
 end
 
 """
@@ -194,6 +206,25 @@ function formulate!(connectivity::Connectivity, level_control::LevelControl, lev
     return nothing
 end
 
+function formulate!(connectivity::Connectivity, pump::Pump, u)::Nothing
+    (; graph, flow, u_index) = connectivity
+    (; node_id, flow_rate) = pump
+    for (id, rate) in zip(node_id, flow_rate)
+        src_id = only(inneighbors(graph, id))
+        dst_id = only(outneighbors(graph, id))
+        # negative flow_rate means pumping against edge direction
+        intake_id = rate >= 0 ? src_id : dst_id
+        basin_idx = get(u_index, intake_id, 0)
+        @assert basin_idx != 0 "Pump intake not a Basin"
+        storage = u[basin_idx]
+        reduction_factor = min(storage, 10.0) / 10.0
+        q = reduction_factor * rate
+        flow[src_id, id] = q
+        flow[id, dst_id] = q
+    end
+    return nothing
+end
+
 function formulate!(du, connectivity::Connectivity)::Nothing
     # loop over basins
     # subtract all outgoing flows
@@ -218,6 +249,7 @@ function water_balance!(du, u, p, t)::Nothing
         tabulated_rating_curve,
         fractional_flow,
         level_control,
+        pump,
     ) = p
 
     du .= 0.0
@@ -231,6 +263,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(connectivity, tabulated_rating_curve, u)  # TODO use level?
     formulate!(connectivity, fractional_flow)
     formulate!(connectivity, level_control, basin.current_level)
+    formulate!(connectivity, pump, u)
 
     # Now formulate du
     formulate!(du, connectivity)

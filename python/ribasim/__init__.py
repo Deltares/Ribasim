@@ -12,4 +12,5 @@ from ribasim.linear_level_connection import (
 from ribasim.model import Model as Model
 from ribasim.model import Solver as Solver
 from ribasim.node import Node as Node
+from ribasim.pump import Pump as Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve as TabulatedRatingCurve
