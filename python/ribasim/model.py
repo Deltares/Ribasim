@@ -32,7 +32,7 @@ _NODES = (
 
 
 class Solver(BaseModel):
-    algorithms: Optional[str]
+    algorithm: Optional[str]
     autodiff: Optional[bool]
     saveat: Optional[List[float]]
     dt: Optional[float]
