@@ -17,6 +17,17 @@ Base.@ccallable function initialize(path::Cstring)::Cint
     return 0
 end
 
+Base.@ccallable function finalize()::Cint
+    global model
+    try
+        model = nothing
+    catch
+        Base.invokelatest(Base.display_error, Base.catch_stack())
+        return 1
+    end
+    return 0
+end
+
 Base.@ccallable function update()::Cint
     try
         BMI.update(model)
