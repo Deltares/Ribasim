@@ -5,6 +5,7 @@ on:
     tags: ["*"]
     paths: [".github", "python"]
   pull_request:
+    paths: [".github", "python"]
 jobs:
   test:
     name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
