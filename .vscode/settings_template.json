@@ -11,5 +11,9 @@
     },
     "python.formatting.provider": "black",
     "python.linting.mypyEnabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "ruff.args": [
+        "--config",
+        "python/pyproject.toml"
+    ]
 }
