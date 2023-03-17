@@ -5,6 +5,7 @@ on:
     tags: ["*"]
     paths: [".github", "core"]
   pull_request:
+    paths: [".github", "core"]
 jobs:
   test:
     name: Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
