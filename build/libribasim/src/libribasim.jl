@@ -9,7 +9,7 @@ Base.@ccallable function initialize(path::Cstring)::Cint
     global model
     try
         config_path = unsafe_string(path)
-        model = BMI.initialize(Model, config_path)
+        model = BMI.initialize(Ribasim.Model, config_path)
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1
