@@ -5,7 +5,7 @@ function Connectivity(db::DB)::Connectivity
     nonzeros(flow) .= 0.0
 
     basin_id = get_ids(db, "Basin")
-    u_index = Dictionary(basin_id, 1:length(basin_id))
+    u_index = Dict(k => v for (v, k) in enumerate(basin_id))
 
     return Connectivity(graph, flow, u_index)
 end

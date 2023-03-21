@@ -12,7 +12,7 @@ u_index: get the index into u from the basin id
 struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
-    u_index::Dictionary{Int, Int}
+    u_index::Dict{Int, Int}
 end
 
 """
