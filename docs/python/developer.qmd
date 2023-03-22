@@ -24,12 +24,6 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned
 
 ## Creating (or updating) the environment
 
-- Change your current working directory to `python`
-
-```
-cd python
-```
-
 - Create (or update) the environment by executing the following in your terminal:
 
 ```

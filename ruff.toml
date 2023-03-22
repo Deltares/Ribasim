@@ -1,0 +1,3 @@
+select = ["E", "F", "NPY", "PD", "C4", "I"]
+ignore = ["E501", "PD901"]
+fixable = ["I"]
