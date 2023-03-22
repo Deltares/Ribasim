@@ -8,9 +8,7 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <parameters>
-      <param name="env.JULIA_NUM_THREADS" value="4" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
         <parameters>
