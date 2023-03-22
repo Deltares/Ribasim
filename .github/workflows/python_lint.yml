@@ -35,10 +35,13 @@ jobs:
           environment-file: ./environment.yml
 
       - name: Run black
-        working-directory: python
-        run: black --check .
+        run: |
+          black --check python
+          black --check ribasim_api
 
       # Include `--format=github` to enable automatic inline annotations.
       - name: Run ruff
         working-directory: python
-        run: ruff check --format=github .
+        run: |
+          ruff check --format=github python
+          ruff check --format=github ribasim_api
