@@ -41,7 +41,6 @@ jobs:
 
       # Include `--format=github` to enable automatic inline annotations.
       - name: Run ruff
-        working-directory: python
         run: |
           ruff check --format=github python
           ruff check --format=github ribasim_api
