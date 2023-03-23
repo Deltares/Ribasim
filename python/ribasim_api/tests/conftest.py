@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from ribasim_api import RibasimApi
 
 
