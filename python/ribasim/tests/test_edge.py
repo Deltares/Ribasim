@@ -2,7 +2,6 @@ import geopandas as gpd
 import pytest
 import shapely.geometry as sg
 from pydantic import ValidationError
-
 from ribasim.edge import Edge
 
 

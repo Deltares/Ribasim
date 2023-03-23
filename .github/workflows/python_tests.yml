@@ -35,12 +35,10 @@ jobs:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
-          environment-file: ./python/environment.yml
+          environment-file: ./environment.yml
 
       - name: Install ribasim
-        working-directory: python
-        run: pip install -e .
+        run: pip install -e python/ribasim
 
       - name: Run tests
-        working-directory: python
-        run: pytest tests
+        run: pytest python/ribasim/tests

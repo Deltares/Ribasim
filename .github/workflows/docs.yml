@@ -49,11 +49,10 @@ jobs:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
-          environment-file: ./python/environment.yml
+          environment-file: ./environment.yml
 
       - name: Install ribasim-python
-        working-directory: python
-        run: pip install -e .
+        run: pip install -e python/ribasim
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2

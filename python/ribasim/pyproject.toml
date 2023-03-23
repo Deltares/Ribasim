@@ -9,6 +9,7 @@ readme = "README.md"
 authors = [
     { name = "Huite Bootsma", email = "Huite.Bootsma@deltares.nl" },
     { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
+    { name = "Martijn Visser", email = "Martijn.Visser@deltares.nl" },
 ]
 license = { text = "MIT" }
 classifiers = [
@@ -32,7 +33,6 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 tests = ["pytest", "pytest-cov"]
-lint = ["black", "ruff", "mypy"]
 
 [tool.setuptools]
 zip-safe = true
@@ -49,8 +49,3 @@ include = ["ribasim"]
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim"
 Source = "https://github.com/Deltares/Ribasim"
-
-[tool.ruff]
-select = ["E", "F", "NPY", "PD", "C4", "I"]
-ignore = ["E501", "PD901"]
-fixable = ["I"]

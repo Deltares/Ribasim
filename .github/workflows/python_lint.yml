@@ -32,13 +32,13 @@ jobs:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
-          environment-file: ./python/environment.yml
+          environment-file: ./environment.yml
 
       - name: Run black
-        working-directory: python
-        run: black --check .
+        run: |
+          black --check python
 
       # Include `--format=github` to enable automatic inline annotations.
       - name: Run ruff
-        working-directory: python
-        run: ruff check --format=github .
+        run: |
+          ruff check --format=github python
