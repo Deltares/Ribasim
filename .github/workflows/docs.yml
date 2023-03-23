@@ -52,8 +52,7 @@ jobs:
           environment-file: ./environment.yml
 
       - name: Install ribasim-python
-        working-directory: python
-        run: pip install -e .
+        run: pip install -e python/ribasim
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
