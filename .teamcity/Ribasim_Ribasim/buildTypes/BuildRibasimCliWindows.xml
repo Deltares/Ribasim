@@ -74,6 +74,12 @@
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
         </parameters>
       </extension>
+      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
+        <parameters>
+          <param name="awsConnectionId" value="AmazonWebServicesAws" />
+          <param name="awsSessionDuration" value="60" />
+        </parameters>
+      </extension>
     </build-extensions>
     <cleanup />
   </settings>
