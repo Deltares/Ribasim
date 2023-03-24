@@ -49,7 +49,9 @@ ds.to_netcdf("modflow-mozart-coupling.nc")
 
 import xarray as xr
 
-ds = xr.open_dataset(r"c:\projects\NHI-prototype\modflow\netcdf\modflow-mozart-coupling.nc")
+ds = xr.open_dataset(
+    r"c:\projects\NHI-prototype\modflow\netcdf\modflow-mozart-coupling.nc"
+)
 # %%
 
 import numpy as np

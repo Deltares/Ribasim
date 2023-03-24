@@ -2,6 +2,7 @@
 
 import imod
 
+
 # %%
 def load_model_into_memory(path):
     simulation = imod.mf6.Modflow6Simulation.open(path)
@@ -20,7 +21,7 @@ def load_model_into_memory(path):
 
 # %%
 
-#path = r"c:\projects\tki\LHM-mf6\7_LHM42_L15_KHV_KVA_CONSISTENT\MFSIM.NAM"
+# path = r"c:\projects\tki\LHM-mf6\7_LHM42_L15_KHV_KVA_CONSISTENT\MFSIM.NAM"
 path = r"c:\projects\NHI-prototype\modflow\vanGijs-LHM-mf6\7_LHM42_L15_KHV_KVA_CONSISTENT_MZ\MFSIM.NAM"
 simulation = load_model_into_memory(path)
 
@@ -46,5 +47,5 @@ for name, pkg in model.items():
         "units": "m",
     }
     pkg.dataset.to_netcdf(f"netcdf/{name}.nc")
-    
+
 # %%

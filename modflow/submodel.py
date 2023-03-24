@@ -9,10 +9,11 @@ import scipy.ndimage
 
 # %%
 
+
 def find_exterior(active):
     """
     Find the exterior boundaries of the model.
-    
+
     Parameters
     ----------
     active: xr.DataArray of bool
@@ -80,10 +81,10 @@ def LHM_model(xmin=None, xmax=None, ymin=None, ymax=None):
     gwf["riv_sys2"] = imod.mf6.River.from_file("netcdf/riv_sys2.nc")
     gwf["riv_sys4"] = imod.mf6.River.from_file("netcdf/riv_sys4.nc")
     gwf["riv_sys5"] = imod.mf6.River.from_file("netcdf/riv_sys5.nc")
-    
+
     if any(limit is not None for limit in (xmin, xmax, ymin, ymax)):
         # Determine the original exterior
-        active = gwf["dis"]["idomain"] > 0 
+        active = gwf["dis"]["idomain"] > 0
         exterior = find_exterior(active).sel(y=slice(ymax, ymin), x=slice(xmin, xmax))
 
         to_remove = []
@@ -91,7 +92,7 @@ def LHM_model(xmin=None, xmax=None, ymin=None, ymax=None):
             pkg.dataset = pkg.dataset.sel(y=slice(ymax, ymin), x=slice(xmin, xmax))
             if detect_empty(pkg):
                 to_remove.append(name)
-                
+
         for name in to_remove:
             gwf.pop(name)
 
@@ -101,9 +102,12 @@ def LHM_model(xmin=None, xmax=None, ymin=None, ymax=None):
         # head boundaries.
         is_chd = submodel_exterior & (~exterior)
         gwf["chd"] = imod.mf6.ConstantHead(head=gwf["ic"]["head"].where(is_chd))
-        
-    coupling_ds = xr.open_dataset("modflow-mozart-coupling.nc").sel(y=slice(ymax, ymin), x=slice(xmin, xmax))
+
+    coupling_ds = xr.open_dataset("modflow-mozart-coupling.nc").sel(
+        y=slice(ymax, ymin), x=slice(xmin, xmax)
+    )
     return gwf, coupling_ds
+
 
 # %%
 
@@ -124,11 +128,11 @@ storage_coefficient = xr.DataArray(
 )
 storage_coefficient[0] = 0.15
 
-#transient = xr.DataArray(
+# transient = xr.DataArray(
 #    data=[False, True],
 #    coords={"time": pd.to_datetime(["2020-01-01", "2020-01-02"])},
 #    dims=["time"],
-#)
+# )
 
 gwf["oc"] = imod.mf6.OutputControl(save_head="all")
 gwf["sto"] = imod.mf6.StorageCoefficient(
