@@ -5,7 +5,7 @@
   <settings>
     <parameters>
       <param name="conda_env_name" value="libribasim_test_env" />
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/%conda_env_name%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1501" name="Set up virtual environment" type="simpleRunner">
