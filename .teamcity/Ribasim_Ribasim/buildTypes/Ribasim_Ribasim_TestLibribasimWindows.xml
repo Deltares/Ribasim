@@ -89,9 +89,9 @@ call pytest tests -n=auto --basetemp=tests/temp --junitxml="report.xml"]]></para
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="iMOD6_IMOD6collectorDaily_ReleaseX64" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="imod_collector.zip!** =&gt;imod_collector_devel&#xD;&#xA;" />
+        <artifact sourcePath="libribasim.zip!** =&gt; build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
