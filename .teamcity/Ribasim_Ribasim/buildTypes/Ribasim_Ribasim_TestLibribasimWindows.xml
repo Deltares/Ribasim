@@ -4,6 +4,7 @@
   <description />
   <settings>
     <parameters>
+      <param name="conda_env_name" value="libribasim_test_env" />
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
     <build-runners>
