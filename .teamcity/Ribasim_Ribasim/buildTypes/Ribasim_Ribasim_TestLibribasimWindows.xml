@@ -5,7 +5,6 @@
   <settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/imod_coupler_testbench_env" />
-      <param name="env.MODFLOW_DLL_DEVEL" value="%system.teamcity.build.checkoutDir%/imod_collector_devel/modflow6/libmf6.dll" />
       <param name="env.MODFLOW_DLL_REGRESSION" value="%system.teamcity.build.checkoutDir%/imod_collector_regression/modflow6/libmf6.dll" />
     </parameters>
     <build-runners>
