@@ -95,7 +95,7 @@ call pytest tests -n=auto --basetemp=tests/temp --junitxml="report.xml"]]></para
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="iMOD6_IMOD6collectorDaily_ReleaseX64">
+      <depend-on sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
