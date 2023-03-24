@@ -15,7 +15,9 @@ aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliW
       </runner>
     </build-runners>
     <vcs-settings />
-    <requirements />
+    <requirements>
+      <does-not-equal id="RQ_277" name="env.OS" value="Windows_NT" />
+    </requirements>
     <build-triggers />
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
