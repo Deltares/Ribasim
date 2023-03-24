@@ -48,12 +48,6 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
           <param name="dependsOn" value="Ribasim_RibasimJl_BuildLibribasimWindows" />
         </parameters>
       </build-trigger>
-      <build-trigger id="TRIGGER_340" type="vcsTrigger">
-        <parameters>
-          <param name="enableQueueOptimization" value="true" />
-          <param name="quietPeriodMode" value="DO_NOT_USE" />
-        </parameters>
-      </build-trigger>
     </build-triggers>
     <build-extensions>
       <extension id="BUILD_EXT_142" type="commit-status-publisher">
