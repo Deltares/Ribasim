@@ -70,6 +70,7 @@ class Node(InputMixin, BaseModel):
         ax = kwargs.get("ax", None)
         if ax is None:
             _, ax = plt.subplots()
+            ax.axis("off")
             kwargs["ax"] = ax
 
         for nodetype, df in self.static.groupby("type"):

@@ -204,6 +204,7 @@ class Model(BaseModel):
         """
         if ax is None:
             _, ax = plt.subplots()
+            ax.axis("off")
         self.edge.plot(ax=ax, zorder=2)
         self.node.plot(ax=ax, zorder=3)
         return ax
