@@ -58,6 +58,10 @@ quartodoc:
       desc: The Model class represents an entire Ribasim model.
       contents:
         - Model
+        - Model.write
+        - Model.from_toml
+        - Model.plot
+ 
     - title: Network
       desc: The Node and Edge GeoPackage layers define the network layout.
       contents:

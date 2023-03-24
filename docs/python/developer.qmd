@@ -46,19 +46,31 @@ pip install -e .
 
 ## Running the tests
 
-
-If no already done, activate the environment
+If not already done, activate the environment:
 
 ```
 conda activate ribasim
 ```
-
 
 To run the tests execute:
 
 ```bash
 pytest tests
 ```
+
+## Building the documentation
+
+Run in the docs folder:
+
+```
+python -m quartodoc build
+```
+
+This will generate the `.qmd` files in `docs/python/reference` for inspection.
+
+## Updating example notebooks
+
+Make sure to run `Clear All Outputs` on the notebook before committing.
 
 ## Setup Visual Studio Code (optional)
 

@@ -1,6 +1,7 @@
 from typing import Any
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
@@ -18,6 +19,7 @@ _MARKERS = {
     "LevelControl": "*",
     "LinearLevelConnection": "^",
     "TabulatedRatingCurve": "D",
+    "Pump": "h",
     "": "o",
 }
 
@@ -74,5 +76,11 @@ class Node(InputMixin, BaseModel):
             marker = _MARKERS[nodetype]
             kwargs["marker"] = marker
             df.plot(**kwargs)
+
+        geometry = self.static["geometry"]
+        for text, xy in zip(
+            self.static.index, np.column_stack((geometry.x, geometry.y))
+        ):
+            ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax
