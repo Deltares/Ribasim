@@ -50,10 +50,8 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
       </build-trigger>
       <build-trigger id="TRIGGER_340" type="vcsTrigger">
         <parameters>
-          <param name="branchFilter" value="+:*" />
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
-          <param name="triggerRules" value="+:root=Ribasim_Ribasim_ImodCoupler:**" />
         </parameters>
       </build-trigger>
     </build-triggers>
