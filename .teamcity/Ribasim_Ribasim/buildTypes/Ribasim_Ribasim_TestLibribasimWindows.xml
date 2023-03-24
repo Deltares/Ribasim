@@ -28,7 +28,6 @@ call pip install -e "python/ribasim_api[tests]"]]></param>
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
 call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
-          <param name="teamcity.build.workingDir" value="imod_coupler" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
