@@ -35,7 +35,9 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
         </parameters>
       </runner>
     </build-runners>
-    <vcs-settings />
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
+    </vcs-settings>
     <requirements>
       <equals id="RQ_436" name="teamcity.agent.jvm.os.name" value="Windows 10" />
       <does-not-equal id="RQ_96" name="system.agent.name" value="c-teamcity0358" />
