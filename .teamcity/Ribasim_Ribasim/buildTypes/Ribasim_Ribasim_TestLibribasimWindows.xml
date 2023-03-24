@@ -45,7 +45,7 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
           <param name="branchFilter" value="+:&lt;default&gt;" />
-          <param name="dependsOn" value="iMOD6_IMOD6collectorDaily_ReleaseX64" />
+          <param name="dependsOn" value="Ribasim_RibasimJl_BuildLibribasimWindows" />
         </parameters>
       </build-trigger>
       <build-trigger id="TRIGGER_340" type="vcsTrigger">
