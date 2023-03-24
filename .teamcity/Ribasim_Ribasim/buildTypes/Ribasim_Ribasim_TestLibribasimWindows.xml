@@ -5,7 +5,6 @@
   <settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/imod_coupler_testbench_env" />
-      <param name="env.METASWAP_DLL_DEVEL" value="%system.teamcity.build.checkoutDir%/imod_collector_devel/metaswap/MetaSWAP.dll" />
       <param name="env.METASWAP_DLL_REGRESSION" value="%system.teamcity.build.checkoutDir%/imod_collector_regression/metaswap/MetaSWAP.dll" />
       <param name="env.METASWAP_LOOKUP_TABLE" value="%system.teamcity.build.checkoutDir%/lookup_table" />
       <param name="env.MODFLOW_DLL_DEVEL" value="%system.teamcity.build.checkoutDir%/imod_collector_devel/modflow6/libmf6.dll" />
