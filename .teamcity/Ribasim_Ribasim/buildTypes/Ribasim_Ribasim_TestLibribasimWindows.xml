@@ -69,7 +69,7 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows" cleanDestination="true">
-        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
         <artifact sourcePath="libribasim.zip!** =&gt; build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
