@@ -61,7 +61,7 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
-          <param name="xmlReportParsing.reportDirs" value="imod_coupler/report.xml" />
+          <param name="xmlReportParsing.reportDirs" value="python/ribasim_api/tests/report.xml" />
           <param name="xmlReportParsing.reportType" value="junit" />
           <param name="xmlReportParsing.verboseOutput" value="true" />
         </parameters>
