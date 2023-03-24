@@ -3,7 +3,7 @@ module Ribasim
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
-using Configurations: Configurations, Maybe, @option, from_toml, from_dict
+using Configurations: Configurations, Maybe, @option, from_toml
 using DataFrames
 using DataInterpolations: LinearInterpolation
 using Dates
