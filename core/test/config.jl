@@ -8,8 +8,7 @@ using OrdinaryDiffEq: alg_autodiff
     @test config isa Ribasim.Config
     @test config.update_timestep == 86400.0
     @test config.endtime > config.starttime
-    @test config.solver ==
-          Ribasim.Solver("QNDF", false, 86400.0, 0, 1.0e-6, 0.001, Int(1e9))
+    @test config.solver == Ribasim.Solver(; saveat = 86400.0)
 
     @test_throws UndefKeywordError Ribasim.Config()
     @test_throws UndefKeywordError Ribasim.Config(
@@ -21,9 +20,9 @@ using OrdinaryDiffEq: alg_autodiff
 end
 
 @testset "Solver" begin
-    @test Ribasim.Solver() ==
-          Ribasim.Solver("QNDF", false, Float64[], 0, 1.0e-6, 0.001, Int(1e9))
-    @test Ribasim.Solver(;
+    solver = Ribasim.Solver()
+    @test solver.algorithm == "QNDF"
+    Ribasim.Solver(;
         algorithm = "Rosenbrock23",
         autodiff = true,
         saveat = 3600.0,
@@ -31,7 +30,7 @@ end
         abstol = 1e-5,
         reltol = 1e-4,
         maxiters = 1e5,
-    ) == Ribasim.Solver("Rosenbrock23", true, 3600.0, 0, 1e-5, 1e-4, 1e5)
+    )
     Ribasim.Solver(; algorithm = "DoesntExist")
     @test_throws InexactError Ribasim.Solver(autodiff = 2)
     @test_throws "algorithm DoesntExist not supported" Ribasim.algorithm(

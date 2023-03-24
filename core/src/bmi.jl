@@ -70,7 +70,7 @@ function BMI.update_until(model::Model, time)::Model
     elseif dt == 0
         return model
     else
-        step!(integrator, dt)
+        step!(integrator, dt, true)
     end
     return model
 end
