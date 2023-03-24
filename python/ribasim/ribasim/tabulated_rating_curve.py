@@ -10,14 +10,13 @@ __all__ = ("TabulatedRatingCurve",)
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
-    storage: Series[float]
+    level: Series[float]
     discharge: Series[float]
 
 
 class TabulatedRatingCurve(InputMixin, BaseModel):
     """
-    Linearly interpolates discharge between a tabulation of storage and
-    discharge.
+    Linearly interpolates discharge between a tabulation of level and discharge.
 
     Parameters
     ----------
@@ -26,7 +25,7 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
         Tabulation with columns:
 
         * node_id
-        * storage
+        * level
         * discharge
 
     """

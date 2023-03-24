@@ -162,14 +162,14 @@ Directed graph: outflow is positive!
 function formulate!(
     connectivity::Connectivity,
     tabulated_rating_curve::TabulatedRatingCurve,
-    u,
+    level,
 )::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph, id))
         downstream_ids = outneighbors(graph, id)
-        q = tables[i](u[u_index[upstream_basin_id]])
+        q = tables[i](level[u_index[upstream_basin_id]])
         flow[upstream_basin_id, id] = q
         for downstream_id in downstream_ids
             flow[id, downstream_id] = q
@@ -260,7 +260,7 @@ function water_balance!(du, u, p, t)::Nothing
 
     # First formulate intermediate flows
     formulate!(connectivity, linear_level_connection, basin.current_level)
-    formulate!(connectivity, tabulated_rating_curve, u)  # TODO use level?
+    formulate!(connectivity, tabulated_rating_curve, basin.current_level)
     formulate!(connectivity, fractional_flow)
     formulate!(connectivity, level_control, basin.current_level)
     formulate!(connectivity, pump, u)
