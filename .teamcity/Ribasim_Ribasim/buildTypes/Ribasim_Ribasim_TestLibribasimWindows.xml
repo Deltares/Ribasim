@@ -73,14 +73,6 @@ call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
         <artifact sourcePath="libribasim.zip!** =&gt; build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
-    <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-    </dependencies>
     <cleanup />
   </settings>
 </build-type>
