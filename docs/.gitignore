@@ -2,4 +2,5 @@
 /_site/
 /site_libs/
 python/reference/
+python/data/
 *.html

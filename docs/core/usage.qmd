@@ -244,7 +244,7 @@ relation between the storage of a connected Basin and its outflow.
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-storage   | Float64 | $m^3$        | non-negative, start at 0
+level     | Float64 | $m$          | -
 discharge | Float64 | $m^3 s^{-1}$ | non-negative
 
 ### Pump

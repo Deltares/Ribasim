@@ -24,10 +24,10 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     node_id = get_ids(db, "TabulatedRatingCurve")
     tables = Interpolation[]
     for group in groupby(df, :node_id; sort = true)
-        order = sortperm(group.storage)
-        storage = group.storage[order]
+        order = sortperm(group.level)
+        level = group.level[order]
         discharge = group.discharge[order]
-        interp = LinearInterpolation(discharge, storage)
+        interp = LinearInterpolation(discharge, level)
         push!(tables, interp)
     end
     @assert length(node_id) == length(tables)

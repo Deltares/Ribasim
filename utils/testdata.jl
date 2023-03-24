@@ -7,7 +7,7 @@ const teamcity_presence_env_var = "TEAMCITY_VERSION"
 function testdata(
     source_filename::String,
     target_filename::String = source_filename;
-    version::VersionNumber = v"0.5.0",
+    version::VersionNumber = v"0.6.0",
 )
     target_path = joinpath(datadir, target_filename)
     parent_path = dirname(target_path)
