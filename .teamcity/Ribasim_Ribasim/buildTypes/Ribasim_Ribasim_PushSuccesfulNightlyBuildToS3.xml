@@ -18,7 +18,15 @@ aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliW
     <requirements>
       <does-not-equal id="RQ_277" name="env.OS" value="Windows_NT" />
     </requirements>
-    <build-triggers />
+    <build-triggers>
+      <build-trigger id="TRIGGER_195" type="buildDependencyTrigger">
+        <parameters>
+          <param name="afterSuccessfulBuildOnly" value="true" />
+          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="dependsOn" value="BuildRibasimCliWindows" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
     <build-extensions>
       <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
         <parameters>
