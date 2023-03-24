@@ -4,7 +4,7 @@
   <description />
   <settings>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/imod_coupler_testbench_env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1501" name="Set up virtual environment" type="simpleRunner">
