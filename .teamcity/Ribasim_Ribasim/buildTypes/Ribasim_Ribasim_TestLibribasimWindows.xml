@@ -49,9 +49,6 @@ call pytest tests -n=auto --basetemp=tests/temp --junitxml="report.xml"]]></para
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_Ribasim_ImodCoupler">
-        <checkout-rule rule=". =&gt; imod_coupler" />
-      </vcs-entry-ref>
       <vcs-entry-ref root-id="Ribasim_Ribasim_MetaSwapLookupTable">
         <checkout-rule rule=". =&gt; lookup_table" />
       </vcs-entry-ref>
