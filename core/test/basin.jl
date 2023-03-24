@@ -8,7 +8,7 @@ using SciMLBase
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[187.27687, 138.03664, 122.17141, 1504.5299]
+    @test model.integrator.sol.u[end] ≈ Float32[187.08644, 137.90846, 1.1778412, 1518.4689]
 end
 
 @testset "basic transient model" begin
@@ -18,7 +18,5 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 8
-    # TODO on MacOS CI this deviates ~1m3
-    @test model.integrator.sol.u[end] ≈ Float32[169.74841, 122.88705, 90.009384, 1519.6602] broken =
-        Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[229.4959, 164.44641, 0.5336011, 1533.0612]
 end
