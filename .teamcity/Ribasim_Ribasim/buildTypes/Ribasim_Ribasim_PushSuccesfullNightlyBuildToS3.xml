@@ -19,6 +19,14 @@ aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliW
       <does-not-equal id="RQ_277" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers />
+    <build-extensions>
+      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
+        <parameters>
+          <param name="awsConnectionId" value="AmazonWebServicesAws" />
+          <param name="awsSessionDuration" value="60" />
+        </parameters>
+      </extension>
+    </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
