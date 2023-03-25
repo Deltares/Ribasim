@@ -14,7 +14,7 @@ function testdata(
     isdir(parent_path) || mkpath(parent_path)
     base_url = "https://github.com/visr/ribasim-artifacts/releases/download/v$version/"
     url = string(base_url, source_filename)
-    isfile(target_path) || Downloads.download(url, target_path)
+    Downloads.download(url, target_path)
     return target_path
 end
 
