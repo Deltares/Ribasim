@@ -5,6 +5,7 @@ channels:
     
 dependencies:
   - black
+  - build
   - geopandas
   - jupyterlab
   - matplotlib
@@ -18,10 +19,11 @@ dependencies:
   - pyarrow
   - pydantic
   - pyogrio
-  - python>3.9
   - pytest
+  - python>3.9
   - ruff
   - shapely>=2.0
   - tomli
   - tomli-w
+  - twine
   - xarray
