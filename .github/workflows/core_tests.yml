@@ -6,6 +6,9 @@ on:
     paths: [".github/**", "core/**"]
   pull_request:
     paths: [".github/**", "core/**"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     name: Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
