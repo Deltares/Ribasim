@@ -75,6 +75,14 @@ function BMI.update_until(model::Model, time)::Model
     return model
 end
 
+function BMI.get_value_ptr(model::Model, name::AbstractString)
+    if name == "volume"
+        model.integrator.u
+    else
+        error("Unknown variable $name")
+    end
+end
+
 BMI.get_current_time(model::Model) = model.integrator.t
 BMI.get_start_time(model::Model) = 0.0
 BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.config.starttime)
