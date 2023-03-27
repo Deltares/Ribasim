@@ -86,21 +86,21 @@ Make sure to run `Clear All Outputs` on the notebook before committing.
 
 3) Activate the ribasim environment with `conda activate ribasim`
 
-5) If present remove dist folder
+4) If present remove dist folder
 
-6) Re-create the wheels:
+5) Re-create the wheels:
 ```
 python -m build
 ```
 
-7) Check the package files:
+6) Check the package files:
 ```
 twine check dist/*
 ```
 
-8) Make a new commit with the updated version number, and push to remote
+7) Make a new commit with the updated version number, and push to remote
 
-9) Re-upload the new files:
+8) Re-upload the new files:
 ```
 twine upload dist/*
 ```
