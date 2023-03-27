@@ -89,9 +89,8 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
             error("Unsupported value type $(typeof(value))")
         end
 
-        @assert isascii(dtype)
         var_type_ptr = pointer(var_type)
-        for (i, char) in enumerate(dtype)
+        for (i, char) in enumerate(ascii(dtype))
             unsafe_store!(var_type_ptr, char, i)
         end
         unsafe_store!(var_type_ptr, '\0', length(dtype) + 1)
