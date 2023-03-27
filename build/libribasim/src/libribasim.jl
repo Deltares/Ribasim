@@ -5,9 +5,38 @@ using Ribasim
 
 model = nothing
 
+"""
+    @try_c(ex)
+
+The `try_c` macro adds boilerplate around the body of a C callable function.
+Specifically, it wraps the body in a try-catch,
+which always returns 0 on success and 1 on failure.
+On failure, it also prints the stacktrace.
+Also it makes the `model` from the global scope available.
+
+# Usage
+```
+@try_c begin
+    model = nothing
+end
+```
+
+This expands to
+```
+try
+    global model
+    model = nothing
+catch
+    Base.invokelatest(Base.display_error, Base.catch_stack())
+    return 1
+end
+return 0
+```
+"""
 macro try_c(ex)
     return quote
         try
+            global model
             $(esc(ex))
         catch
             Base.invokelatest(Base.display_error, Base.catch_stack())
