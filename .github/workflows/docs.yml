@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths-ignore: [".teamcity/**"]
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   publish:
     name: Docs Julia ${{ matrix.julia_version }} - Python ${{ matrix.python_version }}  - ${{ matrix.arch }}
