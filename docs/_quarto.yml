@@ -15,6 +15,8 @@ website:
         file: qgis/index.qmd
       - text: "Coupled models"
         file: couple/index.qmd
+      - text: "Contributing"
+        file: contribute/index.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim
@@ -26,18 +28,21 @@ website:
         - core/index.qmd
         - core/usage.qmd
         - core/equations.qmd
-        - core/developer.qmd
     - title: "Python tooling"
       contents:
         - python/index.qmd
         - python/examples.ipynb
         - python/reference/index.qmd
-        - python/developer.qmd
     - title: "Coupled models"
       contents:
         - couple/index.qmd
         - couple/modflow.qmd
         - couple/modflow-demo.qmd
+    - title: "Contributing"
+      contents:
+        - contribute/index.qmd
+        - contribute/core.qmd
+        - contribute/python.qmd
 
 format:
   html:

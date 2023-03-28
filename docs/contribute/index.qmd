@@ -1,0 +1,7 @@
+---
+title: "Contributing"
+---
+
+Ribasim welcomes contributions. Information on how to contribute will be added here.
+
+There is already specific developer documentation on the [Julia core](core.qmd), and the [Python tooling](python.qmd).
