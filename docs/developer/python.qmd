@@ -1,5 +1,5 @@
 ---
-title: "For developers"
+title: "Python tooling development"
 ---
 
 # Set up the developer environment

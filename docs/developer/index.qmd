@@ -1,0 +1,7 @@
+---
+title: "For developers"
+---
+
+Generic developer documentation will be added here.
+
+There is already specific developer documentation on the [Julia core](core.qmd), and the [Python tooling](python.qmd).
