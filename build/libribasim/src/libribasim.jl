@@ -97,9 +97,16 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     end
 end
 
+Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}})::Cint
+    @try_c begin
+        value = BMI.get_value_ptr(model, unsafe_string(name))
+        value_ptr[] = pointer(value)
+    end
+end
+
 function julia_type_to_numpy(type)::String
     if type == Float64
-        "float64"
+        "double"
     else
         error("Unsupported type $type")
     end
