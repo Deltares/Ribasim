@@ -10,4 +10,4 @@ The theory is described on the [equations](equations.qmd) page.
 The core is implemented in the [Julia programming language](https://julialang.org/), and
 can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the
 `core/` folder. For developers we also advise to read the
-[developer documentation](../developer/index.qmd).
+[developer documentation](../contribute/core.qmd).
