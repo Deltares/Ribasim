@@ -4,6 +4,7 @@ using Ribasim
 import BasicModelInterface as BMI
 
 include("../../build/libribasim/src/libribasim.jl")
+include("../../utils/testdata.jl")
 
 toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
 config_template = Ribasim.parsefile(toml_path)
@@ -73,7 +74,9 @@ end
         @test isnothing(libribasim.model)
 
         # cannot get time of uninitialized model
-        @test libribasim.get_current_time(time_ptr) == 1
+        result, output = @capture_stderr(libribasim.get_current_time(time_ptr))
+        @test result == 1
+        @test startswith(output, "ERROR: Model not initialized\nStacktrace:\n")
 
         @test libribasim.initialize(toml_path_ptr) == 0
         @test libribasim.model isa Ribasim.Model

@@ -14,4 +14,31 @@ function teamcity_message(name, d::Dict)
     )
 end
 
+# Taken from Julia's testsuite
+macro capture_stdout(ex)
+    quote
+        mktemp() do fname, f
+            result = redirect_stdout(f) do
+                $(esc(ex))
+            end
+            seekstart(f)
+            output = read(f, String)
+            result, output
+        end
+    end
+end
+
+macro capture_stderr(ex)
+    quote
+        mktemp() do fname, f
+            result = redirect_stderr(f) do
+                $(esc(ex))
+            end
+            seekstart(f)
+            output = read(f, String)
+            result, output
+        end
+    end
+end
+
 nothing

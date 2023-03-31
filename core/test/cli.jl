@@ -2,20 +2,7 @@ using Test
 using Ribasim
 
 include("../../build/ribasim_cli/src/ribasim_cli.jl")
-
-# Taken from Julia's testsuite
-macro capture_stdout(ex)
-    quote
-        mktemp() do fname, f
-            result = redirect_stdout(f) do
-                $(esc(ex))
-            end
-            seekstart(f)
-            output = read(f, String)
-            result, output
-        end
-    end
-end
+include("../../utils/testdata.jl")
 
 @testset "version" begin
     empty!(ARGS)
