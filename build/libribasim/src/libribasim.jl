@@ -77,7 +77,6 @@ end
 
 Base.@ccallable function get_current_time(time::Ptr{Cdouble})::Cint
     @try_c begin
-        isnothing(model) && error("Model not initialized")
         t = BMI.get_current_time(model)
         unsafe_store!(time, t)
     end
@@ -102,6 +101,14 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     end
 end
 
+Base.@ccallable function get_var_rank(name::Cstring, rank::Ptr{Cdouble})::Cint
+    @try_c begin
+        value = BMI.get_value_ptr(model, unsafe_string(name))
+        n = ndims(value)
+        unsafe_store!(rank, n)
+    end
+end
+
 Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}})::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
@@ -109,6 +116,13 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
         core_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
         unsafe_copyto!(value_ptr, core_ptr, length(value))
     end
+end
+
+Base.@ccallable function get_value_ptr_double(
+    name::Cstring,
+    value_ptr::Ptr{Ptr{Cvoid}},
+)::Cint
+    get_value_ptr(name, value_ptr)
 end
 
 function julia_type_to_numpy(type)::String
