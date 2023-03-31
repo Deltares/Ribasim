@@ -28,7 +28,7 @@ try
     global model
     model = nothing
 catch
-    Base.invokelatest(Base.display_error, Base.catch_stack())
+    invokelatest(Base.display_error, current_exceptions())
     return 1
 end
 return 0
@@ -43,7 +43,7 @@ macro try_c(ex, init = true)
             end
             $(esc(ex))
         catch
-            Base.invokelatest(Base.display_error, Base.catch_stack())
+            invokelatest(Base.display_error, current_exceptions())
             return 1
         end
         return 0

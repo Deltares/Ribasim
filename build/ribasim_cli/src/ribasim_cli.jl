@@ -28,7 +28,7 @@ function julia_main()::Cint
     try
         Ribasim.run(arg)
     catch
-        Base.invokelatest(Base.display_error, Base.catch_stack())
+        invokelatest(Base.display_error, current_exceptions())
         return 1
     end
 
