@@ -1,3 +1,4 @@
+using Test
 using Ribasim
 
 include("../../build/ribasim_cli/src/ribasim_cli.jl")

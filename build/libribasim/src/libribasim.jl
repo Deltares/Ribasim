@@ -6,19 +6,20 @@ using Ribasim
 model = nothing
 
 """
-    @try_c(ex)
+    @try_c(ex, init = true)
 
 The `try_c` macro adds boilerplate around the body of a C callable function.
 Specifically, it wraps the body in a try-catch,
 which always returns 0 on success and 1 on failure.
-On failure, it also prints the stacktrace.
-Also it makes the `model` from the global scope available.
+On failure, it prints the stacktrace.
+It makes the `model` from the global scope available, and checks if it is initialized,
+unless the `init` argument is set to false.
 
 # Usage
 ```
 @try_c begin
     model = nothing
-end
+end init = false
 ```
 
 This expands to
@@ -33,10 +34,13 @@ end
 return 0
 ```
 """
-macro try_c(ex)
+macro try_c(ex, init = true)
     return quote
         try
             global model
+            if $(esc(init))
+                isnothing(model) && error("Model not initialized")
+            end
             $(esc(ex))
         catch
             Base.invokelatest(Base.display_error, Base.catch_stack())
@@ -50,13 +54,13 @@ Base.@ccallable function initialize(path::Cstring)::Cint
     @try_c begin
         config_path = unsafe_string(path)
         model = BMI.initialize(Ribasim.Model, config_path)
-    end
+    end init = false
 end
 
 Base.@ccallable function finalize()::Cint
     @try_c begin
         model = nothing
-    end
+    end init = false
 end
 
 Base.@ccallable function update()::Cint
@@ -71,10 +75,11 @@ Base.@ccallable function update_until(time::Cdouble)::Cint
     end
 end
 
-# TODO should receive a double that needs to get updated
-Base.@ccallable function get_current_time()::Cint
+Base.@ccallable function get_current_time(time::Ptr{Cdouble})::Cint
     @try_c begin
-        BMI.get_current_time(model)
+        isnothing(model) && error("Model not initialized")
+        t = BMI.get_current_time(model)
+        unsafe_store!(time, t)
     end
 end
 
@@ -100,7 +105,9 @@ end
 Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}})::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
-        value_ptr[] = pointer(value)
+        n = length(value)
+        core_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
+        unsafe_copyto!(value_ptr, core_ptr, length(value))
     end
 end
 

@@ -3,6 +3,7 @@
         "editor.formatOnSave": true
     },
     "julia.environmentPath": "core",
+    "notebook.formatOnSave.enabled": true,
     "[python]": {
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {

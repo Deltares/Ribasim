@@ -1,3 +1,4 @@
+using Test
 using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase
