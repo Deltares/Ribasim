@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+
 from qgis.core import QgsMapLayer, QgsProject
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
