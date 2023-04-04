@@ -33,12 +33,14 @@ jobs:
       - name: Setup Micromamba
         uses: mamba-org/provision-with-micromamba@main
         with:
-          python_version: "3.11"
+          python_version: "3.10"
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
       - name: Install ribasim
-        run: pip install -e python/ribasim
+        run: |
+          micromamba activate ribasim
+          pip install -e python/ribasim
       - name: Prepare model input
         run: python python/ribasim/tests/conftest.py
       - uses: julia-actions/setup-julia@v1
