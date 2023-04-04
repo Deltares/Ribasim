@@ -9,7 +9,7 @@
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_env" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1955" name="Set up virtual environment" type="simpleRunner">
