@@ -34,6 +34,15 @@
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
+      <runner id="RUNNER_1990" name="Set up virtual environment" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[if exist "%conda_env_path%" rd /q /s "%conda_env_path%"
+call conda create --prefix "%conda_env_path%" python=3.10]]></param>
+          <param name="teamcity.build.workingDir" value="imod_coupler" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
     </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
