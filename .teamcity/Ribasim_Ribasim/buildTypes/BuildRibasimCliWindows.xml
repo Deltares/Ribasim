@@ -51,6 +51,14 @@ call pip install -e "python/ribasim_api[tests]"]]></param>
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
+      <runner id="RUNNER_1992" name="Run tests" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
+call pytest python/ribasim_api/tests --junitxml="report.xml"]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
     </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
