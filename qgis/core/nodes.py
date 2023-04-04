@@ -23,7 +23,7 @@ Each node layer is (optionally) represented in multiple places:
 import abc
 from typing import Any, Dict, List, Tuple
 
-from PyQt5.QtCore import QVariant
+from PyQt5.QtCore import Qt, QVariant
 from PyQt5.QtGui import QColor
 from ribasim_qgis.core import geopackage
 
@@ -32,9 +32,11 @@ from qgis.core import (
     QgsEditorWidgetSetup,
     QgsField,
     QgsLineSymbol,
+    QgsMarkerLineSymbolLayer,
     QgsMarkerSymbol,
     QgsPalLayerSettings,
     QgsRendererCategory,
+    QgsSimpleMarkerSymbolLayer,
     QgsSimpleMarkerSymbolLayerBase,
     QgsSingleSymbolRenderer,
     QgsVectorLayer,
@@ -213,13 +215,31 @@ class Edge(Input):
 
     @property
     def renderer(self) -> QgsSingleSymbolRenderer:
-        symbol = QgsLineSymbol.createSimple(
+        lightblue = "#3690c0"
+
+        # Create a line with an arrow marker to indicate directionality
+        arrow_marker = QgsSimpleMarkerSymbolLayer()
+        arrow_marker.setShape(QgsSimpleMarkerSymbolLayer.ArrowHeadFilled)
+        arrow_marker.setColor(QColor(lightblue))
+        arrow_marker.setSize(3)
+        arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
+
+        marker_symbol = QgsMarkerSymbol()
+        marker_symbol.changeSymbolLayer(0, arrow_marker)
+
+        marker_line_symbol_layer = QgsMarkerLineSymbolLayer.create(
+            {"placements": "SegmentCenter"}
+        )
+        marker_line_symbol_layer.setSubSymbol(marker_symbol)
+
+        line_symbol = QgsLineSymbol.createSimple(
             {
-                "color": "#3690c0",  # lighter blue
+                "color": lightblue,
                 "width": "0.5",
             }
         )
-        return QgsSingleSymbolRenderer(symbol)
+        line_symbol.appendSymbolLayer(marker_line_symbol_layer)
+        return QgsSingleSymbolRenderer(line_symbol)
 
     def set_read_only(self) -> None:
         layer = self.layer
