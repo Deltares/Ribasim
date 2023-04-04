@@ -1,4 +1,5 @@
 import ribasim
+from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 
@@ -29,7 +30,10 @@ def test_basic(basic, tmp_path):
     model = ribasim.Model.from_toml(tmp_path / "basic/basic.toml")
 
     assert model.modelname == "basic"
-    assert_frame_equal(basic.node.static, model.node.static)
+    index_a = basic.node.static.index.to_numpy(int)
+    index_b = model.node.static.index.to_numpy(int)
+    assert_array_equal(index_a, index_b)
+    assert_equal(basic.node.static, model.node.static)
     assert_equal(basic.edge.static, model.edge.static)
     assert model.basin.forcing is None
 
@@ -40,7 +44,7 @@ def test_basic_transient(basic_transient, tmp_path):
     model = ribasim.Model.from_toml(tmp_path / "basic-transient/basic-transient.toml")
 
     assert model.modelname == "basic-transient"
-    assert_frame_equal(basic_transient.node.static, model.node.static)
+    assert_equal(basic_transient.node.static, model.node.static)
     assert_equal(basic_transient.edge.static, model.edge.static)
 
     forcing = model.basin.forcing
