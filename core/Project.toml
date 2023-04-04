@@ -42,11 +42,10 @@ julia = "1.8"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestReports = "dcd651b4-b50a-5b6b-8f22-87e9f253a252"
 
 [targets]
-test = ["Aqua", "CSV", "Downloads", "SafeTestsets", "Test", "TestReports", "TOML"]
+test = ["Aqua", "CSV", "SafeTestsets", "Test", "TestReports", "TOML"]

@@ -21,7 +21,6 @@ using Statistics
 includet("mozart-files.jl")
 includet("mozart-data.jl")
 includet("lsw.jl")
-includet("../utils/testdata.jl")
 
 output_dir = normpath(@__DIR__, "../data/input/8")
 

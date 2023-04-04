@@ -5,7 +5,6 @@ version = "0.1.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
-Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
