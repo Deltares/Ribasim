@@ -15,6 +15,11 @@ def assert_equal(a, b, geometry=True):
         a = a.drop(columns="geometry", errors="ignore")
         b = b.drop(columns="geometry", errors="ignore")
 
+    # avoid comparing datetime64[ns] with datetime64[ms]
+    if "time" in a:
+        a["time"] = a.time.astype("datetime64[ns]")
+        b["time"] = b.time.astype("datetime64[ns]")
+
     return assert_frame_equal(a, b)
 
 

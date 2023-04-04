@@ -33,7 +33,7 @@ jobs:
       - name: Setup Micromamba
         uses: mamba-org/provision-with-micromamba@main
         with:
-          python_version: ${{ matrix.python_version }}
+          python_version: "3.11"
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
