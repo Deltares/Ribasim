@@ -8,7 +8,9 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <parameters />
+    <parameters>
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
+    </parameters>
     <build-runners>
       <runner id="RUNNER_1955" name="Set up virtual environment" type="simpleRunner">
         <parameters>
