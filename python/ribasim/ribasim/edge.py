@@ -57,23 +57,23 @@ class Edge(InputMixin, BaseModel):
             kwargs["color"] = color
 
         self.static.plot(**kwargs)
-        for line in self.static.geometry:
-            rot = _get_rotation_angle(line) - 90
-            point = line.centroid
+
+        # Determine the angle for every caret marker and where to place it.
+        coords = shapely.get_coordinates(self.static.geometry).reshape(-1, 2, 2)
+        x, y = np.mean(coords, axis=1).T
+        dx, dy = np.diff(coords, axis=1)[:, 0, :].T
+        angle = np.degrees(np.arctan2(dy, dx)) - 90
+
+        # A faster alternative may be ax.quiver(). However, getting the scaling
+        # right is tedious.
+        for m_x, m_y, m_angle in zip(x, y, angle):
             ax.plot(
-                point.x,
-                point.y,
-                marker=(3, 0, rot),
+                m_x,
+                m_y,
+                marker=(3, 0, m_angle),
                 markersize=5,
                 linestyle="None",
                 color=color,
             )
+
         return ax
-
-
-def _get_rotation_angle(linestring: shapely.LineString) -> float:
-    """Calculate the rotation angle (in degrees) for a given LineString."""
-    x1, y1 = linestring.xy[0][0], linestring.xy[1][0]
-    x2, y2 = linestring.xy[0][-1], linestring.xy[1][-1]
-    dx, dy = x2 - x1, y2 - y1
-    return np.degrees(np.arctan2(dy, dx))
