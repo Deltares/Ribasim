@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from qgis.core import QgsMapLayer, QgsProject
 from qgis.core.additions.edit import edit
 from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
@@ -90,7 +91,7 @@ class DatasetTreeWidget(QTreeWidget):
             return
 
         # Start deleting
-        elements = set([item.element for item in selection])
+        elements = {item.element for item in selection}
         qgs_instance = QgsProject.instance()
 
         for element in elements:
@@ -313,7 +314,7 @@ class DatasetWidget(QWidget):
     def selection_names(self) -> Set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        return set([item.element.name for item in selection])
+        return {item.element.name for item in selection}
 
     def add_node_layer(self, element) -> None:
         self.dataset_tree.add_node_layer(element)
