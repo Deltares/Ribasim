@@ -75,9 +75,11 @@ end
         @test isnothing(libribasim.model)
 
         # cannot get time of uninitialized model
-        (; value, output) = capture(libribasim.get_current_time(time_ptr))
-        @test value == 1
-        @test startswith(output, "ERROR: Model not initialized\nStacktrace:\n")
+        cap = capture() do
+            libribasim.get_current_time(time_ptr)
+        end
+        @test cap.value == 1
+        @test startswith(cap.output, "ERROR: Model not initialized\nStacktrace:\n")
 
         @test libribasim.initialize(toml_path_ptr) == 0
         @test libribasim.model isa Ribasim.Model
