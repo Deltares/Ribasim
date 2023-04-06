@@ -23,7 +23,9 @@ def test_update(ribasim_basic):
     assert time > 0.0
 
 
-@pytest.mark.skip(reason="update_until not in xmipy, see issue #92")
+@pytest.mark.skip(
+    reason="update_until not in xmipy, see https://github.com/Deltares/xmipy/issues/92"
+)
 def test_update_until(ribasim_basic):
     libribasim, config_file = ribasim_basic
     libribasim.initialize(config_file)

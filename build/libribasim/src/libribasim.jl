@@ -3,6 +3,7 @@ module libribasim
 import BasicModelInterface as BMI
 using Ribasim
 
+# global model object, either a Ribasim.Model or nothing
 model = nothing
 
 """
@@ -66,6 +67,8 @@ macro try_c_uninitialized(ex)
     end
 end
 
+# all exported C callable functions
+
 Base.@ccallable function initialize(path::Cstring)::Cint
     @try_c_uninitialized begin
         config_path = unsafe_string(path)
@@ -101,19 +104,8 @@ end
 Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
-        dtype = if value isa Vector
-            julia_type_to_numpy(eltype(value))
-        elseif value isa Number
-            julia_type_to_numpy(typeof(value))
-        else
-            error("Unsupported value type $(typeof(value))")
-        end
-
-        var_type_ptr = pointer(var_type)
-        for (i, char) in enumerate(ascii(dtype))
-            unsafe_store!(var_type_ptr, char, i)
-        end
-        unsafe_store!(var_type_ptr, '\0', length(dtype) + 1)
+        ctype = c_type_name(value)
+        unsafe_write_to_cstring!(var_type, ctype)
     end
 end
 
@@ -127,6 +119,7 @@ end
 
 Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}})::Cint
     @try_c begin
+        # the type of `value` depends on the variable name
         value = BMI.get_value_ptr(model, unsafe_string(name))
         n = length(value)
         core_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
@@ -141,12 +134,25 @@ Base.@ccallable function get_value_ptr_double(
     get_value_ptr(name, value_ptr)
 end
 
-function julia_type_to_numpy(type)::String
-    if type == Float64
-        "double"
-    else
-        error("Unsupported type $type")
+# supporting code
+
+c_type_name(v::AbstractVector)::String = c_type_name(eltype(v))
+c_type_name(v::Number)::String = c_type_name(typeof(v))
+c_type_name(type::Type{Float64})::String = "double"
+
+"""
+    unsafe_write_to_cstring!(cstr::Cstring, str::String)::Cstring
+
+Write a String to the address of a Cstring, ending with a null byte.
+The caller must ensure that this is safe to do.
+"""
+function unsafe_write_to_cstring!(cstr::Cstring, str::String)::Cstring
+    cstr_ptr = pointer(cstr)
+    for (i, char) in enumerate(ascii(str))
+        unsafe_store!(cstr_ptr, char, i)
     end
+    unsafe_store!(cstr_ptr, '\0', length(str) + 1)
+    return cstr
 end
 
 end # module libribasim
