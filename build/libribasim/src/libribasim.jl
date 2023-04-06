@@ -6,27 +6,27 @@ using Ribasim
 model = nothing
 
 """
-    @try_c(ex, init = true)
+    @try_c(ex)
 
 The `try_c` macro adds boilerplate around the body of a C callable function.
 Specifically, it wraps the body in a try-catch,
 which always returns 0 on success and 1 on failure.
 On failure, it prints the stacktrace.
-It makes the `model` from the global scope available, and checks if it is initialized,
-unless the `init` argument is set to false.
+It makes the `model` from the global scope available, and checks if it is initialized.
 
 # Usage
 ```
 @try_c begin
-    model = nothing
-end init = false
+    BMI.update(model)
+end
 ```
 
 This expands to
 ```
 try
     global model
-    model = nothing
+    isnothing(model) && error("Model not initialized")
+    BMI.update(model)
 catch
     Base.invokelatest(Base.display_error, current_exceptions())
     return 1
@@ -34,13 +34,29 @@ end
 return 0
 ```
 """
-macro try_c(ex, init = true)
+macro try_c(ex)
     return quote
         try
             global model
-            if $(esc(init))
-                isnothing(model) && error("Model not initialized")
-            end
+            isnothing(model) && error("Model not initialized")
+            $(esc(ex))
+        catch
+            Base.invokelatest(Base.display_error, current_exceptions())
+            return 1
+        end
+        return 0
+    end
+end
+
+"""
+    try_c_uninitialized(ex)
+
+Identical to `@try_c(ex)`, except it does not assert that the model is initialized.
+"""
+macro try_c_uninitialized(ex)
+    return quote
+        try
+            global model
             $(esc(ex))
         catch
             Base.invokelatest(Base.display_error, current_exceptions())
@@ -51,16 +67,16 @@ macro try_c(ex, init = true)
 end
 
 Base.@ccallable function initialize(path::Cstring)::Cint
-    @try_c begin
+    @try_c_uninitialized begin
         config_path = unsafe_string(path)
         model = BMI.initialize(Ribasim.Model, config_path)
-    end init = false
+    end
 end
 
 Base.@ccallable function finalize()::Cint
-    @try_c begin
+    @try_c_uninitialized begin
         model = nothing
-    end init = false
+    end
 end
 
 Base.@ccallable function update()::Cint
