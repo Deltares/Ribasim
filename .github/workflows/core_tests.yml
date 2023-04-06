@@ -13,6 +13,9 @@ jobs:
   test:
     name: Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +32,18 @@ jobs:
             version: "~1.9.0-0"
             arch: x64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          python_version: "3.11"
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./environment.yml
+      - name: Install ribasim
+        run: pip install -e python/ribasim
+      - name: Prepare model input
+        run: python python/ribasim/tests/conftest.py
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia_version }}

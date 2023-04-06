@@ -72,6 +72,18 @@ This will generate the `.qmd` files in `docs/python/reference` for inspection.
 
 Make sure to run `Clear All Outputs` on the notebook before committing.
 
+## Prepare model input
+
+Before running the Julia tests or building binaries, example model input needs to created.
+This is done by running the following Python script:
+
+```
+python python/ribasim/tests/conftest.py
+```
+
+This places example model input files under `./data/`.
+If the example models change, re-run this script.
+
 ## Setup Visual Studio Code (optional)
 
 1. Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and [autoDocstring](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) extensions.
