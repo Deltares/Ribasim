@@ -2,6 +2,7 @@ using Test
 using Configurations: from_dict, to_dict
 using Ribasim
 import BasicModelInterface as BMI
+using IOCapture: capture
 
 include("../../build/libribasim/src/libribasim.jl")
 include("../../utils/testdata.jl")
@@ -74,8 +75,8 @@ end
         @test isnothing(libribasim.model)
 
         # cannot get time of uninitialized model
-        result, output = @capture_stderr(libribasim.get_current_time(time_ptr))
-        @test result == 1
+        (; value, output) = capture(libribasim.get_current_time(time_ptr))
+        @test value == 1
         @test startswith(output, "ERROR: Model not initialized\nStacktrace:\n")
 
         @test libribasim.initialize(toml_path_ptr) == 0
