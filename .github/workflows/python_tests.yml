@@ -1,17 +1,17 @@
-name: Python Tests
+name: Ribasim Python Tests
 on:
   push:
     branches: [main]
     tags: ["*"]
-    paths: [".github/**", "python/**"]
+    paths: [".github/**", "python/ribasim/**"]
   pull_request:
-    paths: [".github/**", "python/**"]
+    paths: [".github/**", "python/ribasim/**"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   test:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Ribasim Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
