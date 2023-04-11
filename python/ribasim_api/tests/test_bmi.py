@@ -29,10 +29,10 @@ def test_update(ribasim_basic):
 def test_update_until(ribasim_basic):
     libribasim, config_file = ribasim_basic
     libribasim.initialize(config_file)
-    prescribed_time = 60.0
-    libribasim.update_until(prescribed_time)
+    expected_time = 60.0
+    libribasim.update_until(expected_time)
     actual_time = libribasim.get_current_time()
-    assert actual_time == prescribed_time
+    assert actual_time == expected_time
 
 
 def test_get_var_type(ribasim_basic):
