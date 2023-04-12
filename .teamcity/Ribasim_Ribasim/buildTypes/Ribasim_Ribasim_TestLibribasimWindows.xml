@@ -66,7 +66,7 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
-          <param name="xmlReportParsing.reportDirs" value="report.xml" />
+          <param name="xmlReportParsing.reportDirs" value="python/ribasim_api/report.xml" />
           <param name="xmlReportParsing.reportType" value="junit" />
           <param name="xmlReportParsing.verboseOutput" value="true" />
         </parameters>
