@@ -3,6 +3,9 @@
   <name>Test libribasim - Windows</name>
   <description />
   <settings>
+    <options>
+      <option name="artifactRules" value="python\ribasim_api\tests\temp =&gt; test_output.zip" />
+    </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
