@@ -5,9 +5,11 @@ function Connectivity(db::DB)::Connectivity
     nonzeros(flow) .= 0.0
 
     basin_id = get_ids(db, "Basin")
+    edge_id = get_ids(db, "Edge")
     u_index = Dict(id => i for (i, id) in enumerate(basin_id))
+    e_index = Dict(id => i for (i, id) in enumerate(edge_id))
 
-    return Connectivity(graph, flow, u_index)
+    return Connectivity(graph, flow, u_index, e_index)
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection

@@ -156,16 +156,18 @@ function write_flow_output(model::Model)
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
 
+    edge_id = collect(keys(p.connectivity.e_index))
     I, J, _ = findnz(connectivity.flow)
     nflow = length(I)
     ntsteps = length(t)
 
     time = convert.(Arrow.DATETIME, repeat(time_since.(t, config.starttime); inner = nflow))
+    edge_id = repeat(edge_id; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
 
-    df = DataFrame(; time, from_node_id, to_node_id, flow)
+    df = DataFrame(; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.flow)
     mkpath(dirname(path))
     Arrow.write(path, df; compress = :lz4)
