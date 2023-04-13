@@ -22,7 +22,7 @@ id_set(table::Nothing, name::Symbol) = Set{Int}()
 id_set(table, name::Symbol) = Set{Int}(Tables.getcolumn(table, name))
 
 # empty rowtable
-stateful_rows(table::Nothing) = Iterators.Stateful(NamedTuple{(), Tuple{}}[])
+stateful_rows(table::Nothing) = Iterators.Stateful(@NamedTuple{time::Float64}[])
 stateful_rows(table) = Iterators.Stateful(Tables.rows(table))
 
 """
@@ -266,7 +266,6 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config)
 
     return Parameters(
-        config.starttime,
         connectivity,
         basin,
         linear_level_connection,

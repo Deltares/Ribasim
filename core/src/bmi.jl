@@ -32,19 +32,26 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
+    # get the table underlying the Stateful iterator, and get all unique timetamps
+    table = parameters.tabulated_rating_curve.time.itr
+    times = unique(Tables.getcolumn(Tables.columns(table), :time))
+    tstops = seconds_since.(times, config.starttime)
+    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
+
     # add a single time step's contribution to the water balance step's totals
     # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
     # flows: save the flows over time, as a Vector of the nonzeros(flow)
     save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
+    callback = CallbackSet(save_flow_cb, tabulated_rating_curve_cb)
 
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
         progress = true,
         progress_name = "Simulating",
-        callback = save_flow_cb,
+        callback,
         config.solver.saveat,
         config.solver.dt,
         config.solver.abstol,
@@ -54,6 +61,49 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     close(db)
     return Model(integrator, config, saved_flow)
+end
+
+"Load updates from 'TabulatedRatingCurve / time' into the parameters"
+function update_tabulated_rating_curve(integrator)::Nothing
+    # TODO the Stateful alignment is probably broken if the data starts before the model
+    (; node_id, tables) = integrator.p.tabulated_rating_curve
+    rows = integrator.p.tabulated_rating_curve.time
+
+    @info "update_tabulated_rating_curve" rows.itr rows.remaining
+
+    if isnothing(peek(rows))
+        error("No rows left, should not happen.")
+    end
+    row = popfirst!(rows)
+    nextrow = peek(rows)
+    discharge = Float64[row["discharge"]]
+    level = Float64[row["level"]]
+    while !isnothing(nextrow) && nextrow["time"] == row["time"]
+        if nextrow["node_id"] == row["node_id"]
+            # expand the table
+            row = popfirst!(rows)
+            nextrow = peek(rows)
+            push!(discharge, row["discharge"])
+            push!(level, row["level"])
+        else
+            # upload new table
+            i = searchsortedfirst(node_id, row["node_id"])
+            tables[i] = LinearInterpolation(discharge, level)
+
+            # start a new table
+            row = popfirst!(rows)
+            nextrow = peek(rows)
+            discharge = Float64[row["discharge"]]
+            level = Float64[row["level"]]
+        end
+    end
+
+    i = searchsortedfirst(node_id, row["node_id"])
+    tables[i] = LinearInterpolation(discharge, level)
+
+    @info "update_tabulated_rating_curve2" discharge level
+
+    return nothing
 end
 
 function BMI.update(model::Model)::Model

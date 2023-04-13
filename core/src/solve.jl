@@ -102,7 +102,6 @@ end
 Pump() = Pump(Int[], Float64[])
 
 struct Parameters
-    starttime::DateTime
     connectivity::Connectivity
     basin::Basin
     linear_level_connection::LinearLevelConnection
