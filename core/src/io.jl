@@ -3,14 +3,14 @@ function get_ids(db::DB)::Vector{Int}
 end
 
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "select fid from Node where type = '$nodetype'"
+    sql = "select fid from Node where type = $(esc_id(nodetype))"
     return only(execute(columntable, db, sql))
 end
 
 function exists(db::DB, tablename::String)
     query = execute(
         db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='$tablename'",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename))",
     )
     return !isempty(query)
 end
@@ -61,7 +61,7 @@ function load_data(db::DB, config::Config, tablename::String)::Union{Table, Quer
     end
 
     if exists(db, tablename)
-        return execute(db, string("select * from '$tablename'"))
+        return execute(db, "select * from $(esc_id(tablename))")
     end
 
     return nothing
