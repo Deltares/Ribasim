@@ -14,7 +14,7 @@ using Legolas: Legolas, @schema, @version, validate
 using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
-using SQLite: SQLite, DB, Query
+using SQLite: SQLite, DB, Query, esc_id
 using Statistics: median
 using Tables: columntable
 using TimerOutputs
