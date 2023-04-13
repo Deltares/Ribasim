@@ -150,7 +150,7 @@ c_type_name(v::Number)::String = c_type_name(typeof(v))
 c_type_name(type::Type{Float64})::String = "double"
 
 """
-    unsafe_write_to_cstring!(dest::Ptr{Cstring}, src::String)::Nothing
+    unsafe_write_to_cstring!(dest_ptr, src::String)::Nothing
 
 Write a String to the address of a Cstring, ending with a null byte.
 The caller must ensure that this is safe to do.
