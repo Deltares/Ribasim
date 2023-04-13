@@ -13,7 +13,7 @@ def basic_model() -> ribasim.Model:
     # Set up the nodes:
     xy = np.array(
         [
-            (0.0, 0.0),  # 1: Basin,
+            (0.0, 0.0),  # 1: Basin
             (1.0, 0.0),  # 2: LinearLevelConnection
             (2.0, 0.0),  # 3: Basin
             (3.0, 0.0),  # 4: TabulatedRatingCurve
@@ -214,6 +214,128 @@ def basic_transient_model(model) -> ribasim.Model:
     return model
 
 
+def tabulated_rating_curve_model() -> ribasim.Model:
+    """
+    The upstream Basin has two TabulatedRatingCurve attached.
+    They both flow to the same downstream Basin, but one has a static rating curve,
+    and the other one a time-varying rating curve.
+    Only the upstream Basin receives a (constant) precipitation.
+    """
+
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 1.0),  # 2: TabulatedRatingCurve (static)
+            (1.0, -1.0),  # 3: TabulatedRatingCurve (time-varying)
+            (2.0, 0.0),  # 4: Basin
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "Basin",
+        "TabulatedRatingCurve",
+        "TabulatedRatingCurve",
+        "Basin",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 1, 2, 3], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 4], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={"from_node_id": from_id, "to_node_id": to_id},
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [0, 0],
+            "storage": [0.0, 1000.0],
+            "area": [0.0, 1000.0],
+            "level": [0.0, 1.0],
+        }
+    )
+    repeat = np.tile([0, 1], 2)
+    profile = profile.iloc[repeat]
+    profile["node_id"] = [1, 1, 4, 4]
+
+    # Convert steady forcing to m/s
+    # 2 mm/d precipitation, 1 mm/d evaporation
+    seconds_in_day = 24 * 3600
+    precipitation = 0.002 / seconds_in_day
+    # only the upstream basin gets precipitation
+    static = pd.DataFrame(
+        data={
+            "node_id": [1, 4],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": [precipitation, 0.0],
+            "urban_runoff": 0.0,
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static)
+
+    # Set up a rating curve node:
+    # Discharge: lose 1% of storage volume per day at storage = 1000.0.
+    q1000 = 1000.0 * 0.01 / seconds_in_day
+
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2, 2],
+                "level": [0.0, 1.0],
+                "discharge": [0.0, q1000],
+            }
+        ),
+        time=pd.DataFrame(
+            data={
+                "node_id": [3, 3, 3, 3, 3, 3],
+                "time": [
+                    pd.Timestamp("2020-01"),
+                    pd.Timestamp("2020-01"),
+                    pd.Timestamp("2020-02"),
+                    pd.Timestamp("2020-02"),
+                    pd.Timestamp("2020-03"),
+                    pd.Timestamp("2020-03"),
+                ],
+                "level": [0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
+                "discharge": [0.0, q1000, 0.0, q1000 + 1.0, 0.0, q1000 + 2.0],
+            }
+        ),
+    )
+
+    # Setup a model:
+    model = ribasim.Model(
+        modelname="tabulated_rating_curve",
+        node=node,
+        edge=edge,
+        basin=basin,
+        tabulated_rating_curve=rating_curve,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
 # we can't call fixtures directly, so we keep separate versions
 @pytest.fixture(scope="session")
 def basic() -> ribasim.Model:
@@ -225,6 +347,11 @@ def basic_transient(basic) -> ribasim.Model:
     return basic_transient_model(basic)
 
 
+@pytest.fixture(scope="session")
+def tabulated_rating_curve() -> ribasim.Model:
+    return tabulated_rating_curve_model()
+
+
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
@@ -234,3 +361,6 @@ if __name__ == "__main__":
 
     model = basic_transient_model(model)
     model.write(datadir / "basic-transient")
+
+    model = tabulated_rating_curve_model()
+    model.write(datadir / "tabulated_rating_curve")
