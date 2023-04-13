@@ -43,3 +43,9 @@ end
     @test Ribasim.seconds_since(t0 + Second(1), t0) === 1.0
     @test Ribasim.seconds_since(DateTime("2020-01-01T00:00:03.142"), t0) ≈ 3.142
 end
+
+@testset "find_last_block" begin
+    @test Ribasim.find_last_block(2, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 6:8
+    @test Ribasim.find_last_block(2, [2]) === 1:1
+    @test_throws ErrorException Ribasim.find_last_block(3, [5, 4, 2, 2, 5, 2, 2, 2, 1])
+end
