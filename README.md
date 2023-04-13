@@ -11,6 +11,9 @@ Ribasim is written in the [Julia programming language](https://julialang.org/) a
 on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
 libraries, notably [ModelingToolkit.jl](https://mtk.sciml.ai/stable/).
 
+The latest build can be downloaded here: [ribasim_cli.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip).
+Currently only Windows builds are available.
+
 ![Timeseries of
 results](https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png)
 
