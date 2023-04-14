@@ -8,11 +8,13 @@ Store the connectivity information
 graph: directed graph with vertices equal to ids
 flow: store the flow on every edge
 u_index: get the index into u from the basin id
+edge_ids: get the external edge id from (src, dst)
 """
 struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     u_index::Dict{Int, Int}
+    edge_ids::Dict{Tuple{Int, Int}, Int}
 end
 
 """

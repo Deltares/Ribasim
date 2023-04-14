@@ -7,15 +7,20 @@ function pkgversion(m::Module)
     return pkgorigin === nothing ? nothing : pkgorigin.version
 end
 
-"Return a directed graph, and a mapping from external ID to new ID."
-function create_graph(db::DB)::DiGraph
+"
+Return a directed graph, and a mapping from source and target nodes to edge
+fid.
+"
+function create_graph(db::DB)::Tuple{DiGraph, Dict{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)
-    rows = execute(db, "select from_node_id, to_node_id from Edge")
-    for (; from_node_id, to_node_id) in rows
+    edge_ids = Dict{Tuple{Int, Int}, Int}()
+    rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
+    for (; fid, from_node_id, to_node_id) in rows
         add_edge!(graph, from_node_id, to_node_id)
+        edge_ids[(from_node_id, to_node_id)] = fid
     end
-    return graph
+    return graph, edge_ids
 end
 
 """
