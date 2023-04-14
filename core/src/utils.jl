@@ -16,9 +16,9 @@ function create_graph(db::DB)::Tuple{DiGraph, Dict{Tuple{Int, Int}, Int}}
     graph = DiGraph(n)
     edge_ids = Dict{Tuple{Int, Int}, Int}()
     rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
-    for (; edge_id, from_node_id, to_node_id) in rows
+    for (; fid, from_node_id, to_node_id) in rows
         add_edge!(graph, from_node_id, to_node_id)
-        edge_ids[(from_node_id, to_node_id)] = edge_id
+        edge_ids[(from_node_id, to_node_id)] = fid
     end
     return graph, edge_ids
 end
