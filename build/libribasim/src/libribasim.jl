@@ -3,8 +3,9 @@ module libribasim
 import BasicModelInterface as BMI
 using Ribasim
 
-# global model object, either a Ribasim.Model or nothing
-model = nothing
+# globals 
+model::Union{Ribasim.Model, Nothing} = nothing
+last_error_message::String = ""
 
 """
     @try_c(ex)
@@ -41,8 +42,9 @@ macro try_c(ex)
             global model
             isnothing(model) && error("Model not initialized")
             $(esc(ex))
-        catch
-            Base.invokelatest(Base.display_error, current_exceptions())
+        catch e
+            global last_error_message
+            last_error_message = sprint(showerror, e)
             return 1
         end
         return 0
@@ -59,8 +61,9 @@ macro try_c_uninitialized(ex)
         try
             global model
             $(esc(ex))
-        catch
-            Base.invokelatest(Base.display_error, current_exceptions())
+        catch e
+            global last_error_message
+            last_error_message = sprint(showerror, e)
             return 1
         end
         return 0
@@ -127,6 +130,18 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
     end
 end
 
+Base.@ccallable function get_component_name(error_message::Cstring)::Cint
+    @try_c_uninitialized begin
+        unsafe_write_to_cstring!(error_message, "Ribasim")
+    end
+end
+
+Base.@ccallable function get_last_bmi_error(error_message::Cstring)::Cint
+    @try_c_uninitialized begin
+        unsafe_write_to_cstring!(error_message, last_error_message)
+    end
+end
+
 Base.@ccallable function get_value_ptr_double(
     name::Cstring,
     value_ptr::Ptr{Ptr{Cvoid}},
@@ -141,18 +156,18 @@ c_type_name(v::Number)::String = c_type_name(typeof(v))
 c_type_name(type::Type{Float64})::String = "double"
 
 """
-    unsafe_write_to_cstring!(cstr::Cstring, str::String)::Cstring
+    unsafe_write_to_cstring!(dest::Cstring, src::String)::Nothing
 
 Write a String to the address of a Cstring, ending with a null byte.
 The caller must ensure that this is safe to do.
 """
-function unsafe_write_to_cstring!(cstr::Cstring, str::String)::Cstring
-    cstr_ptr = pointer(cstr)
-    for (i, char) in enumerate(ascii(str))
-        unsafe_store!(cstr_ptr, char, i)
+function unsafe_write_to_cstring!(dest::Cstring, src::String)::Nothing
+    dest_ptr = pointer(dest)
+    for (i, char) in enumerate(ascii(src))
+        unsafe_store!(dest_ptr, char, i)
     end
-    unsafe_store!(cstr_ptr, '\0', length(str) + 1)
-    return cstr
+    unsafe_store!(dest_ptr, '\0', length(src) + 1)
+    return nothing
 end
 
 end # module libribasim
