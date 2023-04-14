@@ -33,8 +33,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
 
     # get the table underlying the Stateful iterator, and get all unique timetamps
-    table = parameters.tabulated_rating_curve.time.itr
-    times = unique(Tables.getcolumn(Tables.columns(table), :time))
+    times = unique(parameters.tabulated_rating_curve.time.time)
     tstops = seconds_since.(times, config.starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
 
@@ -65,44 +64,22 @@ end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
 function update_tabulated_rating_curve(integrator)::Nothing
-    # TODO the Stateful alignment is probably broken if the data starts before the model
-    (; node_id, tables) = integrator.p.tabulated_rating_curve
-    rows = integrator.p.tabulated_rating_curve.time
+    (; node_id, tables, time) = integrator.p.tabulated_rating_curve
+    t = time_since(integrator.t, integrator.p.starttime)
 
-    @info "update_tabulated_rating_curve" rows.itr rows.remaining
+    # get groups of consecutive node_id for the current timestamp
+    rows = searchsorted(time.time, t)
+    timeblock = view(time, rows)
+    groups = IterTools.groupby(row -> row.node_id, timeblock)
 
-    if isnothing(peek(rows))
-        error("No rows left, should not happen.")
+    for group in groups
+        # update the existing LinearInterpolation
+        id = first(group).node_id
+        level = [row.level for row in group]
+        discharge = [row.discharge for row in group]
+        i = searchsortedfirst(node_id, id)
+        tables[i] = LinearInterpolation(discharge, level)
     end
-    row = popfirst!(rows)
-    nextrow = peek(rows)
-    discharge = Float64[row["discharge"]]
-    level = Float64[row["level"]]
-    while !isnothing(nextrow) && nextrow["time"] == row["time"]
-        if nextrow["node_id"] == row["node_id"]
-            # expand the table
-            row = popfirst!(rows)
-            nextrow = peek(rows)
-            push!(discharge, row["discharge"])
-            push!(level, row["level"])
-        else
-            # upload new table
-            i = searchsortedfirst(node_id, row["node_id"])
-            tables[i] = LinearInterpolation(discharge, level)
-
-            # start a new table
-            row = popfirst!(rows)
-            nextrow = peek(rows)
-            discharge = Float64[row["discharge"]]
-            level = Float64[row["level"]]
-        end
-    end
-
-    i = searchsortedfirst(node_id, row["node_id"])
-    tables[i] = LinearInterpolation(discharge, level)
-
-    @info "update_tabulated_rating_curve2" discharge level
-
     return nothing
 end
 

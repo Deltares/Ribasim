@@ -44,10 +44,10 @@ Requirements:
 * from: must be (Basin,) node.
 * to: must be a (Bifurcation, Basin) node.
 """
-struct TabulatedRatingCurve{T}
+struct TabulatedRatingCurve{C}
     node_id::Vector{Int}
     tables::Vector{Interpolation}
-    time::T  # Stateful Tables rows iterator
+    time::StructVector{TabulatedRatingCurve_Time, C, Int}
 end
 
 """
@@ -102,6 +102,7 @@ end
 Pump() = Pump(Int[], Float64[])
 
 struct Parameters
+    starttime::DateTime
     connectivity::Connectivity
     basin::Basin
     linear_level_connection::LinearLevelConnection
