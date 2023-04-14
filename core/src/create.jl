@@ -1,5 +1,5 @@
 function Connectivity(db::DB)::Connectivity
-    graph = create_graph(db)
+    graph, edge_ids = create_graph(db)
 
     flow = adjacency_matrix(graph, Float64)
     nonzeros(flow) .= 0.0
@@ -7,7 +7,7 @@ function Connectivity(db::DB)::Connectivity
     basin_id = get_ids(db, "Basin")
     u_index = Dict(id => i for (i, id) in enumerate(basin_id))
 
-    return Connectivity(graph, flow, u_index)
+    return Connectivity(graph, flow, u_index, edge_ids)
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
