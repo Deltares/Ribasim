@@ -29,9 +29,6 @@ def test_update(libribasim, basic, tmp_path):
     assert time > 0.0
 
 
-@pytest.mark.skip(
-    reason="update_until not in xmipy, see https://github.com/Deltares/xmipy/issues/92"
-)
 def test_update_until(libribasim, basic, tmp_path):
     basic.write(tmp_path)
     config_file = str(tmp_path / f"{basic.modelname}.toml")
