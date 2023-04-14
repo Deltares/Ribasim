@@ -5,7 +5,7 @@ using Ribasim
 
 # globals 
 model::Union{Ribasim.Model, Nothing} = nothing
-last_error_message = ""
+last_error_message::String = ""
 
 """
     @try_c(ex)
