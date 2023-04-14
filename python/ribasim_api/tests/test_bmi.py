@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal
@@ -65,8 +67,14 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
     config_file = str(tmp_path / f"{basic.modelname}.toml")
     libribasim.initialize(config_file)
 
-    with pytest.raises(XMIError, match="library is already initialized"):
-        libribasim.get_var_type("var-that-does-not-exist")
+    variable_name = "var-that-does-not-exist"
+    error_message = re.escape(
+        f"BMI exception in get_var_type (for variable {variable_name}):"
+        " Message from Ribasim '"
+        f"Unknown variable {variable_name}'"
+    )
+    with pytest.raises(XMIError, match=error_message):
+        libribasim.get_var_type(variable_name)
 
 
 def test_get_component_name(libribasim):

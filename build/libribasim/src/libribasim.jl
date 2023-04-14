@@ -38,13 +38,13 @@ return 0
 """
 macro try_c(ex)
     return quote
-        global model, last_error_message
         try
+            global model
             isnothing(model) && error("Model not initialized")
             $(esc(ex))
         catch e
+            global last_error_message
             last_error_message = sprint(showerror, e)
-            println(last_error_message) # TODO: remove
             return 1
         end
         return 0
@@ -58,12 +58,12 @@ Identical to `@try_c(ex)`, except it does not assert that the model is initializ
 """
 macro try_c_uninitialized(ex)
     return quote
-        global model, last_error_message
         try
+            global model
             $(esc(ex))
         catch e
+            global last_error_message
             last_error_message = sprint(showerror, e)
-            println(last_error_message) # TODO: remove
             return 1
         end
         return 0
@@ -108,7 +108,7 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
         ctype = c_type_name(value)
-        unsafe_write_to_cstring!(pointer(var_type), ctype)
+        unsafe_write_to_cstring!(var_type, ctype)
     end
 end
 
@@ -130,13 +130,13 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
     end
 end
 
-Base.@ccallable function get_component_name(error_message::Ptr{Cstring})::Cint
+Base.@ccallable function get_component_name(error_message::Cstring)::Cint
     @try_c_uninitialized begin
         unsafe_write_to_cstring!(error_message, "Ribasim")
     end
 end
 
-Base.@ccallable function get_last_bmi_error(error_message::Ptr{Cstring})::Cint
+Base.@ccallable function get_last_bmi_error(error_message::Cstring)::Cint
     @try_c_uninitialized begin
         unsafe_write_to_cstring!(error_message, last_error_message)
     end
@@ -161,7 +161,8 @@ c_type_name(type::Type{Float64})::String = "double"
 Write a String to the address of a Cstring, ending with a null byte.
 The caller must ensure that this is safe to do.
 """
-function unsafe_write_to_cstring!(dest_ptr, src::String)::Nothing
+function unsafe_write_to_cstring!(dest::Cstring, src::String)::Nothing
+    dest_ptr = pointer(dest)
     for (i, char) in enumerate(ascii(src))
         unsafe_store!(dest_ptr, char, i)
     end
