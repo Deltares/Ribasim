@@ -32,7 +32,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
-    # get the table underlying the Stateful iterator, and get all unique timetamps
+    # get the table underlying the Stateful iterator, and get all unique timestamps
     times = unique(parameters.tabulated_rating_curve.time.time)
     tstops = seconds_since.(times, config.starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
