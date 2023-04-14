@@ -43,8 +43,8 @@ macro try_c(ex)
             isnothing(model) && error("Model not initialized")
             $(esc(ex))
         catch e
-            Base.invokelatest(Base.display_error, current_exceptions()) # TODO: Remove
             last_error_message = sprint(showerror, e)
+            println(last_error_message) # TODO: remove
             return 1
         end
         return 0
@@ -62,8 +62,8 @@ macro try_c_uninitialized(ex)
         try
             $(esc(ex))
         catch e
-            Base.invokelatest(Base.display_error, current_exceptions()) # TODO: Remove
             last_error_message = sprint(showerror, e)
+            println(last_error_message) # TODO: remove
             return 1
         end
         return 0
@@ -127,6 +127,12 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
         n = length(value)
         core_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
         unsafe_copyto!(value_ptr, core_ptr, length(value))
+    end
+end
+
+Base.@ccallable function get_component_name(error_message::Ptr{Cstring})::Cint
+    @try_c_uninitialized begin
+        unsafe_write_to_cstring!(error_message, "Ribasim")
     end
 end
 

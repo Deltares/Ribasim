@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal
+from xmipy.errors import XMIError
 
 
 def test_initialize(libribasim, basic, tmp_path):
@@ -55,3 +56,18 @@ def test_get_value_ptr(libribasim, basic, tmp_path):
     actual_volume = libribasim.get_value_ptr("volume")
     expected_volume = np.array([1.0, 1.0, 1.0])
     assert_array_almost_equal(actual_volume, expected_volume)
+
+
+def test_err_unknown_var(libribasim, basic, tmp_path):
+    """Unknown or invalid variable address should trigger Python Exception,
+    print the kernel error, and not crash the library"""
+    basic.write(tmp_path)
+    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    libribasim.initialize(config_file)
+
+    with pytest.raises(XMIError, match="library is already initialized"):
+        libribasim.get_var_type("var-that-does-not-exist")
+
+
+def test_get_component_name(libribasim):
+    assert libribasim.get_component_name() == "Ribasim"
