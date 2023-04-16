@@ -10,23 +10,9 @@ end
 function exists(db::DB, tablename::String)
     query = execute(
         db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename))",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
     )
     return !isempty(query)
-end
-
-tablename(nodetype, kind) = string(nodetype, " / ", kind)
-
-function split_tablename(tablename)
-    parts = split(tablename, " / ")
-    if length(parts) == 1
-        nodetype = only(parts)
-        kind = "static"
-    else
-        @assert length(parts) == 2 "Invalid table name"
-        nodetype, kind = parts
-    end
-    return Symbol(nodetype), Symbol(kind)
 end
 
 """
@@ -46,33 +32,54 @@ DateTime. This is used to convert between the solver's inner float time, and the
 time_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
-    load_data(db::DB, config::Config, tablename::String)::Union{Table, Query, Nothing}
+    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
 
 Load data from Arrow files if available, otherwise the GeoPackage.
 Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
 """
-function load_data(db::DB, config::Config, tablename::String)::Union{Table, Query, Nothing}
-    # TODO reverse nodetype and kind order in TOML
-    nodetype, kind = split_tablename(tablename)
-    path = getfield(getfield(config, kind), nodetype)
-    if !isnothing(path)
+function load_data(
+    db::DB,
+    config::Config,
+    nodetype::Symbol,
+    kind::Symbol,
+)::Union{Table, Query, Nothing}
+    # TODO load_data doesn't need both config and db, use config to check which one is needed
+    path = getfield(getfield(config, nodetype), kind)
+
+    schematype = schemaversion(nodetype, kind)
+    sqltable = tablename(schematype)
+
+    table = if !isnothing(path)
         table_path = input_path(config, path)
-        return Table(read(table_path))
+        Table(read(table_path))
+    elseif exists(db, sqltable)
+        # [] prepare and [] are required for strict to be passed
+        execute(prepare(db, "select * from $(esc_id(sqltable))"), []; strict = true)
+    else
+        error("No data found for $sqltable")
     end
 
-    if exists(db, tablename)
-        return execute(db, "select * from $(esc_id(tablename))")
+    sv = schematype()
+    # TODO By default SQLite has missing types (NOT NULL is not set), which doesn't agree with our schemas
+    tableschema = Tables.schema(table)
+    if declared(sv) && !isnothing(tableschema)
+        validate(tableschema, sv)
+        # R = Legolas.record_type(sv)
+        # foreach(R, Tables.rows(table))  # construct each row
+    else
+        @warn "No (validation) schema declared for $nodetype $kind"
     end
 
-    return nothing
+    return table
 end
 
 function load_dataframe(
     db::DB,
     config::Config,
-    tablename::String,
+    nodetype::Symbol,
+    kind::Symbol,
 )::Union{DataFrame, Nothing}
-    query = load_data(db, config, tablename)
+    query = load_data(db, config, nodetype, kind)
     if isnothing(query)
         return nothing
     end
@@ -87,9 +94,10 @@ end
 function load_required_data(
     db::DB,
     config::Config,
-    tablename::String,
+    nodetype::Symbol,
+    kind::Symbol,
 )::Union{Table, Query, Nothing}
-    data = load_data(db, config, tablename)
+    data = load_data(db, config, nodetype, kind)
     if data === nothing
         error("Cannot find data for '$tablename' in Arrow or GeoPackage.")
     end
@@ -108,24 +116,6 @@ end
 
 parsefile(config_path::AbstractString) =
     from_toml(Config, config_path; toml_dir = dirname(normpath(config_path)))
-
-# Read into memory for now with read, to avoid locking the file, since it mmaps otherwise.
-# We could pass Mmap.mmap(path) ourselves and make sure it gets closed, since Arrow.Table
-# does not have an io handle to close.
-_read_table(entry::AbstractString) = Arrow.Table(read(entry))
-_read_table(entry) = entry
-
-function read_table(entry; schema = nothing)
-    table = _read_table(entry)
-    @assert Tables.istable(table)
-    if !isnothing(schema)
-        sv = schema()
-        validate(Tables.schema(table), sv)
-        R = Legolas.record_type(sv)
-        foreach(R, Tables.rows(table))  # construct each row
-    end
-    return DataFrame(table)
-end
 
 function write_basin_output(model::Model)
     (; config, integrator) = model

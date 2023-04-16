@@ -11,15 +11,15 @@ function Connectivity(db::DB)::Connectivity
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
-    data = load_data(db, config, "LinearLevelConnection")
-    data === nothing && return LinearLevelConnection()
+    data = load_data(db, config, :linearlevelconnection, :static)
+    isnothing(data) && return LinearLevelConnection()
     tbl = columntable(data)
     return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
-    data = load_data(db, config, "TabulatedRatingCurve")
-    data === nothing && return TabulatedRatingCurve()
+    data = load_data(db, config, :tabulatedratingcurve, :static)
+    isnothing(data) && return TabulatedRatingCurve()
     df = DataFrame(data)
     node_id = get_ids(db, "TabulatedRatingCurve")
     tables = Interpolation[]
@@ -35,7 +35,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function create_storage_tables(db::DB, config::Config)
-    df = DataFrame(load_required_data(db, config, "Basin / profile"))
+    df = DataFrame(load_required_data(db, config, :basin, :profile))
     area = Interpolation[]
     level = Interpolation[]
     for group in groupby(df, :node_id; sort = true)
@@ -50,24 +50,25 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
-    data = load_data(db, config, "FractionalFlow")
-    data === nothing && return FractionalFlow()
+    data = load_data(db, config, :fractionalflow, :static)
+    isnothing(data) && return FractionalFlow()
     tbl = columntable(data)
     return FractionalFlow(tbl.node_id, tbl.fraction)
 end
 
 function LevelControl(db::DB, config::Config)::LevelControl
-    data = load_data(db, config, "LevelControl")
-    data === nothing && return LevelControl()
+    data = load_data(db, config, :levelcontrol, :static)
+    isnothing(data) && return LevelControl()
     tbl = columntable(data)
     # TODO add LevelControl conductance to LHM / ribasim-python datasets
+    # TODO Move to Struct constructor
     conductance = fill(100.0 / (3600.0 * 24), length(tbl.node_id))
     return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
 function Pump(db::DB, config::Config)::Pump
-    data = load_data(db, config, "Pump")
-    data === nothing && return Pump()
+    data = load_data(db, config, :pump, :static)
+    isnothing(data) && return Pump()
     tbl = columntable(data)
     return Pump(tbl.node_id, tbl.flow_rate)
 end
@@ -108,8 +109,8 @@ function Basin(db::DB, config::Config)::Basin
     t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
-    static = load_dataframe(db, config, "Basin")
-    forcing = load_dataframe(db, config, "Basin / forcing")
+    static = load_dataframe(db, config, :basin, :static)
+    forcing = load_dataframe(db, config, :basin, :forcing)
     if static === forcing === nothing
         error("Neither static or transient forcing found for Basin.")
     end

@@ -1,30 +1,23 @@
-nodetypes::Vector{Symbol} = [
-    :Basin,
-    :FractionalFlow,
-    :LevelControl,
-    :LinearLevelConnection,
-    :TabulatedRatingCurve,
-    :Pump,
-]
+const schemas =
+    getfield.(
+        Ref(Ribasim),
+        filter!(x -> endswith(string(x), "SchemaVersion"), names(Ribasim; all = true)),
+    )
 
-"""
-Add nodetype as fields to struct expression. Requires @option use before it.
-"""
-macro addnodetypes(typ::Expr)
-    for nodetype in nodetypes
-        push!(
-            typ.args[3].args,
-            Expr(:(=), Expr(:(::), esc(nodetype), Maybe{String}), nothing),
-        )
-    end
-    return typ
+# Find all nodetypes and possible nodekinds
+nodekinds = DefaultDict{Symbol, Vector{Symbol}}(() -> Symbol[])  # require lambda to avoid sharing
+nodeschemas = filter(isnode, schemas)
+for sv in nodeschemas
+    node, kind = nodetype(sv)
+    push!(nodekinds[node], kind)
 end
 
+# Generate structs for each nodetype for use in Config
 abstract type TableOption end
-@option @addnodetypes struct Forcing <: TableOption end
-@option @addnodetypes struct State <: TableOption end
-@option @addnodetypes struct Static <: TableOption end
-@option @addnodetypes struct Profile <: TableOption end
+for (T, kinds) in pairs(nodekinds)
+    @eval @option @addfields struct $T <: TableOption end $kinds
+end
+const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver
     algorithm::String = "QNDF"
@@ -36,7 +29,15 @@ abstract type TableOption end
     maxiters::Int = 1e9
 end
 
-@option struct Config
+# Separate struct, as basin clashes with nodetype
+@option struct Output <: TableOption
+    waterbalance::String = "waterbalance.arrow"
+    basin::String = "output/basin.arrow"
+    flow::String = "output/flow.arrow"
+    outstate::Maybe{String}
+end
+
+@option @addnodetypes struct Config
     starttime::DateTime
     endtime::DateTime
 
@@ -52,16 +53,7 @@ end
     geopackage::String
 
     # output, required
-    waterbalance::String = "waterbalance.arrow"
-    basin::String = "output/basin.arrow"
-    flow::String = "output/flow.arrow"
-    outstate::Maybe{String}
-
-    # optional definitions for tables normally in `geopackage`
-    forcing::Forcing = Forcing()
-    state::State = State()
-    static::Static = Static()
-    profile::Profile = Profile()
+    output::Output = Output()
 
     solver::Solver = Solver()
 end

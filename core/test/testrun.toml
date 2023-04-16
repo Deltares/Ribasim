@@ -9,10 +9,12 @@ input_dir = "../data/lhm"
 output_dir = "../data/lhm"
 
 geopackage = "model.gpkg"
+
+[output]
 waterbalance = "waterbalance.arrow"
 
-[forcing]
-Basin = "forcing.arrow"
+[basin]
+forcing = "forcing.arrow"
 
 [solver]
 saveat = 86400

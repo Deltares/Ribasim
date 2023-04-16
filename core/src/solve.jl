@@ -1,4 +1,5 @@
 ## types and functions
+abstract type NodeType end
 
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
 
@@ -15,6 +16,19 @@ struct Connectivity
     flow::SparseMatrixCSC{Float64, Int}
     u_index::Dict{Int, Int}
     edge_ids::Dict{Tuple{Int, Int}, Int}
+    Connectivity(graph, flow, u_index, edge_ids) =
+        isvalid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
+        error("Invalid graph")
+end
+
+# TODO Add actual validation
+function Base.isvalid(
+    graph::DiGraph{Int},
+    flow::SparseMatrixCSC{Float64, Int},
+    u_index::Dict{Int, Int},
+    edge_ids::Dict{Tuple{Int, Int}, Int},
+)
+    return true
 end
 
 """
@@ -24,7 +38,7 @@ Requirements:
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 """
-struct Basin
+struct Basin <: NodeType
     # cache these to avoid recomputation
     current_area::Vector{Float64}
     current_level::Vector{Float64}
@@ -44,7 +58,7 @@ Requirements:
 * from: must be (Basin,) node.
 * to: must be a (Bifurcation, Basin) node.
 """
-struct TabulatedRatingCurve
+struct TabulatedRatingCurve <: NodeType
     node_id::Vector{Int}
     tables::Vector{Interpolation}
 end
@@ -57,7 +71,7 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 """
-struct LinearLevelConnection
+struct LinearLevelConnection <: NodeType
     node_id::Vector{Int}
     conductance::Vector{Float64}
 end
@@ -71,7 +85,7 @@ Requirements:
 * to: must be (Basin,) node
 * fraction must be positive.
 """
-struct FractionalFlow
+struct FractionalFlow <: NodeType
     node_id::Vector{Int}
     fraction::Vector{Float64}
 end
@@ -83,7 +97,7 @@ node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
 conductance: conductance on how quickly the target volume can be reached
 """
-struct LevelControl
+struct LevelControl <: NodeType
     node_id::Vector{Int}
     target_level::Vector{Float64}
     conductance::Vector{Float64}
@@ -95,13 +109,15 @@ LevelControl() = LevelControl(Int[], Float64[], Float64[])
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
-struct Pump
+struct Pump <: NodeType
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
 end
 
+# TODO Kwarg constructor
 Pump() = Pump(Int[], Float64[])
 
+# TODO Automatically add all nodetypes here
 struct Parameters
     connectivity::Connectivity
     basin::Basin
@@ -194,7 +210,7 @@ end
 function formulate!(connectivity::Connectivity, level_control::LevelControl, level)::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, target_level, conductance) = level_control
-    for (i, id) in enumerate(node_id)
+    for (i, id) in enumerate(node_id)  # TODO eachindex
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
             flow[basin_id, id] =
