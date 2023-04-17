@@ -24,12 +24,12 @@ simulation. This is used to convert between the solver's inner float time, and t
 seconds_since(t::DateTime, t0::DateTime)::Float64 = 0.001 * Dates.value(t - t0)
 
 """
-    time_since(t::Real, t0::DateTime)::DateTime
+    datetime_since(t::Real, t0::DateTime)::DateTime
 
 Convert a Real that represents the seconds passed since the simulation start to the nearest
 DateTime. This is used to convert between the solver's inner float time, and the calendar.
 """
-time_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
+datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
     load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
@@ -40,27 +40,71 @@ Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not 
 function load_data(
     db::DB,
     config::Config,
-    nodetype::Symbol,
-    kind::Symbol,
+    record::Type{<:Legolas.AbstractRecord},
 )::Union{Table, Query, Nothing}
     # TODO load_data doesn't need both config and db, use config to check which one is needed
-    path = getfield(getfield(config, nodetype), kind)
 
-    schematype = schemaversion(nodetype, kind)
-    sqltable = tablename(schematype)
+    schema = Legolas._schema_version_from_record_type(record)
+
+    node, kind = nodetype(schema)
+    path = getfield(getfield(config, node), kind)
+    sqltable = tablename(schema)
 
     table = if !isnothing(path)
         table_path = input_path(config, path)
         Table(read(table_path))
     elseif exists(db, sqltable)
-        # [] prepare and [] are required for strict to be passed
-        execute(prepare(db, "select * from $(esc_id(sqltable))"), []; strict = true)
+        execute(db, "select * from $(esc_id(sqltable))")
     else
-        error("No data found for $sqltable")
+        nothing
     end
 
-    sv = schematype()
-    # TODO By default SQLite has missing types (NOT NULL is not set), which doesn't agree with our schemas
+    return table
+end
+
+function load_dataframe(
+    db::DB,
+    config::Config,
+    record::Type{<:Legolas.AbstractRecord};
+    strict = false,
+)::Union{DataFrame, Nothing}
+    query = load_data(db, config, record)
+    if isnothing(query)
+        strict ? error("No data found for $record") : return nothing
+    end
+
+    df = DataFrame(query)
+    if hasproperty(df, :time)
+        df.time = DateTime.(df.time)
+    end
+    return df
+end
+
+"""
+    load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
+
+Load data from Arrow files if available, otherwise the GeoPackage.
+Always returns a StructVector of the given struct type T, which is empty if the table is
+not found.
+"""
+function load_structvector(
+    db::DB,
+    config::Config,
+    ::Type{T},
+)::StructVector{T} where {T <: AbstractRow}
+    table = load_data(db, config, T)
+    if isnothing(table)
+        return StructVector{T}(undef, 0)
+    end
+
+    nt = Tables.columntable(table)
+    if table isa Query && haskey(nt, :time)
+        # time is stored as a String in the GeoPackage
+        nt = merge(nt, (; time = DateTime.(nt.time)))
+    end
+
+    table = StructVector{T}(nt)
+    sv = Legolas._schema_version_from_record_type(T)
     tableschema = Tables.schema(table)
     if declared(sv) && !isnothing(tableschema)
         validate(tableschema, sv)
@@ -73,62 +117,7 @@ function load_data(
     return table
 end
 
-function load_dataframe(
-    db::DB,
-    config::Config,
-    nodetype::Symbol,
-    kind::Symbol,
-)::Union{DataFrame, Nothing}
-    query = load_data(db, config, nodetype, kind)
-    if isnothing(query)
-        return nothing
-    end
-
-    df = DataFrame(query)
-    if hasproperty(df, :time)
-        df.time = DateTime.(df.time)
-    end
-    return df
-end
-
-function load_required_data(
-    db::DB,
-    config::Config,
-    nodetype::Symbol,
-    kind::Symbol,
-)::Union{Table, Query, Nothing}
-    data = load_data(db, config, nodetype, kind)
-    if data === nothing
-        error("Cannot find data for '$tablename' in Arrow or GeoPackage.")
-    end
-    return data
-end
-
-"""
-    load_table(db::DB, config::Config, ::Type{T})::StructVector{T}
-
-Load data from Arrow files if available, otherwise the GeoPackage.
-Always returns a StructVector of the given struct type T, which is empty if the table is
-not found.
-"""
-function load_table(
-    db::DB,
-    config::Config,
-    ::Type{T},
-)::StructVector{T} where {T <: AbstractRow}
-    name = tablename(T)
-    table = load_data(db, config, name)
-    if isnothing(table)
-        return StructVector{T}(undef, 0)
-    end
-
-    nt = Tables.columntable(table)
-    if table isa Query && haskey(nt, :time)
-        # time is stored as a String in the GeoPackage
-        nt = merge(nt, (; time = DateTime.(nt.time)))
-    end
-    return StructVector{T}(nt)
-end
+load_table(db, config, sv::SchemaVersion) = load_table(db, config, record_type(sv))
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
@@ -149,7 +138,7 @@ function write_basin_output(model::Model)
 
     basin_id = collect(keys(p.connectivity.u_index))
     nbasin = length(basin_id)
-    tsteps = time_since.(timesteps(model), config.starttime)
+    tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
 
     time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
@@ -162,7 +151,7 @@ function write_basin_output(model::Model)
     end
 
     basin = DataFrame(; time, node_id, storage = vec(storage), level = vec(level))
-    path = output_path(config, config.basin)
+    path = output_path(config, config.output.basin)
     mkpath(dirname(path))
     Arrow.write(path, basin; compress = :lz4)
 end
@@ -177,13 +166,17 @@ function write_flow_output(model::Model)
     nflow = length(I)
     ntsteps = length(t)
 
-    time = convert.(Arrow.DATETIME, repeat(time_since.(t, config.starttime); inner = nflow))
+    time =
+        convert.(
+            Arrow.DATETIME,
+            repeat(datetime_since.(t, config.starttime); inner = nflow),
+        )
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
 
     df = DataFrame(; time, from_node_id, to_node_id, flow)
-    path = output_path(config, config.flow)
+    path = output_path(config, config.output.flow)
     mkpath(dirname(path))
     Arrow.write(path, df; compress = :lz4)
 end

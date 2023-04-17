@@ -64,7 +64,7 @@ vectors or Arrow Tables, and is added to avoid type instabilities.
 struct TabulatedRatingCurve{C}
     node_id::Vector{Int}
     tables::Vector{Interpolation}
-    time::StructVector{TabulatedRatingCurve_Time, C, Int}
+    time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
 end
 
 """

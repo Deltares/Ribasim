@@ -53,6 +53,10 @@ class Node(InputMixin, BaseModel):
     def __init__(self, static: pd.DataFrame):
         super().__init__(**locals())
 
+    @classmethod
+    def _layername(cls, field) -> str:
+        return f"{cls._input_type}"
+
     def plot(self, **kwargs) -> Any:
         """
         Plot the nodes. Each node type is given a separate marker.

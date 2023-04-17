@@ -11,22 +11,23 @@
 @schema "ribasim.levelcontrol.static" LevelControlStatic
 @schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
+@schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
 const delimiter = " / "
 schemaversion(node::Symbol, kind::Symbol, v = 1) =
     SchemaVersion{Symbol(join((:ribasim, node, kind), ".")), v}
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
+tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
+nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 
 @version NodeV1 begin
-    geom::Vector{Float64}
     fid::Int
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
 end
 
 @version EdgeV1 begin
-    geom::Vector{Vector{Float64}}
     from_node_id::Int
     to_node_id::Int
 end
@@ -86,7 +87,14 @@ end
 
 @version TabulatedRatingCurveStaticV1 begin
     node_id::Int
-    storage::Float64
+    level::Float64
+    discharge::Float64
+end
+
+@version TabulatedRatingCurveTimeV1 begin
+    node_id::Int
+    time::DateTime
+    level::Float64
     discharge::Float64
 end
 
