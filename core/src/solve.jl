@@ -15,12 +15,12 @@ struct Connectivity
     u_index::Dict{Int, Int}
     edge_ids::Dict{Tuple{Int, Int}, Int}
     Connectivity(graph, flow, u_index, edge_ids) =
-        isvalid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
+        is_valid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
         error("Invalid graph")
 end
 
 # TODO Add actual validation
-function Base.isvalid(
+function is_valid(
     graph::DiGraph{Int},
     flow::SparseMatrixCSC{Float64, Int},
     u_index::Dict{Int, Int},
