@@ -1,5 +1,6 @@
 module Ribasim
 
+import IterTools
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
@@ -17,7 +18,8 @@ using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using Statistics: median
-using Tables: Tables, columntable
+using StructArrays: StructVector
+using Tables: AbstractRow, columntable
 using TimerOutputs
 
 const to = TimerOutput()

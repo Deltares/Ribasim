@@ -30,3 +30,27 @@ function Base.show(io::IO, model::Model)
     nsaved = length(timesteps(model))
     println(io, "Model(ts: $nsaved, t: $t)")
 end
+
+"""
+    abstract type Row end
+
+Subtypes of Row specify the name and type of the different columns in in- and output tables.
+For a `T <: Row` the table is represented as a StructVector{T}, which iterates T, but is
+backed by a columnar data layout.
+"""
+abstract type Row <: AbstractRow end
+
+Tables.getcolumn(row::Row, nm::Symbol) = getfield(row, nm)
+
+struct TabulatedRatingCurve_Static <: Row
+    node_id::Int
+    level::Float64
+    discharge::Float64
+end
+
+struct TabulatedRatingCurve_Time <: Row
+    node_id::Int
+    time::DateTime
+    level::Float64
+    discharge::Float64
+end

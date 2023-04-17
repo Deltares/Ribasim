@@ -32,19 +32,25 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
+    # get the table underlying the Stateful iterator, and get all unique timestamps
+    times = unique(parameters.tabulated_rating_curve.time.time)
+    tstops = seconds_since.(times, config.starttime)
+    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
+
     # add a single time step's contribution to the water balance step's totals
     # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
     # flows: save the flows over time, as a Vector of the nonzeros(flow)
     save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
+    callback = CallbackSet(save_flow_cb, tabulated_rating_curve_cb)
 
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
         progress = true,
         progress_name = "Simulating",
-        callback = save_flow_cb,
+        callback,
         config.solver.saveat,
         config.solver.dt,
         config.solver.abstol,
@@ -54,6 +60,27 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     close(db)
     return Model(integrator, config, saved_flow)
+end
+
+"Load updates from 'TabulatedRatingCurve / time' into the parameters"
+function update_tabulated_rating_curve(integrator)::Nothing
+    (; node_id, tables, time) = integrator.p.tabulated_rating_curve
+    t = time_since(integrator.t, integrator.p.starttime)
+
+    # get groups of consecutive node_id for the current timestamp
+    rows = searchsorted(time.time, t)
+    timeblock = view(time, rows)
+    groups = IterTools.groupby(row -> row.node_id, timeblock)
+
+    for group in groups
+        # update the existing LinearInterpolation
+        id = first(group).node_id
+        level = [row.level for row in group]
+        discharge = [row.discharge for row in group]
+        i = searchsortedfirst(node_id, id)
+        tables[i] = LinearInterpolation(discharge, level)
+    end
+    return nothing
 end
 
 function BMI.update(model::Model)::Model

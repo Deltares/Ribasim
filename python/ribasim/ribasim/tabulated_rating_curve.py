@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
@@ -10,6 +12,13 @@ __all__ = ("TabulatedRatingCurve",)
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
+    level: Series[float]
+    discharge: Series[float]
+
+
+class TimeSchema(pa.SchemaModel):
+    node_id: Series[int] = pa.Field(coerce=True)
+    time: Series[pa.dtypes.DateTime]
     level: Series[float]
     discharge: Series[float]
 
@@ -28,13 +37,22 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
         * level
         * discharge
 
+    time: pandas.DataFrame, optional
+
+        Time varying rating curves with columns:
+
+        * node_id
+        * time
+        * level
+        * discharge
     """
 
     _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]
+    time: Optional[DataFrame[StaticSchema]] = None
 
     class Config:
         validate_assignment = True
 
-    def __init__(self, static: pd.DataFrame):
+    def __init__(self, static: pd.DataFrame, time: Optional[pd.DataFrame] = None):
         super().__init__(**locals())

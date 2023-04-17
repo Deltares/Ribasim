@@ -17,21 +17,68 @@ function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
     return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
-function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
-    data = load_data(db, config, :tabulatedratingcurve, :static)
-    isnothing(data) && return TabulatedRatingCurve()
-    df = DataFrame(data)
-    node_id = get_ids(db, "TabulatedRatingCurve")
-    tables = Interpolation[]
-    for group in groupby(df, :node_id; sort = true)
-        order = sortperm(group.level)
-        level = group.level[order]
-        discharge = group.discharge[order]
-        interp = LinearInterpolation(discharge, level)
-        push!(tables, interp)
+"""
+For an element `id` and a vector of elements `ids`, get the range of indices of the last
+consecutive block of `id`.
+Returns the empty range `1:0` if `id` is not in `ids`.
+
+```
+#                  1 2 3 4 5 6 7 8 9
+findlastgroup(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
+```
+"""
+function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
+    idx_block_end = findlast(==(id), ids)
+    if isnothing(idx_block_end)
+        return 1:0
     end
-    @assert length(node_id) == length(tables)
-    return TabulatedRatingCurve(node_id, tables)
+    idx_block_begin = findprev(!=(id), ids, idx_block_end)
+    idx_block_begin = if isnothing(idx_block_begin)
+        1
+    else
+        # can happen if that if id is the only ID in ids
+        idx_block_begin + 1
+    end
+    return idx_block_begin:idx_block_end
+end
+
+"""
+From a table with columns node_id, discharge (q) and level (h),
+create a LinearInterpolation from level to discharge for a given node_id.
+"""
+function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
+    rowrange = findlastgroup(node_id, table.node_id)
+    @assert !isempty(rowrange) "timeseries starts after model start time"
+    return LinearInterpolation(table.discharge[rowrange], table.level[rowrange])
+end
+
+function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
+    static = load_table(db, config, TabulatedRatingCurve_Static)
+    time = load_table(db, config, TabulatedRatingCurve_Time)
+
+    static_node_ids = Set(static.node_id)
+    time_node_ids = Set(time.node_id)
+    msg = "TabulatedRatingCurve cannot be in both static and time tables"
+    @assert isdisjoint(static_node_ids, time_node_ids) msg
+    node_ids = get_ids(db, "TabulatedRatingCurve")
+    msg = "TabulatedRatingCurve node IDs don't match"
+    @assert issetequal(node_ids, union(static_node_ids, time_node_ids))
+
+    interpolations = Interpolation[]
+    for node_id in node_ids
+        interpolation = if node_id in static_node_ids
+            qh_interpolation(node_id, static)
+        elseif node_id in time_node_ids
+            # get the timestamp that applies to the model starttime
+            idx_starttime = searchsortedlast(time.time, config.starttime)
+            pre_table = view(time, 1:idx_starttime)
+            qh_interpolation(node_id, pre_table)
+        else
+            error("TabulatedRatingCurve node ID $node_id data not in any table.")
+        end
+        push!(interpolations, interpolation)
+    end
+    return TabulatedRatingCurve(node_ids, interpolations, time)
 end
 
 function create_storage_tables(db::DB, config::Config)
@@ -209,6 +256,7 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config)
 
     return Parameters(
+        config.starttime,
         connectivity,
         basin,
         linear_level_connection,

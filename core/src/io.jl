@@ -104,6 +104,32 @@ function load_required_data(
     return data
 end
 
+"""
+    load_table(db::DB, config::Config, ::Type{T})::StructVector{T}
+
+Load data from Arrow files if available, otherwise the GeoPackage.
+Always returns a StructVector of the given struct type T, which is empty if the table is
+not found.
+"""
+function load_table(
+    db::DB,
+    config::Config,
+    ::Type{T},
+)::StructVector{T} where {T <: AbstractRow}
+    name = tablename(T)
+    table = load_data(db, config, name)
+    if isnothing(table)
+        return StructVector{T}(undef, 0)
+    end
+
+    nt = Tables.columntable(table)
+    if table isa Query && haskey(nt, :time)
+        # time is stored as a String in the GeoPackage
+        nt = merge(nt, (; time = DateTime.(nt.time)))
+    end
+    return StructVector{T}(nt)
+end
+
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
     return normpath(config.toml_dir, config.input_dir, path)
