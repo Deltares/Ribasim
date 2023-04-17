@@ -13,6 +13,8 @@ T = TypeVar("T")
 
 __all__ = ("InputMixin",)
 
+delimiter = " / "
+
 
 class InputMixin(abc.ABC):
     @classmethod
@@ -49,6 +51,10 @@ class InputMixin(abc.ABC):
         self.dataframe.write_feather(path)
         return
 
+    @classmethod
+    def _layername(cls, field) -> str:
+        return f"{cls._input_type}{delimiter}{field}"
+
     def write(self, directory: FilePath, modelname: str) -> None:
         """
         Write the contents of the input to a GeoPackage.
@@ -66,9 +72,7 @@ class InputMixin(abc.ABC):
             dataframe = getattr(self, field)
             if dataframe is None:
                 continue
-            name = self._input_type
-            if field != "static":
-                name = f"{name} / {field}"
+            name = self._layername(field)
 
             gdf = gpd.GeoDataFrame(data=dataframe)
             if "geometry" in gdf.columns:
@@ -80,22 +84,20 @@ class InputMixin(abc.ABC):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> T:
+    def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> Dict:
         kwargs = {}
         layers = fiona.listlayers(path)
         for key in cls.fields():
-            df = None
-            layername = f"{cls._input_type} / {key}"
-            if key == "static" and cls._input_type in layers:
-                df = gpd.read_file(
-                    path, layer=cls._input_type, engine="pyogrio", fid_as_index=True
-                )
-            elif layername in layers:
+            layername = cls._layername(key)
+            if layername in layers:
                 df = gpd.read_file(
                     path, layer=layername, engine="pyogrio", fid_as_index=True
                 )
+            else:
+                df = None
 
             kwargs[key] = df
+
         return kwargs
 
     @classmethod

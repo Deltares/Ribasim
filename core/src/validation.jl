@@ -1,9 +1,26 @@
+# These schemas define the name of database tables and the configuration file structure
+# The identifier is parsed as ribasim.nodetype.kind.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
-@schema "ribasim.state" State
-@schema "ribasim.static" Static
-@schema "ribasim.profile" Profile
-@schema "ribasim.forcing" Forcing
+@schema "ribasim.pump.static" PumpStatic
+@schema "ribasim.basin.static" BasinStatic
+@schema "ribasim.basin.forcing" BasinForcing
+@schema "ribasim.basin.profile" BasinProfile
+@schema "ribasim.basin.state" BasinState
+@schema "ribasim.fractionalflow.static" FractionalFlowStatic
+@schema "ribasim.levelcontrol.static" LevelControlStatic
+@schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
+@schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
+@schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
+
+const delimiter = " / "
+schemaversion(node::Symbol, kind::Symbol, v = 1) =
+    SchemaVersion{Symbol(join((:ribasim, node, kind), ".")), v}
+tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
+tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
+isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
+nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
+nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 
 @version NodeV1 begin
     fid::Int
@@ -15,31 +32,68 @@ end
     to_node_id::Int
 end
 
-@version StateV1 begin
+@version PumpStaticV1 begin
+    node_id::Int
+    flow_rate::Float64
+end
+
+@version BasinStaticV1 begin
+    node_id::Int
+    drainage::Float64
+    potential_evaporation::Float64
+    infiltration::Float64
+    precipitation::Float64
+    urban_runoff::Float64
+end
+
+@version BasinForcingV1 begin
+    node_id::Int
+    time::DateTime
+    drainage::Float64
+    potential_evaporation::Float64
+    infiltration::Float64
+    precipitation::Float64
+    urban_runoff::Float64
+end
+
+@version BasinProfileV1 begin
     node_id::Int
     storage::Float64
-    salinity::Float64
-end
-
-@version StaticV1 begin
-    node_id::Int
-    variable::String = isempty(variable) ? error("Empty variable") : variable
-    value::Float64
-end
-
-@version ProfileV1 begin
-    node_id::Int
-    volume::Float64
     area::Float64
-    discharge::Float64
     level::Float64
 end
 
-@version ForcingV1 begin
+@version BasinStateV1 begin
+    node_id::Int
+    storage::Float64
+end
+
+@version FractionalFlowStaticV1 begin
+    node_id::Int
+    fraction::Float64
+end
+
+@version LevelControlStaticV1 begin
+    node_id::Int
+    target_level::Float64
+end
+
+@version LinearLevelConnectionStaticV1 begin
+    node_id::Int
+    conductance::Float64
+end
+
+@version TabulatedRatingCurveStaticV1 begin
+    node_id::Int
+    level::Float64
+    discharge::Float64
+end
+
+@version TabulatedRatingCurveTimeV1 begin
     node_id::Int
     time::DateTime
-    variable::String = isempty(variable) ? error("Empty variable") : variable
-    value::Float64
+    level::Float64
+    discharge::Float64
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

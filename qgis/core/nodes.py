@@ -261,8 +261,8 @@ class BasinProfile(Input):
     ]
 
 
-class Basin(Input):
-    input_type = "Basin"
+class BasinStatic(Input):
+    input_type = "Basin / static"
     geometry_type = "No geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -298,8 +298,8 @@ class BasinState(Input):
     ]
 
 
-class TabulatedRatingCurve(Input):
-    input_type = "TabulatedRatingCurve"
+class TabulatedRatingCurveStatic(Input):
+    input_type = "TabulatedRatingCurve / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -319,8 +319,8 @@ class TabulatedRatingCurveTime(Input):
     ]
 
 
-class FractionalFlow(Input):
-    input_type = "FractionalFlow"
+class FractionalFlowStatic(Input):
+    input_type = "FractionalFlow / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -328,8 +328,8 @@ class FractionalFlow(Input):
     ]
 
 
-class LinearLevelConnection(Input):
-    input_type = "LinearLevelConnection"
+class LinearLevelConnectionStatic(Input):
+    input_type = "LinearLevelConnection / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -337,8 +337,8 @@ class LinearLevelConnection(Input):
     ]
 
 
-class LevelControl(Input):
-    input_type = "LevelControl"
+class LevelControlStatic(Input):
+    input_type = "LevelControl / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -346,8 +346,8 @@ class LevelControl(Input):
     ]
 
 
-class Pump(Input):
-    input_type = "Pump"
+class PumpStatic(Input):
+    input_type = "Pump / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -358,16 +358,16 @@ class Pump(Input):
 NODES = {
     "Node": Node,
     "Edge": Edge,
-    "Basin": Basin,
+    "Basin / static": BasinStatic,
     "Basin / state": BasinState,
     "Basin / profile": BasinProfile,
     "Basin / forcing": BasinForcing,
-    "TabulatedRatingCurve": TabulatedRatingCurve,
+    "TabulatedRatingCurve / static": TabulatedRatingCurveStatic,
     "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
-    "FractionalFlow": FractionalFlow,
-    "LinearLevelConnection": LinearLevelConnection,
-    "LevelControl": LevelControl,
-    "Pump": Pump,
+    "FractionalFlow / static": FractionalFlowStatic,
+    "LinearLevelConnection / static": LinearLevelConnectionStatic,
+    "LevelControl / static": LevelControlStatic,
+    "Pump / static": PumpStatic,
 }
 
 

@@ -26,7 +26,7 @@ timesteps(model::Model) = model.integrator.sol.t
 
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model
-    t = time_since(integrator.t, config.starttime)
+    t = datetime_since(integrator.t, config.starttime)
     nsaved = length(timesteps(model))
     println(io, "Model(ts: $nsaved, t: $t)")
 end

@@ -15,7 +15,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     @timeit_debug to "Setup ODEProblem" begin
         # use state
-        state = load_dataframe(db, config, "Basin / state")
+        state = load_dataframe(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
         u0 = if isnothing(state)
             # default to nearly empty basins, perhaps make required input
@@ -65,7 +65,7 @@ end
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
 function update_tabulated_rating_curve(integrator)::Nothing
     (; node_id, tables, time) = integrator.p.tabulated_rating_curve
-    t = time_since(integrator.t, integrator.p.starttime)
+    t = datetime_since(integrator.t, integrator.p.starttime)
 
     # get groups of consecutive node_id for the current timestamp
     rows = searchsorted(time.time, t)

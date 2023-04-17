@@ -1,5 +1,7 @@
 project:
   type: website
+  resources:
+    - schema/*.schema.json
 
 website:
   title: "Ribasim"

@@ -1,5 +1,4 @@
 ## types and functions
-
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
 
 """
@@ -15,6 +14,19 @@ struct Connectivity
     flow::SparseMatrixCSC{Float64, Int}
     u_index::Dict{Int, Int}
     edge_ids::Dict{Tuple{Int, Int}, Int}
+    Connectivity(graph, flow, u_index, edge_ids) =
+        is_valid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
+        error("Invalid graph")
+end
+
+# TODO Add actual validation
+function is_valid(
+    graph::DiGraph{Int},
+    flow::SparseMatrixCSC{Float64, Int},
+    u_index::Dict{Int, Int},
+    edge_ids::Dict{Tuple{Int, Int}, Int},
+)
+    return true
 end
 
 """
@@ -52,7 +64,7 @@ vectors or Arrow Tables, and is added to avoid type instabilities.
 struct TabulatedRatingCurve{C}
     node_id::Vector{Int}
     tables::Vector{Interpolation}
-    time::StructVector{TabulatedRatingCurve_Time, C, Int}
+    time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
 end
 
 """
@@ -104,8 +116,10 @@ struct Pump
     flow_rate::Vector{Float64}
 end
 
+# TODO Kwarg constructor
 Pump() = Pump(Int[], Float64[])
 
+# TODO Automatically add all nodetypes here
 struct Parameters
     starttime::DateTime
     connectivity::Connectivity
@@ -199,7 +213,7 @@ end
 function formulate!(connectivity::Connectivity, level_control::LevelControl, level)::Nothing
     (; graph, flow, u_index) = connectivity
     (; node_id, target_level, conductance) = level_control
-    for (i, id) in enumerate(node_id)
+    for (i, id) in enumerate(node_id)  # TODO eachindex
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
             flow[basin_id, id] =

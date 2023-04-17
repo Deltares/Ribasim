@@ -11,50 +11,15 @@ function Connectivity(db::DB)::Connectivity
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
-    data = load_data(db, config, "LinearLevelConnection")
-    data === nothing && return LinearLevelConnection()
+    data = load_data(db, config, LinearLevelConnectionStaticV1)
+    isnothing(data) && return LinearLevelConnection()
     tbl = columntable(data)
     return LinearLevelConnection(tbl.node_id, tbl.conductance)
 end
 
-"""
-For an element `id` and a vector of elements `ids`, get the range of indices of the last
-consecutive block of `id`.
-Returns the empty range `1:0` if `id` is not in `ids`.
-
-```
-#                  1 2 3 4 5 6 7 8 9
-findlastgroup(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
-```
-"""
-function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
-    idx_block_end = findlast(==(id), ids)
-    if isnothing(idx_block_end)
-        return 1:0
-    end
-    idx_block_begin = findprev(!=(id), ids, idx_block_end)
-    idx_block_begin = if isnothing(idx_block_begin)
-        1
-    else
-        # can happen if that if id is the only ID in ids
-        idx_block_begin + 1
-    end
-    return idx_block_begin:idx_block_end
-end
-
-"""
-From a table with columns node_id, discharge (q) and level (h),
-create a LinearInterpolation from level to discharge for a given node_id.
-"""
-function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
-    rowrange = findlastgroup(node_id, table.node_id)
-    @assert !isempty(rowrange) "timeseries starts after model start time"
-    return LinearInterpolation(table.discharge[rowrange], table.level[rowrange])
-end
-
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
-    static = load_table(db, config, TabulatedRatingCurve_Static)
-    time = load_table(db, config, TabulatedRatingCurve_Time)
+    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
+    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
@@ -82,7 +47,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function create_storage_tables(db::DB, config::Config)
-    df = DataFrame(load_required_data(db, config, "Basin / profile"))
+    df = load_dataframe(db, config, BasinProfileV1; strict = true)
     area = Interpolation[]
     level = Interpolation[]
     for group in groupby(df, :node_id; sort = true)
@@ -97,24 +62,25 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
-    data = load_data(db, config, "FractionalFlow")
-    data === nothing && return FractionalFlow()
+    data = load_data(db, config, FractionalFlowStaticV1)
+    isnothing(data) && return FractionalFlow()
     tbl = columntable(data)
     return FractionalFlow(tbl.node_id, tbl.fraction)
 end
 
 function LevelControl(db::DB, config::Config)::LevelControl
-    data = load_data(db, config, "LevelControl")
-    data === nothing && return LevelControl()
+    data = load_data(db, config, LevelControlStaticV1)
+    isnothing(data) && return LevelControl()
     tbl = columntable(data)
     # TODO add LevelControl conductance to LHM / ribasim-python datasets
+    # TODO Move to Struct constructor
     conductance = fill(100.0 / (3600.0 * 24), length(tbl.node_id))
     return LevelControl(tbl.node_id, tbl.target_level, conductance)
 end
 
 function Pump(db::DB, config::Config)::Pump
-    data = load_data(db, config, "Pump")
-    data === nothing && return Pump()
+    data = load_data(db, config, PumpStaticV1)
+    isnothing(data) && return Pump()
     tbl = columntable(data)
     return Pump(tbl.node_id, tbl.flow_rate)
 end
@@ -155,8 +121,8 @@ function Basin(db::DB, config::Config)::Basin
     t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
-    static = load_dataframe(db, config, "Basin")
-    forcing = load_dataframe(db, config, "Basin / forcing")
+    static = load_dataframe(db, config, BasinStaticV1)
+    forcing = load_dataframe(db, config, BasinForcingV1)
     if static === forcing === nothing
         error("Neither static or transient forcing found for Basin.")
     end

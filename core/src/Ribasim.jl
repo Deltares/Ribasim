@@ -7,11 +7,12 @@ using Arrow: Arrow, Table
 using Configurations: Configurations, Maybe, @option, from_toml
 using DataFrames
 using DataInterpolations: LinearInterpolation
+using DataStructures: DefaultDict
 using Dates
-using DBInterface: execute
+using DBInterface: execute, prepare
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
-using Legolas: Legolas, @schema, @version, validate
+using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
@@ -24,12 +25,12 @@ using TimerOutputs
 const to = TimerOutput()
 TimerOutputs.complement!()
 
+include("validation.jl")
+include("solve.jl")
+include("utils.jl")
 include("config.jl")
 include("lib.jl")
 include("io.jl")
-# include("validation.jl")
-include("utils.jl")
-include("solve.jl")
 include("create.jl")
 include("bmi.jl")
 

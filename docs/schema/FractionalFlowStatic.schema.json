@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "fraction": {
+            "description": "fraction",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "fraction"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/FractionalFlowStatic.schema.json",
+    "title": "FractionalFlowStatic",
+    "description": "A FractionalFlowStatic object based on Ribasim.FractionalFlowStaticV1",
+    "type": "object"
+}

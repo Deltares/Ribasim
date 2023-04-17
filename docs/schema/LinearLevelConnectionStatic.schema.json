@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "conductance": {
+            "description": "conductance",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "conductance"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/LinearLevelConnectionStatic.schema.json",
+    "title": "LinearLevelConnectionStatic",
+    "description": "A LinearLevelConnectionStatic object based on Ribasim.LinearLevelConnectionStaticV1",
+    "type": "object"
+}
