@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "precipitation": {
+            "description": "precipitation",
+            "type": "real"
+        },
+        "infiltration": {
+            "description": "infiltration",
+            "type": "real"
+        },
+        "urban_runoff": {
+            "description": "urban_runoff",
+            "type": "real"
+        },
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "potential_evaporation": {
+            "description": "potential_evaporation",
+            "type": "real"
+        },
+        "drainage": {
+            "description": "drainage",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "drainage",
+        "potential_evaporation",
+        "infiltration",
+        "precipitation",
+        "urban_runoff"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/BasinStatic.schema.json",
+    "title": "BasinStatic",
+    "description": "A BasinStatic in the catalog",
+    "type": "object"
+}

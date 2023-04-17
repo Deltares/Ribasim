@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "target_level": {
+            "description": "target_level",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "target_level"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/LevelControlStatic.schema.json",
+    "title": "LevelControlStatic",
+    "description": "A LevelControlStatic in the catalog",
+    "type": "object"
+}

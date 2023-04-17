@@ -1,6 +1,4 @@
 ## types and functions
-abstract type NodeType end
-
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
 
 """
@@ -38,7 +36,7 @@ Requirements:
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 """
-struct Basin <: NodeType
+struct Basin
     # cache these to avoid recomputation
     current_area::Vector{Float64}
     current_level::Vector{Float64}
@@ -58,7 +56,7 @@ Requirements:
 * from: must be (Basin,) node.
 * to: must be a (Bifurcation, Basin) node.
 """
-struct TabulatedRatingCurve <: NodeType
+struct TabulatedRatingCurve
     node_id::Vector{Int}
     tables::Vector{Interpolation}
 end
@@ -71,7 +69,7 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 """
-struct LinearLevelConnection <: NodeType
+struct LinearLevelConnection
     node_id::Vector{Int}
     conductance::Vector{Float64}
 end
@@ -85,7 +83,7 @@ Requirements:
 * to: must be (Basin,) node
 * fraction must be positive.
 """
-struct FractionalFlow <: NodeType
+struct FractionalFlow
     node_id::Vector{Int}
     fraction::Vector{Float64}
 end
@@ -97,7 +95,7 @@ node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
 conductance: conductance on how quickly the target volume can be reached
 """
-struct LevelControl <: NodeType
+struct LevelControl
     node_id::Vector{Int}
     target_level::Vector{Float64}
     conductance::Vector{Float64}
@@ -109,7 +107,7 @@ LevelControl() = LevelControl(Int[], Float64[], Float64[])
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
-struct Pump <: NodeType
+struct Pump
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
 end

@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "geom": {
+            "description": "geom",
+            "type": "object"
+        },
+        "storage": {
+            "description": "storage",
+            "type": "real"
+        },
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "concentration": {
+            "description": "concentration",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "geom",
+        "storage",
+        "concentration"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/BasinState.schema.json",
+    "title": "BasinState",
+    "description": "A BasinState in the catalog",
+    "type": "object"
+}

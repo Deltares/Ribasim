@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "storage": {
+            "description": "storage",
+            "type": "real"
+        },
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "discharge": {
+            "description": "discharge",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "storage",
+        "discharge"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/TabulatedRatingCurveStatic.schema.json",
+    "title": "TabulatedRatingCurveStatic",
+    "description": "A TabulatedRatingCurveStatic in the catalog",
+    "type": "object"
+}

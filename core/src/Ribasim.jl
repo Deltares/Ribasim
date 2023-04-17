@@ -11,7 +11,6 @@ using Dates
 using DBInterface: execute, prepare
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
-using InteractiveUtils: subtypes
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using OrdinaryDiffEq
 using SciMLBase

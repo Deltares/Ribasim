@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "geom": {
+            "description": "geom",
+            "type": "list"
+        },
+        "fid": {
+            "description": "fid",
+            "type": "integer"
+        },
+        "type": {
+            "description": "type",
+            "type": "string"
+        }
+    },
+    "required": [
+        "geom",
+        "fid",
+        "type"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/Node.schema.json",
+    "title": "Node",
+    "description": "A Node in the catalog",
+    "type": "object"
+}

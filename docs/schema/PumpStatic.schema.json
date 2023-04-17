@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "flow_rate": {
+            "description": "flow_rate",
+            "type": "real"
+        },
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "node_id",
+        "flow_rate"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/PumpStatic.schema.json",
+    "title": "PumpStatic",
+    "description": "A PumpStatic in the catalog",
+    "type": "object"
+}
