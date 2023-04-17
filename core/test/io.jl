@@ -47,5 +47,5 @@ end
 @testset "find_last_block" begin
     @test Ribasim.find_last_block(2, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 6:8
     @test Ribasim.find_last_block(2, [2]) === 1:1
-    @test_throws ErrorException Ribasim.find_last_block(3, [5, 4, 2, 2, 5, 2, 2, 2, 1])
+    @test Ribasim.find_last_block(3, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 1:0
 end

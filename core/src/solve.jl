@@ -39,10 +39,15 @@ struct Basin
 end
 
 """
-Requirements:
+    struct TabulatedRatingCurve{C}
 
-* from: must be (Basin,) node.
-* to: must be a (Bifurcation, Basin) node.
+Rating curve from level to discharge. The rating curve is a lookup table with linear
+interpolation in between. Relation can be updated in time, which is done by moving data from
+the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
+callback.
+
+Type parameter C indicates the content backing the StructVector,which can be a NamedTuple of
+vectors or Arrow Tables, and is added to avoid type instabilities.
 """
 struct TabulatedRatingCurve{C}
     node_id::Vector{Int}

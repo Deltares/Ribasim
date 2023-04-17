@@ -106,7 +106,11 @@ Load data from Arrow files if available, otherwise the GeoPackage.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found.
 """
-function load_table(db::DB, config::Config, ::Type{T})::StructVector{T} where {T <: Row}
+function load_table(
+    db::DB,
+    config::Config,
+    ::Type{T},
+)::StructVector{T} where {T <: AbstractRow}
     name = tablename(T)
     table = load_data(db, config, name)
     if isnothing(table)

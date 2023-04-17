@@ -18,7 +18,7 @@ using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using Statistics: median
 using StructArrays: StructVector
-using Tables: columntable
+using Tables: AbstractRow, columntable
 using TimerOutputs
 
 const to = TimerOutput()

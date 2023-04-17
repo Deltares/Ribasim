@@ -20,16 +20,17 @@ end
 """
 For a `node_id` and a vector of such IDs, get the range of indices of the
 last consecutive block of `node_id`.
+Returns the empty range `1:0` if `node_id` is not in `node_ids`.
 
 ```
 #                  1 2 3 4 5 6 7 8 9
 find_last_block(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
 ```
 """
-function find_last_block(node_id::Int, node_ids::AbstractVector{Int})
+function find_last_block(node_id::Int, node_ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_end = findlast(==(node_id), node_ids)
     if isnothing(idx_block_end)
-        error("timeseries starts after model start time")
+        return 1:0
     end
     idx_block_begin = findprev(!=(node_id), node_ids, idx_block_end)
     idx_block_begin = if isnothing(idx_block_begin)
@@ -47,6 +48,7 @@ create a LinearInterpolation from level to discharge for a given node_id.
 """
 function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
     rowrange = find_last_block(node_id, table.node_id)
+    @assert !isempty(rowrange) "timeseries starts after model start time"
     return LinearInterpolation(table.discharge[rowrange], table.level[rowrange])
 end
 
