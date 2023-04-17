@@ -25,6 +25,7 @@ abstract type TableOption end
 @option @addnodetypes struct State <: TableOption end
 @option @addnodetypes struct Static <: TableOption end
 @option @addnodetypes struct Profile <: TableOption end
+@option @addnodetypes struct TimeTable <: TableOption end
 
 @option struct Solver
     algorithm::String = "QNDF"
@@ -62,6 +63,7 @@ end
     state::State = State()
     static::Static = Static()
     profile::Profile = Profile()
+    time::TimeTable = TimeTable()
 
     solver::Solver = Solver()
 end

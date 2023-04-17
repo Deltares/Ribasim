@@ -53,6 +53,7 @@ class Basin(InputMixin, BaseModel):
 
         A tabulation with the columns:
 
+        * node_id
         * storage
         * area
         * water level
@@ -61,6 +62,7 @@ class Basin(InputMixin, BaseModel):
 
         Static forcing with columns:
 
+        * node_id
         * potential evaporation
         * precipitation
         * groundwater drainage
@@ -71,6 +73,7 @@ class Basin(InputMixin, BaseModel):
 
         Time varying forcing with columns:
 
+        * node_id
         * time
         * potential evaporation
         * precipitation
@@ -82,6 +85,7 @@ class Basin(InputMixin, BaseModel):
 
         Initial state with columns:
 
+        * node_id
         * storage
         * concentration
 

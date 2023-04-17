@@ -308,6 +308,17 @@ class TabulatedRatingCurve(Input):
     ]
 
 
+class TabulatedRatingCurveTime(Input):
+    input_type = "TabulatedRatingCurve / time"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_id", QVariant.Int),
+        QgsField("level", QVariant.Double),
+        QgsField("discharge", QVariant.Double),
+    ]
+
+
 class FractionalFlow(Input):
     input_type = "FractionalFlow"
     geometry_type = "No Geometry"
@@ -352,6 +363,7 @@ NODES = {
     "Basin / profile": BasinProfile,
     "Basin / forcing": BasinForcing,
     "TabulatedRatingCurve": TabulatedRatingCurve,
+    "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
     "FractionalFlow": FractionalFlow,
     "LinearLevelConnection": LinearLevelConnection,
     "LevelControl": LevelControl,
