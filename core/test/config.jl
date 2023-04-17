@@ -5,7 +5,7 @@ using Configurations: UndefKeywordError
 using OrdinaryDiffEq: alg_autodiff
 
 @testset "config" begin
-    config = Ribasim.parsefile(joinpath(@__DIR__, "testrun.toml"))
+    config = Ribasim.parsefile(normpath(@__DIR__, "testrun.toml"))
     @test config isa Ribasim.Config
     @test config.update_timestep == 86400.0
     @test config.endtime > config.starttime
