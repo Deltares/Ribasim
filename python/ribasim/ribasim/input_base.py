@@ -15,6 +15,7 @@ __all__ = ("InputMixin",)
 
 delimiter = " / "
 
+
 class InputMixin(abc.ABC):
     @classmethod
     def fields(cls):
