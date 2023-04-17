@@ -18,25 +18,25 @@ function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
 end
 
 """
-For a `node_id` and a vector of such IDs, get the range of indices of the
-last consecutive block of `node_id`.
-Returns the empty range `1:0` if `node_id` is not in `node_ids`.
+For an element `id` and a vector of elements `ids`, get the range of indices of the last
+consecutive block of `id`.
+Returns the empty range `1:0` if `id` is not in `ids`.
 
 ```
 #                  1 2 3 4 5 6 7 8 9
-find_last_block(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
+findlastgroup(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
 ```
 """
-function find_last_block(node_id::Int, node_ids::AbstractVector{Int})::UnitRange{Int}
-    idx_block_end = findlast(==(node_id), node_ids)
+function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
+    idx_block_end = findlast(==(id), ids)
     if isnothing(idx_block_end)
         return 1:0
     end
-    idx_block_begin = findprev(!=(node_id), node_ids, idx_block_end)
+    idx_block_begin = findprev(!=(id), ids, idx_block_end)
     idx_block_begin = if isnothing(idx_block_begin)
         1
     else
-        # can happen if that if node_id is the only ID in node_ids
+        # can happen if that if id is the only ID in ids
         idx_block_begin + 1
     end
     return idx_block_begin:idx_block_end
@@ -47,7 +47,7 @@ From a table with columns node_id, discharge (q) and level (h),
 create a LinearInterpolation from level to discharge for a given node_id.
 """
 function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
-    rowrange = find_last_block(node_id, table.node_id)
+    rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
     return LinearInterpolation(table.discharge[rowrange], table.level[rowrange])
 end
