@@ -42,7 +42,7 @@ function find_last_block(node_id::Int, node_ids::AbstractVector{Int})
 end
 
 """
-From a table with columns node_id, discharge and level,
+From a table with columns node_id, discharge (q) and level (h),
 create a LinearInterpolation from level to discharge for a given node_id.
 """
 function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
