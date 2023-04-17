@@ -14,8 +14,8 @@
         "node_id",
         "flow_rate"
     ],
-    "$id": "https://deltares.github.io/Ribasim/PumpStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
     "title": "PumpStatic",
-    "description": "A PumpStatic in the catalog",
+    "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
     "type": "object"
 }

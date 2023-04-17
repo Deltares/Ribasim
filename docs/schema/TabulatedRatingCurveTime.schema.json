@@ -1,6 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "time": {
+            "description": "time",
+            "type": "string"
+        },
         "node_id": {
             "description": "node_id",
             "type": "integer"
@@ -16,11 +20,12 @@
     },
     "required": [
         "node_id",
+        "time",
         "level",
         "discharge"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveStatic.schema.json",
-    "title": "TabulatedRatingCurveStatic",
-    "description": "A TabulatedRatingCurveStatic object based on Ribasim.TabulatedRatingCurveStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveTime.schema.json",
+    "title": "TabulatedRatingCurveTime",
+    "description": "A TabulatedRatingCurveTime object based on Ribasim.TabulatedRatingCurveTimeV1",
     "type": "object"
 }

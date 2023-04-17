@@ -1,10 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "geom": {
-            "description": "geom",
-            "type": "list"
-        },
         "to_node_id": {
             "description": "to_node_id",
             "type": "integer"
@@ -15,12 +11,11 @@
         }
     },
     "required": [
-        "geom",
         "from_node_id",
         "to_node_id"
     ],
-    "$id": "https://deltares.github.io/Ribasim/Edge.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/Edge.schema.json",
     "title": "Edge",
-    "description": "A Edge in the catalog",
+    "description": "A Edge object based on Ribasim.EdgeV1",
     "type": "object"
 }

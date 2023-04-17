@@ -34,8 +34,8 @@
         "precipitation",
         "urban_runoff"
     ],
-    "$id": "https://deltares.github.io/Ribasim/BasinStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinStatic.schema.json",
     "title": "BasinStatic",
-    "description": "A BasinStatic in the catalog",
+    "description": "A BasinStatic object based on Ribasim.BasinStaticV1",
     "type": "object"
 }

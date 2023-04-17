@@ -24,8 +24,8 @@
         "storage",
         "concentration"
     ],
-    "$id": "https://deltares.github.io/Ribasim/BasinState.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
     "title": "BasinState",
-    "description": "A BasinState in the catalog",
+    "description": "A BasinState object based on Ribasim.BasinStateV1",
     "type": "object"
 }

@@ -3,7 +3,7 @@
     "properties": {
         "time": {
             "description": "time",
-            "type": "object"
+            "type": "string"
         },
         "precipitation": {
             "description": "precipitation",
@@ -39,8 +39,8 @@
         "precipitation",
         "urban_runoff"
     ],
-    "$id": "https://deltares.github.io/Ribasim/BasinForcing.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinForcing.schema.json",
     "title": "BasinForcing",
-    "description": "A BasinForcing in the catalog",
+    "description": "A BasinForcing object based on Ribasim.BasinForcingV1",
     "type": "object"
 }

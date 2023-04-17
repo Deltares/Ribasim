@@ -14,8 +14,8 @@
         "node_id",
         "target_level"
     ],
-    "$id": "https://deltares.github.io/Ribasim/LevelControlStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/LevelControlStatic.schema.json",
     "title": "LevelControlStatic",
-    "description": "A LevelControlStatic in the catalog",
+    "description": "A LevelControlStatic object based on Ribasim.LevelControlStaticV1",
     "type": "object"
 }

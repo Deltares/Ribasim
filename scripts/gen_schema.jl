@@ -8,6 +8,7 @@ using Ribasim
 using JSON3
 using Legolas
 using InteractiveUtils
+using Dates
 
 jsontype(x) = jsontype(typeof(x))
 jsontype(::Type{<:AbstractString}) = "string"
@@ -17,6 +18,7 @@ jsontype(::Type{<:Number}) = "number"
 jsontype(::Type{<:AbstractVector}) = "list"
 jsontype(::Type{<:Bool}) = "boolean"
 jsontype(::Type{<:Missing}) = "null"
+jsontype(::Type{<:DateTime}) = "string"  # TODO: use unofficial date-time?
 jsontype(::Type{<:Nothing}) = "null"
 jsontype(::Type{<:Any}) = "object"
 jsontype(T::Union) = unique(filter(!isequal("null"), jsontype.(Base.uniontypes(T))))
@@ -33,7 +35,7 @@ function gen_schema(T::DataType)
         "\$schema" => "https://json-schema.org/draft/2020-12/schema",
         "\$id" => "https://deltares.github.io/Ribasim/schema/$(name).schema.json",
         "title" => name,
-        "description" => "A $(name) in the catalog",
+        "description" => "A $(name) object based on $T",
         "type" => "object",
         "properties" => Dict{String, Dict}(),
         "required" => String[],

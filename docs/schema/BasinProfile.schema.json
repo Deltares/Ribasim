@@ -24,8 +24,8 @@
         "area",
         "level"
     ],
-    "$id": "https://deltares.github.io/Ribasim/BasinProfile.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinProfile.schema.json",
     "title": "BasinProfile",
-    "description": "A BasinProfile in the catalog",
+    "description": "A BasinProfile object based on Ribasim.BasinProfileV1",
     "type": "object"
 }

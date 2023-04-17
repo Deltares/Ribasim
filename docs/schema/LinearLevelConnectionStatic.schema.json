@@ -14,8 +14,8 @@
         "node_id",
         "conductance"
     ],
-    "$id": "https://deltares.github.io/Ribasim/LinearLevelConnectionStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/LinearLevelConnectionStatic.schema.json",
     "title": "LinearLevelConnectionStatic",
-    "description": "A LinearLevelConnectionStatic in the catalog",
+    "description": "A LinearLevelConnectionStatic object based on Ribasim.LinearLevelConnectionStaticV1",
     "type": "object"
 }
