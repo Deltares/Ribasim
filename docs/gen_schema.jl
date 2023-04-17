@@ -1,8 +1,10 @@
 """
 Generate JSON schemas for Ribasim input
 
-Run with `julia --project=core scripts/gen_schema.jl`
+Run with `julia --project=docs docs/gen_schema.jl`
 """
+
+pushfirst!(LOAD_PATH, normpath(@__DIR__, "../core"))
 
 using Ribasim
 using JSON3
@@ -23,7 +25,6 @@ jsontype(::Type{<:Nothing}) = "null"
 jsontype(::Type{<:Any}) = "object"
 jsontype(T::Union) = unique(filter(!isequal("null"), jsontype.(Base.uniontypes(T))))
 
-gen_schema(v::Vector{DataType}) = nothing
 function strip_prefix(T::DataType)
     (p, v) = rsplit(string(T), 'V'; limit = 2)
     return string(last(rsplit(p, '.'; limit = 2)))
@@ -49,8 +50,9 @@ function gen_schema(T::DataType)
             push!(schema["required"], fieldname)
         end
     end
-    open(joinpath(@__DIR__, "../docs/schema", "$(name).schema.json"), "w") do io
+    open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io
         JSON3.pretty(io, schema)
+        println(io)
     end
 end
 
