@@ -56,6 +56,15 @@ def test_get_var_rank(libribasim, basic, tmp_path):
     assert_array_almost_equal(actual_rank, expected_rank)
 
 
+def test_get_var_shape(libribasim, basic, tmp_path):
+    basic.write(tmp_path)
+    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    libribasim.initialize(config_file)
+    actual_shape = libribasim.get_var_shape("volume")
+    expected_shape = np.array([4])
+    assert_array_almost_equal(actual_shape, expected_shape)
+
+
 def test_get_value_ptr(libribasim, basic, tmp_path):
     basic.write(tmp_path)
     config_file = str(tmp_path / f"{basic.modelname}.toml")

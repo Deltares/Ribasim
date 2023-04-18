@@ -128,11 +128,11 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
     end
 end
 
-Base.@ccallable function get_var_shape(name::Cstring, shape_ptr::Ptr{Cvoid})::Cint
+Base.@ccallable function get_var_shape(name::Cstring, shape_ptr::Ptr{Cint})::Cint
     @try_c begin
         # the type of `value` depends on the variable name
         value = BMI.get_value_ptr(model, unsafe_string(name))
-        shape = collect(size(value))
+        shape = convert(Vector{Cint}, collect(size(value)))
         unsafe_copyto!(shape_ptr, pointer(shape), length(shape))
     end
 end
