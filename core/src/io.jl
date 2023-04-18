@@ -62,24 +62,6 @@ function load_data(
     return table
 end
 
-function load_dataframe(
-    db::DB,
-    config::Config,
-    record::Type{<:Legolas.AbstractRecord};
-    strict = false,
-)::Union{DataFrame, Nothing}
-    query = load_data(db, config, record)
-    if isnothing(query)
-        strict ? error("No data found for $record") : return nothing
-    end
-
-    df = DataFrame(query)
-    if hasproperty(df, :time)
-        df.time = DateTime.(df.time)
-    end
-    return df
-end
-
 """
     load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
 
@@ -117,8 +99,6 @@ function load_structvector(
     return table
 end
 
-load_table(db, config, sv::SchemaVersion) = load_table(db, config, record_type(sv))
-
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
     return normpath(config.toml_dir, config.input_dir, path)
@@ -150,7 +130,7 @@ function write_basin_output(model::Model)
         level[i, :] = p.basin.level[i].(basin_storage)
     end
 
-    basin = DataFrame(; time, node_id, storage = vec(storage), level = vec(level))
+    basin = (; time, node_id, storage = vec(storage), level = vec(level))
     path = output_path(config, config.output.basin)
     mkpath(dirname(path))
     Arrow.write(path, basin; compress = :lz4)
@@ -175,8 +155,8 @@ function write_flow_output(model::Model)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
 
-    df = DataFrame(; time, from_node_id, to_node_id, flow)
+    table = (; time, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
     mkpath(dirname(path))
-    Arrow.write(path, df; compress = :lz4)
+    Arrow.write(path, table; compress = :lz4)
 end

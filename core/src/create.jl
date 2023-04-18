@@ -47,14 +47,17 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function create_storage_tables(db::DB, config::Config)
-    df = load_dataframe(db, config, BasinProfileV1; strict = true)
+    profiles_unsorted = load_structvector(db, config, BasinProfileV1)
+    profiles = sort(profiles_unsorted; by = row -> row.node_id)
     area = Interpolation[]
     level = Interpolation[]
-    for group in groupby(df, :node_id; sort = true)
-        order = sortperm(group.storage)
-        storage = group.storage[order]
-        area_itp = LinearInterpolation(group.area[order], storage)
-        level_itp = LinearInterpolation(group.level[order], storage)
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        order = sortperm(group; by = row -> row.storage)
+        group_storage = [row.storage for row in group[order]]
+        group_area = [row.area for row in group[order]]
+        group_level = [row.level for row in group[order]]
+        area_itp = LinearInterpolation(group_area, group_storage)
+        level_itp = LinearInterpolation(group_level, group_storage)
         push!(area, area_itp)
         push!(level, level_itp)
     end
@@ -89,16 +92,16 @@ function push_time_interpolation!(
     interpolations::Vector{Interpolation},
     col::Symbol,
     time::Vector{Float64},  # all float times for forcing_id
-    forcing_id::DataFrame,
+    forcing_id::StructVector,
     t_end::Float64,
-    static_id::DataFrame,
+    static_id::StructVector,
 )::Vector{Interpolation}
-    values = forcing_id[!, col]
+    values = getcolumn(forcing_id, col)
     interpolation = LinearInterpolation(values, time)
     if isempty(interpolation)
         # either no records or all missing
         # use static values over entire timespan
-        values = static_id[!, col]
+        values = getcolumn(static_id, col)
         value = if isempty(values)
             0.0  # safe default static value for in- and outflows
         else
@@ -121,31 +124,10 @@ function Basin(db::DB, config::Config)::Basin
     t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
-    static = load_dataframe(db, config, BasinStaticV1)
-    forcing = load_dataframe(db, config, BasinForcingV1)
-    if static === forcing === nothing
-        error("Neither static or transient forcing found for Basin.")
-    end
-    if forcing === nothing
-        # empty forcing so nothing is found
-        forcing = DataFrame(;
-            time = DateTime[],
-            node_id = Int[],
-            precipitation = Float64[],
-            potential_evaporation = Float64[],
-            drainage = Float64[],
-            infiltration = Float64[],
-        )
-    end
-    if static === nothing
-        # empty static so nothing is found
-        static = DataFrame(;
-            node_id = Int[],
-            precipitation = Float64[],
-            potential_evaporation = Float64[],
-            drainage = Float64[],
-            infiltration = Float64[],
-        )
+    static = load_structvector(db, config, BasinStaticV1)
+    forcing = load_structvector(db, config, BasinForcingV1)
+    if isempty(static) && isempty(forcing)
+        error("Neither static nor transient forcing found for Basin.")
     end
 
     precipitation = Interpolation[]
@@ -156,8 +138,8 @@ function Basin(db::DB, config::Config)::Basin
     for id in node_id
         # filter forcing for this ID and put it in an Interpolation, or use static as a
         # fallback option
-        static_id = filter(:node_id => ==(id), static)
-        forcing_id = filter(:node_id => ==(id), forcing)
+        static_id = filter(row -> row.node_id == id, static)
+        forcing_id = filter(row -> row.node_id == id, forcing)
         time = seconds_since.(forcing_id.time, config.starttime)
 
         push_time_interpolation!(
