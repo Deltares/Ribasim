@@ -1,7 +1,6 @@
 from functools import partial
 
 from PyQt5.QtWidgets import QGridLayout, QPushButton, QVBoxLayout, QWidget
-
 from ribasim_qgis.core.nodes import NODES
 
 
