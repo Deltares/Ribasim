@@ -116,7 +116,7 @@ function write_basin_output(model::Model)
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    basin_id = collect(keys(p.connectivity.u_index))
+    basin_id = sort(collect(keys(p.connectivity.u_index)))
     nbasin = length(basin_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
@@ -155,7 +155,7 @@ function write_flow_output(model::Model)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
 
-    table = (; time, from_node_id, to_node_id, flow)
+    table = (; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
     mkpath(dirname(path))
     Arrow.write(path, table; compress = :lz4)
