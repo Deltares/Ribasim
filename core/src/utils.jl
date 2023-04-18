@@ -11,10 +11,10 @@ end
 Return a directed graph, and a mapping from source and target nodes to edge
 fid.
 "
-function create_graph(db::DB)::Tuple{DiGraph, Dict{Tuple{Int, Int}, Int}}
+function create_graph(db::DB)::Tuple{DiGraph, OrderedDict{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)
-    edge_ids = Dict{Tuple{Int, Int}, Int}()
+    edge_ids = OrderedDict{Tuple{Int, Int}, Int}()
     rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
     for (; fid, from_node_id, to_node_id) in rows
         add_edge!(graph, from_node_id, to_node_id)

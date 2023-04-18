@@ -116,7 +116,8 @@ function write_basin_output(model::Model)
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    basin_id = sort(collect(keys(p.connectivity.u_index)))
+    # u_index is an OrderedDict, in the same order as u
+    basin_id = collect(keys(p.connectivity.u_index))
     nbasin = length(basin_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)

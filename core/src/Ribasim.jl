@@ -6,7 +6,7 @@ import BasicModelInterface as BMI
 using Arrow: Arrow, Table
 using Configurations: Configurations, Maybe, @option, from_toml
 using DataInterpolations: LinearInterpolation
-using DataStructures: DefaultDict
+using DataStructures: DefaultDict, OrderedDict
 using Dates
 using DBInterface: execute, prepare
 using DiffEqCallbacks
