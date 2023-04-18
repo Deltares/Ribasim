@@ -65,6 +65,7 @@ call python python/ribasim/tests/conftest.py]]></param>
     </vcs-settings>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_286" name="env.IsWindows11" value="True" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
