@@ -116,6 +116,7 @@ function write_basin_output(model::Model)
     (; config, integrator) = model
     (; sol, p) = integrator
 
+    # u_index is an OrderedDict, in the same order as u
     basin_id = collect(keys(p.connectivity.u_index))
     nbasin = length(basin_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
@@ -142,7 +143,7 @@ function write_flow_output(model::Model)
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(connectivity.flow)
-    edge_id = [connectivity.edge_ids[i, j] for (i, j) in zip(I, J)]
+    unique_edge_ids = [connectivity.edge_ids[i, j] for (i, j) in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
 
@@ -151,11 +152,12 @@ function write_flow_output(model::Model)
             Arrow.DATETIME,
             repeat(datetime_since.(t, config.starttime); inner = nflow),
         )
+    edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
 
-    table = (; time, from_node_id, to_node_id, flow)
+    table = (; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
     mkpath(dirname(path))
     Arrow.write(path, table; compress = :lz4)

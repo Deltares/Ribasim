@@ -12,8 +12,8 @@ edge_ids: get the external edge id from (src, dst)
 struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
-    u_index::Dict{Int, Int}
-    edge_ids::Dict{Tuple{Int, Int}, Int}
+    u_index::OrderedDict{Int, Int}
+    edge_ids::OrderedDict{Tuple{Int, Int}, Int}
     Connectivity(graph, flow, u_index, edge_ids) =
         is_valid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
         error("Invalid graph")
@@ -23,8 +23,8 @@ end
 function is_valid(
     graph::DiGraph{Int},
     flow::SparseMatrixCSC{Float64, Int},
-    u_index::Dict{Int, Int},
-    edge_ids::Dict{Tuple{Int, Int}, Int},
+    u_index::OrderedDict{Int, Int},
+    edge_ids::OrderedDict{Tuple{Int, Int}, Int},
 )
     return true
 end
