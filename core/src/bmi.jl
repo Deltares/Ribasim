@@ -15,14 +15,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     @timeit_debug to "Setup ODEProblem" begin
         # use state
-        state = load_dataframe(db, config, BasinStateV1)
+        state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
-        u0 = if isnothing(state)
+        u0 = if isempty(state)
             # default to nearly empty basins, perhaps make required input
             fill(1.0, n)
         else
             # get state in the right order
-            sort(state, :node_id).storage
+            sort(state; by = row -> row.node_id).storage
         end::Vector{Float64}
         @assert length(u0) == n "Basin / state length differs from number of Basins"
         t_end = seconds_since(config.endtime, config.starttime)
@@ -70,9 +70,8 @@ function update_tabulated_rating_curve(integrator)::Nothing
     # get groups of consecutive node_id for the current timestamp
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
-    groups = IterTools.groupby(row -> row.node_id, timeblock)
 
-    for group in groups
+    for group in IterTools.groupby(row -> row.node_id, timeblock)
         # update the existing LinearInterpolation
         id = first(group).node_id
         level = [row.level for row in group]

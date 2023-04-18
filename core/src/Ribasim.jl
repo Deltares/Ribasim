@@ -5,7 +5,6 @@ import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
 using Configurations: Configurations, Maybe, @option, from_toml
-using DataFrames
 using DataInterpolations: LinearInterpolation
 using DataStructures: DefaultDict
 using Dates
@@ -19,7 +18,7 @@ using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using Statistics: median
 using StructArrays: StructVector
-using Tables: AbstractRow, columntable
+using Tables: Tables, AbstractRow, columntable, getcolumn
 using TimerOutputs
 
 const to = TimerOutput()

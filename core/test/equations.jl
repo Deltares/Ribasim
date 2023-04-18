@@ -1,6 +1,5 @@
 using Test
 using Dates
-using DataFrames
 using Ribasim
 using Arrow
 import BasicModelInterface as BMI
