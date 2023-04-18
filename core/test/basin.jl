@@ -21,7 +21,7 @@ end
     @test length(model.integrator.p.basin.precipitation) == 8
     # TODO on MacOS CI this deviates ~0.5m3, not on local MacOS
     @test model.integrator.sol.u[end] ≈ Float32[229.4959, 164.44641, 0.5336011, 1533.0612] broken =
-        (Sys.isapple() && ENV["CI"] == "true")
+        (Sys.isapple() && get(ENV, "CI", "false") == "true")
 end
 
 @testset "TabulatedRatingCurve model" begin
