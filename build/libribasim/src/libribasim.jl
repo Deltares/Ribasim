@@ -112,7 +112,7 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     end
 end
 
-Base.@ccallable function get_var_rank(name::Cstring, rank::Ptr{Cdouble})::Cint
+Base.@ccallable function get_var_rank(name::Cstring, rank::Ptr{Cint})::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
         n = ndims(value)
@@ -124,9 +124,16 @@ Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}}
     @try_c begin
         # the type of `value` depends on the variable name
         value = BMI.get_value_ptr(model, unsafe_string(name))
-        n = length(value)
-        core_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
-        unsafe_copyto!(value_ptr, core_ptr, length(value))
+        unsafe_store!(value_ptr, pointer(value), 1)
+    end
+end
+
+Base.@ccallable function get_var_shape(name::Cstring, shape_ptr::Ptr{Cint})::Cint
+    @try_c begin
+        # the type of `value` depends on the variable name
+        value = BMI.get_value_ptr(model, unsafe_string(name))
+        shape = collect(Cint, size(value))
+        unsafe_copyto!(shape_ptr, pointer(shape), length(shape))
     end
 end
 
