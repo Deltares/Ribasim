@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
-
-from qgis.core import QgsMapLayer, QgsProject
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
 from ribasim_qgis.widgets.output_widget import OutputWidget
+
+from qgis.core import QgsMapLayer, QgsProject
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
