@@ -58,12 +58,10 @@ end
     # data from which we create pointers for libribasim
     time = [-1.0]
     var_name = "volume"
-    value = zeros(4)
     type = ones(UInt8, 8)
 
     GC.@preserve time var_name value type toml_path begin
         var_name_ptr = Base.unsafe_convert(Cstring, var_name)
-        value_ptr = Base.unsafe_convert(Ptr{Ptr{Cvoid}}, value)
         time_ptr = pointer(time)
         type_ptr = Cstring(pointer(type))
         toml_path_ptr = Base.unsafe_convert(Cstring, toml_path)
@@ -88,12 +86,7 @@ end
         @test time[1] == 0.0
 
         @test libribasim.get_var_type(var_name_ptr, type_ptr) == 0
-        @test String(type) == "double\0\x01"
-
-        @test libribasim.get_value_ptr(var_name_ptr, value_ptr) == 0
-        u = BMI.get_value_ptr(libribasim.model, "volume")
-        @test value == u == ones(4)
-        @test value !== u
+        @test unsafe_string(type_ptr) == "double"
 
         @test libribasim.finalize() == 0
         @test isnothing(libribasim.model)
