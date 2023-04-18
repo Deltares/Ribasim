@@ -142,7 +142,7 @@ function write_flow_output(model::Model)
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(connectivity.flow)
-    edge_id = [connectivity.edge_ids[i, j] for (i, j) in zip(I, J)]
+    unique_edge_ids = [connectivity.edge_ids[i, j] for (i, j) in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
 
@@ -151,6 +151,7 @@ function write_flow_output(model::Model)
             Arrow.DATETIME,
             repeat(datetime_since.(t, config.starttime); inner = nflow),
         )
+    edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = collect(Iterators.flatten(saveval))
