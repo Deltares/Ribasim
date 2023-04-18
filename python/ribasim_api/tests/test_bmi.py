@@ -70,7 +70,7 @@ def test_get_value_ptr(libribasim, basic, tmp_path):
     config_file = str(tmp_path / f"{basic.modelname}.toml")
     libribasim.initialize(config_file)
     actual_volume = libribasim.get_value_ptr("volume")
-    expected_volume = np.array([1.0, 1.0, 1.0])
+    expected_volume = np.array([1.0, 1.0, 1.0, 1.0])
     assert_array_almost_equal(actual_volume, expected_volume)
 
 
