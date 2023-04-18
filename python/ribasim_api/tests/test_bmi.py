@@ -47,7 +47,15 @@ def test_get_var_type(libribasim, basic, tmp_path):
     assert var_type == "double"
 
 
-@pytest.mark.skip(reason="get_value_ptr doesn't work yet")
+def test_get_var_rank(libribasim, basic, tmp_path):
+    basic.write(tmp_path)
+    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    libribasim.initialize(config_file)
+    actual_rank = libribasim.get_var_rank("volume")
+    expected_rank = 1
+    assert_array_almost_equal(actual_rank, expected_rank)
+
+
 def test_get_value_ptr(libribasim, basic, tmp_path):
     basic.write(tmp_path)
     config_file = str(tmp_path / f"{basic.modelname}.toml")
