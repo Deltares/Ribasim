@@ -1,7 +1,7 @@
 __version__ = "0.2.0"
 
 
-from ribasim import utils, models
+from ribasim import models, utils
 from ribasim.basin import Basin
 from ribasim.edge import Edge
 from ribasim.fractional_flow import FractionalFlow
