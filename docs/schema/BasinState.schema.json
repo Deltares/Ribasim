@@ -2,10 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "storage": {
+            "format": "double",
             "description": "storage",
-            "type": "real"
+            "type": "number"
         },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         }
@@ -14,7 +16,7 @@
         "node_id",
         "storage"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
+    "$id": "BasinState.schema.json",
     "title": "BasinState",
     "description": "A BasinState object based on Ribasim.BasinStateV1",
     "type": "object"

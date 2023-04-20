@@ -2,10 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "to_node_id": {
+            "format": "default",
             "description": "to_node_id",
             "type": "integer"
         },
         "from_node_id": {
+            "format": "default",
             "description": "from_node_id",
             "type": "integer"
         }
@@ -14,7 +16,7 @@
         "from_node_id",
         "to_node_id"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/Edge.schema.json",
+    "$id": "Edge.schema.json",
     "title": "Edge",
     "description": "A Edge object based on Ribasim.EdgeV1",
     "type": "object"

@@ -2,10 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "flow_rate": {
+            "format": "double",
             "description": "flow_rate",
-            "type": "real"
+            "type": "number"
         },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         }
@@ -14,7 +16,7 @@
         "node_id",
         "flow_rate"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
+    "$id": "PumpStatic.schema.json",
     "title": "PumpStatic",
     "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
     "type": "object"

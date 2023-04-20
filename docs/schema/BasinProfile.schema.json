@@ -2,20 +2,24 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "area": {
+            "format": "double",
             "description": "area",
-            "type": "real"
+            "type": "number"
         },
         "storage": {
+            "format": "double",
             "description": "storage",
-            "type": "real"
+            "type": "number"
         },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         },
         "level": {
+            "format": "double",
             "description": "level",
-            "type": "real"
+            "type": "number"
         }
     },
     "required": [
@@ -24,7 +28,7 @@
         "area",
         "level"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinProfile.schema.json",
+    "$id": "BasinProfile.schema.json",
     "title": "BasinProfile",
     "description": "A BasinProfile object based on Ribasim.BasinProfileV1",
     "type": "object"

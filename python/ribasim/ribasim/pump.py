@@ -1,16 +1,21 @@
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("Pump",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    flow_rate: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.PumpStatic)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class Pump(InputMixin, BaseModel):

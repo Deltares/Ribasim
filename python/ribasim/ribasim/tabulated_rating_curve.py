@@ -2,25 +2,30 @@ from typing import Optional
 
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("TabulatedRatingCurve",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    level: Series[float]
-    discharge: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.TabulatedRatingCurveStatic)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class TimeSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    time: Series[pa.dtypes.DateTime]
-    level: Series[float]
-    discharge: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.TabulatedRatingCurveTime)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class TabulatedRatingCurve(InputMixin, BaseModel):

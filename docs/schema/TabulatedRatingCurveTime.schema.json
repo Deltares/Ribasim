@@ -2,20 +2,24 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "time": {
+            "format": "date-time",
             "description": "time",
             "type": "string"
         },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         },
         "discharge": {
+            "format": "double",
             "description": "discharge",
-            "type": "real"
+            "type": "number"
         },
         "level": {
+            "format": "double",
             "description": "level",
-            "type": "real"
+            "type": "number"
         }
     },
     "required": [
@@ -24,7 +28,7 @@
         "level",
         "discharge"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveTime.schema.json",
+    "$id": "TabulatedRatingCurveTime.schema.json",
     "title": "TabulatedRatingCurveTime",
     "description": "A TabulatedRatingCurveTime object based on Ribasim.TabulatedRatingCurveTimeV1",
     "type": "object"

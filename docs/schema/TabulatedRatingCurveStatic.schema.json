@@ -2,16 +2,19 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         },
         "discharge": {
+            "format": "double",
             "description": "discharge",
-            "type": "real"
+            "type": "number"
         },
         "level": {
+            "format": "double",
             "description": "level",
-            "type": "real"
+            "type": "number"
         }
     },
     "required": [
@@ -19,7 +22,7 @@
         "level",
         "discharge"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveStatic.schema.json",
+    "$id": "TabulatedRatingCurveStatic.schema.json",
     "title": "TabulatedRatingCurveStatic",
     "description": "A TabulatedRatingCurveStatic object based on Ribasim.TabulatedRatingCurveStaticV1",
     "type": "object"

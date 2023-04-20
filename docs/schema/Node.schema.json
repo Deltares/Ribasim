@@ -2,10 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "fid": {
+            "format": "default",
             "description": "fid",
             "type": "integer"
         },
         "type": {
+            "format": "default",
             "description": "type",
             "type": "string"
         }
@@ -14,7 +16,7 @@
         "fid",
         "type"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/Node.schema.json",
+    "$id": "Node.schema.json",
     "title": "Node",
     "description": "A Node object based on Ribasim.NodeV1",
     "type": "object"

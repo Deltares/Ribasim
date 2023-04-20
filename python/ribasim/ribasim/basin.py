@@ -2,44 +2,46 @@ from typing import Optional
 
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("Basin",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    drainage: Series[float]
-    potential_evaporation: Series[float]
-    infiltration: Series[float]
-    precipitation: Series[float]
-    urban_runoff: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinStatic)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class ForcingSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    time: Series[pa.dtypes.DateTime]
-    drainage: Series[float]
-    potential_evaporation: Series[float]
-    infiltration: Series[float]
-    precipitation: Series[float]
-    urban_runoff: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinForcing)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class ProfileSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    storage: Series[float]
-    area: Series[float]
-    level: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinProfile)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class StateSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    storage: Series[float]
-    concentration: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinState)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class Basin(InputMixin, BaseModel):
