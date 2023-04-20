@@ -1,7 +1,7 @@
 __version__ = "0.2.0"
 
 
-from ribasim import utils
+from ribasim import utils, models
 from ribasim.basin import Basin
 from ribasim.edge import Edge
 from ribasim.fractional_flow import FractionalFlow
@@ -14,6 +14,7 @@ from ribasim.tabulated_rating_curve import TabulatedRatingCurve
 
 __all__ = [
     "utils",
+    "models",
     "Basin",
     "Edge",
     "FractionalFlow",
