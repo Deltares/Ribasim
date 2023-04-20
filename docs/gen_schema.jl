@@ -13,8 +13,7 @@ using InteractiveUtils
 using Dates
 
 # set empty to have local file references for development
-# const prefix = "https://deltares.github.io/Ribasim/schema/"  
-const prefix = ""
+const prefix = "https://deltares.github.io/Ribasim/schema/"
 
 jsontype(x) = jsontype(typeof(x))
 jsonformat(x) = jsonformat(typeof(x))
