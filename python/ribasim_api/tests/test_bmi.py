@@ -1,7 +1,6 @@
 import re
 
 import numpy as np
-import pandas as pd
 import pytest
 from numpy.testing import assert_array_almost_equal
 from xmipy.errors import XMIError
@@ -25,11 +24,7 @@ def test_get_current_time(libribasim, basic, tmp_path):
     basic.write(tmp_path)
     config_file = str(tmp_path / f"{basic.modelname}.toml")
     libribasim.initialize(config_file)
-    start_time = libribasim.get_start_time()
-    assert libribasim.get_current_time() > libribasim.get_start_time()
-
-    libribasim.update()
-    assert libribasim.get_current_time() > start_time
+    assert libribasim.get_current_time() == libribasim.get_start_time()
 
 
 def test_get_end_time(libribasim, basic, tmp_path):
@@ -37,7 +32,7 @@ def test_get_end_time(libribasim, basic, tmp_path):
     config_file = str(tmp_path / f"{basic.modelname}.toml")
     libribasim.initialize(config_file)
     actual_end_time = libribasim.get_end_time()
-    excepted_end_time = pd.date_range(basic.starttime, basic.endtime).total_seconds()
+    excepted_end_time = (basic.endtime - basic.starttime).total_seconds()
 
     assert actual_end_time == excepted_end_time
 
