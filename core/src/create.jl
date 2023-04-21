@@ -15,6 +15,7 @@ function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
     return LinearLevelConnection(static.node_id, static.conductance)
 end
 
+
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
@@ -42,6 +43,25 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         push!(interpolations, interpolation)
     end
     return TabulatedRatingCurve(node_ids, interpolations, time)
+end
+
+function ManningConnection(db::Db, config::Config)::ManningConnection
+    data = load_data(db, config, ManningConnectionStaticV1)
+    isnothing(data) && return ManningConnection()
+    tbl = columntable(data)
+
+    # Compute length per unit of depth for wet perimeter
+    slope_unit_length = sqrt.(tbl.profile_slope ^ 2 + 1.0)
+    n_inverted = 1.0 ./ tbl.roughness
+
+    return ManningConnection(
+        tbl.node_id,
+        tbl.length,
+        n_inverted,
+        tbl.profile_bottom,
+        tbl.profile_slope,
+        slope_unit_length,
+    )
 end
 
 function create_storage_tables(db::DB, config::Config)

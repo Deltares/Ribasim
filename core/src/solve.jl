@@ -83,6 +83,53 @@ struct LinearLevelConnection
 end
 
 """
+This is an extremely simple Manning-Gauckler reach connection.
+
+* Length describes the reach length.
+* roughness describes Manning's n in (SI units).
+
+The profile is described by a trapezoid:
+
+```
+       \            /  ^
+        \          /   | 
+         \        /    | dz
+ bottom   \______/     | 
+ ^               <--->
+ |  <------>       dx
+ |    width
+ |
+ |
+ + datum (e.g. MSL)
+```
+
+profile_slope = dx / dz.
+A rectangular profile requires a slope of 0.0.
+
+Requirements:
+
+* from: must be (Basin,) node
+* to: must be (Basin,) node
+* length > 0
+* roughess > 0
+* profile_width >= 0
+* profile_slope >= 0
+* (profile_width == 0) xor (profile_slope == 0)
+* slope_unit_length >= 0
+"""
+struct ManningConnection
+    node_id::Vector{Int}
+    length::Vector{Float64}
+    n_inverted::Vector{Float64}
+    profile_bottom::Vector{Float64}
+    profile_width::Vector{Float64}
+    profile_slope::Vector{Float64}
+    profile_slope_unit_length::Vector{Float64}
+end
+
+ManningConnection() = ManningConnection(Int[], Float64[], Float64[], Float64[], Float64[], Float64[])
+
+"""
 Requirements:
 
 * from: must be (TabulatedRatingCurve,) node
@@ -190,6 +237,61 @@ function formulate!(
         for downstream_id in downstream_ids
             flow[id, downstream_id] = q
         end
+    end
+    return nothing
+end
+
+
+"""
+Gauckler-Manning formula:
+
+V = (1 / n) R_h ^ (2/3) S ^ (1/2)
+
+Where:
+
+    * V is the cross-sectional average velocity.
+    * n is the Gauckler-Manning coefficient.
+    * R_h is the hydraulic radius.
+    * S is the hydraulic gradient.
+    
+R_h = A / P
+
+    * Where A is the cross-sectional area.
+    * P is the wetted perimeter.
+
+The connection may go dry if the head of either basin falls below the profile
+bottom. This is a very simple "upstream" formulation, it computes the reach
+profile based on the basin with the highest head.
+"""
+function formulate!(
+    connectivity::Connectivity,
+    manning_connection::ManningConnection,
+    level,
+)::Nothing
+    # TODO: we can precompute a great deal of values.
+    (; graph, flow, u_index) = connectivity
+    (; node_id, length, n_inverted, profile_bottom, profile_width, profile_slope, unit_length) = manning_connection
+    for (i, id) in enumerate(node_id)
+        basin_a_id = only(inneighbors(graph, id))
+        basin_b_id = only(outneighbors(graph, id))
+    
+        # Compute the hydraulic slope
+        # TODO: should the basin bottom be used instead?
+        level_a = max(profile_bottom[i], level[u_index[basin_a_id]])
+        level_b = max(profile_bottom[i], level[u_index[basin_b_id]])
+        S = (level_a - level_b) / length[i]
+
+        # Compute cross sectional area and hydraulic radius
+        upstream_level = max(level_a, level_b)
+        depth = upstream_level - profile_bottom[i] 
+        A = profile_width * depth * depth * profile_slope[i]
+        P = profile_width + 2.0 * depth * unit_length[i]
+        R_h = A / P
+ 
+        # Gauckler-Manning Formula
+        q = A * n_inverted[i] * R_h ^ (2/3) * sqrt(S)
+        flow[basin_a_id, id] = q
+        flow[id, basin_b_id] = q
     end
     return nothing
 end
