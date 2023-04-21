@@ -104,6 +104,27 @@ Base.@ccallable function get_current_time(time::Ptr{Cdouble})::Cint
     end
 end
 
+Base.@ccallable function get_start_time(time::Ptr{Cdouble})::Cint
+    @try_c begin
+        t = BMI.get_start_time(model)
+        unsafe_store!(time, t)
+    end
+end
+
+Base.@ccallable function get_end_time(time::Ptr{Cdouble})::Cint
+    @try_c begin
+        t = BMI.get_end_time(model)
+        unsafe_store!(time, t)
+    end
+end
+
+Base.@ccallable function get_time_step(time_step::Ptr{Cdouble})::Cint
+    @try_c begin
+        t = BMI.get_time_step(model)
+        unsafe_store!(time_step, t)
+    end
+end
+
 Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
