@@ -1,7 +1,9 @@
 import re
+from pathlib import Path
 
 import numpy as np
 import pytest
+import tomli
 from numpy.testing import assert_array_almost_equal
 from xmipy.errors import XMIError
 
@@ -93,3 +95,11 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
 
 def test_get_component_name(libribasim):
     assert libribasim.get_component_name() == "Ribasim"
+
+
+def test_get_version(libribasim):
+    toml_path = Path(__file__).parents[3] / "core" / "Project.toml"
+    with open(toml_path, mode="rb") as fp:
+        config = tomli.load(fp)
+
+    assert libribasim.get_version() == config["version"]
