@@ -143,6 +143,13 @@ Base.@ccallable function get_component_name(error_message::Cstring)::Cint
     end
 end
 
+Base.@ccallable function get_version(version::Cstring)::Cint
+    @try_c_uninitialized begin
+        ribasim_version = Ribasim.pkgversion(Ribasim)
+        unsafe_write_to_cstring!(version, string(ribasim_version))
+    end
+end
+
 Base.@ccallable function get_last_bmi_error(error_message::Cstring)::Cint
     @try_c_uninitialized begin
         unsafe_write_to_cstring!(error_message, last_error_message)
