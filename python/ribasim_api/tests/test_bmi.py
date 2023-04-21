@@ -33,7 +33,6 @@ def test_get_end_time(libribasim, basic, tmp_path):
     libribasim.initialize(config_file)
     actual_end_time = libribasim.get_end_time()
     excepted_end_time = (basic.endtime - basic.starttime).total_seconds()
-
     assert actual_end_time == excepted_end_time
 
 
