@@ -13,7 +13,7 @@ If you have installed Julia and Ribasim, a simulation can also be started from t
 line as follows:
 
 ```
-julia -e 'using Ribasim; Ribasim.run("path/to/config.toml")
+julia -e 'using Ribasim; Ribasim.run("path/to/config.toml")'
 ```
 
 With a Ribasim CLI build this becomes:
