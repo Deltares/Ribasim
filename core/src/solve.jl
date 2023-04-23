@@ -266,7 +266,6 @@ profile based on the basin with the highest head.
 function formulate!(
     connectivity::Connectivity,
     manning_connection::ManningConnection,
-    level,
 )::Nothing
     # TODO: we can precompute a great deal of values.
     (; graph, flow, u_index) = connectivity
