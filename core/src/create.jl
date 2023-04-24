@@ -50,17 +50,19 @@ function ManningConnection(db::Db, config::Config)::ManningConnection
     isnothing(data) && return ManningConnection()
     tbl = columntable(data)
 
-    # Compute length per unit of depth for wet perimeter
+    # These are okay to cache for static input, but not time varying!
     slope_unit_length = sqrt.(tbl.profile_slope ^ 2 + 1.0)
-    n_inverted = 1.0 ./ tbl.roughness
+    n_squared = tbl.manning_n .^ 2
 
     return ManningConnection(
         tbl.node_id,
         tbl.length,
-        n_inverted,
-        tbl.profile_bottom,
+        n_squared,
+        tbl.profile_width,
         tbl.profile_slope,
         slope_unit_length,
+        tbl.contraction_coefficient,
+        tbl.expansion_coefficient,
     )
 end
 
@@ -136,6 +138,7 @@ function Parameters(db::DB, config::Config)::Parameters
     connectivity = Connectivity(db)
 
     linear_level_connection = LinearLevelConnection(db, config)
+    manning_connection = ManningConnection(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
@@ -148,6 +151,7 @@ function Parameters(db::DB, config::Config)::Parameters
         connectivity,
         basin,
         linear_level_connection,
+        manning_connection,
         tabulated_rating_curve,
         fractional_flow,
         level_control,

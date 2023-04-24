@@ -337,6 +337,20 @@ class LinearLevelConnectionStatic(Input):
     ]
 
 
+class ManningConnectionStatic(Input):
+    input_type = "ManningConnection / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("length", QVariant.Double),
+        QgsField("manning_n", QVariant.Double),
+        QgsField("profile_width", QVariant.Double),
+        QgsField("profile_slope", QVariant.Double),
+        QgsField("contraction_coefficient", QVariant.Double),
+        QgsField("expansion_coefficient", QVariant.Double),
+    ]
+
+
 class LevelControlStatic(Input):
     input_type = "LevelControl / static"
     geometry_type = "No Geometry"
@@ -367,6 +381,7 @@ NODES = {
     "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
     "FractionalFlow / static": FractionalFlowStatic,
     "LinearLevelConnection / static": LinearLevelConnectionStatic,
+    "ManningConnection / static": ManningConnectionStatic,
     "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
 }

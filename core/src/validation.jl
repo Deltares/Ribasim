@@ -12,6 +12,7 @@
 @schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
+@schema "ribasim.manningconnection.static" ManningConnection
 
 const delimiter = " / "
 schemaversion(node::Symbol, kind::Symbol, v = 1) =
@@ -97,6 +98,16 @@ end
     time::DateTime
     level::Float64
     discharge::Float64
+end
+
+@version ManningConnectionStaticV1
+    node_id::Int
+    length::Float64
+    manning_n::Float64
+    profile_width::Float64
+    profile_slope::Float64
+    contraction_coefficient::Float64
+    expansion_coefficient::Float64
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

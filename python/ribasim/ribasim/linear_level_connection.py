@@ -10,7 +10,12 @@ __all__ = ("LinearLevelConnection",)
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
-    conductance: Series[float]
+    length: Series[float]
+    manning_n: Series[float]
+    profile_width: Series[float]
+    profile_slope: Series[float]
+    contraction_coefficient: Series[float]
+    expansion_coefficient: Series[float]
 
 
 class LinearLevelConnection(InputMixin, BaseModel):
@@ -25,7 +30,12 @@ class LinearLevelConnection(InputMixin, BaseModel):
         With columns:
 
         * node_id
-        * conductance
+        * length
+        * manning_n
+        * profile_width
+        * profile_slope
+        * contraction_coefficient
+        * expansion_coefficient
 
     """
 

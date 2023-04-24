@@ -1,5 +1,6 @@
 ## types and functions
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
+const TWO_G = 2 * 9.81
 
 """
 Store the connectivity information
@@ -120,14 +121,15 @@ Requirements:
 struct ManningConnection
     node_id::Vector{Int}
     length::Vector{Float64}
-    n_inverted::Vector{Float64}
-    profile_bottom::Vector{Float64}
+    n_squared::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
     profile_slope_unit_length::Vector{Float64}
+    contraction_coefficient:::Vector{Float64}
+    expansion_coefficient:::Vector{Float64}
 end
 
-ManningConnection() = ManningConnection(Int[], Float64[], Float64[], Float64[], Float64[], Float64[])
+ManningConnection() = ManningConnection(Int[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[])
 
 """
 Requirements:
@@ -167,6 +169,7 @@ struct Parameters
     connectivity::Connectivity
     basin::Basin
     linear_level_connection::LinearLevelConnection
+    manning_connection::ManningConnection
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
@@ -243,52 +246,75 @@ end
 
 
 """
-Gauckler-Manning formula:
+Connection based on preservation of energy:
 
-V = (1 / n) R_h ^ (2/3) S ^ (1/2)
+h_a + v_a^2 / (2 * g) = h_b + v_b^2 / (2 * g) + h_loss
+
+With:
+
+h_loss = S_f * L + C / 2 * g * (v_b^2 - v_a^2)
+
+Where friction losses are approximated by the Gauckler-Manning formula:
+
+V = (1 / n) * R_h^(2/3) * S_f^(1/2)
 
 Where:
 
     * V is the cross-sectional average velocity.
     * n is the Gauckler-Manning coefficient.
     * R_h is the hydraulic radius.
-    * S is the hydraulic gradient.
+    * S_f is the friction slope.
     
 R_h = A / P
 
     * Where A is the cross-sectional area.
     * P is the wetted perimeter.
 
-The connection may go dry if the head of either basin falls below the profile
-bottom. This is a very simple "upstream" formulation, it computes the reach
-profile based on the basin with the highest head.
 """
 function formulate!(
+    basin::Basin,
     connectivity::Connectivity,
     manning_connection::ManningConnection,
+    level,
 )::Nothing
-    # TODO: we can precompute a great deal of values.
     (; graph, flow, u_index) = connectivity
-    (; node_id, length, n_inverted, profile_bottom, profile_width, profile_slope, unit_length) = manning_connection
+    (; node_id, length, n_squared, profile_width, profile_slope, unit_length, contraction_c, expansion_c) = manning_connection
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph, id))
-        basin_b_id = only(outneighbors(graph, id))
-    
-        # Compute the hydraulic slope
-        # TODO: should the basin bottom be used instead?
-        level_a = max(profile_bottom[i], level[u_index[basin_a_id]])
-        level_b = max(profile_bottom[i], level[u_index[basin_b_id]])
-        S = (level_a - level_b) / length[i]
+        basin_1_id = only(inneighbors(graph, id))
+        basin_2_id = only(outneighbors(graph, id))
 
-        # Compute cross sectional area and hydraulic radius
-        upstream_level = max(level_a, level_b)
-        depth = upstream_level - profile_bottom[i] 
-        A = profile_width * depth * depth * profile_slope[i]
-        P = profile_width + 2.0 * depth * unit_length[i]
-        R_h = A / P
- 
-        # Gauckler-Manning Formula
-        q = A * n_inverted[i] * R_h ^ (2/3) * sqrt(S)
+        h_1 = level[u_index[basin_1_id]]
+        h_2 = level[u_index[basin_2_id]]
+        bottom_1 = first(basin.level[basin_1_id].u)
+        bottom_2 = first(basin.level[basin_1_id].u)
+        d_1 = h_1 - bottom_1
+        d_2 = h_2 - bottom_2
+        d_mean = 0.5 * (d_1 + d_2)
+
+        # Determine direction of flow
+        if h_1 > h_2:
+            h_a, h_b = h_1, h_2
+            d_a, d_b = d_1, d_2
+            sign_q = 1.0
+        else:
+            h_a, h_b = h_2, h_1
+            d_a, d_b = d_2, d_1
+            sign_q = -1.0
+        end
+
+        # Use water depth to compute either contraction or expansion
+        C = (d_b >= d_a) ? expansion_c : -1.0 * contraction_c
+        C_v = (1.0 + C) / TWO_G
+        C_f = n_squared * length
+
+        # Compute cross sectional areas and hydraulic radius
+        A_a = (profile_width * d_a + profile_slope * d_a^2)
+        A_b = (profile_width * d_b + profile_slope * d_b^2)
+        A2 = (profile_width * d_mean + profile_slope * d_mean^2)
+        B = profile_width + 2.0 * d_mean * unit_length
+        R_h = A / B
+
+        q = sign_q * sqrt((h_a - h_b) / (-C_v / A_a^2  + C_v / A_b^2 + C_f / (A^2 * R_h^(4/3))))
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
     end

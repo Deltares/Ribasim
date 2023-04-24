@@ -334,14 +334,37 @@ Where $v$ is the average water velocity. $h_{\text{loss}}$ is a combination of
 friction and contraction/expansion losses:
 
 $$
-h_{\text{loss}} = S_f L + \frac{C}{2g} (v_a^2 - v_b^2)
+h_{\text{loss}} = \left\{
+    \begin{array}{ c l }
+        S_f L + \frac{C_e}{2g} (v_a^2 - v_b^2) & \quad \textrm{if } v_a \ge v_b \\
+        S_f L + \frac{C_c}{2g} (v_b^2 - v_a^2) & \quad \textrm{if } v_a < v_b \\
+     \end{array}
+\right.
 $$
 
 Where:
 
 * $L$ is the reach length
 * $S_f$ is the representative friction slope
-* $C$ is the contraction and expansion coefficient ($0 <= C <=1$).
+* $C_e$ is the expansion coefficient, $0 <= C_e <=1$
+* $C_c$ is the contraction coefficient, $0 <= C_c <=1$
+
+For convenience, we combine the coefficients:
+
+$$
+C = \left\{
+    \begin{array}{ c l }
+        C_e & \quad \textrm{if } v_a \ge v_b \\
+        -C_c & \quad \textrm{if } v_a < v_b \\
+     \end{array}
+\right.
+$$
+
+So that we may write:
+
+$$
+h_{\text{loss}} = S_f L + \frac{C}{2g} (v_b^2 - v_a^2)
+$$
   
 Friction losses are computed with the Gauckler-Manning formula:
 
@@ -370,13 +393,14 @@ $$
 Combining previous equations, we get:
 
 $$
-h_a - h_b + Q^2 \frac{1}{2g} \frac{1}{A_a^2} - Q^2 \frac{1}{2g} \frac{1}{A_b^2} + Q^2 \frac{n^2}{A^2 R_h^{4/3}} L + Q^2 \frac{C}{2g} \frac{1}{A_a^2} - Q^2 \frac{C}{2g} \frac{1}{A_b^2} = 0
+h_a + Q^2 \frac{1}{A_a^2} \frac{1}{2g} + Q^2 \frac{1}{A_a^2} \frac{C}{2g} = h_b + Q^2 \frac{1}{A_b^2} \frac{1}{2g} + Q^2 \frac{1}{A_b^2} \frac{C}{2g} + Q^2\frac{n^2 L}{A^2 R_h^{4/3}}
 $$
 
-We can simplify this to:
+Or:
 
 $$
-h_a - h_b + Q^2 \frac{1 + C}{2g}\frac{1}{A_a^2} - Q^2 \frac{1 + C}{2g}\frac{1}{A_b^2} + Q^2\frac{n^2}{A^2 R_h^{4/3}} L
+h_a - h_b = -Q^2 \frac{1 + C}{2g}\frac{1}{A_a^2} + Q^2 \frac{1 + C}{2g}\frac{1}{A_b^2} + Q^2\frac{n^2 L}{A^2 R_h^{4/3}}
+ = 0
 $$
 
 For convenience we define:
@@ -394,13 +418,13 @@ $$
 Then:
 
 $$
-h_a - h_b = Q^2 \left(\frac{C_v}{A_b^2} - \frac{C_v}{A_a^2} + \frac{C_f}{A^2 R_h^{4/3}} \right)
+h_a - h_b = Q^2 \left(- \frac{C_v}{A_a^2} + \frac{C_v}{A_b^2} + \frac{C_f}{A^2 R_h^{4/3}} \right)
 $$
 
 We can then express $Q$ as a function of head difference:
 
 $$
-Q = \sqrt{\frac{h_a - h_b}{\left(\frac{C_v}{A_b^2} - \frac{C_v}{A_a^2} + \frac{C_f}{A^2 R_h^{4/3}} \right)
+Q = \sqrt{\frac{h_a - h_b}{\left(- \frac{C_v}{A_a^2} + \frac{C_v}{A_b^2} + \frac{C_f}{A^2 R_h^{4/3}} \right)
 }}
 $$
 
