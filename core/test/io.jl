@@ -68,7 +68,7 @@ function to_arrow_table(
     return StructVector{T}(nt)
 end
 
-@testset "table sort"
+@testset "table sort" begin
     toml_path = normpath(@__DIR__, "../../data/basic-transient/basic-transient.toml")
     config = Ribasim.parsefile(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
@@ -83,8 +83,9 @@ end
     @test issorted(table; by)
     @test !issorted(reversed_table; by)
     # create arrow memory mapped copies
-    arrow_table = to_arrow_table(tempname(), table)
-    reversed_arrow_table = to_arrow_table(tempname(), reversed_table)
+    # TODO support cleanup, see https://github.com/apache/arrow-julia/issues/61
+    arrow_table = to_arrow_table(tempname(; cleanup = false), table)
+    reversed_arrow_table = to_arrow_table(tempname(; cleanup = false), reversed_table)
 
     @test table.node_id[1] == 1
     @test reversed_table.node_id[1] == 9
