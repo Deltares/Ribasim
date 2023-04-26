@@ -11,10 +11,8 @@ function Connectivity(db::DB)::Connectivity
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
-    data = load_data(db, config, LinearLevelConnectionStaticV1)
-    isnothing(data) && return LinearLevelConnection()
-    tbl = columntable(data)
-    return LinearLevelConnection(tbl.node_id, tbl.conductance)
+    static = load_structvector(db, config, LinearLevelConnectionStaticV1)
+    return LinearLevelConnection(static.node_id, static.conductance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -47,15 +45,13 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function create_storage_tables(db::DB, config::Config)
-    profiles_unsorted = load_structvector(db, config, BasinProfileV1)
-    profiles = sort(profiles_unsorted; by = row -> row.node_id)
+    profiles = load_structvector(db, config, BasinProfileV1)
     area = Interpolation[]
     level = Interpolation[]
     for group in IterTools.groupby(row -> row.node_id, profiles)
-        order = sortperm(group; by = row -> row.storage)
-        group_storage = [row.storage for row in group[order]]
-        group_area = [row.area for row in group[order]]
-        group_level = [row.level for row in group[order]]
+        group_storage = getproperty.(group, :storage)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
         area_itp = LinearInterpolation(group_area, group_storage)
         level_itp = LinearInterpolation(group_level, group_storage)
         push!(area, area_itp)
@@ -65,27 +61,21 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
-    data = load_data(db, config, FractionalFlowStaticV1)
-    isnothing(data) && return FractionalFlow()
-    tbl = columntable(data)
-    return FractionalFlow(tbl.node_id, tbl.fraction)
+    static = load_structvector(db, config, FractionalFlowStaticV1)
+    return FractionalFlow(static.node_id, static.fraction)
 end
 
 function LevelControl(db::DB, config::Config)::LevelControl
-    data = load_data(db, config, LevelControlStaticV1)
-    isnothing(data) && return LevelControl()
-    tbl = columntable(data)
+    static = load_structvector(db, config, LevelControlStaticV1)
     # TODO add LevelControl conductance to LHM / ribasim-python datasets
     # TODO Move to Struct constructor
-    conductance = fill(100.0 / (3600.0 * 24), length(tbl.node_id))
-    return LevelControl(tbl.node_id, tbl.target_level, conductance)
+    conductance = fill(100.0 / (3600.0 * 24), length(static.node_id))
+    return LevelControl(static.node_id, static.target_level, conductance)
 end
 
 function Pump(db::DB, config::Config)::Pump
-    data = load_data(db, config, PumpStaticV1)
-    isnothing(data) && return Pump()
-    tbl = columntable(data)
-    return Pump(tbl.node_id, tbl.flow_rate)
+    static = load_structvector(db, config, PumpStaticV1)
+    return Pump(static.node_id, static.flow_rate)
 end
 
 function push_time_interpolation!(

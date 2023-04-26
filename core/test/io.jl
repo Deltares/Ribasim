@@ -1,7 +1,12 @@
-using Test
-using Ribasim
-using TestReports
+import Arrow
+import Legolas
+import SQLite
+import Tables
 using Dates
+using Ribasim
+using StructArrays: StructVector
+using Test
+using TestReports
 
 recordproperty("name", "Input/Output")  # TODO To check in TeamCity
 
@@ -48,4 +53,48 @@ end
     @test Ribasim.findlastgroup(2, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 6:8
     @test Ribasim.findlastgroup(2, [2]) === 1:1
     @test Ribasim.findlastgroup(3, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 1:0
+end
+
+"Convert an in-memory table to a memory mapped Arrow table"
+function to_arrow_table(
+    path,
+    table::StructVector{T},
+)::StructVector{T} where {T <: Legolas.AbstractRecord}
+    open(path; write = true) do io
+        Arrow.write(io, table)
+    end
+    table = Arrow.Table(path)
+    nt = Tables.columntable(table)
+    return StructVector{T}(nt)
+end
+
+@testset "table sort"
+    toml_path = normpath(@__DIR__, "../../data/basic-transient/basic-transient.toml")
+    config = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(config, config.geopackage)
+    db = SQLite.DB(gpkg_path)
+
+    # load a sorted table
+    table = Ribasim.load_structvector(db, config, Ribasim.BasinForcingV1)
+    by = Ribasim.sort_by_function(table)
+    @test by == Ribasim.sort_by_time_id
+    # reverse it so it needs sorting
+    reversed_table = sort(table; by, rev = true)
+    @test issorted(table; by)
+    @test !issorted(reversed_table; by)
+    # create arrow memory mapped copies
+    arrow_table = to_arrow_table(tempname(), table)
+    reversed_arrow_table = to_arrow_table(tempname(), reversed_table)
+
+    @test table.node_id[1] == 1
+    @test reversed_table.node_id[1] == 9
+    # sorted_table! sorts reversed_table
+    Ribasim.sorted_table!(reversed_table)
+    @test reversed_table.node_id[1] == 1
+
+    # arrow_table is already sorted, stays memory mapped
+    Ribasim.sorted_table!(arrow_table)
+    @test_throws ReadOnlyMemoryError arrow_table.node_id[1] = 0
+    # reversed_arrow_table throws an AssertionError
+    @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
 end

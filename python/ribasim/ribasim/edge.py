@@ -66,6 +66,7 @@ class Edge(InputMixin, BaseModel):
         directory: FilePath
         modelname: str
         """
+        self.sort()
         directory = Path(directory)
         dataframe = self.static
         name = self._layername(dataframe)
@@ -122,3 +123,6 @@ class Edge(InputMixin, BaseModel):
             )
 
         return ax
+
+    def sort(self):
+        self.static = self.static.sort_index()

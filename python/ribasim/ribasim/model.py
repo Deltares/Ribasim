@@ -212,3 +212,14 @@ class Model(BaseModel):
         self.edge.plot(ax=ax, zorder=2)
         self.node.plot(ax=ax, zorder=3)
         return ax
+
+    def sort(self):
+        """
+        Sort all input tables as required.
+        Tables are sorted by "node_id", unless otherwise specified.
+        Sorting is done automatically before writing the table.
+        """
+        for name in self.fields():
+            input_entry = getattr(self, name)
+            if isinstance(input_entry, InputMixin):
+                input_entry.sort()

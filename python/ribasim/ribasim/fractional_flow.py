@@ -54,3 +54,10 @@ class FractionalFlow(InputMixin, BaseModel):
 
     def __init__(self, static: pd.DataFrame, forcing: Optional[pd.DataFrame] = None):
         super().__init__(**locals())
+
+    def sort(self):
+        self.static = self.static.sort_values("node_id", ignore_index=True)
+        if self.forcing is not None:
+            self.forcing = self.forcing.sort_values(
+                ["time", "node_id"], ignore_index=True
+            )

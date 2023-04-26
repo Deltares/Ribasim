@@ -58,8 +58,8 @@ interpolation in between. Relation can be updated in time, which is done by movi
 the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
 callback.
 
-Type parameter C indicates the content backing the StructVector,which can be a NamedTuple of
-vectors or Arrow Tables, and is added to avoid type instabilities.
+Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
+of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 """
 struct TabulatedRatingCurve{C}
     node_id::Vector{Int}
@@ -78,8 +78,6 @@ struct LinearLevelConnection
     conductance::Vector{Float64}
 end
 
-LinearLevelConnection() = LinearLevelConnection(Int[], Float64[])
-
 """
 Requirements:
 
@@ -92,8 +90,6 @@ struct FractionalFlow
     fraction::Vector{Float64}
 end
 
-FractionalFlow() = FractionalFlow(Int[], Float64[])
-
 """
 node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
@@ -105,8 +101,6 @@ struct LevelControl
     conductance::Vector{Float64}
 end
 
-LevelControl() = LevelControl(Int[], Float64[], Float64[])
-
 """
 node_id: node ID of the Pump node
 flow_rate: target flow rate
@@ -115,9 +109,6 @@ struct Pump
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
 end
-
-# TODO Kwarg constructor
-Pump() = Pump(Int[], Float64[])
 
 # TODO Automatically add all nodetypes here
 struct Parameters

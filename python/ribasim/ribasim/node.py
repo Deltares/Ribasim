@@ -73,6 +73,7 @@ class Node(InputMixin, BaseModel):
         directory: FilePath
         modelname: str
         """
+        self.sort()
         directory = Path(directory)
         dataframe = self.static
         name = self._layername(dataframe)
@@ -129,3 +130,6 @@ class Node(InputMixin, BaseModel):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax
+
+    def sort(self):
+        self.static = self.static.sort_index()

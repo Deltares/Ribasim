@@ -56,3 +56,10 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     def __init__(self, static: pd.DataFrame, time: Optional[pd.DataFrame] = None):
         super().__init__(**locals())
+
+    def sort(self):
+        self.static = self.static.sort_values(["node_id", "level"], ignore_index=True)
+        if self.time is not None:
+            self.time = self.time.sort_values(
+                ["time", "node_id", "level"], ignore_index=True
+            )
