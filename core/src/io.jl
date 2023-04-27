@@ -1,9 +1,9 @@
 function get_ids(db::DB)::Vector{Int}
-    return only(execute(columntable, db, "select fid from Node"))
+    return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
 end
 
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "select fid from Node where type = $(esc_id(nodetype))"
+    sql = "SELECT fid FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 
@@ -67,7 +67,7 @@ end
 
 Load data from Arrow files if available, otherwise the GeoPackage.
 Always returns a StructVector of the given struct type T, which is empty if the table is
-not found.
+not found. This function validates the schema, and enforces the required sort order.
 """
 function load_structvector(
     db::DB,
@@ -97,7 +97,7 @@ function load_structvector(
         @warn "No (validation) schema declared for $nodetype $kind"
     end
 
-    return table
+    return sorted_table!(table)
 end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"

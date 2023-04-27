@@ -21,8 +21,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             # default to nearly empty basins, perhaps make required input
             fill(1.0, n)
         else
-            # get state in the right order
-            sort(state; by = row -> row.node_id).storage
+            state.storage
         end::Vector{Float64}
         @assert length(u0) == n "Basin / state length differs from number of Basins"
         t_end = seconds_since(config.endtime, config.starttime)

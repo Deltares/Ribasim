@@ -22,12 +22,14 @@ isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), "."
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 
+# TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
 end
 
 @version EdgeV1 begin
+    fid::Int
     from_node_id::Int
     to_node_id::Int
 end
@@ -120,4 +122,37 @@ function is_consistent(node, edge, state, static, profile, forcing)
     # TODO Check forcings
 
     true
+end
+
+# functions used by sort(x; by)
+sort_by_id(row) = row.node_id
+sort_by_time_id(row) = (row.time, row.node_id)
+sort_by_id_level(row) = (row.node_id, row.level)
+sort_by_id_storage(row) = (row.node_id, row.storage)
+
+# get the right sort by function given the Schema, with sort_by_id as the default
+sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
+sort_by_function(table::StructVector{<:Union{TabulatedRatingCurveTimeV1, BasinForcingV1}}) =
+    sort_by_time_id
+sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
+sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_storage
+
+"""
+Depending on if a table can be sorted, either sort it or assert that it is sorted.
+
+Tables loaded from GeoPackage into memory can be sorted.
+Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
+"""
+function sorted_table!(
+    table::StructVector{<:Legolas.AbstractRecord},
+)::StructVector{<:Legolas.AbstractRecord}
+    by = sort_by_function(table)
+    if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
+        et = eltype(table)
+        msg = "Arrow table for $et not sorted as required."
+        @assert issorted(table; by) msg
+    else
+        sort!(table; by)
+    end
+    return table
 end

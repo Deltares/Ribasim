@@ -120,7 +120,7 @@ between nodes, and never have storage of their own.
 
 column    | type     | restriction
 --------- | -------- | -----------
-fid       | Int      | unique
+fid       | Int      | unique, sorted
 type      | String   | known node type
 geometry  | geoarrow | (optional)
 
@@ -165,7 +165,7 @@ or removed.
 
 column         | type     | restriction
 -------------- | -------- | -----------
-fid            | Int      | unique
+fid            | Int      | unique, sorted
 from_node_id   | Int      | -
 to_node_id     | Int      | -
 geom           | geometry | (optional)
@@ -195,7 +195,7 @@ forcing table, it is empty, or all timestamps of that variable are missing.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
-node_id               | Int     | -            | -
+node_id               | Int     | -            | sorted
 precipitation         | Float64 | $m s^{-1}$   | non-negative
 potential_evaporation | Float64 | $m s^{-1}$   | non-negative
 drainage              | Float64 | $m^3 s^{-1}$ | non-negative
@@ -209,8 +209,10 @@ example of this is the `target_volume` from the LevelLink node.
 
 ### Basin / forcing
 
-This table is the transient form of the `Basin` table. The only difference is that a time
-column is added. A linear interpolation between the given timesteps is currently done if the
+This table is the transient form of the `Basin` table.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by node_id.
+A linear interpolation between the given timesteps is currently done if the
 solver takes timesteps between the given data points. More options will be available later.
 
 ### Basin / profile
@@ -220,7 +222,7 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-storage   | Float64 | $m^3$        | non-negative, start at 0
+storage   | Float64 | $m^3$        | non-negative, per node_id: start at 0 and increasing
 area      | Float64 | $m^2$        | non-negative
 level     | Float64 | $m$          | -
 
@@ -251,7 +253,8 @@ discharge | Float64 | $m^3 s^{-1}$ | non-negative
 ### TabulatedRatingCurve / time
 
 This table is the transient form of the `TabulatedRatingCurve` table.
-The only difference is that a time column is added, which must be sorted.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by node_id.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
@@ -265,7 +268,7 @@ Note that the intake must always be a Basin.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
-node_id               | Int     | -            | -
+node_id               | Int     | -            | sorted
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
 
 ### Basin output
@@ -280,6 +283,8 @@ node_id  | Int      | -
 storage  | Float64  | $m^3$
 level    | Float64  | $m$
 
+The table is sorted by time, and per time it is sorted by node_id.
+
 ### Flow output
 
 The flow tables contains outputs of the flow on every edge in the model, for each solver
@@ -292,6 +297,8 @@ edge_id       | Int      | -
 from_node_id  | Int      | -
 to_node_id    | Int      | -
 flow          | Float64  | $m^3 s^{-1}$
+
+The table is sorted by time, and per time the same edge_id order is used, though not sorted.
 
 ## Example input files
 

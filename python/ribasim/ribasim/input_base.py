@@ -81,6 +81,7 @@ class InputMixin(abc.ABC):
         directory: FilePath
         modelname: str
         """
+        self.sort()
         directory = Path(directory)
         for field in self.fields():
             dataframe = getattr(self, field)
@@ -165,3 +166,17 @@ class InputMixin(abc.ABC):
             return None
         else:
             return cls(**kwargs)
+
+    def sort(self):
+        """
+        Sort all input tables as required.
+        Tables are sorted by "node_id", unless otherwise specified.
+        Sorting is done automatically before writing the table.
+        """
+        for field in self.fields():
+            dataframe = getattr(self, field)
+            if dataframe is None:
+                continue
+            else:
+                dataframe = dataframe.sort_values("node_id", ignore_index=True)
+        return
