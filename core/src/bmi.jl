@@ -31,7 +31,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
-    callback = create_callbacks(parameters)
+    callback, saved_flow = create_callbacks(parameters)
+
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
@@ -53,8 +54,11 @@ end
 Create the different callbacks that are used to store output
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
+Returns the CallbackSet and the SavedValues for flow.
 """
-function create_callbacks(parameters)::CallbackSet
+function create_callbacks(
+    parameters,
+)::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
@@ -70,7 +74,8 @@ function create_callbacks(parameters)::CallbackSet
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
-    return CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+    callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+    return callback, saved_flow
 end
 
 "Copy the current flow to the SavedValues"
