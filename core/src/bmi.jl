@@ -31,19 +31,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
-    # get the table underlying the Stateful iterator, and get all unique timestamps
-    times = unique(parameters.tabulated_rating_curve.time.time)
-    tstops = seconds_since.(times, config.starttime)
-    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
-
-    # add a single time step's contribution to the water balance step's totals
-    # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
-    # flows: save the flows over time, as a Vector of the nonzeros(flow)
-    save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
-    saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
-    callback = CallbackSet(save_flow_cb, tabulated_rating_curve_cb)
-
+    callback = create_callbacks(parameters)
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
@@ -59,6 +47,58 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     close(db)
     return Model(integrator, config, saved_flow)
+end
+
+"""
+Create the different callbacks that are used to store output
+and feed the simulation with new data. The different callbacks
+are combined to a CallbackSet that goes to the integrator.
+"""
+function create_callbacks(parameters)::CallbackSet
+    (; starttime, basin, tabulated_rating_curve) = parameters
+
+    tstops = get_tstops(basin.time.time, starttime)
+    basin_cb = PresetTimeCallback(tstops, update_basin)
+
+    tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
+    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
+
+    # add a single time step's contribution to the water balance step's totals
+    # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
+    # flows: save the flows over time, as a Vector of the nonzeros(flow)
+
+    saved_flow = SavedValues(Float64, Vector{Float64})
+    save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
+
+    return CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+end
+
+"Copy the current flow to the SavedValues"
+save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
+
+"Load updates from 'Basin / time' into the parameters"
+function update_basin(integrator)::Nothing
+    (; basin) = integrator.p
+    (; time) = basin
+    (; u_index) = integrator.p.connectivity
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(time.time, t)
+    timeblock = view(time, rows)
+
+    table = (;
+        basin.precipitation,
+        basin.potential_evaporation,
+        basin.drainage,
+        basin.infiltration,
+    )
+
+    for row in timeblock
+        i = u_index[row.node_id]
+        set_table_row!(table, row, i)
+    end
+
+    return nothing
 end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"

@@ -35,19 +35,23 @@ Requirements:
 * Must be positive: precipitation, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
+
+Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
+of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
-struct Basin
+struct Basin{C}
+    precipitation::Vector{Float64}
+    potential_evaporation::Vector{Float64}
+    drainage::Vector{Float64}
+    infiltration::Vector{Float64}
     # cache these to avoid recomputation
     current_area::Vector{Float64}
     current_level::Vector{Float64}
     # f(storage)
     area::Vector{Interpolation}
     level::Vector{Interpolation}
-    # f(time)
-    precipitation::Vector{Interpolation}
-    potential_evaporation::Vector{Interpolation}
-    drainage::Vector{Interpolation}
-    infiltration::Vector{Interpolation}
+    # data source for parameter updates
+    time::StructVector{BasinForcingV1, C, Int}
 end
 
 """
@@ -138,10 +142,10 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
-        precipitation = fixed_area * basin.precipitation[i](t)
-        evaporation = area * reduction_factor * basin.potential_evaporation[i](t)
-        drainage = basin.drainage[i](t)
-        infiltration = reduction_factor * basin.infiltration[i](t)
+        precipitation = fixed_area * basin.precipitation[i]
+        evaporation = area * reduction_factor * basin.potential_evaporation[i]
+        drainage = basin.drainage[i]
+        infiltration = reduction_factor * basin.infiltration[i]
 
         du[i] += precipitation - evaporation + drainage - infiltration
     end
