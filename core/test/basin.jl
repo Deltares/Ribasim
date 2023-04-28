@@ -19,9 +19,7 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 4
-    # TODO on MacOS CI this deviates ~0.5m3, not on local MacOS
-    @test model.integrator.sol.u[end] ≈ Float32[235.80775, 168.88895, 0.4997849, 1534.171] broken =
-        (Sys.isapple() && get(ENV, "CI", "false") == "true")
+    @test model.integrator.sol.u[end] ≈ Float32[235.80775, 168.88895, 0.4997849, 1534.171]
 end
 
 @testset "TabulatedRatingCurve model" begin
