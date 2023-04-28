@@ -93,7 +93,7 @@ function findsorted(a, x)::Union{Int, Nothing}
     elseif length(r) == 1
         only(r)
     else
-        error("Multiple occurances of $x found.")
+        error("Multiple occurrences of $x found.")
     end
 end
 
