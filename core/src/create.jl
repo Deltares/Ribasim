@@ -52,17 +52,14 @@ function ManningConnection(db::Db, config::Config)::ManningConnection
 
     # These are okay to cache for static input, but not time varying!
     slope_unit_length = sqrt.(tbl.profile_slope ^ 2 + 1.0)
-    n_squared = tbl.manning_n .^ 2
 
     return ManningConnection(
         tbl.node_id,
         tbl.length,
-        n_squared,
+        tbl.manning_n,
         tbl.profile_width,
         tbl.profile_slope,
         slope_unit_length,
-        tbl.contraction_coefficient,
-        tbl.expansion_coefficient,
     )
 end
 

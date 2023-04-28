@@ -346,8 +346,6 @@ class ManningConnectionStatic(Input):
         QgsField("manning_n", QVariant.Double),
         QgsField("profile_width", QVariant.Double),
         QgsField("profile_slope", QVariant.Double),
-        QgsField("contraction_coefficient", QVariant.Double),
-        QgsField("expansion_coefficient", QVariant.Double),
     ]
 
 

@@ -106,8 +106,6 @@ end
     manning_n::Float64
     profile_width::Float64
     profile_slope::Float64
-    contraction_coefficient::Float64
-    expansion_coefficient::Float64
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

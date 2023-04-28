@@ -14,8 +14,6 @@ class StaticSchema(pa.SchemaModel):
     manning_n: Series[float]
     profile_width: Series[float]
     profile_slope: Series[float]
-    contraction_coefficient: Series[float]
-    expansion_coefficient: Series[float]
 
 
 class LinearLevelConnection(InputMixin, BaseModel):

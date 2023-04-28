@@ -1,6 +1,5 @@
 ## types and functions
 const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
-const TWO_G = 2 * 9.81
 
 """
 Store the connectivity information
@@ -121,12 +120,10 @@ Requirements:
 struct ManningConnection
     node_id::Vector{Int}
     length::Vector{Float64}
-    n_squared::Vector{Float64}
+    manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
     profile_slope_unit_length::Vector{Float64}
-    contraction_coefficient:::Vector{Float64}
-    expansion_coefficient:::Vector{Float64}
 end
 
 ManningConnection() = ManningConnection(Int[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[])
@@ -278,43 +275,25 @@ function formulate!(
     level,
 )::Nothing
     (; graph, flow, u_index) = connectivity
-    (; node_id, length, n_squared, profile_width, profile_slope, unit_length, contraction_c, expansion_c) = manning_connection
+    (; node_id, length, manning_n, profile_width, profile_slope, unit_length) = manning_connection
     for (i, id) in enumerate(node_id)
-        basin_1_id = only(inneighbors(graph, id))
-        basin_2_id = only(outneighbors(graph, id))
+        basin_a_id = only(inneighbors(graph, id))
+        basin_a_id = only(outneighbors(graph, id))
 
-        h_1 = level[u_index[basin_1_id]]
-        h_2 = level[u_index[basin_2_id]]
-        bottom_1 = first(basin.level[basin_1_id].u)
-        bottom_2 = first(basin.level[basin_1_id].u)
-        d_1 = h_1 - bottom_1
-        d_2 = h_2 - bottom_2
-        d_mean = 0.5 * (d_1 + d_2)
+        h_a = level[u_index[basin_a_id]]
+        h_b = level[u_index[basin_a_id]]
+        bottom_a = first(basin.level[basin_a_id].u)
+        bottom_b = first(basin.level[basin_b_id].u)
+        d_a = h_1 - bottom_a
+        d_b = h_2 - bottom_b
+        d = max(d_a, d_b)
 
-        # Determine direction of flow
-        if h_1 > h_2:
-            h_a, h_b = h_1, h_2
-            d_a, d_b = d_1, d_2
-            sign_q = 1.0
-        else:
-            h_a, h_b = h_2, h_1
-            d_a, d_b = d_2, d_1
-            sign_q = -1.0
-        end
-
-        # Use water depth to compute either contraction or expansion
-        C = (d_b >= d_a) ? expansion_c : -1.0 * contraction_c
-        C_v = (1.0 + C) / TWO_G
-        C_f = n_squared * length
-
-        # Compute cross sectional areas and hydraulic radius
-        A_a = (profile_width * d_a + profile_slope * d_a^2)
-        A_b = (profile_width * d_b + profile_slope * d_b^2)
-        A2 = (profile_width * d_mean + profile_slope * d_mean^2)
-        B = profile_width + 2.0 * d_mean * unit_length
+        C_f = manning_n ^ 2 * length
+        A = (profile_width * d + profile_slope * d^2)
+        B = profile_width + 2.0 * d * unit_length
         R_h = A / B
 
-        q = sign_q * sqrt((h_a - h_b) / (-C_v / A_a^2  + C_v / A_b^2 + C_f / (A^2 * R_h^(4/3))))
+        q = sign(h_a - h_b) * sqrt((h_a - h_b) /  C_f / (A^2 * R_h^(4/3)))
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
     end
