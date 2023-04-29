@@ -83,27 +83,26 @@ struct LinearLevelConnection
 end
 
 """
-This is an extremely simple Manning-Gauckler reach connection.
+This is a simple Manning-Gauckler reach connection.
 
 * Length describes the reach length.
 * roughness describes Manning's n in (SI units).
 
 The profile is described by a trapezoid:
 
-```
-       \            /  ^
-        \          /   | 
-         \        /    | dz
- bottom   \______/     | 
- ^               <--->
- |  <------>       dx
- |    width
- |
- |
- + datum (e.g. MSL)
-```
+          \            /  ^
+           \          /   | 
+            \        /    | dz
+    bottom   \______/     | 
+    ^               <--->
+    |                 dy
+    |        <------> 
+    |          width
+    |
+    |
+    + datum (e.g. MSL)
 
-profile_slope = dx / dz.
+profile_slope = dy / dz.
 A rectangular profile requires a slope of 0.0.
 
 Requirements:
@@ -243,30 +242,43 @@ end
 
 
 """
-Connection based on preservation of energy:
+Conservation of energy for two basins, a and b:
 
-h_a + v_a^2 / (2 * g) = h_b + v_b^2 / (2 * g) + h_loss
-
-With:
-
-h_loss = S_f * L + C / 2 * g * (v_b^2 - v_a^2)
-
-Where friction losses are approximated by the Gauckler-Manning formula:
-
-V = (1 / n) * R_h^(2/3) * S_f^(1/2)
+    h_a + v_a^2 / (2 * g) = h_b + v_b^2 / (2 * g) + S_f * L + C / 2 * g * (v_b^2 - v_a^2)
 
 Where:
 
-    * V is the cross-sectional average velocity.
-    * n is the Gauckler-Manning coefficient.
-    * R_h is the hydraulic radius.
-    * S_f is the friction slope.
-    
-R_h = A / P
+* h_a, h_b are the heads at basin a and b.
+* v_a, v_b are the velocities at basin a and b.
+* g is the gravitational constant.
+* S_f is the friction slope.
+* C is an expansion or extraction coefficient.
 
-    * Where A is the cross-sectional area.
-    * P is the wetted perimeter.
+We assume velocity differences are negligible (v_a = v_b):
 
+    h_a = h_b + S_f * L
+
+The friction losses are approximated by the Gauckler-Manning formula:
+
+    Q = A * (1 / n) * R_h^(2/3) * S_f^(1/2)
+
+Where:
+
+* Where A is the cross-sectional area.
+* V is the cross-sectional average velocity.
+* n is the Gauckler-Manning coefficient.
+* R_h is the hydraulic radius.
+* S_f is the friction slope.
+
+The hydraulic radius is defined as:
+
+    R_h = A / P
+
+Where P is the wetted perimeter.
+
+The "upstream" water depth is used to compute cross-sectional area and
+hydraulic radius. This ensures that a basin can receive water after it has gone
+dry.
 """
 function formulate!(
     basin::Basin,
@@ -284,16 +296,16 @@ function formulate!(
         h_b = level[u_index[basin_a_id]]
         bottom_a = first(basin.level[basin_a_id].u)
         bottom_b = first(basin.level[basin_b_id].u)
-        d_a = h_1 - bottom_a
-        d_b = h_2 - bottom_b
-        d = max(d_a, d_b)
 
-        C_f = manning_n ^ 2 * length
+        Δh = h_a - h_b
+        q_sign = sign(Δh)
+        # Take the "upstream" water depth:
+        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))  # Probably a bit too "clever"...
         A = (profile_width * d + profile_slope * d^2)
-        B = profile_width + 2.0 * d * unit_length
-        R_h = A / B
+        P = profile_width + 2.0 * d * unit_length
+        R_h = A / P
+        q = q_sign * A / manning_n * R_h^(2/3) * sqrt(abs(Δh) / L) 
 
-        q = sign(h_a - h_b) * sqrt((h_a - h_b) /  C_f / (A^2 * R_h^(4/3)))
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
     end

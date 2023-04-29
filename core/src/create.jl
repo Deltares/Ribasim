@@ -46,19 +46,14 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function ManningConnection(db::Db, config::Config)::ManningConnection
-    data = load_data(db, config, ManningConnectionStaticV1)
-    isnothing(data) && return ManningConnection()
-    tbl = columntable(data)
-
-    # These are okay to cache for static input, but not time varying!
-    slope_unit_length = sqrt.(tbl.profile_slope ^ 2 + 1.0)
-
+    static = load_structvector(db, config, ManningConnectionStaticV1)
+    slope_unit_length = sqrt.(static.profile_slope ^ 2 + 1.0)
     return ManningConnection(
-        tbl.node_id,
-        tbl.length,
-        tbl.manning_n,
-        tbl.profile_width,
-        tbl.profile_slope,
+        static.node_id,
+        static.length,
+        static.manning_n,
+        static.profile_width,
+        static.profile_slope,
         slope_unit_length,
     )
 end

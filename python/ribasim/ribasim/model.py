@@ -29,9 +29,9 @@ _NODES = (
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
     (LinearLevelConnection, "linear_level_connection"),
+    (ManningConnection, "manning_connection")
     (TabulatedRatingCurve, "tabulated_rating_curve"),
     (Pump, "pump"),
-    (ManningConnection, "manning_connection")
 )
 
 
@@ -73,8 +73,8 @@ class Model(BaseModel):
     level_control: Optional[LevelControl]
     linear_level_connection: Optional[LinearLevelConnection]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
-    pump: Optional[Pump]
     manning_connection: Optional[ManningConnection]
+    pump: Optional[Pump]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -93,9 +93,9 @@ class Model(BaseModel):
         fractional_flow: Optional[FractionalFlow] = None,
         level_control: Optional[LevelControl] = None,
         linear_level_connection: Optional[LinearLevelConnection] = None,
+        manning_connection: Optional[ManningConnection] = None,
         tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
         pump: Optional[Pump] = None,
-        manning_connection: Optional[ManningConnection] = None,
         solver: Optional[Solver] = None,
     ):
         super().__init__(**locals())
