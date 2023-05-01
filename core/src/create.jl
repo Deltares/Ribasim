@@ -78,104 +78,38 @@ function Pump(db::DB, config::Config)::Pump
     return Pump(static.node_id, static.flow_rate)
 end
 
-function push_time_interpolation!(
-    interpolations::Vector{Interpolation},
-    col::Symbol,
-    time::Vector{Float64},  # all float times for forcing_id
-    forcing_id::StructVector,
-    t_end::Float64,
-    static_id::StructVector,
-)::Vector{Interpolation}
-    values = getcolumn(forcing_id, col)
-    interpolation = LinearInterpolation(values, time)
-    if isempty(interpolation)
-        # either no records or all missing
-        # use static values over entire timespan
-        values = getcolumn(static_id, col)
-        value = if isempty(values)
-            0.0  # safe default static value for in- and outflows
-        else
-            only(values)
-        end
-        interpolation = LinearInterpolation([value, value], [zero(t_end), t_end])
-    end
-    @assert interpolation.t[begin] <= 0 "Forcing for $col starts after simulation start."
-    @assert interpolation.t[end] >= t_end "Forcing for $col stops before simulation end."
-    push!(interpolations, interpolation)
-end
-
 function Basin(db::DB, config::Config)::Basin
-    # TODO support forcing for other nodetypes
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_area = zeros(n)
     current_level = zeros(n)
+
+    precipitation = fill(NaN, length(node_id))
+    potential_evaporation = fill(NaN, length(node_id))
+    drainage = fill(NaN, length(node_id))
+    infiltration = fill(NaN, length(node_id))
+    table = (; precipitation, potential_evaporation, drainage, infiltration)
+
     area, level = create_storage_tables(db, config)
-    t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
-    forcing = load_structvector(db, config, BasinForcingV1)
-    if isempty(static) && isempty(forcing)
-        error("Neither static nor transient forcing found for Basin.")
-    end
+    time = load_structvector(db, config, BasinForcingV1)
 
-    precipitation = Interpolation[]
-    potential_evaporation = Interpolation[]
-    drainage = Interpolation[]
-    infiltration = Interpolation[]
-
-    for id in node_id
-        # filter forcing for this ID and put it in an Interpolation, or use static as a
-        # fallback option
-        static_id = filter(row -> row.node_id == id, static)
-        forcing_id = filter(row -> row.node_id == id, forcing)
-        time = seconds_since.(forcing_id.time, config.starttime)
-
-        push_time_interpolation!(
-            precipitation,
-            :precipitation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(
-            precipitation,
-            :precipitation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(
-            potential_evaporation,
-            :potential_evaporation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(drainage, :drainage, time, forcing_id, t_end, static_id)
-        push_time_interpolation!(
-            infiltration,
-            :infiltration,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-    end
+    set_static_value!(table, node_id, static)
+    set_current_value!(table, node_id, time, config.starttime)
+    check_no_nans(table, "Basin")
 
     return Basin(
-        current_area,
-        current_level,
-        area,
-        level,
         precipitation,
         potential_evaporation,
         drainage,
         infiltration,
+        current_area,
+        current_level,
+        area,
+        level,
+        time,
     )
 end
 

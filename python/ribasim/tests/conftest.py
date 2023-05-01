@@ -276,7 +276,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     profile["node_id"] = [1, 1, 4, 4]
 
     # Convert steady forcing to m/s
-    # 2 mm/d precipitation, 1 mm/d evaporation
+    # 2 mm/d precipitation
     seconds_in_day = 24 * 3600
     precipitation = 0.002 / seconds_in_day
     # only the upstream basin gets precipitation
