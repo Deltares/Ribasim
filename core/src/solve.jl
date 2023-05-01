@@ -91,12 +91,12 @@ This is a simple Manning-Gauckler reach connection.
 The profile is described by a trapezoid:
 
           \            /  ^
-           \          /   | 
+           \          /   |
             \        /    | dz
-    bottom   \______/     | 
+    bottom   \______/     |
     ^               <--->
     |                 dy
-    |        <------> 
+    |        <------>
     |          width
     |
     |
@@ -124,8 +124,6 @@ struct ManningConnection
     profile_slope::Vector{Float64}
     profile_slope_unit_length::Vector{Float64}
 end
-
-ManningConnection() = ManningConnection(Int[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[])
 
 """
 Requirements:
@@ -240,7 +238,6 @@ function formulate!(
     return nothing
 end
 
-
 """
 Conservation of energy for two basins, a and b:
 
@@ -287,24 +284,30 @@ function formulate!(
     level,
 )::Nothing
     (; graph, flow, u_index) = connectivity
-    (; node_id, length, manning_n, profile_width, profile_slope, unit_length) = manning_connection
+    # TODO length not used
+    # TODO make a function for bottom first()
+    (; node_id, length, manning_n, profile_width, profile_slope, unit_length) =
+        manning_connection
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_a_id = only(outneighbors(graph, id))
 
-        h_a = level[u_index[basin_a_id]]
-        h_b = level[u_index[basin_a_id]]
-        bottom_a = first(basin.level[basin_a_id].u)
-        bottom_b = first(basin.level[basin_b_id].u)
+        idx_a = u_index[basin_a_id]
+        idx_b = u_index[basin_b_id]
+        h_a = level[idx_a]
+        h_b = level[idx_b]
+        bottom_a = first(basin.level[idx_a].u)
+        bottom_b = first(basin.level[idx_b].u)
 
         Δh = h_a - h_b
         q_sign = sign(Δh)
         # Take the "upstream" water depth:
-        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))  # Probably a bit too "clever"...
-        A = (profile_width * d + profile_slope * d^2)
+        # TODO Probably a bit too "clever"...
+        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))
+        A = profile_width * d + profile_slope * d^2
         P = profile_width + 2.0 * d * unit_length
         R_h = A / P
-        q = q_sign * A / manning_n * R_h^(2/3) * sqrt(abs(Δh) / L) 
+        q = q_sign * A / manning_n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q

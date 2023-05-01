@@ -29,7 +29,7 @@ _NODES = (
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
     (LinearLevelConnection, "linear_level_connection"),
-    (ManningConnection, "manning_connection")
+    (ManningConnection, "manning_connection"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
     (Pump, "pump"),
 )
@@ -72,8 +72,8 @@ class Model(BaseModel):
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
     linear_level_connection: Optional[LinearLevelConnection]
-    tabulated_rating_curve: Optional[TabulatedRatingCurve]
     manning_connection: Optional[ManningConnection]
+    tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     starttime: datetime.datetime
     endtime: datetime.datetime

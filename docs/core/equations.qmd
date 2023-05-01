@@ -183,7 +183,7 @@ result in instantaneous corrective fluxes.
 
 ### Manning connection
 
-Ribasim is capable of simulating steady flow between basins through a reaches
+Ribasim is capable of simulating steady flow between basins through a reach
 described by a trapezoidal profile and a Manning roughness coefficient.
 
 We describe the discharge from basin $a$ to basin $b$ solely as a function of
