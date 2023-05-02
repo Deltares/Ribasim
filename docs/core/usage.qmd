@@ -258,6 +258,14 @@ The table must by sorted by time, and per time it must be sorted by node_id.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
+column    | type     | unit         | restriction
+--------- | -------  | ------------ | -----------
+time      | DateTime | -            | sorted
+node_id   | Int      | -            | sorted per time
+level     | Float64  | $m$          | -
+discharge | Float64  | $m^3 s^{-1}$ | non-negative
+
+
 ### Pump
 
 Pump water from a source node to a destination node.
