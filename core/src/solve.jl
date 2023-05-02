@@ -90,10 +90,10 @@ This is a simple Manning-Gauckler reach connection.
 
 The profile is described by a trapezoid:
 
-          \            /  ^
-           \          /   |
-            \        /    | dz
-    bottom   \______/     |
+         \\            /  ^
+          \\          /   |
+           \\        /    | dz
+    bottom  \\______/     |
     ^               <--->
     |                 dy
     |        <------>
@@ -102,7 +102,7 @@ The profile is described by a trapezoid:
     |
     + datum (e.g. MSL)
 
-profile_slope = dy / dz.
+With `profile_slope = dy / dz`.
 A rectangular profile requires a slope of 0.0.
 
 Requirements:

@@ -10,9 +10,9 @@
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.levelcontrol.static" LevelControlStatic
 @schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
+@schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.manningresistance.static" ManningResistance
 
 const delimiter = " / "
 schemaversion(node::Symbol, kind::Symbol, v = 1) =
@@ -87,6 +87,14 @@ end
     conductance::Float64
 end
 
+@version ManningResistanceStaticV1 begin
+    node_id::Int
+    length::Float64
+    manning_n::Float64
+    profile_width::Float64
+    profile_slope::Float64
+end
+
 @version TabulatedRatingCurveStaticV1 begin
     node_id::Int
     level::Float64
@@ -98,14 +106,6 @@ end
     time::DateTime
     level::Float64
     discharge::Float64
-end
-
-@version ManningResistanceStaticV1
-    node_id::Int
-    length::Float64
-    manning_n::Float64
-    profile_width::Float64
-    profile_slope::Float64
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

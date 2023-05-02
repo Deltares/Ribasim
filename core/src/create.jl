@@ -44,7 +44,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     return TabulatedRatingCurve(node_ids, interpolations, time)
 end
 
-function ManningResistance(db::Db, config::Config)::ManningResistance
+function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     slope_unit_length = sqrt.(static.profile_slope^2 + 1.0)
     return ManningResistance(
