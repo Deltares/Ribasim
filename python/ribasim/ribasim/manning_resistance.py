@@ -10,7 +10,10 @@ __all__ = ("ManningResistance",)
 
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
-    conductance: Series[float]
+    length: Series[float]
+    manning_n: Series[float]
+    profile_width: Series[float]
+    profile_slope: Series[float]
 
 
 class ManningResistance(InputMixin, BaseModel):
@@ -25,6 +28,10 @@ class ManningResistance(InputMixin, BaseModel):
         With columns:
 
         * node_id
+        * length
+        * manning_n
+        * profile_width
+        * profile_slope
 
     """
 
