@@ -18,8 +18,8 @@ Additionally, Ribasim simulates the following "allocated" water balance terms:
 3. Flushing
 
 Depending on the type of boundary conditions, Ribasim requires relation between
-storage volume and wetted area ($A$), and between the storage volume and the
-water level ($h$). These are (currently) represented by piecewise linear
+storage volume and wetted area $A$, and between the storage volume and the
+water level $h$. These are (currently) represented by piecewise linear
 relationships.
 
 # Natural water balance terms
@@ -28,11 +28,11 @@ relationships.
 The precipitation term is given by:
 
 $$
-Q_P = P A(S) 
+Q_P = P \cdot A(S).
 $$
 
-Where $P$ is the precipitation rate and $A$ is the wetted area. $A$ is a
-function of storage: as the volume of water changes, the area of the free water
+Here $P$ is the precipitation rate and $A$ is the wetted area. $A$ is a
+function of the storage $S$: as the volume of water changes, the area of the free water
 surface may change as well, depending on the slopes of the surface waters. 
 
 ## Evaporation
@@ -40,23 +40,23 @@ surface may change as well, depending on the slopes of the surface waters.
 The evaporation term is given by:
 
 $$
-Q_E = E_{pot} \cdot A(S) \cdot (0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5
+Q_E = E_\text{pot} \cdot A(S) \cdot \frac{1}{2}\left( \tanh\left(\frac{S-50}{10}\right) +1\right)
 $$
 
-Where $E_{pot}$ is the potential evaporation rate and $A$ is the wetted area.
-The $(0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5$ term ensures no evaporation occurs
-when $S <= 0$ and is a sigmoid function which provides a smooth gradient as $S
+Here $E_\text{pot}$ is the potential evaporation rate and $A$ is the wetted area.
+The $\frac{1}{2}\left( \tanh\left(\frac{S-50}{10}\right) +1\right)$ term ensures almost no evaporation occurs
+when $S \le 0$ and is a sigmoid function which provides a smooth gradient as $S
 \rightarrow 0$.
 
-A straightforward formulation $Q_E = \mathrm{max}(E_{pot} A(S),
-0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}(S=0)$ is $\infty$.
+A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(S),
+0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}(S=0)$ is then not well-defined.
 A hyperbolic tangent is a commonly used activation function
 [@enwiki:1106669904] to approximate on-off behavior while preserving a smooth
 derivative.
 
 A non-smooth derivative results in extremely small timesteps and long
 computation time: ModelingToolkit identifies the singular behavior and adjusts
-it timestepping. In a physical interpretation, evaporation is switched on or
+its timestepping. In a physical interpretation, evaporation is switched on or
 off per individual droplet of water. In general, the effect of the sigmoid term
 is negligible, or not even necessary. As a surface water dries, its wetted area
 decreases and so does the evaporative flux. However, for (simplified) cases with
@@ -70,7 +70,7 @@ MODFLOW 6, the infiltration is computed as the sum of all **positive** flows of 
 MODFLOW 6 boundary conditions in the basin:
 
 $$
-Q_{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
+Q_\text{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
 $$
 
 Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index,
@@ -83,7 +83,7 @@ value of all **negative** flows of the MODFLOW 6 boundary conditions in the
 basin.
 
 $$
-Q_{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0) \right|
+Q_\text{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0) \right|
 $$
 
 The interaction with MODFLOW 6 boundary conditions is explained in greater
@@ -158,9 +158,9 @@ user categories varies, as explained in more detail below.
 
 ::: {.hidden}
 $$
- \def\qavail{{Q_\mathit{avail\:vol}}}
- \def\demwm{{D_{\mathit{wm}}}}
- \def\demuser{{D_{\mathit{user}}}}
+ \def\qavail{{Q_\text{avail vol}}}
+ \def\demwm{{D_{\text{wm}}}}
+ \def\demuser{{D_\text{user}}}
 $$
 :::
 
@@ -183,10 +183,10 @@ General Users. In the Ribasim prototype, additional water from the regional
 network is currently modelled as an unlimited supply.
 
 $$
-\qavail = \frac{(P - E_{pot}) \cdot \mathit{area}}{\mathrm{Δ}t} - \min(0, Q_{infil} - Q_{drain} - Q_{runoff})
+\qavail = \frac{(P - E_\text{pot}) \cdot A}{\mathrm{Δ}t} - \min(0, Q_\text{infil} - Q_\text{drain} - Q_\text{runoff})
 $$ {#eq-q-avail}
 
-The $\qavail$ can be assigned to multiple users in the same basin. Allocation is
+Here $A$ is the area. The $\qavail$ can be assigned to multiple users in the same basin. Allocation is
 based upon user priority. For a given user, in the case where $\qavail >
 \demuser$, the user demand is satisfied and the remaining $\qavail$ becomes
 available for the user of next highest priority. For a given user, in the case
@@ -204,7 +204,7 @@ balance sinks, negative storage is avoided and smooth numerical behavior is
 ensured via an activation function:
 
 $$
-Q_{user} = Q_{alloc} \cdot (0.5 \cdot \tanh(S - 50.0) / 10.0) + 0.5
+Q_\text{user} = Q_\text{alloc} \cdot \frac{1}{2}\left( \tanh\left(\frac{S-50}{10}\right) +1\right)
 $$
 
 ## Level Control
@@ -242,7 +242,7 @@ allocated to other users and there is no net change to the water level in the
 basin or the $\qavail$, see @eq-flushing.
 
 $$
-\mathit{Q_{in}} = -\mathit{Q_{out}}
+Q_\text{in} = -Q_\text{out}
 $$ {#eq-flushing}
 
 # Numerical solution
