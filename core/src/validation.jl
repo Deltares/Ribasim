@@ -12,7 +12,7 @@
 @schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.manningconnection.static" ManningConnection
+@schema "ribasim.manningresistance.static" ManningResistance
 
 const delimiter = " / "
 schemaversion(node::Symbol, kind::Symbol, v = 1) =
@@ -100,7 +100,7 @@ end
     discharge::Float64
 end
 
-@version ManningConnectionStaticV1
+@version ManningResistanceStaticV1
     node_id::Int
     length::Float64
     manning_n::Float64

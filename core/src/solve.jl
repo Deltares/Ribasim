@@ -116,7 +116,7 @@ Requirements:
 * (profile_width == 0) xor (profile_slope == 0)
 * slope_unit_length >= 0
 """
-struct ManningConnection
+struct ManningResistance
     node_id::Vector{Int}
     length::Vector{Float64}
     manning_n::Vector{Float64}
@@ -163,7 +163,7 @@ struct Parameters
     connectivity::Connectivity
     basin::Basin
     linear_level_connection::LinearLevelConnection
-    manning_connection::ManningConnection
+    manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
@@ -280,14 +280,14 @@ dry.
 function formulate!(
     basin::Basin,
     connectivity::Connectivity,
-    manning_connection::ManningConnection,
+    manning_resistance::ManningResistance,
     level,
 )::Nothing
     (; graph, flow, u_index) = connectivity
     # TODO length not used
     # TODO make a function for bottom first()
     (; node_id, length, manning_n, profile_width, profile_slope, unit_length) =
-        manning_connection
+        manning_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_a_id = only(outneighbors(graph, id))

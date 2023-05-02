@@ -15,7 +15,6 @@ function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
     return LinearLevelConnection(static.node_id, static.conductance)
 end
 
-
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
@@ -45,10 +44,10 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     return TabulatedRatingCurve(node_ids, interpolations, time)
 end
 
-function ManningConnection(db::Db, config::Config)::ManningConnection
-    static = load_structvector(db, config, ManningConnectionStaticV1)
-    slope_unit_length = sqrt.(static.profile_slope ^ 2 + 1.0)
-    return ManningConnection(
+function ManningResistance(db::Db, config::Config)::ManningResistance
+    static = load_structvector(db, config, ManningResistanceStaticV1)
+    slope_unit_length = sqrt.(static.profile_slope^2 + 1.0)
+    return ManningResistance(
         static.node_id,
         static.length,
         static.manning_n,
@@ -130,7 +129,7 @@ function Parameters(db::DB, config::Config)::Parameters
     connectivity = Connectivity(db)
 
     linear_level_connection = LinearLevelConnection(db, config)
-    manning_connection = ManningConnection(db, config)
+    manning_resistance = ManningResistance(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
@@ -143,7 +142,7 @@ function Parameters(db::DB, config::Config)::Parameters
         connectivity,
         basin,
         linear_level_connection,
-        manning_connection,
+        manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
         level_control,

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 
-__all__ = ("ManningConnection",)
+__all__ = ("ManningResistance",)
 
 
 class StaticSchema(pa.SchemaModel):
@@ -13,7 +13,7 @@ class StaticSchema(pa.SchemaModel):
     conductance: Series[float]
 
 
-class ManningConnection(InputMixin, BaseModel):
+class ManningResistance(InputMixin, BaseModel):
     """
     Flow through this connection is estimated by conservation of energy and the
     Manning-Gauckler formula to estimate friction losses.
@@ -28,7 +28,7 @@ class ManningConnection(InputMixin, BaseModel):
 
     """
 
-    _input_type = "ManningConnection"
+    _input_type = "ManningResistance"
     static: DataFrame[StaticSchema]
 
     class Config:

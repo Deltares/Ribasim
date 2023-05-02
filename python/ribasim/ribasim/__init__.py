@@ -19,7 +19,7 @@ __all__ = [
     "FractionalFlow",
     "LevelControl",
     "LinearLevelConnection",
-    "ManningConnection",
+    "ManningResistance",
     "Model",
     "Solver",
     "Node",

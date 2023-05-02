@@ -337,8 +337,8 @@ class LinearLevelConnectionStatic(Input):
     ]
 
 
-class ManningConnectionStatic(Input):
-    input_type = "ManningConnection / static"
+class ManningResistanceStatic(Input):
+    input_type = "ManningResistance / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -379,7 +379,7 @@ NODES = {
     "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
     "FractionalFlow / static": FractionalFlowStatic,
     "LinearLevelConnection / static": LinearLevelConnectionStatic,
-    "ManningConnection / static": ManningConnectionStatic,
+    "ManningResistance / static": ManningResistanceStatic,
     "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
 }
