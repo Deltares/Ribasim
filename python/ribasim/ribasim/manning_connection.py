@@ -25,7 +25,6 @@ class ManningConnection(InputMixin, BaseModel):
         With columns:
 
         * node_id
-        * 
 
     """
 
