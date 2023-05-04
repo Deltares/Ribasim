@@ -78,6 +78,7 @@ end
 @version LevelControlStaticV1 begin
     node_id::Int
     target_level::Float64
+    conductance::Float64
 end
 
 @version LinearLevelConnectionStaticV1 begin

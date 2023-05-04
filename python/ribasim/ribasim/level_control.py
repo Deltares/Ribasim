@@ -11,6 +11,7 @@ __all__ = ("LevelControl",)
 class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
     target_level: Series[float]
+    conductance: Series[float]
 
 
 class LevelControl(InputMixin, BaseModel):
@@ -25,6 +26,7 @@ class LevelControl(InputMixin, BaseModel):
 
         * node_id
         * target_level
+        * conductance
 
     """
 

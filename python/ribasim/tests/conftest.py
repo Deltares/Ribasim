@@ -131,6 +131,7 @@ def basic_model() -> ribasim.Model:
             data={
                 "node_id": [10],
                 "target_level": [1.5],
+                "conductance": [100.0 / (3600.0 * 24)],
             }
         )
     )
