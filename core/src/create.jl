@@ -67,10 +67,7 @@ end
 
 function LevelControl(db::DB, config::Config)::LevelControl
     static = load_structvector(db, config, LevelControlStaticV1)
-    # TODO add LevelControl conductance to LHM / ribasim-python datasets
-    # TODO Move to Struct constructor
-    conductance = fill(100.0 / (3600.0 * 24), length(static.node_id))
-    return LevelControl(static.node_id, static.target_level, conductance)
+    return LevelControl(static.node_id, static.target_level, static.conductance)
 end
 
 function Pump(db::DB, config::Config)::Pump
