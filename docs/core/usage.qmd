@@ -137,6 +137,8 @@ name it must have in the GeoPackage if it is stored there.
   - `FractionalFlow`: fractions
 - LevelControl: tries to keep a target water level in a connected Basin
   - `LevelControl`: target levels
+- Level: stores water at a given level unaffected by flow, like an infinitely large basin
+  - `Level`: levels
 - LinearLevelConnection: bidirectional flow based on water level difference between Basins
   - `LinearLevelConnection`: conductances
 - TabulatedRatingCurve: Basin outflow relation

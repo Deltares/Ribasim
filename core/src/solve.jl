@@ -106,6 +106,15 @@ struct LevelControl
 end
 
 """
+node_id: node ID of the Level node
+level: the fixed level of this 'infinitely big basin'
+"""
+struct Level
+    node_id::Vector{Int}
+    level::Vector{Float64}
+end
+
+"""
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
@@ -123,6 +132,7 @@ struct Parameters
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
+    level::Level
     pump::Pump
 end
 

@@ -70,6 +70,11 @@ function LevelControl(db::DB, config::Config)::LevelControl
     return LevelControl(static.node_id, static.target_level, static.conductance)
 end
 
+function Level(db::DB, config::Config)::Level
+    static = load_structvector(db, config, LevelStaticV1)
+    return Level(static.node_id, static.level)
+end
+
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     return Pump(static.node_id, static.flow_rate)
@@ -119,6 +124,7 @@ function Parameters(db::DB, config::Config)::Parameters
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
+    level = Level(db, config)
     pump = Pump(db, config)
 
     basin = Basin(db, config)
@@ -131,6 +137,7 @@ function Parameters(db::DB, config::Config)::Parameters
         tabulated_rating_curve,
         fractional_flow,
         level_control,
+        level,
         pump,
     )
 end
