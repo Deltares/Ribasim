@@ -31,6 +31,10 @@ The installation instructions can be found on their [web page](https://quarto.or
 
 ## Clone Ribasim
 
+In order to have the Ribasim repository locally available, you can clone it with Git.
+Git can be installed from [git-scm.com](https://git-scm.com/downloads).
+Once installed, run the following command at a directory of your choice:
+
 In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
 
 ```bash
