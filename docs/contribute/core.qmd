@@ -37,6 +37,12 @@ In order to have the Ribasim repository locally available, run the following com
 git clone https://github.com/Deltares/Ribasim.git
 ```
 
+With the root of this repository as your working directory you can activate the Julia project by running the following:
+
+```bash
+julia --project=core
+```
+
 
 ## Install Visual Studio Code (optional)
 
