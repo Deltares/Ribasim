@@ -44,7 +44,7 @@ git clone https://github.com/Deltares/Ribasim.git
 To continue with the following steps, make the root of the repository your working directory by running
 
 ```bash
-cd path/to/Ribasim
+cd Ribasim
 ```
 
 ## Install Visual Studio Code (optional)
