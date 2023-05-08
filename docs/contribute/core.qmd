@@ -41,12 +41,11 @@ In order to have the Ribasim repository locally available, run the following com
 git clone https://github.com/Deltares/Ribasim.git
 ```
 
-With the root of this repository as your working directory you can activate the Julia project by running the following:
+To continue with the following steps, make the root of the repository your working directory by running
 
 ```bash
-julia --project=core
+cd path/to/Ribasim
 ```
-
 
 ## Install Visual Studio Code (optional)
 
@@ -64,6 +63,12 @@ You will want to run the testsuite on a regular basis to check if your changes h
 It is also a good way to find out if your development environment is set up correctly.
 
 Before the tests can run, you need to [prepare model input](./python.qmd#prepare-model-input).
+
+With the root of the repository as your working directory you can activate the Julia project by running the following:
+
+```bash
+julia --project=core
+```
 
 While not technically required, it is advised to import Ribasim first to catch installation issues early on.
 
