@@ -41,7 +41,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia +release --project -e &quot;using Pkg; Pkg.instantiate()&quot;" />
+          <param name="script.content" value="julia --project -e &quot;using Pkg; Pkg.instantiate()&quot;" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
