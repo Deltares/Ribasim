@@ -117,8 +117,7 @@ function write_basin_output(model::Model)
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    # u_index is an OrderedDict, in the same order as u
-    basin_id = collect(keys(p.connectivity.u_index))
+    basin_id = p.basin.node_id.values::Vector{Int}
     nbasin = length(basin_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
@@ -144,7 +143,7 @@ function write_flow_output(model::Model)
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(connectivity.flow)
-    unique_edge_ids = [connectivity.edge_ids[i, j] for (i, j) in zip(I, J)]
+    unique_edge_ids = [connectivity.edge_ids[ij] for ij in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
 

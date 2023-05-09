@@ -24,5 +24,9 @@ using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
         include("cli.jl")
     end
 
+    @safetestset "Utility functions" begin
+        include("utils.jl")
+    end
+
     Aqua.test_all(Ribasim; ambiguities = false)
 end
