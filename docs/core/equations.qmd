@@ -23,7 +23,8 @@ water level $h$. These are (currently) represented by piecewise linear
 relationships.
 
 # Formal model description
-In this section we give a formal description of the problem that is solved by Ribasim. The problem is of the form
+In this section we give a formal description of the problem that is solved by Ribasim.
+The problem is of the form
 
 $$
 \frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t),\quad t \in [t_0,t_\text{end}],
@@ -31,18 +32,23 @@ $$
 
 i.e. a system of coupled first order ordinary differential equations, with initial condition $\mathbf{u}(t_0)= \mathbf{u}_0$ and time dependent input data denoted by $p(t)$.
 
-The model is given by a directed graph, consisting of a set of nodes (or vertices) $V$ and edges $E$. Let $V$ be the set of node id's and let $E$ be the set of ordered tuples $(i,j)$ meaning that node $i$ is connected to node $j$.
+The model is given by a directed graph, consisting of a set of nodes (or vertices) $V$ and edges $E$.
+Let $V$ be the set of node IDs and let $E$ be the set of ordered tuples $(i,j)$ meaning that node $i$ is connected to node $j$.
 
-We can split the set of nodes into two subsets $V = B \cup N$, where $B$ is the set of basins and $N$ is the set of non-basins. The basins have an associated storage state and the non-basins dictate how water flows to or from basins.
+We can split the set of nodes into two subsets $V = B \cup N$, where $B$ is the set of basins and $N$ is the set of non-basins.
+The basins have an associated storage state and the non-basins dictate how water flows to or from basins.
 
-$\mathbf{u}(t)$ is given by all the states of the model, which are (currently) the storage of the basins. Given a single basin with node id $i \in  B$, the equation that dictates the change of its storage over time is given by
+$\mathbf{u}(t)$ is given by all the states of the model, which are (currently) the storage of the basins.
+Given a single basin with node ID $i \in B$, the equation that dictates the change of its storage over time is given by
 
 $$
 \frac{\text{d}S_i}{\text{d}t} =
 \sum_{(i',j') \in E | j' = i} Q_{i',j'} - \sum_{(i',j') \in E | i' = i} Q_{i',j'} + F_i(\mathbf{u},p,t).
 $$
 
-Here $Q_{i,j}$ is the flow along an edge, where the graph direction dictates positive flow. So the first term denotes flow towards the basin, the second one denotes flow away from the basin, and the third term denotes external forcing. $F_i(\mathbf{u},p,t)$ is given by input data and the current state of the model, and $Q_{i' ,j'}$ is determined by the type of nodes that connect to that edge. 
+Here $Q_{i,j}$ is the flow along an edge, where the graph direction dictates positive flow.
+So the first term denotes flow towards the basin, the second one denotes flow away from the basin, and the third term denotes external forcing.
+$F_i(\mathbf{u},p,t)$ is given by input data and the current state of the model, and $Q_{i' ,j'}$ is determined by the type of nodes that connect to that edge. 
 
 The various node and forcing types that the model can contain are explained below.
 
