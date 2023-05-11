@@ -30,6 +30,7 @@ class LevelControl(InputMixin, BaseModel):
 
         * node_id
         * target_level
+        * conductance
 
     """
 

@@ -38,7 +38,7 @@ conda env create --file=environment.yml --force
 conda activate ribasim
 ```
 
-In order to develop on `ribasim` locally, execute the following line inside your virtual environment
+In order to develop on `ribasim` locally, execute the following line inside your virtual environment with `python/ribasim` as your working directory:
 
 ```bash
 pip install -e .
@@ -52,7 +52,7 @@ If not already done, activate the environment:
 conda activate ribasim
 ```
 
-To run the tests execute:
+To run the tests execute with `python/ribasim` as your working directory:
 
 ```bash
 pytest tests

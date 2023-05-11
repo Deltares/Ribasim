@@ -3,18 +3,11 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 
-def assert_equal(a, b, geometry=True):
+def assert_equal(a, b):
     "pandas.testing.assert_frame_equal, but ignoring the index"
+    # TODO support assert basic == model, ignoring the index for all but node
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
-
-    # Currently nonspatial tables are read into GeoDataFrames with a geometry column
-    # filled with None, leading to inequalities. Allow ignoring these.
-    # TODO load only node and edge tables to a GeoDataFrame
-    # TODO support assert basic == model, ignoring the index for all but node
-    if not geometry:
-        a = a.drop(columns="geometry", errors="ignore")
-        b = b.drop(columns="geometry", errors="ignore")
 
     # avoid comparing datetime64[ns] with datetime64[ms]
     if "time" in a:
@@ -48,5 +41,5 @@ def test_basic_transient(basic_transient, tmp_path):
     assert_equal(basic_transient.edge.static, model.edge.static)
 
     forcing = model.basin.forcing
-    assert_equal(basic_transient.basin.forcing, forcing, geometry=False)
+    assert_equal(basic_transient.basin.forcing, forcing)
     assert forcing.shape == (1468, 7)

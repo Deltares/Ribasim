@@ -35,19 +35,23 @@ Requirements:
 * Must be positive: precipitation, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
+
+Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
+of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
-struct Basin
+struct Basin{C}
+    precipitation::Vector{Float64}
+    potential_evaporation::Vector{Float64}
+    drainage::Vector{Float64}
+    infiltration::Vector{Float64}
     # cache these to avoid recomputation
     current_area::Vector{Float64}
     current_level::Vector{Float64}
     # f(storage)
     area::Vector{Interpolation}
     level::Vector{Interpolation}
-    # f(time)
-    precipitation::Vector{Interpolation}
-    potential_evaporation::Vector{Interpolation}
-    drainage::Vector{Interpolation}
-    infiltration::Vector{Interpolation}
+    # data source for parameter updates
+    time::StructVector{BasinForcingV1, C, Int}
 end
 
 """
@@ -58,8 +62,8 @@ interpolation in between. Relation can be updated in time, which is done by movi
 the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
 callback.
 
-Type parameter C indicates the content backing the StructVector,which can be a NamedTuple of
-vectors or Arrow Tables, and is added to avoid type instabilities.
+Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
+of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 """
 struct TabulatedRatingCurve{C}
     node_id::Vector{Int}
@@ -78,8 +82,6 @@ struct LinearLevelConnection
     conductance::Vector{Float64}
 end
 
-LinearLevelConnection() = LinearLevelConnection(Int[], Float64[])
-
 """
 Requirements:
 
@@ -92,8 +94,6 @@ struct FractionalFlow
     fraction::Vector{Float64}
 end
 
-FractionalFlow() = FractionalFlow(Int[], Float64[])
-
 """
 node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
@@ -105,8 +105,6 @@ struct LevelControl
     conductance::Vector{Float64}
 end
 
-LevelControl() = LevelControl(Int[], Float64[], Float64[])
-
 """
 node_id: node ID of the Pump node
 flow_rate: target flow rate
@@ -115,9 +113,6 @@ struct Pump
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
 end
-
-# TODO Kwarg constructor
-Pump() = Pump(Int[], Float64[])
 
 # TODO Automatically add all nodetypes here
 struct Parameters
@@ -147,10 +142,10 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
-        precipitation = fixed_area * basin.precipitation[i](t)
-        evaporation = area * reduction_factor * basin.potential_evaporation[i](t)
-        drainage = basin.drainage[i](t)
-        infiltration = reduction_factor * basin.infiltration[i](t)
+        precipitation = fixed_area * basin.precipitation[i]
+        evaporation = area * reduction_factor * basin.potential_evaporation[i]
+        drainage = basin.drainage[i]
+        infiltration = reduction_factor * basin.infiltration[i]
 
         du[i] += precipitation - evaporation + drainage - infiltration
     end

@@ -1,7 +1,7 @@
 # Ribasim CLI
 
 This is a [Julia](https://julialang.org/) project that uses the
-[Ribasim.jl](https://github.com/Deltares/Ribasim.jl) Julia package, puts a simple command line
+[Ribasim](https://github.com/Deltares/Ribasim) Julia package, puts a simple command line
 interface (cli) on top, and packages this into a standalone application using
 [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl).
 
@@ -13,7 +13,7 @@ If you have installed Julia and Ribasim, a simulation can also be started from t
 line as follows:
 
 ```
-julia -e 'using Ribasim; Ribasim.run()' path/to/config.toml
+julia -e 'using Ribasim; Ribasim.run("path/to/config.toml")'
 ```
 
 With a Ribasim CLI build this becomes:

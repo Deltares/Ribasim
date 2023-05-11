@@ -56,3 +56,10 @@ class FractionalFlow(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
+
+    def sort(self):
+        self.static = self.static.sort_values("node_id", ignore_index=True)
+        if self.forcing is not None:
+            self.forcing = self.forcing.sort_values(
+                ["time", "node_id"], ignore_index=True
+            )

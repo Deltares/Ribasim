@@ -343,6 +343,7 @@ class LevelControlStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("target_level", QVariant.Double),
+        QgsField("conductance", QVariant.Double),
     ]
 
 

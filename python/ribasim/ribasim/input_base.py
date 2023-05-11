@@ -1,10 +1,9 @@
 import abc
 import textwrap
 from pathlib import Path
+from sqlite3 import Connection, connect
 from typing import Any, Dict, Type, TypeVar
 
-import fiona
-import geopandas as gpd
 import pandas as pd
 
 from ribasim.types import FilePath
@@ -14,6 +13,21 @@ T = TypeVar("T")
 __all__ = ("InputMixin",)
 
 delimiter = " / "
+
+
+def esc_id(identifier: str) -> str:
+    """Escape SQLite identifiers."""
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def exists(connection: Connection, name: str) -> bool:
+    """Check if a table exists in a SQLite database."""
+    cursor = connection.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+    )
+    result = cursor.fetchone()
+    return result is not None
 
 
 class InputMixin(abc.ABC):
@@ -67,6 +81,7 @@ class InputMixin(abc.ABC):
         directory: FilePath
         modelname: str
         """
+        self.sort()
         directory = Path(directory)
         for field in self.fields():
             dataframe = getattr(self, field)
@@ -74,29 +89,27 @@ class InputMixin(abc.ABC):
                 continue
             name = self._layername(field)
 
-            gdf = gpd.GeoDataFrame(data=dataframe)
-            if "geometry" in gdf.columns:
-                gdf = gdf.set_geometry("geometry")
-            else:
-                gdf["geometry"] = None
-            gdf.to_file(directory / f"{modelname}.gpkg", layer=name)
+            with connect(directory / f"{modelname}.gpkg") as connection:
+                dataframe.to_sql(name, connection, if_exists="replace")
 
         return
 
     @classmethod
     def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> Dict:
         kwargs = {}
-        layers = fiona.listlayers(path)
-        for key in cls.fields():
-            layername = cls._layername(key)
-            if layername in layers:
-                df = gpd.read_file(
-                    path, layer=layername, engine="pyogrio", fid_as_index=True
-                )
-            else:
-                df = None
+        with connect(path) as connection:
+            for key in cls.fields():
+                layername = cls._layername(key)
 
-            kwargs[key] = df
+                if exists(connection, layername):
+                    query = f"select * from {esc_id(layername)}"
+                    df = pd.read_sql_query(
+                        query, connection, index_col="index", parse_dates=["time"]
+                    )
+                else:
+                    df = None
+
+                kwargs[key] = df
 
         return kwargs
 
@@ -157,3 +170,17 @@ class InputMixin(abc.ABC):
     @classmethod
     def hasfid(cls):
         return False
+    
+    def sort(self):
+        """
+        Sort all input tables as required.
+        Tables are sorted by "node_id", unless otherwise specified.
+        Sorting is done automatically before writing the table.
+        """
+        for field in self.fields():
+            dataframe = getattr(self, field)
+            if dataframe is None:
+                continue
+            else:
+                dataframe = dataframe.sort_values("node_id", ignore_index=True)
+        return

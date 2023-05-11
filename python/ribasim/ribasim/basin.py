@@ -101,3 +101,16 @@ class Basin(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
+
+    def sort(self):
+        self.profile = self.profile.sort_values(
+            ["node_id", "storage"], ignore_index=True
+        )
+        if self.static is not None:
+            self.static = self.static.sort_values("node_id", ignore_index=True)
+        if self.forcing is not None:
+            self.forcing = self.forcing.sort_values(
+                ["time", "node_id"], ignore_index=True
+            )
+        if self.state is not None:
+            self.state = self.state.sort_values("node_id", ignore_index=True)

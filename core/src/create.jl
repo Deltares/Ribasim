@@ -11,10 +11,8 @@ function Connectivity(db::DB)::Connectivity
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
-    data = load_data(db, config, LinearLevelConnectionStaticV1)
-    isnothing(data) && return LinearLevelConnection()
-    tbl = columntable(data)
-    return LinearLevelConnection(tbl.node_id, tbl.conductance)
+    static = load_structvector(db, config, LinearLevelConnectionStaticV1)
+    return LinearLevelConnection(static.node_id, static.conductance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -47,15 +45,13 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
 end
 
 function create_storage_tables(db::DB, config::Config)
-    profiles_unsorted = load_structvector(db, config, BasinProfileV1)
-    profiles = sort(profiles_unsorted; by = row -> row.node_id)
+    profiles = load_structvector(db, config, BasinProfileV1)
     area = Interpolation[]
     level = Interpolation[]
     for group in IterTools.groupby(row -> row.node_id, profiles)
-        order = sortperm(group; by = row -> row.storage)
-        group_storage = [row.storage for row in group[order]]
-        group_area = [row.area for row in group[order]]
-        group_level = [row.level for row in group[order]]
+        group_storage = getproperty.(group, :storage)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
         area_itp = LinearInterpolation(group_area, group_storage)
         level_itp = LinearInterpolation(group_level, group_storage)
         push!(area, area_itp)
@@ -65,127 +61,52 @@ function create_storage_tables(db::DB, config::Config)
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
-    data = load_data(db, config, FractionalFlowStaticV1)
-    isnothing(data) && return FractionalFlow()
-    tbl = columntable(data)
-    return FractionalFlow(tbl.node_id, tbl.fraction)
+    static = load_structvector(db, config, FractionalFlowStaticV1)
+    return FractionalFlow(static.node_id, static.fraction)
 end
 
 function LevelControl(db::DB, config::Config)::LevelControl
-    data = load_data(db, config, LevelControlStaticV1)
-    isnothing(data) && return LevelControl()
-    tbl = columntable(data)
-    # TODO add LevelControl conductance to LHM / ribasim-python datasets
-    # TODO Move to Struct constructor
-    conductance = fill(100.0 / (3600.0 * 24), length(tbl.node_id))
-    return LevelControl(tbl.node_id, tbl.target_level, conductance)
+    static = load_structvector(db, config, LevelControlStaticV1)
+    return LevelControl(static.node_id, static.target_level, static.conductance)
 end
 
 function Pump(db::DB, config::Config)::Pump
-    data = load_data(db, config, PumpStaticV1)
-    isnothing(data) && return Pump()
-    tbl = columntable(data)
-    return Pump(tbl.node_id, tbl.flow_rate)
-end
-
-function push_time_interpolation!(
-    interpolations::Vector{Interpolation},
-    col::Symbol,
-    time::Vector{Float64},  # all float times for forcing_id
-    forcing_id::StructVector,
-    t_end::Float64,
-    static_id::StructVector,
-)::Vector{Interpolation}
-    values = getcolumn(forcing_id, col)
-    interpolation = LinearInterpolation(values, time)
-    if isempty(interpolation)
-        # either no records or all missing
-        # use static values over entire timespan
-        values = getcolumn(static_id, col)
-        value = if isempty(values)
-            0.0  # safe default static value for in- and outflows
-        else
-            only(values)
-        end
-        interpolation = LinearInterpolation([value, value], [zero(t_end), t_end])
-    end
-    @assert interpolation.t[begin] <= 0 "Forcing for $col starts after simulation start."
-    @assert interpolation.t[end] >= t_end "Forcing for $col stops before simulation end."
-    push!(interpolations, interpolation)
+    static = load_structvector(db, config, PumpStaticV1)
+    return Pump(static.node_id, static.flow_rate)
 end
 
 function Basin(db::DB, config::Config)::Basin
-    # TODO support forcing for other nodetypes
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_area = zeros(n)
     current_level = zeros(n)
+
+    precipitation = fill(NaN, length(node_id))
+    potential_evaporation = fill(NaN, length(node_id))
+    drainage = fill(NaN, length(node_id))
+    infiltration = fill(NaN, length(node_id))
+    table = (; precipitation, potential_evaporation, drainage, infiltration)
+
     area, level = create_storage_tables(db, config)
-    t_end = seconds_since(config.endtime, config.starttime)
 
     # both static and forcing are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
-    forcing = load_structvector(db, config, BasinForcingV1)
-    if isempty(static) && isempty(forcing)
-        error("Neither static nor transient forcing found for Basin.")
-    end
+    time = load_structvector(db, config, BasinForcingV1)
 
-    precipitation = Interpolation[]
-    potential_evaporation = Interpolation[]
-    drainage = Interpolation[]
-    infiltration = Interpolation[]
-
-    for id in node_id
-        # filter forcing for this ID and put it in an Interpolation, or use static as a
-        # fallback option
-        static_id = filter(row -> row.node_id == id, static)
-        forcing_id = filter(row -> row.node_id == id, forcing)
-        time = seconds_since.(forcing_id.time, config.starttime)
-
-        push_time_interpolation!(
-            precipitation,
-            :precipitation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(
-            precipitation,
-            :precipitation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(
-            potential_evaporation,
-            :potential_evaporation,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-        push_time_interpolation!(drainage, :drainage, time, forcing_id, t_end, static_id)
-        push_time_interpolation!(
-            infiltration,
-            :infiltration,
-            time,
-            forcing_id,
-            t_end,
-            static_id,
-        )
-    end
+    set_static_value!(table, node_id, static)
+    set_current_value!(table, node_id, time, config.starttime)
+    check_no_nans(table, "Basin")
 
     return Basin(
-        current_area,
-        current_level,
-        area,
-        level,
         precipitation,
         potential_evaporation,
         drainage,
         infiltration,
+        current_area,
+        current_level,
+        area,
+        level,
+        time,
     )
 end
 
