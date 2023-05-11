@@ -42,9 +42,6 @@ class Edge(InputMixin, BaseModel):
     class Config:
         validate_assignment = True
 
-    def __init__(self, static: pd.DataFrame):
-        super().__init__(**locals())
-
     @classmethod
     def _layername(cls, field) -> str:
         return f"{cls._input_type}"

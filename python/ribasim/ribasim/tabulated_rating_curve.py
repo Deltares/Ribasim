@@ -58,6 +58,3 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
-
-    def __init__(self, static: pd.DataFrame, time: Optional[pd.DataFrame] = None):
-        super().__init__(**locals())

@@ -153,3 +153,7 @@ class InputMixin(abc.ABC):
             return None
         else:
             return cls(**kwargs)
+
+    @classmethod
+    def hasfid(cls):
+        return False

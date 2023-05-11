@@ -101,12 +101,3 @@ class Basin(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
-
-    def __init__(
-        self,
-        profile: pd.DataFrame,
-        static: Optional[pd.DataFrame] = None,
-        forcing: Optional[pd.DataFrame] = None,
-        state: Optional[pd.DataFrame] = None,
-    ):
-        super().__init__(**locals())
