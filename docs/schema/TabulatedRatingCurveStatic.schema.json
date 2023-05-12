@@ -22,7 +22,7 @@
         "level",
         "discharge"
     ],
-    "$id": "TabulatedRatingCurveStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveStatic.schema.json",
     "title": "TabulatedRatingCurveStatic",
     "description": "A TabulatedRatingCurveStatic object based on Ribasim.TabulatedRatingCurveStaticV1",
     "type": "object"

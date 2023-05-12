@@ -6,6 +6,11 @@
             "description": "node_id",
             "type": "integer"
         },
+        "conductance": {
+            "format": "double",
+            "description": "conductance",
+            "type": "number"
+        },
         "target_level": {
             "format": "double",
             "description": "target_level",
@@ -14,9 +19,10 @@
     },
     "required": [
         "node_id",
-        "target_level"
+        "target_level",
+        "conductance"
     ],
-    "$id": "LevelControlStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/LevelControlStatic.schema.json",
     "title": "LevelControlStatic",
     "description": "A LevelControlStatic object based on Ribasim.LevelControlStaticV1",
     "type": "object"

@@ -28,7 +28,7 @@
         "level",
         "discharge"
     ],
-    "$id": "TabulatedRatingCurveTime.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveTime.schema.json",
     "title": "TabulatedRatingCurveTime",
     "description": "A TabulatedRatingCurveTime object based on Ribasim.TabulatedRatingCurveTimeV1",
     "type": "object"

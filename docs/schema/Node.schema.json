@@ -16,7 +16,7 @@
         "fid",
         "type"
     ],
-    "$id": "Node.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/Node.schema.json",
     "title": "Node",
     "description": "A Node object based on Ribasim.NodeV1",
     "type": "object"

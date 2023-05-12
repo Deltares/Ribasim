@@ -16,7 +16,7 @@
         "node_id",
         "fraction"
     ],
-    "$id": "FractionalFlowStatic.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/FractionalFlowStatic.schema.json",
     "title": "FractionalFlowStatic",
     "description": "A FractionalFlowStatic object based on Ribasim.FractionalFlowStaticV1",
     "type": "object"

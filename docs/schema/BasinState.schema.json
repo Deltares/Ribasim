@@ -16,7 +16,7 @@
         "node_id",
         "storage"
     ],
-    "$id": "BasinState.schema.json",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
     "title": "BasinState",
     "description": "A BasinState object based on Ribasim.BasinStateV1",
     "type": "object"
