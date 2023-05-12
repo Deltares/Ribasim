@@ -23,6 +23,8 @@ def basic_model() -> ribasim.Model:
             (4.0, 0.0),  # 8: FractionalFlow
             (5.0, 0.0),  # 9: Basin
             (6.0, 0.0),  # 10: LevelControl
+            (2.0, 2.0),  # 11: LevelBoundary
+            (2.0, 1.0),  # 12: LinearLevelConnection
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -38,6 +40,8 @@ def basic_model() -> ribasim.Model:
         "FractionalFlow",
         "Basin",
         "LevelControl",
+        "LevelBoundary",
+        "LinearLevelConnection",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -51,8 +55,8 @@ def basic_model() -> ribasim.Model:
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 3, 4, 4, 5, 6, 8, 7, 9], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 5, 8, 6, 7, 9, 9, 10], dtype=np.int64)
+    from_id = np.array([1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -98,7 +102,7 @@ def basic_model() -> ribasim.Model:
 
     # Setup linear level connection:
     linear_connection = ribasim.LinearLevelConnection(
-        static=pd.DataFrame(data={"node_id": [2], "conductance": [1.5e-4]})
+        static=pd.DataFrame(data={"node_id": [2, 12], "conductance": [1.5e-4, 2e-4]})
     )
 
     # Set up a rating curve node:
@@ -146,12 +150,23 @@ def basic_model() -> ribasim.Model:
         )
     )
 
+    # Setup level boundary:
+    level_boundary = ribasim.LevelBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [11],
+                "level": [1.0],
+            }
+        )
+    )
+
     # Setup a model:
     model = ribasim.Model(
         modelname="basic",
         node=node,
         edge=edge,
         basin=basin,
+        level_boundary=level_boundary,
         level_control=level_control,
         pump=pump,
         linear_level_connection=linear_connection,
