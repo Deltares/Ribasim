@@ -15,6 +15,7 @@ from ribasim.fractional_flow import FractionalFlow
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import InputMixin
 from ribasim.level_control import LevelControl
+from ribasim.level_boundary import LevelBoundary
 from ribasim.linear_level_connection import LinearLevelConnection
 from ribasim.node import Node
 from ribasim.pump import Pump
@@ -56,6 +57,7 @@ class Model(BaseModel):
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
+    level_boundary: Optional[LevelBoundary]
     linear_level_connection: Optional[LinearLevelConnection]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: Union[str, datetime.datetime]
@@ -69,6 +71,7 @@ class Model(BaseModel):
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
+    level_boundary: Optional[LevelBoundary]
     linear_level_connection: Optional[LinearLevelConnection]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
@@ -89,6 +92,7 @@ class Model(BaseModel):
         basin: Basin,
         fractional_flow: Optional[FractionalFlow] = None,
         level_control: Optional[LevelControl] = None,
+        level_boundary: Optional[LevelBoundary] = None,
         linear_level_connection: Optional[LinearLevelConnection] = None,
         tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
         pump: Optional[Pump] = None,
