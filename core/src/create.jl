@@ -46,14 +46,12 @@ end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    slope_unit_length = sqrt.(static.profile_slope .^ 2 .+ 1.0)
     return ManningResistance(
         static.node_id,
         static.length,
         static.manning_n,
         static.profile_width,
         static.profile_slope,
-        slope_unit_length,
     )
 end
 

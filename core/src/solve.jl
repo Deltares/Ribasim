@@ -114,7 +114,6 @@ Requirements:
 * profile_width >= 0
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
-* slope_unit_length >= 0
 """
 struct ManningResistance
     node_id::Vector{Int}
@@ -122,7 +121,6 @@ struct ManningResistance
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
-    profile_slope_unit_length::Vector{Float64}
 end
 
 """
@@ -181,7 +179,7 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         level = basin.level[i](storage)
         basin.current_area[i] = area
         basin.current_level[i] = level
-        bottom = first(basin.level[i].u)
+        bottom = basin_bottom(basin, i)
         fixed_area = median(basin.area[i].u)
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -278,36 +276,36 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate!(
-    basin::Basin,
     connectivity::Connectivity,
     manning_resistance::ManningResistance,
-    level,
+    basin::Basin,
 )::Nothing
     (; graph, flow, u_index) = connectivity
-    # TODO length not used
-    # TODO make a function for bottom first()
-    (; node_id, length, manning_n, profile_width, profile_slope, unit_length) =
-        manning_resistance
+    (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
-        basin_a_id = only(outneighbors(graph, id))
+        basin_b_id = only(outneighbors(graph, id))
 
         idx_a = u_index[basin_a_id]
         idx_b = u_index[basin_b_id]
-        h_a = level[idx_a]
-        h_b = level[idx_b]
-        bottom_a = first(basin.level[idx_a].u)
-        bottom_b = first(basin.level[idx_b].u)
+        h_a = basin.current_level[idx_a]
+        h_b = basin.current_level[idx_b]
+        bottom_a = basin_bottom(basin, idx_a)
+        bottom_b = basin_bottom(basin, idx_b)
+        slope = profile_slope[i]
+        width = profile_width[i]
+        n = manning_n[i]
+        L = length[i]
 
         Δh = h_a - h_b
         q_sign = sign(Δh)
         # Take the "upstream" water depth:
-        # TODO Probably a bit too "clever"...
         d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))
-        A = profile_width * d + profile_slope * d^2
-        P = profile_width + 2.0 * d * unit_length
+        A = width * d + slope * d^2
+        slope_unit_length = sqrt(slope^2 + 1.0)
+        P = width + 2.0 * d * slope_unit_length
         R_h = A / P
-        q = q_sign * A / manning_n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
@@ -383,6 +381,7 @@ function water_balance!(du, u, p, t)::Nothing
         connectivity,
         basin,
         linear_level_connection,
+        manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
         level_control,
@@ -397,6 +396,7 @@ function water_balance!(du, u, p, t)::Nothing
 
     # First formulate intermediate flows
     formulate!(connectivity, linear_level_connection, basin.current_level)
+    formulate!(connectivity, manning_resistance, basin)
     formulate!(connectivity, tabulated_rating_curve, basin.current_level)
     formulate!(connectivity, fractional_flow)
     formulate!(connectivity, level_control, basin.current_level)
