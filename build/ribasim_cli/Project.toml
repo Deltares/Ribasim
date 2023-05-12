@@ -9,4 +9,4 @@ Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
-julia = "1.8"
+julia = "1.9"

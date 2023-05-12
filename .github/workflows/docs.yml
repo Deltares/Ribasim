@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         julia_version:
-          - "1.8"
+          - "1.9"
         python_version:
           - "3.11"
         arch:
