@@ -63,7 +63,7 @@ pytest tests
 Run in the docs folder:
 
 ```
-python -m quartodoc build
+quartodoc build
 ```
 
 This will generate the `.qmd` files in `docs/python/reference` for inspection.
