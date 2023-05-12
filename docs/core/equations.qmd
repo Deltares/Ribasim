@@ -159,7 +159,7 @@ the volume of both connected basins to simulate backwater effects, submersion
 of weirs, or even reversal of flows for high precipitation events.
 :::
 
-### LevelLink
+### LinearLevelConnection
 
 A ``LevelLink`` connects two basins together. The flow between the two basins
 is determined by a linear relationship:
@@ -180,6 +180,149 @@ This sets the exchange flow to 0.
 
 This sets the water level in the basin to a fixed level; lower or higher level
 result in instantaneous corrective fluxes.
+
+### Manning connection
+
+Ribasim is capable of simulating steady flow between basins through a reach
+described by a trapezoidal profile and a Manning roughness coefficient.
+
+We describe the discharge from basin $a$ to basin $b$ solely as a function of
+the water levels in $a$ and $b$.
+
+$$
+Q = f(h_a, h_b) 
+$$
+
+where:
+
+* $_a$ is the subscript denoting basin $a$
+* $_b$ is the subscript denoting basin $b$
+* $h$ is the hydraulic head, or water level
+
+The energy equation for open channel flow is:
+
+$$
+H = h + \frac{v^2}{2g}
+$$
+
+Where 
+
+* $H$ is total head
+* $v$ is average water velocity
+* $g$ is gravitational acceleration
+
+The discharge $Q$ is defined as:
+
+$$
+Q = Av
+$$
+
+where $A$ is cross-sectional area.
+  
+We use conservation of energy to relate the total head at $a$ to $b$,
+with $H_a > H_b$ as follows:
+
+$$
+H_a = H_b + h_{\text{loss}}
+$$
+
+Or:
+
+$$
+h_a + \frac{v_a^2}{2g} = h_b + \frac{v_b^2}{2g} + h_{\text{loss}}
+$$
+
+Where $v$ is the average water velocity. $h_{\text{loss}}$ is a combination of
+friction and contraction/expansion losses:
+
+$$
+h_{\text{loss}} = S_f L + \frac{C}{2g} (v_b^2 - v_a^2)
+$$
+
+Where:
+
+* $L$ is the reach length
+* $S_f$ is the representative friction slope
+* $C$ is the expansion or contraction coefficient, $0 <= C <=1$
+
+We assume velocity differences in a connection are negligible ($v_a = v_b$):
+
+$$
+h_a = h_b + S_f L
+$$
+  
+Friction losses are computed with the Gauckler-Manning formula:
+
+$$
+Q = \frac{A}{n} R_h^\frac{2}{3} \sqrt{S_f}
+$$
+
+Where:
+
+* $A$ is the **representative** area.
+* $R_h$ is the **representative** wetted radius.
+* $S_f$ is the **representative** friction slope.
+* $n$ is Manning's roughness coefficient.
+
+We can rewrite to express $S_f$ in terms of Q:
+
+$$
+S_f = Q^2 \frac{n^2}{A^2 R_h^{4/3}}
+$$
+
+No water is added or removed in a connection:
+
+$$
+Q_a = Q_b = Q
+$$
+
+Filling in:
+
+$$
+h_a = h_b + Q^2 \frac{n^2}{A^2 R_h^{4/3}} L
+$$
+
+We can then express $Q$ as a function of head difference:
+
+$$
+Q = \textrm{sign}(h_a - h_b) \frac{A}{n} R_h^{2/3}\sqrt{\frac{|h_a - h_b|}{L} }
+$$
+
+The $\textrm{sign}(h_a - h_b)$ term causes the direction of the flow to reverse
+if the head in basin $b$ is larger than in basin $a$.
+
+:::{.callout-note}
+The computation of $S_f$ is not exact: we base it on a representative area and
+hydraulic radius, rather than integrating $S_f$ along the length of a reach.
+Direct analytic solutions exist for e.g. parabolic profiles (Tolkmitt), but
+other profiles requires relatively complicated approaches (such as
+approximating the profile with a polynomial).
+
+Instead, we choose a representative radius and area at the upstream node. This
+ensures that a basin will still receive water after it has gone dry. The size
+of the resulting error will depend on the water depth difference between the
+upstream and downstream basin.
+:::
+
+The cross sectional area for a trapezoidal or rectangular profile:
+
+$$
+A = w d + \frac{\Delta y}{\Delta z} d^2
+$$
+
+Where
+
+* $w$ is the width at $d = 0$ (A triangular profile has $w = 0$)
+* $\frac{\Delta y}{\Delta z}$ is the slope of the profile expressed as the
+  horizontal length for one unit in the vertical (A slope of 45 degrees has
+  $\frac{\Delta y}{\Delta z} = 1$; a rectangular profile 0).
+  
+Accordingly, the wetted perimeter is:
+
+$$
+B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
+$$
+
 
 # Allocated water balance terms
 

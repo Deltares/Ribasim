@@ -22,6 +22,7 @@ _MARKERS = {
     "FractionalFlow": "^",
     "LevelControl": "*",
     "LinearLevelConnection": "^",
+    "ManningResistance": "D",
     "TabulatedRatingCurve": "D",
     "Pump": "h",
     "": "o",
