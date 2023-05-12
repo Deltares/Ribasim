@@ -67,7 +67,7 @@ jobs:
         working-directory: docs
         # objects.json: https://github.com/machow/quartodoc/issues/63
         run: |
-          python -m quartodoc build
+          quartodoc build
           rm objects.json
 
       - name: Render Quarto Project
