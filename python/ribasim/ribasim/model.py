@@ -14,8 +14,8 @@ from ribasim.fractional_flow import FractionalFlow
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import InputMixin
-from ribasim.level_control import LevelControl
 from ribasim.level_boundary import LevelBoundary
+from ribasim.level_control import LevelControl
 from ribasim.linear_level_connection import LinearLevelConnection
 from ribasim.node import Node
 from ribasim.pump import Pump
@@ -28,6 +28,7 @@ _NODES = (
     (Basin, "basin"),
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
+    (LevelBoundary, "level_boundary"),
     (LinearLevelConnection, "linear_level_connection"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
     (Pump, "pump"),

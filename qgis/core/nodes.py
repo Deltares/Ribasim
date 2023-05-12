@@ -144,6 +144,7 @@ class Node(Input):
                     "Basin": "Basin",
                     "FractionalFlow": "FractionalFlow",
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
+                    "LevelBoundary": "Levelboundary",
                     "LevelControl": "LevelControl",
                     "LinearLevelConnection": "LinearLevelConnection",
                     "Pump": "Pump",
@@ -174,6 +175,7 @@ class Node(Input):
                 "TabulatedRatingCurve",
                 shape.Diamond,
             ),
+            "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "": (
@@ -347,6 +349,12 @@ class LevelControlStatic(Input):
     ]
 
 
+class LevelBoundaryStatic(Input):
+    input_type = "LevelBoundary / static"
+    geometry_type = "No geometry"
+    attributes = [QgsField("level", QVariant.Double)]
+
+
 class PumpStatic(Input):
     input_type = "Pump / static"
     geometry_type = "No Geometry"
@@ -367,6 +375,7 @@ NODES = {
     "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
     "FractionalFlow / static": FractionalFlowStatic,
     "LinearLevelConnection / static": LinearLevelConnectionStatic,
+    "LevelBoundary / static": LevelBoundaryStatic,
     "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
 }

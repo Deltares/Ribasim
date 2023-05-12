@@ -9,7 +9,7 @@ using SciMLBase
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[187.08644, 137.90846, 1.1778412, 1518.4689]
+    @test model.integrator.sol.u[end] ≈ Float32[649.2659, 644.4992, 2.4442894, 1568.6366]
 end
 
 @testset "basic transient model" begin
@@ -19,7 +19,7 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[235.80775, 168.88895, 0.4997849, 1534.171]
+    @test model.integrator.sol.u[end] ≈ Float32[595.61755, 626.09717, 1.6444845, 1579.1345]
 end
 
 @testset "TabulatedRatingCurve model" begin
