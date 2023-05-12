@@ -54,7 +54,7 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]
-    time: Optional[DataFrame[StaticSchema]] = None
+    time: Optional[DataFrame[TimeSchema]] = None
 
     class Config:
         validate_assignment = True
