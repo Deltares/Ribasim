@@ -69,7 +69,7 @@ end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
-    return LevelBoundary(Indices(static.node_id), static.level)
+    return LevelBoundary(static.node_id, static.level)
 end
 
 function Pump(db::DB, config::Config)::Pump

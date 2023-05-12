@@ -109,7 +109,7 @@ level: the fixed level of this 'infinitely big basin'
 The node_id are Indices to support fast lookup of level using ID.
 """
 struct LevelBoundary
-    node_id::Indices{Int}
+    node_id::Vector{Int}
     level::Vector{Float64}
 end
 

@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "node_id": {
+            "description": "node_id",
+            "type": "integer"
+        },
+        "level": {
+            "description": "level",
+            "type": "real"
+        }
+    },
+    "required": [
+        "node_id",
+        "level"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/LevelBoundaryStatic.schema.json",
+    "title": "LevelStatic",
+    "description": "A LevelBoundaryStatic object based on Ribasim.LevelBoundaryStaticV1",
+    "type": "object"
+}

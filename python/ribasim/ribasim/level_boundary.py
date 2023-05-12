@@ -1,6 +1,6 @@
 import pandas as pd
 import pandera as pa
-from pandera.typing import Series
+from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
@@ -27,7 +27,8 @@ class LevelBoundary(InputMixin, BaseModel):
         * level
     """
 
-    _input_type = "Level"
+    _input_type = "LevelBoundary"
+    static: DataFrame[StaticSchema]
 
     class Config:
         validate_assignment = True
