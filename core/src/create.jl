@@ -7,9 +7,9 @@ function Connectivity(db::DB)::Connectivity
     return Connectivity(graph, flow, edge_ids)
 end
 
-function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
-    static = load_structvector(db, config, LinearLevelConnectionStaticV1)
-    return LinearLevelConnection(static.node_id, static.conductance)
+function LinearResistance(db::DB, config::Config)::LinearResistance
+    static = load_structvector(db, config, LinearResistanceStaticV1)
+    return LinearResistance(static.node_id, static.conductance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -127,7 +127,7 @@ function Parameters(db::DB, config::Config)::Parameters
     # Setup node/edges graph, so validate in `Connectivity`?
     connectivity = Connectivity(db)
 
-    linear_level_connection = LinearLevelConnection(db, config)
+    linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
@@ -141,7 +141,7 @@ function Parameters(db::DB, config::Config)::Parameters
         config.starttime,
         connectivity,
         basin,
-        linear_level_connection,
+        linear_resistance,
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,

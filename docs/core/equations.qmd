@@ -159,7 +159,7 @@ the volume of both connected basins to simulate backwater effects, submersion
 of weirs, or even reversal of flows for high precipitation events.
 :::
 
-### LinearLevelConnection
+### LinearResistance
 
 A ``LevelLink`` connects two basins together. The flow between the two basins
 is determined by a linear relationship:

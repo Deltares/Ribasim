@@ -40,7 +40,7 @@ def basic_model() -> ribasim.Model:
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin,
-            (1.0, 0.0),  # 2: LinearLevelConnection
+            (1.0, 0.0),  # 2: LinearResistance
             (2.0, 0.0),  # 3: Basin
             (3.0, 0.0),  # 4: TabulatedRatingCurve
             (3.0, 1.0),  # 5: FractionalFlow
@@ -55,7 +55,7 @@ def basic_model() -> ribasim.Model:
 
     node_type = [
         "Basin",
-        "LinearLevelConnection",
+        "LinearResistance",
         "Basin",
         "TabulatedRatingCurve",
         "FractionalFlow",
@@ -119,8 +119,8 @@ def basic_model() -> ribasim.Model:
 
     basin = ribasim.Basin(profile=profile, static=static)
 
-    # Setup linear level connection:
-    linear_connection = ribasim.LinearLevelConnection(
+    # Setup linear resistance:
+    linear_resistance = ribasim.LinearResistance(
         static=pd.DataFrame(data={"node_id": [2], "conductance": [1.5e-4]})
     )
 
@@ -177,7 +177,7 @@ def basic_model() -> ribasim.Model:
         basin=basin,
         level_control=level_control,
         pump=pump,
-        linear_level_connection=linear_connection,
+        linear_resistance=linear_resistance,
         tabulated_rating_curve=rating_curve,
         fractional_flow=fractional_flow,
         starttime="2020-01-01 00:00:00",

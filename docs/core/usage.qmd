@@ -139,8 +139,8 @@ name it must have in the GeoPackage if it is stored there.
   - `LevelControl / static`: target levels
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
-- LinearLevelConnection: bidirectional flow based on water level difference between Basins
-  - `LinearLevelConnection / static`: conductances
+- LinearResistance: bidirectional flow based on water level difference between Basins
+  - `LinearResistance / static`: conductances
 - TabulatedRatingCurve: Basin outflow relation
   - `TabulatedRatingCurve / static`: rating curve
   - `TabulatedRatingCurve / time`: dynamic rating curve
@@ -156,7 +156,7 @@ thing that defines an edge is the nodes it connects, and in what direction. The 
 the edge direction depends on the node type, Node types that have a notion of an upstream
 and downstream side use the incoming edge as the upstream side, and the outgoing edge as the
 downstream side. This means that edges should generally be drawn in the main flow direction.
-But for instance between two `LinearLevelConnections` the edge direction does not affect
+But for instance between two `LinearResistances` the edge direction does not affect
 anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
 direction; a positive flow flows along the edge direction, a negative flow in the opposite
 way.

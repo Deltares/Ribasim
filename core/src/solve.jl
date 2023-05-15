@@ -75,7 +75,7 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 """
-struct LinearLevelConnection
+struct LinearResistance
     node_id::Vector{Int}
     conductance::Vector{Float64}
 end
@@ -168,7 +168,7 @@ struct Parameters
     starttime::DateTime
     connectivity::Connectivity
     basin::Basin
-    linear_level_connection::LinearLevelConnection
+    linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
@@ -205,10 +205,10 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(linear_level_connection::LinearLevelConnection, p::Parameters)::Nothing
+function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph, flow) = connectivity
-    (; node_id, conductance) = linear_level_connection
+    (; node_id, conductance) = linear_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_b_id = only(outneighbors(graph, id))
@@ -380,7 +380,7 @@ function water_balance!(du, u, p, t)::Nothing
     (;
         connectivity,
         basin,
-        linear_level_connection,
+        linear_resistance,
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
@@ -395,7 +395,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(du, basin, u, t)
 
     # First formulate intermediate flows
-    formulate!(linear_level_connection, p)
+    formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
