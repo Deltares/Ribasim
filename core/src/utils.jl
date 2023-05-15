@@ -1,5 +1,5 @@
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(db::DB)::Tuple{DiGraph, OrderedDict{Tuple{Int, Int}, Int}}
+function create_graph(db::DB)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)
     rows = execute(db, "select fid, from_node_id, to_node_id from Edge")

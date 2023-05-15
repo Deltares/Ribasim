@@ -144,7 +144,7 @@ class Node(Input):
                     "Basin": "Basin",
                     "FractionalFlow": "FractionalFlow",
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
-                    "LevelBoundary": "Levelboundary",
+                    "LevelBoundary": "LevelBoundary",
                     "LevelControl": "LevelControl",
                     "LinearLevelConnection": "LinearLevelConnection",
                     "Pump": "Pump",

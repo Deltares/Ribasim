@@ -15,17 +15,17 @@ from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
 
 __all__ = [
-    "utils",
     "Basin",
     "Edge",
     "FractionalFlow",
-    "LevelControl",
     "LevelBoundary",
+    "LevelControl",
     "LinearLevelConnection",
     "ManningResistance",
     "Model",
-    "Solver",
     "Node",
     "Pump",
+    "Solver",
     "TabulatedRatingCurve",
+    "utils",
 ]
