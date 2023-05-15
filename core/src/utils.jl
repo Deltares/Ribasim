@@ -1,12 +1,12 @@
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(db::DB)::Tuple{DiGraph, OrderedDict{Tuple{Int, Int}, Int}}
+function create_graph(db::DB)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)
-    edge_ids = OrderedDict{Tuple{Int, Int}, Int}()
     rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
+    edge_ids = Dictionary{Tuple{Int, Int}, Int}()
     for (; fid, from_node_id, to_node_id) in rows
         add_edge!(graph, from_node_id, to_node_id)
-        edge_ids[(from_node_id, to_node_id)] = fid
+        insert!(edge_ids, (from_node_id, to_node_id), fid)
     end
     return graph, edge_ids
 end
@@ -161,10 +161,46 @@ function get_tstops(time, starttime::DateTime)::Vector{Float64}
     return seconds_since.(unique_times, starttime)
 end
 
+"""
+Get the current water level of a node ID.
+The ID can belong to either a Basin or a LevelBoundary.
+"""
+function get_level(p::Parameters, node_id::Int)::Float64
+    (; basin, level_boundary) = p
+    # since the node_id fields are already Indices, Dictionary creation is instant
+    basin = Dictionary(basin.node_id, basin.current_level)
+    hasindex, token = gettoken(basin, node_id)
+    return if hasindex
+        gettokenvalue(basin, token)
+    else
+        boundary = Dictionary(level_boundary.node_id, level_boundary.level)
+        boundary[node_id]
+    end
+end
+
+"Get the index of an ID in a set of indices."
+function id_index(ids::Indices{Int}, id::Int)
+    # There might be a better approach for this, this feels too internal
+    # the second return is the token, a Tuple{Int, Int}
+    hasindex, (_, idx) = gettoken(ids, id)
+    return hasindex, idx
+end
+
 "Return the bottom elevation of the basin with index i"
-function basin_bottom(basin::Basin, i::Int)::Float64
+function basin_bottom_index(basin::Basin, i::Int)::Float64
     # get level(storage) interpolation function
     itp = basin.level[i]
+    # and return the first level in the underlying table, which represents the bottom
+    return first(itp.u)
+end
+
+"Return the bottom elevation of the basin with index i"
+function basin_bottom(basin::Basin, node_id::Int)::Float64
+    basin = Dictionary(basin.node_id, basin.level)
+    hasindex, token = gettoken(basin, node_id)
+    @assert hasindex "node_id $node_id not a Basin"
+    # get level(storage) interpolation function
+    itp = gettokenvalue(basin, token)
     # and return the first level in the underlying table, which represents the bottom
     return first(itp.u)
 end

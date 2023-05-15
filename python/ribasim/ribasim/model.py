@@ -14,6 +14,7 @@ from ribasim.fractional_flow import FractionalFlow
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import InputMixin
+from ribasim.level_boundary import LevelBoundary
 from ribasim.level_control import LevelControl
 from ribasim.linear_level_connection import LinearLevelConnection
 from ribasim.manning_resistance import ManningResistance
@@ -28,6 +29,7 @@ _NODES = (
     (Basin, "basin"),
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
+    (LevelBoundary, "level_boundary"),
     (LinearLevelConnection, "linear_level_connection"),
     (ManningResistance, "manning_resistance"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
@@ -58,6 +60,7 @@ class Model(BaseModel):
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
+    level_boundary: Optional[LevelBoundary]
     linear_level_connection: Optional[LinearLevelConnection]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     starttime: Union[str, datetime.datetime]
@@ -71,6 +74,7 @@ class Model(BaseModel):
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
+    level_boundary: Optional[LevelBoundary]
     linear_level_connection: Optional[LinearLevelConnection]
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]

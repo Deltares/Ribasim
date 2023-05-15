@@ -129,18 +129,21 @@ sub-bullets indicate which tables are associated to the node type. The table nam
 name it must have in the GeoPackage if it is stored there.
 
 - Basin: stores water
-  - `Basin`: default forcing values, used if no dynamic data given in the forcing table
+  - `Basin / static`: default forcing values, used if no dynamic data given in the forcing table
   - `Basin / profile`: geometries of the basins
   - `Basin / forcing`: time series of the forcing values
   - `Basin / state`: used as initial condition of the basins
 - FractionalFlow: connect two of these from a Basin to get a fixed ratio bifurcation
-  - `FractionalFlow`: fractions
+  - `FractionalFlow / static`: fractions
 - LevelControl: tries to keep a target water level in a connected Basin
-  - `LevelControl`: target levels
+  - `LevelControl / static`: target levels
+- LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
+  - `LevelBoundary / static`: levels
 - LinearLevelConnection: bidirectional flow based on water level difference between Basins
-  - `LinearLevelConnection`: conductances
+  - `LinearLevelConnection / static`: conductances
 - TabulatedRatingCurve: Basin outflow relation
-  - `TabulatedRatingCurve`: rating curve
+  - `TabulatedRatingCurve / static`: rating curve
+  - `TabulatedRatingCurve / time`: dynamic rating curve
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The

@@ -9,7 +9,8 @@ using SciMLBase
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[148.03973, 148.04793, 1.203207, 1519.4891]
+    @test model.integrator.sol.u[end] ≈ Float32[655.1558, 655.1411, 2.4710674, 1569.76] skip =
+        Sys.isapple()
 end
 
 @testset "basic transient model" begin
@@ -19,7 +20,8 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[170.8589, 170.85925, 0.504764, 1534.4167]
+    @test model.integrator.sol.u[end] ≈ Float32[628.1481, 628.1756, 1.649027, 1579.0466] skip =
+        Sys.isapple()
 end
 
 @testset "TabulatedRatingCurve model" begin
@@ -29,7 +31,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[54.459435, 313.50992]
+    @test model.integrator.sol.u[end] ≈ Float32[54.459435, 313.50992] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end

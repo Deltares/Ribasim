@@ -1,0 +1,47 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "length": {
+            "format": "double",
+            "description": "length",
+            "type": "number"
+        },
+        "manning_n": {
+            "format": "double",
+            "description": "manning_n",
+            "type": "number"
+        },
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
+        "profile_width": {
+            "format": "double",
+            "description": "profile_width",
+            "type": "number"
+        },
+        "node_id": {
+            "format": "default",
+            "description": "node_id",
+            "type": "integer"
+        },
+        "profile_slope": {
+            "format": "double",
+            "description": "profile_slope",
+            "type": "number"
+        }
+    },
+    "required": [
+        "node_id",
+        "length",
+        "manning_n",
+        "profile_width",
+        "profile_slope"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/ManningResistanceStatic.schema.json",
+    "title": "ManningResistanceStatic",
+    "description": "A ManningResistanceStatic object based on Ribasim.ManningResistanceStaticV1",
+    "type": "object"
+}

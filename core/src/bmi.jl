@@ -84,8 +84,7 @@ save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
     (; basin) = integrator.p
-    (; time) = basin
-    (; u_index) = integrator.p.connectivity
+    (; node_id, time) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
 
     rows = searchsorted(time.time, t)
@@ -99,7 +98,8 @@ function update_basin(integrator)::Nothing
     )
 
     for row in timeblock
-        i = u_index[row.node_id]
+        hasindex, i = id_index(node_id, row.node_id)
+        @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
         set_table_row!(table, row, i)
     end
 

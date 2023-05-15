@@ -20,6 +20,7 @@ _MARKERS = {
     "Basin": "o",
     "FractionalFlow": "^",
     "LevelControl": "*",
+    "LevelBoundary": "o",
     "LinearLevelConnection": "^",
     "ManningResistance": "D",
     "TabulatedRatingCurve": "D",

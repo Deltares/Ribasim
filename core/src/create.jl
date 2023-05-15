@@ -4,10 +4,7 @@ function Connectivity(db::DB)::Connectivity
     flow = adjacency_matrix(graph, Float64)
     nonzeros(flow) .= 0.0
 
-    basin_id = get_ids(db, "Basin")
-    u_index = OrderedDict(id => i for (i, id) in enumerate(basin_id))
-
-    return Connectivity(graph, flow, u_index, edge_ids)
+    return Connectivity(graph, flow, edge_ids)
 end
 
 function LinearLevelConnection(db::DB, config::Config)::LinearLevelConnection
@@ -81,6 +78,11 @@ function LevelControl(db::DB, config::Config)::LevelControl
     return LevelControl(static.node_id, static.target_level, static.conductance)
 end
 
+function LevelBoundary(db::DB, config::Config)::LevelBoundary
+    static = load_structvector(db, config, LevelBoundaryStaticV1)
+    return LevelBoundary(static.node_id, static.level)
+end
+
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     return Pump(static.node_id, static.flow_rate)
@@ -89,7 +91,6 @@ end
 function Basin(db::DB, config::Config)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_area = zeros(n)
     current_level = zeros(n)
 
     precipitation = fill(NaN, length(node_id))
@@ -109,11 +110,11 @@ function Basin(db::DB, config::Config)::Basin
     check_no_nans(table, "Basin")
 
     return Basin(
+        Indices(node_id),
         precipitation,
         potential_evaporation,
         drainage,
         infiltration,
-        current_area,
         current_level,
         area,
         level,
@@ -131,6 +132,7 @@ function Parameters(db::DB, config::Config)::Parameters
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
+    level_boundary = LevelBoundary(db, config)
     pump = Pump(db, config)
 
     basin = Basin(db, config)
@@ -144,6 +146,7 @@ function Parameters(db::DB, config::Config)::Parameters
         tabulated_rating_curve,
         fractional_flow,
         level_control,
+        level_boundary,
         pump,
     )
 end

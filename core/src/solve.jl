@@ -6,16 +6,14 @@ Store the connectivity information
 
 graph: directed graph with vertices equal to ids
 flow: store the flow on every edge
-u_index: get the index into u from the basin id
 edge_ids: get the external edge id from (src, dst)
 """
 struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
-    u_index::OrderedDict{Int, Int}
-    edge_ids::OrderedDict{Tuple{Int, Int}, Int}
-    Connectivity(graph, flow, u_index, edge_ids) =
-        is_valid(graph, flow, u_index, edge_ids) ? new(graph, flow, u_index, edge_ids) :
+    edge_ids::Dictionary{Tuple{Int, Int}, Int}
+    Connectivity(graph, flow, edge_ids) =
+        is_valid(graph, flow, edge_ids) ? new(graph, flow, edge_ids) :
         error("Invalid graph")
 end
 
@@ -23,8 +21,7 @@ end
 function is_valid(
     graph::DiGraph{Int},
     flow::SparseMatrixCSC{Float64, Int},
-    u_index::OrderedDict{Int, Int},
-    edge_ids::OrderedDict{Tuple{Int, Int}, Int},
+    edge_ids::Dictionary{Tuple{Int, Int}, Int},
 )
     return true
 end
@@ -38,14 +35,15 @@ Requirements:
 
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
+The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
 struct Basin{C}
+    node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
-    # cache these to avoid recomputation
-    current_area::Vector{Float64}
+    # cache this to avoid recomputation
     current_level::Vector{Float64}
     # f(storage)
     area::Vector{Interpolation}
@@ -147,6 +145,16 @@ struct LevelControl
 end
 
 """
+node_id: node ID of the LevelBoundary node
+level: the fixed level of this 'infinitely big basin'
+The node_id are Indices to support fast lookup of level using ID.
+"""
+struct LevelBoundary
+    node_id::Vector{Int}
+    level::Vector{Float64}
+end
+
+"""
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
@@ -165,6 +173,7 @@ struct Parameters
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
+    level_boundary::LevelBoundary
     pump::Pump
 end
 
@@ -177,9 +186,8 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         storage = u[i]
         area = basin.area[i](storage)
         level = basin.level[i](storage)
-        basin.current_area[i] = area
         basin.current_level[i] = level
-        bottom = basin_bottom(basin, i)
+        bottom = basin_bottom_index(basin, i)
         fixed_area = median(basin.area[i].u)
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -197,17 +205,14 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(
-    connectivity::Connectivity,
-    linear_level_connection::LinearLevelConnection,
-    level,
-)::Nothing
-    (; graph, flow, u_index) = connectivity
+function formulate!(linear_level_connection::LinearLevelConnection, p::Parameters)::Nothing
+    (; connectivity) = p
+    (; graph, flow) = connectivity
     (; node_id, conductance) = linear_level_connection
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_b_id = only(outneighbors(graph, id))
-        q = conductance[i] * (level[u_index[basin_a_id]] - level[u_index[basin_b_id]])
+        q = conductance[i] * (get_level(p, basin_a_id) - get_level(p, basin_b_id))
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
     end
@@ -217,17 +222,14 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(
-    connectivity::Connectivity,
-    tabulated_rating_curve::TabulatedRatingCurve,
-    level,
-)::Nothing
-    (; graph, flow, u_index) = connectivity
+function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)::Nothing
+    (; connectivity) = p
+    (; graph, flow) = connectivity
     (; node_id, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph, id))
         downstream_ids = outneighbors(graph, id)
-        q = tables[i](level[u_index[upstream_basin_id]])
+        q = tables[i](get_level(p, upstream_basin_id))
         flow[upstream_basin_id, id] = q
         for downstream_id in downstream_ids
             flow[id, downstream_id] = q
@@ -275,23 +277,18 @@ The "upstream" water depth is used to compute cross-sectional area and
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
-function formulate!(
-    connectivity::Connectivity,
-    manning_resistance::ManningResistance,
-    basin::Basin,
-)::Nothing
-    (; graph, flow, u_index) = connectivity
+function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothing
+    (; basin, connectivity) = p
+    (; graph, flow) = connectivity
     (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_b_id = only(outneighbors(graph, id))
 
-        idx_a = u_index[basin_a_id]
-        idx_b = u_index[basin_b_id]
-        h_a = basin.current_level[idx_a]
-        h_b = basin.current_level[idx_b]
-        bottom_a = basin_bottom(basin, idx_a)
-        bottom_b = basin_bottom(basin, idx_b)
+        h_a = get_level(p, basin_a_id)
+        h_b = get_level(p, basin_b_id)
+        bottom_a = basin_bottom(basin, basin_a_id)
+        bottom_b = basin_bottom(basin, basin_b_id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]
@@ -313,7 +310,8 @@ function formulate!(
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)::Nothing
+function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
+    (; connectivity) = p
     (; graph, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
@@ -324,33 +322,35 @@ function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, level_control::LevelControl, level)::Nothing
-    (; graph, flow, u_index) = connectivity
+function formulate!(level_control::LevelControl, p::Parameters)::Nothing
+    (; connectivity) = p
+    (; graph, flow) = connectivity
     (; node_id, target_level, conductance) = level_control
-    for (i, id) in enumerate(node_id)  # TODO eachindex
+    for (i, id) in enumerate(node_id)
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
-            flow[basin_id, id] =
-                conductance[i] * (level[u_index[basin_id]] - target_level[i])
+            flow[basin_id, id] = conductance[i] * (get_level(p, basin_id) - target_level[i])
         end
         for basin_id in outneighbors(graph, id)
-            flow[id, basin_id] =
-                conductance[i] * (target_level[i] - level[u_index[basin_id]])
+            flow[id, basin_id] = conductance[i] * (target_level[i] - get_level(p, basin_id))
         end
     end
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, pump::Pump, u)::Nothing
-    (; graph, flow, u_index) = connectivity
+function formulate!(pump::Pump, p::Parameters, u)::Nothing
+    (; connectivity, basin) = p
+    (; graph, flow) = connectivity
     (; node_id, flow_rate) = pump
     for (id, rate) in zip(node_id, flow_rate)
         src_id = only(inneighbors(graph, id))
         dst_id = only(outneighbors(graph, id))
         # negative flow_rate means pumping against edge direction
         intake_id = rate >= 0 ? src_id : dst_id
-        basin_idx = get(u_index, intake_id, 0)
-        @assert basin_idx != 0 "Pump intake not a Basin"
+
+        hasindex, basin_idx = id_index(basin.node_id, intake_id)
+        @assert hasindex "Pump intake not a Basin"
+
         storage = u[basin_idx]
         reduction_factor = min(storage, 10.0) / 10.0
         q = reduction_factor * rate
@@ -360,12 +360,12 @@ function formulate!(connectivity::Connectivity, pump::Pump, u)::Nothing
     return nothing
 end
 
-function formulate!(du, connectivity::Connectivity)::Nothing
+function formulate!(du, connectivity::Connectivity, basin::Basin)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph, flow, u_index) = connectivity
-    for (basin_id, i) in pairs(u_index)
+    (; graph, flow) = connectivity
+    for (i, basin_id) in enumerate(basin.node_id)
         for in_id in inneighbors(graph, basin_id)
             du[i] += flow[in_id, basin_id]
         end
@@ -391,19 +391,19 @@ function water_balance!(du, u, p, t)::Nothing
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
-    # ensures current_level and current_area are current
+    # ensures current_level is current
     formulate!(du, basin, u, t)
 
     # First formulate intermediate flows
-    formulate!(connectivity, linear_level_connection, basin.current_level)
-    formulate!(connectivity, manning_resistance, basin)
-    formulate!(connectivity, tabulated_rating_curve, basin.current_level)
-    formulate!(connectivity, fractional_flow)
-    formulate!(connectivity, level_control, basin.current_level)
-    formulate!(connectivity, pump, u)
+    formulate!(linear_level_connection, p)
+    formulate!(manning_resistance, p)
+    formulate!(tabulated_rating_curve, p)
+    formulate!(fractional_flow, p)
+    formulate!(level_control, p)
+    formulate!(pump, p, u)
 
     # Now formulate du
-    formulate!(du, connectivity)
+    formulate!(du, connectivity, basin)
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain

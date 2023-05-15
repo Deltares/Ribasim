@@ -58,6 +58,8 @@ function gen_root_schema(TT::Vector, prefix = prefix)
     end
 end
 
+os_line_separator() = Sys.iswindows() ? "\r\n" : "\n"
+
 function gen_schema(T::DataType, prefix = prefix)
     name = strip_prefix(T)
     schema = Dict(
