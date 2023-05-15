@@ -47,45 +47,33 @@ class Basin(InputMixin, BaseModel):
     Parameters
     ----------
     profile : pandas.DataFrame
-
         A tabulation with the columns:
-
-        * node_id
-        * storage
-        * area
-        * water level
-
+            * node_id
+            * storage
+            * area
+            * level
     static : pandas.DataFrame, optional
-
         Static forcing with columns:
-
-        * node_id
-        * potential evaporation
-        * precipitation
-        * groundwater drainage
-        * groundwater infiltration
-        * urban runoff
-
+            * node_id
+            * potential_evaporation
+            * precipitation
+            * drainage
+            * infiltration
+            * urban_runoff
     forcing : pandas.DataFrame, optional
-
         Time varying forcing with columns:
-
-        * node_id
-        * time
-        * potential evaporation
-        * precipitation
-        * groundwater drainage
-        * groundwater infiltration
-        * urban runoff
-
+            * node_id
+            * time
+            * potential_evaporation
+            * precipitation
+            * drainage
+            * infiltration
+            * urban_runoff
     state : pandas.DataFrame, optional
-
         Initial state with columns:
-
-        * node_id
-        * storage
-        * concentration
-
+            * node_id
+            * storage
+            * concentration
     """
 
     _input_type = "Basin"

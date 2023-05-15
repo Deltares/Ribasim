@@ -49,20 +49,27 @@ class Solver(BaseModel):
 
 class Model(BaseModel):
     """
+    A full Ribasim model schematisation with all input.
+
     Ribasim model containing the location of the nodes, the edges between the
     nodes, and the node parametrization.
 
     Parameters
     ----------
     modelname : str
+        Model name, used in TOML and GeoPackage file name.
     node : Node
+        The ID, type and geometry of each node.
     edge : Edge
+        How the nodes are connected.
     basin : Basin
     fractional_flow : Optional[FractionalFlow]
     level_control : Optional[LevelControl]
     level_boundary : Optional[LevelBoundary]
     linear_resistance: Optional[LinearResistance]
+    manning_resistance : Optional[ManningResistance]
     tabulated_rating_curve : Optional[TabulatedRatingCurve]
+    pump : Optional[Pump]
     starttime : Union[str, datetime.datetime]
     endtime : Union[str, datetime.datetime]
     solver : Optional[Solver]
