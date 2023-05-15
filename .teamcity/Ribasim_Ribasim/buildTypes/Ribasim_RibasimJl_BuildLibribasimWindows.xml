@@ -47,7 +47,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia --project create_lib.jl" />
+          <param name="script.content" value="%JULIA% --project create_lib.jl" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
