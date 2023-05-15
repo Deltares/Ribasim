@@ -22,7 +22,7 @@
         <param name="buildSettings" value="ALWAYS_USE_CURRENT" />
         <param name="credentialsStorageType" value="credentialsJSON" />
         <param name="enabled" value="true" />
-        <param name="rootId" value="Ribasim_RibasimJl_RibasimJl" />
+        <param name="rootId" value="Ribasim_Ribasim_Ribasim" />
         <param name="showChanges" value="false" />
       </parameters>
     </extension>

@@ -39,7 +39,7 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
     <requirements>
       <equals id="RQ_436" name="teamcity.agent.jvm.os.name" value="Windows 10" />
@@ -81,3 +81,4 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
     <cleanup />
   </settings>
 </build-type>
+

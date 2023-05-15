@@ -38,7 +38,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia +release --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
+          <param name="script.content" value="%julia% --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -46,7 +46,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_551" name="Build executable" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia +release --project create_app.jl" />
+          <param name="script.content" value="%julia% --project create_app.jl" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -62,11 +62,10 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
-      <does-not-equal id="RQ_286" name="env.IsWindows11" value="True" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
@@ -111,3 +110,4 @@ call python python/ribasim/tests/conftest.py]]></param>
     <cleanup />
   </settings>
 </build-type>
+
