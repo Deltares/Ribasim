@@ -279,7 +279,7 @@ dry.
 """
 function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothing
     (; basin, connectivity) = p
-    (; graph, flow, u_index) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
@@ -310,7 +310,8 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
     return nothing
 end
 
-function formulate!(connectivity::Connectivity, fractional_flow::FractionalFlow)::Nothing
+function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
+    (; connectivity) = p
     (; graph, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
@@ -395,7 +396,7 @@ function water_balance!(du, u, p, t)::Nothing
 
     # First formulate intermediate flows
     formulate!(linear_level_connection, p)
-    formulate!(manning_resistance, basin, p)
+    formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
     formulate!(level_control, p)

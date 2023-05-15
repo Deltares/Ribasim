@@ -14,7 +14,7 @@ def basic_model() -> ribasim.Model:
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: LinearLevelConnection
+            (1.0, 0.0),  # 2: ManningResistance
             (2.0, 0.0),  # 3: Basin
             (3.0, 0.0),  # 4: TabulatedRatingCurve
             (3.0, 1.0),  # 5: FractionalFlow
@@ -102,7 +102,9 @@ def basic_model() -> ribasim.Model:
 
     # Setup linear level connection:
     linear_connection = ribasim.LinearLevelConnection(
-        static=pd.DataFrame(data={"node_id": [2, 12], "conductance": [1.5e-4, 2e-4]})
+        static=pd.DataFrame(data={"node_id": [12], "conductance": [2e-4]})
+    )
+
     # Setup Manning resistance:
     manning_resistance = ribasim.ManningResistance(
         static=pd.DataFrame(
