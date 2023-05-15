@@ -89,12 +89,9 @@ function gen_schema(T::DataType, prefix = prefix)
         "format" => "default",
         "default" => "",
     )
-    # Replace LF to CRLF on Windows to avoid confusing Git
-    io = IOBuffer()
-    JSON3.pretty(io, schema)
-    str = String(take!(io))
     open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io
-        println(io, replace(str, "\n" => os_line_separator()))
+        JSON3.pretty(io, schema)
+        println(io)
     end
 end
 
