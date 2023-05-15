@@ -4,7 +4,6 @@ from typing import Any, Dict, Type, TypeVar
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
@@ -56,12 +55,13 @@ class Node(InputMixin, BaseModel):
     class Config:
         validate_assignment = True
 
-    def __init__(self, static: pd.DataFrame):
-        super().__init__(**locals())
-
     @classmethod
     def _layername(cls, field) -> str:
         return f"{cls._input_type}"
+
+    @classmethod
+    def hasfid(cls):
+        return True
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """

@@ -1,45 +1,42 @@
 from typing import Optional
 
-import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("Basin",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    drainage: Series[float]
-    potential_evaporation: Series[float]
-    infiltration: Series[float]
-    precipitation: Series[float]
-    urban_runoff: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinStatic)
 
 
 class ForcingSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    time: Series[pa.dtypes.DateTime]
-    drainage: Series[float]
-    potential_evaporation: Series[float]
-    infiltration: Series[float]
-    precipitation: Series[float]
-    urban_runoff: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinForcing)
 
 
 class ProfileSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    storage: Series[float]
-    area: Series[float]
-    level: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinProfile)
 
 
 class StateSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    storage: Series[float]
-    concentration: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.BasinState)
 
 
 class Basin(InputMixin, BaseModel):
@@ -99,15 +96,6 @@ class Basin(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
-
-    def __init__(
-        self,
-        profile: pd.DataFrame,
-        static: Optional[pd.DataFrame] = None,
-        forcing: Optional[pd.DataFrame] = None,
-        state: Optional[pd.DataFrame] = None,
-    ):
-        super().__init__(**locals())
 
     def sort(self):
         self.profile = self.profile.sort_values(

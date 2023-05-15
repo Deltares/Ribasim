@@ -167,6 +167,10 @@ class InputMixin(abc.ABC):
         else:
             return cls(**kwargs)
 
+    @classmethod
+    def hasfid(cls):
+        return False
+
     def sort(self):
         """
         Sort all input tables as required.

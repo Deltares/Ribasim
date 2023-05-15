@@ -8,7 +8,11 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RQ_271" />
+    </disabled-settings>
     <parameters>
+      <param name="JULIA" value="%env.JULIA_1_9%" />
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
     </parameters>
     <build-runners>
@@ -38,7 +42,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
+          <param name="script.content" value="%JULIA% --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -46,7 +50,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia --project create_lib.jl" />
+          <param name="script.content" value="%JULIA% --project create_lib.jl" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
