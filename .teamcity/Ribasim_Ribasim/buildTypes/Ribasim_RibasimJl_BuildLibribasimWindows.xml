@@ -10,6 +10,7 @@
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
+      <param name="env.JULIA_RIBASIM" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1955" name="Set up virtual environment" type="simpleRunner">
