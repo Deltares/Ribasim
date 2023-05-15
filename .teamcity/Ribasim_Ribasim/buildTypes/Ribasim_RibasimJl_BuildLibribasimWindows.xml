@@ -8,9 +8,6 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RQ_271" />
-    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
     </parameters>
@@ -100,3 +97,4 @@ call python python/ribasim/tests/conftest.py]]></param>
     <cleanup />
   </settings>
 </build-type>
+
