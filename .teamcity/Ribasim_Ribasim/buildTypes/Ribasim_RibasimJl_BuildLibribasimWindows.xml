@@ -12,8 +12,8 @@
       <setting-ref ref="RQ_271" />
     </disabled-settings>
     <parameters>
-      <param name="JULIA" value="%env.JULIA_1_9%" />
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
+      <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1955" name="Set up virtual environment" type="simpleRunner">
