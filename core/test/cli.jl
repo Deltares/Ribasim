@@ -3,14 +3,13 @@ using Ribasim
 using IOCapture: capture
 
 include("../../build/ribasim_cli/src/ribasim_cli.jl")
-include("../../utils/testdata.jl")
 
 @testset "version" begin
     empty!(ARGS)
     push!(ARGS, "--version")
     (; value, output) = capture(ribasim_cli.julia_main)
     @test value == 0
-    @test output == string(Ribasim.pkgversion(Ribasim))
+    @test output == string(pkgversion(Ribasim))
 end
 
 @testset "toml_path" begin

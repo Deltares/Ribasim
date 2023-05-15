@@ -4,7 +4,6 @@ using Ribasim
 import BasicModelInterface as BMI
 
 include("../../build/libribasim/src/libribasim.jl")
-include("../../utils/testdata.jl")
 
 toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
 config_template = Ribasim.parsefile(toml_path)

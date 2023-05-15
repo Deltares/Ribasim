@@ -1,16 +1,4 @@
-# Backported from Julia 1.9
-# TODO Doesn't support dev'd modules
-function pkgversion(m::Module)
-    rootmodule = Base.moduleroot(m)
-    pkg = Base.PkgId(rootmodule)
-    pkgorigin = get(Base.pkgorigins, pkg, nothing)
-    return pkgorigin === nothing ? nothing : pkgorigin.version
-end
-
-"
-Return a directed graph, and a mapping from source and target nodes to edge
-fid.
-"
+"Return a directed graph, and a mapping from source and target nodes to edge fid."
 function create_graph(db::DB)::Tuple{DiGraph, OrderedDict{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)

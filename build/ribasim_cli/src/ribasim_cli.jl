@@ -16,7 +16,7 @@ function julia_main()::Cint
     arg = only(ARGS)
 
     if arg == "--version"
-        version = Ribasim.pkgversion(Ribasim)
+        version = pkgversion(Ribasim)
         print(version)
         return 0
     end
