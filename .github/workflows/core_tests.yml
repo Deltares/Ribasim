@@ -41,7 +41,7 @@ jobs:
           cache-env: true
           environment-file: ./environment.yml
       - name: Install ribasim
-        run: pip install -e python/ribasim
+        run: pip install --editable python/ribasim
       - name: Prepare model input
         run: python python/ribasim/tests/conftest.py
       - uses: julia-actions/setup-julia@v1
