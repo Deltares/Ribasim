@@ -41,7 +41,7 @@ jobs:
           environment-file: ./environment.yml
 
       - name: Install ribasim
-        run: pip install -e python/ribasim
+        run: pip install --editable python/ribasim
 
       - name: Run tests
         run: pytest python/ribasim/tests

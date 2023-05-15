@@ -3,7 +3,7 @@ module libribasim
 import BasicModelInterface as BMI
 using Ribasim
 
-# globals 
+# globals
 model::Union{Ribasim.Model, Nothing} = nothing
 last_error_message::String = ""
 
@@ -166,7 +166,7 @@ end
 
 Base.@ccallable function get_version(version::Cstring)::Cint
     @try_c_uninitialized begin
-        ribasim_version = Ribasim.pkgversion(Ribasim)
+        ribasim_version = pkgversion(Ribasim)
         unsafe_write_to_cstring!(version, string(ribasim_version))
     end
 end
