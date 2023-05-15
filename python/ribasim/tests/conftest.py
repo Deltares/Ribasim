@@ -103,6 +103,17 @@ def basic_model() -> ribasim.Model:
     # Setup linear level connection:
     linear_connection = ribasim.LinearLevelConnection(
         static=pd.DataFrame(data={"node_id": [2, 12], "conductance": [1.5e-4, 2e-4]})
+    # Setup Manning resistance:
+    manning_resistance = ribasim.ManningResistance(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2],
+                "length": [900.0],
+                "manning_n": [0.04],
+                "profile_width": [1.0],
+                "profile_slope": [3.0],
+            }
+        )
     )
 
     # Set up a rating curve node:
@@ -169,7 +180,7 @@ def basic_model() -> ribasim.Model:
         level_boundary=level_boundary,
         level_control=level_control,
         pump=pump,
-        linear_level_connection=linear_connection,
+        manning_resistance=manning_resistance,
         tabulated_rating_curve=rating_curve,
         fractional_flow=fractional_flow,
         starttime="2020-01-01 00:00:00",

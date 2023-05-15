@@ -41,6 +41,17 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     return TabulatedRatingCurve(node_ids, interpolations, time)
 end
 
+function ManningResistance(db::DB, config::Config)::ManningResistance
+    static = load_structvector(db, config, ManningResistanceStaticV1)
+    return ManningResistance(
+        static.node_id,
+        static.length,
+        static.manning_n,
+        static.profile_width,
+        static.profile_slope,
+    )
+end
+
 function create_storage_tables(db::DB, config::Config)
     profiles = load_structvector(db, config, BasinProfileV1)
     area = Interpolation[]
@@ -117,6 +128,7 @@ function Parameters(db::DB, config::Config)::Parameters
     connectivity = Connectivity(db)
 
     linear_level_connection = LinearLevelConnection(db, config)
+    manning_resistance = ManningResistance(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
@@ -130,6 +142,7 @@ function Parameters(db::DB, config::Config)::Parameters
         connectivity,
         basin,
         linear_level_connection,
+        manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
         level_control,

@@ -197,3 +197,22 @@ function id_index(ids::Indices{Int}, id::Int)
     hasindex, (_, idx) = gettoken(ids, id)
     return hasindex, idx
 end
+
+"Return the bottom elevation of the basin with index i"
+function basin_bottom_index(basin::Basin, i::Int)::Float64
+    # get level(storage) interpolation function
+    itp = basin.level[i]
+    # and return the first level in the underlying table, which represents the bottom
+    return first(itp.u)
+end
+
+"Return the bottom elevation of the basin with index i"
+function basin_bottom(basin::Basin, node_id::Int)::Float64
+    basin = Dictionary(basin.node_id, basin.level)
+    hasindex, token = gettoken(basin, node_id)
+    @assert hasindex "node_id $node_id not a Basin"
+    # get level(storage) interpolation function
+    itp = gettokenvalue(basin, token)
+    # and return the first level in the underlying table, which represents the bottom
+    return first(itp.u)
+end

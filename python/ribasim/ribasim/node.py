@@ -23,6 +23,7 @@ _MARKERS = {
     "LevelControl": "*",
     "LevelBoundary": "o",
     "LinearLevelConnection": "^",
+    "ManningResistance": "D",
     "TabulatedRatingCurve": "D",
     "Pump": "h",
     "": "o",

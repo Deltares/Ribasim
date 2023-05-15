@@ -17,6 +17,7 @@ from ribasim.input_base import InputMixin
 from ribasim.level_boundary import LevelBoundary
 from ribasim.level_control import LevelControl
 from ribasim.linear_level_connection import LinearLevelConnection
+from ribasim.manning_resistance import ManningResistance
 from ribasim.node import Node
 from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
@@ -30,6 +31,7 @@ _NODES = (
     (LevelControl, "level_control"),
     (LevelBoundary, "level_boundary"),
     (LinearLevelConnection, "linear_level_connection"),
+    (ManningResistance, "manning_resistance"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
     (Pump, "pump"),
 )
@@ -74,6 +76,7 @@ class Model(BaseModel):
     level_control: Optional[LevelControl]
     level_boundary: Optional[LevelBoundary]
     linear_level_connection: Optional[LinearLevelConnection]
+    manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     starttime: datetime.datetime
@@ -95,6 +98,7 @@ class Model(BaseModel):
         level_control: Optional[LevelControl] = None,
         level_boundary: Optional[LevelBoundary] = None,
         linear_level_connection: Optional[LinearLevelConnection] = None,
+        manning_resistance: Optional[ManningResistance] = None,
         tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
         pump: Optional[Pump] = None,
         solver: Optional[Solver] = None,

@@ -11,6 +11,7 @@
 @schema "ribasim.levelcontrol.static" LevelControlStatic
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
+@schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
@@ -90,6 +91,14 @@ end
 @version LinearLevelConnectionStaticV1 begin
     node_id::Int
     conductance::Float64
+end
+
+@version ManningResistanceStaticV1 begin
+    node_id::Int
+    length::Float64
+    manning_n::Float64
+    profile_width::Float64
+    profile_slope::Float64
 end
 
 @version TabulatedRatingCurveStaticV1 begin
