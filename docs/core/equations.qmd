@@ -8,7 +8,7 @@ Ribasim currently simulates the following "natural" water balance terms:
 2. Evaporation
 3. Infiltration
 4. Drainage
-5. Urban runoff 
+5. Urban runoff
 6. Upstream and downstream flow
 
 Additionally, Ribasim simulates the following "allocated" water balance terms:
@@ -48,7 +48,7 @@ $$
 
 Here $Q_{i,j}$ is the flow along an edge, where the graph direction dictates positive flow.
 So the first term denotes flow towards the basin, the second one denotes flow away from the basin, and the third term denotes external forcing.
-$F_i(\mathbf{u},p,t)$ is given by input data and the current state of the model, and $Q_{i' ,j'}$ is determined by the type of nodes that connect to that edge. 
+$F_i(\mathbf{u},p,t)$ is given by input data and the current state of the model, and $Q_{i' ,j'}$ is determined by the type of nodes that connect to that edge.
 
 The various node and forcing types that the model can contain are explained below.
 
@@ -63,7 +63,7 @@ $$ {#eq-precip}
 
 Here $P = P(t)$ is the precipitation rate and $A$ is the wetted area. $A$ is a
 function of the storage $S = S(t)$: as the volume of water changes, the area of the free water
-surface may change as well, depending on the slopes of the surface waters. 
+surface may change as well, depending on the slopes of the surface waters.
 
 ## Evaporation
 
@@ -129,18 +129,18 @@ Ribasim's basins can be connected to each other, and each basin expects an
 explicit connection. Two connections are currently available for inter-basin
 flows:
 
-1. ``OutflowTable``
-2. ``LevelLink``
+1. `OutflowTable`
+2. `LinearResistance`
 
 The flow direction of the basin is not pre-determined: flow directions may
-freely reverse, provided the connection allows it. Currently, a ``LevelLink``
-allows bidirectional flow, but the 
+freely reverse, provided the connection allows it. Currently, a `LinearResistance`
+allows bidirectional flow, but the
 
 Additionally, two additional "connections" area available for the "outmost"
 basins (external nodes) in a network.
 
-1. ``NoFlowBoundary``
-2. ``HeadBoundary``
+1. `Terminal`
+2. `LevelBoundary`
 
 ### OutflowTable
 
@@ -151,7 +151,7 @@ properties. This can include a weir, but also the lumped hydraulic behavior of t
 upstream channels.
 
 The OutflowTable should indicate at which volume no discharge occurs (the dead
-storage volume). 
+storage volume).
 
 :::{.callout-note}
 Currently, the discharge relies only on the basin's volume; it could also use
@@ -161,25 +161,25 @@ of weirs, or even reversal of flows for high precipitation events.
 
 ### LinearResistance
 
-A ``LevelLink`` connects two basins together. The flow between the two basins
+A `LinearResistance` connects two basins together. The flow between the two basins
 is determined by a linear relationship:
 
 $$
-    Q = C (h_a - h_b).
+    Q = \frac{h_a - h_b}{R}
 $$ {#eq-basinflow}
 
 Here $h_a$ is the water level in the first basin, $h_b$ is the water level in
-the second basin, and $C$ is the conductance of the link. A ``LevelLink`` makes
+the second basin, and $R$ is the resistance of the link. A `LinearResistance` makes
 no assumptions about the direction of the flow: water flows from high to low.
 
-### NoFlowBoundary
+### Terminal
 
-This sets the exchange flow to 0.
+This only allows outflow from a basin into a terminal node.
 
-### HeadBoundary
+### LevelBoundary
 
-This sets the water level in the basin to a fixed level; lower or higher level
-result in instantaneous corrective fluxes.
+This can be connected to a basin via a `LinearResistance`. This boundary node will then
+exchange water with the basin based on the difference in water level between the two.
 
 ### Manning connection
 
@@ -190,7 +190,7 @@ We describe the discharge from basin $a$ to basin $b$ solely as a function of
 the water levels in $a$ and $b$.
 
 $$
-Q = f(h_a, h_b) 
+Q = f(h_a, h_b)
 $$
 
 where:
@@ -205,7 +205,7 @@ $$
 H = h + \frac{v^2}{2g}
 $$
 
-Where 
+Where
 
 * $H$ is total head
 * $v$ is average water velocity
@@ -218,7 +218,7 @@ Q = Av
 $$
 
 where $A$ is cross-sectional area.
-  
+
 We use conservation of energy to relate the total head at $a$ to $b$,
 with $H_a > H_b$ as follows:
 
@@ -250,7 +250,7 @@ We assume velocity differences in a connection are negligible ($v_a = v_b$):
 $$
 h_a = h_b + S_f L
 $$
-  
+
 Friction losses are computed with the Gauckler-Manning formula:
 
 $$
@@ -316,7 +316,7 @@ Where
 * $\frac{\Delta y}{\Delta z}$ is the slope of the profile expressed as the
   horizontal length for one unit in the vertical (A slope of 45 degrees has
   $\frac{\Delta y}{\Delta z} = 1$; a rectangular profile 0).
-  
+
 Accordingly, the wetted perimeter is:
 
 $$

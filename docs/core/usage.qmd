@@ -207,8 +207,7 @@ urban_runoff          | Float64 | $m^3 s^{-1}$ | non-negative
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
-to have a reasonable and safe default, a value must be provided in the static table. An
-example of this is the `target_volume` from the LevelLink node.
+to have a reasonable and safe default, a value must be provided in the static table.
 
 ### Basin / forcing
 
