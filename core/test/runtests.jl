@@ -1,4 +1,6 @@
-import Test, SafeTestsets, Aqua
+import Aqua
+using Test: @testset
+using SafeTestsets: @safetestset
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin
