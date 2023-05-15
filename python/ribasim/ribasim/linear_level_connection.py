@@ -1,4 +1,3 @@
-import pandas as pd
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -15,7 +14,6 @@ class StaticSchema(pa.SchemaModel):
         """Config with dataframe-level data type."""
 
         dtype = PydanticModel(models.LinearLevelConnectionStatic)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class LinearLevelConnection(InputMixin, BaseModel):

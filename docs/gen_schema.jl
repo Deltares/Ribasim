@@ -80,6 +80,13 @@ function gen_schema(T::DataType, prefix = prefix)
             push!(schema["required"], fieldname)
         end
     end
+    # Temporary hack so pandera will keep the Pydantic record types
+    schema["properties"]["remarks"] = Dict(
+        "description" => "a hack for pandera",
+        "type" => "string",
+        "format" => "default",
+        "default" => "",
+    )
     open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io
         JSON3.pretty(io, schema)
         println(io)

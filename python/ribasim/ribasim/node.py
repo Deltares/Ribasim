@@ -4,7 +4,6 @@ from typing import Any, Dict, Type, TypeVar
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries

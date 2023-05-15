@@ -42,4 +42,4 @@ def test_basic_transient(basic_transient, tmp_path):
 
     forcing = model.basin.forcing
     assert_equal(basic_transient.basin.forcing, forcing)
-    assert forcing.shape == (1468, 7)
+    assert forcing.shape == (1468, 8)

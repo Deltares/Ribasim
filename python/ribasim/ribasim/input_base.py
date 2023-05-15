@@ -170,7 +170,7 @@ class InputMixin(abc.ABC):
     @classmethod
     def hasfid(cls):
         return False
-    
+
     def sort(self):
         """
         Sort all input tables as required.

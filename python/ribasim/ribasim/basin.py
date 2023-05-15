@@ -1,6 +1,5 @@
 from typing import Optional
 
-import pandas as pd
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -17,7 +16,6 @@ class StaticSchema(pa.SchemaModel):
         """Config with dataframe-level data type."""
 
         dtype = PydanticModel(models.BasinStatic)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class ForcingSchema(pa.SchemaModel):
@@ -25,7 +23,6 @@ class ForcingSchema(pa.SchemaModel):
         """Config with dataframe-level data type."""
 
         dtype = PydanticModel(models.BasinForcing)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class ProfileSchema(pa.SchemaModel):
@@ -33,7 +30,6 @@ class ProfileSchema(pa.SchemaModel):
         """Config with dataframe-level data type."""
 
         dtype = PydanticModel(models.BasinProfile)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class StateSchema(pa.SchemaModel):
@@ -41,7 +37,6 @@ class StateSchema(pa.SchemaModel):
         """Config with dataframe-level data type."""
 
         dtype = PydanticModel(models.BasinState)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class Basin(InputMixin, BaseModel):
