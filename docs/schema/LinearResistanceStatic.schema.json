@@ -12,15 +12,15 @@
             "description": "node_id",
             "type": "integer"
         },
-        "conductance": {
+        "resistance": {
             "format": "double",
-            "description": "conductance",
+            "description": "resistance",
             "type": "number"
         }
     },
     "required": [
         "node_id",
-        "conductance"
+        "resistance"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
     "title": "LinearResistanceStatic",

@@ -121,7 +121,7 @@ def basic_model() -> ribasim.Model:
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [2], "conductance": [1.5e-4]})
+        static=pd.DataFrame(data={"node_id": [2], "resistance": [5e3]})
     )
 
     # Set up a rating curve node:
@@ -154,7 +154,7 @@ def basic_model() -> ribasim.Model:
             data={
                 "node_id": [10],
                 "target_level": [1.5],
-                "conductance": [100.0 / (3600.0 * 24)],
+                "resistance": [(3600.0 * 24) / 100.0],
             }
         )
     )

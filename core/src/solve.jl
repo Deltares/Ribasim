@@ -77,7 +77,7 @@ Requirements:
 """
 struct LinearResistance
     node_id::Vector{Int}
-    conductance::Vector{Float64}
+    resistance::Vector{Float64}
 end
 
 """
@@ -136,12 +136,12 @@ end
 """
 node_id: node ID of the LevelControl node
 target_level: target level for the connected Basin
-conductance: conductance on how quickly the target volume can be reached
+resistance: resistance on how quickly the target volume can be reached
 """
 struct LevelControl
     node_id::Vector{Int}
     target_level::Vector{Float64}
-    conductance::Vector{Float64}
+    resistance::Vector{Float64}
 end
 
 """
@@ -208,11 +208,11 @@ Directed graph: outflow is positive!
 function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph, flow) = connectivity
-    (; node_id, conductance) = linear_resistance
+    (; node_id, resistance) = linear_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph, id))
         basin_b_id = only(outneighbors(graph, id))
-        q = conductance[i] * (get_level(p, basin_a_id) - get_level(p, basin_b_id))
+        q = (get_level(p, basin_a_id) - get_level(p, basin_b_id)) / resistance[i]
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
     end
@@ -325,14 +325,14 @@ end
 function formulate!(level_control::LevelControl, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph, flow) = connectivity
-    (; node_id, target_level, conductance) = level_control
+    (; node_id, target_level, resistance) = level_control
     for (i, id) in enumerate(node_id)
         # support either incoming or outgoing edges
         for basin_id in inneighbors(graph, id)
-            flow[basin_id, id] = conductance[i] * (get_level(p, basin_id) - target_level[i])
+            flow[basin_id, id] = (get_level(p, basin_id) - target_level[i]) / resistance[i]
         end
         for basin_id in outneighbors(graph, id)
-            flow[id, basin_id] = conductance[i] * (target_level[i] - get_level(p, basin_id))
+            flow[id, basin_id] = (target_level[i] - get_level(p, basin_id)) / resistance[i]
         end
     end
     return nothing

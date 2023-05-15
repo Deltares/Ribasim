@@ -28,7 +28,7 @@ class LinearResistance(InputMixin, BaseModel):
         With columns:
 
         * node_id
-        * conductance
+        * resistance
 
     """
 

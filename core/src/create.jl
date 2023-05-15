@@ -9,7 +9,7 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    return LinearResistance(static.node_id, static.conductance)
+    return LinearResistance(static.node_id, static.resistance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -75,7 +75,7 @@ end
 
 function LevelControl(db::DB, config::Config)::LevelControl
     static = load_structvector(db, config, LevelControlStaticV1)
-    return LevelControl(static.node_id, static.target_level, static.conductance)
+    return LevelControl(static.node_id, static.target_level, static.resistance)
 end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary

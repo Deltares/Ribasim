@@ -80,7 +80,7 @@ end
 @version LevelControlStaticV1 begin
     node_id::Int
     target_level::Float64
-    conductance::Float64
+    resistance::Float64
 end
 
 @version LevelBoundaryStaticV1 begin
@@ -90,7 +90,7 @@ end
 
 @version LinearResistanceStaticV1 begin
     node_id::Int
-    conductance::Float64
+    resistance::Float64
 end
 
 @version ManningResistanceStaticV1 begin
