@@ -83,6 +83,47 @@ struct LinearLevelConnection
 end
 
 """
+This is a simple Manning-Gauckler reach connection.
+
+* Length describes the reach length.
+* roughness describes Manning's n in (SI units).
+
+The profile is described by a trapezoid:
+
+         \\            /  ^
+          \\          /   |
+           \\        /    | dz
+    bottom  \\______/     |
+    ^               <--->
+    |                 dy
+    |        <------>
+    |          width
+    |
+    |
+    + datum (e.g. MSL)
+
+With `profile_slope = dy / dz`.
+A rectangular profile requires a slope of 0.0.
+
+Requirements:
+
+* from: must be (Basin,) node
+* to: must be (Basin,) node
+* length > 0
+* roughess > 0
+* profile_width >= 0
+* profile_slope >= 0
+* (profile_width == 0) xor (profile_slope == 0)
+"""
+struct ManningResistance
+    node_id::Vector{Int}
+    length::Vector{Float64}
+    manning_n::Vector{Float64}
+    profile_width::Vector{Float64}
+    profile_slope::Vector{Float64}
+end
+
+"""
 Requirements:
 
 * from: must be (TabulatedRatingCurve,) node
@@ -120,6 +161,7 @@ struct Parameters
     connectivity::Connectivity
     basin::Basin
     linear_level_connection::LinearLevelConnection
+    manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_control::LevelControl
@@ -137,7 +179,7 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         level = basin.level[i](storage)
         basin.current_area[i] = area
         basin.current_level[i] = level
-        bottom = first(basin.level[i].u)
+        bottom = basin_bottom(basin, i)
         fixed_area = median(basin.area[i].u)
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -190,6 +232,83 @@ function formulate!(
         for downstream_id in downstream_ids
             flow[id, downstream_id] = q
         end
+    end
+    return nothing
+end
+
+"""
+Conservation of energy for two basins, a and b:
+
+    h_a + v_a^2 / (2 * g) = h_b + v_b^2 / (2 * g) + S_f * L + C / 2 * g * (v_b^2 - v_a^2)
+
+Where:
+
+* h_a, h_b are the heads at basin a and b.
+* v_a, v_b are the velocities at basin a and b.
+* g is the gravitational constant.
+* S_f is the friction slope.
+* C is an expansion or extraction coefficient.
+
+We assume velocity differences are negligible (v_a = v_b):
+
+    h_a = h_b + S_f * L
+
+The friction losses are approximated by the Gauckler-Manning formula:
+
+    Q = A * (1 / n) * R_h^(2/3) * S_f^(1/2)
+
+Where:
+
+* Where A is the cross-sectional area.
+* V is the cross-sectional average velocity.
+* n is the Gauckler-Manning coefficient.
+* R_h is the hydraulic radius.
+* S_f is the friction slope.
+
+The hydraulic radius is defined as:
+
+    R_h = A / P
+
+Where P is the wetted perimeter.
+
+The "upstream" water depth is used to compute cross-sectional area and
+hydraulic radius. This ensures that a basin can receive water after it has gone
+dry.
+"""
+function formulate!(
+    connectivity::Connectivity,
+    manning_resistance::ManningResistance,
+    basin::Basin,
+)::Nothing
+    (; graph, flow, u_index) = connectivity
+    (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
+    for (i, id) in enumerate(node_id)
+        basin_a_id = only(inneighbors(graph, id))
+        basin_b_id = only(outneighbors(graph, id))
+
+        idx_a = u_index[basin_a_id]
+        idx_b = u_index[basin_b_id]
+        h_a = basin.current_level[idx_a]
+        h_b = basin.current_level[idx_b]
+        bottom_a = basin_bottom(basin, idx_a)
+        bottom_b = basin_bottom(basin, idx_b)
+        slope = profile_slope[i]
+        width = profile_width[i]
+        n = manning_n[i]
+        L = length[i]
+
+        Δh = h_a - h_b
+        q_sign = sign(Δh)
+        # Take the "upstream" water depth:
+        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))
+        A = width * d + slope * d^2
+        slope_unit_length = sqrt(slope^2 + 1.0)
+        P = width + 2.0 * d * slope_unit_length
+        R_h = A / P
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+
+        flow[basin_a_id, id] = q
+        flow[id, basin_b_id] = q
     end
     return nothing
 end
@@ -262,6 +381,7 @@ function water_balance!(du, u, p, t)::Nothing
         connectivity,
         basin,
         linear_level_connection,
+        manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
         level_control,
@@ -276,6 +396,7 @@ function water_balance!(du, u, p, t)::Nothing
 
     # First formulate intermediate flows
     formulate!(connectivity, linear_level_connection, basin.current_level)
+    formulate!(connectivity, manning_resistance, basin)
     formulate!(connectivity, tabulated_rating_curve, basin.current_level)
     formulate!(connectivity, fractional_flow)
     formulate!(connectivity, level_control, basin.current_level)

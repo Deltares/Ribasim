@@ -103,7 +103,7 @@ The Python API reference is created using quartodoc by running this command from
 folder:
 
 ```bash
-python -m quartodoc build
+quartodoc build
 ```
 
 You typically only have to run this once, or if you want to check out how it looks after

@@ -172,3 +172,11 @@ function get_tstops(time, starttime::DateTime)::Vector{Float64}
     unique_times = unique(time)
     return seconds_since.(unique_times, starttime)
 end
+
+"Return the bottom elevation of the basin with index i"
+function basin_bottom(basin::Basin, i::Int)::Float64
+    # get level(storage) interpolation function
+    itp = basin.level[i]
+    # and return the first level in the underlying table, which represents the bottom
+    return first(itp.u)
+end

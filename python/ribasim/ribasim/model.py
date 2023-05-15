@@ -16,6 +16,7 @@ from ribasim.fractional_flow import FractionalFlow
 from ribasim.input_base import InputMixin
 from ribasim.level_control import LevelControl
 from ribasim.linear_level_connection import LinearLevelConnection
+from ribasim.manning_resistance import ManningResistance
 from ribasim.node import Node
 from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
@@ -28,6 +29,7 @@ _NODES = (
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
     (LinearLevelConnection, "linear_level_connection"),
+    (ManningResistance, "manning_resistance"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),
     (Pump, "pump"),
 )
@@ -70,6 +72,7 @@ class Model(BaseModel):
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
     linear_level_connection: Optional[LinearLevelConnection]
+    manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     starttime: datetime.datetime
