@@ -101,7 +101,7 @@ def basic_model() -> ribasim.Model:
     basin = ribasim.Basin(profile=profile, static=static)
 
     # Setup linear level connection:
-    linear_connection = ribasim.LinearLevelConnection(
+    linear_level_connection = ribasim.LinearLevelConnection(
         static=pd.DataFrame(data={"node_id": [12], "conductance": [2e-4]})
     )
 
@@ -182,6 +182,7 @@ def basic_model() -> ribasim.Model:
         level_boundary=level_boundary,
         level_control=level_control,
         pump=pump,
+        linear_level_connection=linear_level_connection,
         manning_resistance=manning_resistance,
         tabulated_rating_curve=rating_curve,
         fractional_flow=fractional_flow,
