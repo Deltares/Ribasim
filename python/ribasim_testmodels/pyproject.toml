@@ -6,18 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "ribasim_testmodels"
 description = "Ribasim Testmodels"
 readme = "README.md"
-authors = [
-    { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
-]
+authors = [{ name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" }]
 license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
 requires-python = ">=3.10"
-dependencies = [
-    "ribasim"
-]
+dependencies = ["ribasim", "geopandas", "numpy", "pandas"]
 dynamic = ["version"]
 
 [project.optional-dependencies]
