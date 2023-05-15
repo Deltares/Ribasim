@@ -1,4 +1,7 @@
-using Ribasim, Dates, TOML, Test, SafeTestsets, TimerOutputs, Aqua
+import Aqua
+import Ribasim
+using Test: @testset
+using SafeTestsets: @safetestset
 
 @testset "Ribasim" begin
     @safetestset "Input/Output" begin

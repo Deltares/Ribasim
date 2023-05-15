@@ -41,7 +41,7 @@ conda activate ribasim
 In order to develop on `ribasim` locally, execute the following line inside your virtual environment with `python/ribasim` as your working directory:
 
 ```bash
-pip install -e .
+pip install --editable .
 ```
 
 ## Running the tests

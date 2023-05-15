@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         julia_version:
-          - "1.8"
+          - "1.9"
         python_version:
           - "3.11"
         arch:
@@ -55,7 +55,7 @@ jobs:
           environment-file: ./environment.yml
 
       - name: Install ribasim-python
-        run: pip install -e python/ribasim
+        run: pip install --editable python/ribasim
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2

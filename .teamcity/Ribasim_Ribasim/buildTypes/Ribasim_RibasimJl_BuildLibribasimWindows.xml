@@ -8,9 +8,6 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RQ_271" />
-    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
     </parameters>
@@ -26,7 +23,7 @@ call conda env create -f environment.yml --prefix "%conda_env_path%"]]></param>
       <runner id="RUNNER_1956" name="Install Ribasim Python" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pip install -e "python/ribasim"]]></param>
+call pip install --editable "python/ribasim"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -41,7 +38,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
       <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="julia --project -e &quot;using Pkg; Pkg.instantiate()&quot;" />
+          <param name="script.content" value="julia --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
           <param name="teamcity.build.workingDir" value="build/create_binaries" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
