@@ -4,7 +4,6 @@ from typing import Any, Dict, Type, TypeVar
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pandera as pa
 import shapely
 from pandera.typing import DataFrame, Series
@@ -46,9 +45,6 @@ class Edge(InputMixin, BaseModel):
 
     class Config:
         validate_assignment = True
-
-    def __init__(self, static: pd.DataFrame):
-        super().__init__(**locals())
 
     @classmethod
     def _layername(cls, field) -> str:

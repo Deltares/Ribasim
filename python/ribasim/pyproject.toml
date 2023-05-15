@@ -10,6 +10,7 @@ authors = [
     { name = "Huite Bootsma", email = "Huite.Bootsma@deltares.nl" },
     { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
     { name = "Martijn Visser", email = "Martijn.Visser@deltares.nl" },
+    { name = "Maarten Pronk", email = "Maarten.Pronk@deltares.nl" },
 ]
 license = { text = "MIT" }
 classifiers = [

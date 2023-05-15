@@ -1,29 +1,41 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
         "precipitation": {
+            "format": "double",
             "description": "precipitation",
-            "type": "real"
+            "type": "number"
         },
         "infiltration": {
+            "format": "double",
             "description": "infiltration",
-            "type": "real"
+            "type": "number"
         },
         "urban_runoff": {
+            "format": "double",
             "description": "urban_runoff",
-            "type": "real"
+            "type": "number"
         },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         },
         "potential_evaporation": {
+            "format": "double",
             "description": "potential_evaporation",
-            "type": "real"
+            "type": "number"
         },
         "drainage": {
+            "format": "double",
             "description": "drainage",
-            "type": "real"
+            "type": "number"
         }
     },
     "required": [

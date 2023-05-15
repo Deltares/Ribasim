@@ -1,11 +1,19 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
         "fid": {
+            "format": "default",
             "description": "fid",
             "type": "integer"
         },
         "type": {
+            "format": "default",
             "description": "type",
             "type": "string"
         }

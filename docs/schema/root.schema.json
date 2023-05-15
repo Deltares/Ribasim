@@ -1,0 +1,45 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "Edge": {
+            "$ref": "Edge.schema.json"
+        },
+        "PumpStatic": {
+            "$ref": "PumpStatic.schema.json"
+        },
+        "BasinForcing": {
+            "$ref": "BasinForcing.schema.json"
+        },
+        "FractionalFlowStatic": {
+            "$ref": "FractionalFlowStatic.schema.json"
+        },
+        "LevelControlStatic": {
+            "$ref": "LevelControlStatic.schema.json"
+        },
+        "LinearLevelConnectionStatic": {
+            "$ref": "LinearLevelConnectionStatic.schema.json"
+        },
+        "Node": {
+            "$ref": "Node.schema.json"
+        },
+        "TabulatedRatingCurveTime": {
+            "$ref": "TabulatedRatingCurveTime.schema.json"
+        },
+        "TabulatedRatingCurveStatic": {
+            "$ref": "TabulatedRatingCurveStatic.schema.json"
+        },
+        "BasinState": {
+            "$ref": "BasinState.schema.json"
+        },
+        "BasinProfile": {
+            "$ref": "BasinProfile.schema.json"
+        },
+        "BasinStatic": {
+            "$ref": "BasinStatic.schema.json"
+        }
+    },
+    "$id": "https://deltares.github.io/Ribasim/schema/root.schema.json",
+    "title": "root",
+    "description": "All Ribasim Node types",
+    "type": "object"
+}

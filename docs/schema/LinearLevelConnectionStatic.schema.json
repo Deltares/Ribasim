@@ -1,13 +1,21 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
         "node_id": {
+            "format": "default",
             "description": "node_id",
             "type": "integer"
         },
         "conductance": {
+            "format": "double",
             "description": "conductance",
-            "type": "real"
+            "type": "number"
         }
     },
     "required": [

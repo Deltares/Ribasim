@@ -1,26 +1,30 @@
 from typing import Optional
 
-import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("TabulatedRatingCurve",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    level: Series[float]
-    discharge: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.TabulatedRatingCurveStatic)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class TimeSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    time: Series[pa.dtypes.DateTime]
-    level: Series[float]
-    discharge: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.TabulatedRatingCurveTime)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class TabulatedRatingCurve(InputMixin, BaseModel):
@@ -49,13 +53,10 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]
-    time: Optional[DataFrame[StaticSchema]] = None
+    time: Optional[DataFrame[TimeSchema]] = None
 
     class Config:
         validate_assignment = True
-
-    def __init__(self, static: pd.DataFrame, time: Optional[pd.DataFrame] = None):
-        super().__init__(**locals())
 
     def sort(self):
         self.static = self.static.sort_values(["node_id", "level"], ignore_index=True)

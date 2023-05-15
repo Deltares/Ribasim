@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 
 import matplotlib.pyplot as plt
 import tomli
@@ -81,24 +81,6 @@ class Model(BaseModel):
 
     class Config:
         validate_assignment = True
-
-    def __init__(
-        self,
-        modelname: str,
-        starttime: Union[str, datetime.datetime],
-        endtime: Union[str, datetime.datetime],
-        node: Node,
-        edge: Edge,
-        basin: Basin,
-        fractional_flow: Optional[FractionalFlow] = None,
-        level_control: Optional[LevelControl] = None,
-        linear_level_connection: Optional[LinearLevelConnection] = None,
-        manning_resistance: Optional[ManningResistance] = None,
-        tabulated_rating_curve: Optional[TabulatedRatingCurve] = None,
-        pump: Optional[Pump] = None,
-        solver: Optional[Solver] = None,
-    ):
-        super().__init__(**locals())
 
     @classmethod
     def fields(cls):

@@ -1,24 +1,19 @@
-from typing import Optional
-
-import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 from pydantic import BaseModel
 
+from ribasim import models
 from ribasim.input_base import InputMixin
 
 __all__ = ("FractionalFlow",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    fraction: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
 
-
-class ForcingSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    time: Series[pa.dtypes.DateTime]
-    fraction: Series[float]
+        dtype = PydanticModel(models.FractionalFlowStatic)
 
 
 class FractionalFlow(InputMixin, BaseModel):
@@ -47,17 +42,9 @@ class FractionalFlow(InputMixin, BaseModel):
 
     _input_type = "FractionalFlow"
     static: DataFrame[StaticSchema]
-    forcing: Optional[DataFrame[ForcingSchema]] = None
 
     class Config:
         validate_assignment = True
 
-    def __init__(self, static: pd.DataFrame, forcing: Optional[pd.DataFrame] = None):
-        super().__init__(**locals())
-
     def sort(self):
         self.static = self.static.sort_values("node_id", ignore_index=True)
-        if self.forcing is not None:
-            self.forcing = self.forcing.sort_values(
-                ["time", "node_id"], ignore_index=True
-            )
