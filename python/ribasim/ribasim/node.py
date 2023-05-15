@@ -40,7 +40,7 @@ class Node(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: geopandas.GeoDataFrame
+    static : geopandas.GeoDataFrame
 
         With columns:
 
@@ -72,8 +72,8 @@ class Node(InputMixin, BaseModel):
 
         Parameters
         ----------
-        directory: FilePath
-        modelname: str
+        directory : FilePath
+        modelname : str
         """
         self.sort()
         directory = Path(directory)
@@ -106,7 +106,7 @@ class Node(InputMixin, BaseModel):
 
         Parameters
         ----------
-        **kwargs: optional
+        **kwargs : optional
             Keyword arguments forwarded to GeoDataFrame.plot.
 
         Returns

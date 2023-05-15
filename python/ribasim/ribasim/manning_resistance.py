@@ -23,7 +23,7 @@ class ManningResistance(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pd.DataFrame
+    static : pd.DataFrame
 
         With columns:
 

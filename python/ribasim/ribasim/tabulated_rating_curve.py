@@ -33,7 +33,7 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pd.DataFrame
+    static : pd.DataFrame
 
         Tabulation with columns:
 
@@ -41,7 +41,7 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
         * level
         * discharge
 
-    time: pandas.DataFrame, optional
+    time : pandas.DataFrame, optional
 
         Time varying rating curves with columns:
 

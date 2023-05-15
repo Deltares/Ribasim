@@ -14,15 +14,15 @@ def geometry_from_connectivity(
 
     Parameters
     ----------
-    node: Ribasim.Node
-    from_id: Sequence[int]
+    node : Ribasim.Node
+    from_id : Sequence[int]
         First node of every edge.
-    to_id: Sequence[int]
+    to_id : Sequence[int]
         Second node of every edge.
 
     Returns
     -------
-    edge_geometry: np.ndarray
+    edge_geometry : np.ndarray
         Array of shapely LineStrings.
     """
     geometry = node.static["geometry"]
@@ -46,14 +46,14 @@ def connectivity_from_geometry(
 
     Parameters
     ----------
-    node: Node
-    lines: np.ndarray
+    node : Node
+    lines : np.ndarray
         Array of shapely linestrings.
 
     Returns
     -------
-    from_node_id: np.ndarray of int
-    to_node_id: np.ndarray of int
+    from_node_id : np.ndarray of int
+    to_node_id : np.ndarray of int
     """
     node_index = node.static.index
     node_xy = shapely.get_coordinates(node.static.geometry.values)

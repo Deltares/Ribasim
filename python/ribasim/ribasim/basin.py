@@ -46,7 +46,7 @@ class Basin(InputMixin, BaseModel):
 
     Parameters
     ----------
-    profile: pandas.DataFrame
+    profile : pandas.DataFrame
 
         A tabulation with the columns:
 
@@ -55,7 +55,7 @@ class Basin(InputMixin, BaseModel):
         * area
         * water level
 
-    static: pandas.DataFrame, optional
+    static : pandas.DataFrame, optional
 
         Static forcing with columns:
 
@@ -66,7 +66,7 @@ class Basin(InputMixin, BaseModel):
         * groundwater infiltration
         * urban runoff
 
-    forcing: pandas.DataFrame, optional
+    forcing : pandas.DataFrame, optional
 
         Time varying forcing with columns:
 
@@ -78,7 +78,7 @@ class Basin(InputMixin, BaseModel):
         * groundwater infiltration
         * urban runoff
 
-    state: pandas.DataFrame, optional
+    state : pandas.DataFrame, optional
 
         Initial state with columns:
 

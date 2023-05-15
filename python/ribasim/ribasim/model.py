@@ -54,18 +54,18 @@ class Model(BaseModel):
 
     Parameters
     ----------
-    modelname: str
-    node: Node
-    edge: Edge
-    basin: Basin
-    fractional_flow: Optional[FractionalFlow]
-    level_control: Optional[LevelControl]
-    level_boundary: Optional[LevelBoundary]
+    modelname : str
+    node : Node
+    edge : Edge
+    basin : Basin
+    fractional_flow : Optional[FractionalFlow]
+    level_control : Optional[LevelControl]
+    level_boundary : Optional[LevelBoundary]
     linear_resistance: Optional[LinearResistance]
-    tabulated_rating_curve: Optional[TabulatedRatingCurve]
-    starttime: Union[str, datetime.datetime]
-    endtime: Union[str, datetime.datetime]
-    solver: Optional[Solver]
+    tabulated_rating_curve : Optional[TabulatedRatingCurve]
+    starttime : Union[str, datetime.datetime]
+    endtime : Union[str, datetime.datetime]
+    solver : Optional[Solver]
     """
 
     modelname: str
@@ -161,12 +161,12 @@ class Model(BaseModel):
 
         Parameters
         ----------
-        path: FilePath
+        path : FilePath
             Path to the configuration TOML file.
 
         Returns
         -------
-        model: Model
+        model : Model
         """
         path = Path(path)
         with open(path, "rb") as f:
@@ -189,12 +189,12 @@ class Model(BaseModel):
 
         Parameters
         ----------
-        ax: matplotlib.pyplot.Artist, optional
+        ax : matplotlib.pyplot.Artist, optional
             axes on which to draw the plot
 
         Returns
         -------
-        ax: matplotlib.pyplot.Artist
+        ax : matplotlib.pyplot.Artist
         """
         if ax is None:
             _, ax = plt.subplots()

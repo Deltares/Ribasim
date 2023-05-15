@@ -19,7 +19,7 @@ class LevelBoundary(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pandas.DataFrame
+    static : pandas.DataFrame
 
         With columns:
 

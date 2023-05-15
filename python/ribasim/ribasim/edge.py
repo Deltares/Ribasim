@@ -30,7 +30,7 @@ class Edge(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pandas.DataFrame
+    static : pandas.DataFrame
 
         With columns:
 
@@ -59,8 +59,8 @@ class Edge(InputMixin, BaseModel):
 
         Parameters
         ----------
-        directory: FilePath
-        modelname: str
+        directory : FilePath
+        modelname : str
         """
         self.sort()
         directory = Path(directory)
