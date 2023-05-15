@@ -58,6 +58,8 @@ function gen_root_schema(TT::Vector, prefix = prefix)
     end
 end
 
+os_line_separator() = Sys.iswindows() ? "\r\n" : "\n"
+
 function gen_schema(T::DataType, prefix = prefix)
     name = strip_prefix(T)
     schema = Dict(
@@ -87,9 +89,12 @@ function gen_schema(T::DataType, prefix = prefix)
         "format" => "default",
         "default" => "",
     )
+    # Replace LF to CRLF on Windows to avoid confusing Git
+    io = IOBuffer()
+    JSON3.pretty(io, schema)
+    str = String(take!(io))
     open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io
-        JSON3.pretty(io, schema)
-        println(io)
+        println(io, replace(str, "\n" => os_line_separator()))
     end
 end
 
