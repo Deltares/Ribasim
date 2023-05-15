@@ -57,7 +57,7 @@ call python python/ribasim/tests/conftest.py]]></param>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_RibasimJl_RibasimJl" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
