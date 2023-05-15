@@ -1,4 +1,5 @@
 import Aqua
+import Ribasim
 using Test: @testset
 using SafeTestsets: @safetestset
 
