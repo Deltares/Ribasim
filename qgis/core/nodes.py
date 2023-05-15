@@ -363,8 +363,8 @@ class LevelControlStatic(Input):
 
 class LevelBoundaryStatic(Input):
     input_type = "LevelBoundary / static"
-    geometry_type = "No geometry"
-    attributes = [QgsField("level", QVariant.Double)]
+    geometry_type = "No Geometry"
+    attributes = [QgsField("node_id", QVariant.Int), QgsField("level", QVariant.Double)]
 
 
 class PumpStatic(Input):

@@ -7,6 +7,9 @@
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
+        "LevelBoundaryStatic": {
+            "$ref": "LevelBoundaryStatic.schema.json"
+        },
         "BasinForcing": {
             "$ref": "BasinForcing.schema.json"
         },
@@ -18,6 +21,9 @@
         },
         "LinearLevelConnectionStatic": {
             "$ref": "LinearLevelConnectionStatic.schema.json"
+        },
+        "ManningResistanceStatic": {
+            "$ref": "ManningResistanceStatic.schema.json"
         },
         "Node": {
             "$ref": "Node.schema.json"
