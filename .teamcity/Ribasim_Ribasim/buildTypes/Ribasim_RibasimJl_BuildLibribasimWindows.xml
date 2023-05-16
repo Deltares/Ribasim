@@ -23,10 +23,11 @@ call conda env create -f environment.yml --prefix "%conda_env_path%"]]></param>
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1956" name="Install Ribasim Python" type="simpleRunner">
+      <runner id="RUNNER_1956" name="Install Python packages" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pip install --editable "python/ribasim"]]></param>
+call pip install --editable "python/ribasim"
+call pip install --editable "python/ribasim_testmodels"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
