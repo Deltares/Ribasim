@@ -16,11 +16,11 @@
         "FractionalFlowStatic": {
             "$ref": "FractionalFlowStatic.schema.json"
         },
+        "LinearResistanceStatic": {
+            "$ref": "LinearResistanceStatic.schema.json"
+        },
         "LevelControlStatic": {
             "$ref": "LevelControlStatic.schema.json"
-        },
-        "LinearLevelConnectionStatic": {
-            "$ref": "LinearLevelConnectionStatic.schema.json"
         },
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"

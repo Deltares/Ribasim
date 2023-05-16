@@ -78,7 +78,7 @@ function expanded_network()
     # n = 2: WaterUser
     # n = 3: LevelControl
     # n = 4: TabulatedRatingCurve
-    # LinearLevelConnection goes between the Basins it connects
+    # LinearResistance goes between the Basins it connects
     # FractionalFlow goes between the TabulatedRatingCurve and Basins
 
     types = Char.(only.(lswdik.local_surface_water_type))
@@ -120,7 +120,7 @@ function expanded_network()
         end
     end
 
-    # add edges between lsws, with LinearLevelConnection in between for type P
+    # add edges between lsws, with LinearResistance in between for type P
     for (v, lsw_id, type, xcoord, ycoord) in zip(1:length(lsw_ids), lsw_ids, types, x, y)
         out_vertices = outneighbors(graph, v)
         length(out_vertices) == 0 && continue
@@ -179,7 +179,7 @@ function expanded_network()
             end
 
         else
-            # add a LinearLevelConnection node in between, and hook it up, for each edge
+            # add a LinearResistance node in between, and hook it up, for each edge
             for out_lsw_id in out_lsw_ids
                 idx = findfirst(==(out_lsw_id), lsw_ids)
                 srccoord = (xcoord, ycoord)
@@ -187,8 +187,8 @@ function expanded_network()
                 midcoord =
                     ((srccoord[1] + dstcoord[1]) / 2, (srccoord[2] + dstcoord[2]) / 2)
 
-                # add LinearLevelConnection node
-                push!(df, (midcoord, "LinearLevelConnection", id, lsw_id))
+                # add LinearResistance node
+                push!(df, (midcoord, "LinearResistance", id, lsw_id))
 
                 # add edges to LSW on either side
                 lsw_node = only(@subset(df, :org_id == lsw_id, :type == "Basin"))

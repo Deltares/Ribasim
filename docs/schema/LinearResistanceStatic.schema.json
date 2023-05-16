@@ -12,18 +12,18 @@
             "description": "node_id",
             "type": "integer"
         },
-        "conductance": {
+        "resistance": {
             "format": "double",
-            "description": "conductance",
+            "description": "resistance",
             "type": "number"
         }
     },
     "required": [
         "node_id",
-        "conductance"
+        "resistance"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/LinearLevelConnectionStatic.schema.json",
-    "title": "LinearLevelConnectionStatic",
-    "description": "A LinearLevelConnectionStatic object based on Ribasim.LinearLevelConnectionStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
+    "title": "LinearResistanceStatic",
+    "description": "A LinearResistanceStatic object based on Ribasim.LinearResistanceStaticV1",
     "type": "object"
 }
