@@ -79,7 +79,7 @@ quartodoc:
       contents:
         - Basin
         - TabulatedRatingCurve
-        - LinearLevelConnection
+        - LinearResistance
         - FractionalFlow
         - LevelControl
     - title: Utility functions

@@ -146,7 +146,7 @@ class Node(Input):
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelBoundary": "LevelBoundary",
                     "LevelControl": "LevelControl",
-                    "LinearLevelConnection": "LinearLevelConnection",
+                    "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
                 },
             },
@@ -165,9 +165,9 @@ class Node(Input):
         markers = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
             "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
-            "LinearLevelConnection": (
+            "LinearResistance": (
                 QColor("green"),
-                "LinearLevelConnection",
+                "LinearResistance",
                 shape.Triangle,
             ),
             "TabulatedRatingCurve": (
@@ -330,12 +330,12 @@ class FractionalFlowStatic(Input):
     ]
 
 
-class LinearLevelConnectionStatic(Input):
-    input_type = "LinearLevelConnection / static"
+class LinearResistanceStatic(Input):
+    input_type = "LinearResistance / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
-        QgsField("conductance", QVariant.Double),
+        QgsField("resistance", QVariant.Double),
     ]
 
 
@@ -357,7 +357,7 @@ class LevelControlStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("target_level", QVariant.Double),
-        QgsField("conductance", QVariant.Double),
+        QgsField("resistance", QVariant.Double),
     ]
 
 
@@ -386,7 +386,7 @@ NODES = {
     "TabulatedRatingCurve / static": TabulatedRatingCurveStatic,
     "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
     "FractionalFlow / static": FractionalFlowStatic,
-    "LinearLevelConnection / static": LinearLevelConnectionStatic,
+    "LinearResistance / static": LinearResistanceStatic,
     "LevelBoundary / static": LevelBoundaryStatic,
     "ManningResistance / static": ManningResistanceStatic,
     "LevelControl / static": LevelControlStatic,

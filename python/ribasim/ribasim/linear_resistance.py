@@ -6,17 +6,17 @@ from pydantic import BaseModel
 from ribasim import models
 from ribasim.input_base import InputMixin
 
-__all__ = ("LinearLevelConnection",)
+__all__ = ("LinearResistance",)
 
 
 class StaticSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.LinearLevelConnectionStatic)
+        dtype = PydanticModel(models.LinearResistanceStatic)
 
 
-class LinearLevelConnection(InputMixin, BaseModel):
+class LinearResistance(InputMixin, BaseModel):
     """
     Flow through this connection linearly depends on the level difference
     between the two connected basins.
@@ -28,11 +28,11 @@ class LinearLevelConnection(InputMixin, BaseModel):
         With columns:
 
         * node_id
-        * conductance
+        * resistance
 
     """
 
-    _input_type = "LinearLevelConnection"
+    _input_type = "LinearResistance"
     static: DataFrame[StaticSchema]
 
     class Config:

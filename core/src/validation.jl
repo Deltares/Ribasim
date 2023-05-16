@@ -10,7 +10,7 @@
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.levelcontrol.static" LevelControlStatic
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
-@schema "ribasim.linearlevelconnection.static" LinearLevelConnectionStatic
+@schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
@@ -80,7 +80,7 @@ end
 @version LevelControlStaticV1 begin
     node_id::Int
     target_level::Float64
-    conductance::Float64
+    resistance::Float64
 end
 
 @version LevelBoundaryStaticV1 begin
@@ -88,9 +88,9 @@ end
     level::Float64
 end
 
-@version LinearLevelConnectionStaticV1 begin
+@version LinearResistanceStaticV1 begin
     node_id::Int
-    conductance::Float64
+    resistance::Float64
 end
 
 @version ManningResistanceStaticV1 begin
