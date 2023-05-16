@@ -41,12 +41,7 @@ class Node(InputMixin, BaseModel):
     Parameters
     ----------
     static : geopandas.GeoDataFrame
-
-        With columns:
-
-        * type
-        * geometry
-
+        Table with node ID, type and geometry.
     """
 
     _input_type = "Node"

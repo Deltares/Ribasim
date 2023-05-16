@@ -24,15 +24,7 @@ class ManningResistance(InputMixin, BaseModel):
     Parameters
     ----------
     static : pd.DataFrame
-
-        With columns:
-
-        * node_id
-        * length
-        * manning_n
-        * profile_width
-        * profile_slope
-
+        Table with the constant Manning parameters.
     """
 
     _input_type = "ManningResistance"

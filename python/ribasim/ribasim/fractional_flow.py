@@ -23,20 +23,7 @@ class FractionalFlow(InputMixin, BaseModel):
     Parameters
     ----------
     static : pandas.DataFrame
-
-        With columns:
-
-        * node_id
-        * fraction
-
-    forcing : pandas.DataFrame, optional
-
-        With columns:
-
-        * node_id
-        * time
-        * fraction
-
+        Table with the constant flow fractions.
     """
 
     _input_type = "FractionalFlow"

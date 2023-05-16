@@ -27,12 +27,7 @@ class Pump(InputMixin, BaseModel):
     Parameters
     ----------
     static : pd.DataFrame
-
-        With columns:
-
-        * node_id
-        * flow_rate
-
+        Table with constant flow rates.
     """
 
     _input_type = "Pump"

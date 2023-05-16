@@ -31,13 +31,7 @@ class Edge(InputMixin, BaseModel):
     Parameters
     ----------
     static : pandas.DataFrame
-
-        With columns:
-
-        * from_node_id
-        * to_node_id
-        * geometry
-
+        Table describing the flow connections.
     """
 
     _input_type = "Edge"

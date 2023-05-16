@@ -63,16 +63,27 @@ class Model(BaseModel):
     edge : Edge
         How the nodes are connected.
     basin : Basin
+        The waterbodies.
     fractional_flow : Optional[FractionalFlow]
+        Split flows into fractions.
     level_control : Optional[LevelControl]
+        Control the water level with a resistance.
     level_boundary : Optional[LevelBoundary]
+        Boundary condition specifying the water level.
     linear_resistance: Optional[LinearResistance]
+        Linear flow resistance.
     manning_resistance : Optional[ManningResistance]
+        Flow resistance based on the Manning formula.
     tabulated_rating_curve : Optional[TabulatedRatingCurve]
+        Tabulated rating curve describing flow based on the upstream water level.
     pump : Optional[Pump]
+        Prescribed flow rate from one basin to the other.
     starttime : Union[str, datetime.datetime]
+        Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
+        End time of the simulation.
     solver : Optional[Solver]
+        Solver settings.
     """
 
     modelname: str
@@ -197,7 +208,7 @@ class Model(BaseModel):
         Parameters
         ----------
         ax : matplotlib.pyplot.Artist, optional
-            axes on which to draw the plot
+            Axes on which to draw the plot.
 
         Returns
         -------

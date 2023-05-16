@@ -24,12 +24,7 @@ class LinearResistance(InputMixin, BaseModel):
     Parameters
     ----------
     static : pd.DataFrame
-
-        With columns:
-
-        * node_id
-        * resistance
-
+        Table with the constant resistances.
     """
 
     _input_type = "LinearResistance"
