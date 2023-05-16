@@ -18,26 +18,12 @@ class StaticSchema(pa.SchemaModel):
 
 class FractionalFlow(InputMixin, BaseModel):
     """
-    Receives a fraction of the flow. The fractions must sum to 1.0 for a
-    furcation.
+    Receives a fraction of the flow. The fractions must sum to 1.0 for a furcation.
 
     Parameters
     ----------
-    static: pandas.DataFrame
-
-        With columns:
-
-        * node_id
-        * fraction
-
-    forcing: pandas.DataFrame, optional
-
-        With columns:
-
-        * node_id
-        * time
-        * fraction
-
+    static : pandas.DataFrame
+        Table with the constant flow fractions.
     """
 
     _input_type = "FractionalFlow"

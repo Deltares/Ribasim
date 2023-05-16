@@ -49,23 +49,41 @@ class Solver(BaseModel):
 
 class Model(BaseModel):
     """
+    A full Ribasim model schematisation with all input.
+
     Ribasim model containing the location of the nodes, the edges between the
     nodes, and the node parametrization.
 
     Parameters
     ----------
-    modelname: str
-    node: Node
-    edge: Edge
-    basin: Basin
-    fractional_flow: Optional[FractionalFlow]
-    level_control: Optional[LevelControl]
-    level_boundary: Optional[LevelBoundary]
+    modelname : str
+        Model name, used in TOML and GeoPackage file name.
+    node : Node
+        The ID, type and geometry of each node.
+    edge : Edge
+        How the nodes are connected.
+    basin : Basin
+        The waterbodies.
+    fractional_flow : Optional[FractionalFlow]
+        Split flows into fractions.
+    level_control : Optional[LevelControl]
+        Control the water level with a resistance.
+    level_boundary : Optional[LevelBoundary]
+        Boundary condition specifying the water level.
     linear_resistance: Optional[LinearResistance]
-    tabulated_rating_curve: Optional[TabulatedRatingCurve]
-    starttime: Union[str, datetime.datetime]
-    endtime: Union[str, datetime.datetime]
-    solver: Optional[Solver]
+        Linear flow resistance.
+    manning_resistance : Optional[ManningResistance]
+        Flow resistance based on the Manning formula.
+    tabulated_rating_curve : Optional[TabulatedRatingCurve]
+        Tabulated rating curve describing flow based on the upstream water level.
+    pump : Optional[Pump]
+        Prescribed flow rate from one basin to the other.
+    starttime : Union[str, datetime.datetime]
+        Starting time of the simulation.
+    endtime : Union[str, datetime.datetime]
+        End time of the simulation.
+    solver : Optional[Solver]
+        Solver settings.
     """
 
     modelname: str
@@ -161,12 +179,12 @@ class Model(BaseModel):
 
         Parameters
         ----------
-        path: FilePath
+        path : FilePath
             Path to the configuration TOML file.
 
         Returns
         -------
-        model: Model
+        model : Model
         """
         path = Path(path)
         with open(path, "rb") as f:
@@ -189,12 +207,12 @@ class Model(BaseModel):
 
         Parameters
         ----------
-        ax: matplotlib.pyplot.Artist, optional
-            axes on which to draw the plot
+        ax : matplotlib.pyplot.Artist, optional
+            Axes on which to draw the plot.
 
         Returns
         -------
-        ax: matplotlib.pyplot.Artist
+        ax : matplotlib.pyplot.Artist
         """
         if ax is None:
             _, ax = plt.subplots()

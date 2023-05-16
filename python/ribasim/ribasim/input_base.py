@@ -78,8 +78,10 @@ class InputMixin(abc.ABC):
 
         Parameters
         ----------
-        directory: FilePath
-        modelname: str
+        directory : FilePath
+            Path to the directory where to write the files.
+        modelname : str
+            Name of the model, used as a file name.
         """
         self.sort()
         directory = Path(directory)
@@ -128,8 +130,8 @@ class InputMixin(abc.ABC):
 
         Parameters
         ----------
-        path: Path
-            Path to the GeoPackage
+        path : Path
+            Path to the GeoPackage.
 
         Returns
         -------
@@ -150,7 +152,7 @@ class InputMixin(abc.ABC):
 
         Parameters
         ----------
-        config: Dict[str, Any]
+        config : Dict[str, Any]
 
         Returns
         -------

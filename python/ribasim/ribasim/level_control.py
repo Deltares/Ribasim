@@ -22,14 +22,8 @@ class LevelControl(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pandas.DataFrame
-
-        With columns:
-
-        * node_id
-        * target_level
-        * resistance
-
+    static : pandas.DataFrame
+        Table with the constant target levels and resistances.
     """
 
     _input_type = "LevelControl"

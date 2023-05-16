@@ -30,14 +30,8 @@ class Edge(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pandas.DataFrame
-
-        With columns:
-
-        * from_node_id
-        * to_node_id
-        * geometry
-
+    static : pandas.DataFrame
+        Table describing the flow connections.
     """
 
     _input_type = "Edge"
@@ -59,8 +53,8 @@ class Edge(InputMixin, BaseModel):
 
         Parameters
         ----------
-        directory: FilePath
-        modelname: str
+        directory : FilePath
+        modelname : str
         """
         self.sort()
         directory = Path(directory)

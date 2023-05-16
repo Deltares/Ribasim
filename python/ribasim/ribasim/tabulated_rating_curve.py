@@ -33,22 +33,10 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pd.DataFrame
-
-        Tabulation with columns:
-
-        * node_id
-        * level
-        * discharge
-
-    time: pandas.DataFrame, optional
-
-        Time varying rating curves with columns:
-
-        * node_id
-        * time
-        * level
-        * discharge
+    static : pd.DataFrame
+        Table with constant rating curves.
+    time : pandas.DataFrame, optional
+        Table with time-varying rating curves.
     """
 
     _input_type = "TabulatedRatingCurve"

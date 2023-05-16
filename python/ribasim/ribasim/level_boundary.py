@@ -19,12 +19,8 @@ class LevelBoundary(InputMixin, BaseModel):
 
     Parameters
     ----------
-    static: pandas.DataFrame
-
-        With columns:
-
-        * node_id
-        * level
+    static : pandas.DataFrame
+        Table with the constant water levels.
     """
 
     _input_type = "LevelBoundary"
