@@ -21,14 +21,14 @@ def basic_model() -> ribasim.Model:
             (5.0, 0.0),  # 9: Basin
             (6.0, 0.0),  # 10: LevelControl
             (2.0, 2.0),  # 11: LevelBoundary
-            (2.0, 1.0),  # 12: LinearLevelConnection
+            (2.0, 1.0),  # 12: LinearResistance
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
     node_type = [
         "Basin",
-        "LinearLevelConnection",
+        "LinearResistance",
         "Basin",
         "TabulatedRatingCurve",
         "FractionalFlow",
@@ -38,7 +38,7 @@ def basic_model() -> ribasim.Model:
         "Basin",
         "LevelControl",
         "LevelBoundary",
-        "LinearLevelConnection",
+        "LinearResistance",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -94,9 +94,9 @@ def basic_model() -> ribasim.Model:
 
     basin = ribasim.Basin(profile=profile, static=static)
 
-    # Setup linear level connection:
-    linear_level_connection = ribasim.LinearLevelConnection(
-        static=pd.DataFrame(data={"node_id": [12], "conductance": [2e-4]})
+    # setup linear resistance:
+    linear_resistance = ribasim.LinearResistance(
+        static=pd.DataFrame(data={"node_id": [12], "resistance": [5e3]})
     )
 
     # Setup Manning resistance:
@@ -142,7 +142,7 @@ def basic_model() -> ribasim.Model:
             data={
                 "node_id": [10],
                 "target_level": [1.5],
-                "conductance": [100.0 / (3600.0 * 24)],
+                "resistance": [(3600.0 * 24) / 100.0],
             }
         )
     )
@@ -176,7 +176,7 @@ def basic_model() -> ribasim.Model:
         level_boundary=level_boundary,
         level_control=level_control,
         pump=pump,
-        linear_level_connection=linear_level_connection,
+        linear_resistance=linear_resistance,
         manning_resistance=manning_resistance,
         tabulated_rating_curve=rating_curve,
         fractional_flow=fractional_flow,
