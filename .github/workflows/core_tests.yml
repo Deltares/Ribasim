@@ -38,6 +38,8 @@ jobs:
           environment-file: ./environment.yml
       - name: Install ribasim
         run: pip install --editable python/ribasim
+      - name: Install ribasim_testmodels
+        run: pip install --editable python/ribasim_testmodels
       - name: Prepare model input
         run: python python/ribasim/tests/conftest.py
       - uses: julia-actions/setup-julia@v1

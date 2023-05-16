@@ -3,37 +3,33 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ribasim_api"
-description = "Python bindings for libribasim"
+name = "ribasim_testmodels"
+description = "Ribasim Testmodels"
 readme = "README.md"
-authors = [
-    { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
-]
+authors = [{ name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" }]
 license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
 requires-python = ">=3.10"
-dependencies = [
-    "xmipy"
-]
+dependencies = ["ribasim", "geopandas", "numpy", "pandas"]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-tests = ["pytest", "ribasim", "ribasim_testmodels"]
+tests = ["pytest"]
 
 [tool.setuptools]
 zip-safe = true
 
 [tool.setuptools.dynamic]
-version = { attr = "ribasim_api.__version__" }
+version = { attr = "ribasim_testmodels.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["ribasim_api"]
+include = ["ribasim_testmodels"]
 
 [tool.setuptools.package-data]
-"ribasim_api" = ["py.typed"]
+"ribasim_testmodels" = ["py.typed"]
 
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim"
