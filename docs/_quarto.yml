@@ -65,10 +65,6 @@ quartodoc:
       desc: The Model class represents an entire Ribasim model.
       contents:
         - Model
-        - Model.write
-        - Model.from_toml
-        - Model.plot
- 
     - title: Network
       desc: The Node and Edge GeoPackage layers define the network layout.
       contents:
@@ -78,10 +74,13 @@ quartodoc:
       desc: Available node types to model different situations.
       contents:
         - Basin
-        - TabulatedRatingCurve
-        - LinearResistance
         - FractionalFlow
+        - LevelBoundary
         - LevelControl
+        - LinearResistance
+        - ManningResistance
+        - Pump
+        - TabulatedRatingCurve
     - title: Utility functions
       desc: Collection of utility functions.
       contents:
