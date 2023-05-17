@@ -119,7 +119,12 @@ class NewNodeType(InputMixin, BaseModel):
         self.static = self.static.sort_values("node_id", ignore_index=True)
 
 ```
-The `sort` method should implement the same sorting as in `validation.jl`.
+The `sort` method should implement the same sorting as in `validation.jl`. 
+
+Now in `python/ribasim/ribasim/__init__.py` add
+
+- `from ribasim.new_node_type import NewNodeType`;
+- `"NewNodeType"` to `__all__`.
 
 In `python/ribasim/ribasim/model.py`, add
 
