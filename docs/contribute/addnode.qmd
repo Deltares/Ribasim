@@ -132,12 +132,13 @@ In `python/ribasim/ribasim/model.py`, add
 - `(NewNodetype, "new_node_type")` in the `_NODES` list;
 - new_node_type as a parameter and in the docstring of the `Model` class.
 
+In `python/ribasim/ribasim/node.py` add a shape specifier in the `_MARKERS` dictionary
+to specify the shape of a node when calling `ribasim.model.plot`.
 
 # QGIS plugin
 
 The script `qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
 
-- Add a shape specifier in the `_MARKERS` dictionary; 
 - Add `"NewNodeType: NewNodeType",` to the `"map"` dictionary in `Node.set_editor_widget`; 
 - Add a color and shape description in the `markers` dictionary in `Node.renderer`;
 - Add an input class per schema, e.g. 
