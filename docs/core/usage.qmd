@@ -144,6 +144,10 @@ name it must have in the GeoPackage if it is stored there.
 - TabulatedRatingCurve: Basin outflow relation
   - `TabulatedRatingCurve / static`: rating curve
   - `TabulatedRatingCurve / time`: dynamic rating curve
+- Pump: pump water from a source node to a destination node
+  - `Pump / static`: flow rate
+- Terminal: Water sink without state or properties
+  - `Terminal / static`: - (only node IDs)
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The

@@ -13,6 +13,7 @@ from ribasim.model import Model, Solver
 from ribasim.node import Node
 from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
+from ribasim.terminal import Terminal
 
 __all__ = [
     "models",
@@ -29,4 +30,5 @@ __all__ = [
     "Pump",
     "Solver",
     "TabulatedRatingCurve",
+    "Terminal",
 ]

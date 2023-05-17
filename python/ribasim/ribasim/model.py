@@ -21,6 +21,7 @@ from ribasim.manning_resistance import ManningResistance
 from ribasim.node import Node
 from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
+from ribasim.terminal import Terminal
 from ribasim.types import FilePath
 
 
@@ -65,6 +66,8 @@ class Model(BaseModel):
         Tabulated rating curve describing flow based on the upstream water level.
     pump : Optional[Pump]
         Prescribed flow rate from one basin to the other.
+    terminal : Optional[Terminal]
+        Water sink without state or properties.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -84,6 +87,7 @@ class Model(BaseModel):
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
+    terminal: Optional[Terminal]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
