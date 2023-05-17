@@ -25,7 +25,21 @@ _MARKERS = {
     "ManningResistance": "D",
     "TabulatedRatingCurve": "D",
     "Pump": "h",
+    "Terminal": "s",
     "": "o",
+}
+
+_COlORS = {
+    "Basin": "b",
+    "FractionalFlow": "r",
+    "LevelControl": "b",
+    "LevelBoundary": "g",
+    "LinearResistance": "g",
+    "ManningResistance": "r",
+    "TabulatedRatingCurve": "g",
+    "Pump": "0.5",  # grayscale level
+    "Terminal": "m",
+    "": "k",
 }
 
 
@@ -115,10 +129,24 @@ class Node(InputMixin, BaseModel):
             ax.axis("off")
             kwargs["ax"] = ax
 
+        handles = []
+        legend_labels = []
+
         for nodetype, df in self.static.groupby("type"):
             marker = _MARKERS[nodetype]
+            color = _COlORS[nodetype]
             kwargs["marker"] = marker
+            kwargs["color"] = color
             df.plot(**kwargs)
+
+            if kwargs["legend"]:
+                handles.append(
+                    ax.scatter([], [], label=nodetype, marker=marker, color=color)
+                )
+                legend_labels.append(nodetype)
+
+        if kwargs["legend"]:
+            ax.legend(handles, legend_labels, bbox_to_anchor=(1.2, 1))
 
         geometry = self.static["geometry"]
         for text, xy in zip(

@@ -178,6 +178,7 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
+            "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "": (
                 QColor("white"),
                 "",
