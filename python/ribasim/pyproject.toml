@@ -33,7 +33,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-tests = ["pytest", "pytest-cov"]
+tests = ["pytest", "ribasim_testmodels"]
 
 [tool.setuptools]
 zip-safe = true

@@ -228,29 +228,37 @@ storage   | Float64 | $m^3$        | non-negative, per node_id: start at 0 and i
 area      | Float64 | $m^2$        | non-negative
 level     | Float64 | $m$          | -
 
-The level is in meters above a datum that is the same for the entire model. An example of
-the first 5 rows of such a table is given below. The first 4 rows define the profile of ID
-`2`. The number of rows can vary per ID. Using a very large number of rows may impact
-performance.
+The level is the level at the basin outlet. All levels are defined in meters above a datum 
+that is the same for the entire model. An example of the first 5 rows of such a table is 
+given below. The first 4 rows define the profile of ID `2`. The number of rows can vary 
+per ID. Using a very large number of rows may impact performance.
 
-node_id | storage        | area          | discharge  | level
-------- |--------------- |-------------- |----------- |-------
-      2 |      0.0       |     1.36404e5 | 0.0        | -0.105
-      2 |  24726.2       |     1.36404e5 | 0.0        |  0.095
-      2 |  49452.5       |     1.36404e5 | 0.00942702 |  0.295
-      2 |      2.49735e6 |     1.36404e5 | 0.942702   | 20.095
-      3 |      0.0       | 50663.3       | 0.0        |  2.129
+node_id | storage        | area          | level
+------- |--------------- |-------------- |-------
+      2 |      0.0       |     1.36404e5 | -0.105
+      2 |  24726.2       |     1.36404e5 |  0.095
+      2 |  49452.5       |     1.36404e5 |  0.295
+      2 |      2.49735e6 |     1.36404e5 | 20.095
+      3 |      0.0       | 50663.3       |  2.129
 
 ### TabulatedRatingCurve
 
 This table is similar in structure to the Basin profile. The TabulatedRatingCurve gives a
-relation between the storage of a connected Basin and its outflow.
+relation between the storage of a connected Basin (via the outlet level) and its outflow.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
 level     | Float64 | $m$          | -
 discharge | Float64 | $m^3 s^{-1}$ | non-negative
+
+node_id | discharge  | level
+------- |----------- |-------
+      2 | 0.0        | -0.105
+      2 | 0.0        |  0.095
+      2 | 0.00942702 |  0.295
+      2 | 0.942702   | 20.095
+      3 | 0.0        |  2.129
 
 ### TabulatedRatingCurve / time
 
