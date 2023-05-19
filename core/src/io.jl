@@ -102,16 +102,16 @@ end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.input_dir, path)
+    return normpath(config.relative_dir, config.input_dir, path)
 end
 
 "Construct a path relative to both the TOML directory and the optional `output_dir`"
 function output_path(config::Config, path::String)
-    return normpath(config.toml_dir, config.output_dir, path)
+    return normpath(config.relative_dir, config.output_dir, path)
 end
 
 parsefile(config_path::AbstractString) =
-    from_toml(Config, config_path; toml_dir = dirname(normpath(config_path)))
+    from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
 
 function write_basin_output(model::Model)
     (; config, integrator) = model
