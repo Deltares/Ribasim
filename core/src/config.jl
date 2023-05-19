@@ -45,7 +45,7 @@ end
     update_timestep::Float64 = 60 * 60 * 24.0
 
     # optional, when Config is created from a TOML file, this is its directory
-    relative_dir::String = "."
+    relative_dir::String = pwd()
     input_dir::String = "."
     output_dir::String = "."
 
