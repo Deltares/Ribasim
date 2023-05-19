@@ -132,7 +132,8 @@ class Model(BaseModel):
         Write the input to GeoPackage and Arrow tables.
         """
         # avoid adding tables to existing model
-        gpkg_path = Path(directory) / f"{self.modelname}.gpkg"
+        directory = Path(directory)
+        gpkg_path = directory / f"{self.modelname}.gpkg"
         gpkg_path.unlink(missing_ok=True)
 
         for name in self.fields():
