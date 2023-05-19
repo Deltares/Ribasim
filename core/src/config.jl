@@ -45,7 +45,7 @@ end
     update_timestep::Float64 = 60 * 60 * 24.0
 
     # optional, default is the path of the TOML
-    toml_dir::String = pwd()
+    toml_dir::String = "."
     input_dir::String = "."
     output_dir::String = "."
 
