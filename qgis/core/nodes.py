@@ -145,6 +145,7 @@ class Node(Input):
                     "FractionalFlow": "FractionalFlow",
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelBoundary": "LevelBoundary",
+                    "FlowBoundary": "FlowBoundary",
                     "LevelControl": "LevelControl",
                     "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
@@ -177,6 +178,7 @@ class Node(Input):
                 shape.Diamond,
             ),
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
+            "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
@@ -385,6 +387,15 @@ class TerminalStatic(Input):
     attributes = [QgsField("node_id", QVariant.Int)]
 
 
+class FlowBoundaryStatic(Input):
+    input_type = "FlowBoundary / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("flow_rate", QVariant.Double),
+    ]
+
+
 NODES = {
     "Node": Node,
     "Edge": Edge,
@@ -401,6 +412,7 @@ NODES = {
     "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
     "Terminal / static": TerminalStatic,
+    "FlowBoundary /static": FlowBoundaryStatic,
 }
 
 

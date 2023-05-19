@@ -155,6 +155,15 @@ struct LevelBoundary
 end
 
 """
+node_id: node ID of the FlowBoundary node
+flow_rate: target flow rate
+"""
+struct FlowBoundary
+    node_id::Vector{Int}
+    flow_rate::Vector{Float64}
+end
+
+"""
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
@@ -181,6 +190,7 @@ struct Parameters
     fractional_flow::FractionalFlow
     level_control::LevelControl
     level_boundary::LevelBoundary
+    flow_boundary::FlowBoundary
     pump::Pump
     terminal::Terminal
 end
@@ -344,6 +354,27 @@ function formulate!(level_control::LevelControl, p::Parameters)::Nothing
         end
     end
     return nothing
+end
+
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
+    (; connectivity, basin) = p
+    (; graph, flow) = connectivity
+    (; node_id, flow_rate) = flow_boundary
+
+    for (id, rate) in zip(node_id, flow_rate)
+        # Convention: edge points away from the flow boundary
+        dst_id = only(outneighbors(graph, id))
+
+        # Adding water is always possible
+        if rate >= 0
+            flow[node_id, id] = rate
+        else
+            storage = u[dst_id]
+            reduction_factor = min(storage, 10.0) / 10.0
+            q = reduction_factor * rate
+            flow[node_id, id] = q
+        end
+    end
 end
 
 function formulate!(pump::Pump, p::Parameters, u)::Nothing
