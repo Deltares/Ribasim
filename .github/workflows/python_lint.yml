@@ -35,7 +35,7 @@ jobs:
           environment-file: ./environment.yml
       - name: Run black
         run: |
-          black --check python
+          black --check .
 
   ruff:
     name: Ruff Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
@@ -62,7 +62,7 @@ jobs:
           environment-file: ./environment.yml
       - name: Run ruff
         run: |
-          ruff check --format=github python
+          ruff check --format=github .
 
 
   mypy:
