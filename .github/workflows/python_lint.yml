@@ -27,7 +27,7 @@ jobs:
 
       - name: Run black
         run: |
-          black --check python
+          black --check .
 
   ruff:
     name: Ruff
@@ -46,7 +46,7 @@ jobs:
           environment-file: ./environment.yml
       - name: Run ruff
         run: |
-          ruff check --format=github python
+          ruff check --format=github .
 
 
   mypy:
