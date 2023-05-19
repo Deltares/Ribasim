@@ -40,6 +40,9 @@
         "BasinProfile": {
             "$ref": "BasinProfile.schema.json"
         },
+        "TerminalStatic": {
+            "$ref": "TerminalStatic.schema.json"
+        },
         "BasinStatic": {
             "$ref": "BasinStatic.schema.json"
         }

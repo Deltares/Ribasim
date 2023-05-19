@@ -88,6 +88,11 @@ function Pump(db::DB, config::Config)::Pump
     return Pump(static.node_id, static.flow_rate)
 end
 
+function Terminal(db::DB, config::Config)::Terminal
+    static = load_structvector(db, config, TerminalStaticV1)
+    return Terminal(static.node_id)
+end
+
 function Basin(db::DB, config::Config)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
@@ -134,6 +139,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_control = LevelControl(db, config)
     level_boundary = LevelBoundary(db, config)
     pump = Pump(db, config)
+    terminal = Terminal(db, config)
 
     basin = Basin(db, config)
 
@@ -148,5 +154,6 @@ function Parameters(db::DB, config::Config)::Parameters
         level_control,
         level_boundary,
         pump,
+        terminal,
     )
 end

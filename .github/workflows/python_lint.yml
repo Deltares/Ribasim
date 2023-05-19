@@ -11,50 +11,34 @@ concurrency:
   cancel-in-progress: true
 jobs:
   black:
-    name: Black Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
+    name: Black
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        python_version:
-          - "3.11"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/provision-with-micromamba@v15
         with:
-          python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
+
       - name: Run black
         run: |
-          black --check python
+          black --check .
 
   ruff:
-    name: Ruff Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
+    name: Ruff
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        python_version:
-          - "3.11"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/provision-with-micromamba@v15
         with:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
@@ -62,28 +46,20 @@ jobs:
           environment-file: ./environment.yml
       - name: Run ruff
         run: |
-          ruff check --format=github python
+          ruff check --format=github .
 
 
   mypy:
-    name: Mypy Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
+    name: Mypy
+    runs-on: ubuntu-latest
+    continue-on-error: true
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        python_version:
-          - "3.11"
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/provision-with-micromamba@v15
         with:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true

@@ -148,6 +148,7 @@ class Node(Input):
                     "LevelControl": "LevelControl",
                     "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
+                    "Terminal": "Terminal",
                 },
             },
         )
@@ -179,6 +180,7 @@ class Node(Input):
             "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
+            "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "": (
                 QColor("white"),
                 "",
@@ -377,6 +379,12 @@ class PumpStatic(Input):
     ]
 
 
+class TerminalStatic(Input):
+    input_type = "Terminal / static"
+    geometry_type = "No Geometry"
+    attributes = [QgsField("node_id", QVariant.Int)]
+
+
 NODES = {
     "Node": Node,
     "Edge": Edge,
@@ -392,6 +400,7 @@ NODES = {
     "ManningResistance / static": ManningResistanceStatic,
     "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
+    "Terminal / static": TerminalStatic,
 }
 
 

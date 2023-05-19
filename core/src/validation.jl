@@ -7,6 +7,7 @@
 @schema "ribasim.basin.forcing" BasinForcing
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
+@schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.levelcontrol.static" LevelControlStatic
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
@@ -112,6 +113,10 @@ end
     time::DateTime
     level::Float64
     discharge::Float64
+end
+
+@version TerminalStaticV1 begin
+    node_id::Int
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

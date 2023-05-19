@@ -126,11 +126,11 @@ Code only passes the continuous integration checks if it is fully formatted acco
 When working in VS Code the settings suggested in @sec-vscode run Black automatically when saving Python files.
 
 If you want to run Black manually, you can run it from the command line.
-To run it on the entire `python` directory, use the command below.
+To run it on the entire repository, use the command below.
 Here the repository root is the working directory.
 
 ```
-black python
+black .
 ```
 
 ## Code linting with Ruff {#sec-ruff}
@@ -138,9 +138,9 @@ black python
 We use the [Ruff](https://github.com/charliermarsh/ruff) linter to help finding issues with Python code.
 Code only passes the continuous integration checks if Ruff does not find any issues.
 
-To run Ruff on the entire `python` directory, use the command below.
+To run Ruff on the entire repository, use the command below.
 Here the repository root is the working directory.
 
 ```
-ruff python
+ruff .
 ```
