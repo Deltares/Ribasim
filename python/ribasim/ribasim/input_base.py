@@ -2,13 +2,11 @@ import abc
 import textwrap
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Dict
 
 import pandas as pd
 
 from ribasim.types import FilePath
-
-T = TypeVar("T")
 
 __all__ = ("InputMixin",)
 
@@ -31,6 +29,8 @@ def exists(connection: Connection, name: str) -> bool:
 
 
 class InputMixin(abc.ABC):
+    _input_type: str
+
     @classmethod
     def fields(cls):
         """Return the input fields."""
@@ -53,17 +53,6 @@ class InputMixin(abc.ABC):
                 entry = f"{field}: {attr}"
             content.append(textwrap.indent(entry, prefix="   "))
         return "\n".join(content)
-
-    def _write_geopackage(self, directory: FilePath, modelname: str) -> None:
-        self.dataframe.to_file(
-            directory / f"{modelname}.gpkg", layer=f"{self.input_type}"
-        )
-        return
-
-    def _write_arrow(self, directory: FilePath) -> None:
-        path = directory / f"{self._input_type}.arrow"
-        self.dataframe.write_feather(path)
-        return
 
     @classmethod
     def _layername(cls, field) -> str:
@@ -97,7 +86,7 @@ class InputMixin(abc.ABC):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
         kwargs = {}
         with connect(path) as connection:
             for key in cls.fields():
@@ -116,13 +105,11 @@ class InputMixin(abc.ABC):
         return kwargs
 
     @classmethod
-    def _kwargs_from_toml(
-        cls: Type[T], config: Dict[str, Any]
-    ) -> Dict[str, pd.DataFrame]:
+    def _kwargs_from_toml(cls, config: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
         return {key: pd.read_feather(path) for key, path in config.items()}
 
     @classmethod
-    def from_geopackage(cls: Type[T], path: FilePath) -> T:
+    def from_geopackage(cls, path: FilePath):
         """
         Initialize input from a GeoPackage.
 
@@ -141,7 +128,7 @@ class InputMixin(abc.ABC):
         return cls(**kwargs)
 
     @classmethod
-    def from_config(cls: Type[T], config: Dict[str, Any]) -> T:
+    def from_config(cls, config: Dict[str, Any]):
         """
         Initialize input from a TOML configuration file.
 
@@ -165,7 +152,7 @@ class InputMixin(abc.ABC):
             kwargs.update(**cls._kwargs_from_toml(config))
 
         if all(v is None for v in kwargs.values()):
-            return None
+            raise ValueError("Could not initialize input from given TOML file.")
         else:
             return cls(**kwargs)
 
