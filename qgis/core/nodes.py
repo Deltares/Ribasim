@@ -162,7 +162,7 @@ class Node(Input):
     @property
     def renderer(self) -> QgsCategorizedSymbolRenderer:
         shape = QgsSimpleMarkerSymbolLayerBase
-        markers = {
+        MARKERS = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
             "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
             "LinearResistance": (
@@ -187,7 +187,7 @@ class Node(Input):
         }
 
         categories = []
-        for value, (colour, label, shape) in markers.items():
+        for value, (colour, label, shape) in MARKERS.items():
             symbol = QgsMarkerSymbol()
             symbol.symbolLayer(0).setShape(shape)
             symbol.setColor(QColor(colour))

@@ -106,7 +106,7 @@ class Node(InputMixin, BaseModel):
         handles = []
         legend_labels = []
 
-        markers = {
+        MARKERS = {
             "Basin": "o",
             "FractionalFlow": "^",
             "LevelControl": "*",
@@ -119,7 +119,7 @@ class Node(InputMixin, BaseModel):
             "": "o",
         }
 
-        colors = {
+        COLORS = {
             "Basin": "b",
             "FractionalFlow": "r",
             "LevelControl": "b",
@@ -133,8 +133,8 @@ class Node(InputMixin, BaseModel):
         }
 
         for nodetype, df in self.static.groupby("type"):
-            marker = markers[nodetype]
-            color = colors[nodetype]
+            marker = MARKERS[nodetype]
+            color = COLORS[nodetype]
             kwargs["marker"] = marker
             kwargs["color"] = color
             df.plot(**kwargs)
