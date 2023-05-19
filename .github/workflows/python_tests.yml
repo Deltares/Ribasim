@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    name: Ribasim Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
