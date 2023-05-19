@@ -11,8 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   black:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    continue-on-error: true
+    name: Black Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -39,8 +38,7 @@ jobs:
           black --check python
 
   ruff:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    continue-on-error: true
+    name: Ruff Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -68,8 +66,7 @@ jobs:
 
 
   mypy:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    continue-on-error: true
+    name: Mypy Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
