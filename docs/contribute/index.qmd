@@ -2,6 +2,7 @@
 title: "Contributing"
 ---
 
-Ribasim welcomes contributions. Information on how to contribute will be added here.
+Ribasim welcomes contributions.
 
-There is already specific developer documentation on the [Julia core](core.qmd), and the [Python tooling](python.qmd).
+There is developer documentation for the [Julia core](core.qmd) and [Python tooling](python.qmd).
+A guide on how to add a new node type to both is written in [adding node types](addnode.qmd).
