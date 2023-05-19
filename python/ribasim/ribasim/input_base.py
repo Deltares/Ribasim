@@ -105,9 +105,7 @@ class InputMixin(abc.ABC):
         return kwargs
 
     @classmethod
-    def _kwargs_from_toml(
-        cls, config: Dict[str, Any]
-    ) -> Dict[str, pd.DataFrame]:
+    def _kwargs_from_toml(cls, config: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
         return {key: pd.read_feather(path) for key, path in config.items()}
 
     @classmethod
