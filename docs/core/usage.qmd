@@ -293,6 +293,17 @@ column                | type    | unit         | restriction
 node_id               | Int     | -            | sorted
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
 
+### Terminal
+
+A terminal is a water sink without state or properties.
+Any water that flows into a terminal node is removed from the model.
+No water can come into the model from a terminal node.
+For example, terminal nodes can be used as a downstream boundary.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int     | -            | sorted
+
 ### Basin output
 
 The basin table contains outputs of the storage and level of each basin at every solver
