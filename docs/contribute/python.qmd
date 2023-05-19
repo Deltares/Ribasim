@@ -45,7 +45,7 @@ pip install --editable python/ribasim
 pip install --editable python/ribasim_testmodels
 ```
 
-## Running the tests
+## Running the tests {#sec-test}
 
 If not already done, activate the environment:
 
@@ -53,10 +53,11 @@ If not already done, activate the environment:
 conda activate ribasim
 ```
 
-To run the tests execute with `python/ribasim` as your working directory:
+To run the tests call `pytest` with the path to the Python package.
+Here the the root of the repository is the working directory:
 
 ```bash
-pytest tests
+pytest python/ribasim
 ```
 
 ## Building the documentation
@@ -85,7 +86,7 @@ python python/ribasim/tests/conftest.py
 This places example model input files under `./data/`.
 If the example models change, re-run this script.
 
-## Setup Visual Studio Code (optional)
+## Setup Visual Studio Code (optional) {#sec-vscode}
 
 1. Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and [autoDocstring](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) extensions.
 
@@ -116,4 +117,30 @@ twine check dist/*
 8) Re-upload the new files:
 ```
 twine upload dist/*
+```
+
+## Automatic code formatting with Black {#sec-black}
+
+We use the [Black](https://black.readthedocs.io/en/stable/) code formatter.
+Code only passes the continuous integration checks if it is fully formatted according to the Black code style.
+When working in VS Code the settings suggested in @sec-vscode run Black automatically when saving Python files.
+
+If you want to run Black manually, you can run it from the command line.
+To run it on the entire `python` directory, use the command below.
+Here the repository root is the working directory.
+
+```
+black python
+```
+
+## Code linting with Ruff {#sec-ruff}
+
+We use the [Ruff](https://github.com/charliermarsh/ruff) linter to help finding issues with Python code.
+Code only passes the continuous integration checks if Ruff does not find any issues.
+
+To run Ruff on the entire `python` directory, use the command below.
+Here the repository root is the working directory.
+
+```
+ruff python
 ```
