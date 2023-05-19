@@ -96,11 +96,11 @@ jobs:
           pip install python/ribasim_api
       - name: Run mypy on python/ribasim
         run: |
-          mypy --ignore-missing-imports python/ribasim
+          mypy --ignore-missing-imports python/ribasim/ribasim
       - name: Run mypy on python/ribasim_testmodels
         run: |
-          mypy --ignore-missing-imports python/ribasim_testmodels
+          mypy --ignore-missing-imports python/ribasim_testmodels/ribasim_testmodels
       - name: Run mypy on python/ribasim_api
         run: |
-          mypy --ignore-missing-imports python/ribasim_api
+          mypy --ignore-missing-imports python/ribasim_api/ribasim_api
     
