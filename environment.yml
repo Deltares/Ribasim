@@ -21,7 +21,7 @@ dependencies:
   - pydantic
   - pyogrio
   - pytest
-  - python>3.9
+  - python>=3.9
   - ruff
   - shapely>=2.0
   - tomli

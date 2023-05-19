@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   publish:
-    name: Docs Julia ${{ matrix.julia_version }} - Python ${{ matrix.python_version }}  - ${{ matrix.arch }}
+    name: Docs Julia ${{ matrix.julia_version }} - ${{ matrix.arch }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,8 +20,6 @@ jobs:
       matrix:
         julia_version:
           - "1.9"
-        python_version:
-          - "3.11"
         arch:
           - x64
     steps:
@@ -49,7 +47,6 @@ jobs:
       - name: Setup Micromamba
         uses: mamba-org/provision-with-micromamba@main
         with:
-          python_version: ${{ matrix.python_version }}
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
