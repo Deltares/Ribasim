@@ -30,9 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/provision-with-micromamba@v15
         with:
-          python_version: "3.11"
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
