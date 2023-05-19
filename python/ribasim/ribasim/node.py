@@ -16,32 +16,6 @@ T = TypeVar("T")
 
 __all__ = ("Node",)
 
-_MARKERS = {
-    "Basin": "o",
-    "FractionalFlow": "^",
-    "LevelControl": "*",
-    "LevelBoundary": "o",
-    "LinearResistance": "^",
-    "ManningResistance": "D",
-    "TabulatedRatingCurve": "D",
-    "Pump": "h",
-    "Terminal": "s",
-    "": "o",
-}
-
-_COLORS = {
-    "Basin": "b",
-    "FractionalFlow": "r",
-    "LevelControl": "b",
-    "LevelBoundary": "g",
-    "LinearResistance": "g",
-    "ManningResistance": "r",
-    "TabulatedRatingCurve": "g",
-    "Pump": "0.5",  # grayscale level
-    "Terminal": "m",
-    "": "k",
-}
-
 
 class StaticSchema(pa.SchemaModel):
     type: Series[str]
@@ -132,9 +106,35 @@ class Node(InputMixin, BaseModel):
         handles = []
         legend_labels = []
 
+        markers = {
+            "Basin": "o",
+            "FractionalFlow": "^",
+            "LevelControl": "*",
+            "LevelBoundary": "o",
+            "LinearResistance": "^",
+            "ManningResistance": "D",
+            "TabulatedRatingCurve": "D",
+            "Pump": "h",
+            "Terminal": "s",
+            "": "o",
+        }
+
+        colors = {
+            "Basin": "b",
+            "FractionalFlow": "r",
+            "LevelControl": "b",
+            "LevelBoundary": "g",
+            "LinearResistance": "g",
+            "ManningResistance": "r",
+            "TabulatedRatingCurve": "g",
+            "Pump": "0.5",  # grayscale level
+            "Terminal": "m",
+            "": "k",
+        }
+
         for nodetype, df in self.static.groupby("type"):
-            marker = _MARKERS[nodetype]
-            color = _COLORS[nodetype]
+            marker = markers[nodetype]
+            color = colors[nodetype]
             kwargs["marker"] = marker
             kwargs["color"] = color
             df.plot(**kwargs)
