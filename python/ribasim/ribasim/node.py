@@ -29,7 +29,7 @@ _MARKERS = {
     "": "o",
 }
 
-_COlORS = {
+_COLORS = {
     "Basin": "b",
     "FractionalFlow": "r",
     "LevelControl": "b",
@@ -134,7 +134,7 @@ class Node(InputMixin, BaseModel):
 
         for nodetype, df in self.static.groupby("type"):
             marker = _MARKERS[nodetype]
-            color = _COlORS[nodetype]
+            color = _COLORS[nodetype]
             kwargs["marker"] = marker
             kwargs["color"] = color
             df.plot(**kwargs)
