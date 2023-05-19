@@ -94,17 +94,6 @@ class Node(InputMixin, BaseModel):
         -------
         None
         """
-        MARKERS = {
-            "Basin": "o",
-            "FractionalFlow": "^",
-            "LevelControl": "*",
-            "LevelBoundary": "o",
-            "LinearResistance": "^",
-            "ManningResistance": "D",
-            "TabulatedRatingCurve": "D",
-            "Pump": "h",
-            "": "o",
-        }
         kwargs = kwargs.copy()
         ax = kwargs.get("ax", None)
         if ax is None:

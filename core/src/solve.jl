@@ -163,6 +163,13 @@ struct Pump
     flow_rate::Vector{Float64}
 end
 
+"""
+node_id: node ID of the Terminal node
+"""
+struct Terminal
+    node_id::Vector{Int}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters
     starttime::DateTime
@@ -175,6 +182,7 @@ struct Parameters
     level_control::LevelControl
     level_boundary::LevelBoundary
     pump::Pump
+    terminal::Terminal
 end
 
 """
