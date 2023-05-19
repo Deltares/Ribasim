@@ -11,6 +11,7 @@ dependencies:
   - matplotlib
   - mypy
   - pandas
+  - pandas-stubs
   - pandera
   - pip
   - pip:

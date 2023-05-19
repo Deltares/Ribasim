@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Dict
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -12,8 +12,6 @@ from pydantic import BaseModel
 
 from ribasim.input_base import InputMixin
 from ribasim.types import FilePath
-
-T = TypeVar("T")
 
 __all__ = ("Edge",)
 
@@ -71,7 +69,7 @@ class Edge(InputMixin, BaseModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
         kwargs = {}
 
         field = "static"

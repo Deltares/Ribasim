@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Dict
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -12,21 +12,7 @@ from pydantic import BaseModel
 from ribasim.input_base import InputMixin
 from ribasim.types import FilePath
 
-T = TypeVar("T")
-
 __all__ = ("Node",)
-
-_MARKERS = {
-    "Basin": "o",
-    "FractionalFlow": "^",
-    "LevelControl": "*",
-    "LevelBoundary": "o",
-    "LinearResistance": "^",
-    "ManningResistance": "D",
-    "TabulatedRatingCurve": "D",
-    "Pump": "h",
-    "": "o",
-}
 
 
 class StaticSchema(pa.SchemaModel):
@@ -85,7 +71,7 @@ class Node(InputMixin, BaseModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls: Type[T], path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
         kwargs = {}
 
         field = "static"
@@ -108,6 +94,17 @@ class Node(InputMixin, BaseModel):
         -------
         None
         """
+        MARKERS = {
+            "Basin": "o",
+            "FractionalFlow": "^",
+            "LevelControl": "*",
+            "LevelBoundary": "o",
+            "LinearResistance": "^",
+            "ManningResistance": "D",
+            "TabulatedRatingCurve": "D",
+            "Pump": "h",
+            "": "o",
+        }
         kwargs = kwargs.copy()
         ax = kwargs.get("ax", None)
         if ax is None:
@@ -116,7 +113,8 @@ class Node(InputMixin, BaseModel):
             kwargs["ax"] = ax
 
         for nodetype, df in self.static.groupby("type"):
-            marker = _MARKERS[nodetype]
+            assert isinstance(nodetype, str)
+            marker = MARKERS[nodetype]
             kwargs["marker"] = marker
             df.plot(**kwargs)
 

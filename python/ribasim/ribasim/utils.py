@@ -72,6 +72,6 @@ def connectivity_from_geometry(
         )
 
     edge_node_id = edge_node_id.reshape((-1, 2))
-    from_id = node_index[edge_node_id[:, 0]]
-    to_id = node_index[edge_node_id[:, 1]]
+    from_id = node_index[edge_node_id[:, 0]].to_numpy()
+    to_id = node_index[edge_node_id[:, 1]].to_numpy()
     return from_id, to_id

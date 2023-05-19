@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import tomli
@@ -22,19 +22,6 @@ from ribasim.node import Node
 from ribasim.pump import Pump
 from ribasim.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.types import FilePath
-
-_NODES = (
-    (Node, "node"),
-    (Edge, "edge"),
-    (Basin, "basin"),
-    (FractionalFlow, "fractional_flow"),
-    (LevelControl, "level_control"),
-    (LevelBoundary, "level_boundary"),
-    (LinearResistance, "linear_resistance"),
-    (ManningResistance, "manning_resistance"),
-    (TabulatedRatingCurve, "tabulated_rating_curve"),
-    (Pump, "pump"),
-)
 
 
 class Solver(BaseModel):
@@ -126,6 +113,7 @@ class Model(BaseModel):
         return self.__repr__()
 
     def _write_toml(self, directory: FilePath):
+        directory = Path(directory)
         content = {
             "starttime": self.starttime,
             "endtime": self.endtime,
@@ -144,7 +132,7 @@ class Model(BaseModel):
         Write the input to GeoPackage and Arrow tables.
         """
         # avoid adding tables to existing model
-        gpkg_path = directory / f"{self.modelname}.gpkg"
+        gpkg_path = Path(directory) / f"{self.modelname}.gpkg"
         gpkg_path.unlink(missing_ok=True)
 
         for name in self.fields():
@@ -186,14 +174,28 @@ class Model(BaseModel):
         -------
         model : Model
         """
+        NODES = (
+            (Node, "node"),
+            (Edge, "edge"),
+            (Basin, "basin"),
+            (FractionalFlow, "fractional_flow"),
+            (LevelControl, "level_control"),
+            (LevelBoundary, "level_boundary"),
+            (LinearResistance, "linear_resistance"),
+            (ManningResistance, "manning_resistance"),
+            (TabulatedRatingCurve, "tabulated_rating_curve"),
+            (Pump, "pump"),
+        )
+
         path = Path(path)
         with open(path, "rb") as f:
             config = tomli.load(f)
 
-        kwargs = {"modelname": path.stem}
+        kwargs: dict[str, Any] = {"modelname": path.stem}
         config["geopackage"] = path.parent / config["geopackage"]
-        for cls, kwarg_name in _NODES:
-            kwargs[kwarg_name] = cls.from_config(config)
+        for cls, kwarg_name in NODES:
+            cls_casted = cast(Type[InputMixin], cls)
+            kwargs[kwarg_name] = cls_casted.from_config(config)
 
         kwargs["starttime"] = config["starttime"]
         kwargs["endtime"] = config["endtime"]
