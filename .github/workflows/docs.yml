@@ -45,7 +45,7 @@ jobs:
             ${{ runner.os }}-test-
 
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/provision-with-micromamba@v15
         with:
           cache-downloads: true
           cache-env: true
