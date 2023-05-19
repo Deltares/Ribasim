@@ -201,7 +201,7 @@ class Model(BaseModel):
 
         return Model(**kwargs)
 
-    def plot(self, ax=None) -> Any:
+    def plot(self, ax=None, legend=False) -> Any:
         """
         Plot the nodes and edges of the model.
 
@@ -209,6 +209,9 @@ class Model(BaseModel):
         ----------
         ax : matplotlib.pyplot.Artist, optional
             Axes on which to draw the plot.
+
+        legend: bool, optional
+            Whether a node legend will be shown
 
         Returns
         -------
@@ -218,7 +221,7 @@ class Model(BaseModel):
             _, ax = plt.subplots()
             ax.axis("off")
         self.edge.plot(ax=ax, zorder=2)
-        self.node.plot(ax=ax, zorder=3)
+        self.node.plot(ax=ax, zorder=3, legend=legend)
         return ax
 
     def sort(self):

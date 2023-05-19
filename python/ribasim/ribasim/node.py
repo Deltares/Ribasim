@@ -16,18 +16,6 @@ T = TypeVar("T")
 
 __all__ = ("Node",)
 
-_MARKERS = {
-    "Basin": "o",
-    "FractionalFlow": "^",
-    "LevelControl": "*",
-    "LevelBoundary": "o",
-    "LinearResistance": "^",
-    "ManningResistance": "D",
-    "TabulatedRatingCurve": "D",
-    "Pump": "h",
-    "": "o",
-}
-
 
 class StaticSchema(pa.SchemaModel):
     type: Series[str]
@@ -115,10 +103,50 @@ class Node(InputMixin, BaseModel):
             ax.axis("off")
             kwargs["ax"] = ax
 
+        handles = []
+        legend_labels = []
+
+        MARKERS = {
+            "Basin": "o",
+            "FractionalFlow": "^",
+            "LevelControl": "*",
+            "LevelBoundary": "o",
+            "LinearResistance": "^",
+            "ManningResistance": "D",
+            "TabulatedRatingCurve": "D",
+            "Pump": "h",
+            "Terminal": "s",
+            "": "o",
+        }
+
+        COLORS = {
+            "Basin": "b",
+            "FractionalFlow": "r",
+            "LevelControl": "b",
+            "LevelBoundary": "g",
+            "LinearResistance": "g",
+            "ManningResistance": "r",
+            "TabulatedRatingCurve": "g",
+            "Pump": "0.5",  # grayscale level
+            "Terminal": "m",
+            "": "k",
+        }
+
         for nodetype, df in self.static.groupby("type"):
-            marker = _MARKERS[nodetype]
+            marker = MARKERS[nodetype]
+            color = COLORS[nodetype]
             kwargs["marker"] = marker
+            kwargs["color"] = color
             df.plot(**kwargs)
+
+            if kwargs["legend"]:
+                handles.append(
+                    ax.scatter([], [], label=nodetype, marker=marker, color=color)
+                )
+                legend_labels.append(nodetype)
+
+        if kwargs["legend"]:
+            ax.legend(handles, legend_labels, bbox_to_anchor=(1.2, 1))
 
         geometry = self.static["geometry"]
         for text, xy in zip(
