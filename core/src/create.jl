@@ -83,6 +83,11 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     return LevelBoundary(static.node_id, static.level)
 end
 
+function FlowBoundary(db::DB, config::Config)::FlowBoundary
+    static = load_structvector(db, config, FlowBoundaryStaticV1)
+    return FlowBoundary(static.node_id, static.flow_rate)
+end
+
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     return Pump(static.node_id, static.flow_rate)
@@ -133,6 +138,7 @@ function Parameters(db::DB, config::Config)::Parameters
     fractional_flow = FractionalFlow(db, config)
     level_control = LevelControl(db, config)
     level_boundary = LevelBoundary(db, config)
+    flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
 
     basin = Basin(db, config)
@@ -147,6 +153,7 @@ function Parameters(db::DB, config::Config)::Parameters
         fractional_flow,
         level_control,
         level_boundary,
+        flow_boundary,
         pump,
     )
 end

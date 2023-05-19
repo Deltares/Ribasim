@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from ribasim.basin import Basin
 from ribasim.edge import Edge
+from ribasim.flow_boundary import FlowBoundary
 from ribasim.fractional_flow import FractionalFlow
 
 # Do not import from ribasim namespace: will create import errors.
@@ -30,6 +31,7 @@ _NODES = (
     (FractionalFlow, "fractional_flow"),
     (LevelControl, "level_control"),
     (LevelBoundary, "level_boundary"),
+    (FlowBoundary, "flow_boundary"),
     (LinearResistance, "linear_resistance"),
     (ManningResistance, "manning_resistance"),
     (TabulatedRatingCurve, "tabulated_rating_curve"),

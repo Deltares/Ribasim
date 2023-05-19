@@ -4,6 +4,7 @@ __version__ = "0.2.0"
 from ribasim import models, utils
 from ribasim.basin import Basin
 from ribasim.edge import Edge
+from ribasim.flow_boundary import FlowBoundary
 from ribasim.fractional_flow import FractionalFlow
 from ribasim.level_boundary import LevelBoundary
 from ribasim.level_control import LevelControl
@@ -27,6 +28,7 @@ __all__ = [
     "Model",
     "Node",
     "Pump",
+    "FlowBoundary",
     "Solver",
     "TabulatedRatingCurve",
 ]
