@@ -10,7 +10,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  lint:
+  black:
     name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     continue-on-error: true
     runs-on: ${{ matrix.os }}
@@ -18,7 +18,6 @@ jobs:
       run:
         shell: bash -l {0}
     strategy:
-      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -28,7 +27,6 @@ jobs:
           - "3.11"
     steps:
       - uses: actions/checkout@v3
-
       - name: Setup Micromamba
         uses: mamba-org/provision-with-micromamba@main
         with:
@@ -36,12 +34,63 @@ jobs:
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
-
       - name: Run black
         run: |
           black --check python
 
-      # Include `--format=github` to enable automatic inline annotations.
+  ruff:
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        python_version:
+          - "3.11"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          python_version: ${{ matrix.python_version }}
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./environment.yml
       - name: Run ruff
         run: |
           ruff check --format=github python
+
+
+  mypy:
+    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        python_version:
+          - "3.11"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          python_version: ${{ matrix.python_version }}
+          cache-downloads: true
+          cache-env: true
+          environment-file: ./environment.yml
+      - name: Run mypy
+        run: |
+          mypy --ignore-missing-imports python/ribasim
