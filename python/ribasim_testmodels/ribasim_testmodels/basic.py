@@ -135,7 +135,7 @@ def basic_model() -> ribasim.Model:
         static=pd.DataFrame(
             data={
                 "node_id": [5, 8, 13],
-                "fraction": [0.3, 0.7, 0.1],
+                "fraction": [0.3, 0.6, 0.1],
             }
         )
     )
