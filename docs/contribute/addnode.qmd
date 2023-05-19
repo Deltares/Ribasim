@@ -178,11 +178,21 @@ When a new node type is created, one needs to run
 ```
 julia --project=docs docs/gen_schema.jl
 ```
-to create new JSON Schemas in the docs folder, and
+to create new JSON Schemas in the docs folder.
+
+:::{.callout-note}
+If you haven't done so before, you first need to instantiate your docs environment.
+Run `julia --project=docs`, followed by running `instantiate` in the Pkg mode (press `]`).
+:::
+
+To generate the Python module `models.py` from the JSON Schemas, run:
 
 ```
 datamodel-codegen --use-title-as-name --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py
 ```
-to generate the Python models from it.
 
-This should be followed by `black python` to format the generated code.
+Run [Black](python.qmd#sec-black) to format the generated code.
+To catch possible Python issues run [Ruff](python.qmd#sec-ruff).
+
+Since adding a node type touches both the Python and Julia code,
+it is a good idea to run both the [Python test suite](python.qmd#test) and [Julia test suite](core.qmd#test) locally before creating a pull request.

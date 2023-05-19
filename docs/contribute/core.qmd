@@ -57,7 +57,7 @@ When combined with the [Julia extension](https://www.julia-vscode.org/) it provi
 
 # Developing on Ribasim
 
-## Running tests
+## Running tests {#sec-test}
 
 You will want to run the testsuite on a regular basis to check if your changes had unexpected side effects.
 It is also a good way to find out if your development environment is set up correctly.
