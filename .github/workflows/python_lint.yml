@@ -72,6 +72,7 @@ jobs:
       run:
         shell: bash -l {0}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -88,6 +89,18 @@ jobs:
           cache-downloads: true
           cache-env: true
           environment-file: ./environment.yml
-      - name: Run mypy
+      - name: Install python packages
+        run: |
+          pip install python/ribasim
+          pip install python/ribasim_testmodels
+          pip install python/ribasim_api
+      - name: Run mypy on python/ribasim
         run: |
           mypy --ignore-missing-imports python/ribasim
+      - name: Run mypy on python/ribasim_testmodels
+        run: |
+          mypy --ignore-missing-imports python/ribasim_testmodels
+      - name: Run mypy on python/ribasim_api
+        run: |
+          mypy --ignore-missing-imports python/ribasim_api
+    
