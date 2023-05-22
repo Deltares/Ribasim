@@ -17,6 +17,7 @@ dependencies:
   - pip:
     - xmipy
     - quartodoc
+    - datamodel-code-generator
   - pyarrow
   - pydantic
   - pyogrio
