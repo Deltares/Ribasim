@@ -1,4 +1,5 @@
 import pandera as pa
+from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 from pydantic import BaseModel
 

@@ -25,6 +25,9 @@
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"
         },
+        "FlowBoundaryStatic": {
+            "$ref": "FlowBoundaryStatic.schema.json"
+        },
         "Node": {
             "$ref": "Node.schema.json"
         },

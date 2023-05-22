@@ -59,6 +59,8 @@ class Model(BaseModel):
         Control the water level with a resistance.
     level_boundary : Optional[LevelBoundary]
         Boundary condition specifying the water level.
+    flow_boundary : Optional[FlowBoundary]
+        Boundary conditions specifying the flow.
     linear_resistance: Optional[LinearResistance]
         Linear flow resistance.
     manning_resistance : Optional[ManningResistance]
@@ -84,6 +86,7 @@ class Model(BaseModel):
     fractional_flow: Optional[FractionalFlow]
     level_control: Optional[LevelControl]
     level_boundary: Optional[LevelBoundary]
+    flow_boundary: Optional[FlowBoundary]
     linear_resistance: Optional[LinearResistance]
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
@@ -187,6 +190,7 @@ class Model(BaseModel):
             (FractionalFlow, "fractional_flow"),
             (LevelControl, "level_control"),
             (LevelBoundary, "level_boundary"),
+            (FlowBoundary, "flow_boundary"),
             (LinearResistance, "linear_resistance"),
             (ManningResistance, "manning_resistance"),
             (TabulatedRatingCurve, "tabulated_rating_curve"),
