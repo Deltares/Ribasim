@@ -44,8 +44,8 @@ end
     # [s] Δt for periodic update frequency, including user horizons
     update_timestep::Float64 = 60 * 60 * 24.0
 
-    # optional, default is the path of the TOML
-    toml_dir::String = pwd()
+    # optional, when Config is created from a TOML file, this is its directory
+    relative_dir::String = pwd()
     input_dir::String = "."
     output_dir::String = "."
 
