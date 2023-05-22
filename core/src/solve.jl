@@ -367,12 +367,12 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
 
         # Adding water is always possible
         if rate >= 0
-            flow[node_id, id] = rate
+            flow[id, dst_id] = rate
         else
             storage = u[dst_id]
             reduction_factor = min(storage, 10.0) / 10.0
             q = reduction_factor * rate
-            flow[node_id, id] = q
+            flow[id, dst_id] = q
         end
     end
 end
