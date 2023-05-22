@@ -424,6 +424,7 @@ function water_balance!(du, u, p, t)::Nothing
         tabulated_rating_curve,
         fractional_flow,
         level_control,
+        flow_boundary,
         pump,
     ) = p
 
@@ -439,6 +440,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
     formulate!(level_control, p)
+    formulate!(flow_boundary, p, u)
     formulate!(pump, p, u)
 
     # Now formulate du

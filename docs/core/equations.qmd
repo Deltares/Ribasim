@@ -136,11 +136,12 @@ The flow direction of the basin is not pre-determined: flow directions may
 freely reverse, provided the connection allows it. Currently, a `LinearResistance`
 allows bidirectional flow, but the
 
-Additionally, two additional "connections" area available for the "outmost"
+Additionally, three additional "connections" area available for the "outmost"
 basins (external nodes) in a network.
 
 1. `Terminal`
 2. `LevelBoundary`
+3. `FlowBoundary`
 
 ### OutflowTable
 
@@ -180,6 +181,10 @@ This only allows outflow from a basin into a terminal node.
 
 This can be connected to a basin via a `LinearResistance`. This boundary node will then
 exchange water with the basin based on the difference in water level between the two.
+
+### FlowBoundary
+
+This can be connected directly to a basin and prescribes the flow to or from that basin. We adopted the convention that the edge connecting the flow boundary to the basin should point towards the basin, so that positive flow corresponds to water being added to the model.
 
 ### Manning connection
 
