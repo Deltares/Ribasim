@@ -369,7 +369,10 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
         if rate >= 0
             flow[id, dst_id] = rate
         else
-            storage = u[dst_id]
+            hasindex, basin_idx = id_index(basin.node_id, dst_id)
+            @assert hasindex "FlowBoundary intake not a Basin"
+
+            storage = u[basin_idx]
             reduction_factor = min(storage, 10.0) / 10.0
             q = reduction_factor * rate
             flow[id, dst_id] = q
