@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@v15
+        uses: mamba-org/provision-with-micromamba@v16
         with:
           cache-downloads: true
           cache-env: true
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@v15
+        uses: mamba-org/provision-with-micromamba@v16
         with:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@v15
+        uses: mamba-org/provision-with-micromamba@v16
         with:
           python_version: ${{ matrix.python_version }}
           cache-downloads: true
