@@ -146,7 +146,6 @@ class Node(Input):
                     "TabulatedRatingCurve": "TabulatedRatingCurve",
                     "LevelBoundary": "LevelBoundary",
                     "FlowBoundary": "FlowBoundary",
-                    "LevelControl": "LevelControl",
                     "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
                     "Terminal": "Terminal",
@@ -179,7 +178,6 @@ class Node(Input):
             ),
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
-            "LevelControl": (QColor("blue"), "LevelControl", shape.Star),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
@@ -356,16 +354,6 @@ class ManningResistanceStatic(Input):
     ]
 
 
-class LevelControlStatic(Input):
-    input_type = "LevelControl / static"
-    geometry_type = "No Geometry"
-    attributes = [
-        QgsField("node_id", QVariant.Int),
-        QgsField("target_level", QVariant.Double),
-        QgsField("resistance", QVariant.Double),
-    ]
-
-
 class LevelBoundaryStatic(Input):
     input_type = "LevelBoundary / static"
     geometry_type = "No Geometry"
@@ -409,7 +397,6 @@ NODES = {
     "LinearResistance / static": LinearResistanceStatic,
     "LevelBoundary / static": LevelBoundaryStatic,
     "ManningResistance / static": ManningResistanceStatic,
-    "LevelControl / static": LevelControlStatic,
     "Pump / static": PumpStatic,
     "Terminal / static": TerminalStatic,
     "FlowBoundary /static": FlowBoundaryStatic,

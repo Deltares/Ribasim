@@ -73,11 +73,6 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     return FractionalFlow(static.node_id, static.fraction)
 end
 
-function LevelControl(db::DB, config::Config)::LevelControl
-    static = load_structvector(db, config, LevelControlStaticV1)
-    return LevelControl(static.node_id, static.target_level, static.resistance)
-end
-
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     return LevelBoundary(static.node_id, static.level)
@@ -141,7 +136,6 @@ function Parameters(db::DB, config::Config)::Parameters
     manning_resistance = ManningResistance(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
-    level_control = LevelControl(db, config)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
@@ -157,7 +151,6 @@ function Parameters(db::DB, config::Config)::Parameters
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
-        level_control,
         level_boundary,
         flow_boundary,
         pump,

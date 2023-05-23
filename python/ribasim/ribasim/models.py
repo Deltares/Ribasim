@@ -52,13 +52,6 @@ class LinearResistanceStatic(BaseModel):
     resistance: float = Field(..., description="resistance")
 
 
-class LevelControlStatic(BaseModel):
-    remarks: Optional[str] = Field("", description="a hack for pandera")
-    node_id: int = Field(..., description="node_id")
-    resistance: float = Field(..., description="resistance")
-    target_level: float = Field(..., description="target_level")
-
-
 class ManningResistanceStatic(BaseModel):
     length: float = Field(..., description="length")
     manning_n: float = Field(..., description="manning_n")
@@ -131,7 +124,6 @@ class Root(BaseModel):
     BasinForcing: Optional[BasinForcing] = None
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
     LinearResistanceStatic: Optional[LinearResistanceStatic] = None
-    LevelControlStatic: Optional[LevelControlStatic] = None
     ManningResistanceStatic: Optional[ManningResistanceStatic] = None
     FlowBoundaryStatic: Optional[FlowBoundaryStatic] = None
     Node: Optional[Node] = None

@@ -135,8 +135,6 @@ name it must have in the GeoPackage if it is stored there.
   - `Basin / state`: used as initial condition of the basins
 - FractionalFlow: connect two of these from a Basin to get a fixed ratio bifurcation
   - `FractionalFlow / static`: fractions
-- LevelControl: tries to keep a target water level in a connected Basin
-  - `LevelControl / static`: target levels
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
 - FlowBoundary: sets a precribed flow like a one-sided pump
@@ -166,11 +164,6 @@ But for instance between two `LinearResistances` the edge direction does not aff
 anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
 direction; a positive flow flows along the edge direction, a negative flow in the opposite
 way.
-
-Note that an edge does not only convey flow, but sometimes also information. For instance, a
-LevelControl node needs to be connected to a Basin node, and will get access to the current
-water level in the Basin to be able to determine the amount of water that needs to be added
-or removed.
 
 column         | type     | restriction
 -------------- | -------- | -----------

@@ -19,13 +19,14 @@ def basic_model() -> ribasim.Model:
             (4.0, 1.0),  # 7: Pump
             (4.0, 0.0),  # 8: FractionalFlow
             (5.0, 0.0),  # 9: Basin
-            (6.0, 0.0),  # 10: LevelControl
+            (6.0, 0.0),  # 10: LinearResistance
             (2.0, 2.0),  # 11: LevelBoundary
             (2.0, 1.0),  # 12: LinearResistance
             (3.0, -1.0),  # 13: FractionalFlow
             (3.0, -2.0),  # 14: Terminal
             (3.0, 3.0),  # 15: Flowboundary
             (0.0, 1.0),  # 16: FlowBoundary
+            (6.0, 1.0),  # 17: LevelBoundary
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -40,13 +41,14 @@ def basic_model() -> ribasim.Model:
         "Pump",
         "FractionalFlow",
         "Basin",
-        "LevelControl",
+        "LinearResistance",
         "LevelBoundary",
         "LinearResistance",
         "FractionalFlow",
         "Terminal",
         "Flowboundary",
         "FlowBoundary",
+        "LevelBoundary",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -61,10 +63,10 @@ def basic_model() -> ribasim.Model:
 
     # Setup the edges:
     from_id = np.array(
-        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16], dtype=np.int64
+        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16, 10], dtype=np.int64
     )
     to_id = np.array(
-        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1], dtype=np.int64
+        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
     )
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
@@ -108,7 +110,9 @@ def basic_model() -> ribasim.Model:
 
     # setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [12], "resistance": [5e3]})
+        static=pd.DataFrame(
+            data={"node_id": [12, 10], "resistance": [5e3, (3600.0 * 24) / 100.0]}
+        )
     )
 
     # Setup Manning resistance:
@@ -148,17 +152,6 @@ def basic_model() -> ribasim.Model:
         )
     )
 
-    # Setup level control:
-    level_control = ribasim.LevelControl(
-        static=pd.DataFrame(
-            data={
-                "node_id": [10],
-                "target_level": [1.5],
-                "resistance": [(3600.0 * 24) / 100.0],
-            }
-        )
-    )
-
     # Setup pump:
     pump = ribasim.Pump(
         static=pd.DataFrame(
@@ -183,8 +176,8 @@ def basic_model() -> ribasim.Model:
     level_boundary = ribasim.LevelBoundary(
         static=pd.DataFrame(
             data={
-                "node_id": [11],
-                "level": [1.0],
+                "node_id": [11, 15],
+                "level": [1.0, 1.5],
             }
         )
     )
@@ -206,7 +199,6 @@ def basic_model() -> ribasim.Model:
         basin=basin,
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,
-        level_control=level_control,
         pump=pump,
         terminal=terminal,
         linear_resistance=linear_resistance,

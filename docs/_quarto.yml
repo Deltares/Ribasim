@@ -77,7 +77,6 @@ quartodoc:
         - Basin
         - FractionalFlow
         - LevelBoundary
-        - LevelControl
         - LinearResistance
         - ManningResistance
         - Pump

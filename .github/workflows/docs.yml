@@ -45,10 +45,10 @@ jobs:
             ${{ runner.os }}-test-
 
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@v15
+        uses: mamba-org/setup-micromamba@v1
         with:
           cache-downloads: true
-          cache-env: true
+          cache-environment: true
           environment-file: ./environment.yml
 
       - name: Install ribasim-python

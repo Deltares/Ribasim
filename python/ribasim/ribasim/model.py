@@ -16,7 +16,6 @@ from ribasim.fractional_flow import FractionalFlow
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import InputMixin
 from ribasim.level_boundary import LevelBoundary
-from ribasim.level_control import LevelControl
 from ribasim.linear_resistance import LinearResistance
 from ribasim.manning_resistance import ManningResistance
 from ribasim.node import Node
@@ -55,8 +54,6 @@ class Model(BaseModel):
         The waterbodies.
     fractional_flow : Optional[FractionalFlow]
         Split flows into fractions.
-    level_control : Optional[LevelControl]
-        Control the water level with a resistance.
     level_boundary : Optional[LevelBoundary]
         Boundary condition specifying the water level.
     flow_boundary : Optional[FlowBoundary]
@@ -84,7 +81,6 @@ class Model(BaseModel):
     edge: Edge
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
-    level_control: Optional[LevelControl]
     level_boundary: Optional[LevelBoundary]
     flow_boundary: Optional[FlowBoundary]
     linear_resistance: Optional[LinearResistance]
@@ -188,7 +184,6 @@ class Model(BaseModel):
             (Edge, "edge"),
             (Basin, "basin"),
             (FractionalFlow, "fractional_flow"),
-            (LevelControl, "level_control"),
             (LevelBoundary, "level_boundary"),
             (FlowBoundary, "flow_boundary"),
             (LinearResistance, "linear_resistance"),

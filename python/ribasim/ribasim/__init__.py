@@ -7,7 +7,6 @@ from ribasim.edge import Edge
 from ribasim.flow_boundary import FlowBoundary
 from ribasim.fractional_flow import FractionalFlow
 from ribasim.level_boundary import LevelBoundary
-from ribasim.level_control import LevelControl
 from ribasim.linear_resistance import LinearResistance
 from ribasim.manning_resistance import ManningResistance
 from ribasim.model import Model, Solver
@@ -23,7 +22,6 @@ __all__ = [
     "Edge",
     "FractionalFlow",
     "LevelBoundary",
-    "LevelControl",
     "LinearResistance",
     "ManningResistance",
     "Model",

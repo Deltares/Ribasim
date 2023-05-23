@@ -19,9 +19,6 @@
         "LinearResistanceStatic": {
             "$ref": "LinearResistanceStatic.schema.json"
         },
-        "LevelControlStatic": {
-            "$ref": "LevelControlStatic.schema.json"
-        },
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"
         },
