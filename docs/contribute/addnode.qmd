@@ -129,7 +129,7 @@ Now in `python/ribasim/ribasim/__init__.py` add
 In `python/ribasim/ribasim/model.py`, add
 
 - `from ribasim.new_node_type import NewNodeType`;
-- `(NewNodetype, "new_node_type")` in the `_NODES` list;
+- `(NewNodetype, "new_node_type")` in the `NODES` list;
 - new_node_type as a parameter and in the docstring of the `Model` class.
 
 In `python/ribasim/ribasim/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
