@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pytest
 import shapely.geometry as sg
+from matplotlib import axes
 from pydantic import ValidationError
 from ribasim.edge import Edge
 
@@ -15,6 +16,10 @@ def test():
     )
     edge = Edge(static=df)
     assert isinstance(edge, Edge)
+
+    # Plotting
+    ax = edge.plot(legend=True)
+    assert isinstance(ax, axes._axes.Axes)
 
     with pytest.raises(ValidationError):
         df = gpd.GeoDataFrame(
