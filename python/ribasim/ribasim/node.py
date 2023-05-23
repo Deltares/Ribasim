@@ -62,10 +62,8 @@ class Node(InputMixin, BaseModel):
         name = self._layername(dataframe)
 
         gdf = gpd.GeoDataFrame(data=dataframe)
-        if "geometry" in gdf.columns:
-            gdf = gdf.set_geometry("geometry")
-        else:
-            gdf["geometry"] = None
+        gdf = gdf.set_geometry("geometry")
+
         gdf.to_file(directory / f"{modelname}.gpkg", layer=name)
 
         return
