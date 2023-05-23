@@ -134,17 +134,6 @@ struct FractionalFlow
 end
 
 """
-node_id: node ID of the LevelControl node
-target_level: target level for the connected Basin
-resistance: resistance on how quickly the target volume can be reached
-"""
-struct LevelControl
-    node_id::Vector{Int}
-    target_level::Vector{Float64}
-    resistance::Vector{Float64}
-end
-
-"""
 node_id: node ID of the LevelBoundary node
 level: the fixed level of this 'infinitely big basin'
 The node_id are Indices to support fast lookup of level using ID.
@@ -179,7 +168,6 @@ struct Parameters
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
-    level_control::LevelControl
     level_boundary::LevelBoundary
     pump::Pump
     terminal::Terminal
@@ -330,22 +318,6 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
-function formulate!(level_control::LevelControl, p::Parameters)::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
-    (; node_id, target_level, resistance) = level_control
-    for (i, id) in enumerate(node_id)
-        # support either incoming or outgoing edges
-        for basin_id in inneighbors(graph, id)
-            flow[basin_id, id] = (get_level(p, basin_id) - target_level[i]) / resistance[i]
-        end
-        for basin_id in outneighbors(graph, id)
-            flow[id, basin_id] = (target_level[i] - get_level(p, basin_id)) / resistance[i]
-        end
-    end
-    return nothing
-end
-
 function formulate!(pump::Pump, p::Parameters, u)::Nothing
     (; connectivity, basin) = p
     (; graph, flow) = connectivity
@@ -392,7 +364,6 @@ function water_balance!(du, u, p, t)::Nothing
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
-        level_control,
         pump,
     ) = p
 
@@ -407,7 +378,6 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
-    formulate!(level_control, p)
     formulate!(pump, p, u)
 
     # Now formulate du

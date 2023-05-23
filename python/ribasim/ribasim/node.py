@@ -105,7 +105,6 @@ class Node(InputMixin, BaseModel):
         MARKERS = {
             "Basin": "o",
             "FractionalFlow": "^",
-            "LevelControl": "*",
             "LevelBoundary": "o",
             "LinearResistance": "^",
             "ManningResistance": "D",
@@ -118,7 +117,6 @@ class Node(InputMixin, BaseModel):
         COLORS = {
             "Basin": "b",
             "FractionalFlow": "r",
-            "LevelControl": "b",
             "LevelBoundary": "g",
             "LinearResistance": "g",
             "ManningResistance": "r",
