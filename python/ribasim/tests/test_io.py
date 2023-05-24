@@ -1,11 +1,9 @@
 import pandas as pd
-import pandera as pa
 import pytest
 import ribasim
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
-from pandera.typing import DataFrame, Series
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from ribasim import Pump
 
 
@@ -57,15 +55,10 @@ def test_pydantic():
     # Pump as example
 
     static_data_proper = pd.DataFrame(
-        data=dict(node_id=[1, 2, 3], flow_rate=[1.0, -1.0, 0.0])
+        data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0]}
     )
 
-    static_data_bad_1 = pd.DataFrame(data=dict(node_id=[1, 2, 3]))
-    static_data_bad_2 = pd.DataFrame(
-        data=dict(
-            node_id=[1, 2, 3], flow_rate=[1.0, -1.0, 0.0], extra_data=["a", "b", "c"]
-        )
-    )
+    static_data_bad_1 = pd.DataFrame(data={"node_id": [1, 2, 3]})
 
     pump_1 = Pump(static=static_data_proper)
 
