@@ -208,7 +208,7 @@ class Model(BaseModel):
 
         return Model(**kwargs)
 
-    def plot(self, ax=None, legend=False) -> Any:
+    def plot(self, ax=None, legend=True) -> Any:
         """
         Plot the nodes and edges of the model.
 
