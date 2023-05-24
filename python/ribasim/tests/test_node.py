@@ -1,14 +1,13 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pytest
 from matplotlib import axes
 from ribasim.node import Node
 
 
-def test_node(tmp_path):
-    # Has feature ID
-    assert Node.hasfid()
-
+@pytest.fixture(scope="session")
+def node() -> Node:
     node_type = ("Basin", "LinearResistance", "Basin")
 
     xy = np.array([(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)])
@@ -23,8 +22,23 @@ def test_node(tmp_path):
             crs="EPSG:28992",
         )
     )
+    return node
+
+
+def test_plotting(node):
+    assert Node.hasfid()
 
     # Plotting
     ax = node.plot(legend=True)
     assert isinstance(ax, axes._axes.Axes)
     assert ax.get_legend() is not None
+
+    return
+
+
+if __name__ == "__main__":
+    from pathlib import Path
+
+    tmp_path = Path()
+
+    test(tmp_path)

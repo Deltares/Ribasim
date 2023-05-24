@@ -6,7 +6,8 @@ from pydantic import ValidationError
 from ribasim.edge import Edge
 
 
-def test():
+@pytest.fixture(scope="session")
+def edge() -> Edge:
     a = (0.0, 0.0)
     b = (0.0, 1.0)
     c = (1.0, 1.0)
@@ -15,14 +16,18 @@ def test():
         data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=geometry
     )
     edge = Edge(static=df)
-    assert isinstance(edge, Edge)
+    return edge
 
-    # Plotting
-    ax = edge.plot(legend=True)
-    assert isinstance(ax, axes._axes.Axes)
+
+def test_validation(edge):
+    assert isinstance(edge, Edge)
 
     with pytest.raises(ValidationError):
         df = gpd.GeoDataFrame(
             data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=[None, None]
         )
         Edge(static=df)
+
+    def test_plotting(edge):
+        ax = edge.plot()
+        assert isinstance(ax, axes._axes.Axes)
