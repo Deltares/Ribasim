@@ -24,7 +24,9 @@ def basic_model() -> ribasim.Model:
             (2.0, 1.0),  # 12: LinearResistance
             (3.0, -1.0),  # 13: FractionalFlow
             (3.0, -2.0),  # 14: Terminal
-            (6.0, 1.0),  # 15: LevelBoundary
+            (3.0, 3.0),  # 15: Flowboundary
+            (0.0, 1.0),  # 16: FlowBoundary
+            (6.0, 1.0),  # 17: LevelBoundary
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -44,6 +46,8 @@ def basic_model() -> ribasim.Model:
         "LinearResistance",
         "FractionalFlow",
         "Terminal",
+        "FlowBoundary",
+        "FlowBoundary",
         "LevelBoundary",
     ]
 
@@ -59,9 +63,11 @@ def basic_model() -> ribasim.Model:
 
     # Setup the edges:
     from_id = np.array(
-        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 10], dtype=np.int64
+        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16, 10], dtype=np.int64
     )
-    to_id = np.array([2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 15], dtype=np.int64)
+    to_id = np.array(
+        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
+    )
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -156,11 +162,21 @@ def basic_model() -> ribasim.Model:
         )
     )
 
+    # Setup flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [15, 16],
+                "flow_rate": [-1e-4, 1e-4],
+            }
+        )
+    )
+
     # Setup level boundary:
     level_boundary = ribasim.LevelBoundary(
         static=pd.DataFrame(
             data={
-                "node_id": [11, 15],
+                "node_id": [11, 17],
                 "level": [1.0, 1.5],
             }
         )
@@ -182,6 +198,7 @@ def basic_model() -> ribasim.Model:
         edge=edge,
         basin=basin,
         level_boundary=level_boundary,
+        flow_boundary=flow_boundary,
         pump=pump,
         terminal=terminal,
         linear_resistance=linear_resistance,

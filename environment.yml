@@ -5,6 +5,7 @@ channels:
     
 dependencies:
   - black
+  - black-jupyter
   - build
   - geopandas
   - jupyterlab
@@ -14,8 +15,8 @@ dependencies:
   - pandas-stubs
   - pandera
   - pip
+  - datamodel-code-generator
   - pip:
-    - xmipy
     - quartodoc
   - pyarrow
   - pydantic
@@ -28,3 +29,4 @@ dependencies:
   - tomli-w
   - twine
   - xarray
+  - xmipy

@@ -9,7 +9,7 @@ using SciMLBase
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[654.9503, 654.9612, 2.470577, 1563.2583] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[948.93713, 948.96857, 1.8637465, 1573.5077] skip =
         Sys.isapple()
 end
 
@@ -20,7 +20,7 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[628.21936, 628.2323, 1.6492155, 1572.9167] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[915.72656, 915.701, 1.3522862, 1583.116] skip =
         Sys.isapple()
 end
 
