@@ -52,10 +52,10 @@ def test_basic_transient(basic_transient, tmp_path):
 
 
 def test_pydantic():
-    static_data_bad_1 = pd.DataFrame(data={"node_id": [1, 2, 3]})
+    static_data_bad = pd.DataFrame(data={"node_id": [1, 2, 3]})
 
     with pytest.raises(ValidationError):
-        Pump(static=static_data_bad_1)
+        Pump(static=static_data_bad)
 
 
 def test_repr():
