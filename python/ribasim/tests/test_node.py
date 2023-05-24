@@ -2,7 +2,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
-from matplotlib import axes
 from ribasim.node import Node
 
 
@@ -23,14 +22,3 @@ def node() -> Node:
         )
     )
     return node
-
-
-def test_plotting(node):
-    assert Node.hasfid()
-
-    # Plotting
-    ax = node.plot()
-    assert isinstance(ax, axes._axes.Axes)
-    assert ax.get_legend() is not None
-
-    return

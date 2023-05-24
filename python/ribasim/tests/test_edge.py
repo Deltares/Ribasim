@@ -27,7 +27,3 @@ def test_validation(edge):
             data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=[None, None]
         )
         Edge(static=df)
-
-    def test_plotting(edge):
-        ax = edge.plot()
-        assert isinstance(ax, axes._axes.Axes)

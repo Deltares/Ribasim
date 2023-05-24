@@ -52,13 +52,16 @@ def test_basic_transient(basic_transient, tmp_path):
 
 
 def test_pydantic():
-    # Pump as example
+    static_data_bad_1 = pd.DataFrame(data={"node_id": [1, 2, 3]})
 
+    with pytest.raises(ValidationError):
+        Pump(static=static_data_bad_1)
+
+
+def test_repr():
     static_data_proper = pd.DataFrame(
         data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0]}
     )
-
-    static_data_bad_1 = pd.DataFrame(data={"node_id": [1, 2, 3]})
 
     pump_1 = Pump(static=static_data_proper)
 
@@ -66,8 +69,3 @@ def test_pydantic():
         repr(pump_1)
         == "<ribasim.Pump>\n   static: DataFrame(rows=3) (remarks, flow_rate, node_id)"
     )
-
-    with pytest.raises(ValidationError) as exc_info:
-        Pump(static=static_data_bad_1)
-
-    exc_info.value.errors()[0]["loc"] == ("static",)
