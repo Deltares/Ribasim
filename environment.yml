@@ -21,6 +21,7 @@ dependencies:
   - pydantic
   - pyogrio
   - pytest
+  - pytest-cov
   - python>=3.9
   - ruff
   - shapely>=2.0
