@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Dict
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandera as pa
 import shapely
+from matplotlib.axes import Axes
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
 from pydantic import BaseModel
@@ -79,7 +80,7 @@ class Edge(InputMixin, BaseModel):
 
         return kwargs
 
-    def plot(self, **kwargs) -> Any:
+    def plot(self, **kwargs) -> Axes:
         ax = kwargs.get("ax", None)
         color = kwargs.get("color", None)
         if ax is None:

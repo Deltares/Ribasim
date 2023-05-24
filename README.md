@@ -1,5 +1,7 @@
 # Ribasim
 
+[![codecov](https://codecov.io/gh/Deltares/Ribasim/branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares/Ribasim)
+
 **Documentation: https://deltares.github.io/Ribasim/**
 
 Ribasim is a water resources model, designed to be the replacement of the regional surface
