@@ -46,7 +46,7 @@ def basic_model() -> ribasim.Model:
         "LinearResistance",
         "FractionalFlow",
         "Terminal",
-        "Flowboundary",
+        "FlowBoundary",
         "FlowBoundary",
         "LevelBoundary",
     ]
@@ -176,7 +176,7 @@ def basic_model() -> ribasim.Model:
     level_boundary = ribasim.LevelBoundary(
         static=pd.DataFrame(
             data={
-                "node_id": [11, 15],
+                "node_id": [11, 17],
                 "level": [1.0, 1.5],
             }
         )
