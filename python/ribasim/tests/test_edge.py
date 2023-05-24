@@ -1,7 +1,6 @@
 import geopandas as gpd
 import pytest
 import shapely.geometry as sg
-from matplotlib import axes
 from pydantic import ValidationError
 from ribasim.edge import Edge
 
