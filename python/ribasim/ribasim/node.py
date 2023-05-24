@@ -136,14 +136,12 @@ class Node(InputMixin, BaseModel):
             kwargs["color"] = color
             df.plot(**kwargs)
 
-            if kwargs["legend"]:
-                handles.append(
-                    ax.scatter([], [], label=nodetype, marker=marker, color=color)
-                )
-                legend_labels.append(nodetype)
+            handles.append(
+                ax.scatter([], [], label=nodetype, marker=marker, color=color)
+            )
+            legend_labels.append(nodetype)
 
-        if kwargs["legend"]:
-            ax.legend(handles, legend_labels, bbox_to_anchor=(1.2, 1))
+        ax.legend(handles, legend_labels, bbox_to_anchor=(1.2, 1))
 
         geometry = self.static["geometry"]
         for text, xy in zip(

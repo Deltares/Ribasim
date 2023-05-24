@@ -29,7 +29,7 @@ def test_plotting(node):
     assert Node.hasfid()
 
     # Plotting
-    ax = node.plot(legend=True)
+    ax = node.plot()
     assert isinstance(ax, axes._axes.Axes)
     assert ax.get_legend() is not None
 
