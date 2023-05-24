@@ -9,6 +9,7 @@
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
+@schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
@@ -80,6 +81,11 @@ end
 @version LevelBoundaryStaticV1 begin
     node_id::Int
     level::Float64
+end
+
+@version FlowBoundaryStaticV1 begin
+    node_id::Int
+    flow_rate::Float64
 end
 
 @version LinearResistanceStaticV1 begin

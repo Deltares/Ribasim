@@ -144,6 +144,15 @@ struct LevelBoundary
 end
 
 """
+node_id: node ID of the FlowBoundary node
+flow_rate: target flow rate
+"""
+struct FlowBoundary
+    node_id::Vector{Int}
+    flow_rate::Vector{Float64}
+end
+
+"""
 node_id: node ID of the Pump node
 flow_rate: target flow rate
 """
@@ -169,6 +178,7 @@ struct Parameters
     tabulated_rating_curve::TabulatedRatingCurve
     fractional_flow::FractionalFlow
     level_boundary::LevelBoundary
+    flow_boundary::FlowBoundary
     pump::Pump
     terminal::Terminal
 end
@@ -318,6 +328,30 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
+    (; connectivity, basin) = p
+    (; graph, flow) = connectivity
+    (; node_id, flow_rate) = flow_boundary
+
+    for (id, rate) in zip(node_id, flow_rate)
+        # Requirement: edge points away from the flow boundary
+        dst_id = only(outneighbors(graph, id))
+
+        # Adding water is always possible
+        if rate >= 0
+            flow[id, dst_id] = rate
+        else
+            hasindex, basin_idx = id_index(basin.node_id, dst_id)
+            @assert hasindex "FlowBoundary intake not a Basin"
+
+            storage = u[basin_idx]
+            reduction_factor = min(storage, 10.0) / 10.0
+            q = reduction_factor * rate
+            flow[id, dst_id] = q
+        end
+    end
+end
+
 function formulate!(pump::Pump, p::Parameters, u)::Nothing
     (; connectivity, basin) = p
     (; graph, flow) = connectivity
@@ -364,6 +398,7 @@ function water_balance!(du, u, p, t)::Nothing
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
+        flow_boundary,
         pump,
     ) = p
 
@@ -378,6 +413,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
+    formulate!(flow_boundary, p, u)
     formulate!(pump, p, u)
 
     # Now formulate du

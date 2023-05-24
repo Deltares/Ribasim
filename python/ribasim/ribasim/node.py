@@ -111,6 +111,7 @@ class Node(InputMixin, BaseModel):
             "TabulatedRatingCurve": "D",
             "Pump": "h",
             "Terminal": "s",
+            "FlowBoundary": "h",
             "": "o",
         }
 
@@ -123,6 +124,7 @@ class Node(InputMixin, BaseModel):
             "TabulatedRatingCurve": "g",
             "Pump": "0.5",  # grayscale level
             "Terminal": "m",
+            "FlowBoundary": "m",
             "": "k",
         }
 

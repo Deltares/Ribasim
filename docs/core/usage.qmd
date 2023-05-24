@@ -137,6 +137,8 @@ name it must have in the GeoPackage if it is stored there.
   - `FractionalFlow / static`: fractions
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
+- FlowBoundary: sets a precribed flow like a one-sided pump
+  - `FlowBoundary / static`: flow rate
 - LinearResistance: bidirectional flow based on water level difference between Basins
   - `LinearResistance / static`: conductances
 - TabulatedRatingCurve: Basin outflow relation
@@ -285,6 +287,34 @@ column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
+
+### LevelBoundary
+
+Acts like an infinitely large basin where the level does not change by flow. 
+This can be connected to a basin via a `LinearResistance`. 
+This boundary node will then
+exchange water with the basin based on the difference in water level between the two.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int     | -            | sorted
+level     | Float64 | $m^3$        | non-negative
+
+
+### FlowBoundary
+
+Pump water to a destination node. 
+We require that the edge connecting the flow boundary to the Basin should point towards the basin, 
+so that positive flow corresponds to water being added to the model.
+The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~m^3$,
+in which case the flow rate will be linearly reduced to $0~m^3/s$.
+Note that the connected node must always be a Basin.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int     | -            | sorted
+flow_rate             | Float64 | $m^3 s^{-1}$ | -
+
 
 ### Terminal
 

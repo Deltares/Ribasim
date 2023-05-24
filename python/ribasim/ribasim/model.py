@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from ribasim.basin import Basin
 from ribasim.edge import Edge
+from ribasim.flow_boundary import FlowBoundary
 from ribasim.fractional_flow import FractionalFlow
 
 # Do not import from ribasim namespace: will create import errors.
@@ -55,6 +56,8 @@ class Model(BaseModel):
         Split flows into fractions.
     level_boundary : Optional[LevelBoundary]
         Boundary condition specifying the water level.
+    flow_boundary : Optional[FlowBoundary]
+        Boundary conditions specifying the flow.
     linear_resistance: Optional[LinearResistance]
         Linear flow resistance.
     manning_resistance : Optional[ManningResistance]
@@ -79,6 +82,7 @@ class Model(BaseModel):
     basin: Basin
     fractional_flow: Optional[FractionalFlow]
     level_boundary: Optional[LevelBoundary]
+    flow_boundary: Optional[FlowBoundary]
     linear_resistance: Optional[LinearResistance]
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
@@ -181,6 +185,7 @@ class Model(BaseModel):
             (Basin, "basin"),
             (FractionalFlow, "fractional_flow"),
             (LevelBoundary, "level_boundary"),
+            (FlowBoundary, "flow_boundary"),
             (LinearResistance, "linear_resistance"),
             (ManningResistance, "manning_resistance"),
             (TabulatedRatingCurve, "tabulated_rating_curve"),
