@@ -34,11 +34,3 @@ def test_plotting(node):
     assert ax.get_legend() is not None
 
     return
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-
-    tmp_path = Path()
-
-    test(tmp_path)
