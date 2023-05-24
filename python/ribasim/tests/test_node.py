@@ -5,7 +5,7 @@ from matplotlib import axes
 from ribasim.node import Node
 
 
-def test(tmp_path):
+def test_node(tmp_path):
     # Has feature ID
     assert Node.hasfid()
 
@@ -28,13 +28,3 @@ def test(tmp_path):
     ax = node.plot(legend=True)
     assert isinstance(ax, axes._axes.Axes)
     assert ax.get_legend() is not None
-
-    return
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-
-    tmp_path = Path()
-
-    test(tmp_path)

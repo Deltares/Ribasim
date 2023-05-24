@@ -7,7 +7,7 @@ from ribasim.node import Node
 from shapely import LineString
 
 
-def test():
+def test_utils():
     node_type = ("Basin", "LinearResistance", "Basin")
 
     xy = np.array([(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)])
@@ -34,7 +34,3 @@ def test():
 
     assert_array_equal(from_id, from_id_)
     assert_array_equal(to_id, to_id_)
-
-
-if __name__ == "__main__":
-    test()
