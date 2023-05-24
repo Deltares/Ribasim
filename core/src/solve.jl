@@ -334,7 +334,7 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
     (; node_id, flow_rate) = flow_boundary
 
     for (id, rate) in zip(node_id, flow_rate)
-        # Convention: edge points away from the flow boundary
+        # Requirement: edge points away from the flow boundary
         dst_id = only(outneighbors(graph, id))
 
         # Adding water is always possible

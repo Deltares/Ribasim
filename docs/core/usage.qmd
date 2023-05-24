@@ -304,7 +304,7 @@ level     | Float64 | $m^3$        | non-negative
 ### FlowBoundary
 
 Pump water to a destination node. 
-We adopted the convention that the edge connecting the flow boundary to the Basin should point towards the basin, 
+We require that the edge connecting the flow boundary to the Basin should point towards the basin, 
 so that positive flow corresponds to water being added to the model.
 The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.

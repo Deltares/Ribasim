@@ -183,7 +183,7 @@ exchange water with the basin based on the difference in water level between the
 
 ### FlowBoundary
 
-This can be connected directly to a basin and prescribes the flow to or from that basin. We adopted the convention that the edge connecting the flow boundary to the basin should point towards the basin, so that positive flow corresponds to water being added to the model.
+This can be connected directly to a basin and prescribes the flow to or from that basin. We require that the edge connecting the flow boundary to the basin should point towards the basin, so that positive flow corresponds to water being added to the model.
 
 ### Manning connection
 
