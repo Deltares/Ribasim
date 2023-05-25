@@ -21,7 +21,6 @@ class Terminal(InputMixin, BaseModel):
         Table with only node IDs of this type.
     """
 
-    _input_type = "Terminal"
     static: DataFrame[StaticSchema]
 
     class Config:

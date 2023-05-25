@@ -33,7 +33,6 @@ class Edge(InputMixin, BaseModel):
         Table describing the flow connections.
     """
 
-    _input_type = "Edge"
     static: DataFrame[StaticSchema]
 
     class Config:
@@ -41,7 +40,7 @@ class Edge(InputMixin, BaseModel):
 
     @classmethod
     def _layername(cls, field) -> str:
-        return f"{cls._input_type}"
+        return cls._input_type()
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """

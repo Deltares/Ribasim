@@ -30,7 +30,6 @@ class Node(InputMixin, BaseModel):
         Table with node ID, type and geometry.
     """
 
-    _input_type = "Node"
     static: DataFrame[StaticSchema]
 
     class Config:
@@ -38,7 +37,7 @@ class Node(InputMixin, BaseModel):
 
     @classmethod
     def _layername(cls, field) -> str:
-        return f"{cls._input_type}"
+        return f"{cls._input_type()}"
 
     @classmethod
     def hasfid(cls):

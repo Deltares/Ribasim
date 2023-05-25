@@ -30,7 +30,6 @@ class Pump(InputMixin, BaseModel):
         Table with constant flow rates.
     """
 
-    _input_type = "Pump"
     static: DataFrame[StaticSchema]
 
     class Config:

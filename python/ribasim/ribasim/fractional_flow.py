@@ -26,7 +26,6 @@ class FractionalFlow(InputMixin, BaseModel):
         Table with the constant flow fractions.
     """
 
-    _input_type = "FractionalFlow"
     static: DataFrame[StaticSchema]
 
     class Config:

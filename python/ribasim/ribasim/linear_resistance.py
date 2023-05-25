@@ -27,7 +27,6 @@ class LinearResistance(InputMixin, BaseModel):
         Table with the constant resistances.
     """
 
-    _input_type = "LinearResistance"
     static: DataFrame[StaticSchema]
 
     class Config:

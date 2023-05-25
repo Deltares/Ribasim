@@ -26,7 +26,6 @@ class FlowBoundary(InputMixin, BaseModel):
         Table with the constant flows.
     """
 
-    _input_type = "FlowBoundary"
     static: DataFrame[StaticSchema]
 
     class Config:

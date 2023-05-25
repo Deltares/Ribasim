@@ -56,7 +56,6 @@ class Basin(InputMixin, BaseModel):
         Table describing the initial condition.
     """
 
-    _input_type = "Basin"
     profile: DataFrame[ProfileSchema]
     static: Optional[DataFrame[StaticSchema]] = None
     forcing: Optional[DataFrame[ForcingSchema]] = None

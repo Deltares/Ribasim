@@ -23,7 +23,6 @@ class LevelBoundary(InputMixin, BaseModel):
         Table with the constant water levels.
     """
 
-    _input_type = "LevelBoundary"
     static: DataFrame[StaticSchema]
 
     class Config:
