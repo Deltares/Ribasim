@@ -75,7 +75,7 @@ end
 
 ## Python class
 
-Create a new file `python/ribasim/ribasim/new_node_type.py` which is structured as follows:
+Create a new file `python/ribasim/ribasim/node_types/new_node_type.py` which is structured as follows:
 
 ```python
 import pandas as pd
@@ -106,7 +106,6 @@ class NewNodeType(InputMixin, BaseModel):
     possible other schemas
     """
 
-    _input_type = "NewNodeType"
     static: Optional[DataFrame[StaticSchema]] = None
     # possible other schemas
 
@@ -121,18 +120,19 @@ class NewNodeType(InputMixin, BaseModel):
 ```
 The `sort` method should implement the same sorting as in `validation.jl`.
 
-Now in `python/ribasim/ribasim/__init__.py` add
+Now in both `python/ribasim/ribasim/__init__.py` and `python/ribasim/ribasim/node_types/__init__.py` add
 
-- `from ribasim.new_node_type import NewNodeType`;
+- `from ribasim.node_types.new_node_type import NewNodeType`;
 - `"NewNodeType"` to `__all__`.
 
 In `python/ribasim/ribasim/model.py`, add
 
 - `from ribasim.new_node_type import NewNodeType`;
-- `(NewNodetype, "new_node_type")` in the `NODES` list;
 - new_node_type as a parameter and in the docstring of the `Model` class.
 
 In `python/ribasim/ribasim/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
+
+In 
 
 # QGIS plugin
 
@@ -144,7 +144,7 @@ The script `qgis/core/nodes.py` has to be updated to specify how the new node ty
 - Add an input class per schema, e.g.
 
 ```python
-class NewNodeTypeStatic
+class NewNodeTypeStatic:
     input_type = "NewNodeType / static"
     geometry_type = "No Geometry"
     attributes = [

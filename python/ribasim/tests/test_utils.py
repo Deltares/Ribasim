@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
 from ribasim import utils
-from ribasim.node import Node
+from ribasim.geometry.node import Node
 from shapely import LineString
 
 

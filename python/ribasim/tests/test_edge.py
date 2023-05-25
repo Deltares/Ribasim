@@ -2,7 +2,7 @@ import geopandas as gpd
 import pytest
 import shapely.geometry as sg
 from pydantic import ValidationError
-from ribasim.edge import Edge
+from ribasim.geometry.edge import Edge
 
 
 @pytest.fixture(scope="session")
