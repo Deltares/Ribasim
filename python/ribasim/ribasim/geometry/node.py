@@ -37,7 +37,7 @@ class Node(InputMixin, BaseModel):
 
     @classmethod
     def _layername(cls, field) -> str:
-        return cls._input_type()
+        return cls.get_input_type()
 
     @classmethod
     def hasfid(cls):

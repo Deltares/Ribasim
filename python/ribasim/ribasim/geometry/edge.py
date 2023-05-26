@@ -40,7 +40,7 @@ class Edge(InputMixin, BaseModel):
 
     @classmethod
     def _layername(cls, field) -> str:
-        return cls._input_type()
+        return cls.get_input_type()
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """

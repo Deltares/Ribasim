@@ -192,9 +192,7 @@ class Model(BaseModel):
         for module in [geometry, node_types]:
             for _, node_type_cls in inspect.getmembers(module, inspect.isclass):
                 cls_casted = cast(Type[InputMixin], node_type_cls)
-                kwargs[
-                    node_type_cls._input_type(snake_case=True)
-                ] = cls_casted.from_config(config)
+                kwargs[node_type_cls.get_toml_key()] = cls_casted.from_config(config)
 
         kwargs["starttime"] = config["starttime"]
         kwargs["endtime"] = config["endtime"]

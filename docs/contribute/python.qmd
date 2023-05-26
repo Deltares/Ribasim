@@ -158,4 +158,4 @@ ytest --cov=ribasim --cov-report=html tests/
 ```
 which creates a folder `htmlcov` in the working directory. To see te contents open `htmlcov/index.html` in a browser.
 
-The Python code coverage of pushed branches can be seen [here](https://app.codecov.io/gh/Deltares/Ribasim).
+The code coverage of pushed branches can be seen [here](https://app.codecov.io/gh/Deltares/Ribasim).

@@ -31,14 +31,14 @@ def exists(connection: Connection, name: str) -> bool:
 
 class InputMixin(abc.ABC):
     @classmethod
-    def _input_type(cls, snake_case=False):
-        """Get the class name.
-        can be converted to snake case, e.g. FlowBoundary -> flow_boundary."""
+    def get_input_type(cls):
+        return cls.__name__
+
+    @classmethod
+    def get_toml_key(cls):
+        """Get the class name in snake case, e.g. FlowBoundary -> flow_boundary."""
 
         name_camel_case = cls.__name__
-
-        if not snake_case:
-            return name_camel_case
 
         # Insert underscore before capital letters
         name_snake_case = re.sub(r"(?<!^)(?=[A-Z])", "_", name_camel_case)
@@ -73,7 +73,7 @@ class InputMixin(abc.ABC):
 
     @classmethod
     def _layername(cls, field) -> str:
-        return f"{cls._input_type()}{delimiter}{field}"
+        return f"{cls.get_input_type()}{delimiter}{field}"
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """
@@ -164,13 +164,13 @@ class InputMixin(abc.ABC):
         """
         geopackage = config["geopackage"]
         kwargs = cls._kwargs_from_geopackage(geopackage)
-        input_content = config.get(cls._input_type(), None)
+        input_content = config.get(cls.get_input_type(), None)
         if input_content:
             kwargs.update(**cls._kwargs_from_toml(config))
 
         if all(v is None for v in kwargs.values()):
             raise ValueError(
-                f"Could not initialize input of {cls._input_type()} from given TOML file."
+                f"Could not initialize input of {cls.get_input_type()} from given TOML file."
             )
         else:
             return cls(**kwargs)
