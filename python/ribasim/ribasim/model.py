@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Type, cast
 
 import matplotlib.pyplot as plt
+import numpy as np
 import tomli
 import tomli_w
 from pydantic import BaseModel
@@ -148,6 +149,47 @@ class Model(BaseModel):
                 input_entry.write(directory, self.modelname)
         return
 
+    def validate_model(self):
+        """
+        Checks:
+        - Whether all node types in the node field are valid
+        - Whether the node IDs of the node_type fields are valid
+        """
+
+        node_names_all, node_cls_all = list(
+            zip(*inspect.getmembers(node_types, inspect.isclass))
+        )
+
+        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+
+        # Check node types
+        for node_type in self.node.static["type"]:
+            assert (
+                node_type in node_names_all
+            ), f"{node_type} is not a valid node type, choose from: {', '.join(node_names_all)}."
+
+        # Check node IDs of node fields
+        # e.g. check whether the node IDs from the different node types
+        # form a partition of {1,...,n_nodes}
+        node_IDs_all = []
+        n_nodes = len(self.node.static)
+
+        for name in self.fields():
+            if name in node_names_all_snake_case:
+                node_field = getattr(self, name)
+                node_IDs_all.append(node_field.static["node_id"].unique())
+
+        node_IDs_all = np.concatenate(node_IDs_all)
+        node_IDs_unique = np.unique(node_IDs_all)
+
+        assert (
+            len(node_IDs_unique) == n_nodes
+        ), "Invalid number of unique node IDs in node type fields"
+        assert np.min(node_IDs_unique) == 1, "The smallest node ID should be 1"
+        assert (
+            np.max(node_IDs_unique) == n_nodes
+        ), "The largest node ID should be equal to the number of nodes in the node field"
+
     def write(self, directory: FilePath) -> None:
         """
         Write the contents of the model to a GeoPackage and a TOML
@@ -161,6 +203,8 @@ class Model(BaseModel):
         ----------
         directory: FilePath
         """
+        self.validate_model()
+
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         self._write_toml(directory)
