@@ -3,7 +3,7 @@ from typing import Sequence, Tuple
 import numpy as np
 import shapely
 
-from ribasim.node import Node
+from ribasim.geometry.node import Node
 
 
 def geometry_from_connectivity(

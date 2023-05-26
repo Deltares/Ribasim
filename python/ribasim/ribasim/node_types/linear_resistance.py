@@ -6,27 +6,27 @@ from pydantic import BaseModel
 from ribasim import models
 from ribasim.input_base import InputMixin
 
-__all__ = ("FlowBoundary",)
+__all__ = ("LinearResistance",)
 
 
 class StaticSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.FlowBoundaryStatic)
+        dtype = PydanticModel(models.LinearResistanceStatic)
 
 
-class FlowBoundary(InputMixin, BaseModel):
+class LinearResistance(InputMixin, BaseModel):
     """
-    Sets a precribed flow like a one-sided pump.
+    Flow through this connection linearly depends on the level difference
+    between the two connected basins.
 
     Parameters
     ----------
-    static : pandas.DataFrame
-        Table with the constant flows.
+    static : pd.DataFrame
+        Table with the constant resistances.
     """
 
-    _input_type = "FlowBoundary"
     static: DataFrame[StaticSchema]
 
     class Config:

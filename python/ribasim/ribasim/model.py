@@ -1,4 +1,5 @@
 import datetime
+import inspect
 from pathlib import Path
 from typing import Any, List, Optional, Type, cast
 
@@ -7,21 +8,22 @@ import tomli
 import tomli_w
 from pydantic import BaseModel
 
-from ribasim.basin import Basin
-from ribasim.edge import Edge
-from ribasim.flow_boundary import FlowBoundary
-from ribasim.fractional_flow import FractionalFlow
+from ribasim import geometry, node_types
+from ribasim.geometry.edge import Edge
+from ribasim.geometry.node import Node
 
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import InputMixin
-from ribasim.level_boundary import LevelBoundary
-from ribasim.linear_resistance import LinearResistance
-from ribasim.manning_resistance import ManningResistance
-from ribasim.node import Node
-from ribasim.pump import Pump
-from ribasim.tabulated_rating_curve import TabulatedRatingCurve
-from ribasim.terminal import Terminal
+from ribasim.node_types.basin import Basin
+from ribasim.node_types.flow_boundary import FlowBoundary
+from ribasim.node_types.fractional_flow import FractionalFlow
+from ribasim.node_types.level_boundary import LevelBoundary
+from ribasim.node_types.linear_resistance import LinearResistance
+from ribasim.node_types.manning_resistance import ManningResistance
+from ribasim.node_types.pump import Pump
+from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
+from ribasim.node_types.terminal import Terminal
 from ribasim.types import FilePath
 
 
@@ -179,18 +181,6 @@ class Model(BaseModel):
         -------
         model : Model
         """
-        NODES = (
-            (Node, "node"),
-            (Edge, "edge"),
-            (Basin, "basin"),
-            (FractionalFlow, "fractional_flow"),
-            (LevelBoundary, "level_boundary"),
-            (FlowBoundary, "flow_boundary"),
-            (LinearResistance, "linear_resistance"),
-            (ManningResistance, "manning_resistance"),
-            (TabulatedRatingCurve, "tabulated_rating_curve"),
-            (Pump, "pump"),
-        )
 
         path = Path(path)
         with open(path, "rb") as f:
@@ -198,9 +188,11 @@ class Model(BaseModel):
 
         kwargs: dict[str, Any] = {"modelname": path.stem}
         config["geopackage"] = path.parent / config["geopackage"]
-        for cls, kwarg_name in NODES:
-            cls_casted = cast(Type[InputMixin], cls)
-            kwargs[kwarg_name] = cls_casted.from_config(config)
+
+        for module in [geometry, node_types]:
+            for _, node_type_cls in inspect.getmembers(module, inspect.isclass):
+                cls_casted = cast(Type[InputMixin], node_type_cls)
+                kwargs[node_type_cls.get_toml_key()] = cls_casted.from_config(config)
 
         kwargs["starttime"] = config["starttime"]
         kwargs["endtime"] = config["endtime"]

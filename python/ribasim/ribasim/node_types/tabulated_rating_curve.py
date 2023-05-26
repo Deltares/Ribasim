@@ -39,7 +39,6 @@ class TabulatedRatingCurve(InputMixin, BaseModel):
         Table with time-varying rating curves.
     """
 
-    _input_type = "TabulatedRatingCurve"
     static: DataFrame[StaticSchema]
     time: Optional[DataFrame[TimeSchema]] = None
 

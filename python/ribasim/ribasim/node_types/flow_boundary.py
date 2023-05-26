@@ -6,31 +6,27 @@ from pydantic import BaseModel
 from ribasim import models
 from ribasim.input_base import InputMixin
 
-__all__ = ("FractionalFlow",)
+__all__ = ("FlowBoundary",)
 
 
 class StaticSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.FractionalFlowStatic)
+        dtype = PydanticModel(models.FlowBoundaryStatic)
 
 
-class FractionalFlow(InputMixin, BaseModel):
+class FlowBoundary(InputMixin, BaseModel):
     """
-    Receives a fraction of the flow. The fractions must sum to 1.0 for a furcation.
+    Sets a precribed flow like a one-sided pump.
 
     Parameters
     ----------
     static : pandas.DataFrame
-        Table with the constant flow fractions.
+        Table with the constant flows.
     """
 
-    _input_type = "FractionalFlow"
     static: DataFrame[StaticSchema]
 
     class Config:
         validate_assignment = True
-
-    def sort(self):
-        self.static = self.static.sort_values("node_id", ignore_index=True)

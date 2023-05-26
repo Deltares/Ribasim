@@ -27,7 +27,6 @@ class ManningResistance(InputMixin, BaseModel):
         Table with the constant Manning parameters.
     """
 
-    _input_type = "ManningResistance"
     static: DataFrame[StaticSchema]
 
     class Config:

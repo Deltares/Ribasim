@@ -6,29 +6,30 @@ from pydantic import BaseModel
 from ribasim import models
 from ribasim.input_base import InputMixin
 
-__all__ = ("LinearResistance",)
+__all__ = ("FractionalFlow",)
 
 
 class StaticSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.LinearResistanceStatic)
+        dtype = PydanticModel(models.FractionalFlowStatic)
 
 
-class LinearResistance(InputMixin, BaseModel):
+class FractionalFlow(InputMixin, BaseModel):
     """
-    Flow through this connection linearly depends on the level difference
-    between the two connected basins.
+    Receives a fraction of the flow. The fractions must sum to 1.0 for a furcation.
 
     Parameters
     ----------
-    static : pd.DataFrame
-        Table with the constant resistances.
+    static : pandas.DataFrame
+        Table with the constant flow fractions.
     """
 
-    _input_type = "LinearResistance"
     static: DataFrame[StaticSchema]
 
     class Config:
         validate_assignment = True
+
+    def sort(self):
+        self.static = self.static.sort_values("node_id", ignore_index=True)
