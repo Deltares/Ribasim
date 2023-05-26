@@ -177,14 +177,15 @@ class Model(BaseModel):
         for name in self.fields():
             if name in node_names_all_snake_case:
                 node_field = getattr(self, name)
-                node_IDs_all.append(node_field.static["node_id"].unique())
+                node_IDs_field = node_field.static["node_id"].unique()
+                node_IDs_all.append(node_IDs_field)
 
         node_IDs_all = np.concatenate(node_IDs_all)
         node_IDs_unique = np.unique(node_IDs_all)
 
         assert (
             len(node_IDs_unique) == n_nodes
-        ), "Invalid number of unique node IDs in node type fields"
+        ), f"Unequal amount of node IDs in node type fields ({len(node_IDs_unique)}) and enties in the node field ({n_nodes})"
         assert np.min(node_IDs_unique) == 1, "The smallest node ID should be 1"
         assert (
             np.max(node_IDs_unique) == n_nodes
