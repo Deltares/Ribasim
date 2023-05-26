@@ -144,3 +144,18 @@ Here the repository root is the working directory.
 ```
 ruff .
 ```
+
+# Code maintenance {#sec-codecov}
+
+For new features new tests have to be added. To monitor how much of the code is covered by the tests we use [Codecov](https://about.codecov.io/).
+For a simple overview of the local code coverage run
+```
+pytest --cov=ribasim tests/
+```
+from  `python/ribasim`. For an extensive overview in `html` format use
+```
+ytest --cov=ribasim --cov-report=html tests/
+```
+which creates a folder `htmlcov` in the working directory. To see te contents open `htmlcov/index.html` in a browser.
+
+The Python code coverage of pushed branches can be seen [here](https://app.codecov.io/gh/Deltares/Ribasim).

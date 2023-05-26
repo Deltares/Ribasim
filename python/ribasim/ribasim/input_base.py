@@ -31,8 +31,14 @@ def exists(connection: Connection, name: str) -> bool:
 
 class InputMixin(abc.ABC):
     @classmethod
-    def _input_type(cls):
+    def _input_type(cls, snake_case=False):
+        """Get the class name.
+        can be converted to snake case, e.g. FlowBoundary -> flow_boundary."""
+
         name_camel_case = cls.__name__
+
+        if not snake_case:
+            return name_camel_case
 
         # Insert underscore before capital letters
         name_snake_case = re.sub(r"(?<!^)(?=[A-Z])", "_", name_camel_case)
@@ -163,7 +169,9 @@ class InputMixin(abc.ABC):
             kwargs.update(**cls._kwargs_from_toml(config))
 
         if all(v is None for v in kwargs.values()):
-            raise ValueError("Could not initialize input from given TOML file.")
+            raise ValueError(
+                f"Could not initialize input of {cls._input_type()} from given TOML file."
+            )
         else:
             return cls(**kwargs)
 
