@@ -8,7 +8,7 @@ def test_repr(basic):
 
 
 def test_invalid_node_type(basic):
-    model = basic.copy()
+    model = basic
 
     # Add entry with invalid node type
     model.node.static = model.node.static._append(
@@ -24,7 +24,7 @@ def test_invalid_node_type(basic):
 
 
 def test_invalid_node_id(basic):
-    model = basic.copy()
+    model = basic
 
     # Add entry with invalid node ID
     model.pump.static = model.pump.static._append(
@@ -38,7 +38,7 @@ def test_invalid_node_id(basic):
 
 
 def test_node_id_duplicate(basic):
-    model = basic.copy()
+    model = basic
 
     # Add duplicate node ID
     model.pump.static = model.pump.static._append(
@@ -55,7 +55,7 @@ def test_node_id_duplicate(basic):
 
 
 def test_missing_node_id(basic):
-    model = basic.copy()
+    model = basic
 
     # Add entry in node but not in pump
     model.node.static = model.node.static._append(
