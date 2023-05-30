@@ -78,28 +78,22 @@ class Node(InputMixin, BaseModel):
 
         return kwargs
 
-    def plot(self, **kwargs) -> Any:
+    def plot(self, ax=None, zorder=None) -> Any:
         """
         Plot the nodes. Each node type is given a separate marker.
 
         Parameters
         ----------
-        **kwargs : optional
-            Keyword arguments forwarded to GeoDataFrame.plot.
+        ax : Optional
+            The axis on which the nodes will be plotted.
 
         Returns
         -------
         None
         """
-        kwargs = kwargs.copy()
-        ax = kwargs.get("ax", None)
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
-            kwargs["ax"] = ax
-
-        handles = []
-        legend_labels = []
 
         MARKERS = {
             "Basin": "o",
@@ -131,16 +125,11 @@ class Node(InputMixin, BaseModel):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]
-            kwargs["marker"] = marker
-            kwargs["color"] = color
-            df.plot(**kwargs)
-
-            handles.append(
-                ax.scatter([], [], label=nodetype, marker=marker, color=color)
+            ax.scatter(
+                df.geometry.x, df.geometry.y, marker=marker, color=color, zorder=zorder
             )
-            legend_labels.append(nodetype)
 
-        ax.legend(handles, legend_labels, bbox_to_anchor=(1.2, 1))
+        ax.legend()
 
         geometry = self.static["geometry"]
         for text, xy in zip(
