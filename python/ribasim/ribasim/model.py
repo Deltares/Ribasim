@@ -164,32 +164,45 @@ class Model(BaseModel):
 
         # Check node types
         for node_type in self.node.static["type"]:
-            assert (
-                node_type in node_names_all
-            ), f"{node_type} is not a valid node type, choose from: {', '.join(node_names_all)}."
+            if node_type not in node_names_all:
+                raise TypeError(
+                    f"{node_type} is not a valid node type, choose from: {', '.join(node_names_all)}."
+                )
 
         # Check node IDs of node fields
-        # e.g. check whether the node IDs from the different node types
-        # form a partition of {1,...,n_nodes}
         node_IDs_all = []
         n_nodes = len(self.node.static)
 
         for name in self.fields():
             if name in node_names_all_snake_case:
                 node_field = getattr(self, name)
-                node_IDs_field = node_field.static["node_id"].unique()
+                node_IDs_field = node_field.static[
+                    "node_id"
+                ].unique()  # Table can contain multiple instances of a particular node ID
                 node_IDs_all.append(node_IDs_field)
 
         node_IDs_all = np.concatenate(node_IDs_all)
-        node_IDs_unique = np.unique(node_IDs_all)
+        node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
 
-        assert (
-            len(node_IDs_unique) == n_nodes
-        ), f"Unequal amount of node IDs in node type fields ({len(node_IDs_unique)}) and enties in the node field ({n_nodes})"
-        assert np.min(node_IDs_unique) == 1, "The smallest node ID should be 1"
-        assert (
-            np.max(node_IDs_unique) == n_nodes
-        ), "The largest node ID should be equal to the number of nodes in the node field"
+        node_IDs_positive_integers = np.greater(node_IDs_unique, 0) & np.equal(
+            node_IDs_unique.astype(int), node_IDs_unique
+        )
+
+        if not node_IDs_positive_integers.all():
+            raise ValueError(
+                f"Node IDs must be positive integers, got {node_IDs_unique[~node_IDs_positive_integers]}."
+            )
+
+        if (node_ID_counts > 1).any():
+            raise ValueError(
+                f"These node ID(s) were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
+            )
+
+        if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
+            node_IDs_missing = set(np.arange(n_nodes) + 1) - set(node_IDs_unique)
+            raise ValueError(
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static), but these node IDs are missing: {node_IDs_missing}."
+            )
 
     def write(self, directory: FilePath) -> None:
         """
