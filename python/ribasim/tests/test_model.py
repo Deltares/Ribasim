@@ -68,7 +68,7 @@ def test_node_ids_misassigned(basic):
 
     # Misassign node IDs
     model.pump.static.loc[0, "node_id"] = 8
-    model.fractional_flow.static.loc[1, "node_id"] = 8
+    model.fractional_flow.static.loc[1, "node_id"] = 7
 
     with pytest.raises(ValueError, match="The node IDs in the field pump.+"):
         model.validate_model_node_IDs()
