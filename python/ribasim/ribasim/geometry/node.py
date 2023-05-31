@@ -7,7 +7,6 @@ import numpy as np
 import pandera as pa
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
-from pydantic import BaseModel
 
 from ribasim.input_base import TableModel
 from ribasim.types import FilePath
