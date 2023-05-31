@@ -29,4 +29,4 @@ class LevelBoundary(InputMixin, BaseModel):
         validate_assignment = True
 
     def __init__(self, static: pd.DataFrame):
-        super().__init__(**locals())
+        super().__init__(static=static)
