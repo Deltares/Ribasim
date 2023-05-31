@@ -149,18 +149,12 @@ class Model(BaseModel):
                 input_entry.write(directory, self.modelname)
         return
 
-    def validate_model(self):
+    def validate_model_node_types(self):
         """
-        Checks:
-        - Whether all node types in the node field are valid
-        - Whether the node IDs of the node_type fields are valid
+        Checks whether all node types in the node field are valid
         """
 
-        node_names_all, node_cls_all = list(
-            zip(*inspect.getmembers(node_types, inspect.isclass))
-        )
-
-        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+        node_names_all, _ = list(zip(*inspect.getmembers(node_types, inspect.isclass)))
 
         # Check node types
         for node_type in self.node.static["type"]:
@@ -168,6 +162,14 @@ class Model(BaseModel):
                 raise TypeError(
                     f"{node_type} is not a valid node type, choose from: {', '.join(node_names_all)}."
                 )
+
+    def validate_model_node_field_IDs(self):
+        """
+        Checks whether the node IDs of the node_type fields are valid
+        """
+        _, node_cls_all = list(zip(*inspect.getmembers(node_types, inspect.isclass)))
+
+        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
         # Check node IDs of node fields
         node_IDs_all = []
@@ -195,7 +197,7 @@ class Model(BaseModel):
 
         if (node_ID_counts > 1).any():
             raise ValueError(
-                f"These node ID(s) were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
+                f"These node IDs were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
             )
 
         if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
@@ -203,6 +205,40 @@ class Model(BaseModel):
             raise ValueError(
                 f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static), but these node IDs are missing: {node_IDs_missing}."
             )
+
+    def validate_model_node_IDs(self):
+        """
+        Checks whether the node IDs in the node field correspond to the node IDs on the node type fields
+        """
+
+        _, node_cls_all = list(zip(*inspect.getmembers(node_types, inspect.isclass)))
+
+        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+
+        for name in self.fields():
+            if name in node_names_all_snake_case:
+                node_field = getattr(self, name)
+                node_IDs_field = node_field.static["node_id"].unique()
+
+                node_IDs_from_node_field = self.node.static.loc[
+                    self.node.static["type"] == node_field.get_input_type()
+                ].index
+                if not set(node_IDs_from_node_field) == set(node_IDs_field):
+                    raise ValueError(
+                        f"The node IDs in the field {name} ({node_IDs_field}) do not correspond with the node IDs in the field node ({node_IDs_from_node_field})."
+                    )
+
+    def validate_model(self):
+        """
+        Checks:
+        - Whether all node types in the node field are valid
+        - Whether the node IDs of the node_type fields are valid
+        - Whether the node IDs in the node field correspond to the node IDs on the node type fields
+        """
+
+        self.validate_model_node_types()
+        self.validate_model_node_field_IDs()
+        self.validate_model_node_IDs()
 
     def write(self, directory: FilePath) -> None:
         """

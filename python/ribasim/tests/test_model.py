@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from shapely import Point
 
@@ -15,12 +17,8 @@ def test_invalid_node_type(basic):
         {"type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
     )
 
-    with pytest.raises(TypeError) as exec_info:
-        model.validate_model()
-
-    assert exec_info.value.args[0].startswith(
-        "InvalidNodeType is not a valid node type, choose from:"
-    )
+    with pytest.raises(TypeError, match="InvalidNodeType is not a valid node type.+"):
+        model.validate_model_node_types()
 
 
 def test_invalid_node_id(basic):
@@ -31,10 +29,11 @@ def test_invalid_node_id(basic):
         {"flow_rate": 1, "node_id": -1, "remarks": ""}, ignore_index=True
     )
 
-    with pytest.raises(ValueError) as exec_info:
-        model.validate_model()
-
-    assert exec_info.value.args[0] == "Node IDs must be positive integers, got [-1]."
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Node IDs must be positive integers, got [-1]."),
+    ):
+        model.validate_model_node_field_IDs()
 
 
 def test_node_id_duplicate(basic):
@@ -45,13 +44,11 @@ def test_node_id_duplicate(basic):
         {"flow_rate": 1, "node_id": 1, "remarks": ""}, ignore_index=True
     )
 
-    with pytest.raises(ValueError) as exec_info:
-        model.validate_model()
-
-    assert (
-        exec_info.value.args[0]
-        == "These node ID(s) were assigned to multiple node types: [1]."
-    )
+    with pytest.raises(
+        ValueError,
+        match=re.escape("These node IDs were assigned to multiple node types: [1]."),
+    ):
+        model.validate_model_node_field_IDs()
 
 
 def test_missing_node_id(basic):
@@ -62,9 +59,16 @@ def test_missing_node_id(basic):
         {"type": "Pump", "geometry": Point(0, 0)}, ignore_index=True
     )
 
-    with pytest.raises(ValueError) as exec_info:
-        model.validate_model()
-    assert (
-        exec_info.value.args[0]
-        == "Expected node IDs from 1 to 18 (the number of rows in self.node.static), but these node IDs are missing: {18}."
-    )
+    with pytest.raises(ValueError, match="Expected node IDs from.+"):
+        model.validate_model_node_field_IDs()
+
+
+def test_node_ids_misassigned(basic):
+    model = basic
+
+    # Misassign node IDs
+    model.pump.static.loc[0, "node_id"] = 8
+    model.fractional_flow.static.loc[1, "node_id"] = 8
+
+    with pytest.raises(ValueError, match="The node IDs in the field pump.+"):
+        model.validate_model_node_IDs()
