@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Type, cast
 
 import matplotlib.pyplot as plt
+import numpy as np
 import tomli
 import tomli_w
 from pydantic import BaseModel
@@ -148,6 +149,116 @@ class Model(BaseModel):
                 input_entry.write(directory, self.modelname)
         return
 
+    @staticmethod
+    def get_node_types():
+        node_names_all, node_cls_all = list(
+            zip(*inspect.getmembers(node_types, inspect.isclass))
+        )
+        return node_names_all, node_cls_all
+
+    def validate_model_node_types(self):
+        """
+        Checks whether all node types in the node field are valid
+        """
+
+        node_names_all, _ = Model.get_node_types()
+
+        invalid_node_types = set()
+
+        # Check node types
+        for node_type in self.node.static["type"]:
+            if node_type not in node_names_all:
+                invalid_node_types.add(node_type)
+
+        if len(invalid_node_types) > 0:
+            invalid_node_types = ", ".join(invalid_node_types)
+            raise TypeError(
+                f"Invalid node types detected: [{invalid_node_types}]. Choose from: {', '.join(node_names_all)}."
+            )
+
+    def validate_model_node_field_IDs(self):
+        """
+        Checks whether the node IDs of the node_type fields are valid
+        """
+        _, node_cls_all = Model.get_node_types()
+
+        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+
+        # Check node IDs of node fields
+        node_IDs_all = []
+        n_nodes = len(self.node.static)
+
+        for name in self.fields():
+            if name in node_names_all_snake_case:
+                if node_field := getattr(self, name):
+                    node_IDs_field = node_field.static[
+                        "node_id"
+                    ].unique()  # Table can contain multiple instances of a particular node ID
+                    node_IDs_all.append(node_IDs_field)
+
+        node_IDs_all = np.concatenate(node_IDs_all)
+        node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
+
+        node_IDs_positive_integers = np.greater(node_IDs_unique, 0) & np.equal(
+            node_IDs_unique.astype(int), node_IDs_unique
+        )
+
+        if not node_IDs_positive_integers.all():
+            raise ValueError(
+                f"Node IDs must be positive integers, got {node_IDs_unique[~node_IDs_positive_integers]}."
+            )
+
+        if (node_ID_counts > 1).any():
+            raise ValueError(
+                f"These node IDs were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
+            )
+
+        if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
+            node_IDs_missing = set(np.arange(n_nodes) + 1) - set(node_IDs_unique)
+            raise ValueError(
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static), but these node IDs are missing: {node_IDs_missing}."
+            )
+
+    def validate_model_node_IDs(self):
+        """
+        Checks whether the node IDs in the node field correspond to the node IDs on the node type fields
+        """
+
+        _, node_cls_all = Model.get_node_types()
+
+        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+
+        error_messages = []
+
+        for name in self.fields():
+            if name in node_names_all_snake_case:
+                node_field = getattr(self, name)
+                if node_field := getattr(self, name):
+                    node_IDs_field = node_field.static["node_id"].unique()
+
+                    node_IDs_from_node_field = self.node.static.loc[
+                        self.node.static["type"] == node_field.get_input_type()
+                    ].index
+                    if not set(node_IDs_from_node_field) == set(node_IDs_field):
+                        error_messages.append(
+                            f"The node IDs in the field {name} {node_IDs_field.tolist()} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
+                        )
+
+        if len(error_messages) > 0:
+            raise ValueError("\n".join(error_messages))
+
+    def validate_model(self):
+        """
+        Checks:
+        - Whether all node types in the node field are valid
+        - Whether the node IDs of the node_type fields are valid
+        - Whether the node IDs in the node field correspond to the node IDs on the node type fields
+        """
+
+        self.validate_model_node_types()
+        self.validate_model_node_field_IDs()
+        self.validate_model_node_IDs()
+
     def write(self, directory: FilePath) -> None:
         """
         Write the contents of the model to a GeoPackage and a TOML
@@ -161,6 +272,8 @@ class Model(BaseModel):
         ----------
         directory: FilePath
         """
+        self.validate_model()
+
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         self._write_toml(directory)
