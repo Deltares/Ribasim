@@ -1,10 +1,9 @@
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
-from pydantic import BaseModel
 
 from ribasim import models
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("FlowBoundary",)
 
@@ -16,7 +15,7 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.FlowBoundaryStatic)
 
 
-class FlowBoundary(InputMixin, BaseModel):
+class FlowBoundary(TableModel):
     """
     Sets a precribed flow like a one-sided pump.
 

@@ -81,9 +81,8 @@ Create a new file `python/ribasim/ribasim/node_types/new_node_type.py` which is 
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame, Series
-from pydantic import BaseModel
 
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("NewNodeType",)
 
@@ -94,7 +93,7 @@ class StaticSchema(pa.SchemaModel):
 # Possible other schemas
 
 
-class NewNodeType(InputMixin, BaseModel):
+class NewNodeType(TableModel):
     """
     Description of this node type.
 

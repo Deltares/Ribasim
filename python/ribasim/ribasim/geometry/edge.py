@@ -9,9 +9,8 @@ import shapely
 from matplotlib.axes import Axes
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
-from pydantic import BaseModel
 
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 from ribasim.types import FilePath
 
 __all__ = ("Edge",)
@@ -23,7 +22,7 @@ class StaticSchema(pa.SchemaModel):
     geometry: GeoSeries
 
 
-class Edge(InputMixin, BaseModel):
+class Edge(TableModel):
     """
     Defines the connections between nodes.
 

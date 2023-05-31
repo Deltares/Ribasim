@@ -3,10 +3,9 @@ from typing import Optional
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
-from pydantic import BaseModel
 
 from ribasim import models
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("Basin",)
 
@@ -39,7 +38,7 @@ class StateSchema(pa.SchemaModel):
         dtype = PydanticModel(models.BasinState)
 
 
-class Basin(InputMixin, BaseModel):
+class Basin(TableModel):
     """
     Input for a (sub-)basin: an area of land where all flowing surface water
     converges to a single point.

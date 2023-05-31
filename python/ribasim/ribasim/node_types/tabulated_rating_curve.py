@@ -3,10 +3,9 @@ from typing import Optional
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
-from pydantic import BaseModel
 
 from ribasim import models
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("TabulatedRatingCurve",)
 
@@ -27,7 +26,7 @@ class TimeSchema(pa.SchemaModel):
         coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
-class TabulatedRatingCurve(InputMixin, BaseModel):
+class TabulatedRatingCurve(TableModel):
     """
     Linearly interpolates discharge between a tabulation of level and discharge.
 

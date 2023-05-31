@@ -14,7 +14,7 @@ from ribasim.geometry.node import Node
 
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
@@ -107,7 +107,7 @@ class Model(BaseModel):
         second = []
         for field in self.fields():
             attr = getattr(self, field)
-            if isinstance(attr, InputMixin):
+            if isinstance(attr, TableModel):
                 second.append(f"{field}: {repr(attr)}")
             else:
                 first.append(f"{field}={repr(attr)}")
@@ -144,7 +144,7 @@ class Model(BaseModel):
 
         for name in self.fields():
             input_entry = getattr(self, name)
-            if isinstance(input_entry, InputMixin):
+            if isinstance(input_entry, TableModel):
                 input_entry.write(directory, self.modelname)
         return
 
@@ -191,7 +191,7 @@ class Model(BaseModel):
 
         for module in [geometry, node_types]:
             for _, node_type_cls in inspect.getmembers(module, inspect.isclass):
-                cls_casted = cast(Type[InputMixin], node_type_cls)
+                cls_casted = cast(Type[TableModel], node_type_cls)
                 kwargs[node_type_cls.get_toml_key()] = cls_casted.from_config(config)
 
         kwargs["starttime"] = config["starttime"]
@@ -228,5 +228,5 @@ class Model(BaseModel):
         """
         for name in self.fields():
             input_entry = getattr(self, name)
-            if isinstance(input_entry, InputMixin):
+            if isinstance(input_entry, TableModel):
                 input_entry.sort()

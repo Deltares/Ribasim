@@ -1,10 +1,9 @@
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
-from pydantic import BaseModel
 
 from ribasim import models
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("LinearResistance",)
 
@@ -16,7 +15,7 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.LinearResistanceStatic)
 
 
-class LinearResistance(InputMixin, BaseModel):
+class LinearResistance(TableModel):
     """
     Flow through this connection linearly depends on the level difference
     between the two connected basins.
