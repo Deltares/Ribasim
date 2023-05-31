@@ -17,7 +17,10 @@ def test_invalid_node_type(basic):
         {"type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
     )
 
-    with pytest.raises(TypeError, match="InvalidNodeType is not a valid node type.+"):
+    with pytest.raises(
+        TypeError,
+        match=re.escape("Invalid node types detected: [InvalidNodeType].") + ".+",
+    ):
         model.validate_model_node_types()
 
 
