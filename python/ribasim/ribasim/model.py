@@ -163,12 +163,18 @@ class Model(BaseModel):
 
         node_names_all, _ = Model.get_node_types()
 
+        invalid_node_types = set()
+
         # Check node types
         for node_type in self.node.static["type"]:
             if node_type not in node_names_all:
-                raise TypeError(
-                    f"{node_type} is not a valid node type, choose from: {', '.join(node_names_all)}."
-                )
+                invalid_node_types.add(node_type)
+
+        if len(invalid_node_types) > 0:
+            invalid_node_types = ", ".join(invalid_node_types)
+            raise TypeError(
+                f"Invalid node types detected: [{invalid_node_types}]. Choose from: {', '.join(node_names_all)}."
+            )
 
     def validate_model_node_field_IDs(self):
         """
@@ -184,11 +190,11 @@ class Model(BaseModel):
 
         for name in self.fields():
             if name in node_names_all_snake_case:
-                node_field = getattr(self, name)
-                node_IDs_field = node_field.static[
-                    "node_id"
-                ].unique()  # Table can contain multiple instances of a particular node ID
-                node_IDs_all.append(node_IDs_field)
+                if node_field := getattr(self, name):
+                    node_IDs_field = node_field.static[
+                        "node_id"
+                    ].unique()  # Table can contain multiple instances of a particular node ID
+                    node_IDs_all.append(node_IDs_field)
 
         node_IDs_all = np.concatenate(node_IDs_all)
         node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
@@ -227,15 +233,16 @@ class Model(BaseModel):
         for name in self.fields():
             if name in node_names_all_snake_case:
                 node_field = getattr(self, name)
-                node_IDs_field = node_field.static["node_id"].unique()
+                if node_field := getattr(self, name):
+                    node_IDs_field = node_field.static["node_id"].unique()
 
-                node_IDs_from_node_field = self.node.static.loc[
-                    self.node.static["type"] == node_field.get_input_type()
-                ].index
-                if not set(node_IDs_from_node_field) == set(node_IDs_field):
-                    error_messages.append(
-                        f"The node IDs in the field {name} {node_IDs_field.tolist()} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
-                    )
+                    node_IDs_from_node_field = self.node.static.loc[
+                        self.node.static["type"] == node_field.get_input_type()
+                    ].index
+                    if not set(node_IDs_from_node_field) == set(node_IDs_field):
+                        error_messages.append(
+                            f"The node IDs in the field {name} {node_IDs_field.tolist()} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
+                        )
 
         if len(error_messages) > 0:
             raise ValueError("\n".join(error_messages))
