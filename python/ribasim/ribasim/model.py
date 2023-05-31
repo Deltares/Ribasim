@@ -224,6 +224,8 @@ class Model(BaseModel):
 
         node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
+        error_messages = []
+
         for name in self.fields():
             if name in node_names_all_snake_case:
                 node_field = getattr(self, name)
@@ -233,9 +235,12 @@ class Model(BaseModel):
                     self.node.static["type"] == node_field.get_input_type()
                 ].index
                 if not set(node_IDs_from_node_field) == set(node_IDs_field):
-                    raise ValueError(
-                        f"The node IDs in the field {name} ({node_IDs_field}) do not correspond with the node IDs in the field node ({node_IDs_from_node_field})."
+                    error_messages.append(
+                        f"The node IDs in the field {name} {node_IDs_field.tolist()} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
                     )
+
+        if len(error_messages) > 0:
+            raise ValueError("\n".join(error_messages))
 
     def validate_model(self):
         """
