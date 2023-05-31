@@ -3,9 +3,17 @@ on:
   push:
     branches: [main]
     tags: ["*"]
-    paths: [".github/**", "build/libribasim/src/**", "core/**", "python/ribasim/**"]
+    paths: 
+      - ".github/**"
+      - "build/libribasim/src/**"
+      - "core/**"
+      - "python/ribasim/**"
   pull_request:
-    paths: [".github/**", "build/libribasim/src/**", "core/**", "python/ribasim/**"]
+    paths:
+      - ".github/**"
+      - "build/libribasim/src/**"
+      - "core/**"
+      - "python/ribasim/**"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
