@@ -10,17 +10,17 @@ from ribasim_testmodels import (
 
 
 # we can't call fixtures directly, so we keep separate versions
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def basic() -> ribasim.Model:
     return basic_model()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def basic_transient(basic) -> ribasim.Model:
     return basic_transient_model(basic)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def tabulated_rating_curve() -> ribasim.Model:
     return tabulated_rating_curve_model()
 

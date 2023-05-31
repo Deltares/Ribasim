@@ -33,7 +33,7 @@ def basic_model() -> ribasim.Model:
 
     node_type = [
         "Basin",
-        "LinearResistance",
+        "ManningResistance",
         "Basin",
         "TabulatedRatingCurve",
         "FractionalFlow",
