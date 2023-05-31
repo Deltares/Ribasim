@@ -2,7 +2,7 @@ import pandera as pa
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("Terminal",)
 
@@ -11,7 +11,7 @@ class StaticSchema(pa.SchemaModel):
     node_id: Series[int] = pa.Field(coerce=True)
 
 
-class Terminal(InputMixin, BaseModel):
+class Terminal(TableModel):
     """
     Water sink without state or properties.
 

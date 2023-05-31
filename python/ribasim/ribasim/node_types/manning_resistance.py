@@ -3,7 +3,7 @@ import pandera as pa
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel
 
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("ManningResistance",)
 
@@ -16,7 +16,7 @@ class StaticSchema(pa.SchemaModel):
     profile_slope: Series[float]
 
 
-class ManningResistance(InputMixin, BaseModel):
+class ManningResistance(TableModel):
     """
     Flow through this connection is estimated by conservation of energy and the
     Manning-Gauckler formula to estimate friction losses.

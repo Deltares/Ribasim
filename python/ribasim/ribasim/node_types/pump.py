@@ -4,7 +4,7 @@ from pandera.typing import DataFrame
 from pydantic import BaseModel
 
 from ribasim import models
-from ribasim.input_base import InputMixin
+from ribasim.input_base import TableModel
 
 __all__ = ("Pump",)
 
@@ -16,7 +16,7 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.PumpStatic)
 
 
-class Pump(InputMixin, BaseModel):
+class Pump(TableModel):
     """
     Pump water from a source node to a destination node.
     The set flow rate will be pumped unless the intake storage is less than 10m3,

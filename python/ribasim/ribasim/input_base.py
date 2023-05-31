@@ -1,4 +1,3 @@
-import abc
 import re
 import textwrap
 from pathlib import Path
@@ -6,10 +5,11 @@ from sqlite3 import Connection, connect
 from typing import Any, Dict
 
 import pandas as pd
+from pydantic import BaseModel
 
 from ribasim.types import FilePath
 
-__all__ = ("InputMixin",)
+__all__ = ("TableModel",)
 
 delimiter = " / "
 
@@ -29,7 +29,7 @@ def exists(connection: Connection, name: str) -> bool:
     return result is not None
 
 
-class InputMixin(abc.ABC):
+class TableModel(BaseModel):
     @classmethod
     def get_input_type(cls):
         return cls.__name__
