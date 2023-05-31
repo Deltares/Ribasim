@@ -149,15 +149,19 @@ class Model(BaseModel):
                 input_entry.write(directory, self.modelname)
         return
 
+    @staticmethod
+    def get_node_types():
+        node_names_all, node_cls_all = list(
+            zip(*inspect.getmembers(node_types, inspect.isclass))
+        )
+        return node_names_all, node_cls_all
+
     def validate_model_node_types(self):
         """
         Checks whether all node types in the node field are valid
         """
 
-        node_names_all = [
-            node_name
-            for (node_name, _) in inspect.getmembers(node_types, inspect.isclass)
-        ]
+        node_names_all, _ = Model.get_node_types()
 
         # Check node types
         for node_type in self.node.static["type"]:
@@ -170,10 +174,7 @@ class Model(BaseModel):
         """
         Checks whether the node IDs of the node_type fields are valid
         """
-        node_cls_all = [
-            node_cls
-            for (_, node_cls) in inspect.getmembers(node_types, inspect.isclass)
-        ]
+        _, node_cls_all = Model.get_node_types()
 
         node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
@@ -217,10 +218,7 @@ class Model(BaseModel):
         Checks whether the node IDs in the node field correspond to the node IDs on the node type fields
         """
 
-        node_cls_all = [
-            node_cls
-            for (_, node_cls) in inspect.getmembers(node_types, inspect.isclass)
-        ]
+        _, node_cls_all = Model.get_node_types()
 
         node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
