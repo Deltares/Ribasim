@@ -2,7 +2,7 @@ import re
 import textwrap
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict
+from typing import Any, Dict, Set
 
 import pandas as pd
 from pydantic import BaseModel
@@ -72,7 +72,7 @@ class TableModel(BaseModel):
         return "\n".join(content)
 
     def get_node_IDs(self) -> set:
-        node_IDs = set()
+        node_IDs: Set[int] = set()
         for name in self.fields():
             attr = getattr(self, name)
             if isinstance(attr, pd.DataFrame):
