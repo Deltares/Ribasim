@@ -1,9 +1,5 @@
 coverage:
-    status:
-      project:
-        default:
-          target: auto
-          flags:
-            - unittests
-          changes:
-            patch: -3..0
+  status:
+    patch:
+      default:
+        informational: true

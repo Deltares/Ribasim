@@ -48,7 +48,7 @@ jobs:
         run: pip install --editable python/ribasim_testmodels
 
       - name: Run tests
-        run: pytest --cov=ribasim --cov-config=codecov.yml --cov-report=xml python/ribasim/tests
+        run: pytest --cov=ribasim --cov-report=xml python/ribasim/tests
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
