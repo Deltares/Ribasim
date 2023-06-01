@@ -2,7 +2,7 @@ import re
 import textwrap
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict
+from typing import Any, Dict, Set
 
 import pandas as pd
 from pydantic import BaseModel
@@ -70,6 +70,16 @@ class TableModel(BaseModel):
                 entry = f"{field}: {attr}"
             content.append(textwrap.indent(entry, prefix="   "))
         return "\n".join(content)
+
+    def get_node_IDs(self) -> set:
+        node_IDs: Set[int] = set()
+        for name in self.fields():
+            attr = getattr(self, name)
+            if isinstance(attr, pd.DataFrame):
+                if "node_id" in attr:
+                    node_IDs.update(attr["node_id"])
+
+        return node_IDs
 
     @classmethod
     def _layername(cls, field) -> str:
