@@ -2,7 +2,7 @@ using Test
 using Ribasim
 using Dates
 using Configurations: UndefKeywordError
-using OrdinaryDiffEq: alg_autodiff
+using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
 
 @testset "config" begin
     config = Ribasim.parsefile(normpath(@__DIR__, "testrun.toml"))
@@ -39,11 +39,12 @@ end
     )
     @test alg_autodiff(
         Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF", autodiff = true)),
-    )
-    @test !alg_autodiff(
+    ) == AutoForwardDiff()
+    @test alg_autodiff(
         Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF", autodiff = false)),
-    )
-    @test !alg_autodiff(Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF")))
+    ) == AutoFiniteDiff()
+    @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF"))) ==
+          AutoFiniteDiff()
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     Ribasim.algorithm(Ribasim.Solver(; algorithm = "Euler", autodiff = true))
 end
