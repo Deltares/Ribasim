@@ -346,7 +346,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
-                "node_id": [2, 2],
+                "node_id": [2, 3],
                 "level": [0.0, 1.0],
                 "discharge": [0.0, q1000],
             }
