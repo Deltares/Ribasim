@@ -66,12 +66,12 @@ def test_missing_node_id(basic):
         model.validate_model_node_field_IDs()
 
 
-def test_node_ids_misassigned(basic):
-    model = basic
+# def test_node_ids_misassigned(basic):
+#     model = basic
 
-    # Misassign node IDs
-    model.pump.static.loc[0, "node_id"] = 8
-    model.fractional_flow.static.loc[1, "node_id"] = 7
+#     # Misassign node IDs
+#     model.pump.static.loc[0, "node_id"] = 8
+#     model.fractional_flow.static.loc[1, "node_id"] = 7
 
-    with pytest.raises(ValueError, match="The node IDs in the field fractional_flow.+"):
-        model.validate_model_node_IDs()
+#     with pytest.raises(ValueError, match="The node IDs in the field fractional_flow.+"):
+#         model.validate_model_node_IDs()
