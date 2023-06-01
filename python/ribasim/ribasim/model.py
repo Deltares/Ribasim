@@ -191,10 +191,8 @@ class Model(BaseModel):
         for name in self.fields():
             if name in node_names_all_snake_case:
                 if node_field := getattr(self, name):
-                    node_IDs_field = node_field.static[
-                        "node_id"
-                    ].unique()  # Table can contain multiple instances of a particular node ID
-                    node_IDs_all.append(node_IDs_field)
+                    node_IDs_field = node_field.get_node_IDs()
+                    node_IDs_all.append(list(node_IDs_field))
 
         node_IDs_all = np.concatenate(node_IDs_all)
         node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
@@ -232,16 +230,15 @@ class Model(BaseModel):
 
         for name in self.fields():
             if name in node_names_all_snake_case:
-                node_field = getattr(self, name)
-                if node_field := getattr(self, name):
-                    node_IDs_field = node_field.static["node_id"].unique()
-
+                if attr := getattr(self, name):
+                    node_IDs_field = attr.get_node_IDs()
                     node_IDs_from_node_field = self.node.static.loc[
-                        self.node.static["type"] == node_field.get_input_type()
+                        self.node.static["type"] == attr.get_input_type()
                     ].index
+
                     if not set(node_IDs_from_node_field) == set(node_IDs_field):
                         error_messages.append(
-                            f"The node IDs in the field {name} {node_IDs_field.tolist()} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
+                            f"The node IDs in the field {name} {node_IDs_field} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
                         )
 
         if len(error_messages) > 0:
