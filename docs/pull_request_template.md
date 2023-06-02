@@ -9,7 +9,7 @@ Solves issue #?
 text below is for instruction and can be removed
 
 # New node types
-Typically new node-types require an update of:
+Typically new node types require an update of:
 
 - `core\src\create.jl`
 - `core\src\validation.jl`
@@ -19,7 +19,7 @@ Updating other jl-files may depend on needs
 
 
 ## ribasim_python
-- `newnodetype.py` with associated implementation in `python\ribasim\ribasim`.
+- `new_node_type.py` with associated implementation in `python\ribasim\ribasim`.
 - add/update nodetype to `python\ribasim\ribasim\model.py`
 - add/update nodetype to `python\ribasim\tests\conftest.py`
 - add/update nodetype to `python\ribasim_api\tests\conftest.py`
