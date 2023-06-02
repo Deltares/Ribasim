@@ -13,6 +13,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
+    local parameters, state, n
     try
         parameters = Parameters(db, config)
         # use state
