@@ -12,17 +12,16 @@ struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids::Dictionary{Tuple{Int, Int}, Int}
-    Connectivity(graph, flow, edge_ids) =
+    function Connectivity(graph, flow, edge_ids)
         is_valid(graph, flow, edge_ids) ? new(graph, flow, edge_ids) :
         error("Invalid graph")
+    end
 end
 
 # TODO Add actual validation
-function is_valid(
-    graph::DiGraph{Int},
-    flow::SparseMatrixCSC{Float64, Int},
-    edge_ids::Dictionary{Tuple{Int, Int}, Int},
-)
+function is_valid(graph::DiGraph{Int},
+                  flow::SparseMatrixCSC{Float64, Int},
+                  edge_ids::Dictionary{Tuple{Int, Int}, Int})
     return true
 end
 
@@ -392,15 +391,14 @@ end
 
 function water_balance!(du, u, p, t)::Nothing
     (;
-        connectivity,
-        basin,
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        fractional_flow,
-        flow_boundary,
-        pump,
-    ) = p
+    connectivity,
+    basin,
+    linear_resistance,
+    manning_resistance,
+    tabulated_rating_curve,
+    fractional_flow,
+    flow_boundary,
+    pump) = p
 
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0

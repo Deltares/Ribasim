@@ -8,10 +8,8 @@ function get_ids(db::DB, nodetype)::Vector{Int}
 end
 
 function exists(db::DB, tablename::String)
-    query = execute(
-        db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
-    )
+    query = execute(db,
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE")
     return !isempty(query)
 end
 
@@ -37,11 +35,9 @@ datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * 
 Load data from Arrow files if available, otherwise the GeoPackage.
 Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
 """
-function load_data(
-    db::DB,
-    config::Config,
-    record::Type{<:Legolas.AbstractRecord},
-)::Union{Table, Query, Nothing}
+function load_data(db::DB,
+                   config::Config,
+                   record::Type{<:Legolas.AbstractRecord})::Union{Table, Query, Nothing}
     # TODO load_data doesn't need both config and db, use config to check which one is needed
 
     schema = Legolas._schema_version_from_record_type(record)
@@ -69,11 +65,9 @@ Load data from Arrow files if available, otherwise the GeoPackage.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found. This function validates the schema, and enforces the required sort order.
 """
-function load_structvector(
-    db::DB,
-    config::Config,
-    ::Type{T},
-)::StructVector{T} where {T <: AbstractRow}
+function load_structvector(db::DB,
+                           config::Config,
+                           ::Type{T})::StructVector{T} where {T <: AbstractRow}
     table = load_data(db, config, T)
     if isnothing(table)
         return StructVector{T}(undef, 0)
@@ -110,8 +104,9 @@ function output_path(config::Config, path::String)
     return normpath(config.relative_dir, config.output_dir, path)
 end
 
-parsefile(config_path::AbstractString) =
+function parsefile(config_path::AbstractString)
     from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
+end
 
 function write_basin_output(model::Model)
     (; config, integrator) = model
@@ -147,11 +142,8 @@ function write_flow_output(model::Model)
     nflow = length(I)
     ntsteps = length(t)
 
-    time =
-        convert.(
-            Arrow.DATETIME,
-            repeat(datetime_since.(t, config.starttime); inner = nflow),
-        )
+    time = convert.(Arrow.DATETIME,
+                    repeat(datetime_since.(t, config.starttime); inner = nflow))
     edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)

@@ -17,8 +17,9 @@
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
 const delimiter = " / "
-schemaversion(node::Symbol, kind::Symbol, v = 1) =
+function schemaversion(node::Symbol, kind::Symbol, v = 1)
     SchemaVersion{Symbol(join((:ribasim, node, kind), ".")), v}
+end
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
 tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
@@ -123,12 +124,12 @@ function is_consistent(node, edge, state, static, profile, forcing)
     # Check that node ids exist
     # TODO Do we need to check the reverse as well? All ids in use?
     ids = node.fid
-    @assert edge.from_node_id ⊆ ids "Edge from_node_id not in node ids"
-    @assert edge.to_node_id ⊆ ids "Edge to_node_id not in node ids"
-    @assert state.node_id ⊆ ids "State id not in node ids"
-    @assert static.node_id ⊆ ids "Static id not in node ids"
-    @assert profile.node_id ⊆ ids "Profile id not in node ids"
-    @assert forcing.node_id ⊆ ids "Forcing id not in node ids"
+    @assert edge.from_node_id⊆ids "Edge from_node_id not in node ids"
+    @assert edge.to_node_id⊆ids "Edge to_node_id not in node ids"
+    @assert state.node_id⊆ids "State id not in node ids"
+    @assert static.node_id⊆ids "Static id not in node ids"
+    @assert profile.node_id⊆ids "Profile id not in node ids"
+    @assert forcing.node_id⊆ids "Forcing id not in node ids"
 
     # Check edges for uniqueness
     @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
@@ -152,8 +153,12 @@ sort_by_id_storage(row) = (row.node_id, row.storage)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{<:Union{TabulatedRatingCurveTimeV1, BasinForcingV1}}) =
+function sort_by_function(table::StructVector{
+                                              <:Union{TabulatedRatingCurveTimeV1,
+                                                      BasinForcingV1}
+                                              })
     sort_by_time_id
+end
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_storage
 
@@ -163,9 +168,9 @@ Depending on if a table can be sorted, either sort it or assert that it is sorte
 Tables loaded from GeoPackage into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
-function sorted_table!(
-    table::StructVector{<:Legolas.AbstractRecord},
-)::StructVector{<:Legolas.AbstractRecord}
+function sorted_table!(table::StructVector{
+                                           <:Legolas.AbstractRecord
+                                           })::StructVector{<:Legolas.AbstractRecord}
     by = sort_by_function(table)
     if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
         et = eltype(table)

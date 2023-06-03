@@ -14,28 +14,28 @@ recordproperty("name", "Input/Output")  # TODO To check in TeamCity
 
     # relative to tomldir
     config = Ribasim.Config(;
-        starttime = now(),
-        endtime = now(),
-        relative_dir = "model",
-        geopackage = "path/to/file",
-    )
+                            starttime = now(),
+                            endtime = now(),
+                            relative_dir = "model",
+                            geopackage = "path/to/file")
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "path", "to", "file")
 
     # also relative to inputdir
     config = Ribasim.Config(;
-        starttime = now(),
-        endtime = now(),
-        relative_dir = "model",
-        input_dir = "input",
-        geopackage = "path/to/file",
-    )
+                            starttime = now(),
+                            endtime = now(),
+                            relative_dir = "model",
+                            input_dir = "input",
+                            geopackage = "path/to/file")
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "input", "path", "to", "file")
 
     # absolute path
-    config =
-        Ribasim.Config(; starttime = now(), endtime = now(), geopackage = "/path/to/file")
+    config = Ribasim.Config(;
+                            starttime = now(),
+                            endtime = now(),
+                            geopackage = "/path/to/file")
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
 end
 
@@ -56,10 +56,12 @@ end
 end
 
 "Convert an in-memory table to a memory mapped Arrow table"
-function to_arrow_table(
-    path,
-    table::StructVector{T},
-)::StructVector{T} where {T <: Legolas.AbstractRecord}
+function to_arrow_table(path,
+                        table::StructVector{T})::StructVector{T
+                                                              } where {
+                                                                       T <:
+                                                                       Legolas.AbstractRecord
+                                                                       }
     open(path; write = true) do io
         Arrow.write(io, table)
     end
@@ -95,7 +97,7 @@ end
 
     # arrow_table is already sorted, stays memory mapped
     Ribasim.sorted_table!(arrow_table)
-    @test_throws ReadOnlyMemoryError arrow_table.node_id[1] = 0
+    @test_throws ReadOnlyMemoryError arrow_table.node_id[1]=0
     # reversed_arrow_table throws an AssertionError
     @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
 end

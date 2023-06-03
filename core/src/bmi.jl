@@ -23,28 +23,26 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         else
             state.storage
         end::Vector{Float64}
-        @assert length(u0) == n "Basin / state length differs from number of Basins"
+        @assert length(u0)==n "Basin / state length differs from number of Basins"
         t_end = seconds_since(config.endtime, config.starttime)
         # for Float32 this method allows max ~1000 year simulations without accuracy issues
-        @assert eps(t_end) < 3600 "Simulation time too long"
+        @assert eps(t_end)<3600 "Simulation time too long"
         timespan = (zero(t_end), t_end)
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
     callback, saved_flow = create_callbacks(parameters)
 
-    @timeit_debug to "Setup integrator" integrator = init(
-        prob,
-        alg;
-        progress = true,
-        progress_name = "Simulating",
-        callback,
-        config.solver.saveat,
-        config.solver.dt,
-        config.solver.abstol,
-        config.solver.reltol,
-        config.solver.maxiters,
-    )
+    @timeit_debug to "Setup integrator" integrator=init(prob,
+                                                        alg;
+                                                        progress = true,
+                                                        progress_name = "Simulating",
+                                                        callback,
+                                                        config.solver.saveat,
+                                                        config.solver.dt,
+                                                        config.solver.abstol,
+                                                        config.solver.reltol,
+                                                        config.solver.maxiters)
 
     close(db)
     return Model(integrator, config, saved_flow)
@@ -56,9 +54,10 @@ and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
-function create_callbacks(
-    parameters,
-)::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
+function create_callbacks(parameters)::Tuple{
+                                             CallbackSet,
+                                             SavedValues{Float64, Vector{Float64}}
+                                             }
     (; starttime, basin, tabulated_rating_curve) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
@@ -91,11 +90,10 @@ function update_basin(integrator)::Nothing
     timeblock = view(time, rows)
 
     table = (;
-        basin.precipitation,
-        basin.potential_evaporation,
-        basin.drainage,
-        basin.infiltration,
-    )
+             basin.precipitation,
+             basin.potential_evaporation,
+             basin.drainage,
+             basin.infiltration)
 
     for row in timeblock
         hasindex, i = id_index(node_id, row.node_id)
