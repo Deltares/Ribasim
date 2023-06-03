@@ -24,7 +24,7 @@ end
 
 @testset "TabulatedRatingCurve model" begin
     toml_path = normpath(@__DIR__,
-                         "../../data/tabulated_rating_curve/tabulated_rating_curve.toml")
+        "../../data/tabulated_rating_curve/tabulated_rating_curve.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model

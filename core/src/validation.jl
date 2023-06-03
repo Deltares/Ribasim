@@ -154,9 +154,9 @@ sort_by_id_storage(row) = (row.node_id, row.storage)
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 function sort_by_function(table::StructVector{
-                                              <:Union{TabulatedRatingCurveTimeV1,
-                                                      BasinForcingV1}
-                                              })
+    <:Union{TabulatedRatingCurveTimeV1,
+        BasinForcingV1},
+})
     sort_by_time_id
 end
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
@@ -169,8 +169,8 @@ Tables loaded from GeoPackage into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
 function sorted_table!(table::StructVector{
-                                           <:Legolas.AbstractRecord
-                                           })::StructVector{<:Legolas.AbstractRecord}
+    <:Legolas.AbstractRecord,
+})::StructVector{<:Legolas.AbstractRecord}
     by = sort_by_function(table)
     if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
         et = eltype(table)

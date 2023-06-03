@@ -27,7 +27,7 @@ Add all TableOption subtypes as fields to struct expression. Requires @option us
 macro addnodetypes(typ::Expr)
     for nodetype in nodetypes
         push!(typ.args[3].args,
-              Expr(:(=), Expr(:(::), nodetype, nodetype), Expr(:call, nodetype)))
+            Expr(:(=), Expr(:(::), nodetype, nodetype), Expr(:call, nodetype)))
     end
     return esc(typ)
 end
@@ -104,8 +104,8 @@ Load data from a source table `static` into a destination `table`.
 Data is matched based on the node_id, which is sorted.
 """
 function set_static_value!(table::NamedTuple,
-                           node_id::Vector{Int},
-                           static::StructVector)::NamedTuple
+    node_id::Vector{Int},
+    static::StructVector)::NamedTuple
     for (i, id) in enumerate(node_id)
         idx = findsorted(static.node_id, id)
         isnothing(idx) && continue
@@ -121,16 +121,16 @@ From a timeseries table `time`, load the most recent applicable data into `table
 The most recent applicable data is non-NaN data for a given ID that is on or before `t`.
 """
 function set_current_value!(table::NamedTuple,
-                            node_id::Vector{Int},
-                            time::StructVector,
-                            t::DateTime)::NamedTuple
+    node_id::Vector{Int},
+    time::StructVector,
+    t::DateTime)::NamedTuple
     idx_starttime = searchsortedlast(time.time, t)
     pre_table = view(time, 1:idx_starttime)
 
     for (i, id) in enumerate(node_id)
         for (symbol, vector) in pairs(table)
             idx = findlast(row -> row.node_id == id && !isnan(getproperty(row, symbol)),
-                           pre_table)
+                pre_table)
             if !isnothing(idx)
                 vector[i] = getproperty(pre_table, symbol)[idx]
             end

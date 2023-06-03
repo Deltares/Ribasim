@@ -44,10 +44,10 @@ end
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     return ManningResistance(static.node_id,
-                             static.length,
-                             static.manning_n,
-                             static.profile_width,
-                             static.profile_slope)
+        static.length,
+        static.manning_n,
+        static.profile_width,
+        static.profile_slope)
 end
 
 function create_storage_tables(db::DB, config::Config)
@@ -113,14 +113,14 @@ function Basin(db::DB, config::Config)::Basin
     check_no_nans(table, "Basin")
 
     return Basin(Indices(node_id),
-                 precipitation,
-                 potential_evaporation,
-                 drainage,
-                 infiltration,
-                 current_level,
-                 area,
-                 level,
-                 time)
+        precipitation,
+        potential_evaporation,
+        drainage,
+        infiltration,
+        current_level,
+        area,
+        level,
+        time)
 end
 
 function Parameters(db::DB, config::Config)::Parameters
@@ -140,14 +140,14 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config)
 
     return Parameters(config.starttime,
-                      connectivity,
-                      basin,
-                      linear_resistance,
-                      manning_resistance,
-                      tabulated_rating_curve,
-                      fractional_flow,
-                      level_boundary,
-                      flow_boundary,
-                      pump,
-                      terminal)
+        connectivity,
+        basin,
+        linear_resistance,
+        manning_resistance,
+        tabulated_rating_curve,
+        fractional_flow,
+        level_boundary,
+        flow_boundary,
+        pump,
+        terminal)
 end

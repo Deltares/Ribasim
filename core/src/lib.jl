@@ -14,8 +14,8 @@ struct Model{T}
     config::Config
     saved_flow::SavedValues{Float64, Vector{Float64}}
     function Model(integrator::T,
-                   config,
-                   saved_flow) where {T <: SciMLBase.AbstractODEIntegrator}
+        config,
+        saved_flow) where {T <: SciMLBase.AbstractODEIntegrator}
         new{T}(integrator, config, saved_flow)
     end
 end

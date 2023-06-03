@@ -34,15 +34,15 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     callback, saved_flow = create_callbacks(parameters)
 
     @timeit_debug to "Setup integrator" integrator=init(prob,
-                                                        alg;
-                                                        progress = true,
-                                                        progress_name = "Simulating",
-                                                        callback,
-                                                        config.solver.saveat,
-                                                        config.solver.dt,
-                                                        config.solver.abstol,
-                                                        config.solver.reltol,
-                                                        config.solver.maxiters)
+        alg;
+        progress = true,
+        progress_name = "Simulating",
+        callback,
+        config.solver.saveat,
+        config.solver.dt,
+        config.solver.abstol,
+        config.solver.reltol,
+        config.solver.maxiters)
 
     close(db)
     return Model(integrator, config, saved_flow)
@@ -55,9 +55,9 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(parameters)::Tuple{
-                                             CallbackSet,
-                                             SavedValues{Float64, Vector{Float64}}
-                                             }
+    CallbackSet,
+    SavedValues{Float64, Vector{Float64}},
+}
     (; starttime, basin, tabulated_rating_curve) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
@@ -90,10 +90,10 @@ function update_basin(integrator)::Nothing
     timeblock = view(time, rows)
 
     table = (;
-             basin.precipitation,
-             basin.potential_evaporation,
-             basin.drainage,
-             basin.infiltration)
+        basin.precipitation,
+        basin.potential_evaporation,
+        basin.drainage,
+        basin.infiltration)
 
     for row in timeblock
         hasindex, i = id_index(node_id, row.node_id)

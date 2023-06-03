@@ -1,6 +1,6 @@
 const schemas = getfield.(Ref(Ribasim),
-                          filter!(x -> endswith(string(x), "SchemaVersion"),
-                                  names(Ribasim; all = true)))
+    filter!(x -> endswith(string(x), "SchemaVersion"),
+        names(Ribasim; all = true)))
 
 # Find all nodetypes and possible nodekinds
 nodekinds = DefaultDict{Symbol, Vector{Symbol}}(() -> Symbol[])  # require lambda to avoid sharing
@@ -78,14 +78,14 @@ end
 
 "Map from config string to supported algorithm type"
 const algorithms = Dict{String, Type}("QNDF" => QNDF,
-                                      "Rosenbrock23" => Rosenbrock23,
-                                      "TRBDF2" => TRBDF2,
-                                      "Rodas5" => Rodas5,
-                                      "KenCarp4" => KenCarp4,
-                                      "Tsit5" => Tsit5,
-                                      "RK4" => RK4,
-                                      "ImplicitEuler" => ImplicitEuler,
-                                      "Euler" => Euler)
+    "Rosenbrock23" => Rosenbrock23,
+    "TRBDF2" => TRBDF2,
+    "Rodas5" => Rodas5,
+    "KenCarp4" => KenCarp4,
+    "Tsit5" => Tsit5,
+    "RK4" => RK4,
+    "ImplicitEuler" => ImplicitEuler,
+    "Euler" => Euler)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm

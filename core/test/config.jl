@@ -13,33 +13,33 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
 
     @test_throws UndefKeywordError Ribasim.Config()
     @test_throws UndefKeywordError Ribasim.Config(startime = now(),
-                                                  endtime = now(),
-                                                  geopackage = "",
-                                                  foo = "bar")
+        endtime = now(),
+        geopackage = "",
+        foo = "bar")
 end
 
 @testset "Solver" begin
     solver = Ribasim.Solver()
     @test solver.algorithm == "QNDF"
     Ribasim.Solver(;
-                   algorithm = "Rosenbrock23",
-                   autodiff = true,
-                   saveat = 3600.0,
-                   dt = 0,
-                   abstol = 1e-5,
-                   reltol = 1e-4,
-                   maxiters = 1e5)
+        algorithm = "Rosenbrock23",
+        autodiff = true,
+        saveat = 3600.0,
+        dt = 0,
+        abstol = 1e-5,
+        reltol = 1e-4,
+        maxiters = 1e5)
     Ribasim.Solver(; algorithm = "DoesntExist")
     @test_throws InexactError Ribasim.Solver(autodiff = 2)
     @test_throws "algorithm DoesntExist not supported" Ribasim.algorithm(Ribasim.Solver(;
-                                                                                        algorithm = "DoesntExist"))
+        algorithm = "DoesntExist"))
     @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(;
-                                                        algorithm = "QNDF",
-                                                        autodiff = true))) ==
+        algorithm = "QNDF",
+        autodiff = true))) ==
           AutoForwardDiff()
     @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(;
-                                                        algorithm = "QNDF",
-                                                        autodiff = false))) ==
+        algorithm = "QNDF",
+        autodiff = false))) ==
           AutoFiniteDiff()
     @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF"))) ==
           AutoFiniteDiff()

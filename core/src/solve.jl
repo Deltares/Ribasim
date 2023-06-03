@@ -20,8 +20,8 @@ end
 
 # TODO Add actual validation
 function is_valid(graph::DiGraph{Int},
-                  flow::SparseMatrixCSC{Float64, Int},
-                  edge_ids::Dictionary{Tuple{Int, Int}, Int})
+    flow::SparseMatrixCSC{Float64, Int},
+    edge_ids::Dictionary{Tuple{Int, Int}, Int})
     return true
 end
 
