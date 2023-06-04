@@ -12,9 +12,13 @@ struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids::Dictionary{Tuple{Int, Int}, Int}
-    Connectivity(graph, flow, edge_ids) =
-        is_valid(graph, flow, edge_ids) ? new(graph, flow, edge_ids) :
-        error("Invalid graph")
+    function Connectivity(graph, flow, edge_ids)
+        if is_valid(graph, flow, edge_ids)
+            new(graph, flow, edge_ids)
+        else
+            error("Invalid graph")
+        end
+    end
 end
 
 # TODO Add actual validation
