@@ -12,22 +12,39 @@ struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids::Dictionary{Tuple{Int, Int}, Int}
-    function Connectivity(graph, flow, edge_ids)
-        if is_valid(graph, flow, edge_ids)
-            new(graph, flow, edge_ids)
+    edge_types::Dictionary{Int, Tuple{Symbol, Symbol}}
+    function Connectivity(graph, flow, edge_ids, edge_types)
+        if is_valid(graph, flow, edge_ids, edge_types)
+            new(graph, flow, edge_ids, edge_types)
         else
             error("Invalid graph")
         end
     end
 end
 
-# TODO Add actual validation
 function is_valid(
     graph::DiGraph{Int},
     flow::SparseMatrixCSC{Float64, Int},
     edge_ids::Dictionary{Tuple{Int, Int}, Int},
+    edge_types::Dictionary{Int, Tuple{Symbol, Symbol}},
 )
-    return true
+    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
+    errors = String[]
+    for (edge_id, (from_type, to_type)) in pairs(edge_types)
+        if !(to_type in neighbortypes(from_type))
+            a, b = rev_edge_ids[edge_id]
+            push!(
+                errors,
+                "Edge #$edge_id from $from_type (#$a) to $to_type (#$b) is not allowed.",
+            )
+        end
+    end
+    return if isempty(errors)
+        true
+    else
+        @error join(errors, "\n")
+        false
+    end
 end
 
 """

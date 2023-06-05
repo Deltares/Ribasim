@@ -1,14 +1,19 @@
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(db::DB)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
-    n = length(get_ids(db))
-    graph = DiGraph(n)
-    rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
+function create_graph(
+    db::DB,
+)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
+    noderows = execute(db, "select fid, type from Node")
+    nodes = dictionary((fid => Symbol(lowercase(type)) for (; fid, type) in noderows))
+    graph = DiGraph(length(nodes))
+    edgerows = execute(db, "select fid, from_node_id, to_node_id from Edge")
     edge_ids = Dictionary{Tuple{Int, Int}, Int}()
-    for (; fid, from_node_id, to_node_id) in rows
+    edge_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
+    for (; fid, from_node_id, to_node_id) in edgerows
         add_edge!(graph, from_node_id, to_node_id)
         insert!(edge_ids, (from_node_id, to_node_id), fid)
+        insert!(edge_types, fid, (nodes[from_node_id], nodes[to_node_id]))
     end
-    return graph, edge_ids
+    return graph, edge_ids, edge_types
 end
 
 """

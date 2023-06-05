@@ -23,6 +23,28 @@ isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), "."
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 
+# Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(::Val{:pump}) = Set((:basin,))
+neighbortypes(::Val{:basin}) = Set((
+    :linearresistance,
+    :tabulatedratingcurve,
+    :manningresistance,
+    :pump,
+    :terminal,
+    :levelboundary,
+    :linearlevelconnection,
+))
+neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
+neighbortypes(::Val{:fractionalflow}) = Set((:basin, :terminal))
+neighbortypes(::Val{:flowboundary}) = Set((:basin,))
+neighbortypes(::Val{:levelboundary}) = Set((:linearresistance,))
+neighbortypes(::Val{:linearresistance}) = Set((:basin, :levelboundary))
+neighbortypes(::Val{:manningresistance}) = Set((:basin,))
+neighbortypes(::Val{:tabulatedratingcurve}) = Set((:basin, :fractionalflow))
+neighbortypes(::Val{:linearlevelconnection}) = Set((:basin,))
+neighbortypes(::Any) = Set{Symbol}()
+
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int
