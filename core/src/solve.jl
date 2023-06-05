@@ -17,7 +17,7 @@ struct Connectivity
         if is_valid(graph, flow, edge_ids, edge_types)
             new(graph, flow, edge_ids, edge_types)
         else
-            error("Invalid graph")
+            error("Invalid network")
         end
     end
 end
