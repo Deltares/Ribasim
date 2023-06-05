@@ -35,7 +35,7 @@ function is_valid(
             a, b = rev_edge_ids[edge_id]
             push!(
                 errors,
-                "Edge #$edge_id from $from_type (#$a) to $to_type (#$b) is not allowed.",
+                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
             )
         end
     end
