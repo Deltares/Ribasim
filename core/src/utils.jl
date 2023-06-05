@@ -3,7 +3,7 @@ function create_graph(
     db::DB,
 )::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
     noderows = execute(db, "select fid, type from Node")
-    nodes = dictionary((fid => Symbol(lowercase(type)) for (; fid, type) in noderows))
+    nodes = dictionary((fid => Symbol(type) for (; fid, type) in noderows))
     graph = DiGraph(length(nodes))
     edgerows = execute(db, "select fid, from_node_id, to_node_id from Edge")
     edge_ids = Dictionary{Tuple{Int, Int}, Int}()
