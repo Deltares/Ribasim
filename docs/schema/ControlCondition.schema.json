@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
+        "listen_node_id": {
+            "format": "default",
+            "description": "listen_node_id",
+            "type": "integer"
+        },
+        "greater_than": {
+            "format": "double",
+            "description": "greater_than",
+            "type": "number"
+        },
+        "node_id": {
+            "format": "default",
+            "description": "node_id",
+            "type": "integer"
+        },
+        "variable": {
+            "format": "default",
+            "description": "variable",
+            "type": "string"
+        }
+    },
+    "required": [
+        "node_id",
+        "listen_node_id",
+        "variable",
+        "greater_than"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/ControlCondition.schema.json",
+    "title": "ControlCondition",
+    "description": "A ControlCondition object based on Ribasim.ControlConditionV1",
+    "type": "object"
+}

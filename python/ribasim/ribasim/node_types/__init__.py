@@ -1,3 +1,4 @@
+from ribasim.control import Control
 from ribasim.node_types.basin import Basin
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
@@ -22,4 +23,5 @@ __all__ = [
     "Solver",
     "TabulatedRatingCurve",
     "Terminal",
+    "Control",
 ]

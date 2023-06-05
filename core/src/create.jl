@@ -127,6 +127,17 @@ function Basin(db::DB, config::Config)::Basin
     )
 end
 
+function Control(db::DB, config::Config)::Control
+    condition = load_structvector(db, config, ControlConditionV1)
+
+    return Control(
+        condition.node_id,
+        condition.target_node_id,
+        condition.variable,
+        condition.greater_than,
+    )
+end
+
 function Parameters(db::DB, config::Config)::Parameters
 
     # Setup node/edges graph, so validate in `Connectivity`?
@@ -140,6 +151,7 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
     terminal = Terminal(db, config)
+    control = Control(db, config)
 
     basin = Basin(db, config)
 
@@ -155,5 +167,6 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary,
         pump,
         terminal,
+        control,
     )
 end

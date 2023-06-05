@@ -2,6 +2,7 @@
 # The identifier is parsed as ribasim.nodetype.kind.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
+@schema "ribasim.control.condition" ControlCondition
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
@@ -114,6 +115,13 @@ end
 
 @version TerminalStaticV1 begin
     node_id::Int
+end
+
+@version ControlConditionV1 begin
+    node_id::Int
+    listen_node_id::Int
+    variable::String
+    greater_than::Float64
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

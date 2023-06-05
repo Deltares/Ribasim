@@ -17,7 +17,7 @@ struct NewNodeType
 end
 ```
 
-These fields do not have to correspond 1:1 with the input tables (see below). The vector with all node IDs that are of the new type in a given model are a mandatory field. Now you can:
+These fields do not have to correspond 1:1 with the input tables (see below). The vector with all node IDs that are of the new type in a given model is a mandatory field. Now you can:
 
 - Add `new_node_type::NewNodeType` to the Parameters object;
 - Add `new_node_type = NewNodeType(db,config)` to the function `Parameters` in `create.jl` and add new_node_type at the proper location in the `Parameters` constructor call.

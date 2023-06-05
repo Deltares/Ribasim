@@ -149,6 +149,7 @@ class Node(Input):
                     "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
                     "Terminal": "Terminal",
+                    "Control": "Control",
                 },
             },
         )
@@ -181,6 +182,7 @@ class Node(Input):
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
+            "Control": (QColor("black"), "Control", shape.Star),
             "": (
                 QColor("white"),
                 "",

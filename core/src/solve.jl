@@ -172,6 +172,13 @@ struct Terminal
     node_id::Vector{Int}
 end
 
+struct Control
+    node_id::Vector{Int}
+    target_node_id::Vector{Int}
+    variable::Vector{String}
+    greater_than::Vector{Float64}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters
     starttime::DateTime
@@ -185,6 +192,7 @@ struct Parameters
     flow_boundary::FlowBoundary
     pump::Pump
     terminal::Terminal
+    control::Control
 end
 
 """

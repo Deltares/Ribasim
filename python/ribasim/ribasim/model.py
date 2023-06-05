@@ -10,6 +10,7 @@ import tomli_w
 from pydantic import BaseModel
 
 from ribasim import geometry, node_types
+from ribasim.control import Control
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 
@@ -71,6 +72,8 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
+    control : Optional[Control]
+        Control logic.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -91,6 +94,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     terminal: Optional[Terminal]
+    control: Optional[Control]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
