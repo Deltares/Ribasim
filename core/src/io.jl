@@ -110,8 +110,10 @@ function output_path(config::Config, path::String)
     return normpath(config.relative_dir, config.output_dir, path)
 end
 
-parsefile(config_path::AbstractString) =
-    from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
+"Parse a TOML file to a Config"
+function parsefile(config_path::AbstractString)::Config
+    return from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
+end
 
 function write_basin_output(model::Model)
     (; config, integrator) = model
