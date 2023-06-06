@@ -9,25 +9,33 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     if !isfile(gpkg_path)
         throw(SystemError("GeoPackage file not found: $gpkg_path"))
     end
+
+    # All data from the GeoPackage that we need during runtime is copied into memory,
+    # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
-
-    parameters = Parameters(db, config)
-
-    @timeit_debug to "Setup ODEProblem" begin
+    local parameters, state, n
+    try
+        parameters = Parameters(db, config)
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
-        u0 = if isempty(state)
-            # default to nearly empty basins, perhaps make required input
-            fill(1.0, n)
-        else
-            state.storage
-        end::Vector{Float64}
-        @assert length(u0) == n "Basin / state length differs from number of Basins"
-        t_end = seconds_since(config.endtime, config.starttime)
-        # for Float32 this method allows max ~1000 year simulations without accuracy issues
-        @assert eps(t_end) < 3600 "Simulation time too long"
-        timespan = (zero(t_end), t_end)
+    finally
+        # always close the GeoPackage, also in case of an error
+        close(db)
+    end
+
+    u0 = if isempty(state)
+        # default to nearly empty basins, perhaps make required input
+        fill(1.0, n)
+    else
+        state.storage
+    end::Vector{Float64}
+    @assert length(u0) == n "Basin / state length differs from number of Basins"
+    t_end = seconds_since(config.endtime, config.starttime)
+    # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    @assert eps(t_end) < 3600 "Simulation time too long"
+    timespan = (zero(t_end), t_end)
+    @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(water_balance!, u0, timespan, parameters)
     end
 
@@ -46,7 +54,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    close(db)
     return Model(integrator, config, saved_flow)
 end
 
