@@ -80,7 +80,6 @@ end
 
 @version BasinProfileV1 begin
     node_id::Int
-    storage::Float64
     area::Float64
     level::Float64
 end
@@ -165,17 +164,19 @@ end
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
-sort_by_id_storage(row) = (row.node_id, row.storage)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
-sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_storage
 
 const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+const LevelLookupSchemas = Union{TabulatedRatingCurveStaticV1, BasinProfileV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
+end
+
+function sort_by_function(table::StructVector{<:LevelLookupSchemas})
+    return sort_by_id_level
 end
 
 """

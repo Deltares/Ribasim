@@ -97,7 +97,6 @@ class BasinState(BaseModel):
 class BasinProfile(BaseModel):
     remarks: Optional[str] = Field("", description="a hack for pandera")
     area: float = Field(..., description="area")
-    storage: float = Field(..., description="storage")
     node_id: int = Field(..., description="node_id")
     level: float = Field(..., description="level")
 

@@ -223,22 +223,24 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-storage   | Float64 | $m^3$        | non-negative, per node_id: start at 0 and increasing
-area      | Float64 | $m^2$        | non-negative
-level     | Float64 | $m$          | -
+area      | Float64 | $m^2$        | non-negative, per node_id: start at 0 and increasing
+level     | Float64 | $m$          | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum 
 that is the same for the entire model. An example of the first 5 rows of such a table is 
 given below. The first 4 rows define the profile of ID `2`. The number of rows can vary 
 per ID. Using a very large number of rows may impact performance.
 
-node_id | storage        | area          | level
-------- |--------------- |-------------- |-------
-      2 |      0.0       |     1.36404e5 | -0.105
-      2 |  24726.2       |     1.36404e5 |  0.095
-      2 |  49452.5       |     1.36404e5 |  0.295
-      2 |      2.49735e6 |     1.36404e5 | 20.095
-      3 |      0.0       | 50663.3       |  2.129
+node_id |   area | level
+------- |------- |-------
+      2 |    0.0 |   6.0
+      2 | 1000.0 |   7.0
+      2 | 1000.0 |   9.0
+      3 |    0.0 |   2.2
+
+We use the symbol $A$ for area, $h$ for level and $S$ for storage.
+The profile provides a function $A(h)$ for each basin.
+Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
 
 ### TabulatedRatingCurve
 
