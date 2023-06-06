@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -15,6 +17,13 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.PumpStatic)
 
 
+class ControlSchema(pa.SchemaModel):
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.PumpControl)
+
+
 class Pump(TableModel):
     """
     Pump water from a source node to a destination node.
@@ -30,6 +39,7 @@ class Pump(TableModel):
     """
 
     static: DataFrame[StaticSchema]
+    control: Optional[DataFrame[ControlSchema]] = None
 
     class Config:
         validate_assignment = True

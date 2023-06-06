@@ -96,7 +96,7 @@ function control_condition!(u, t, integrator)
 
     for (i, (target_node_id, variable, greater_than)) in
         enumerate(zip(control.target_node_id, control.variable, control.greater_than))
-        value = get_value(integrator.p, target_node_id, variable)
+        value = get_value(p, target_node_id, variable)
         diff = value - greater_than
         out *= diff
         control.condition_value[i] = (diff > 0)
@@ -117,7 +117,20 @@ end
 This function ...
 """
 function control_affect!(integrator)
-    println("Control affect triggered")
+    p = integrator.p
+    control = p.control
+
+    # Loop over IDs of control nodes
+    for control_node_id in unique(control.node_id)
+
+        # This lookup can also be done once before simulation
+        where_id = control.node_id .= control_node_id
+
+        condition_value_local = control.condition_value[where_id]
+        truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
+
+        # logic_index only()
+    end
 end
 
 "Copy the current flow to the SavedValues"

@@ -1,0 +1,35 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
+        "flow_rate": {
+            "format": "double",
+            "description": "flow_rate",
+            "type": "number"
+        },
+        "node_id": {
+            "format": "default",
+            "description": "node_id",
+            "type": "integer"
+        },
+        "control_state": {
+            "format": "default",
+            "description": "control_state",
+            "type": "string"
+        }
+    },
+    "required": [
+        "node_id",
+        "control_state",
+        "flow_rate"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/PumpControl.schema.json",
+    "title": "PumpControl",
+    "description": "A PumpControl object based on Ribasim.PumpControlV1",
+    "type": "object"
+}

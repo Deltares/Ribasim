@@ -3,7 +3,9 @@
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
 @schema "ribasim.control.condition" ControlCondition
+@schema "ribasim.control.logic" ControlLogic
 @schema "ribasim.pump.static" PumpStatic
+@schema "ribasim.pump.control" PumpControl
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
 @schema "ribasim.basin.profile" BasinProfile
@@ -39,6 +41,12 @@ end
 
 @version PumpStaticV1 begin
     node_id::Int
+    flow_rate::Float64
+end
+
+@version PumpControlV1 begin
+    node_id::Int
+    control_state::String
     flow_rate::Float64
 end
 
@@ -123,6 +131,12 @@ end
     listen_node_id::Int
     variable::String
     greater_than::Float64
+end
+
+@version ControlLogicV1 begin
+    node_id::Int
+    truth_state::String
+    control_state::String
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

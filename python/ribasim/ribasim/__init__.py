@@ -2,11 +2,11 @@ __version__ = "0.2.0"
 
 
 from ribasim import models, utils
-from ribasim.control import Control
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Model, Solver
 from ribasim.node_types.basin import Basin
+from ribasim.node_types.control import Control
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
