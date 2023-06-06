@@ -1,5 +1,5 @@
 # These schemas define the name of database tables and the configuration file structure
-# The identifier is parsed as ribasim.nodetype.kind.
+# The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
 @schema "ribasim.pump.static" PumpStatic
