@@ -12,6 +12,29 @@ for sv in nodeschemas
     push!(nodekinds[node], kind)
 end
 
+"""
+Add fieldnames with Maybe{String} type to struct expression. Requires @option use before it.
+"""
+macro addfields(typ::Expr, fieldnames)
+    for fieldname in fieldnames
+        push!(typ.args[3].args, Expr(:(=), Expr(:(::), fieldname, Maybe{String}), nothing))
+    end
+    return esc(typ)
+end
+
+"""
+Add all TableOption subtypes as fields to struct expression. Requires @option use before it.
+"""
+macro addnodetypes(typ::Expr)
+    for nodetype in nodetypes
+        push!(
+            typ.args[3].args,
+            Expr(:(=), Expr(:(::), nodetype, nodetype), Expr(:call, nodetype)),
+        )
+    end
+    return esc(typ)
+end
+
 # Generate structs for each nodetype for use in Config
 abstract type TableOption end
 for (T, kinds) in pairs(nodekinds)

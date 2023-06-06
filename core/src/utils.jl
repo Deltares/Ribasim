@@ -16,27 +16,39 @@ function create_graph(
     return graph, edge_ids, edge_types
 end
 
-"""
-Add fieldnames with Maybe{String} type to struct expression. Requires @option use before it.
-"""
-macro addfields(typ::Expr, fieldnames)
-    for fieldname in fieldnames
-        push!(typ.args[3].args, Expr(:(=), Expr(:(::), fieldname, Maybe{String}), nothing))
+"Calculate a profile storage by integrating the areas over the levels"
+function profile_storage(levels::Vector{Float64}, areas::Vector{Float64})::Vector{Float64}
+    # profile starts at the bottom; first storage is 0
+    storages = zero(areas)
+    n = length(storages)
+
+    for i in 2:n
+        Δh = levels[i] - levels[i - 1]
+        avg_area = 0.5 * (areas[i - 1] + areas[i])
+        ΔS = avg_area * Δh
+        storages[i] = storages[i - 1] + ΔS
     end
-    return esc(typ)
+    return storages
 end
 
-"""
-Add all TableOption subtypes as fields to struct expression. Requires @option use before it.
-"""
-macro addnodetypes(typ::Expr)
-    for nodetype in nodetypes
-        push!(
-            typ.args[3].args,
-            Expr(:(=), Expr(:(::), nodetype, nodetype), Expr(:call, nodetype)),
-        )
+"Read the Basin / profile table and return all A(S) and h(S) functions"
+function create_storage_tables(
+    db::DB,
+    config::Config,
+)::Tuple{Vector{Interpolation}, Vector{Interpolation}}
+    profiles = load_structvector(db, config, BasinProfileV1)
+    area = Interpolation[]
+    level = Interpolation[]
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = profile_storage(group_level, group_area)
+        area_itp = LinearInterpolation(group_area, group_storage)
+        level_itp = LinearInterpolation(group_level, group_storage)
+        push!(area, area_itp)
+        push!(level, level_itp)
     end
-    return esc(typ)
+    return area, level
 end
 
 """
