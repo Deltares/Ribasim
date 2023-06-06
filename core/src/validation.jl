@@ -34,6 +34,7 @@ end
     fid::Int
     from_node_id::Int
     to_node_id::Int
+    edge_type::String
 end
 
 @version PumpStaticV1 begin

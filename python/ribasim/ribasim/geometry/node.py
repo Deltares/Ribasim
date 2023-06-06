@@ -104,6 +104,7 @@ class Node(TableModel):
             "Pump": "h",
             "Terminal": "s",
             "FlowBoundary": "h",
+            "Control": "*",
             "": "o",
         }
 
@@ -117,6 +118,7 @@ class Node(TableModel):
             "Pump": "0.5",  # grayscale level
             "Terminal": "m",
             "FlowBoundary": "m",
+            "Control": "k",
             "": "k",
         }
 
@@ -125,7 +127,12 @@ class Node(TableModel):
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]
             ax.scatter(
-                df.geometry.x, df.geometry.y, marker=marker, color=color, zorder=zorder
+                df.geometry.x,
+                df.geometry.y,
+                marker=marker,
+                color=color,
+                zorder=zorder,
+                label=nodetype,
             )
 
         ax.legend()

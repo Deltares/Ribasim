@@ -46,6 +46,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
+    # Set the control states at the start time
+    control_condition!(integrator.u, integrator.t, integrator)
+    control_affect!(integrator)
+
     close(db)
     return Model(integrator, config, saved_flow)
 end
@@ -74,8 +78,46 @@ function create_callbacks(
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
-    callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+    control_cb = ContinuousCallback(control_condition!, control_affect!)
+
+    callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, control_cb)
     return callback, saved_flow
+end
+
+"""
+This function defines a polynomial function with zeros at each condition change.
+The control callback listens for changes in control with this function.
+"""
+function control_condition!(u, t, integrator)
+    p = integrator.p
+    control = p.control
+
+    out = 1.0
+
+    for (i, (target_node_id, variable, greater_than)) in
+        enumerate(zip(control.target_node_id, control.variable, control.greater_than))
+        value = get_value(integrator.p, target_node_id, variable)
+        diff = value - greater_than
+        out *= diff
+        control.condition_value[i] = (diff > 0)
+    end
+
+    return out
+end
+
+function get_value(p::Parameters, node_id::Int, variable::String)
+    if variable == "level"
+        value = get_level(p, node_id)
+    end
+
+    return value
+end
+
+"""
+This function ...
+"""
+function control_affect!(integrator)
+    println("Control affect triggered")
 end
 
 "Copy the current flow to the SavedValues"

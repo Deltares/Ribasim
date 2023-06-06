@@ -177,6 +177,8 @@ struct Control
     target_node_id::Vector{Int}
     variable::Vector{String}
     greater_than::Vector{Float64}
+    condition_value::Vector{Bool}
+    control_state::Dict{Int, Tuple{String, Float64}}
 end
 
 # TODO Automatically add all nodetypes here

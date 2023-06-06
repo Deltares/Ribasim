@@ -130,11 +130,23 @@ end
 function Control(db::DB, config::Config)::Control
     condition = load_structvector(db, config, ControlConditionV1)
 
+    condition_value = fill(false, length(condition.node_id))
+    control_state::Dict{Int, Tuple{String, Float64}} = Dict()
+
+    rows = execute(db, "select to_node_id, edge_type from Edge")
+    for (; to_node_id, edge_type) in rows
+        if edge_type == "control"
+            control_state[to_node_id] = ("undefined_state", 0.0)
+        end
+    end
+
     return Control(
         condition.node_id,
-        condition.target_node_id,
+        condition.listen_node_id,
         condition.variable,
         condition.greater_than,
+        condition_value,
+        control_state,
     )
 end
 

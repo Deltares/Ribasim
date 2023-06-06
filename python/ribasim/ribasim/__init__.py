@@ -2,6 +2,7 @@ __version__ = "0.2.0"
 
 
 from ribasim import models, utils
+from ribasim.control import Control
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Model, Solver
@@ -31,4 +32,5 @@ __all__ = [
     "Solver",
     "TabulatedRatingCurve",
     "Terminal",
+    "Control",
 ]
