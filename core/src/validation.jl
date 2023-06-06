@@ -23,6 +23,25 @@ isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), "."
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 
+# Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Basin}) = Set((
+    :LinearResistance,
+    :TabulatedRatingCurve,
+    :ManningResistance,
+    :Pump,
+    :FlowBoundary,
+))
+neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
+neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:FlowBoundary}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:TabulatedRatingCurve}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Any) = Set{Symbol}()
+
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int

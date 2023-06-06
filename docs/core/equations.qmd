@@ -146,7 +146,7 @@ basins (external nodes) in a network.
 
 The OutflowTable is a tabulation of a basin's discharge behavior. It describes
 a piecewise linear relationship between the basin's storage volume and its
-discharge. It can be understood as an emprical description of a basin's
+discharge. It can be understood as an empirical description of a basin's
 properties. This can include a weir, but also the lumped hydraulic behavior of the
 upstream channels.
 
