@@ -17,8 +17,6 @@
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
 const delimiter = " / "
-schemaversion(node::Symbol, kind::Symbol, v = 1) =
-    SchemaVersion{Symbol(join((:ribasim, node, kind), ".")), v}
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
 tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
@@ -152,10 +150,14 @@ sort_by_id_storage(row) = (row.node_id, row.storage)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{<:Union{TabulatedRatingCurveTimeV1, BasinForcingV1}}) =
-    sort_by_time_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_storage
+
+const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+
+function sort_by_function(table::StructVector{<:TimeSchemas})
+    return sort_by_time_id
+end
 
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
