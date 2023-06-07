@@ -159,10 +159,12 @@ end
 """
 node_id: node ID of the Pump node
 flow_rate: target flow rate
+control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 struct Pump
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, Float64}
 end
 
 """
@@ -179,6 +181,8 @@ struct Control
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
     control_state::Dict{Int, Tuple{String, Float64}}
+    logic_mapping::Dict{Tuple{Int, String}, String}
+    graph::DiGraph{Int} # TODO: Check graph validity as in Connectivity?
 end
 
 # TODO Automatically add all nodetypes here

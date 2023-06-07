@@ -1,11 +1,14 @@
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(db::DB)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
+function create_graph(
+    db::DB,
+    edge_type_::String,
+)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
     n = length(get_ids(db))
     graph = DiGraph(n)
     rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
     edge_ids = Dictionary{Tuple{Int, Int}, Int}()
     for (; fid, from_node_id, to_node_id, edge_type) in rows
-        if edge_type == "flow"
+        if edge_type == edge_type_
             add_edge!(graph, from_node_id, to_node_id)
             insert!(edge_ids, (from_node_id, to_node_id), fid)
         end

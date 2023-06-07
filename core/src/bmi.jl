@@ -46,11 +46,35 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    # Set the control states at the start time
-    control_condition!(integrator.u, integrator.t, integrator)
-    control_affect!(integrator)
-
     close(db)
+
+    # Set the control values at the start time
+    control = parameters.control
+
+    for (i, (target_node_id, variable, greater_than)) in
+        enumerate(zip(control.target_node_id, control.variable, control.greater_than))
+        value = get_value(parameters, target_node_id, variable, u0)
+        diff = value - greater_than
+        control.condition_value[i] = diff > 0
+    end
+
+    # Set the control states at the start time
+    # For more documentation see control_affect!
+    for control_node_id in unique(control.node_id)
+        where_id = control.node_id .== control_node_id
+
+        condition_value_local = control.condition_value[where_id]
+        truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
+
+        control_state_new = control.logic_mapping[(control_node_id, truth_state)]
+
+        for target_node_id in outneighbors(control.graph, control_node_id)
+            set_control_params!(parameters, target_node_id, control_state_new)
+        end
+
+        control.control_state[control_node_id] = (control_state_new, integrator.t)
+    end
+
     return Model(integrator, config, saved_flow)
 end
 
@@ -63,7 +87,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
-    (; starttime, basin, tabulated_rating_curve) = parameters
+    (; starttime, basin, tabulated_rating_curve, control) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
@@ -78,58 +102,109 @@ function create_callbacks(
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
-    control_cb = ContinuousCallback(control_condition!, control_affect!)
+    n_conditions = length(control.node_id)
+    control_cb = VectorContinuousCallback(
+        control_condition,
+        control_affect_upcrossing!,
+        control_affect_downcrossing!,
+        n_conditions,
+    )
 
     callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, control_cb)
     return callback, saved_flow
 end
 
 """
-This function defines a polynomial function with zeros at each condition change.
-The control callback listens for changes in control with this function.
+Listens for changes in condition truths.
 """
-function control_condition!(u, t, integrator)
+function control_condition(out, u, t, integrator)
     p = integrator.p
     control = p.control
 
-    out = 1.0
-
     for (i, (target_node_id, variable, greater_than)) in
         enumerate(zip(control.target_node_id, control.variable, control.greater_than))
-        value = get_value(p, target_node_id, variable)
+        value = get_value(p, target_node_id, variable, u)
         diff = value - greater_than
-        out *= diff
-        control.condition_value[i] = (diff > 0)
+        out[i] = diff
     end
-
-    return out
 end
 
-function get_value(p::Parameters, node_id::Int, variable::String)
+"""
+Get a value for a condition.
+"""
+function get_value(p::Parameters, node_id::Int, variable::String, u)
     if variable == "level"
-        value = get_level(p, node_id)
+        basin = p.basin
+
+        # NOTE: Getting the level with get_level does NOT work
+        hasindex, basin_idx = id_index(basin.node_id, node_id)
+        value = basin.level[basin_idx](u[basin_idx])
     end
 
     return value
 end
 
 """
-This function ...
+An upcrossing means that a condition (always greater than) becomes true.
 """
-function control_affect!(integrator)
+function control_affect_upcrossing!(integrator, condition_idx)
+    control = integrator.p.control
+    control.condition_value[condition_idx] = true
+
+    control_affect!(integrator, condition_idx)
+end
+
+"""
+An downcrossing means that a condition (always greater than) becomes false.
+"""
+function control_affect_downcrossing!(integrator, condition_idx)
+    control = integrator.p.control
+    control.condition_value[condition_idx] = false
+
+    control_affect!(integrator, condition_idx)
+end
+
+"""
+Change parameters based on the control logic.
+"""
+function control_affect!(integrator, condition_idx)
     p = integrator.p
     control = p.control
 
-    # Loop over IDs of control nodes
-    for control_node_id in unique(control.node_id)
+    # Get the control node that listens to this condition
+    control_node_id = control.node_id[condition_idx]
 
-        # This lookup can also be done once before simulation
-        where_id = control.node_id .= control_node_id
+    # Get the indices of all conditions that this control node listens to
+    where_id = control.node_id .== control_node_id
 
-        condition_value_local = control.condition_value[where_id]
-        truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
+    # Get the truth state for this control node
+    condition_value_local = control.condition_value[where_id]
+    truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
 
-        # logic_index only()
+    # What the local control state should be
+    control_state_new = control.logic_mapping[(control_node_id, truth_state)]
+
+    # What the local control state is
+    control_state_now = control.control_state[control_node_id][1]
+
+    if control_state_now != control_state_new
+
+        # Loop over nodes which are under control of this control node
+        for target_node_id in outneighbors(control.graph, control_node_id)
+            set_control_params!(p, target_node_id, control_state_new)
+        end
+
+        control.control_state[control_node_id] = (control_state_new, integrator.t)
+    end
+end
+
+function set_control_params!(p::Parameters, node_id::Int, control_state::String)
+    if node_id in p.pump.node_id
+        pump = p.pump
+        idx = only(findall(pump.node_id .== node_id))
+        new_flow_rate = pump.control_mapping[(node_id, control_state)]
+
+        pump.flow_rate[idx] = new_flow_rate
     end
 end
 

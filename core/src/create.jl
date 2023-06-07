@@ -1,5 +1,5 @@
 function Connectivity(db::DB)::Connectivity
-    graph, edge_ids = create_graph(db)
+    graph, edge_ids = create_graph(db, "flow")
 
     flow = adjacency_matrix(graph, Float64)
     nonzeros(flow) .= 0.0
@@ -85,7 +85,16 @@ end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    return Pump(static.node_id, static.flow_rate)
+    control = load_structvector(db, config, PumpControlV1)
+
+    control_mapping::Dict{Tuple{Int, String}, Float64} = Dict()
+
+    for (node_id, control_state, flow_rate) in
+        zip(control.node_id, control.control_state, control.flow_rate)
+        control_mapping[(node_id, control_state)] = flow_rate
+    end
+
+    return Pump(static.node_id, static.flow_rate, control_mapping)
 end
 
 function Terminal(db::DB, config::Config)::Terminal
@@ -133,12 +142,23 @@ function Control(db::DB, config::Config)::Control
     condition_value = fill(false, length(condition.node_id))
     control_state::Dict{Int, Tuple{String, Float64}} = Dict()
 
-    rows = execute(db, "select to_node_id, edge_type from Edge")
-    for (; to_node_id, edge_type) in rows
+    rows = execute(db, "select from_node_id, edge_type from Edge")
+    for (; from_node_id, edge_type) in rows
         if edge_type == "control"
-            control_state[to_node_id] = ("undefined_state", 0.0)
+            control_state[from_node_id] = ("undefined_state", 0.0)
         end
     end
+
+    logic = load_structvector(db, config, ControlLogicV1)
+
+    logic_mapping::Dict{Tuple{Int, String}, String} = Dict()
+
+    for (node_id, truth_state, control_state_) in
+        zip(logic.node_id, logic.truth_state, logic.control_state)
+        logic_mapping[(node_id, truth_state)] = control_state_
+    end
+
+    graph, edge_ids = create_graph(db, "control")
 
     return Control(
         condition.node_id,
@@ -147,6 +167,8 @@ function Control(db::DB, config::Config)::Control
         condition.greater_than,
         condition_value,
         control_state,
+        logic_mapping,
+        graph,
     )
 end
 
