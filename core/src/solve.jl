@@ -174,9 +174,19 @@ struct Terminal
     node_id::Vector{Int}
 end
 
+"""
+node_id: node ID of the Control node
+listen_node_id: the node ID of the node being condition on
+variable: the name of the variable in the condition
+greater_than: The threshold value in the condition
+condition_value: The current value of each condition
+control_state: Dictionary: node ID => (control state, control state start)
+logic_mapping: Dictionary: (control node ID, truth state) => control state
+graph: The graph containing the control edges (only affecting)
+"""
 struct Control
     node_id::Vector{Int}
-    target_node_id::Vector{Int}
+    listen_node_id::Vector{Int}
     variable::Vector{String}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}

@@ -51,9 +51,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # Set the control values at the start time
     control = parameters.control
 
-    for (i, (target_node_id, variable, greater_than)) in
-        enumerate(zip(control.target_node_id, control.variable, control.greater_than))
-        value = get_value(parameters, target_node_id, variable, u0)
+    for (i, (listen_node_id, variable, greater_than)) in
+        enumerate(zip(control.listen_node_id, control.variable, control.greater_than))
+        value = get_value(parameters, listen_node_id, variable, u0)
         diff = value - greater_than
         control.condition_value[i] = diff > 0
     end
@@ -121,9 +121,9 @@ function control_condition(out, u, t, integrator)
     p = integrator.p
     control = p.control
 
-    for (i, (target_node_id, variable, greater_than)) in
-        enumerate(zip(control.target_node_id, control.variable, control.greater_than))
-        value = get_value(p, target_node_id, variable, u)
+    for (i, (listen_node_id, variable, greater_than)) in
+        enumerate(zip(control.listen_node_id, control.variable, control.greater_than))
+        value = get_value(p, listen_node_id, variable, u)
         diff = value - greater_than
         out[i] = diff
     end
