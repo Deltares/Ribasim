@@ -5,7 +5,6 @@
 @schema "ribasim.control.condition" ControlCondition
 @schema "ribasim.control.logic" ControlLogic
 @schema "ribasim.pump.static" PumpStatic
-@schema "ribasim.pump.control" PumpControl
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
 @schema "ribasim.basin.profile" BasinProfile
@@ -42,12 +41,7 @@ end
 @version PumpStaticV1 begin
     node_id::Int
     flow_rate::Float64
-end
-
-@version PumpControlV1 begin
-    node_id::Int
-    control_state::String
-    flow_rate::Float64
+    control_state::Union{Missing, String}
 end
 
 @version BasinStaticV1 begin
@@ -137,6 +131,14 @@ end
     node_id::Int
     truth_state::String
     control_state::String
+end
+
+function variable_names(s::Any)
+    filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
+end
+function variable_nt(s::Any)
+    names = variable_names(typeof(s))
+    NamedTuple{names}((getfield(s, x) for x in names))
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)

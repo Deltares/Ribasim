@@ -10,9 +10,6 @@
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
-        "PumpControl": {
-            "$ref": "PumpControl.schema.json"
-        },
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
         },

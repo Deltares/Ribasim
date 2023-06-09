@@ -103,14 +103,19 @@ function create_callbacks(
     save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
 
     n_conditions = length(control.node_id)
-    control_cb = VectorContinuousCallback(
-        control_condition,
-        control_affect_upcrossing!,
-        control_affect_downcrossing!,
-        n_conditions,
-    )
+    if n_conditions > 0
+        control_cb = VectorContinuousCallback(
+            control_condition,
+            control_affect_upcrossing!,
+            control_affect_downcrossing!,
+            n_conditions,
+        )
+        callback =
+            CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, control_cb)
+    else
+        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+    end
 
-    callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, control_cb)
     return callback, saved_flow
 end
 
@@ -202,9 +207,11 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
     if node_id in p.pump.node_id
         pump = p.pump
         idx = only(findall(pump.node_id .== node_id))
-        new_flow_rate = pump.control_mapping[(node_id, control_state)]
+        new_state = pump.control_mapping[(node_id, control_state)]
 
-        pump.flow_rate[idx] = new_flow_rate
+        for (field, value) in new_state
+            getfield(pump, field)[idx] = value
+        end
     end
 end
 

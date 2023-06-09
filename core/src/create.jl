@@ -85,16 +85,24 @@ end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    control = load_structvector(db, config, PumpControlV1)
 
-    control_mapping::Dict{Tuple{Int, String}, Float64} = Dict()
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
 
-    for (node_id, control_state, flow_rate) in
-        zip(control.node_id, control.control_state, control.flow_rate)
-        control_mapping[(node_id, control_state)] = flow_rate
+    # Find default states
+    default_mask = ismissing.(static.control_state)
+
+    for (node_id, is_default_state, control_state, row) in
+        zip(static.node_id, default_mask, static.control_state, static)
+        if !is_default_state
+            control_mapping[(node_id, control_state)] = variable_nt(row)
+        end
     end
 
-    return Pump(static.node_id, static.flow_rate, control_mapping)
+    return Pump(
+        static.node_id[default_mask],
+        static.flow_rate[default_mask],
+        control_mapping,
+    )
 end
 
 function Terminal(db::DB, config::Config)::Terminal
