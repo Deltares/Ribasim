@@ -48,34 +48,25 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     close(db)
 
-    # Set the control values at the start time
-    control = parameters.control
-
-    for (i, (listen_node_id, variable, greater_than)) in
-        enumerate(zip(control.listen_node_id, control.variable, control.greater_than))
-        value = get_value(parameters, listen_node_id, variable, u0)
-        diff = value - greater_than
-        control.condition_value[i] = diff > 0
-    end
-
-    # Set the control states at the start time
-    # For more documentation see control_affect!
-    for control_node_id in unique(control.node_id)
-        where_id = control.node_id .== control_node_id
-
-        condition_value_local = control.condition_value[where_id]
-        truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
-
-        control_state_new = control.logic_mapping[(control_node_id, truth_state)]
-
-        for target_node_id in outneighbors(control.graph, control_node_id)
-            set_control_params!(parameters, target_node_id, control_state_new)
-        end
-
-        control.control_state[control_node_id] = (control_state_new, integrator.t)
-    end
+    set_initial_controlled_parameters(parameters.control, u0, integrator)
 
     return Model(integrator, config, saved_flow)
+end
+
+function set_initial_controlled_parameters(
+    control::Control,
+    u0::Vector{Float64},
+    integrator,
+)
+    n_conditions = length(control.condition_value)
+    condition_diffs = zeros(Float64, n_conditions)
+    control_condition(condition_diffs, u0, integrator.t, integrator)
+    control.condition_value .= (condition_diffs .> 0.0)
+
+    # This might be overkill but avoids code duplication
+    for condition_idx in 1:n_conditions
+        control_affect!(integrator, condition_idx)
+    end
 end
 
 """
@@ -135,15 +126,19 @@ function control_condition(out, u, t, integrator)
 end
 
 """
-Get a value for a condition.
+Get a value for a condition. Currently only supports getting levels from basins.
 """
 function get_value(p::Parameters, node_id::Int, variable::String, u)
+    # TODO: Add support for getting flow values
+
     if variable == "level"
         basin = p.basin
 
         # NOTE: Getting the level with get_level does NOT work
         hasindex, basin_idx = id_index(basin.node_id, node_id)
         value = basin.level[basin_idx](u[basin_idx])
+    else
+        throw(ValueError("Unsupported condition variable $variable."))
     end
 
     return value
@@ -174,23 +169,24 @@ Change parameters based on the control logic.
 """
 function control_affect!(integrator, condition_idx)
     p = integrator.p
-    control = p.control
+    control = integrator.p.control
 
     # Get the control node that listens to this condition
     control_node_id = control.node_id[condition_idx]
 
     # Get the indices of all conditions that this control node listens to
-    where_id = control.node_id .== control_node_id
+    condition_ids = control.node_id .== control_node_id
 
     # Get the truth state for this control node
-    condition_value_local = control.condition_value[where_id]
+    condition_value_local = control.condition_value[condition_ids]
     truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
 
     # What the local control state should be
     control_state_new = control.logic_mapping[(control_node_id, truth_state)]
 
     # What the local control state is
-    control_state_now = control.control_state[control_node_id][1]
+    # TODO: Check time elapsed since control change
+    control_state_now, control_state_start = control.control_state[control_node_id]
 
     if control_state_now != control_state_new
 
