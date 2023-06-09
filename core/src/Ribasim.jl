@@ -9,7 +9,7 @@ using DataInterpolations: LinearInterpolation
 using DataStructures: DefaultDict
 using Dates
 using DBInterface: execute, prepare
-using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue
+using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared

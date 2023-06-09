@@ -2,18 +2,20 @@
 function create_graph(
     db::DB,
     edge_type_::String,
-)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}}
-    n = length(get_ids(db))
-    graph = DiGraph(n)
-    rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-    edge_ids = Dictionary{Tuple{Int, Int}, Int}()
-    for (; fid, from_node_id, to_node_id, edge_type) in rows
-        if edge_type == edge_type_
-            add_edge!(graph, from_node_id, to_node_id)
-            insert!(edge_ids, (from_node_id, to_node_id), fid)
-        end
+)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
+  node_rows = execite(db, "select fid, type from Node")
+  nodes = dictionary((fid => Symbol(type) for (; fid, type) in node_rows))
+  graph = DiGraph(length(nodes))
+  edge_rows = execute(db, "select fid, from_node_id, to_node_id from Edge")
+  edge_ids = Dictionary{Tuple{Int, Int}, Int}()
+  edge_connection_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
+  for (; fid, from_node_id, to_node_id, edge_type) in rows
+    if edge_type == edge_type_
+      add_edge!(graph, from_node_id, to_node_id)
+      insert!(edge_ids, (from_node_id, to_node_id), fid)
+      insert!(edge_connection_types, fid, (nodes[from_node_id], nodes[to_node_id]))
     end
-    return graph, edge_ids
+    return graph, edge_ids, edge_types
 end
 
 """

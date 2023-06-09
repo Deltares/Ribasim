@@ -179,9 +179,7 @@ class TableModel(BaseModel):
             kwargs.update(**cls._kwargs_from_toml(config))
 
         if all(v is None for v in kwargs.values()):
-            raise ValueError(
-                f"Could not initialize input of {cls.get_input_type()} from given TOML file."
-            )
+            return None
         else:
             return cls(**kwargs)
 

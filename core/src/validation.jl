@@ -1,5 +1,5 @@
 # These schemas define the name of database tables and the configuration file structure
-# The identifier is parsed as ribasim.nodetype.kind.
+# The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
 @schema "ribasim.control.condition" ControlCondition
@@ -24,6 +24,25 @@ tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
 nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
+
+# Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Basin}) = Set((
+    :LinearResistance,
+    :TabulatedRatingCurve,
+    :ManningResistance,
+    :Pump,
+    :FlowBoundary,
+))
+neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
+neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:FlowBoundary}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:TabulatedRatingCurve}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Any) = Set{Symbol}()
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin

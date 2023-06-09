@@ -39,6 +39,15 @@ Here `Static` refers to data that does not change over time. For naming conventi
 
 `validation.jl` also deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see `sort_by_function` and `sorted_table!`.
 
+For validation it is also required to describe which node types are allowed downstream connections, for both your new newnodetype and for existing nodetypes:
+
+```julia
+# set allowed downstream types
+neighbortypes(::Val{:NewNodeType}) = Set((:Basin,))
+# add your newnodetype as acceptable downstream connection of other types
+neighbortypes(::Val{:Pump}) = Set((:Basin, :NewNodeType))
+```
+
 Now we define the function that is called in the second bullet above, in `create.jl`:
 
 ```julia
