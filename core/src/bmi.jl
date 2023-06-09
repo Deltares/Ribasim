@@ -208,7 +208,7 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
     idx = only(findall(node.node_id .== node_id))
     new_state = node.control_mapping[(node_id, control_state)]
 
-    for (field, value) in new_state
+    for (field, value) in zip(keys(new_state), new_state)
         getfield(node, field)[idx] = value
     end
 end
