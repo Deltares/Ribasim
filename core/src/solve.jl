@@ -7,15 +7,16 @@ Store the connectivity information
 graph: directed graph with vertices equal to ids
 flow: store the flow on every edge
 edge_ids: get the external edge id from (src, dst)
+edge_connection_type: get (src_node_type, dst_node_type) from edge id
 """
 struct Connectivity
     graph::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids::Dictionary{Tuple{Int, Int}, Int}
-    edge_types::Dictionary{Int, Tuple{Symbol, Symbol}}
-    function Connectivity(graph, flow, edge_ids, edge_types)
-        if is_valid(graph, flow, edge_ids, edge_types)
-            new(graph, flow, edge_ids, edge_types)
+    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}}
+    function Connectivity(graph, flow, edge_ids, edge_connection_types)
+        if is_valid(graph, flow, edge_ids, edge_connection_types)
+            new(graph, flow, edge_ids, edge_connection_types)
         else
             error("Invalid network")
         end
@@ -26,11 +27,11 @@ function is_valid(
     graph::DiGraph{Int},
     flow::SparseMatrixCSC{Float64, Int},
     edge_ids::Dictionary{Tuple{Int, Int}, Int},
-    edge_types::Dictionary{Int, Tuple{Symbol, Symbol}},
+    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
 )
     rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
     errors = String[]
-    for (edge_id, (from_type, to_type)) in pairs(edge_types)
+    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
         if !(to_type in neighbortypes(from_type))
             a, b = rev_edge_ids[edge_id]
             push!(

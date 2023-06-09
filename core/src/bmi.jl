@@ -69,8 +69,9 @@ function set_initial_controlled_parameters(
     control_condition(condition_diffs, u0, integrator.t, integrator)
     control.condition_value .= (condition_diffs .> 0.0)
 
-    # This might be overkill but avoids code duplication
-    for condition_idx in 1:n_conditions
+    # For every control node find a condition_idx it listens to
+    for control_node_id in unique(control.node_id)
+        condition_idx = findfirst(control.node_id .== control_node_id)
         control_affect!(integrator, condition_idx)
     end
 end

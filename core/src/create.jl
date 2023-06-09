@@ -1,11 +1,10 @@
 function Connectivity(db::DB)::Connectivity
-    graph, edge_ids, edge_types = create_graph(db, "flow")
-
+    graph, edge_ids, edge_connection_types = create_graph(db, "flow")
 
     flow = adjacency_matrix(graph, Float64)
     nonzeros(flow) .= 0.0
 
-    return Connectivity(graph, flow, edge_ids, edge_types)
+    return Connectivity(graph, flow, edge_ids, edge_connection_types)
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
