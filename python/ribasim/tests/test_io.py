@@ -67,5 +67,5 @@ def test_repr():
 
     assert (
         repr(pump_1)
-        == "<ribasim.Pump>\n   static: DataFrame(rows=3) (remarks, flow_rate, node_id)"
+        == "<ribasim.Pump>\n   static: DataFrame(rows=3) (remarks, flow_rate, node_id, control_state)"
     )
