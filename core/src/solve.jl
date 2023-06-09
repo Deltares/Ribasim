@@ -166,7 +166,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 """

@@ -88,21 +88,26 @@ function Pump(db::DB, config::Config)::Pump
 
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
 
-    # Find default states
-    default_mask = ismissing.(static.control_state)
+    if length(static.control_state) > 0 && !any(ismissing.(static.control_state))
+        # Starting flow_rates are first one found (can be updated by control initialisation)
+        node_ids::Vector{Int} = []
+        flow_rates::Vector{Float64} = []
 
-    for (node_id, is_default_state, control_state, row) in
-        zip(static.node_id, default_mask, static.control_state, static)
-        if !is_default_state
+        for (node_id, control_state, row) in
+            zip(static.node_id, static.control_state, static)
+            if node_id ∉ node_ids
+                push!(node_ids, node_id)
+                push!(flow_rates, row.flow_rate)
+            end
+
             control_mapping[(node_id, control_state)] = variable_nt(row)
         end
+    else
+        node_ids = static.node_id
+        flow_rates = static.flow_rate
     end
 
-    return Pump(
-        static.node_id[default_mask],
-        static.flow_rate[default_mask],
-        control_mapping,
-    )
+    return Pump(node_ids, flow_rates, control_mapping)
 end
 
 function Terminal(db::DB, config::Config)::Terminal
