@@ -197,7 +197,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     basin = Basin(db, config)
 
-    return Parameters(
+    p = Parameters(
         config.starttime,
         connectivity,
         basin,
@@ -210,5 +210,14 @@ function Parameters(db::DB, config::Config)::Parameters
         pump,
         terminal,
         control,
+        Dict{Int, Symbol}(),
     )
+    for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
+        if fieldtype <: AbstractParameterNode
+            for node_id in getfield(p, fieldname).node_id
+                p.lookup[node_id] = fieldname
+            end
+        end
+    end
+    return p
 end

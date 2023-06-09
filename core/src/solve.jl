@@ -30,6 +30,8 @@ function is_valid(
     return true
 end
 
+abstract type AbstractParameterNode end
+
 """
 Requirements:
 
@@ -41,7 +43,7 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
-struct Basin{C}
+struct Basin{C} <: AbstractParameterNode
     node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
@@ -67,7 +69,7 @@ callback.
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 """
-struct TabulatedRatingCurve{C}
+struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{Int}
     tables::Vector{Interpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
@@ -79,7 +81,7 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 """
-struct LinearResistance
+struct LinearResistance <: AbstractParameterNode
     node_id::Vector{Int}
     resistance::Vector{Float64}
 end
@@ -117,7 +119,7 @@ Requirements:
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
 """
-struct ManningResistance
+struct ManningResistance <: AbstractParameterNode
     node_id::Vector{Int}
     length::Vector{Float64}
     manning_n::Vector{Float64}
@@ -132,7 +134,7 @@ Requirements:
 * to: must be (Basin,) node
 * fraction must be positive.
 """
-struct FractionalFlow
+struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
     fraction::Vector{Float64}
 end
@@ -142,7 +144,7 @@ node_id: node ID of the LevelBoundary node
 level: the fixed level of this 'infinitely big basin'
 The node_id are Indices to support fast lookup of level using ID.
 """
-struct LevelBoundary
+struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     level::Vector{Float64}
 end
@@ -151,7 +153,7 @@ end
 node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
 """
-struct FlowBoundary
+struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
 end
@@ -161,7 +163,7 @@ node_id: node ID of the Pump node
 flow_rate: target flow rate
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
-struct Pump
+struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, Float64}
@@ -170,7 +172,7 @@ end
 """
 node_id: node ID of the Terminal node
 """
-struct Terminal
+struct Terminal <: AbstractParameterNode
     node_id::Vector{Int}
 end
 
@@ -184,7 +186,7 @@ control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 graph: The graph containing the control edges (only affecting)
 """
-struct Control
+struct Control <: AbstractParameterNode
     node_id::Vector{Int}
     listen_node_id::Vector{Int}
     variable::Vector{String}
@@ -209,6 +211,7 @@ struct Parameters
     pump::Pump
     terminal::Terminal
     control::Control
+    lookup::Dict{Int, Symbol}
 end
 
 """

@@ -204,14 +204,12 @@ function control_affect!(integrator, condition_idx)
 end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
-    if node_id in p.pump.node_id
-        pump = p.pump
-        idx = only(findall(pump.node_id .== node_id))
-        new_state = pump.control_mapping[(node_id, control_state)]
+    node = getfield(p, p.lookup[node_id])
+    idx = only(findall(node.node_id .== node_id))
+    new_state = node.control_mapping[(node_id, control_state)]
 
-        for (field, value) in new_state
-            getfield(pump, field)[idx] = value
-        end
+    for (field, value) in new_state
+        getfield(node, field)[idx] = value
     end
 end
 
