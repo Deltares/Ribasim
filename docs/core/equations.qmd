@@ -199,8 +199,7 @@ $$
 
 where:
 
-* $_a$ is the subscript denoting basin $a$
-* $_b$ is the subscript denoting basin $b$
+* The subscripts $a,b$ denote basins
 * $h$ is the hydraulic head, or water level
 
 The energy equation for open channel flow is:
@@ -247,7 +246,7 @@ Where:
 
 * $L$ is the reach length
 * $S_f$ is the representative friction slope
-* $C$ is the expansion or contraction coefficient, $0 <= C <=1$
+* $C$ is the expansion or contraction coefficient, $0 \le C \le1$
 
 We assume velocity differences in a connection are negligible ($v_a = v_b$):
 
