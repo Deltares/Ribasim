@@ -97,21 +97,25 @@ end
 @version FractionalFlowStaticV1 begin
     node_id::Int
     fraction::Float64
+    control_state::Union{Missing, String}
 end
 
 @version LevelBoundaryStaticV1 begin
     node_id::Int
     level::Float64
+    control_state::Union{Missing, String}
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     flow_rate::Float64
+    control_state::Union{Missing, String}
 end
 
 @version LinearResistanceStaticV1 begin
     node_id::Int
     resistance::Float64
+    control_state::Union{Missing, String}
 end
 
 @version ManningResistanceStaticV1 begin
@@ -120,6 +124,7 @@ end
     manning_n::Float64
     profile_width::Float64
     profile_slope::Float64
+    control_state::Union{Missing, String}
 end
 
 @version TabulatedRatingCurveStaticV1 begin
