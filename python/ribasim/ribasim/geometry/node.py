@@ -135,8 +135,6 @@ class Node(TableModel):
                 label=nodetype,
             )
 
-        ax.legend()
-
         geometry = self.static["geometry"]
         for text, xy in zip(
             self.static.index, np.column_stack((geometry.x, geometry.y))

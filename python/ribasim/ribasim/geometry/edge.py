@@ -97,6 +97,7 @@ class Edge(TableModel):
         if color_flow is None:
             color_flow = "#3690c0"  # lightblue
             kwargs_flow["color"] = color_flow
+            kwargs_flow["label"] = "Flow Edge"
         else:
             color_flow = kwargs["color_flow"]
             del kwargs_flow["color_flow"], kwargs_control["color_flow"]
@@ -104,6 +105,7 @@ class Edge(TableModel):
         if color_control is None:
             color_control = "grey"
             kwargs_control["color"] = color_control
+            kwargs_control["label"] = "Affect Edge"
         else:
             color_control = kwargs["color_flow"]
             del kwargs_flow["color_control"], kwargs_control["color_control"]
@@ -112,7 +114,9 @@ class Edge(TableModel):
         where_control = self.get_where_edge_type("control")
 
         self.static[where_flow].plot(**kwargs_flow)
-        self.static[where_control].plot(**kwargs_control)
+
+        if where_control.any():
+            self.static[where_control].plot(**kwargs_control)
 
         # Determine the angle for every caret marker and where to place it.
         coords = shapely.get_coordinates(self.static.geometry).reshape(-1, 2, 2)

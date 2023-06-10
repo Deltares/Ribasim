@@ -335,8 +335,14 @@ class Model(BaseModel):
         x_end = self.node.static.iloc[list(end)].geometry.x
         y_end = self.node.static.iloc[list(end)].geometry.y
 
-        for x, y, x_, y_ in zip(x_start, y_start, x_end, y_end):
-            ax.plot([x, x_], [y, y_], c="gray", ls="--")
+        for i, (x, y, x_, y_) in enumerate(zip(x_start, y_start, x_end, y_end)):
+            ax.plot(
+                [x, x_],
+                [y, y_],
+                c="gray",
+                ls="--",
+                label="Listen Edge" if i == 0 else None,
+            )
 
     def plot(self, ax=None) -> Any:
         """
@@ -355,8 +361,11 @@ class Model(BaseModel):
             _, ax = plt.subplots()
             ax.axis("off")
         self.edge.plot(ax=ax, zorder=2)
-        self.node.plot(ax=ax, zorder=3)
         self.plot_control_listen(ax)
+        self.node.plot(ax=ax, zorder=3)
+
+        ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
+
         return ax
 
     def sort(self):

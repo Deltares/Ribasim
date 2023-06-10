@@ -148,6 +148,9 @@ name it must have in the GeoPackage if it is stored there.
   - `Pump / static`: flow rate
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
+- Control: Set parameters of other nodes based on model state conditions (e.g. basin level)
+  - `Control / condition`: Conditions of the form 'the level in the basin with node id n is bigger than 2.0 m'
+  - `Control / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
@@ -155,21 +158,27 @@ geometry is not used by Ribasim.
 
 ### Edge
 
-Edges define connections between nodes. Flows between nodes are stored on edges. The only
-thing that defines an edge is the nodes it connects, and in what direction. The effect of
-the edge direction depends on the node type, Node types that have a notion of an upstream
-and downstream side use the incoming edge as the upstream side, and the outgoing edge as the
-downstream side. This means that edges should generally be drawn in the main flow direction.
-But for instance between two `LinearResistances` the edge direction does not affect
-anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
-direction; a positive flow flows along the edge direction, a negative flow in the opposite
-way.
+Edges define connections between nodes. The only thing that defines an edge is the nodes it connects, and in what direction. 
+There are currently 2 possible edge types:
+
+1. "flow": Flows between nodes are stored on edges. The effect of
+  the edge direction depends on the node type, Node types that have a notion of an upstream
+  and downstream side use the incoming edge as the upstream side, and the outgoing edge as the
+  downstream side. This means that edges should generally be drawn in the main flow direction.
+  But for instance between two `LinearResistances` the edge direction does not affect
+  anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
+  direction; a positive flow flows along the edge direction, a negative flow in the opposite
+  way.
+2. "control": The control edges define which nodes are controlled by a particular control node. 
+  Control edges should always point away from the control node.
+  The edges between the control node and the nodes it *listens* to are *not* present in `Edge \ static`, these are defined in [Control / condition](usage.qmd#sec-condition)
 
 column         | type     | restriction
 -------------- | -------- | -----------
 fid            | Int      | unique, sorted
 from_node_id   | Int      | -
 to_node_id     | Int      | -
+edge_type      | String   | must be "flow" or "control"
 geom           | geometry | (optional)
 
 Similarly to the node table, you can use a geometry to visualize the connections between the
@@ -287,6 +296,7 @@ column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
+control_state         | String  | -            | (optional)
 
 ### LevelBoundary
 
@@ -355,6 +365,38 @@ to_node_id    | Int      | -
 flow          | Float64  | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same edge_id order is used, though not sorted.
+
+### Control
+
+Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
+
+#### Control / condition {#sec-condition}
+
+The control schema defines conditions of the form 'the control node with this node id listens to whether the given variable of the node with the given listen node id is grater than the given value'.
+
+column         | type     | unit    | restruction
+-------------- | -------- | ------- |
+node_id        | Int      | -       |
+listen_node_id | Int      | -       |
+variable       | String   | -       | must be "level"
+greater_than   | Float64  | various |
+
+#### Control / logic
+
+The logic schema defines which control states are triggered based on the truth of the conditions a control node listens to.
+Control is applied in the Julia core as follows:
+
+- During the simulation it is checked whether the truth of any of the conditions changes.
+- When a condition changes, the corresponding control node id is retrieved (node_id in the condition schema above).
+- The truth value of all the conditions this control node lisens to are retrieved, in the order as they are specified in the condition schema. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
+- The table below determines for the given control node ID and truth state what the corresponding control state is.
+- For all the nodes this control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
+
+column         | type     | unit | restruction
+-------------- | -------- | ---- | -----------
+node_id        | Int      | -    |
+truth_state    | String   | -    | Consists of the characters "T" (true) and "F" (false)
+control_state  | String   | -    |
 
 ## Example input files
 
