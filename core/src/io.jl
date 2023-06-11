@@ -86,6 +86,10 @@ function load_structvector(
         nt = merge(nt, (; time = DateTime.(nt.time, dateformat"yyyy-mm-dd HH:MM:SS.s")))
     end
 
+    if hasfield(T, :control_state) && !hasfield(typeof(nt), :control_state)
+        nt = merge(nt, (; control_state = fill(missing, length(nt.node_id))))
+    end
+
     table = StructVector{T}(nt)
     sv = Legolas._schema_version_from_record_type(T)
     tableschema = Tables.schema(table)
