@@ -408,7 +408,12 @@ The table is sorted by time, and per time the same edge_id order is used, though
 
 ### Control
 
-Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
+Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback). 
+
+:::{.callout-note}
+Currently the Julia core only supports controlling pumps.
+:::
+
 
 #### Control / condition {#sec-condition}
 
