@@ -419,7 +419,7 @@ Currently the Julia core only supports controlling pumps.
 
 The control schema defines conditions of the form 'the control node with this node id listens to whether the given variable of the node with the given listen node id is grater than the given value'.
 
-column         | type     | unit    | restruction
+column         | type     | unit    | restriction
 -------------- | -------- | ------- | -----------
 node_id        | Int      | -       | sorted
 listen_node_id | Int      | -       |
@@ -437,7 +437,7 @@ Control is applied in the Julia core as follows:
 - The table below determines for the given control node ID and truth state what the corresponding control state is.
 - For all the nodes this control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
 
-column         | type     | unit | restruction
+column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
 node_id        | Int      | -    | sorted
 truth_state    | String   | -    | Consists of the characters "T" (true) and "F" (false)
