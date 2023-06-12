@@ -7,30 +7,29 @@
             "description": "a hack for pandera",
             "type": "string"
         },
+        "truth_state": {
+            "format": "default",
+            "description": "truth_state",
+            "type": "string"
+        },
         "node_id": {
             "format": "default",
             "description": "node_id",
             "type": "integer"
         },
-        "resistance": {
-            "format": "double",
-            "description": "resistance",
-            "type": "number"
-        },
         "control_state": {
             "format": "default",
             "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [
         "node_id",
-        "resistance"
+        "truth_state",
+        "control_state"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
-    "title": "LinearResistanceStatic",
-    "description": "A LinearResistanceStatic object based on Ribasim.LinearResistanceStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/ControlLogic.schema.json",
+    "title": "ControlLogic",
+    "description": "A ControlLogic object based on Ribasim.ControlLogicV1",
     "type": "object"
 }

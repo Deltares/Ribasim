@@ -1,6 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "ControlCondition": {
+            "$ref": "ControlCondition.schema.json"
+        },
         "Edge": {
             "$ref": "Edge.schema.json"
         },
@@ -18,6 +21,9 @@
         },
         "LinearResistanceStatic": {
             "$ref": "LinearResistanceStatic.schema.json"
+        },
+        "ControlLogic": {
+            "$ref": "ControlLogic.schema.json"
         },
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"

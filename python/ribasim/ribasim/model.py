@@ -17,6 +17,7 @@ from ribasim.geometry.node import Node
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
+from ribasim.node_types.control import Control
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
@@ -71,6 +72,8 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
+    control : Optional[Control]
+        Control logic.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -91,6 +94,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     terminal: Optional[Terminal]
+    control: Optional[Control]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -310,6 +314,36 @@ class Model(BaseModel):
 
         return Model(**kwargs)
 
+    def plot_control_listen(self, ax):
+        if not self.control:
+            return
+
+        edges = set()
+        condition = self.control.condition
+
+        for node_id in condition.node_id.unique():
+            for listen_node_id in condition.loc[
+                condition.node_id == node_id, "listen_node_id"
+            ]:
+                edges.add((node_id - 1, listen_node_id - 1))
+
+        start, end = list(zip(*edges))
+
+        # This part can probably be done more efficiently
+        x_start = self.node.static.iloc[list(start)].geometry.x
+        y_start = self.node.static.iloc[list(start)].geometry.y
+        x_end = self.node.static.iloc[list(end)].geometry.x
+        y_end = self.node.static.iloc[list(end)].geometry.y
+
+        for i, (x, y, x_, y_) in enumerate(zip(x_start, y_start, x_end, y_end)):
+            ax.plot(
+                [x, x_],
+                [y, y_],
+                c="gray",
+                ls="--",
+                label="Listen Edge" if i == 0 else None,
+            )
+
     def plot(self, ax=None) -> Any:
         """
         Plot the nodes and edges of the model.
@@ -327,7 +361,11 @@ class Model(BaseModel):
             _, ax = plt.subplots()
             ax.axis("off")
         self.edge.plot(ax=ax, zorder=2)
+        self.plot_control_listen(ax)
         self.node.plot(ax=ax, zorder=3)
+
+        ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
+
         return ax
 
     def sort(self):

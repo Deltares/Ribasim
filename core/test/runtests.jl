@@ -11,5 +11,6 @@ using SafeTestsets: @safetestset
     @safetestset "Basic Model Interface" include("bmi.jl")
     @safetestset "Command Line Interface" include("cli.jl")
     @safetestset "Utility functions" include("utils.jl")
+    @safetestset "Control" include("control.jl")
     Aqua.test_all(Ribasim; ambiguities = false)
 end

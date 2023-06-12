@@ -7,6 +7,11 @@
             "description": "a hack for pandera",
             "type": "string"
         },
+        "edge_type": {
+            "format": "default",
+            "description": "edge_type",
+            "type": "string"
+        },
         "fid": {
             "format": "default",
             "description": "fid",
@@ -26,7 +31,8 @@
     "required": [
         "fid",
         "from_node_id",
-        "to_node_id"
+        "to_node_id",
+        "edge_type"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/Edge.schema.json",
     "title": "Edge",

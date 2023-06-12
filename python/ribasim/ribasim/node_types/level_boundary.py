@@ -1,15 +1,19 @@
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 
+from ribasim import models
 from ribasim.input_base import TableModel
 
 __all__ = ("LevelBoundary",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    level: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.LevelBoundaryStatic)
 
 
 class LevelBoundary(TableModel):

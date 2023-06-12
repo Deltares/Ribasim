@@ -75,6 +75,7 @@ function load_structvector(
     ::Type{T},
 )::StructVector{T} where {T <: AbstractRow}
     table = load_data(db, config, T)
+
     if isnothing(table)
         return StructVector{T}(undef, 0)
     end

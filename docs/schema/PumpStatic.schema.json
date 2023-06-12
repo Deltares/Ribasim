@@ -16,6 +16,13 @@
             "format": "default",
             "description": "node_id",
             "type": "integer"
+        },
+        "control_state": {
+            "format": "default",
+            "description": "control_state",
+            "type": [
+                "string"
+            ]
         }
     },
     "required": [

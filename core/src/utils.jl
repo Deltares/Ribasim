@@ -1,19 +1,22 @@
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
 function create_graph(
     db::DB,
+    edge_type_::String,
 )::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
-    noderows = execute(db, "select fid, type from Node")
-    nodes = dictionary((fid => Symbol(type) for (; fid, type) in noderows))
+    node_rows = execute(db, "select fid, type from Node")
+    nodes = dictionary((fid => Symbol(type) for (; fid, type) in node_rows))
     graph = DiGraph(length(nodes))
-    edgerows = execute(db, "select fid, from_node_id, to_node_id from Edge")
+    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
     edge_ids = Dictionary{Tuple{Int, Int}, Int}()
-    edge_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
-    for (; fid, from_node_id, to_node_id) in edgerows
-        add_edge!(graph, from_node_id, to_node_id)
-        insert!(edge_ids, (from_node_id, to_node_id), fid)
-        insert!(edge_types, fid, (nodes[from_node_id], nodes[to_node_id]))
+    edge_connection_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
+    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+        if edge_type == edge_type_
+            add_edge!(graph, from_node_id, to_node_id)
+            insert!(edge_ids, (from_node_id, to_node_id), fid)
+            insert!(edge_connection_types, fid, (nodes[from_node_id], nodes[to_node_id]))
+        end
     end
-    return graph, edge_ids, edge_types
+    return graph, edge_ids, edge_connection_types
 end
 
 """
