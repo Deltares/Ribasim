@@ -54,15 +54,15 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    set_initial_controlled_parameters(parameters.control, u0, integrator)
+    set_initial_controlled_parameters!(integrator, parameters.control, u0)
 
     return Model(integrator, config, saved_flow)
 end
 
-function set_initial_controlled_parameters(
+function set_initial_controlled_parameters!(
+    integrator,
     control::Control,
     u0::Vector{Float64},
-    integrator,
 )
     n_conditions = length(control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
@@ -141,7 +141,8 @@ function get_value(p::Parameters, node_id::Int, variable::String, u)
     if variable == "level"
         basin = p.basin
 
-        # NOTE: Getting the level with get_level does NOT work
+        # NOTE: Getting the level with get_level does NOT work since water_balance!
+        # is not called during rootfinding for callback
         hasindex, basin_idx = id_index(basin.node_id, node_id)
         value = basin.level[basin_idx](u[basin_idx])
     else

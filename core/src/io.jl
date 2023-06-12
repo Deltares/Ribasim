@@ -75,6 +75,7 @@ function load_structvector(
     ::Type{T},
 )::StructVector{T} where {T <: AbstractRow}
     table = load_data(db, config, T)
+
     if isnothing(table)
         return StructVector{T}(undef, 0)
     end
@@ -84,10 +85,6 @@ function load_structvector(
         # time has type timestamp and is stored as a String in the GeoPackage
         # currently SQLite.jl does not automatically convert it to DateTime
         nt = merge(nt, (; time = DateTime.(nt.time, dateformat"yyyy-mm-dd HH:MM:SS.s")))
-    end
-
-    if hasfield(T, :control_state) && !hasfield(typeof(nt), :control_state)
-        nt = merge(nt, (; control_state = fill(missing, length(nt.node_id))))
     end
 
     table = StructVector{T}(nt)

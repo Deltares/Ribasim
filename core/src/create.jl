@@ -164,7 +164,7 @@ function Control(db::DB, config::Config)::Control
 
     logic = load_structvector(db, config, ControlLogicV1)
 
-    logic_mapping::Dict{Tuple{Int, String}, String} = Dict()
+    logic_mapping = Dict{Tuple{Int, String}, String}()
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
