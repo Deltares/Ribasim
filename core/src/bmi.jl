@@ -198,6 +198,14 @@ function control_affect!(integrator, condition_idx)
 
     if control_state_now != control_state_new
 
+        # Store control action in record
+        record = control.record
+
+        push!(record.time, integrator.t)
+        push!(record.control_node_id, control_node_id)
+        push!(record.truth_state, truth_state)
+        push!(record.control_state, control_state_new)
+
         # Loop over nodes which are under control of this control node
         for target_node_id in outneighbors(control.graph, control_node_id)
             set_control_params!(p, target_node_id, control_state_new)
@@ -305,5 +313,6 @@ function run(config::Config)::Model
     solve!(model.integrator)
     write_basin_output(model)
     write_flow_output(model)
+    write_control_output(model)
     return model
 end

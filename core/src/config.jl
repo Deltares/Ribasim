@@ -34,6 +34,7 @@ end
     waterbalance::String = "waterbalance.arrow"
     basin::String = "output/basin.arrow"
     flow::String = "output/flow.arrow"
+    control::String = "output/control.arrow"
     outstate::Maybe{String}
 end
 
