@@ -383,8 +383,12 @@ class Model(BaseModel):
     def print_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
+        node_types, node_clss = Model.get_node_types()
 
         truth_dict = {"T": ">", "F": "<"}
+
+        if not self.control:
+            raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
             datetime = row["time"]
@@ -419,11 +423,13 @@ class Model(BaseModel):
 
             for affect_node_id in affect_node_ids:
                 affect_node_type = self.node.static.loc[affect_node_id, "type"]
-                affect_node_type = globals().get(affect_node_type).get_toml_key()
+                affect_node_type_snake_case = node_clss[
+                    node_types.index(affect_node_type)
+                ].get_toml_key()
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
 
-                static = getattr(self, affect_node_type).static
+                static = getattr(self, affect_node_type_snake_case).static
                 row = static[
                     (static.node_id == affect_node_id)
                     & (static.control_state == control_state)
