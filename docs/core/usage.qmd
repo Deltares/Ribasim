@@ -42,6 +42,9 @@ geopackage = "model.gpkg"  # required
 flow = "output/flow.arrow"    # optional, default "output/flow.arrow"
 basin = "output/basin.arrow"  # optional, default "output/basin.arrow"
 
+# This output file is only written if the model involves control
+control = "output/control.arrow" # optional, default "output/control.arrow" 
+
 # Specific tables can also go into Arrow files rather than the GeoPackage.
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.

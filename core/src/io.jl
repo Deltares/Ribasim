@@ -171,11 +171,13 @@ function write_control_output(model::Model)
     config = model.config
     record = model.integrator.p.control.record
 
-    time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
+    if length(record.time) > 0
+        time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
 
-    table = (; time, record.control_node_id, record.truth_state, record.control_state)
+        table = (; time, record.control_node_id, record.truth_state, record.control_state)
 
-    path = output_path(config, config.output.control)
-    mkpath(dirname(path))
-    Arrow.write(path, table; compress = :lz4)
+        path = output_path(config, config.output.control)
+        mkpath(dirname(path))
+        Arrow.write(path, table; compress = :lz4)
+    end
 end
