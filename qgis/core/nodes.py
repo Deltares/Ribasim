@@ -147,6 +147,7 @@ class Node(Input):
                     "LevelBoundary": "LevelBoundary",
                     "FlowBoundary": "FlowBoundary",
                     "LinearResistance": "LinearResistance",
+                    "ManningResistance": "ManningResistance",
                     "Pump": "Pump",
                     "Terminal": "Terminal",
                     "Control": "Control",
