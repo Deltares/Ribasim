@@ -53,6 +53,18 @@ end
     @test u0 === u != ones(4)
 end
 
+@testset "get_value_ptr_all_values" begin
+    model = BMI.initialize(Ribasim.Model, toml_path)
+
+    for name in ["volume", "level", "infiltration", "drainage"]
+        value_first = BMI.get_value_ptr(model, name)
+        BMI.update_until(model, 86400.0)
+        value_second = BMI.get_value_ptr(model, name)
+        # get_value_ptr does not copy
+        @test value_first === value_second
+    end
+end
+
 @testset "libribasim" begin
     # data from which we create pointers for libribasim
     time = [-1.0]
