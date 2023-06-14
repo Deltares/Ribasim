@@ -37,7 +37,11 @@ def trivial_model() -> ribasim.Model:
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
-            data={"from_node_id": from_id, "to_node_id": to_id},
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
             geometry=lines,
             crs="EPSG:28992",
         )
