@@ -12,13 +12,18 @@ Plugins menu > Manage and Install Plugins...
 
 ![](https://user-images.githubusercontent.com/4471859/224939069-9aae77ea-898f-442f-83b5-f2671c114956.png){fig-align="left"}
 
+Under "All", search for "imod":
+
+![](https://user-images.githubusercontent.com/4471859/245542687-3629cb28-6154-45f7-9593-f53122557208.png){fig-align="left"}
+
+- Click "Install Plugin"
+
 Select "Install from ZIP":
 
 - Browse to the `ribasim_qgis.zip` file that contains the plugin
 - Click "Install Plugin"
-- Repeat for the iMOD plugin, `imodqgis.zip`
 
-![](https://user-images.githubusercontent.com/4471859/224939080-7fec5db2-4417-4f7b-8e45-034d4cf4fd75.png){fig-align="left"}
+![](https://user-images.githubusercontent.com/4471859/245543259-805b0348-4c81-4db2-8d77-4fbef8141192.png){fig-align="left"}
 
 Start the Ribasim plugin.
 
