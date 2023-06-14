@@ -171,7 +171,14 @@ function Control(db::DB, config::Config)::Control
         logic_mapping[(node_id, truth_state)] = control_state_
     end
 
-    graph, edge_ids = create_graph(db, "control")
+    graph, _ = create_graph(db, "control")
+
+    record = (
+        time = Vector{Float64}(),
+        control_node_id = Vector{Int}(),
+        truth_state = Vector{String}(),
+        control_state = Vector{String}(),
+    )
 
     return Control(
         condition.node_id,
@@ -182,6 +189,7 @@ function Control(db::DB, config::Config)::Control
         control_state,
         logic_mapping,
         graph,
+        record,
     )
 end
 

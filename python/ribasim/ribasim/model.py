@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tomli
 import tomli_w
 from pydantic import BaseModel
@@ -378,3 +379,67 @@ class Model(BaseModel):
             input_entry = getattr(self, name)
             if isinstance(input_entry, TableModel):
                 input_entry.sort()
+
+    def print_control_record(self, path: FilePath) -> None:
+        path = Path(path)
+        df_control = pd.read_feather(path)
+        node_types, node_clss = Model.get_node_types()
+
+        truth_dict = {"T": ">", "F": "<"}
+
+        if not self.control:
+            raise ValueError("This model has no control input.")
+
+        for index, row in df_control.iterrows():
+            datetime = row["time"]
+            control_node_id = row["control_node_id"]
+            truth_state = row["truth_state"]
+            control_state = row["control_state"]
+            enumeration = f"{index}. "
+
+            out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
+
+            conditions = self.control.condition[
+                self.control.condition.node_id == control_node_id
+            ]
+
+            for truth_value, (index, condition) in zip(
+                truth_state, conditions.iterrows()
+            ):
+                var = condition["variable"]
+                listen_node_id = condition["listen_node_id"]
+                listen_node_type = self.node.static.loc[listen_node_id, "type"]
+                symbol = truth_dict[truth_value]
+                greater_than = condition["greater_than"]
+
+                out += f"\tFor node ID {listen_node_id} ({listen_node_type}): {var} {symbol} {greater_than}\n"
+
+            padding = len(enumeration) * " "
+            out += f'\n{padding}This yielded control state "{control_state}":\n'
+
+            affect_node_ids = self.edge.static[
+                self.edge.static.from_node_id == control_node_id
+            ].to_node_id
+
+            for affect_node_id in affect_node_ids:
+                affect_node_type = self.node.static.loc[affect_node_id, "type"]
+                affect_node_type_snake_case = node_clss[
+                    node_types.index(affect_node_type)
+                ].get_toml_key()
+
+                out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
+
+                static = getattr(self, affect_node_type_snake_case).static
+                row = static[
+                    (static.node_id == affect_node_id)
+                    & (static.control_state == control_state)
+                ].iloc[0]
+
+                for var in static.columns:
+                    if var not in ["remarks", "node_id", "control_state"]:
+                        value = row[var]
+                        out += f"{var} = {value},"
+
+                out = out[:-1] + "\n"
+
+            print(out)

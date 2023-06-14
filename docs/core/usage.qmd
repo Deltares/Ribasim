@@ -41,6 +41,7 @@ geopackage = "model.gpkg"  # required
 # These output files are always written
 flow = "output/flow.arrow"    # optional, default "output/flow.arrow"
 basin = "output/basin.arrow"  # optional, default "output/basin.arrow"
+control = "output/control.arrow" # optional, default "output/control.arrow" 
 
 # Specific tables can also go into Arrow files rather than the GeoPackage.
 # For large tables this can benefit from better compressed file sizes.

@@ -213,6 +213,10 @@ struct Control <: AbstractParameterNode
     control_state::Dict{Int, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{Int, String}, String}
     graph::DiGraph{Int} # TODO: Check graph validity as in Connectivity?
+    record::NamedTuple{
+        (:time, :control_node_id, :truth_state, :control_state),
+        Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Vector{String}},
+    }
 end
 
 # TODO Automatically add all nodetypes here
