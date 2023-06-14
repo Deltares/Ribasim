@@ -1,10 +1,10 @@
 function Connectivity(db::DB)::Connectivity
-    graph, edge_ids, edge_types = create_graph(db)
+    graph, edge_ids, edge_connection_types = create_graph(db, "flow")
 
     flow = adjacency_matrix(graph, Float64)
     nonzeros(flow) .= 0.0
 
-    return Connectivity(graph, flow, edge_ids, edge_types)
+    return Connectivity(graph, flow, edge_ids, edge_connection_types)
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
@@ -52,22 +52,6 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
     )
 end
 
-function create_storage_tables(db::DB, config::Config)
-    profiles = load_structvector(db, config, BasinProfileV1)
-    area = Interpolation[]
-    level = Interpolation[]
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_storage = getproperty.(group, :storage)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        area_itp = LinearInterpolation(group_area, group_storage)
-        level_itp = LinearInterpolation(group_level, group_storage)
-        push!(area, area_itp)
-        push!(level, level_itp)
-    end
-    return area, level
-end
-
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
     return FractionalFlow(static.node_id, static.fraction)
@@ -85,7 +69,29 @@ end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    return Pump(static.node_id, static.flow_rate)
+
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+
+    if length(static.control_state) > 0 && !any(ismissing.(static.control_state))
+        # Starting flow_rates are first one found (can be updated by control initialisation)
+        node_ids::Vector{Int} = []
+        flow_rates::Vector{Float64} = []
+
+        for (node_id, control_state, row) in
+            zip(static.node_id, static.control_state, static)
+            if node_id ∉ node_ids
+                push!(node_ids, node_id)
+                push!(flow_rates, row.flow_rate)
+            end
+
+            control_mapping[(node_id, control_state)] = variable_nt(row)
+        end
+    else
+        node_ids = static.node_id
+        flow_rates = static.flow_rate
+    end
+
+    return Pump(node_ids, flow_rates, control_mapping)
 end
 
 function Terminal(db::DB, config::Config)::Terminal
@@ -127,6 +133,50 @@ function Basin(db::DB, config::Config)::Basin
     )
 end
 
+function Control(db::DB, config::Config)::Control
+    condition = load_structvector(db, config, ControlConditionV1)
+
+    condition_value = fill(false, length(condition.node_id))
+    control_state::Dict{Int, Tuple{String, Float64}} = Dict()
+
+    rows = execute(db, "select from_node_id, edge_type from Edge")
+    for (; from_node_id, edge_type) in rows
+        if edge_type == "control"
+            control_state[from_node_id] = ("undefined_state", 0.0)
+        end
+    end
+
+    logic = load_structvector(db, config, ControlLogicV1)
+
+    logic_mapping = Dict{Tuple{Int, String}, String}()
+
+    for (node_id, truth_state, control_state_) in
+        zip(logic.node_id, logic.truth_state, logic.control_state)
+        logic_mapping[(node_id, truth_state)] = control_state_
+    end
+
+    graph, _ = create_graph(db, "control")
+
+    record = (
+        time = Vector{Float64}(),
+        control_node_id = Vector{Int}(),
+        truth_state = Vector{String}(),
+        control_state = Vector{String}(),
+    )
+
+    return Control(
+        condition.node_id,
+        condition.listen_node_id,
+        condition.variable,
+        condition.greater_than,
+        condition_value,
+        control_state,
+        logic_mapping,
+        graph,
+        record,
+    )
+end
+
 function Parameters(db::DB, config::Config)::Parameters
 
     # Setup node/edges graph, so validate in `Connectivity`?
@@ -140,10 +190,11 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
     terminal = Terminal(db, config)
+    control = Control(db, config)
 
     basin = Basin(db, config)
 
-    return Parameters(
+    p = Parameters(
         config.starttime,
         connectivity,
         basin,
@@ -155,5 +206,15 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary,
         pump,
         terminal,
+        control,
+        Dict{Int, Symbol}(),
     )
+    for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
+        if fieldtype <: AbstractParameterNode
+            for node_id in getfield(p, fieldname).node_id
+                p.lookup[node_id] = fieldname
+            end
+        end
+    end
+    return p
 end

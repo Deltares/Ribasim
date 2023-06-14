@@ -78,18 +78,45 @@ class Edge(TableModel):
 
         return kwargs
 
+    def get_where_edge_type(self, edge_type: str) -> np.ndarray:
+        return (self.static.edge_type == edge_type).to_numpy()
+
     def plot(self, **kwargs) -> Axes:
         ax = kwargs.get("ax", None)
-        color = kwargs.get("color", None)
+        color_flow = kwargs.get("color_flow", None)
+        color_control = kwargs.get("color_control", None)
+
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
             kwargs["ax"] = ax
-        if color is None:
-            color = "#3690c0"  # lightblue
-            kwargs["color"] = color
 
-        self.static.plot(**kwargs)
+        kwargs_flow = kwargs.copy()
+        kwargs_control = kwargs.copy()
+
+        if color_flow is None:
+            color_flow = "#3690c0"  # lightblue
+            kwargs_flow["color"] = color_flow
+            kwargs_flow["label"] = "Flow Edge"
+        else:
+            color_flow = kwargs["color_flow"]
+            del kwargs_flow["color_flow"], kwargs_control["color_flow"]
+
+        if color_control is None:
+            color_control = "grey"
+            kwargs_control["color"] = color_control
+            kwargs_control["label"] = "Affect Edge"
+        else:
+            color_control = kwargs["color_flow"]
+            del kwargs_flow["color_control"], kwargs_control["color_control"]
+
+        where_flow = self.get_where_edge_type("flow")
+        where_control = self.get_where_edge_type("control")
+
+        self.static[where_flow].plot(**kwargs_flow)
+
+        if where_control.any():
+            self.static[where_control].plot(**kwargs_control)
 
         # Determine the angle for every caret marker and where to place it.
         coords = shapely.get_coordinates(self.static.geometry).reshape(-1, 2, 2)
@@ -99,14 +126,24 @@ class Edge(TableModel):
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.
-        for m_x, m_y, m_angle in zip(x, y, angle):
+        color = []
+
+        for i in range(len(self.static)):
+            if where_flow[i]:
+                color.append(color_flow)
+            elif where_control[i]:
+                color.append(color_control)
+            else:
+                color.append("k")
+
+        for m_x, m_y, m_angle, c in zip(x, y, angle, color):
             ax.plot(
                 m_x,
                 m_y,
                 marker=(3, 0, m_angle),
                 markersize=5,
                 linestyle="None",
-                color=color,
+                c=c,
             )
 
         return ax

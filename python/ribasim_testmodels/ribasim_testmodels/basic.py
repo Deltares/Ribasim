@@ -71,7 +71,11 @@ def basic_model() -> ribasim.Model:
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
-            data={"from_node_id": from_id, "to_node_id": to_id},
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
             geometry=lines,
             crs="EPSG:28992",
         )
@@ -81,7 +85,7 @@ def basic_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 3, 3, 6, 6, 9, 9],
-            "storage": [0.0, 1000.0] * 4,
+            "storage": [0.0, 500.0] * 4,
             "area": [0.0, 1000.0] * 4,
             "level": [0.0, 1.0] * 4,
         }
@@ -305,7 +309,11 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
-            data={"from_node_id": from_id, "to_node_id": to_id},
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
             geometry=lines,
             crs="EPSG:28992",
         )
@@ -315,7 +323,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 4, 4],
-            "storage": [0.0, 1000.0] * 2,
+            "storage": [0.0, 500.0] * 2,
             "area": [0.0, 1000.0] * 2,
             "level": [0.0, 1.0] * 2,
         }

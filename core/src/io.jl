@@ -75,6 +75,7 @@ function load_structvector(
     ::Type{T},
 )::StructVector{T} where {T <: AbstractRow}
     table = load_data(db, config, T)
+
     if isnothing(table)
         return StructVector{T}(undef, 0)
     end
@@ -154,6 +155,7 @@ function write_flow_output(model::Model)
             Arrow.DATETIME,
             repeat(datetime_since.(t, config.starttime); inner = nflow),
         )
+
     edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
@@ -161,6 +163,19 @@ function write_flow_output(model::Model)
 
     table = (; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
+    mkpath(dirname(path))
+    Arrow.write(path, table; compress = :lz4)
+end
+
+function write_control_output(model::Model)
+    config = model.config
+    record = model.integrator.p.control.record
+
+    time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
+
+    table = (; time, record.control_node_id, record.truth_state, record.control_state)
+
+    path = output_path(config, config.output.control)
     mkpath(dirname(path))
     Arrow.write(path, table; compress = :lz4)
 end

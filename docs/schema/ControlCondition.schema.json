@@ -7,9 +7,14 @@
             "description": "a hack for pandera",
             "type": "string"
         },
-        "flow_rate": {
+        "listen_node_id": {
+            "format": "default",
+            "description": "listen_node_id",
+            "type": "integer"
+        },
+        "greater_than": {
             "format": "double",
-            "description": "flow_rate",
+            "description": "greater_than",
             "type": "number"
         },
         "node_id": {
@@ -17,20 +22,20 @@
             "description": "node_id",
             "type": "integer"
         },
-        "control_state": {
+        "variable": {
             "format": "default",
-            "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "description": "variable",
+            "type": "string"
         }
     },
     "required": [
         "node_id",
-        "flow_rate"
+        "listen_node_id",
+        "variable",
+        "greater_than"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/FlowBoundaryStatic.schema.json",
-    "title": "FlowBoundaryStatic",
-    "description": "A FlowBoundaryStatic object based on Ribasim.FlowBoundaryStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/ControlCondition.schema.json",
+    "title": "ControlCondition",
+    "description": "A ControlCondition object based on Ribasim.ControlConditionV1",
     "type": "object"
 }

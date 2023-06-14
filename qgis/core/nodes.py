@@ -1,5 +1,5 @@
 """
-This module contains the classes to represent the Ribasim ndoe layers.
+This module contains the classes to represent the Ribasim node layers.
 
 The classes specify:
 
@@ -149,6 +149,7 @@ class Node(Input):
                     "LinearResistance": "LinearResistance",
                     "Pump": "Pump",
                     "Terminal": "Terminal",
+                    "Control": "Control",
                 },
             },
         )
@@ -181,6 +182,7 @@ class Node(Input):
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
+            "Control": (QColor("black"), "Control", shape.Star),
             "": (
                 QColor("white"),
                 "",
@@ -260,7 +262,6 @@ class BasinProfile(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
-        QgsField("storage", QVariant.Double),
         QgsField("area", QVariant.Double),
         QgsField("level", QVariant.Double),
     ]

@@ -1,18 +1,19 @@
 import pandas as pd
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 
+from ribasim import models
 from ribasim.input_base import TableModel
 
 __all__ = ("ManningResistance",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
-    length: Series[float]
-    manning_n: Series[float]
-    profile_width: Series[float]
-    profile_slope: Series[float]
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.ManningResistanceStatic)
 
 
 class ManningResistance(TableModel):

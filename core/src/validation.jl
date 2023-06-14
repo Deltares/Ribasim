@@ -2,6 +2,8 @@
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
+@schema "ribasim.control.condition" ControlCondition
+@schema "ribasim.control.logic" ControlLogic
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
@@ -52,11 +54,13 @@ end
     fid::Int
     from_node_id::Int
     to_node_id::Int
+    edge_type::String
 end
 
 @version PumpStaticV1 begin
     node_id::Int
     flow_rate::Float64
+    control_state::Union{Missing, String}
 end
 
 @version BasinStaticV1 begin
@@ -80,7 +84,6 @@ end
 
 @version BasinProfileV1 begin
     node_id::Int
-    storage::Float64
     area::Float64
     level::Float64
 end
@@ -93,21 +96,25 @@ end
 @version FractionalFlowStaticV1 begin
     node_id::Int
     fraction::Float64
+    control_state::Union{Missing, String}
 end
 
 @version LevelBoundaryStaticV1 begin
     node_id::Int
     level::Float64
+    control_state::Union{Missing, String}
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     flow_rate::Float64
+    control_state::Union{Missing, String}
 end
 
 @version LinearResistanceStaticV1 begin
     node_id::Int
     resistance::Float64
+    control_state::Union{Missing, String}
 end
 
 @version ManningResistanceStaticV1 begin
@@ -116,6 +123,7 @@ end
     manning_n::Float64
     profile_width::Float64
     profile_slope::Float64
+    control_state::Union{Missing, String}
 end
 
 @version TabulatedRatingCurveStaticV1 begin
@@ -133,6 +141,27 @@ end
 
 @version TerminalStaticV1 begin
     node_id::Int
+end
+
+@version ControlConditionV1 begin
+    node_id::Int
+    listen_node_id::Int
+    variable::String
+    greater_than::Float64
+end
+
+@version ControlLogicV1 begin
+    node_id::Int
+    truth_state::String
+    control_state::String
+end
+
+function variable_names(s::Any)
+    filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
+end
+function variable_nt(s::Any)
+    names = variable_names(typeof(s))
+    NamedTuple{names}((getfield(s, x) for x in names))
 end
 
 function is_consistent(node, edge, state, static, profile, forcing)
@@ -165,17 +194,19 @@ end
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
-sort_by_id_storage(row) = (row.node_id, row.storage)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_level
-sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_storage
 
 const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+const LevelLookupSchemas = Union{TabulatedRatingCurveStaticV1, BasinProfileV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
+end
+
+function sort_by_function(table::StructVector{<:LevelLookupSchemas})
+    return sort_by_id_level
 end
 
 """

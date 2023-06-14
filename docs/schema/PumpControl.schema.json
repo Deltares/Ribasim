@@ -7,30 +7,29 @@
             "description": "a hack for pandera",
             "type": "string"
         },
+        "flow_rate": {
+            "format": "double",
+            "description": "flow_rate",
+            "type": "number"
+        },
         "node_id": {
             "format": "default",
             "description": "node_id",
             "type": "integer"
         },
-        "resistance": {
-            "format": "double",
-            "description": "resistance",
-            "type": "number"
-        },
         "control_state": {
             "format": "default",
             "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [
         "node_id",
-        "resistance"
+        "control_state",
+        "flow_rate"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
-    "title": "LinearResistanceStatic",
-    "description": "A LinearResistanceStatic object based on Ribasim.LinearResistanceStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/PumpControl.schema.json",
+    "title": "PumpControl",
+    "description": "A PumpControl object based on Ribasim.PumpControlV1",
     "type": "object"
 }

@@ -64,9 +64,7 @@ class Basin(TableModel):
         validate_assignment = True
 
     def sort(self):
-        self.profile = self.profile.sort_values(
-            ["node_id", "storage"], ignore_index=True
-        )
+        self.profile = self.profile.sort_values(["node_id", "level"], ignore_index=True)
         if self.static is not None:
             self.static = self.static.sort_values("node_id", ignore_index=True)
         if self.forcing is not None:

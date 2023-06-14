@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tomli
 import tomli_w
 from pydantic import BaseModel
@@ -17,6 +18,7 @@ from ribasim.geometry.node import Node
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
+from ribasim.node_types.control import Control
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
@@ -71,6 +73,8 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
+    control : Optional[Control]
+        Control logic.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -91,6 +95,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     terminal: Optional[Terminal]
+    control: Optional[Control]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -310,6 +315,36 @@ class Model(BaseModel):
 
         return Model(**kwargs)
 
+    def plot_control_listen(self, ax):
+        if not self.control:
+            return
+
+        edges = set()
+        condition = self.control.condition
+
+        for node_id in condition.node_id.unique():
+            for listen_node_id in condition.loc[
+                condition.node_id == node_id, "listen_node_id"
+            ]:
+                edges.add((node_id - 1, listen_node_id - 1))
+
+        start, end = list(zip(*edges))
+
+        # This part can probably be done more efficiently
+        x_start = self.node.static.iloc[list(start)].geometry.x
+        y_start = self.node.static.iloc[list(start)].geometry.y
+        x_end = self.node.static.iloc[list(end)].geometry.x
+        y_end = self.node.static.iloc[list(end)].geometry.y
+
+        for i, (x, y, x_, y_) in enumerate(zip(x_start, y_start, x_end, y_end)):
+            ax.plot(
+                [x, x_],
+                [y, y_],
+                c="gray",
+                ls="--",
+                label="Listen Edge" if i == 0 else None,
+            )
+
     def plot(self, ax=None) -> Any:
         """
         Plot the nodes and edges of the model.
@@ -327,7 +362,11 @@ class Model(BaseModel):
             _, ax = plt.subplots()
             ax.axis("off")
         self.edge.plot(ax=ax, zorder=2)
+        self.plot_control_listen(ax)
         self.node.plot(ax=ax, zorder=3)
+
+        ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
+
         return ax
 
     def sort(self):
@@ -340,3 +379,67 @@ class Model(BaseModel):
             input_entry = getattr(self, name)
             if isinstance(input_entry, TableModel):
                 input_entry.sort()
+
+    def print_control_record(self, path: FilePath) -> None:
+        path = Path(path)
+        df_control = pd.read_feather(path)
+        node_types, node_clss = Model.get_node_types()
+
+        truth_dict = {"T": ">", "F": "<"}
+
+        if not self.control:
+            raise ValueError("This model has no control input.")
+
+        for index, row in df_control.iterrows():
+            datetime = row["time"]
+            control_node_id = row["control_node_id"]
+            truth_state = row["truth_state"]
+            control_state = row["control_state"]
+            enumeration = f"{index}. "
+
+            out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
+
+            conditions = self.control.condition[
+                self.control.condition.node_id == control_node_id
+            ]
+
+            for truth_value, (index, condition) in zip(
+                truth_state, conditions.iterrows()
+            ):
+                var = condition["variable"]
+                listen_node_id = condition["listen_node_id"]
+                listen_node_type = self.node.static.loc[listen_node_id, "type"]
+                symbol = truth_dict[truth_value]
+                greater_than = condition["greater_than"]
+
+                out += f"\tFor node ID {listen_node_id} ({listen_node_type}): {var} {symbol} {greater_than}\n"
+
+            padding = len(enumeration) * " "
+            out += f'\n{padding}This yielded control state "{control_state}":\n'
+
+            affect_node_ids = self.edge.static[
+                self.edge.static.from_node_id == control_node_id
+            ].to_node_id
+
+            for affect_node_id in affect_node_ids:
+                affect_node_type = self.node.static.loc[affect_node_id, "type"]
+                affect_node_type_snake_case = node_clss[
+                    node_types.index(affect_node_type)
+                ].get_toml_key()
+
+                out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
+
+                static = getattr(self, affect_node_type_snake_case).static
+                row = static[
+                    (static.node_id == affect_node_id)
+                    & (static.control_state == control_state)
+                ].iloc[0]
+
+                for var in static.columns:
+                    if var not in ["remarks", "node_id", "control_state"]:
+                        value = row[var]
+                        out += f"{var} = {value},"
+
+                out = out[:-1] + "\n"
+
+            print(out)

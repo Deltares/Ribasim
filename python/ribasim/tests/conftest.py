@@ -5,6 +5,7 @@ import ribasim
 from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
+    pump_control_model,
     tabulated_rating_curve_model,
     trivial_model,
 )
@@ -41,3 +42,6 @@ if __name__ == "__main__":
 
     model = tabulated_rating_curve_model()
     model.write(datadir / "tabulated_rating_curve")
+
+    model = pump_control_model()
+    model.write(datadir / "pump_control")

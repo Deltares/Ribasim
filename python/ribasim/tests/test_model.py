@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from ribasim import Model
 from shapely import Point
 
 
@@ -75,3 +76,9 @@ def test_node_ids_misassigned(basic):
 
     with pytest.raises(ValueError, match="The node IDs in the field fractional_flow.+"):
         model.validate_model_node_IDs()
+
+
+def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
+    model_orig = tabulated_rating_curve
+    model_orig.write(tmp_path / "tabulated_rating_curve")
+    Model.from_toml(tmp_path / "tabulated_rating_curve/tabulated_rating_curve.toml")
