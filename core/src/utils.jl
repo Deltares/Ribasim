@@ -34,23 +34,103 @@ function profile_storage(levels::Vector{Float64}, areas::Vector{Float64})::Vecto
     return storages
 end
 
-"Read the Basin / profile table and return all A(S) and h(S) functions"
+"Read the Basin / profile table and return all area and level and computed storage values"
 function create_storage_tables(
     db::DB,
     config::Config,
-)::Tuple{Vector{Interpolation}, Vector{Interpolation}}
+)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
     profiles = load_structvector(db, config, BasinProfileV1)
-    area = Interpolation[]
-    level = Interpolation[]
+    area = Vector{Vector{Float64}}()
+    level = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = profile_storage(group_level, group_area)
-        area_itp = LinearInterpolation(group_area, group_storage)
-        level_itp = LinearInterpolation(group_level, group_storage)
-        push!(area, area_itp)
-        push!(level, level_itp)
+        push!(area, group_area)
+        push!(level, group_level)
+        push!(storage, group_storage)
     end
+    return area, level, storage
+end
+
+function get_area_and_level(
+    basin::Basin,
+    state_idx::Int,
+    storage::Float64,
+)::Tuple{Float64, Float64}
+    storage_discrete = basin.storage[state_idx]
+    area_discrete = basin.area[state_idx]
+    level_discrete = basin.level[state_idx]
+
+    return get_area_and_level(storage_discrete, area_discrete, level_discrete, storage)
+end
+
+function get_area_and_level(
+    storage_discrete::Vector{Float64},
+    area_discrete::Vector{Float64},
+    level_discrete::Vector{Float64},
+    storage::Float64,
+)::Tuple{Float64, Float64}
+    # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
+    storage_idx = searchsortedfirst(storage_discrete, storage)
+
+    if storage_idx == 1 # If the lowest discrete_storage level 0, this can only happen if the storage is 0 since storage is never negative
+        level = level_discrete[1]
+        area = area_discrete[1]
+
+    elseif storage_idx == length(storage_discrete) + 1
+        # These values yield linear extrapolation of area(level) based on the last 2 values
+        area_lower = area_discrete[end - 1]
+        area_higher = area_discrete[end]
+        level_lower = level_discrete[end - 1]
+        level_higher = level_discrete[end]
+        storage_lower = storage_discrete[end - 1]
+        storage_higher = storage_discrete[end]
+
+        area_diff = area_higher - area_lower
+        level_diff = level_higher - level_lower
+
+        if area_diff ≈ 0
+            # Constant area means linear interpolation of level
+            area = area_lower
+
+            level =
+                area_higher +
+                level_diff * (storage - storage_higher) / (storage_higher - storage_lower)
+        else
+            area = sqrt(
+                area_higher^2 + 2 * (storage - storage_higher) * area_diff / level_diff,
+            )
+            level = level_lower + level_diff * (area - area_lower) / area_diff
+        end
+
+    else
+        area_lower = area_discrete[storage_idx - 1]
+        area_higher = area_discrete[storage_idx]
+        level_lower = level_discrete[storage_idx - 1]
+        level_higher = level_discrete[storage_idx]
+        storage_lower = storage_discrete[storage_idx - 1]
+        storage_higher = storage_discrete[storage_idx]
+
+        area_diff = area_higher - area_lower
+        level_diff = level_higher - level_lower
+
+        if area_diff ≈ 0
+            # Constant area means linear interpolation of level
+            area = area_lower
+            level =
+                level_lower +
+                level_diff * (storage - storage_lower) / (storage_higher - storage_lower)
+
+        else
+            area =
+                sqrt(area_lower^2 + 2 * (storage - storage_lower) * area_diff / level_diff)
+            level = level_lower + level_diff * (area - area_lower) / area_diff
+        end
+    end
+
     return area, level
 end
 
@@ -206,23 +286,15 @@ function id_index(ids::Indices{Int}, id::Int)
     return hasindex, idx
 end
 
-"Return the bottom elevation of the basin with index i"
-function basin_bottom_index(basin::Basin, i::Int)::Float64
-    # get level(storage) interpolation function
-    itp = basin.level[i]
-    # and return the first level in the underlying table, which represents the bottom
-    return first(itp.u)
-end
-
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
     basin = Dictionary(basin.node_id, basin.level)
     hasindex, token = gettoken(basin, node_id)
     return if hasindex
         # get level(storage) interpolation function
-        itp = gettokenvalue(basin, token)
-        # and return the first level in the underlying table, which represents the bottom
-        first(itp.u)
+        level_discrete = gettokenvalue(basin, token)
+        # and return the first level in this vector, representing the bottom
+        first(level_discrete)
     else
         nothing
     end

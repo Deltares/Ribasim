@@ -69,9 +69,10 @@ struct Basin{C} <: AbstractParameterNode
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
     current_level::Vector{Float64}
-    # f(storage)
-    area::Vector{Interpolation}
-    level::Vector{Interpolation}
+    # Discrete values for interpolation
+    area::Vector{Vector{Float64}}
+    level::Vector{Vector{Float64}}
+    storage::Vector{Vector{Float64}}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
 end
@@ -243,11 +244,10 @@ Currently at less than 0.1 m.
 function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)::Nothing
     for i in eachindex(du)
         storage = u[i]
-        area = basin.area[i](storage)
-        level = basin.level[i](storage)
+        area, level = get_area_and_level(basin, i, storage)
         basin.current_level[i] = level
-        bottom = basin_bottom_index(basin, i)
-        fixed_area = median(basin.area[i].u)
+        bottom = basin.level[i][1]
+        fixed_area = median(basin.area[i])
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
