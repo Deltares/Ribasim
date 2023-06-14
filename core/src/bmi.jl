@@ -295,6 +295,12 @@ end
 function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
         model.integrator.u
+    elseif name == "level"
+        model.integrator.p.basin.level
+    elseif name == "infiltration"
+        model.integrator.p.basin.infiltration
+    elseif name == "drainage"
+        model.integrator.p.basin.drainage
     else
         error("Unknown variable $name")
     end
