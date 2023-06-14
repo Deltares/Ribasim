@@ -52,22 +52,6 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
     )
 end
 
-function create_storage_tables(db::DB, config::Config)
-    profiles = load_structvector(db, config, BasinProfileV1)
-    area = Interpolation[]
-    level = Interpolation[]
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_storage = getproperty.(group, :storage)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        area_itp = LinearInterpolation(group_area, group_storage)
-        level_itp = LinearInterpolation(group_level, group_storage)
-        push!(area, area_itp)
-        push!(level, level_itp)
-    end
-    return area, level
-end
-
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
     return FractionalFlow(static.node_id, static.fraction)

@@ -12,11 +12,6 @@
             "description": "area",
             "type": "number"
         },
-        "storage": {
-            "format": "double",
-            "description": "storage",
-            "type": "number"
-        },
         "node_id": {
             "format": "default",
             "description": "node_id",
@@ -30,7 +25,6 @@
     },
     "required": [
         "node_id",
-        "storage",
         "area",
         "level"
     ],
