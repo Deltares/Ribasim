@@ -7,6 +7,7 @@ from ribasim_testmodels import (
     basic_transient_model,
     pump_control_model,
     tabulated_rating_curve_model,
+    trivial_model,
 )
 
 
@@ -29,6 +30,9 @@ def tabulated_rating_curve() -> ribasim.Model:
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
+
+    model = trivial_model()
+    model.write(datadir / "trivial")
 
     model = basic_model()
     model.write(datadir / "basic")

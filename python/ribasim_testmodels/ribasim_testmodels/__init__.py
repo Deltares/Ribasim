@@ -6,10 +6,12 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.control import pump_control_model
+from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
     "basic_model",
     "basic_transient_model",
     "tabulated_rating_curve_model",
+    "trivial_model",
     "pump_control_model",
 ]
