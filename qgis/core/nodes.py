@@ -198,6 +198,7 @@ class Node(Input):
             symbol.setColor(QColor(colour))
             symbol.setSize(4)
             category = QgsRendererCategory(value, symbol, label, shape)
+            category.setRenderState(True)
             categories.append(category)
 
         renderer = QgsCategorizedSymbolRenderer(attrName="type", categories=categories)
