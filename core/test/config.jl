@@ -5,12 +5,6 @@ using Configurations: UndefKeywordError
 using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
 
 @testset "config" begin
-    config = Ribasim.parsefile(normpath(@__DIR__, "testrun.toml"))
-    @test config isa Ribasim.Config
-    @test config.update_timestep == 86400.0
-    @test config.endtime > config.starttime
-    @test config.solver == Ribasim.Solver(; saveat = 86400.0)
-
     @test_throws UndefKeywordError Ribasim.Config()
     @test_throws UndefKeywordError Ribasim.Config(
         startime = now(),
@@ -18,6 +12,18 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
         geopackage = "",
         foo = "bar",
     )
+
+    @testset "testrun" begin
+        config = Ribasim.parsefile(normpath(@__DIR__, "testrun.toml"))
+        @test config isa Ribasim.Config
+        @test config.update_timestep == 86400.0
+        @test config.endtime > config.starttime
+        @test config.solver == Ribasim.Solver(; saveat = 86400.0)
+    end
+
+    @testset "docs" begin
+        Ribasim.parsefile(normpath(@__DIR__, "docs.toml"))
+    end
 end
 
 @testset "Solver" begin

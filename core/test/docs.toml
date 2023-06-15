@@ -1,0 +1,35 @@
+# start- and endtime of the simulation
+# can also be set to a date-time like 1979-05-27T07:32:00
+starttime = 2019-01-01  # required
+endtime = 2021-01-01    # required
+
+# all timesteps are in seconds
+update_timestep = 86400.0  # optional, default 1 day
+
+# input files
+geopackage = "model.gpkg"  # required
+
+[output]
+# These output files are always written
+flow = "output/flow.arrow"        # optional, default "output/flow.arrow"
+basin = "output/basin.arrow"      # optional, default "output/basin.arrow"
+control = "output/control.arrow"  # optional, default "output/control.arrow"
+
+# Specific tables can also go into Arrow files rather than the GeoPackage.
+# For large tables this can benefit from better compressed file sizes.
+# This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
+[basin]
+forcing = "forcing.arrow"
+
+
+[solver]
+algorithm = "QNDF"  # optional, default "QNDF"
+# autodiff can only be set to true for implicit solvers, but is not yet supported
+autodiff = false  # optional, default false
+# saveat can be a number, which is the saving interval in seconds, or
+# it can be a list of numbers, which are the times in seconds since start that are saved
+saveat = []  # optional, default [], which will save every timestep
+dt = 0.0  # optional, default 0.0
+abstol = 1e-6  # optional, default 1e-6
+reltol = 1e-3  # optional, default 1e-3
+maxiters = 1e9  # optional, default 1e9
