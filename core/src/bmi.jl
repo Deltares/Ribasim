@@ -177,7 +177,7 @@ Change parameters based on the control logic.
 """
 function control_affect!(integrator, condition_idx)
     p = integrator.p
-    control = integrator.p.control
+    (; control, connectivity) = p
 
     # Get the control node that listens to this condition
     control_node_id = control.node_id[condition_idx]
@@ -207,7 +207,7 @@ function control_affect!(integrator, condition_idx)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
-        for target_node_id in outneighbors(control.graph, control_node_id)
+        for target_node_id in outneighbors(connectivity.graph_control, control_node_id)
             set_control_params!(p, target_node_id, control_state_new)
         end
 

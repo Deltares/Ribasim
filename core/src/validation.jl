@@ -15,6 +15,7 @@
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
+@schema "ribasim.pidcontrol.static" PIDControlStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
@@ -42,6 +43,8 @@ neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistanc
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:TabulatedRatingCurve}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Control}) = Set((:Pump,))
+neighbortypes(::Val{:PIDControl}) = Set((:Pump,))
 neighbortypes(::Any) = Set{Symbol}()
 
 # TODO NodeV1 and EdgeV1 are not yet used
@@ -154,6 +157,14 @@ end
     node_id::Int
     truth_state::String
     control_state::String
+end
+
+@version PIDControlStaticV1 begin
+    node_id::Int
+    listen_node_id::Int
+    proportional::Float64
+    integral::Vector{Union{Missing, Float64}}
+    derivative::Vector{Union{Missing, Float64}}
 end
 
 function variable_names(s::Any)

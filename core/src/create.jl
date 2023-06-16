@@ -1,10 +1,20 @@
 function Connectivity(db::DB)::Connectivity
-    graph, edge_ids, edge_connection_types = create_graph(db, "flow")
+    graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
+    graph_control, edge_ids_control, edge_connection_types_control =
+        create_graph(db, "control")
 
-    flow = adjacency_matrix(graph, Float64)
+    flow = adjacency_matrix(graph_flow, Float64)
     nonzeros(flow) .= 0.0
 
-    return Connectivity(graph, flow, edge_ids, edge_connection_types)
+    return Connectivity(
+        graph_flow,
+        graph_control,
+        flow,
+        edge_ids_flow,
+        edge_ids_control,
+        edge_connection_types_flow,
+        edge_connection_types_control,
+    )
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
@@ -155,8 +165,6 @@ function Control(db::DB, config::Config)::Control
         logic_mapping[(node_id, truth_state)] = control_state_
     end
 
-    graph, _ = create_graph(db, "control")
-
     record = (
         time = Vector{Float64}(),
         control_node_id = Vector{Int}(),
@@ -172,14 +180,23 @@ function Control(db::DB, config::Config)::Control
         condition_value,
         control_state,
         logic_mapping,
-        graph,
         record,
     )
 end
 
-function Parameters(db::DB, config::Config)::Parameters
+function PIDControl(db::DB, config::Config)::PIDControl
+    static = load_structvector(db, config, PIDControlStaticV1)
 
-    # Setup node/edges graph, so validate in `Connectivity`?
+    return PIDControl(
+        static.node_id,
+        static.listen_node_id,
+        static.proportional,
+        static.integral,
+        static.derivative,
+    )
+end
+
+function Parameters(db::DB, config::Config)::Parameters
     connectivity = Connectivity(db)
 
     linear_resistance = LinearResistance(db, config)
@@ -191,6 +208,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config)
     terminal = Terminal(db, config)
     control = Control(db, config)
+    pid_control = PIDControl(db, config)
 
     basin = Basin(db, config)
 
@@ -207,6 +225,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump,
         terminal,
         control,
+        pid_control,
         Dict{Int, Symbol}(),
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))

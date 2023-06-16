@@ -4,28 +4,56 @@ const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true
 """
 Store the connectivity information
 
-graph: directed graph with vertices equal to ids
+graph_flow, graph_control: directed graph with vertices equal to ids
 flow: store the flow on every edge
-edge_ids: get the external edge id from (src, dst)
-edge_connection_type: get (src_node_type, dst_node_type) from edge id
+edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
+edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
 struct Connectivity
-    graph::DiGraph{Int}
+    graph_flow::DiGraph{Int}
+    graph_control::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
-    edge_ids::Dictionary{Tuple{Int, Int}, Int}
-    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}}
-    function Connectivity(graph, flow, edge_ids, edge_connection_types)
-        if is_valid(graph, flow, edge_ids, edge_connection_types)
-            new(graph, flow, edge_ids, edge_connection_types)
+    edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
+    edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
+    edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
+    edge_connection_type_contol::Dictionary{Int, Tuple{Symbol, Symbol}}
+    function Connectivity(
+        graph_flow,
+        graph_control,
+        flow,
+        edge_ids_flow,
+        edge_ids_control,
+        edge_connection_types_flow,
+        edge_connection_types_control,
+    )
+        invalid_networks = Vector{String}()
+
+        if !is_valid(edge_ids_flow, edge_connection_types_flow)
+            push!(invalid_networks, "flow")
+        end
+
+        if !is_valid(edge_ids_control, edge_connection_types_flow)
+            push!(invalid_networks, "control")
+        end
+
+        if isempty(invalid_networks)
+            new(
+                graph_flow,
+                graph_control,
+                flow,
+                edge_ids_flow,
+                edge_ids_control,
+                edge_connection_types_flow,
+                edge_connection_types_control,
+            )
         else
-            error("Invalid network")
+            invalid_networks = join(invalid_networks, ", ")
+            error("Invalid network(s): $invalid_networks")
         end
     end
 end
 
 function is_valid(
-    graph::DiGraph{Int},
-    flow::SparseMatrixCSC{Float64, Int},
     edge_ids::Dictionary{Tuple{Int, Int}, Int},
     edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
 )
@@ -202,7 +230,7 @@ greater_than: The threshold value in the condition
 condition_value: The current value of each condition
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
-graph: The graph containing the control edges (only affecting)
+record: Namedtuple with discrete control information for output
 """
 struct Control <: AbstractParameterNode
     node_id::Vector{Int}
@@ -212,11 +240,18 @@ struct Control <: AbstractParameterNode
     condition_value::Vector{Bool}
     control_state::Dict{Int, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{Int, String}, String}
-    graph::DiGraph{Int} # TODO: Check graph validity as in Connectivity?
     record::NamedTuple{
         (:time, :control_node_id, :truth_state, :control_state),
         Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Vector{String}},
     }
+end
+
+struct PIDControl <: AbstractParameterNode
+    node_id::Vector{Int}
+    listen_node_id::Vector{Int}
+    proportional::Vector{Float64}
+    integral::Vector{Float64}
+    derivative::Vector{Float64}
 end
 
 # TODO Automatically add all nodetypes here
@@ -233,6 +268,7 @@ struct Parameters
     pump::Pump
     terminal::Terminal
     control::Control
+    pid_control::PIDControl
     lookup::Dict{Int, Symbol}
 end
 
@@ -261,16 +297,36 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
     return nothing
 end
 
+function continuous_control!(pid_control::PIDControl, p::Parameters)::Nothing
+    # TODO: Also support being able to control weir
+    # TODO: also support time varying target levels
+    # TODO: Also support output flow rate to be between prescribed bounds
+    (; connectivity, pump, basin) = p
+    (; graph_control) = connectivity
+    (; node_id, listen_node_id, proportional) = pid_control
+
+    for (i, id) in enumerate(node_id)
+        controlled_node_id = only(outneighbours(graph_control, id))
+        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+        listened_node_id = listen_node_id[i]
+        listened_node_idx = findfirst(pump.node_id .== listened_node_id)
+        target_level = basin.target_level[listened_node_idx]
+        error = target_level - get_level(p, listened_node_id)
+        flow_rate = proportional[i] * error
+        pump.flow_rate[controlled_node_idx] = flow_rate
+    end
+end
+
 """
 Directed graph: outflow is positive!
 """
 function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
     (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, resistance) = linear_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph, id))
-        basin_b_id = only(outneighbors(graph, id))
+        basin_a_id = only(inneighbors(graph_flow, id))
+        basin_b_id = only(outneighbors(graph_flow, id))
         q = (get_level(p, basin_a_id) - get_level(p, basin_b_id)) / resistance[i]
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
@@ -283,11 +339,11 @@ Directed graph: outflow is positive!
 """
 function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)::Nothing
     (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
-        upstream_basin_id = only(inneighbors(graph, id))
-        downstream_ids = outneighbors(graph, id)
+        upstream_basin_id = only(inneighbors(graph_flow, id))
+        downstream_ids = outneighbors(graph_flow, id)
         q = tables[i](get_level(p, upstream_basin_id))
         flow[upstream_basin_id, id] = q
         for downstream_id in downstream_ids
@@ -338,11 +394,11 @@ dry.
 """
 function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothing
     (; basin, connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph, id))
-        basin_b_id = only(outneighbors(graph, id))
+        basin_a_id = only(inneighbors(graph_flow, id))
+        basin_b_id = only(outneighbors(graph_flow, id))
 
         h_a = get_level(p, basin_a_id)
         h_b = get_level(p, basin_b_id)
@@ -371,11 +427,11 @@ end
 
 function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
-        upstream_id = only(inneighbors(graph, id))
-        downstream_id = only(outneighbors(graph, id))
+        upstream_id = only(inneighbors(graph_flow, id))
+        downstream_id = only(outneighbors(graph_flow, id))
         flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
     end
     return nothing
@@ -383,12 +439,12 @@ end
 
 function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
     (; connectivity, basin) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = flow_boundary
 
     for (id, rate) in zip(node_id, flow_rate)
         # Requirement: edge points away from the flow boundary
-        dst_id = only(outneighbors(graph, id))
+        dst_id = only(outneighbors(graph_flow, id))
 
         # Adding water is always possible
         if rate >= 0
@@ -407,11 +463,11 @@ end
 
 function formulate!(pump::Pump, p::Parameters, u)::Nothing
     (; connectivity, basin) = p
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = pump
     for (id, rate) in zip(node_id, flow_rate)
-        src_id = only(inneighbors(graph, id))
-        dst_id = only(outneighbors(graph, id))
+        src_id = only(inneighbors(graph_flow, id))
+        dst_id = only(outneighbors(graph_flow, id))
         # negative flow_rate means pumping against edge direction
         intake_id = rate >= 0 ? src_id : dst_id
 
@@ -431,12 +487,12 @@ function formulate!(du, connectivity::Connectivity, basin::Basin)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph, flow) = connectivity
+    (; graph_flow, flow) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inneighbors(graph, basin_id)
+        for in_id in inneighbors(graph_flow, basin_id)
             du[i] += flow[in_id, basin_id]
         end
-        for out_id in outneighbors(graph, basin_id)
+        for out_id in outneighbors(graph_flow, basin_id)
             du[i] -= flow[basin_id, out_id]
         end
     end
@@ -453,6 +509,7 @@ function water_balance!(du, u, p, t)::Nothing
         fractional_flow,
         flow_boundary,
         pump,
+        pid_control,
     ) = p
 
     du .= 0.0
@@ -460,6 +517,9 @@ function water_balance!(du, u, p, t)::Nothing
 
     # ensures current_level is current
     formulate!(du, basin, u, t)
+
+    # PID control (does not set flows)
+    continuous_control!(pid_control, p)
 
     # First formulate intermediate flows
     formulate!(linear_resistance, p)

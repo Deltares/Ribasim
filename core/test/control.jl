@@ -1,6 +1,6 @@
 import Ribasim
 
-toml_path = normpath(@__DIR__, "../../data/pump_control/control.toml")
+toml_path = normpath(@__DIR__, "../../data/pump_control/pump_control.toml")
 
 @testset "pump control" begin
     @test ispath(toml_path)
