@@ -36,12 +36,15 @@ neighbortypes(::Val{:Basin}) = Set((
     :FlowBoundary,
 ))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :FractionalFlow, :Terminal))
-neighbortypes(::Val{:FlowBoundary}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:FractionalFlow}) =
+    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:FlowBoundary}) =
+    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:TabulatedRatingCurve}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:TabulatedRatingCurve}) =
+    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
 
 # TODO NodeV1 and EdgeV1 are not yet used
