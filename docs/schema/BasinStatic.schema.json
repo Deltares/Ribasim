@@ -36,6 +36,13 @@
             "format": "double",
             "description": "drainage",
             "type": "number"
+        },
+        "target_level": {
+            "format": "default",
+            "description": "target_level",
+            "type": [
+                "number"
+            ]
         }
     },
     "required": [

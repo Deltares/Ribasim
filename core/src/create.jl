@@ -139,6 +139,7 @@ function Basin(db::DB, config::Config)::Basin
         current_level,
         area,
         level,
+        static.target_level,
         time,
     )
 end

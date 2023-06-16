@@ -73,6 +73,7 @@ end
     infiltration::Float64
     precipitation::Float64
     urban_runoff::Float64
+    target_level::Union{Missing, Float64}
 end
 
 @version BasinForcingV1 begin
@@ -163,8 +164,8 @@ end
     node_id::Int
     listen_node_id::Int
     proportional::Float64
-    integral::Vector{Union{Missing, Float64}}
-    derivative::Vector{Union{Missing, Float64}}
+    integral::Union{Missing, Float64}
+    derivative::Union{Missing, Float64}
 end
 
 function variable_names(s::Any)

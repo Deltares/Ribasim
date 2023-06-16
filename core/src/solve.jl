@@ -100,6 +100,7 @@ struct Basin{C} <: AbstractParameterNode
     # f(storage)
     area::Vector{Interpolation}
     level::Vector{Interpolation}
+    target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
 end
