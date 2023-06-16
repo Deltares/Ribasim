@@ -402,7 +402,7 @@ NODES = {
     "ManningResistance / static": ManningResistanceStatic,
     "Pump / static": PumpStatic,
     "Terminal / static": TerminalStatic,
-    "FlowBoundary /static": FlowBoundaryStatic,
+    "FlowBoundary / static": FlowBoundaryStatic,
 }
 
 
