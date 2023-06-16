@@ -191,6 +191,7 @@ class DatasetWidget(QWidget):
         fields = edge.fields()
         field1 = fields.indexFromName("from_node_id")
         field2 = fields.indexFromName("to_node_id")
+        field3 = fields.indexFromName("edge_type")
         try:
             # Avoid infinite recursion
             edge.blockSignals(True)
@@ -200,6 +201,7 @@ class DatasetWidget(QWidget):
                     # Nota bene: will fail with numpy integers, has to be Python type!
                     edge.changeAttributeValue(fid, field1, int(id1))
                     edge.changeAttributeValue(fid, field2, int(id2))
+                    edge.changeAttributeValue(fid, field3, "flow")
         finally:
             edge.blockSignals(False)
 
@@ -255,7 +257,7 @@ class DatasetWidget(QWidget):
         # Connect node and edge layer to derive connectivities.
         self.node_layer = nodes["Node"].layer
         self.edge_layer = nodes["Edge"].layer
-        self.edge_layer.afterCommitChanges.connect(self.explode_and_connect)
+        self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
 
     def new_geopackage(self) -> None:
