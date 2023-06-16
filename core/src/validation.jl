@@ -40,9 +40,9 @@ neighbortypes(::Val{:FractionalFlow}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance,))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:ManningResistance}) = Set((:Basin,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
