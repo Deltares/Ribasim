@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="build/create_binaries/libribasim =&gt; libribasim.zip" />
+      <option name="artifactRules" value="build\create_binaries\libribasim\bin =&gt; libribasim.zip" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
