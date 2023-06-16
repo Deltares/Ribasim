@@ -101,6 +101,7 @@ class TableModel(BaseModel):
         """
         self.sort()
         directory = Path(directory)
+        sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
         for field in self.fields():
             dataframe = getattr(self, field)
             if dataframe is None:
@@ -109,6 +110,7 @@ class TableModel(BaseModel):
 
             with connect(directory / f"{modelname}.gpkg") as connection:
                 dataframe.to_sql(name, connection, if_exists="replace")
+                connection.execute(sql, (name, "attributes", name))
 
         return
 
