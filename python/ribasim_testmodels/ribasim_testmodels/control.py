@@ -129,7 +129,7 @@ def pump_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="control",
+        modelname="pump_control",
         node=node,
         edge=edge,
         basin=basin,

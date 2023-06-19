@@ -18,6 +18,10 @@ end
 end
 
 @testset "bottom" begin
+    # create two basins with different bottoms/levels
+    area = [[0.0, 1.0], [0.0, 1.0]]
+    level = [[0.0, 1.0], [4.0, 5.0]]
+    storage = Ribasim.profile_storage.(level, area)
     basin = Ribasim.Basin(
         Indices([5, 7]),
         [2.0, 3.0],
@@ -25,18 +29,13 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
-        [   # area
-            LinearInterpolation([1.0, 1.0], [0.0, 1.0]),
-            LinearInterpolation([1.0, 1.0], [0.0, 1.0]),
-        ],
-        [   # level
-            LinearInterpolation([0.0, 1.0], [0.0, 1.0]),
-            LinearInterpolation([4.0, 3.0], [0.0, 1.0]),
-        ],
+        area,
+        level,
+        storage,
         StructVector{Ribasim.BasinForcingV1}(undef, 0),
     )
 
-    @test Ribasim.basin_bottom_index(basin, 2) === 4.0
+    @test basin.level[2][1] === 4.0
     @test Ribasim.basin_bottom(basin, 5) === 0.0
     @test Ribasim.basin_bottom(basin, 7) === 4.0
     @test Ribasim.basin_bottom(basin, 6) === nothing
