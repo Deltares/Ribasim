@@ -44,6 +44,10 @@ aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCli
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
         <artifact sourcePath="ribasim_cli.zip" />
       </dependency>
+      <dependency id="ARTIFACT_DEPENDENCY_603" sourceBuildTypeId="Ribasim_Ribasim_MakeQgisPlugin" cleanDestination="false">
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <artifact sourcePath="ribasim_qgis.zip" />
+      </dependency>
     </artifact-dependencies>
     <cleanup />
   </settings>
