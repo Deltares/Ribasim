@@ -49,10 +49,20 @@ class Input(abc.ABC):
     Abstract base class for Ribasim input layers.
     """
 
+    input_type = ""
+
     def __init__(self, path: str):
         self.name = self.input_type
         self.path = path
         self.layer = None
+
+    @classmethod
+    def is_spatial(cls):
+        return False
+
+    @classmethod
+    def nodetype(cls):
+        return cls.input_type.split("/")[0].strip()
 
     @classmethod
     def create(cls, path: str, crs: Any, names: List[str]) -> "Input":
@@ -123,6 +133,10 @@ class Node(Input):
     geometry_type = "Point"
     attributes = (QgsField("type", QVariant.String),)
 
+    @classmethod
+    def is_spatial(cls):
+        return True
+
     def write(self) -> None:
         """
         Special case the Node layer write because it needs to generate a new
@@ -139,20 +153,7 @@ class Node(Input):
         index = layer.fields().indexFromName("type")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
-            {
-                "map": {
-                    "Basin": "Basin",
-                    "FractionalFlow": "FractionalFlow",
-                    "TabulatedRatingCurve": "TabulatedRatingCurve",
-                    "LevelBoundary": "LevelBoundary",
-                    "FlowBoundary": "FlowBoundary",
-                    "LinearResistance": "LinearResistance",
-                    "ManningResistance": "ManningResistance",
-                    "Pump": "Pump",
-                    "Terminal": "Terminal",
-                    "Control": "Control",
-                },
-            },
+            {"map": {node: node for node in NONSPATIALNODETYPES}},
         )
         layer.setEditorWidgetSetup(index, setup)
 
@@ -221,6 +222,10 @@ class Edge(Input):
         QgsField("from_node_id", QVariant.Int),
         QgsField("to_node_id", QVariant.Int),
     ]
+
+    @classmethod
+    def is_spatial(cls):
+        return True
 
     @property
     def renderer(self) -> QgsCategorizedSymbolRenderer:
@@ -419,24 +424,9 @@ class ControlLogic(Input):
     ]
 
 
-NODES = {
-    "Node": Node,
-    "Edge": Edge,
-    "Basin / static": BasinStatic,
-    "Basin / state": BasinState,
-    "Basin / profile": BasinProfile,
-    "Basin / forcing": BasinForcing,
-    "TabulatedRatingCurve / static": TabulatedRatingCurveStatic,
-    "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
-    "FractionalFlow / static": FractionalFlowStatic,
-    "LinearResistance / static": LinearResistanceStatic,
-    "LevelBoundary / static": LevelBoundaryStatic,
-    "ManningResistance / static": ManningResistanceStatic,
-    "Pump / static": PumpStatic,
-    "Terminal / static": TerminalStatic,
-    "FlowBoundary / static": FlowBoundaryStatic,
-    "Control / condition": ControlCondition,
-    "Control / logic": ControlLogic,
+NODES = {cls.input_type: cls for cls in Input.__subclasses__()}
+NONSPATIALNODETYPES = {
+    cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 
 
