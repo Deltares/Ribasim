@@ -223,32 +223,43 @@ class Edge(Input):
     ]
 
     @property
-    def renderer(self) -> QgsSingleSymbolRenderer:
-        lightblue = "#3690c0"
+    def renderer(self) -> QgsCategorizedSymbolRenderer:
+        MARKERS = {
+            "flow": (QColor("#3690c0"), "flow"),  # lightblue
+            "control": (QColor("gray"), "control"),
+        }
 
-        # Create a line with an arrow marker to indicate directionality
-        arrow_marker = QgsSimpleMarkerSymbolLayer()
-        arrow_marker.setShape(QgsSimpleMarkerSymbolLayer.ArrowHeadFilled)
-        arrow_marker.setColor(QColor(lightblue))
-        arrow_marker.setSize(3)
-        arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
+        categories = []
+        for value, (colour, label) in MARKERS.items():
+            # Create line
+            symbol = QgsLineSymbol()
+            symbol.setColor(QColor(colour))
+            symbol.setWidth(0.5)
 
-        marker_symbol = QgsMarkerSymbol()
-        marker_symbol.changeSymbolLayer(0, arrow_marker)
+            # Create an arrow marker to indicate directionality
+            arrow_marker = QgsSimpleMarkerSymbolLayer()
+            arrow_marker.setShape(QgsSimpleMarkerSymbolLayer.ArrowHeadFilled)
+            arrow_marker.setColor(QColor(colour))
+            arrow_marker.setSize(3)
+            arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
 
-        marker_line_symbol_layer = QgsMarkerLineSymbolLayer.create(
-            {"placements": "SegmentCenter"}
+            # Add marker to line
+            marker_symbol = QgsMarkerSymbol()
+            marker_symbol.changeSymbolLayer(0, arrow_marker)
+            marker_line_symbol_layer = QgsMarkerLineSymbolLayer.create(
+                {"placements": "SegmentCenter"}
+            )
+            marker_line_symbol_layer.setSubSymbol(marker_symbol)
+            symbol.appendSymbolLayer(marker_line_symbol_layer)
+
+            category = QgsRendererCategory(value, symbol, label)
+            category.setRenderState(True)
+            categories.append(category)
+
+        renderer = QgsCategorizedSymbolRenderer(
+            attrName="edge_type", categories=categories
         )
-        marker_line_symbol_layer.setSubSymbol(marker_symbol)
-
-        line_symbol = QgsLineSymbol.createSimple(
-            {
-                "color": lightblue,
-                "width": "0.5",
-            }
-        )
-        line_symbol.appendSymbolLayer(marker_line_symbol_layer)
-        return QgsSingleSymbolRenderer(line_symbol)
+        return renderer
 
     def set_read_only(self) -> None:
         layer = self.layer
@@ -387,6 +398,27 @@ class FlowBoundaryStatic(Input):
     ]
 
 
+class ControlCondition(Input):
+    input_type = "Control / condition"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("listen_node_id", QVariant.Int),
+        QgsField("variable", QVariant.String),
+        QgsField("greater_than", QVariant.Double),
+    ]
+
+
+class ControlLogic(Input):
+    input_type = "Control / logic"
+    geometry_type = "LineString"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("control_state", QVariant.String),
+        QgsField("truth_state", QVariant.String),
+    ]
+
+
 NODES = {
     "Node": Node,
     "Edge": Edge,
@@ -403,6 +435,8 @@ NODES = {
     "Pump / static": PumpStatic,
     "Terminal / static": TerminalStatic,
     "FlowBoundary / static": FlowBoundaryStatic,
+    "Control / condition": ControlCondition,
+    "Control / logic": ControlLogic,
 }
 
 
