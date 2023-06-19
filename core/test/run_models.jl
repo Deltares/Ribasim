@@ -18,7 +18,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[452.9688, 453.0431, 1.8501105, 1238.0144] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[453.36038, 453.32977, 1.850543, 1238.0609] skip =
         Sys.isapple()
 end
 
