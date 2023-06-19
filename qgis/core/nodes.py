@@ -38,7 +38,6 @@ from qgis.core import (
     QgsRendererCategory,
     QgsSimpleMarkerSymbolLayer,
     QgsSimpleMarkerSymbolLayerBase,
-    QgsSingleSymbolRenderer,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
