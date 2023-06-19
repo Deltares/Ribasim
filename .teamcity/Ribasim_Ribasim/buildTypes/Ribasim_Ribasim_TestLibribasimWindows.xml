@@ -62,7 +62,7 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-          <param name="vcsRootId" value="Ribasim_Ribasim_ImodCoupler" />
+          <param name="vcsRootId" value="Ribasim_Ribasim_Ribasim" />
         </parameters>
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
