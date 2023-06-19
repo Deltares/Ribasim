@@ -4,7 +4,16 @@
   <description />
   <settings>
     <parameters />
-    <build-runners />
+    <build-runners>
+      <runner id="RUNNER_2193" name="" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[cp -r qgis ribasim_qgis
+zip ribasim_qgis.zip -r ribasim_qgis]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
