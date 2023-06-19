@@ -23,7 +23,7 @@ zip ribasim_qgis.zip -r ribasim_qgis]]></param>
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
           <param name="branchFilter" value="+:&lt;default&gt;" />
-          <param name="dependsOn" value="Ribasim_Ribasim_PushSuccesfulNightlyBuildToS3" />
+          <param name="dependsOn" value="BuildRibasimCliWindows" />
         </parameters>
       </build-trigger>
     </build-triggers>
