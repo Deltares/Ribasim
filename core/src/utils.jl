@@ -214,13 +214,33 @@ function basin_bottom_index(basin::Basin, i::Int)::Float64
     return first(itp.u)
 end
 
-"Return the bottom elevation of the basin with index i"
-function basin_bottom(basin::Basin, node_id::Int)::Float64
+"Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
+function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
     basin = Dictionary(basin.node_id, basin.level)
     hasindex, token = gettoken(basin, node_id)
-    @assert hasindex "node_id $node_id not a Basin"
-    # get level(storage) interpolation function
-    itp = gettokenvalue(basin, token)
-    # and return the first level in the underlying table, which represents the bottom
-    return first(itp.u)
+    return if hasindex
+        # get level(storage) interpolation function
+        itp = gettokenvalue(basin, token)
+        # and return the first level in the underlying table, which represents the bottom
+        first(itp.u)
+    else
+        nothing
+    end
+end
+
+"Get the bottom on both ends of a node. If only one has a bottom, use that for both."
+function basin_bottoms(
+    basin::Basin,
+    basin_a_id::Int,
+    basin_b_id::Int,
+    id::Int,
+)::Tuple{Float64, Float64}
+    bottom_a = basin_bottom(basin, basin_a_id)
+    bottom_b = basin_bottom(basin, basin_b_id)
+    if isnothing(bottom_a) && isnothing(bottom_b)
+        error(lazy"No bottom defined on either side of $id")
+    end
+    bottom_a = something(bottom_a, bottom_b)
+    bottom_b = something(bottom_b, bottom_a)
+    return bottom_a, bottom_b
 end

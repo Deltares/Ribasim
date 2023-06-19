@@ -3,7 +3,6 @@ using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase
 
-
 @testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
     @test ispath(toml_path)

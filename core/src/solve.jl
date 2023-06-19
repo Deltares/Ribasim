@@ -346,8 +346,7 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
 
         h_a = get_level(p, basin_a_id)
         h_b = get_level(p, basin_b_id)
-        bottom_a = basin_bottom(basin, basin_a_id)
-        bottom_b = basin_bottom(basin, basin_b_id)
+        bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]
