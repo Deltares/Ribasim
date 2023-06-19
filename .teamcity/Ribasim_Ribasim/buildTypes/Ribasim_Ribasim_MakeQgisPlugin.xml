@@ -17,7 +17,9 @@ zip ribasim_qgis.zip -r ribasim_qgis]]></param>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
-    <requirements />
+    <requirements>
+      <does-not-equal id="RQ_338" name="env.OS" value="Windows_NT" />
+    </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_550" type="buildDependencyTrigger">
         <parameters>
