@@ -91,3 +91,77 @@ end
     @test h ≈ sqrt(S / 5)
     @test A ≈ 10 * h
 end
+
+@testset "ManningResistance" begin
+    """
+    Apply the "standard step method" finite difference method to find a
+    backwater curve.
+
+    See: https://en.wikipedia.org/wiki/Standard_step_method
+
+    * The left boundary has a fixed discharge `Q`.
+    * The right boundary has a fixed level `h_right`.
+    * Channel profile is rectangular.
+
+    # Arguments
+    - `Q`: discharge entering in the left boundary (m3/s)
+    - `w`: width (m)
+    - `n`: Manning roughness
+    - `h_right`: water level on the right boundary
+    - `h_close`: when to stop iteration
+
+    Returns
+    -------
+    S_f: friction slope
+    """
+    function standard_step_method(x, Q, w, n, h_right, h_close)
+        """Manning's friction slope"""
+        function friction_slope(Q, w, d, n)
+            A = d * w
+            R_h = A / (w + 2 * d)
+            S_f = Q^2 * (n^2) / (A^2 * R_h^(4 / 3))
+            return S_f
+        end
+
+        h = fill(h_right, length(x))
+        Δx = diff(x)
+
+        # Iterate backwards, from right to left.
+        h1 = h_right
+        for i in reverse(eachindex(Δx))
+            h2 = h1  # Initial guess
+            Δh = h_close + 1.0
+            L = Δx[i]
+            while Δh > h_close
+                sf1 = friction_slope(Q, w, h1, n)
+                sf2 = friction_slope(Q, w, h2, n)
+                h2new = h1 + 0.5 * (sf1 + sf2) * L
+                Δh = abs(h2new - h2)
+                h2 = h2new
+            end
+
+            h[i] = h2
+            h1 = h2
+        end
+
+        return h
+    end
+
+    toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    u = model.integrator.sol.u[end]
+    p = model.integrator.p
+    h_actual = p.basin.current_level
+    x = collect(10.0:20.0:990.0)
+    h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
+
+    # We test with a somewhat arbitrary difference of 0.01 m. There are some
+    # numerical choices to make in terms of what the representative friction
+    # slope is. See e.g.:
+    # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
+    @test all(isapprox.(h_expected, h_actual; atol = 0.01))
+    # Test for conservation of mass
+    @test all(isapprox.(model.saved_flow.saveval[end], 5.0)) skip = Sys.isapple()
+end
