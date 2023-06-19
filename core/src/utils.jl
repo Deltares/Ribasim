@@ -76,12 +76,14 @@ function get_area_and_level(
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
-    if storage_idx == 1 # If the lowest discrete_storage level 0, this can only happen if the storage is 0 since storage is never negative
+    if storage_idx == 1
+        # This can only happen if the storage is 0
         level = level_discrete[1]
         area = area_discrete[1]
 
     elseif storage_idx == length(storage_discrete) + 1
-        # These values yield linear extrapolation of area(level) based on the last 2 values
+        # With a storage above the profile, use a linear extrapolation of area(level)
+        # based on the last 2 values.
         area_lower = area_discrete[end - 1]
         area_higher = area_discrete[end]
         level_lower = level_discrete[end - 1]
@@ -95,9 +97,8 @@ function get_area_and_level(
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
             area = area_lower
-
             level =
-                area_higher +
+                level_higher +
                 level_diff * (storage - storage_higher) / (storage_higher - storage_lower)
         else
             area = sqrt(

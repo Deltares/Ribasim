@@ -2,6 +2,7 @@ using Test
 using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase
+import Tables
 
 @testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
@@ -44,41 +45,49 @@ end
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end
 
+"Shorthand for Ribasim.get_area_and_level"
+function lookup(profile, S)
+    Ribasim.get_area_and_level(profile.S, profile.A, profile.h, S)
+end
+
 @testset "Profile" begin
     n_interpolations = 100
     storage = range(0.0, 1000.0, n_interpolations)
 
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    area_discrete = [0.0, 100.0, 100.0]
-    level_discrete = [0.0, 10.0, 15.0]
-    storage_discrete = Ribasim.profile_storage(level_discrete, area_discrete)
+    A = [0.0, 100.0, 100.0]
+    h = [0.0, 10.0, 15.0]
+    profile = (; A, h, S = Ribasim.profile_storage(h, A))
 
-    area, level = zip(
-        [
-            Ribasim.get_area_and_level(storage_discrete, area_discrete, level_discrete, s) for s in storage
-        ]...,
-    )
+    # On profile points we reproduce the profile
+    for (; S, A, h) in Tables.rows(profile)
+        @test lookup(profile, S) == (A, h)
+    end
 
-    level_expected =
-        ifelse.(storage .< 500.0, sqrt.(storage ./ 5), 10.0 .+ (storage .- 500.0) ./ 100.0)
+    # Robust to negative storage
+    @test lookup(profile, -1.0) == (profile.A[1], profile.h[1])
 
-    @test all(level .≈ level_expected)
-    area_expected = min.(10.0 * level_expected, 100.0)
-    @test all(area .≈ area_expected)
+    # On the first segment
+    S = 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
+
+    # On the second segment and extrapolation
+    for S in [500.0 + 100.0, 1000.0 + 100.0]
+        S = 500.0 + 100.0
+        A, h = lookup(profile, S)
+        @test h ≈ 10.0 + (S - 500.0) / 100.0
+        @test A == 100.0
+    end
 
     # Covers extrapolation for non-constant area
-    area_discrete = [0.0, 100.0]
-    level_discrete = [0.0, 10.0]
-    storage_discrete = Ribasim.profile_storage(level_discrete, area_discrete)
+    A = [0.0, 100.0]
+    h = [0.0, 10.0]
+    profile = (; A, h, S = Ribasim.profile_storage(h, A))
 
-    area, level = zip(
-        [
-            Ribasim.get_area_and_level(storage_discrete, area_discrete, level_discrete, s) for s in storage
-        ]...,
-    )
-
-    level_expected = sqrt.(storage ./ 5)
-    @test all(level .≈ level_expected)
-    area_expected = 10.0 * level_expected
-    @test all(area .≈ area_expected)
+    S = 500.0 + 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
 end
