@@ -11,7 +11,8 @@
 . /usr/share/Modules/init/bash
 
 module load aws
-aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip]]></param>
+aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip
+aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
