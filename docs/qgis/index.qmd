@@ -6,6 +6,10 @@ title: "QGIS plugin"
 
 ## Start
 
+### Download plugin
+
+Download [ribasim_qgis.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip).
+
 ### Add Ribasim and iMOD plugins to QGIS version 3.28 or higher
 
 Plugins menu > Manage and Install Plugins...
@@ -14,7 +18,7 @@ Plugins menu > Manage and Install Plugins...
 
 Select "Install from ZIP":
 
-- Browse to the `ribasim_qgis.zip` file that contains the plugin
+- Browse to the `ribasim_qgis.zip` file containing the plugin that was downloaded earlier
 - Click "Install Plugin"
 - Repeat for the iMOD plugin, `imodqgis.zip`
 
