@@ -354,12 +354,23 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
 
         Δh = h_a - h_b
         q_sign = sign(Δh)
-        # Take the "upstream" water depth:
-        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))
-        A = width * d + slope * d^2
+        
+        # Average d, A, R
+        d_a = h_a - bottom_a
+        d_b = h_b - bottom_b
+        d = 0.5 * (d_a + d_b)
+        
+        A_a = width * d + slope * d_a^2
+        A_b = width * d + slope * d_b^2
+        A = 0.5 * (A_a + A_b)
+        
         slope_unit_length = sqrt(slope^2 + 1.0)
-        P = width + 2.0 * d * slope_unit_length
-        R_h = A / P
+        P_a = width + 2.0 * d_a * slope_unit_length
+        P_b = width + 2.0 * d_b * slope_unit_length
+        R_h_a = A_a / P_a
+        R_h_b = A_b / P_b
+        R_h = 0.5 * (R_h_a + R_h_b)
+
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
 
         flow[basin_a_id, id] = q
