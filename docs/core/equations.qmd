@@ -301,10 +301,10 @@ Direct analytic solutions exist for e.g. parabolic profiles (Tolkmitt), but
 other profiles requires relatively complicated approaches (such as
 approximating the profile with a polynomial).
 
-Instead, we choose a representative radius and area at the upstream node. This
-ensures that a basin will still receive water after it has gone dry. The size
-of the resulting error will depend on the water depth difference between the
-upstream and downstream basin.
+We use the average value of the cross-sectional area, the average value of the
+water depth, and the average value of the hydraulic radius to compute a
+friction slope. The size of the resulting error will depend on the water depth
+difference between the upstream and downstream basin.
 :::
 
 The cross sectional area for a trapezoidal or rectangular profile:

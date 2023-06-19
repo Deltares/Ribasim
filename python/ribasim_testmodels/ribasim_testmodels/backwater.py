@@ -9,7 +9,6 @@ def backwater_model():
     node_type = np.full(x.size, "ManningResistance")
     node_type[1::2] = "Basin"
     node_type[0] = "FlowBoundary"
-    node_type[-2] = "LinearResistance"
     node_type[-1] = "LevelBoundary"
 
     node_xy = gpd.points_from_xy(x=x, y=np.zeros_like(x))
@@ -82,14 +81,6 @@ def backwater_model():
         )
     )
 
-    linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(
-            data={
-                "node_id": ids[node_type == "LinearResistance"],
-                "resistance": [0.001],
-            }
-        )
-    )
     level_boundary = ribasim.LevelBoundary(
         static=pd.DataFrame(
             data={
@@ -106,7 +97,6 @@ def backwater_model():
         basin=basin,
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,
-        linear_resistance=linear_resistance,
         manning_resistance=manning_resistance,
         starttime="2020-01-01 00:00:00",
         endtime="2030-01-01 00:00:00",

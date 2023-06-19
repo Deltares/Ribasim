@@ -151,18 +151,17 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    x = collect(10.0:20.0:990.0)
-    h_expected = standard_step_method(x, 5.0, 1.0, 0.04, 2.0, 1.0e-6)
-
     u = model.integrator.sol.u[end]
     p = model.integrator.p
     h_actual = [p.basin.level[i](u_i) for (i, u_i) in enumerate(u)]
+    x = collect(10.0:20.0:990.0)
+    h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
-    # We test with a relatively large difference of 0.025 m. There are some
+    # We test with a somewhat arbitrary difference of 0.01 m. There are some
     # numerical choices to make in terms of what the representative friction
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
-    @test all(isapprox.(h_expected, h_actual; atol = 0.025))
+    @test all(isapprox.(h_expected, h_actual; atol = 0.01))
     # Test for conservation of mass
     @test all(isapprox.(model.saved_flow.saveval[end], 5.0))
 end
