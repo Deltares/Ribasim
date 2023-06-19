@@ -39,7 +39,7 @@ def backwater_model():
             crs="EPSG:28992",
         )
     )
-    
+
     flow_boundary = ribasim.FlowBoundary(
         static=pd.DataFrame(
             data={
@@ -54,7 +54,7 @@ def backwater_model():
         data={
             "node_id": np.repeat(ids[node_type == "Basin"], 3),
             "area": [0.0, 20.0, 20.0] * n_basin,
-            "level": [0.0, 0.01, 1.0] * n_basin, 
+            "level": [0.0, 0.01, 1.0] * n_basin,
         }
     )
     static = pd.DataFrame(
@@ -101,5 +101,5 @@ def backwater_model():
         starttime="2020-01-01 00:00:00",
         endtime="2030-01-01 00:00:00",
     )
-    
+
     return model
