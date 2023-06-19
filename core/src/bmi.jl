@@ -296,7 +296,9 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
         model.integrator.u
     elseif name == "level"
-        model.integrator.p.basin.level
+        # FIXME: stop hard-coding "0"
+        hasindex, basin_idx = id_index(basin.node_id, 0)
+        basin.level[basin_idx](model.integrator.u[basin_idx])
     elseif name == "infiltration"
         model.integrator.p.basin.infiltration
     elseif name == "drainage"
