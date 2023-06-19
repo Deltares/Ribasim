@@ -3,6 +3,9 @@
   <name>Make QGIS plugin</name>
   <description />
   <settings>
+    <options>
+      <option name="artifactRules" value="ribasim_qgis.zip" />
+    </options>
     <parameters />
     <build-runners>
       <runner id="RUNNER_2193" name="" type="simpleRunner">
