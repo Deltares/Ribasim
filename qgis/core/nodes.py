@@ -231,6 +231,7 @@ class Edge(Input):
         MARKERS = {
             "flow": (QColor("#3690c0"), "flow"),  # lightblue
             "control": (QColor("gray"), "control"),
+            "": (QColor("black"), ""),  # All other edges, or incomplete input
         }
 
         categories = []
