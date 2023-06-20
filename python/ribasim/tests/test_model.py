@@ -1,13 +1,29 @@
 import re
 
 import pytest
-from ribasim import Model
+from pydantic import ValidationError
+from ribasim import Model, Solver
 from shapely import Point
 
 
 def test_repr(basic):
     representation = repr(basic).split("\n")
     assert representation[0] == "<ribasim.Model>"
+
+
+def test_solver():
+    solver = Solver()
+    assert solver.algorithm is None
+    assert solver.saveat is None
+
+    solver = Solver(saveat=3600.0)
+    assert solver.saveat == 3600.0
+
+    solver = Solver(saveat=[3600.0, 7200.0])
+    assert solver.saveat == [3600.0, 7200.0]
+
+    with pytest.raises(ValidationError):
+        Solver(saveat="a")
 
 
 def test_invalid_node_type(basic):
