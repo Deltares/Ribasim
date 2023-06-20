@@ -348,6 +348,7 @@ class FractionalFlowStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("fraction", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -357,6 +358,7 @@ class LinearResistanceStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("resistance", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -369,13 +371,18 @@ class ManningResistanceStatic(Input):
         QgsField("manning_n", QVariant.Double),
         QgsField("profile_width", QVariant.Double),
         QgsField("profile_slope", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
 class LevelBoundaryStatic(Input):
     input_type = "LevelBoundary / static"
     geometry_type = "No Geometry"
-    attributes = [QgsField("node_id", QVariant.Int), QgsField("level", QVariant.Double)]
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("level", QVariant.Double),
+        QgsField("control_state", QVariant.String),
+    ]
 
 
 class PumpStatic(Input):
@@ -384,6 +391,7 @@ class PumpStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -399,6 +407,7 @@ class FlowBoundaryStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
