@@ -1,7 +1,7 @@
 import datetime
 import inspect
 from pathlib import Path
-from typing import Any, List, Optional, Type, cast
+from typing import Any, List, Optional, Type, Union, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,7 +33,7 @@ from ribasim.types import FilePath
 class Solver(BaseModel):
     algorithm: Optional[str]
     autodiff: Optional[bool]
-    saveat: Optional[List[float]]
+    saveat: Optional[Union[float, List[float]]]
     dt: Optional[float]
     abstol: Optional[float]
     reltol: Optional[float]
