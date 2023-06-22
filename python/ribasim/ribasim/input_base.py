@@ -109,7 +109,7 @@ class TableModel(BaseModel):
             name = self._layername(field)
 
             with connect(directory / f"{modelname}.gpkg") as connection:
-                dataframe.to_sql(name, connection, if_exists="replace")
+                dataframe.to_sql(name, connection, index=False, if_exists="replace")
                 connection.execute(sql, (name, "attributes", name))
 
         return
