@@ -57,7 +57,6 @@ def pump_control_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 3, 3],
-            "storage": [0.0, 100.0] * 2,
             "area": [100.0, 100.0] * 2,
             "level": [0.0, 1.0] * 2,
         }
