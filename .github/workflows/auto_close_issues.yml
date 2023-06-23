@@ -15,3 +15,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: dessant/issue-states@v3
+        with:
+          closed-issue-columns: "✅ Done"
