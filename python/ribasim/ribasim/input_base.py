@@ -123,9 +123,7 @@ class TableModel(BaseModel):
 
                 if exists(connection, layername):
                     query = f"select * from {esc_id(layername)}"
-                    df = pd.read_sql_query(
-                        query, connection, index_col="index", parse_dates=["time"]
-                    )
+                    df = pd.read_sql_query(query, connection, parse_dates=["time"])
                 else:
                     df = None
 
