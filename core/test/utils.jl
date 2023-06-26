@@ -22,6 +22,7 @@ end
     area = [[0.0, 1.0], [0.0, 1.0]]
     level = [[0.0, 1.0], [4.0, 5.0]]
     storage = Ribasim.profile_storage.(level, area)
+    target_level = [0.0, 0.0]
     basin = Ribasim.Basin(
         Indices([5, 7]),
         [2.0, 3.0],
@@ -32,6 +33,7 @@ end
         area,
         level,
         storage,
+        target_level,
         StructVector{Ribasim.BasinForcingV1}(undef, 0),
     )
 
