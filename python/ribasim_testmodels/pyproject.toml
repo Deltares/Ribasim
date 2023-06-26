@@ -25,6 +25,9 @@ zip-safe = true
 [tool.setuptools.dynamic]
 version = { attr = "ribasim_testmodels.__version__" }
 
+[tool.setuptools.packages.find]
+include = ["ribasim_testmodels", "ribasim_testmodels.*"]
+
 [tool.setuptools.package-data]
 "ribasim_testmodels" = ["py.typed"]
 
