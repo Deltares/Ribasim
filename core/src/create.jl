@@ -120,7 +120,7 @@ function Basin(db::DB, config::Config)::Basin
     infiltration = fill(NaN, length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
-    area, level = create_storage_tables(db, config)
+    area, level, storage = create_storage_tables(db, config)
 
     # both static and forcing are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
@@ -129,6 +129,9 @@ function Basin(db::DB, config::Config)::Basin
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
+
+    # If not specified, target_level = 0
+    target_level = coalesce.(static.target_level, 0.0)
 
     return Basin(
         Indices(node_id),
@@ -139,7 +142,8 @@ function Basin(db::DB, config::Config)::Basin
         current_level,
         area,
         level,
-        static.target_level,
+        storage,
+        target_level,
         time,
     )
 end

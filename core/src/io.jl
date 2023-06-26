@@ -131,7 +131,8 @@ function write_basin_output(model::Model)
     storage = reshape(vec(sol), nbasin, ntsteps)
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
-        level[i, :] = p.basin.level[i].(basin_storage)
+        level[i, :] =
+            [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
     end
 
     basin = (; time, node_id, storage = vec(storage), level = vec(level))

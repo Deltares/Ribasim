@@ -97,9 +97,11 @@ struct Basin{C} <: AbstractParameterNode
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
     current_level::Vector{Float64}
-    # f(storage)
-    area::Vector{Interpolation}
-    level::Vector{Interpolation}
+    # Discrete values for interpolation
+    area::Vector{Vector{Float64}}
+    level::Vector{Vector{Float64}}
+    storage::Vector{Vector{Float64}}
+    # target level of basins
     target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
@@ -280,11 +282,10 @@ Currently at less than 0.1 m.
 function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)::Nothing
     for i in eachindex(du)
         storage = u[i]
-        area = basin.area[i](storage)
-        level = basin.level[i](storage)
+        area, level = get_area_and_level(basin, i, storage)
         basin.current_level[i] = level
-        bottom = basin_bottom_index(basin, i)
-        fixed_area = median(basin.area[i].u)
+        bottom = basin.level[i][1]
+        fixed_area = median(basin.area[i])
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
@@ -403,8 +404,7 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
 
         h_a = get_level(p, basin_a_id)
         h_b = get_level(p, basin_b_id)
-        bottom_a = basin_bottom(basin, basin_a_id)
-        bottom_b = basin_bottom(basin, basin_b_id)
+        bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]
@@ -412,12 +412,23 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
 
         Δh = h_a - h_b
         q_sign = sign(Δh)
-        # Take the "upstream" water depth:
-        d = max(q_sign * (h_a - bottom_a), q_sign * (bottom_b - h_b))
-        A = width * d + slope * d^2
+
+        # Average d, A, R
+        d_a = h_a - bottom_a
+        d_b = h_b - bottom_b
+        d = 0.5 * (d_a + d_b)
+
+        A_a = width * d + slope * d_a^2
+        A_b = width * d + slope * d_b^2
+        A = 0.5 * (A_a + A_b)
+
         slope_unit_length = sqrt(slope^2 + 1.0)
-        P = width + 2.0 * d * slope_unit_length
-        R_h = A / P
+        P_a = width + 2.0 * d_a * slope_unit_length
+        P_b = width + 2.0 * d_b * slope_unit_length
+        R_h_a = A_a / P_a
+        R_h_b = A_b / P_b
+        R_h = 0.5 * (R_h_a + R_h_b)
+
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
 
         flow[basin_a_id, id] = q

@@ -144,7 +144,8 @@ function get_value(p::Parameters, node_id::Int, variable::String, u)
         # NOTE: Getting the level with get_level does NOT work since water_balance!
         # is not called during rootfinding for callback
         hasindex, basin_idx = id_index(basin.node_id, node_id)
-        value = basin.level[basin_idx](u[basin_idx])
+        _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
+        value = level
     else
         throw(ValueError("Unsupported condition variable $variable."))
     end
@@ -296,7 +297,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
         model.integrator.u
     elseif name == "level"
-        model.integrator.p.basin.level
+        model.integrator.p.basin.current_level
     elseif name == "infiltration"
         model.integrator.p.basin.infiltration
     elseif name == "drainage"

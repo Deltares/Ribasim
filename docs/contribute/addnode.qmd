@@ -139,7 +139,6 @@ In `python/ribasim/ribasim/node.py` add a color and shape description in the `MA
 
 The script `qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
 
-- Add `"NewNodeType: NewNodeType",` to the `"map"` dictionary in `Node.set_editor_widget`;
 - Add a color and shape description in the `MARKERS` dictionary in `Node.renderer`,
   consistent with the entries added above;
 - Add an input class per schema, e.g.
@@ -153,8 +152,6 @@ class NewNodeTypeStatic:
         # Other fields for properties of this node
     ]
 ```
-
-and add these to the NODES dictionary.
 
 
 # Validation

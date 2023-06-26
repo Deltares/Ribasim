@@ -38,7 +38,6 @@ from qgis.core import (
     QgsRendererCategory,
     QgsSimpleMarkerSymbolLayer,
     QgsSimpleMarkerSymbolLayerBase,
-    QgsSingleSymbolRenderer,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
@@ -49,10 +48,20 @@ class Input(abc.ABC):
     Abstract base class for Ribasim input layers.
     """
 
+    input_type = ""
+
     def __init__(self, path: str):
         self.name = self.input_type
         self.path = path
         self.layer = None
+
+    @classmethod
+    def is_spatial(cls):
+        return False
+
+    @classmethod
+    def nodetype(cls):
+        return cls.input_type.split("/")[0].strip()
 
     @classmethod
     def create(cls, path: str, crs: Any, names: List[str]) -> "Input":
@@ -123,6 +132,10 @@ class Node(Input):
     geometry_type = "Point"
     attributes = (QgsField("type", QVariant.String),)
 
+    @classmethod
+    def is_spatial(cls):
+        return True
+
     def write(self) -> None:
         """
         Special case the Node layer write because it needs to generate a new
@@ -139,20 +152,7 @@ class Node(Input):
         index = layer.fields().indexFromName("type")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
-            {
-                "map": {
-                    "Basin": "Basin",
-                    "FractionalFlow": "FractionalFlow",
-                    "TabulatedRatingCurve": "TabulatedRatingCurve",
-                    "LevelBoundary": "LevelBoundary",
-                    "FlowBoundary": "FlowBoundary",
-                    "LinearResistance": "LinearResistance",
-                    "ManningResistance": "ManningResistance",
-                    "Pump": "Pump",
-                    "Terminal": "Terminal",
-                    "Control": "Control",
-                },
-            },
+            {"map": {node: node for node in NONSPATIALNODETYPES}},
         )
         layer.setEditorWidgetSetup(index, setup)
 
@@ -222,33 +222,49 @@ class Edge(Input):
         QgsField("to_node_id", QVariant.Int),
     ]
 
+    @classmethod
+    def is_spatial(cls):
+        return True
+
     @property
-    def renderer(self) -> QgsSingleSymbolRenderer:
-        lightblue = "#3690c0"
+    def renderer(self) -> QgsCategorizedSymbolRenderer:
+        MARKERS = {
+            "flow": (QColor("#3690c0"), "flow"),  # lightblue
+            "control": (QColor("gray"), "control"),
+            "": (QColor("black"), ""),  # All other edges, or incomplete input
+        }
 
-        # Create a line with an arrow marker to indicate directionality
-        arrow_marker = QgsSimpleMarkerSymbolLayer()
-        arrow_marker.setShape(QgsSimpleMarkerSymbolLayer.ArrowHeadFilled)
-        arrow_marker.setColor(QColor(lightblue))
-        arrow_marker.setSize(3)
-        arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
+        categories = []
+        for value, (colour, label) in MARKERS.items():
+            # Create line
+            symbol = QgsLineSymbol()
+            symbol.setColor(QColor(colour))
+            symbol.setWidth(0.5)
 
-        marker_symbol = QgsMarkerSymbol()
-        marker_symbol.changeSymbolLayer(0, arrow_marker)
+            # Create an arrow marker to indicate directionality
+            arrow_marker = QgsSimpleMarkerSymbolLayer()
+            arrow_marker.setShape(QgsSimpleMarkerSymbolLayer.ArrowHeadFilled)
+            arrow_marker.setColor(QColor(colour))
+            arrow_marker.setSize(3)
+            arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
 
-        marker_line_symbol_layer = QgsMarkerLineSymbolLayer.create(
-            {"placements": "SegmentCenter"}
+            # Add marker to line
+            marker_symbol = QgsMarkerSymbol()
+            marker_symbol.changeSymbolLayer(0, arrow_marker)
+            marker_line_symbol_layer = QgsMarkerLineSymbolLayer.create(
+                {"placements": "SegmentCenter"}
+            )
+            marker_line_symbol_layer.setSubSymbol(marker_symbol)
+            symbol.appendSymbolLayer(marker_line_symbol_layer)
+
+            category = QgsRendererCategory(value, symbol, label)
+            category.setRenderState(True)
+            categories.append(category)
+
+        renderer = QgsCategorizedSymbolRenderer(
+            attrName="edge_type", categories=categories
         )
-        marker_line_symbol_layer.setSubSymbol(marker_symbol)
-
-        line_symbol = QgsLineSymbol.createSimple(
-            {
-                "color": lightblue,
-                "width": "0.5",
-            }
-        )
-        line_symbol.appendSymbolLayer(marker_line_symbol_layer)
-        return QgsSingleSymbolRenderer(line_symbol)
+        return renderer
 
     def set_read_only(self) -> None:
         layer = self.layer
@@ -333,6 +349,7 @@ class FractionalFlowStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("fraction", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -342,6 +359,7 @@ class LinearResistanceStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("resistance", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -354,13 +372,18 @@ class ManningResistanceStatic(Input):
         QgsField("manning_n", QVariant.Double),
         QgsField("profile_width", QVariant.Double),
         QgsField("profile_slope", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
 class LevelBoundaryStatic(Input):
     input_type = "LevelBoundary / static"
     geometry_type = "No Geometry"
-    attributes = [QgsField("node_id", QVariant.Int), QgsField("level", QVariant.Double)]
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("level", QVariant.Double),
+        QgsField("control_state", QVariant.String),
+    ]
 
 
 class PumpStatic(Input):
@@ -369,6 +392,7 @@ class PumpStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -384,25 +408,34 @@ class FlowBoundaryStatic(Input):
     attributes = [
         QgsField("node_id", QVariant.Int),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
-NODES = {
-    "Node": Node,
-    "Edge": Edge,
-    "Basin / static": BasinStatic,
-    "Basin / state": BasinState,
-    "Basin / profile": BasinProfile,
-    "Basin / forcing": BasinForcing,
-    "TabulatedRatingCurve / static": TabulatedRatingCurveStatic,
-    "TabulatedRatingCurve / time": TabulatedRatingCurveTime,
-    "FractionalFlow / static": FractionalFlowStatic,
-    "LinearResistance / static": LinearResistanceStatic,
-    "LevelBoundary / static": LevelBoundaryStatic,
-    "ManningResistance / static": ManningResistanceStatic,
-    "Pump / static": PumpStatic,
-    "Terminal / static": TerminalStatic,
-    "FlowBoundary /static": FlowBoundaryStatic,
+class ControlCondition(Input):
+    input_type = "Control / condition"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("listen_node_id", QVariant.Int),
+        QgsField("variable", QVariant.String),
+        QgsField("greater_than", QVariant.Double),
+    ]
+
+
+class ControlLogic(Input):
+    input_type = "Control / logic"
+    geometry_type = "LineString"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("control_state", QVariant.String),
+        QgsField("truth_state", QVariant.String),
+    ]
+
+
+NODES = {cls.input_type: cls for cls in Input.__subclasses__()}
+NONSPATIALNODETYPES = {
+    cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 
 

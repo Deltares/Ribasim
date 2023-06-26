@@ -1,5 +1,6 @@
 __version__ = "0.1.1"
 
+from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
     basic_transient_model,
@@ -9,6 +10,7 @@ from ribasim_testmodels.control import pump_control_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
+    "backwater_model",
     "basic_model",
     "basic_transient_model",
     "tabulated_rating_curve_model",

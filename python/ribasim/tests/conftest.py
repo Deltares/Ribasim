@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 import ribasim
 from ribasim_testmodels import (
+    backwater_model,
     basic_model,
     basic_transient_model,
     pump_control_model,
@@ -27,6 +28,11 @@ def tabulated_rating_curve() -> ribasim.Model:
     return tabulated_rating_curve_model()
 
 
+@pytest.fixture()
+def backwater() -> ribasim.Model:
+    return backwater_model()
+
+
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
@@ -45,3 +51,6 @@ if __name__ == "__main__":
 
     model = pump_control_model()
     model.write(datadir / "pump_control")
+
+    model = backwater_model()
+    model.write(datadir / "backwater")
