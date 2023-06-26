@@ -95,6 +95,14 @@ function gen_schema(T::DataType, prefix = prefix)
     end
 end
 
+# remove old schemas
+for path in readdir(normpath(@__DIR__, "schema"); join = true)
+    if isfile(path) && endswith(path, ".schema.json")
+        rm(path)
+    end
+end
+
+# generate new schemas
 for T in subtypes(Legolas.AbstractRecord)
     gen_schema(T)
 end
