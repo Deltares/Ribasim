@@ -16,7 +16,7 @@ struct Connectivity
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
-    edge_connection_type_contol::Dictionary{Int, Tuple{Symbol, Symbol}}
+    edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
     function Connectivity(
         graph_flow,
         graph_control,
