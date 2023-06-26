@@ -42,7 +42,6 @@ def pump_control_model() -> ribasim.Model:
     from_id = np.array([1, 2, 1, 4, 5], dtype=np.int64)
     to_id = np.array([2, 3, 4, 3, 4], dtype=np.int64)
 
-    # Note: currently only controlling pumps is supported in the Julia core
     edge_type = 4 * ["flow"] + ["control"]
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
@@ -58,7 +57,6 @@ def pump_control_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 3, 3],
-            "storage": [0.0, 100.0] * 2,
             "area": [100.0, 100.0] * 2,
             "level": [0.0, 1.0] * 2,
         }
@@ -92,7 +90,7 @@ def pump_control_model() -> ribasim.Model:
     # False, False -> "on"
     # True,  False -> "off"
     # False, True  -> "off"
-    # True,  True  -> "On"
+    # True,  True  -> "on"
 
     # Truth state as subset of the conditions above and in that order
 

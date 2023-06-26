@@ -85,7 +85,6 @@ def basic_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 3, 3, 6, 6, 9, 9],
-            "storage": [0.0, 500.0] * 4,
             "area": [0.0, 1000.0] * 4,
             "level": [0.0, 1.0] * 4,
         }
@@ -323,7 +322,6 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 4, 4],
-            "storage": [0.0, 500.0] * 2,
             "area": [0.0, 1000.0] * 2,
             "level": [0.0, 1.0] * 2,
         }
