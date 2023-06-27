@@ -13,7 +13,7 @@ geopackage = "model.gpkg"
 [output]
 waterbalance = "waterbalance.arrow"
 
-[basin]
+[Basin]
 forcing = "forcing.arrow"
 
 [solver]

@@ -4,9 +4,8 @@ import IterTools
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
-using Configurations: Configurations, Maybe, @option, from_toml
+using Configurations: from_toml
 using DataInterpolations: LinearInterpolation
-using DataStructures: DefaultDict
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
@@ -28,6 +27,12 @@ TimerOutputs.complement!()
 include("validation.jl")
 include("solve.jl")
 include("config.jl")
+
+# namespaced config.jl to prevent clashes
+const Config = C.Config
+const Solver = C.Solver
+const algorithm = C.algorithm
+
 include("utils.jl")
 include("lib.jl")
 include("io.jl")
