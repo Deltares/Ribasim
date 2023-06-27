@@ -59,10 +59,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     return Model(integrator, config, saved_flow)
 end
 
-function BMI.finalize(model::Model)
+function BMI.finalize(model::Model)::Model
     write_basin_output(model)
     write_flow_output(model)
     write_control_output(model)
+    return model
 end
 
 function set_initial_controlled_parameters!(
