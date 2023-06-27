@@ -81,6 +81,9 @@ end
 
 Base.@ccallable function finalize()::Cint
     @try_c_uninitialized begin
+        if !isnothing(model)
+            BMI.finalize(model)
+        end
         model = nothing
     end
 end
