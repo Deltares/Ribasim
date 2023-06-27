@@ -184,6 +184,7 @@ class Node(Input):
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "Control": (QColor("black"), "Control", shape.Star),
+            "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "": (
                 QColor("white"),
                 "",
@@ -430,6 +431,18 @@ class ControlLogic(Input):
         QgsField("node_id", QVariant.Int),
         QgsField("control_state", QVariant.String),
         QgsField("truth_state", QVariant.String),
+    ]
+
+
+class PIDControlStatic(Input):
+    input_type = "PidControl / static"
+    geometry_type = "LineString"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("listen_node_id", QVariant.Int),
+        QgsField("proportional", QVariant.Double),
+        QgsField("integral", QVariant.Double),
+        QgsField("derivative", QVariant.Double),
     ]
 
 

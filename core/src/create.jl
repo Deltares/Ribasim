@@ -131,7 +131,7 @@ function Basin(db::DB, config::Config)::Basin
     check_no_nans(table, "Basin")
 
     # If not specified, target_level = 0
-    target_level = coalesce.(static.target_level, 0.0)
+    target_level = coalesce.(static.target_level, NaN)
 
     return Basin(
         Indices(node_id),

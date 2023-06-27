@@ -309,9 +309,9 @@ function continuous_control!(pid_control::PIDControl, p::Parameters)::Nothing
 
     for (i, id) in enumerate(node_id)
         controlled_node_id = only(outneighbours(graph_control, id))
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+        controlled_node_idx = id_index(pump.node_id, controlled_node_id)
         listened_node_id = listen_node_id[i]
-        listened_node_idx = findfirst(pump.node_id .== listened_node_id)
+        listened_node_idx = id_index(basin.node_id, listened_node_id)
         target_level = basin.target_level[listened_node_idx]
         error = target_level - get_level(p, listened_node_id)
         flow_rate = proportional[i] * error

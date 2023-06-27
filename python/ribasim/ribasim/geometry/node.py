@@ -105,6 +105,7 @@ class Node(TableModel):
             "Terminal": "s",
             "FlowBoundary": "h",
             "Control": "*",
+            "PidControl": "x",
             "": "o",
         }
 
@@ -119,6 +120,7 @@ class Node(TableModel):
             "Terminal": "m",
             "FlowBoundary": "m",
             "Control": "k",
+            "PidControl": "k",
             "": "k",
         }
 

@@ -42,8 +42,8 @@
         "listen_node_id",
         "proportional"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PIDControlStatic.schema.json",
-    "title": "PIDControlStatic",
-    "description": "A PIDControlStatic object based on Ribasim.PIDControlStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
+    "title": "PidControlStatic",
+    "description": "A PidControlStatic object based on Ribasim.PidControlStaticV1",
     "type": "object"
 }

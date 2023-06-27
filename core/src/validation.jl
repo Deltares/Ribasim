@@ -15,7 +15,7 @@
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
-@schema "ribasim.pidcontrol.static" PIDControlStatic
+@schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
@@ -163,7 +163,7 @@ end
     control_state::String
 end
 
-@version PIDControlStaticV1 begin
+@version PidControlStaticV1 begin
     node_id::Int
     listen_node_id::Int
     proportional::Float64

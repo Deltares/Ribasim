@@ -52,7 +52,7 @@ end
 
 ## Node behavior
 
-The behaviour of the new node in the Ribasim core is defined in a method of the `formulate!` function, which is called within the `water_balance!` (both in `solve.jl`) function being the right hand side of the system of differential equations solved by Ribasim. Here the details depend highly on the specifics of the node type. An example structure of a `formulate!` method is given below.
+In general if the new node type dictates flow, the behaviour of the new node in the Ribasim core is defined in a method of the `formulate!` function, which is called within the `water_balance!` (both in `solve.jl`) function being the right hand side of the system of differential equations solved by Ribasim. Here the details depend highly on the specifics of the node type. An example structure of a `formulate!` method is given below.
 
 ```julia
 function formulate!(new_node_type::NewNodeType, p::Parameters)::Nothing

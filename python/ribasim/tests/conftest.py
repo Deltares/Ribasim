@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 import ribasim
 from ribasim_testmodels import (
+    PID_control_model_1,
     backwater_model,
     basic_model,
     basic_transient_model,
@@ -54,3 +55,6 @@ if __name__ == "__main__":
 
     model = backwater_model()
     model.write(datadir / "backwater")
+
+    model = PID_control_model_1()
+    model.write(datadir / "pid_1")
