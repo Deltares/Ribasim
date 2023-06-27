@@ -76,7 +76,7 @@ class Model(BaseModel):
         Water sink without state or properties.
     control : Optional[Control]
         Discrete control logic.
-    pid_control : Optional[PIDControl]
+    pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/weir.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.

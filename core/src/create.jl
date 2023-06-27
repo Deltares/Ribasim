@@ -189,15 +189,18 @@ function Control(db::DB, config::Config)::Control
     )
 end
 
-function PIDControl(db::DB, config::Config)::PIDControl
-    static = load_structvector(db, config, PIDControlStaticV1)
+function PidControl(db::DB, config::Config)::PidControl
+    static = load_structvector(db, config, PidControlStaticV1)
 
-    return PIDControl(
+    integral = coalesce.(static.integral, NaN)
+    derivative = coalesce.(static.derivative, NaN)
+
+    return PidControl(
         static.node_id,
         static.listen_node_id,
         static.proportional,
-        static.integral,
-        static.derivative,
+        integral,
+        derivative,
     )
 end
 
@@ -213,7 +216,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config)
     terminal = Terminal(db, config)
     control = Control(db, config)
-    pid_control = PIDControl(db, config)
+    pid_control = PidControl(db, config)
 
     basin = Basin(db, config)
 

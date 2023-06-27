@@ -5,7 +5,7 @@ from pandera.typing import DataFrame
 from ribasim import models
 from ribasim.input_base import TableModel
 
-__all__ = ("PIDControl",)
+__all__ = ("PidControl",)
 
 
 class StaticSchema(pa.SchemaModel):

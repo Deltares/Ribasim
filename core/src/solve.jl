@@ -249,7 +249,7 @@ struct Control <: AbstractParameterNode
     }
 end
 
-struct PIDControl <: AbstractParameterNode
+struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     listen_node_id::Vector{Int}
     proportional::Vector{Float64}
@@ -271,7 +271,7 @@ struct Parameters
     pump::Pump
     terminal::Terminal
     control::Control
-    pid_control::PIDControl
+    pid_control::PidControl
     lookup::Dict{Int, Symbol}
 end
 
@@ -299,22 +299,37 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
     return nothing
 end
 
-function continuous_control!(pid_control::PIDControl, p::Parameters)::Nothing
+function continuous_control!(
+    pid_control::PidControl,
+    p::Parameters,
+    u::Vector{Float64},
+    du_old::Vector{Float64},
+)::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
-    # TODO: Also support output flow rate to be between prescribed bounds
+    # TODO: Also support pump flow rate to be between prescribed bounds
     (; connectivity, pump, basin) = p
     (; graph_control) = connectivity
-    (; node_id, listen_node_id, proportional) = pid_control
+    (; node_id, listen_node_id, proportional, derivative) = pid_control
 
     for (i, id) in enumerate(node_id)
-        controlled_node_id = only(outneighbours(graph_control, id))
-        controlled_node_idx = id_index(pump.node_id, controlled_node_id)
+        controlled_node_id = only(outneighbors(graph_control, id))
+        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id) # TODO: support the use of id_index
         listened_node_id = listen_node_id[i]
-        listened_node_idx = id_index(basin.node_id, listened_node_id)
+        has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
+        @assert has_index "Listen node $listened_node_id is not a basin."
         target_level = basin.target_level[listened_node_idx]
-        error = target_level - get_level(p, listened_node_id)
+        error = 250 - u[listened_node_idx]
         flow_rate = proportional[i] * error
+
+        if !isnan(derivative[i])
+            prev_flow_rate = pump.flow_rate[controlled_node_idx]
+            error_deriv = -du_old[listened_node_idx]
+            flow_rate += derivative[i] * (error_deriv + prev_flow_rate)
+        end
+
+        flow_rate = min(flow_rate, 1e3)
+
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
 end
@@ -474,7 +489,7 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
 end
 
 function formulate!(pump::Pump, p::Parameters, u)::Nothing
-    (; connectivity, basin) = p
+    (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = pump
     for (id, rate) in zip(node_id, flow_rate)
@@ -484,11 +499,18 @@ function formulate!(pump::Pump, p::Parameters, u)::Nothing
         intake_id = rate >= 0 ? src_id : dst_id
 
         hasindex, basin_idx = id_index(basin.node_id, intake_id)
-        @assert hasindex "Pump intake not a Basin"
 
-        storage = u[basin_idx]
-        reduction_factor = min(storage, 10.0) / 10.0
-        q = reduction_factor * rate
+        if hasindex
+            # Pumping from basin
+            storage = u[basin_idx]
+            reduction_factor = min(storage, 10.0) / 10.0
+            q = reduction_factor * rate
+        else
+            # Pumping from level boundary
+            @assert intake_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
+            q = rate
+        end
+
         flow[src_id, id] = q
         flow[id, dst_id] = q
     end
@@ -524,6 +546,8 @@ function water_balance!(du, u, p, t)::Nothing
         pid_control,
     ) = p
 
+    du_old = copy(du)
+
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
@@ -531,7 +555,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(du, basin, u, t)
 
     # PID control (does not set flows)
-    continuous_control!(pid_control, p)
+    continuous_control!(pid_control, p, u, du_old)
 
     # First formulate intermediate flows
     formulate!(linear_resistance, p)

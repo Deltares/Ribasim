@@ -28,7 +28,7 @@ nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
-neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Basin}) = Set((
     :LinearResistance,
     :TabulatedRatingCurve,
@@ -41,11 +41,11 @@ neighbortypes(::Val{:FractionalFlow}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:Control}) = Set((:Pump,))
-neighbortypes(::Val{:PIDControl}) = Set((:Pump,))
+neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()

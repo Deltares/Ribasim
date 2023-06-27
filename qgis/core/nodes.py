@@ -434,7 +434,7 @@ class ControlLogic(Input):
     ]
 
 
-class PIDControlStatic(Input):
+class PidControlStatic(Input):
     input_type = "PidControl / static"
     geometry_type = "LineString"
     attributes = [
