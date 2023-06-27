@@ -1,6 +1,7 @@
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
+
 from ribasim import models
 from ribasim.input_base import TableModel
 
