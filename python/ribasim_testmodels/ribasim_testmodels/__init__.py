@@ -7,7 +7,7 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.discrete_control import pump_control_model
-from ribasim_testmodels.PID_control import PID_control_model_1
+from ribasim_testmodels.pid_control import PID_control_model_1
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
