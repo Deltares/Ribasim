@@ -1,0 +1,31 @@
+name: QGIS
+
+on:
+    push:
+      branches: [main]
+      tags: ["*"]
+      paths: 
+        - ".github/qgis.yml"
+        - "python/ribasim/ribasim/models.py"
+        - "qgis/**"
+    pull_request:
+      paths:
+        - ".github/qgis.yml"
+        - "python/ribasim/ribasim/models.py"
+        - "qgis/**"
+jobs:
+    test-qgis:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: .docker
+        steps:
+
+        - name: Check out repository
+          uses: actions/checkout@v3
+        - name: Launching docker compose
+          run: ./start.sh
+        - name: Running tests
+          run: ./test.sh
+        - name: Stopping docker compose
+          run: ./stop.sh
