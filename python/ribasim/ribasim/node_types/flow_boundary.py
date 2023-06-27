@@ -26,6 +26,3 @@ class FlowBoundary(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True

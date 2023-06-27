@@ -30,6 +30,9 @@ def exists(connection: Connection, name: str) -> bool:
 
 
 class TableModel(BaseModel):
+    class Config:
+        validate_assignment = True
+
     @classmethod
     def get_input_type(cls):
         return cls.__name__
