@@ -60,9 +60,6 @@ class Basin(TableModel):
     forcing: Optional[DataFrame[ForcingSchema]] = None
     state: Optional[DataFrame[StateSchema]] = None
 
-    class Config:
-        validate_assignment = True
-
     def sort(self):
         self.profile = self.profile.sort_values(["node_id", "level"], ignore_index=True)
         if self.static is not None:

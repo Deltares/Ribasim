@@ -34,6 +34,3 @@ class Control(TableModel):
 
     condition: DataFrame[ConditionSchema]
     logic: DataFrame[LogicSchema]
-
-    class Config:
-        validate_assignment = True

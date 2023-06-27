@@ -41,9 +41,6 @@ class TabulatedRatingCurve(TableModel):
     static: DataFrame[StaticSchema]
     time: Optional[DataFrame[TimeSchema]] = None
 
-    class Config:
-        validate_assignment = True
-
     def sort(self):
         self.static = self.static.sort_values(["node_id", "level"], ignore_index=True)
         if self.time is not None:
