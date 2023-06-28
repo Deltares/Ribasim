@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-export $(grep -v '^#' .env | xargs)
+source .env
 
 docker compose -f compose.yml up -d --force-recreate --remove-orphans
 echo "Wait 10 seconds"
