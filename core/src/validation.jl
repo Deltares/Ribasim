@@ -22,8 +22,16 @@ const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
 tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
-nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
-nodetype(sv::SchemaVersion{T, N}) where {T, N} = Symbol.(split(string(T), ".")[2:3])
+nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
+function nodetype(sv::SchemaVersion{T, N}) where {T, N}
+    n, k = split(string(T), ".")[2:3]
+    # Names derived from a schema are in underscores (basinforcing), 
+    # so we parse the related record Ribasim.BasinForcingV1
+    # to derive BasinForcing from it. 
+    record = Legolas.record_type(sv)
+    node = last(split(string(Symbol(record)), "."))
+    Symbol(node[begin:length(n)]), Symbol(k)
+end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
