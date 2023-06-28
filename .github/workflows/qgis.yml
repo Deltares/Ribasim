@@ -15,6 +15,7 @@ on:
         - "qgis/**"
 jobs:
     test-qgis:
+        name: "Test"
         runs-on: ubuntu-latest
         defaults:
           run:
