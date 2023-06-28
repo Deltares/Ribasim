@@ -1,4 +1,4 @@
-module C
+module config
 
 using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict

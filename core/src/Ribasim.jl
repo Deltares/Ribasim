@@ -27,12 +27,7 @@ TimerOutputs.complement!()
 include("validation.jl")
 include("solve.jl")
 include("config.jl")
-
-# namespaced config.jl to prevent clashes
-const Config = C.Config
-const Solver = C.Solver
-const algorithm = C.algorithm
-
+using .config: Config, Solver, algorithm
 include("utils.jl")
 include("lib.jl")
 include("io.jl")
