@@ -1,2 +1,6 @@
 #!/usr/bin/env bash
-docker exec -t qgis sh -c "cd /tests_directory && qgis_testrunner.sh ribasim_qgis.tests.test_io"
+set -euxo pipefail
+
+export $(grep -v '^#' .env | xargs)
+
+docker exec -t qgis sh -c "cd /tests_directory && qgis_testrunner.sh ${PLUGIN_NAME}.tests"
