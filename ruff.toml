@@ -1,5 +1,5 @@
 select = ["D", "E", "F", "NPY", "PD", "C4", "I"]
-ignore = ["D1", "D202", "D205", "D404", "E501", "PD901", "D400"]
+ignore = ["D1", "D202", "D205", "D400", "D404", "E501", "PD901"]
 fixable = ["I"]
 
 [pydocstyle]
