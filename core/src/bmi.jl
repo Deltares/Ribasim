@@ -24,13 +24,16 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         close(db)
     end
 
-    u0 = if isempty(state)
+    storage = if isempty(state)
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
         state.storage
     end::Vector{Float64}
-    @assert length(u0) == n "Basin / state length differs from number of Basins"
+    @assert length(storage) == n "Basin / state length differs from number of Basins"
+    # Integrals for PID control
+    integral = zeros(length(parameters.pid_control.node_id))
+    u0 = ComponentArray(; storage, integral)
     t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -54,7 +57,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    set_initial_controlled_parameters!(integrator, parameters.control, u0)
+    set_initial_controlled_parameters!(integrator, parameters.control, storage)
 
     return Model(integrator, config, saved_flow)
 end
@@ -62,11 +65,11 @@ end
 function set_initial_controlled_parameters!(
     integrator,
     control::Control,
-    u0::Vector{Float64},
+    storage0::Vector{Float64},
 )
     n_conditions = length(control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
-    control_condition(condition_diffs, u0, integrator.t, integrator)
+    control_condition(condition_diffs, storage0, integrator.t, integrator)
     control.condition_value .= (condition_diffs .> 0.0)
 
     # For every control node find a condition_idx it listens to
@@ -120,13 +123,13 @@ end
 """
 Listens for changes in condition truths.
 """
-function control_condition(out, u, t, integrator)
+function control_condition(out, storage, t, integrator)
     p = integrator.p
     control = p.control
 
     for (i, (listen_node_id, variable, greater_than)) in
         enumerate(zip(control.listen_node_id, control.variable, control.greater_than))
-        value = get_value(p, listen_node_id, variable, u)
+        value = get_value(p, listen_node_id, variable, storage)
         diff = value - greater_than
         out[i] = diff
     end
@@ -135,7 +138,7 @@ end
 """
 Get a value for a condition. Currently only supports getting levels from basins.
 """
-function get_value(p::Parameters, node_id::Int, variable::String, u)
+function get_value(p::Parameters, node_id::Int, variable::String, storage)
     # TODO: Add support for getting flow values
 
     if variable == "level"
@@ -144,7 +147,7 @@ function get_value(p::Parameters, node_id::Int, variable::String, u)
         # NOTE: Getting the level with get_level does NOT work since water_balance!
         # is not called during rootfinding for callback
         hasindex, basin_idx = id_index(basin.node_id, node_id)
-        _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
+        _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
     else
         throw(ValueError("Unsupported condition variable $variable."))

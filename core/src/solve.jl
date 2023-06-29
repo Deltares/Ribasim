@@ -279,10 +279,15 @@ end
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real)::Nothing
-    for i in eachindex(du)
-        storage = u[i]
-        area, level = get_area_and_level(basin, i, storage)
+function formulate!(
+    du::AbstractVector,
+    basin::Basin,
+    storage::AbstractVector,
+    t::Real,
+)::Nothing
+    for i in eachindex(storage)
+        s = storage[i]
+        area, level = get_area_and_level(basin, i, s)
         basin.current_level[i] = level
         bottom = basin.level[i][1]
         fixed_area = median(basin.area[i])
@@ -294,7 +299,7 @@ function formulate!(du::AbstractVector, basin::Basin, u::AbstractVector, t::Real
         drainage = basin.drainage[i]
         infiltration = reduction_factor * basin.infiltration[i]
 
-        du[i] += precipitation - evaporation + drainage - infiltration
+        du.storage[i] += precipitation - evaporation + drainage - infiltration
     end
     return nothing
 end
@@ -302,8 +307,9 @@ end
 function continuous_control!(
     pid_control::PidControl,
     p::Parameters,
-    u::Vector{Float64},
-    du_old::Vector{Float64},
+    storage::Vector{Float64},
+    integral::Vector{Float64},
+    dstorage_old,
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
@@ -319,12 +325,12 @@ function continuous_control!(
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a basin."
         target_level = basin.target_level[listened_node_idx]
-        error = 250 - u[listened_node_idx]
+        error = target_level - storage[listened_node_idx]
         flow_rate = proportional[i] * error
 
         if !isnan(derivative[i])
             prev_flow_rate = pump.flow_rate[controlled_node_idx]
-            error_deriv = -du_old[listened_node_idx]
+            error_deriv = -dstorage_old[listened_node_idx]
             flow_rate += derivative[i] * (error_deriv + prev_flow_rate)
         end
 
@@ -464,7 +470,11 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
-function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
+function formulate!(
+    flow_boundary::FlowBoundary,
+    p::Parameters,
+    storage::Vector{Float64},
+)::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = flow_boundary
@@ -480,15 +490,15 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, u)::Nothing
             hasindex, basin_idx = id_index(basin.node_id, dst_id)
             @assert hasindex "FlowBoundary intake not a Basin"
 
-            storage = u[basin_idx]
-            reduction_factor = min(storage, 10.0) / 10.0
+            s = storage[basin_idx]
+            reduction_factor = min(s, 10.0) / 10.0
             q = reduction_factor * rate
             flow[id, dst_id] = q
         end
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, u)::Nothing
+function formulate!(pump::Pump, p::Parameters, storage::Vector{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = pump
@@ -502,8 +512,8 @@ function formulate!(pump::Pump, p::Parameters, u)::Nothing
 
         if hasindex
             # Pumping from basin
-            storage = u[basin_idx]
-            reduction_factor = min(storage, 10.0) / 10.0
+            s = storage[basin_idx]
+            reduction_factor = min(s, 10.0) / 10.0
             q = reduction_factor * rate
         else
             # Pumping from level boundary
@@ -546,24 +556,27 @@ function water_balance!(du, u, p, t)::Nothing
         pid_control,
     ) = p
 
-    du_old = copy(du)
+    storage = collect(u.storage)
+    integral = collect(u.integral)
+
+    dstorage_old = copy(collect(du.storage))
 
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
     # ensures current_level is current
-    formulate!(du, basin, u, t)
+    formulate!(du, basin, storage, t)
 
     # PID control (does not set flows)
-    continuous_control!(pid_control, p, u, du_old)
+    continuous_control!(pid_control, p, storage, integral, dstorage_old)
 
     # First formulate intermediate flows
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
     formulate!(fractional_flow, p)
-    formulate!(flow_boundary, p, u)
-    formulate!(pump, p, u)
+    formulate!(flow_boundary, p, storage)
+    formulate!(pump, p, storage)
 
     # Now formulate du
     formulate!(du, connectivity, basin)

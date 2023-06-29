@@ -45,7 +45,7 @@ end
 @testset "get_value_ptr" begin
     model = BMI.initialize(Ribasim.Model, toml_path)
     u0 = BMI.get_value_ptr(model, "volume")
-    @test u0 == ones(4)
+    @test collect(u0.storage) == ones(4)
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
     u = BMI.get_value_ptr(model, "volume")

@@ -130,7 +130,7 @@ function Basin(db::DB, config::Config)::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    # If not specified, target_level = 0
+    # If not specified, target_level = NaN
     target_level = coalesce.(static.target_level, NaN)
 
     return Basin(

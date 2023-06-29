@@ -128,7 +128,7 @@ function write_basin_output(model::Model)
     time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
     node_id = repeat(basin_id; outer = ntsteps)
 
-    storage = reshape(vec(sol), nbasin, ntsteps)
+    storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
         level[i, :] =

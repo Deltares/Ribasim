@@ -5,6 +5,7 @@ import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
 using Configurations: Configurations, Maybe, @option, from_toml
+using ComponentArrays: ComponentArray
 using DataInterpolations: LinearInterpolation
 using DataStructures: DefaultDict
 using Dates
