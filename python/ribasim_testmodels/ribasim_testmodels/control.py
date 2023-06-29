@@ -5,7 +5,7 @@ import ribasim
 
 
 def pump_control_model() -> ribasim.Model:
-    "Basic model with a pump controlled based on basin levels"
+    """Set up a basic model with a pump controlled based on basin levels"""
 
     # Set up the nodes:
     xy = np.array(

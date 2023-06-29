@@ -1,6 +1,4 @@
-"""
-This script initializes the plugin, making it known to QGIS.
-"""
+"""A script which initializes the plugin, making it known to QGIS."""
 
 
 def classFactory(iface):  # pylint: disable=invalid-name

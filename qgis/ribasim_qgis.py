@@ -1,6 +1,4 @@
-"""
-Setup a dockwidget to hold the ribasim plugin widgets.
-"""
+"""Setup a dockwidget to hold the ribasim plugin widgets."""
 from pathlib import Path
 
 from qgis.gui import QgsDockWidget

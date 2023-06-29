@@ -5,7 +5,7 @@ import ribasim
 
 
 def trivial_model() -> ribasim.Model:
-    "Trivial model with just a single basin."
+    """Trivial model with just a single basin."""
 
     # Set up the nodes:
     xy = np.array(

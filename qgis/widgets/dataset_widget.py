@@ -242,9 +242,7 @@ class DatasetWidget(QWidget):
             self.add_item_to_qgis(item)
 
     def load_geopackage(self) -> None:
-        """
-        Load the layers of a GeoPackage into the Layers Panel
-        """
+        """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
         nodes = load_nodes_from_geopackage(self.path)
         for node_layer in nodes.values():
@@ -261,9 +259,7 @@ class DatasetWidget(QWidget):
         return
 
     def new_geopackage(self) -> None:
-        """
-        Create a new GeoPackage file, and set it as the active dataset.
-        """
+        """Create a new GeoPackage file, and set it as the active dataset."""
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.gpkg")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
@@ -274,9 +270,7 @@ class DatasetWidget(QWidget):
             self.parent.toggle_node_buttons(True)
 
     def open_geopackage(self) -> None:
-        """
-        Open a GeoPackage file, containing Ribasim input.
-        """
+        """Open a GeoPackage file, containing Ribasim input."""
         self.dataset_tree.clear()
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.gpkg")
         if path != "":  # Empty string in case of cancel button press
