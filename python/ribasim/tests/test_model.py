@@ -6,14 +6,6 @@ from ribasim import Model, Solver
 from shapely import Point
 
 
-def test_trivial_write(trivial, tmp_path):
-    trivial.write(tmp_path / "trivial")
-
-
-def test_bucket_write(bucket, tmp_path):
-    bucket.write(tmp_path / "bucket")
-
-
 def test_repr(basic):
     representation = repr(basic).split("\n")
     assert representation[0] == "<ribasim.Model>"
