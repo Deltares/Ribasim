@@ -1,3 +1,12 @@
+module config
+
+using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
+using DataStructures: DefaultDict
+using Dates
+using Legolas: Legolas, record_type
+using ..Ribasim: Ribasim, isnode, nodetype
+using OrdinaryDiffEq
+
 const schemas =
     getfield.(
         Ref(Ribasim),
@@ -130,3 +139,5 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         algotype()
     end
 end
+
+end  # module

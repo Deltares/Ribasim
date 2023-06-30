@@ -7,7 +7,6 @@ using Arrow: Arrow, Table
 using Configurations: Configurations, Maybe, @option, from_toml
 using ComponentArrays: ComponentArray
 using DataInterpolations: LinearInterpolation
-using DataStructures: DefaultDict
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
@@ -29,6 +28,7 @@ TimerOutputs.complement!()
 include("validation.jl")
 include("solve.jl")
 include("config.jl")
+using .config: Config, Solver, algorithm
 include("utils.jl")
 include("lib.jl")
 include("io.jl")

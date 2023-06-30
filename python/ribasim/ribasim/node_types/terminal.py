@@ -1,13 +1,18 @@
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.engines.pandas_engine import PydanticModel
+from pandera.typing import DataFrame
 
+from ribasim import models
 from ribasim.input_base import TableModel
 
 __all__ = ("Terminal",)
 
 
 class StaticSchema(pa.SchemaModel):
-    node_id: Series[int] = pa.Field(coerce=True)
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.TerminalStatic)
 
 
 class Terminal(TableModel):
@@ -21,6 +26,3 @@ class Terminal(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True

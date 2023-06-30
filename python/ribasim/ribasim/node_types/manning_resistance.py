@@ -1,4 +1,3 @@
-import pandas as pd
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -28,9 +27,3 @@ class ManningResistance(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
-
-    def __init__(self, static: pd.DataFrame):
-        super().__init__(static=static)

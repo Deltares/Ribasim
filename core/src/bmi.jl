@@ -62,6 +62,13 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     return Model(integrator, config, saved_flow)
 end
 
+function BMI.finalize(model::Model)::Model
+    write_basin_output(model)
+    write_flow_output(model)
+    write_control_output(model)
+    return model
+end
+
 function set_initial_controlled_parameters!(
     integrator,
     control::Control,
@@ -321,8 +328,6 @@ run(config_file::AbstractString)::Model = run(parsefile(config_file))
 function run(config::Config)::Model
     model = BMI.initialize(Model, config)
     solve!(model.integrator)
-    write_basin_output(model)
-    write_flow_output(model)
-    write_control_output(model)
+    BMI.finalize(model)
     return model
 end

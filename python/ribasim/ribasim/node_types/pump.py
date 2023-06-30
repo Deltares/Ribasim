@@ -30,6 +30,3 @@ class Pump(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
