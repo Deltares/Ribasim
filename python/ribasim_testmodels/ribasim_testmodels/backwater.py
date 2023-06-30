@@ -5,7 +5,7 @@ import ribasim
 
 
 def backwater_model():
-    "Backwater curve as an integration test for ManningResistance"
+    """Backwater curve as an integration test for ManningResistance"""
 
     x = np.arange(0.0, 1020.0, 10.0)
     node_type = np.full(x.size, "ManningResistance")

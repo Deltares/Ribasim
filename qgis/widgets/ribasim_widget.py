@@ -77,9 +77,7 @@ class RibasimWidget(QWidget):
                 self.create_groups(name)
 
     def create_groups(self, name: str) -> None:
-        """
-        Create an empty legend group in the QGIS Layers Panel.
-        """
+        """Create an empty legend group in the QGIS Layers Panel."""
         root = QgsProject.instance().layerTreeRoot()
         self.group = root.addGroup(name)
         self.create_subgroup(name, "Ribasim Input")

@@ -40,8 +40,7 @@ class StateSchema(pa.SchemaModel):
 
 class Basin(TableModel):
     """
-    Input for a (sub-)basin: an area of land where all flowing surface water
-    converges to a single point.
+    Input for a (sub-)basin: an area of land where all flowing surface water converges to a single point.
 
     Parameters
     ----------

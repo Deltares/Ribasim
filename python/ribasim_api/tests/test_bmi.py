@@ -93,8 +93,10 @@ def test_get_value_ptr(libribasim, basic, tmp_path):
 
 
 def test_err_unknown_var(libribasim, basic, tmp_path):
-    """Unknown or invalid variable address should trigger Python Exception,
-    print the kernel error, and not crash the library"""
+    """
+    Unknown or invalid variable address should trigger Python Exception,
+    print the kernel error, and not crash the library
+    """
     basic.write(tmp_path)
     config_file = str(tmp_path / f"{basic.modelname}.toml")
     libribasim.initialize(config_file)

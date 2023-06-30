@@ -50,7 +50,7 @@ def write_layer(
     path: str, layer: QgsVectorLayer, layername: str, newfile: bool = False
 ) -> QgsVectorLayer:
     """
-    Writes a QgsVectorLayer to a GeoPackage file.
+    Write a QgsVectorLayer to a GeoPackage file.
 
     Parameters
     ----------

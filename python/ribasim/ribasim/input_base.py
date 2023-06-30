@@ -40,7 +40,6 @@ class TableModel(BaseModel):
     @classmethod
     def get_toml_key(cls):
         """Get the class name in snake case, e.g. FlowBoundary -> flow_boundary."""
-
         name_camel_case = cls.__name__
 
         # Insert underscore before capital letters
@@ -191,8 +190,8 @@ class TableModel(BaseModel):
         return False
 
     def sort(self):
-        """
-        Sort all input tables as required.
+        """Sort all input tables as required.
+
         Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """
