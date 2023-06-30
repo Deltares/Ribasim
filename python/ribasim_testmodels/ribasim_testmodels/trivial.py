@@ -5,13 +5,13 @@ import ribasim
 
 
 def trivial_model() -> ribasim.Model:
-    """Trivial model with just a single basin."""
+    """Trivial model with just a basin, tabulated rating curve and terminal node"""
 
     # Set up the nodes:
     xy = np.array(
         [
             (400.0, 200.0),  # 1: Basin
-            (450.0, 200.0),  # 2: LinearLinearResistance
+            (450.0, 200.0),  # 2: TabulatedRatingCurve
             (500.0, 200.0),  # 3: Terminal
         ]
     )
