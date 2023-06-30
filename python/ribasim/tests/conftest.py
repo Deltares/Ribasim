@@ -20,6 +20,16 @@ def basic() -> ribasim.Model:
 
 
 @pytest.fixture()
+def trivial() -> ribasim.Model:
+    return trivial_model()
+
+
+@pytest.fixture()
+def bucket() -> ribasim.Model:
+    return bucket_model()
+
+
+@pytest.fixture()
 def basic_transient(basic) -> ribasim.Model:
     return basic_transient_model(basic)
 
@@ -37,12 +47,6 @@ def backwater() -> ribasim.Model:
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
-
-    model = bucket_model()
-    model.write(datadir / "bucket")
-
-    model = trivial_model()
-    model.write(datadir / "trivial")
 
     model = basic_model()
     model.write(datadir / "basic")

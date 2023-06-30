@@ -25,6 +25,22 @@ def bucket_model() -> ribasim.Model:
         )
     )
 
+    # Setup the dummy edges:
+    from_id = np.array([], dtype=np.int64)
+    to_id = np.array([], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
     # Setup the basins:
     profile = pd.DataFrame(
         data={
@@ -34,19 +50,13 @@ def bucket_model() -> ribasim.Model:
         }
     )
 
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation, 1 mm/d evaporation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    evaporation = 0.001 / seconds_in_day
-
     static = pd.DataFrame(
         data={
             "node_id": [1],
             "drainage": [0.0],
-            "potential_evaporation": [evaporation],
-            "infiltration": [0.0],
-            "precipitation": [precipitation],
+            "potential_evaporation": [0.0],
+            "infiltration": [np.nan],
+            "precipitation": [np.nan],
             "urban_runoff": [0.0],
         }
     )
@@ -55,6 +65,7 @@ def bucket_model() -> ribasim.Model:
     model = ribasim.Model(
         modelname="bucket",
         node=node,
+        edge=edge,
         basin=basin,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
