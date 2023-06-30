@@ -97,6 +97,7 @@ struct Basin{C} <: AbstractParameterNode
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
     current_level::Vector{Float64}
+    current_area::Vector{Float64}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -289,6 +290,7 @@ function formulate!(
         s = storage[i]
         area, level = get_area_and_level(basin, i, s)
         basin.current_level[i] = level
+        basin.current_area[i] = area
         bottom = basin.level[i][1]
         fixed_area = median(basin.area[i])
         depth = max(level - bottom, 0.0)
@@ -304,38 +306,69 @@ function formulate!(
     return nothing
 end
 
+function get_error(pid_control::PidControl, p::Parameters)::Vector{Float64}
+    (; basin) = p
+    (; node_id, listen_node_id) = pid_control
+
+    error = zero(pid_control.derivative)
+
+    for (i, id) in enumerate(node_id)
+        listened_node_id = listen_node_id[i]
+        has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
+        @assert has_index "Listen node $listened_node_id is not a basin."
+        target_level = basin.target_level[listened_node_idx]
+        error[i] = target_level - basin.current_level[listened_node_idx]
+    end
+
+    return error
+end
+
 function continuous_control!(
+    du::AbstractVector,
     pid_control::PidControl,
     p::Parameters,
-    storage::Vector{Float64},
-    integral::Vector{Float64},
-    dstorage_old,
+    integral_::Vector{Float64},
+    dstorage_old::Vector{Float64},
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
     # TODO: Also support pump flow rate to be between prescribed bounds
     (; connectivity, pump, basin) = p
     (; graph_control) = connectivity
-    (; node_id, listen_node_id, proportional, derivative) = pid_control
+    (; node_id, proportional, derivative, integral, listen_node_id) = pid_control
+
+    error_ = get_error(pid_control, p)
 
     for (i, id) in enumerate(node_id)
-        controlled_node_id = only(outneighbors(graph_control, id))
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id) # TODO: support the use of id_index
-        listened_node_id = listen_node_id[i]
-        has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
-        @assert has_index "Listen node $listened_node_id is not a basin."
-        target_level = basin.target_level[listened_node_idx]
-        error = target_level - storage[listened_node_idx]
-        flow_rate = proportional[i] * error
+        error = error_[i]
+        du.integral[i] += error
 
-        if !isnan(derivative[i])
-            prev_flow_rate = pump.flow_rate[controlled_node_idx]
-            error_deriv = -dstorage_old[listened_node_idx]
-            flow_rate += derivative[i] * (error_deriv + prev_flow_rate)
+        listened_node_id = listen_node_id[i]
+        _, listened_node_idx = id_index(basin.node_id, listened_node_id)
+
+        flow_rate = 0.0
+
+        if !isnan(proportional[i])
+            flow_rate += proportional[i] * error
         end
 
-        flow_rate = min(flow_rate, 1e3)
+        if !isnan(derivative[i])
+            # dlevel/dstorage = 1/area
+            area = basin.current_area[listened_node_idx]
 
+            error_deriv = -dstorage_old[listened_node_idx] / area
+            flow_rate += derivative[i] * error_deriv
+        end
+
+        if !isnan(integral[i])
+            # coefficient * current value of integral
+            flow_rate += integral[i] * integral_[i]
+        end
+
+        flow_rate = max(flow_rate, 0.0)
+
+        controlled_node_id = only(outneighbors(graph_control, id))
+        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id) # TODO: support the use of id_index
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
 end
@@ -568,7 +601,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(du, basin, storage, t)
 
     # PID control (does not set flows)
-    continuous_control!(pid_control, p, storage, integral, dstorage_old)
+    continuous_control!(du, pid_control, p, integral, dstorage_old)
 
     # First formulate intermediate flows
     formulate!(linear_resistance, p)
@@ -583,9 +616,9 @@ function water_balance!(du, u, p, t)::Nothing
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
-    for i in eachindex(u)
-        if u[i] < 0
-            du[i] = max(du[i], 0.0)
+    for i in eachindex(u.storage)
+        if u.storage[i] < 0
+            du.storage[i] = max(du.storage[i], 0.0)
         end
     end
 

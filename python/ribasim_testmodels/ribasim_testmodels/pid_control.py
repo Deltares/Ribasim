@@ -38,8 +38,8 @@ def PID_control_model_1():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 3, 4, 5], dtype=np.int64)
-    to_id = np.array([2, 2, 3, 3], dtype=np.int64)
+    from_id = np.array([1, 2, 3, 5], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 3], dtype=np.int64)
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
@@ -95,7 +95,7 @@ def PID_control_model_1():
 
     # Setup flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [2.0]})
+        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [1e-3]})
     )
 
     # Setup level boundary:
@@ -114,8 +114,9 @@ def PID_control_model_1():
             data={
                 "node_id": [5],
                 "listen_node_id": [2],
-                "proportional": [10],
-                "derivative": [1],
+                "proportional": [-1e-3],
+                "derivative": [None],
+                "integral": [-1e-7],
             }
         )
     )

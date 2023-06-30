@@ -113,6 +113,7 @@ function Basin(db::DB, config::Config)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
+    current_area = zeros(n)
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -140,6 +141,7 @@ function Basin(db::DB, config::Config)::Basin
         drainage,
         infiltration,
         current_level,
+        current_area,
         area,
         level,
         storage,
@@ -192,13 +194,14 @@ end
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
 
+    proportional = coalesce.(static.proportional, NaN)
     integral = coalesce.(static.integral, NaN)
     derivative = coalesce.(static.derivative, NaN)
 
     return PidControl(
         static.node_id,
         static.listen_node_id,
-        static.proportional,
+        proportional,
         integral,
         derivative,
     )
