@@ -20,16 +20,6 @@ def basic() -> ribasim.Model:
 
 
 @pytest.fixture()
-def trivial() -> ribasim.Model:
-    return trivial_model()
-
-
-@pytest.fixture()
-def bucket() -> ribasim.Model:
-    return bucket_model()
-
-
-@pytest.fixture()
 def basic_transient(basic) -> ribasim.Model:
     return basic_transient_model(basic)
 
