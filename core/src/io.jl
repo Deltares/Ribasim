@@ -47,7 +47,7 @@ function load_data(
     schema = Legolas._schema_version_from_record_type(record)
 
     node, kind = nodetype(schema)
-    path = getfield(getfield(config, node), kind)
+    path = getfield(getfield(config, snake_case(node)), kind)
     sqltable = tablename(schema)
 
     table = if !isnothing(path)

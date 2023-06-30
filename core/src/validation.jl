@@ -23,14 +23,18 @@ tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delim
 tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
-function nodetype(sv::SchemaVersion{T, N}) where {T, N}
+
+"""
+From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :static)
+"""
+function nodetype(sv::SchemaVersion{T, N})::Tuple{Symbol, Symbol} where {T, N}
     n, k = split(string(T), ".")[2:3]
-    # Names derived from a schema are in underscores (basinforcing), 
+    # Names derived from a schema are in underscores (basinforcing),
     # so we parse the related record Ribasim.BasinForcingV1
-    # to derive BasinForcing from it. 
+    # to derive BasinForcing from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
-    Symbol(node[begin:length(n)]), Symbol(k)
+    return Symbol(node[begin:length(n)]), Symbol(k)
 end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
