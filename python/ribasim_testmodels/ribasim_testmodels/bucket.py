@@ -45,8 +45,15 @@ def bucket_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1],
-            "area": [0.0, 1000.0],
+            "area": [1000.0, 1000.0],
             "level": [0.0, 1.0],
+        }
+    )
+
+    state = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "storage": [1000.0],
         }
     )
 
@@ -55,12 +62,12 @@ def bucket_model() -> ribasim.Model:
             "node_id": [1],
             "drainage": [0.0],
             "potential_evaporation": [0.0],
-            "infiltration": [np.nan],
-            "precipitation": [np.nan],
+            "infiltration": [0.0],
+            "precipitation": [0.0],
             "urban_runoff": [0.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static)
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     model = ribasim.Model(
         modelname="bucket",
