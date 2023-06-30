@@ -1,14 +1,15 @@
-from typing import Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
 import numpy as np
 import shapely
+from numpy.typing import NDArray
 
 from ribasim.geometry.node import Node
 
 
 def geometry_from_connectivity(
     node: Node, from_id: Sequence[int], to_id: Sequence[int]
-) -> np.ndarray:
+) -> NDArray[Any]:
     """
     Create edge shapely geometries from connectivities.
 
@@ -37,8 +38,8 @@ def geometry_from_connectivity(
 
 
 def connectivity_from_geometry(
-    node: Node, lines: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+    node: Node, lines: NDArray[Any]
+) -> Tuple[NDArray[Any], NDArray[Any]]:
     """
     Derive from_node_id and to_node_id for every edge in lines. LineStrings
     may be used to connect multiple nodes in a sequence, but every linestring

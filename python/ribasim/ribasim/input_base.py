@@ -2,9 +2,10 @@ import re
 import textwrap
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Union
 
 import pandas as pd
+from pandas import DataFrame
 from pydantic import BaseModel
 
 from ribasim.types import FilePath
@@ -73,7 +74,7 @@ class TableModel(BaseModel):
             content.append(textwrap.indent(entry, prefix="   "))
         return "\n".join(content)
 
-    def get_node_IDs(self) -> set:
+    def get_node_IDs(self) -> Set[int]:
         node_IDs: Set[int] = set()
         for name in self.fields():
             attr = getattr(self, name)
@@ -117,7 +118,9 @@ class TableModel(BaseModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(
+        cls, path: FilePath
+    ) -> Dict[str, Union[DataFrame, None]]:
         kwargs = {}
         with connect(path) as connection:
             for key in cls.fields():
