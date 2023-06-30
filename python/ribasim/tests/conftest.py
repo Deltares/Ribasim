@@ -6,6 +6,7 @@ from ribasim_testmodels import (
     backwater_model,
     basic_model,
     basic_transient_model,
+    bucket_model,
     pump_control_model,
     tabulated_rating_curve_model,
     trivial_model,
@@ -36,6 +37,9 @@ def backwater() -> ribasim.Model:
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
+
+    model = bucket_model()
+    model.write(datadir / "bucket")
 
     model = trivial_model()
     model.write(datadir / "trivial")
