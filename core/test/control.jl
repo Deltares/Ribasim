@@ -22,7 +22,7 @@ toml_path = normpath(@__DIR__, "../../data/pump_control/pump_control.toml")
     @test control.record.truth_state == ["TF", "FF", "FT"]
     @test control.record.control_state == ["off", "on", "off"]
 
-    level = Ribasim.get_storages_and_levels(model)[2]
+    level = Ribasim.get_storages_and_levels(model).level
     timesteps = Ribasim.timesteps(model)
 
     # Control times

@@ -132,7 +132,7 @@ function get_storages_and_levels(model::Model)
             [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
     end
 
-    return storage, level, tsteps, ntsteps
+    return (; time = tsteps, storage, level)
 end
 
 function write_basin_output(model::Model)
@@ -141,12 +141,13 @@ function write_basin_output(model::Model)
     basin_id = p.basin.node_id.values::Vector{Int}
     nbasin = length(basin_id)
 
-    storage, level, tsteps, ntsteps = get_storages_and_levels(model)
+    data = get_storages_and_levels(model)
+    ntsteps = length(data.time)
 
-    time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
+    time = convert.(Arrow.DATETIME, repeat(data.time; inner = nbasin))
     node_id = repeat(basin_id; outer = ntsteps)
 
-    basin = (; time, node_id, storage = vec(storage), level = vec(level))
+    basin = (; time, node_id, storage = vec(data.storage), level = vec(data.level))
     path = output_path(config, config.output.basin)
     mkpath(dirname(path))
     Arrow.write(path, basin; compress = :lz4)
