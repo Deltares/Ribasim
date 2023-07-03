@@ -5,7 +5,7 @@ import ribasim
 
 
 def basic_model() -> ribasim.Model:
-    "Basic model with all node types and static forcing"
+    """Set up a basic model with all node types and static forcing"""
 
     # Set up the nodes:
     xy = np.array(
@@ -216,7 +216,7 @@ def basic_model() -> ribasim.Model:
 
 
 def basic_transient_model(model) -> ribasim.Model:
-    "Update the basic model with transient forcing"
+    """Update the basic model with transient forcing"""
 
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
@@ -268,7 +268,7 @@ def basic_transient_model(model) -> ribasim.Model:
 
 def tabulated_rating_curve_model() -> ribasim.Model:
     """
-    The upstream Basin has two TabulatedRatingCurve attached.
+    Set up a model where the upstream Basin has two TabulatedRatingCurve attached.
     They both flow to the same downstream Basin, but one has a static rating curve,
     and the other one a time-varying rating curve.
     Only the upstream Basin receives a (constant) precipitation.

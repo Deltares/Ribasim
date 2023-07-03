@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandera as pa
+from geopandas import GeoDataFrame
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
 
@@ -16,7 +17,7 @@ __all__ = ("Node",)
 
 class StaticSchema(pa.SchemaModel):
     type: Series[str]
-    geometry: GeoSeries
+    geometry: GeoSeries[Any]
 
 
 class Node(TableModel):
@@ -67,7 +68,9 @@ class Node(TableModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(
+        cls, path: FilePath
+    ) -> Dict[str, Union[GeoDataFrame, DataFrame[Any], None]]:
         kwargs = {}
 
         field = "static"

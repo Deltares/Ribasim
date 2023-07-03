@@ -8,7 +8,8 @@ from ribasim import Pump
 
 
 def assert_equal(a, b):
-    "pandas.testing.assert_frame_equal, but ignoring the index"
+    """Like pandas.testing.assert_frame_equal, but ignoring the index."""
+
     # TODO support assert basic == model, ignoring the index for all but node
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)

@@ -2,9 +2,10 @@ import re
 import textwrap
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Union
 
 import pandas as pd
+from pandas import DataFrame
 from pydantic import BaseModel
 
 from ribasim.types import FilePath
@@ -40,7 +41,6 @@ class TableModel(BaseModel):
     @classmethod
     def get_toml_key(cls):
         """Get the class name in snake case, e.g. FlowBoundary -> flow_boundary."""
-
         name_camel_case = cls.__name__
 
         # Insert underscore before capital letters
@@ -74,7 +74,7 @@ class TableModel(BaseModel):
             content.append(textwrap.indent(entry, prefix="   "))
         return "\n".join(content)
 
-    def get_node_IDs(self) -> set:
+    def get_node_IDs(self) -> Set[int]:
         node_IDs: Set[int] = set()
         for name in self.fields():
             attr = getattr(self, name)
@@ -118,7 +118,9 @@ class TableModel(BaseModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(
+        cls, path: FilePath
+    ) -> Dict[str, Union[DataFrame, None]]:
         kwargs = {}
         with connect(path) as connection:
             for key in cls.fields():
@@ -191,8 +193,8 @@ class TableModel(BaseModel):
         return False
 
     def sort(self):
-        """
-        Sort all input tables as required.
+        """Sort all input tables as required.
+
         Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """

@@ -44,9 +44,7 @@ from qgis.core import (
 
 
 class Input(abc.ABC):
-    """
-    Abstract base class for Ribasim input layers.
-    """
+    """Abstract base class for Ribasim input layers."""
 
     input_type = ""
 
@@ -123,7 +121,7 @@ class Input(abc.ABC):
         return
 
     def set_editor_widget(self) -> None:
-        """Calling during new_layer doesn't have any effect..."""
+        # Calling during new_layer doesn't have any effect...
         return
 
 
@@ -137,10 +135,8 @@ class Node(Input):
         return True
 
     def write(self) -> None:
-        """
-        Special case the Node layer write because it needs to generate a new
-        file.
-        """
+        # Special case the Node layer write because it needs to generate a new file.
+
         self.layer = geopackage.write_layer(
             self.path, self.layer, self.name, newfile=True
         )

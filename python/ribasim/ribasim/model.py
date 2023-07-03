@@ -109,7 +109,7 @@ class Model(BaseModel):
 
     @classmethod
     def fields(cls):
-        """Returns the names of the fields contained in the Model."""
+        """Return the names of the fields contained in the Model."""
         return cls.__fields__.keys()
 
     def __repr__(self) -> str:
@@ -144,9 +144,7 @@ class Model(BaseModel):
         return
 
     def _write_tables(self, directory: FilePath) -> None:
-        """
-        Write the input to GeoPackage and Arrow tables.
-        """
+        """Write the input to GeoPackage and Arrow tables."""
         # avoid adding tables to existing model
         directory = Path(directory)
         gpkg_path = directory / f"{self.modelname}.gpkg"
@@ -166,9 +164,7 @@ class Model(BaseModel):
         return node_names_all, node_cls_all
 
     def validate_model_node_types(self):
-        """
-        Checks whether all node types in the node field are valid
-        """
+        """Check whether all node types in the node field are valid."""
 
         node_names_all, _ = Model.get_node_types()
 
@@ -186,9 +182,8 @@ class Model(BaseModel):
             )
 
     def validate_model_node_field_IDs(self):
-        """
-        Checks whether the node IDs of the node_type fields are valid
-        """
+        """Check whether the node IDs of the node_type fields are valid."""
+
         _, node_cls_all = Model.get_node_types()
 
         node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
@@ -227,9 +222,7 @@ class Model(BaseModel):
             )
 
     def validate_model_node_IDs(self):
-        """
-        Checks whether the node IDs in the node field correspond to the node IDs on the node type fields
-        """
+        """Check whether the node IDs in the node field correspond to the node IDs on the node type fields."""
 
         _, node_cls_all = Model.get_node_types()
 
@@ -254,7 +247,8 @@ class Model(BaseModel):
             raise ValueError("\n".join(error_messages))
 
     def validate_model(self):
-        """
+        """Validate the model.
+
         Checks:
         - Whether all node types in the node field are valid
         - Whether the node IDs of the node_type fields are valid
@@ -267,8 +261,7 @@ class Model(BaseModel):
 
     def write(self, directory: FilePath) -> None:
         """
-        Write the contents of the model to a GeoPackage and a TOML
-        configuration file.
+        Write the contents of the model to a GeoPackage and a TOML configuration file.
 
         If ``directory`` does not exist, it is created before writing.
         The GeoPackage and TOML file will be called ``{modelname}.gpkg`` and
@@ -387,6 +380,7 @@ class Model(BaseModel):
     def sort(self):
         """
         Sort all input tables as required.
+
         Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """

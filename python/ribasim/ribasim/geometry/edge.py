@@ -1,12 +1,14 @@
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, Union
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandera as pa
 import shapely
+from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
 
@@ -19,7 +21,7 @@ __all__ = ("Edge",)
 class StaticSchema(pa.SchemaModel):
     from_node_id: Series[int] = pa.Field(coerce=True)
     to_node_id: Series[int] = pa.Field(coerce=True)
-    geometry: GeoSeries
+    geometry: GeoSeries[Any]
 
 
 class Edge(TableModel):
@@ -68,7 +70,9 @@ class Edge(TableModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(cls, path: FilePath) -> Dict:
+    def _kwargs_from_geopackage(
+        cls, path: FilePath
+    ) -> Dict[str, Union[DataFrame[Any], GeoDataFrame, None]]:
         kwargs = {}
 
         field = "static"
@@ -78,7 +82,7 @@ class Edge(TableModel):
 
         return kwargs
 
-    def get_where_edge_type(self, edge_type: str) -> np.ndarray:
+    def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         return (self.static.edge_type == edge_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:

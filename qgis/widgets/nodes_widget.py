@@ -32,7 +32,7 @@ class NodesWidget(QWidget):
 
     def toggle_node_buttons(self, state: bool) -> None:
         """
-        Enables or disables the node buttons.
+        Enable or disable the node buttons.
 
         Parameters
         ----------
