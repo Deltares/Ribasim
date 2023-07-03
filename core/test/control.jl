@@ -28,9 +28,9 @@ toml_path = normpath(@__DIR__, "../../data/pump_control/pump_control.toml")
     # Control times
     t_1 = control.record.time[2]
     t_1_index = findfirst(timesteps .≈ t_1)
-    @test level[1, t_1_index] ≈ 0.8
+    @test level[1, t_1_index] ≈ control.greater_than[1]
 
     t_2 = control.record.time[3]
     t_2_index = findfirst(timesteps .≈ t_2)
-    @test level[2, t_2_index] ≈ 0.4
+    @test level[2, t_2_index] ≈ control.greater_than[2]
 end
