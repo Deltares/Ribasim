@@ -116,7 +116,7 @@ function parsefile(config_path::AbstractString)::Config
     return from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
 end
 
-function write_basin_output(model::Model)
+function get_storages_and_levels(model::Model)
     (; config, integrator) = model
     (; sol, p) = integrator
 
@@ -125,15 +125,26 @@ function write_basin_output(model::Model)
     tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
 
-    time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
-    node_id = repeat(basin_id; outer = ntsteps)
-
     storage = reshape(vec(sol), nbasin, ntsteps)
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
         level[i, :] =
             [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
     end
+
+    return storage, level, tsteps, ntsteps
+end
+
+function write_basin_output(model::Model)
+    (; config, integrator) = model
+    (; p) = integrator
+    basin_id = p.basin.node_id.values::Vector{Int}
+    nbasin = length(basin_id)
+
+    storage, level, tsteps, ntsteps = get_storages_and_levels(model)
+
+    time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
+    node_id = repeat(basin_id; outer = ntsteps)
 
     basin = (; time, node_id, storage = vec(storage), level = vec(level))
     path = output_path(config, config.output.basin)
