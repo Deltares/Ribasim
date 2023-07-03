@@ -13,7 +13,7 @@ from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
 from ribasim_qgis.widgets.output_widget import OutputWidget
 
-from qgis.core import QgsMapLayer, QgsProject
+from qgis.core import QgsEditFormConfig, QgsMapLayer, QgsProject
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
@@ -142,7 +142,11 @@ class RibasimWidget(QWidget):
         maplayer = QgsProject.instance().addMapLayer(layer, add_to_legend)
         if suppress is not None:
             config = maplayer.editFormConfig()
-            config.setSuppress(1 if suppress else 0)
+            config.setSuppress(
+                QgsEditFormConfig.SuppressOn
+                if suppress
+                else QgsEditFormConfig.SuppressDefault
+            )
             maplayer.setEditFormConfig(config)
         if renderer is not None:
             maplayer.setRenderer(renderer)
