@@ -19,7 +19,7 @@ dependencies:
   - pip:
     - quartodoc
   - pyarrow
-  - pydantic~=1.0
+  - pydantic=1
   - pyogrio
   - pytest
   - pytest-cov
