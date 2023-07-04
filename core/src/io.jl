@@ -127,9 +127,7 @@ function get_storages_and_levels(
     (; sol, p) = integrator
 
     node_id = p.basin.node_id.values::Vector{Int}
-    nbasin = length(node_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
-    ntsteps = length(tsteps)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
