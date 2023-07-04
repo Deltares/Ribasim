@@ -116,17 +116,20 @@ function parsefile(config_path::AbstractString)::Config
     return from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
 end
 
-function write_basin_output(model::Model)
+"Get the storage and level of all basins as matrices of nbasin × ntime"
+function get_storages_and_levels(
+    model::Model,
+)::NamedTuple{
+    (:time, :node_id, :storage, :level),
+    Tuple{Vector{Dates.DateTime}, Vector{Int64}, Matrix{Float64}, Matrix{Float64}},
+}
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    basin_id = p.basin.node_id.values::Vector{Int}
-    nbasin = length(basin_id)
+    node_id = p.basin.node_id.values::Vector{Int}
+    nbasin = length(node_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
     ntsteps = length(tsteps)
-
-    time = convert.(Arrow.DATETIME, repeat(tsteps; inner = nbasin))
-    node_id = repeat(basin_id; outer = ntsteps)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
@@ -135,7 +138,21 @@ function write_basin_output(model::Model)
             [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
     end
 
-    basin = (; time, node_id, storage = vec(storage), level = vec(level))
+    return (; time = tsteps, node_id, storage, level)
+end
+
+function write_basin_output(model::Model)
+    (; config, integrator) = model
+    (; p) = integrator
+
+    data = get_storages_and_levels(model)
+    nbasin = length(data.node_id)
+    ntsteps = length(data.time)
+
+    time = convert.(Arrow.DATETIME, repeat(data.time; inner = nbasin))
+    node_id = repeat(data.node_id; outer = ntsteps)
+
+    basin = (; time, node_id, storage = vec(data.storage), level = vec(data.level))
     path = output_path(config, config.output.basin)
     mkpath(dirname(path))
     Arrow.write(path, basin; compress = :lz4)
