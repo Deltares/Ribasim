@@ -8,6 +8,7 @@ from ribasim_testmodels.basic import (
 )
 from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.control import pump_control_model
+from ribasim_testmodels.equations import linear_resistance_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "pump_control_model",
     "tabulated_rating_curve_model",
     "trivial_model",
+    "linear_resistance_model",
 ]

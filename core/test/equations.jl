@@ -44,3 +44,19 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # @testset "salinity" begin
 
 # end
+
+@testset "LinearResistance" begin
+    toml_path = normpath(@__DIR__, "../../data/linear_resistance/linear_resistance.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+
+    t = Ribasim.timesteps(model)
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    basin_area = p.basin.area[1][2] # Considered constant
+    cons1 = 450.0 # Limit storage 
+    cons2 = -1 / (basin_area * p.linear_resistance.resistance[1]) # decay rate
+    storage_analytic = cons1 .+ (storage[1] - cons1) .* exp.(cons2 .* t)
+
+    @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
+end
