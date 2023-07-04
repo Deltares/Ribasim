@@ -33,7 +33,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
-    u0 = ComponentArray(; storage, integral)
+    u0 = ComponentVector{Float64}(; storage, integral)
     t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"

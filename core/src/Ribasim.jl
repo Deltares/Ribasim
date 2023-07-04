@@ -4,8 +4,8 @@ import IterTools
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
-using Configurations: Configurations, Maybe, @option, from_toml
-using ComponentArrays: ComponentArray
+using Configurations: from_toml
+using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation
 using Dates
 using DBInterface: execute, prepare
