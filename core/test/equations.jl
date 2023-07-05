@@ -54,9 +54,11 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     t = Ribasim.timesteps(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     basin_area = p.basin.area[1][2] # Considered constant
-    cons1 = 450.0 # Limit storage 
-    cons2 = -1 / (basin_area * p.linear_resistance.resistance[1]) # decay rate
-    storage_analytic = cons1 .+ (storage[1] - cons1) .* exp.(cons2 .* t)
+    # The storage of the basin when it has the same level as the level boundary
+    limit_storage = 450.0
+    decay_rate = -1 / (basin_area * p.linear_resistance.resistance[1])
+    storage_analytic =
+        limit_storage .+ (storage[1] - limit_storage) .* exp.(decay_rate .* t)
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
