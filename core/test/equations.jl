@@ -62,3 +62,21 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
+
+@testset "TabulatedRatingCurve" begin
+    toml_path = normpath(@__DIR__, "../../data/rating_curve/rating_curve.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+
+    t = Ribasim.timesteps(model)
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    basin_area = p.basin.area[1][2] # Considered constant
+    storage_min = 50.0
+    time_factor = 24 * 60 * 60
+    storage_analytic =
+        storage_min .+
+        1 ./ (t ./ (time_factor * basin_area^2) .+ 1 / (storage[1] - storage_min))
+
+    @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
+end
