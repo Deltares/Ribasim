@@ -102,3 +102,111 @@ def linear_resistance_model():
     )
 
     return model
+
+
+def rating_curve_model():
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.0),  # 2: TabulatedRatingCurve
+            (2.0, 0.0),  # 3: Terminal
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["Basin", "TabulatedRatingCurve", "Terminal"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2], dtype=np.int64)
+    to_id = np.array([2, 3], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1, 1],
+            "area": [0.0, 100.0, 100.0],
+            "level": [0.0, 1.0, 2.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [0.0],
+            "urban_runoff": [0.0],
+        }
+    )
+
+    state = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "storage": [1000.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup the rating curve
+    n_datapoints = 100
+    level_min = 1.0
+    node_id = np.full(n_datapoints, 2)
+    level = np.linspace(0, 12, 100)
+    discharge = np.square(level - level_min) / (60 * 60 * 24)
+
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": node_id,
+                "level": level,
+                "discharge": discharge,
+            }
+        )
+    )
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [3],
+            }
+        )
+    )
+
+    # Setup a model:
+    model = ribasim.Model(
+        modelname="rating_curve",
+        node=node,
+        edge=edge,
+        basin=basin,
+        terminal=terminal,
+        tabulated_rating_curve=rating_curve,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
