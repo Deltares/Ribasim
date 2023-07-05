@@ -339,7 +339,7 @@ function continuous_control!(
     get_error(pid_control, p)
 
     for (i, id) in enumerate(node_id)
-        du.integral[i] += error
+        du.integral[i] = error[i]
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
