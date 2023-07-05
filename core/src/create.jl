@@ -134,6 +134,8 @@ function Basin(db::DB, config::Config)::Basin
     # If not specified, target_level = NaN
     target_level = coalesce.(static.target_level, NaN)
 
+    dstorage = zero(target_level)
+
     return Basin(
         Indices(node_id),
         precipitation,
@@ -147,6 +149,7 @@ function Basin(db::DB, config::Config)::Basin
         storage,
         target_level,
         time,
+        dstorage,
     )
 end
 
@@ -197,6 +200,7 @@ function PidControl(db::DB, config::Config)::PidControl
     proportional = coalesce.(static.proportional, NaN)
     integral = coalesce.(static.integral, NaN)
     derivative = coalesce.(static.derivative, NaN)
+    error = zero(derivative)
 
     return PidControl(
         static.node_id,
@@ -204,6 +208,7 @@ function PidControl(db::DB, config::Config)::PidControl
         proportional,
         integral,
         derivative,
+        error,
     )
 end
 

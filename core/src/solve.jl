@@ -106,6 +106,8 @@ struct Basin{C} <: AbstractParameterNode
     target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
+    # Storage derivative for use in PID controller
+    dstorage::Vector{Float64}
 end
 
 """
@@ -256,6 +258,7 @@ struct PidControl <: AbstractParameterNode
     proportional::Vector{Float64}
     integral::Vector{Float64}
     derivative::Vector{Float64}
+    error::Vector{Float64}
 end
 
 # TODO Automatically add all nodetypes here
@@ -306,41 +309,36 @@ function formulate!(
     return nothing
 end
 
-function get_error(pid_control::PidControl, p::Parameters)::Vector{Float64}
+function get_error(pid_control::PidControl, p::Parameters)
     (; basin) = p
-    (; node_id, listen_node_id) = pid_control
+    (; listen_node_id, error) = pid_control
 
-    error = zero(pid_control.derivative)
-
-    for (i, id) in enumerate(node_id)
+    for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a basin."
         target_level = basin.target_level[listened_node_idx]
         error[i] = target_level - basin.current_level[listened_node_idx]
     end
-
-    return error
 end
 
 function continuous_control!(
-    du::AbstractVector,
+    du::ComponentVector{Float64},
     pid_control::PidControl,
     p::Parameters,
-    integral_::Vector{Float64},
-    dstorage_old::Vector{Float64},
+    integral_value::SubArray{Float64},
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
     # TODO: Also support pump flow rate to be between prescribed bounds
     (; connectivity, pump, basin) = p
+    (; dstorage) = basin
     (; graph_control) = connectivity
-    (; node_id, proportional, derivative, integral, listen_node_id) = pid_control
+    (; node_id, proportional, integral, derivative, listen_node_id, error) = pid_control
 
-    error_ = get_error(pid_control, p)
+    get_error(pid_control, p)
 
     for (i, id) in enumerate(node_id)
-        error = error_[i]
         du.integral[i] += error
 
         listened_node_id = listen_node_id[i]
@@ -349,28 +347,30 @@ function continuous_control!(
         flow_rate = 0.0
 
         if !isnan(proportional[i])
-            flow_rate += proportional[i] * error
+            flow_rate += proportional[i] * error[i]
         end
 
         if !isnan(derivative[i])
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
 
-            error_deriv = -dstorage_old[listened_node_idx] / area
+            error_deriv = -dstorage[listened_node_idx] / area
             flow_rate += derivative[i] * error_deriv
         end
 
         if !isnan(integral[i])
             # coefficient * current value of integral
-            flow_rate += integral[i] * integral_[i]
+            flow_rate += integral[i] * integral_value[i]
         end
 
         flow_rate = max(flow_rate, 0.0)
 
         controlled_node_id = only(outneighbors(graph_control, id))
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id) # TODO: support the use of id_index
+        # TODO: support the use of id_index
+        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
+    return nothing
 end
 
 """
@@ -506,7 +506,7 @@ end
 function formulate!(
     flow_boundary::FlowBoundary,
     p::Parameters,
-    storage::Vector{Float64},
+    storage::SubArray{Float64},
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -531,7 +531,7 @@ function formulate!(
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, storage::Vector{Float64})::Nothing
+function formulate!(pump::Pump, p::Parameters, storage::SubArray{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = pump
@@ -560,7 +560,11 @@ function formulate!(pump::Pump, p::Parameters, storage::Vector{Float64})::Nothin
     return nothing
 end
 
-function formulate!(du, connectivity::Connectivity, basin::Basin)::Nothing
+function formulate!(
+    du::ComponentVector{Float64},
+    connectivity::Connectivity,
+    basin::Basin,
+)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -576,7 +580,12 @@ function formulate!(du, connectivity::Connectivity, basin::Basin)::Nothing
     return nothing
 end
 
-function water_balance!(du, u, p, t)::Nothing
+function water_balance!(
+    du::ComponentVector{Float64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    t,
+)::Nothing
     (;
         connectivity,
         basin,
@@ -589,10 +598,10 @@ function water_balance!(du, u, p, t)::Nothing
         pid_control,
     ) = p
 
-    storage = collect(u.storage)
-    integral = collect(u.integral)
+    storage = u.storage
+    integral = u.integral
 
-    dstorage_old = copy(collect(du.storage))
+    basin.dstorage .= du.storage
 
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
@@ -601,7 +610,7 @@ function water_balance!(du, u, p, t)::Nothing
     formulate!(du, basin, storage, t)
 
     # PID control (does not set flows)
-    continuous_control!(du, pid_control, p, integral, dstorage_old)
+    continuous_control!(du, pid_control, p, integral)
 
     # First formulate intermediate flows
     formulate!(linear_resistance, p)
