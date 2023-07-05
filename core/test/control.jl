@@ -38,9 +38,10 @@ end
     toml_path = normpath(@__DIR__, "../../data/pid_1/pid_1.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    basin = model.integrator.p.basin
 
     timesteps = Ribasim.timesteps(model) / (60 * 60 * 24)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
     bound = 5 .* exp.(-0.03 .* timesteps)
-    @test all(abs.(level .- 5.0) .< bound)
+    @test all(abs.(level .- basin.target_level[1]) .< bound)
 end
