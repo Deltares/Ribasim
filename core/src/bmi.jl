@@ -305,7 +305,7 @@ end
 
 function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
-        model.integrator.u
+        model.integrator.u.storage
     elseif name == "level"
         model.integrator.p.basin.current_level
     elseif name == "infiltration"

@@ -8,7 +8,7 @@ from ribasim_testmodels.basic import (
 )
 from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.discrete_control import pump_control_model
-from ribasim_testmodels.pid_control import PID_control_model_1
+from ribasim_testmodels.pid_control import pid_control_model_1
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
@@ -20,5 +20,5 @@ __all__ = [
     "tabulated_rating_curve_model",
     "trivial_model",
     "pump_control_model",
-    "PID_control_model_1",
+    "pid_control_model_1",
 ]
