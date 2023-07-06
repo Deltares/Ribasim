@@ -44,13 +44,13 @@ end
 
 @testset "get_value_ptr" begin
     model = BMI.initialize(Ribasim.Model, toml_path)
-    u0 = BMI.get_value_ptr(model, "volume")
-    @test u0 == ones(4)
+    storage0 = BMI.get_value_ptr(model, "volume")
+    @test storage0 == ones(4)
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
-    u = BMI.get_value_ptr(model, "volume")
+    storage = BMI.get_value_ptr(model, "volume")
     # get_value_ptr does not copy
-    @test u0 === u != ones(4)
+    @test storage0 === storage != ones(4)
 end
 
 @testset "get_value_ptr_all_values" begin

@@ -15,6 +15,7 @@
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
+@schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
@@ -35,7 +36,7 @@ end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
-neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Basin}) = Set((
     :LinearResistance,
     :TabulatedRatingCurve,
@@ -48,9 +49,11 @@ neighbortypes(::Val{:FractionalFlow}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:Control}) = Set((:Pump,))
+neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
@@ -81,6 +84,7 @@ end
     infiltration::Float64
     precipitation::Float64
     urban_runoff::Float64
+    target_level::Union{Missing, Float64}
 end
 
 @version BasinForcingV1 begin
@@ -165,6 +169,14 @@ end
     node_id::Int
     truth_state::String
     control_state::String
+end
+
+@version PidControlStaticV1 begin
+    node_id::Int
+    listen_node_id::Int
+    proportional::Float64
+    integral::Union{Missing, Float64}
+    derivative::Union{Missing, Float64}
 end
 
 function variable_names(s::Any)

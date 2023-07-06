@@ -24,6 +24,7 @@ from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
 from ribasim.node_types.linear_resistance import LinearResistance
 from ribasim.node_types.manning_resistance import ManningResistance
+from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
@@ -74,7 +75,9 @@ class Model(BaseModel):
     terminal : Optional[Terminal]
         Water sink without state or properties.
     control : Optional[Control]
-        Control logic.
+        Discrete control logic.
+    pid_control : Optional[PidControl]
+        PID controller attempting to set the level of a basin to a desired value using a pump/weir.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -96,6 +99,7 @@ class Model(BaseModel):
     pump: Optional[Pump]
     terminal: Optional[Terminal]
     control: Optional[Control]
+    pid_control: Optional[PidControl]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -309,17 +313,28 @@ class Model(BaseModel):
         return Model(**kwargs)
 
     def plot_control_listen(self, ax):
-        if not self.control:
-            return
-
         edges = set()
-        condition = self.control.condition
 
-        for node_id in condition.node_id.unique():
-            for listen_node_id in condition.loc[
-                condition.node_id == node_id, "listen_node_id"
-            ]:
-                edges.add((node_id - 1, listen_node_id - 1))
+        if self.control:
+            condition = self.control.condition
+
+            for node_id in condition.node_id.unique():
+                for listen_node_id in condition.loc[
+                    condition.node_id == node_id, "listen_node_id"
+                ]:
+                    edges.add((node_id - 1, listen_node_id - 1))
+
+        if self.pid_control:
+            static = self.pid_control.static
+
+            for node_id in static.node_id.unique():
+                for listen_node_id in static.loc[
+                    static.node_id == node_id, "listen_node_id"
+                ]:
+                    edges.add((node_id - 1, listen_node_id - 1))
+
+        if len(edges) == 0:
+            return
 
         start, end = list(zip(*edges))
 
