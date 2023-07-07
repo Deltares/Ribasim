@@ -144,7 +144,7 @@ MODFLOW 6 must be specified (as we look for these names in the MODFLOW 6 memory)
 along with the name of the variable in the coupling dataset which provides the
 volume-level relationship (`profile`).
 
-As can be seen in the example, the coupling mechanism supports coupling of: 
+As can be seen in the example, the coupling mechanism supports coupling of:
 
 1. A single drainage package (`drain` entry).
 2. A single river package (`river` entry).
@@ -173,7 +173,7 @@ From these tests, we expect the following behavior:
 
 @fig-hupsel-gwb-steady shows the water balance of steady-state for submodel of the
 LHM that has been by selecting the cells belonging to the district containing
-the Hupsel catch, the Berkel. 
+the Hupsel catch, the Berkel.
 
 The Hupsel basin show the expected behavior: for a net groundwater recharge of
 1.0 mm/d, most is precipitation with a minor part lateral inflow from higher
@@ -186,7 +186,7 @@ is thin and transmissivity is limited.
 Reducing groundwater recharge to 0.5 mm/d reduces all flows, with the tertiary
 system playing a less dominant role, relatively speaking: as its elevation is
 the highest compared to the primary and secondary system, the head difference
-is reduced strongest for the tertiary system. 
+is reduced strongest for the tertiary system.
 
 With evapotranspiration (ET) excess (-0.05 and 0.1 mm/d; low values are chosen here
 since most ET would be drawn from storage, which is not available in a

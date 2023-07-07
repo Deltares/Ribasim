@@ -129,7 +129,7 @@ geometry is not used by Ribasim.
 
 ### Edge
 
-Edges define connections between nodes. The only thing that defines an edge is the nodes it connects, and in what direction. 
+Edges define connections between nodes. The only thing that defines an edge is the nodes it connects, and in what direction.
 There are currently 2 possible edge types:
 
 1. "flow": Flows between nodes are stored on edges. The effect of
@@ -140,7 +140,7 @@ There are currently 2 possible edge types:
   anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
   direction; a positive flow flows along the edge direction, a negative flow in the opposite
   way.
-2. "control": The control edges define which nodes are controlled by a particular control node. 
+2. "control": The control edges define which nodes are controlled by a particular control node.
   Control edges should always point away from the control node.
   The edges between the control node and the nodes it *listens* to are *not* present in `Edge \ static`, these are defined in [Control / condition](usage.qmd#sec-condition)
 
@@ -206,9 +206,9 @@ node_id   | Int     | -            | sorted
 area      | Float64 | $m^2$        | non-negative, per node_id: start at 0 and increasing
 level     | Float64 | $m$          | per node_id: increasing
 
-The level is the level at the basin outlet. All levels are defined in meters above a datum 
-that is the same for the entire model. An example of the first 5 rows of such a table is 
-given below. The first 4 rows define the profile of ID `2`. The number of rows can vary 
+The level is the level at the basin outlet. All levels are defined in meters above a datum
+that is the same for the entire model. An example of the first 5 rows of such a table is
+given below. The first 4 rows define the profile of ID `2`. The number of rows can vary
 per ID. Using a very large number of rows may impact performance.
 
 node_id |   area | level
@@ -286,8 +286,8 @@ control_state         | String  | -            | (optional)
 
 ### LevelBoundary
 
-Acts like an infinitely large basin where the level does not change by flow. 
-This can be connected to a basin via a `LinearResistance`. 
+Acts like an infinitely large basin where the level does not change by flow.
+This can be connected to a basin via a `LinearResistance`.
 This boundary node will then
 exchange water with the basin based on the difference in water level between the two.
 
@@ -301,8 +301,8 @@ control_state | String  | -            | (optional)
 
 ### FlowBoundary
 
-Pump water to a destination node. 
-We require that the edge connecting the flow boundary to the Basin should point towards the basin, 
+Pump water to a destination node.
+We require that the edge connecting the flow boundary to the Basin should point towards the basin,
 so that positive flow corresponds to water being added to the model.
 The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.
@@ -381,7 +381,7 @@ The table is sorted by time, and per time the same edge_id order is used, though
 
 ### Control
 
-Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback). 
+Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
 :::{.callout-note}
 Currently the Julia core only supports controlling pumps.
