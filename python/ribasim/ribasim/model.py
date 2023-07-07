@@ -444,11 +444,13 @@ class Model(BaseModel):
                     & (static.control_state == control_state)
                 ].iloc[0]
 
+                names_and_values = []
                 for var in static.columns:
                     if var not in ["remarks", "node_id", "control_state"]:
                         value = row[var]
-                        out += f"{var} = {value},"
+                        if value is not None:
+                            names_and_values.append(f"{var} = {value}")
 
-                out = out[:-1] + "\n"
+                out += ", ".join(names_and_values) + "\n"
 
             print(out)
