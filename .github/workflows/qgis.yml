@@ -4,7 +4,7 @@ on:
     push:
       branches: [main]
       tags: ["*"]
-      paths: 
+      paths:
         - ".github/qgis.yml"
         - "python/ribasim/ribasim/models.py"
         - "qgis/**"
