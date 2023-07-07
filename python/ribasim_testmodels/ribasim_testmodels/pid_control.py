@@ -89,6 +89,7 @@ def pid_control_model_1():
             data={
                 "node_id": [3],
                 "flow_rate": [0.0],  # Will be overwritten by PID controller
+                "min_flow_rate": [0.0],
             }
         )
     )
