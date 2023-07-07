@@ -105,6 +105,8 @@ def linear_resistance_model():
 
 
 def rating_curve_model():
+    """Set up a minimal model which uses a tabulated rating curve node."""
+
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
@@ -205,6 +207,103 @@ def rating_curve_model():
         basin=basin,
         terminal=terminal,
         tabulated_rating_curve=rating_curve,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def manning_resistance_model():
+    """Set up a minimal model which uses a Manning resistance node."""
+
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.0),  # 2: ManningResistance
+            (2.0, 0.0),  # 3: Basin
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["Basin", "ManningResistance", "Basin"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2], dtype=np.int64)
+    to_id = np.array([2, 3], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1, 1, 3, 3, 3],
+            "area": 2 * [0.0, 100.0, 100.0],
+            "level": 2 * [0.0, 1.0, 2.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [1, 3],
+            "drainage": 2 * [0.0],
+            "potential_evaporation": 2 * [0.0],
+            "infiltration": 2 * [0.0],
+            "precipitation": 2 * [0.0],
+            "urban_runoff": 2 * [0.0],
+        }
+    )
+
+    state = pd.DataFrame(
+        data={
+            "node_id": [1, 3],
+            "storage": [1000.0, 500.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup the Manning resistance:
+    manning_resistance = ribasim.ManningResistance(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2],
+                "length": [2000.0],
+                "manning_n": [1e7],
+                "profile_width": [50.0],
+                "profile_slope": [0.0],
+            }
+        )
+    )
+
+    # Setup a model:
+    model = ribasim.Model(
+        modelname="manning_resistance",
+        node=node,
+        edge=edge,
+        basin=basin,
+        manning_resistance=manning_resistance,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
