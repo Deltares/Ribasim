@@ -315,8 +315,8 @@ class Model(BaseModel):
     def plot_control_listen(self, ax):
         edges = set()
 
-        if self.control:
-            condition = self.control.condition
+        if self.discrete_control:
+            condition = self.discrete_control.condition
 
             for node_id in condition.node_id.unique():
                 for listen_node_id in condition.loc[
