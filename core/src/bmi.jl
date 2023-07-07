@@ -249,7 +249,9 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
     new_state = node.control_mapping[(node_id, control_state)]
 
     for (field, value) in zip(keys(new_state), new_state)
-        getfield(node, field)[idx] = value
+        if !ismissing(value)
+            getfield(node, field)[idx] = value
+        end
     end
 end
 
