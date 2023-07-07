@@ -1,6 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "max_flow_rate": {
+            "format": "default",
+            "description": "max_flow_rate",
+            "type": [
+                "number"
+            ]
+        },
         "remarks": {
             "format": "default",
             "default": "",
@@ -22,6 +29,13 @@
             "description": "control_state",
             "type": [
                 "string"
+            ]
+        },
+        "min_flow_rate": {
+            "format": "default",
+            "description": "min_flow_rate",
+            "type": [
+                "number"
             ]
         }
     },

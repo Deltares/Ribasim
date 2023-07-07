@@ -8,13 +8,13 @@ import Ribasim
     control = model.integrator.p.control
 
     # Control input
-    pump_control_mapping::Dict{Tuple{Int64, String}, NamedTuple} =
-        Dict((4, "off") => (flow_rate = 0.0,), (4, "on") => (flow_rate = 1.0e-5,))
+    pump_control_mapping = p.pump.control_mapping
+    @test pump_control_mapping[(4, "off")].flow_rate == 0
+    @test pump_control_mapping[(4, "on")].flow_rate == 1.0e-5
 
     logic_mapping::Dict{Tuple{Int64, String}, String} =
         Dict((5, "TT") => "on", (5, "TF") => "off", (5, "FF") => "on", (5, "FT") => "off")
 
-    @test p.pump.control_mapping == pump_control_mapping
     @test p.control.logic_mapping == logic_mapping
 
     # Control result

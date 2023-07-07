@@ -218,6 +218,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
     flow_rate::Vector{Float64}
+    min_flow_rate::Vector{Float64}
+    max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
@@ -309,7 +311,7 @@ function formulate!(
     return nothing
 end
 
-function get_error(pid_control::PidControl, p::Parameters)
+function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
     (; listen_node_id, error) = pid_control
 
@@ -330,13 +332,13 @@ function continuous_control!(
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
-    # TODO: Also support pump flow rate to be between prescribed bounds
     (; connectivity, pump, basin) = p
+    (; min_flow_rate, max_flow_rate) = pump
     (; dstorage) = basin
     (; graph_control) = connectivity
     (; node_id, proportional, integral, derivative, listen_node_id, error) = pid_control
 
-    get_error(pid_control, p)
+    get_error!(pid_control, p)
 
     for (i, id) in enumerate(node_id)
         du.integral[i] = error[i]
@@ -363,7 +365,14 @@ function continuous_control!(
             flow_rate += integral[i] * integral_value[i]
         end
 
-        flow_rate = max(flow_rate, 0.0)
+        # Clip values outside pump flow rate bounds
+        if !isnan(min_flow_rate[i])
+            flow_rate = max(flow_rate, min_flow_rate[i])
+        end
+
+        if !isnan(max_flow_rate[i])
+            flow_rate = min(flow_rate, max_flow_rate[i])
+        end
 
         controlled_node_id = only(outneighbors(graph_control, id))
         # TODO: support the use of id_index
