@@ -107,7 +107,7 @@ class Node(TableModel):
             "Pump": "h",
             "Terminal": "s",
             "FlowBoundary": "h",
-            "Control": "*",
+            "DiscreteControl": "*",
             "PidControl": "x",
             "": "o",
         }
@@ -122,7 +122,7 @@ class Node(TableModel):
             "Pump": "0.5",  # grayscale level
             "Terminal": "m",
             "FlowBoundary": "m",
-            "Control": "k",
+            "DiscreteControl": "k",
             "PidControl": "k",
             "": "k",
         }
