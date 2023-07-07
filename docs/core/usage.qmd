@@ -119,9 +119,9 @@ name it must have in the GeoPackage if it is stored there.
   - `Pump / static`: flow rate
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
-- Control: Set parameters of other nodes based on model state conditions (e.g. basin level)
-  - `Control / condition`: Conditions of the form 'the level in the basin with node id n is bigger than 2.0 m'
-  - `Control / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
+- DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
+  - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id n is bigger than 2.0 m'
+  - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
@@ -379,18 +379,18 @@ flow          | Float64  | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same edge_id order is used, though not sorted.
 
-### Control
+### DisceteControl
 
-Control is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
+DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
 :::{.callout-note}
 Currently the Julia core only supports controlling pumps.
 :::
 
 
-#### Control / condition {#sec-condition}
+#### DiscreteControl / condition {#sec-condition}
 
-The control schema defines conditions of the form 'the control node with this node id listens to whether the given variable of the node with the given listen node id is grater than the given value'.
+The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen node id is grater than the given value'.
 
 column         | type     | unit    | restriction
 -------------- | -------- | ------- | -----------
@@ -399,16 +399,16 @@ listen_node_id | Int      | -       |
 variable       | String   | -       | must be "level"
 greater_than   | Float64  | various |
 
-#### Control / logic
+#### DiscreteControl / logic
 
-The logic schema defines which control states are triggered based on the truth of the conditions a control node listens to.
-Control is applied in the Julia core as follows:
+The logic schema defines which control states are triggered based on the truth of the conditions a discrete_control node listens to.
+DiscreteControl is applied in the Julia core as follows:
 
 - During the simulation it is checked whether the truth of any of the conditions changes.
-- When a condition changes, the corresponding control node id is retrieved (node_id in the condition schema above).
-- The truth value of all the conditions this control node lisens to are retrieved, in the order as they are specified in the condition schema. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
-- The table below determines for the given control node ID and truth state what the corresponding control state is.
-- For all the nodes this control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
+- When a condition changes, the corresponding discrrete_control node id is retrieved (node_id in the condition schema above).
+- The truth value of all the conditions this discrete_control node lisens to are retrieved, in the order as they are specified in the condition schema. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
+- The table below determines for the given discrete_control node ID and truth state what the corresponding control state is.
+- For all the nodes this discrete_control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
 
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------

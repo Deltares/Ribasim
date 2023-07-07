@@ -1,11 +1,12 @@
 import Ribasim
 
 @testset "pump discrete control" begin
-    toml_path = normpath(@__DIR__, "../../data/pump_control/pump_control.toml")
+    toml_path =
+        normpath(@__DIR__, "../../data/pump_discrete_control/pump_discrete_control.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    control = model.integrator.p.control
+    control = model.integrator.p.discrete_control
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
@@ -15,7 +16,7 @@ import Ribasim
     logic_mapping::Dict{Tuple{Int64, String}, String} =
         Dict((5, "TT") => "on", (5, "TF") => "off", (5, "FF") => "on", (5, "FT") => "off")
 
-    @test p.control.logic_mapping == logic_mapping
+    @test p.discrete_control.logic_mapping == logic_mapping
 
     # Control result
     @test control.record.truth_state == ["TF", "FF", "FT"]

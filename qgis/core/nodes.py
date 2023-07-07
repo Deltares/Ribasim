@@ -179,7 +179,7 @@ class Node(Input):
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
-            "Control": (QColor("black"), "Control", shape.Star),
+            "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "": (
                 QColor("white"),
@@ -409,8 +409,8 @@ class FlowBoundaryStatic(Input):
     ]
 
 
-class ControlCondition(Input):
-    input_type = "Control / condition"
+class DiscreteControlCondition(Input):
+    input_type = "DiscreteControl / condition"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -420,7 +420,7 @@ class ControlCondition(Input):
     ]
 
 
-class ControlLogic(Input):
+class DiscreteControlLogic(Input):
     input_type = "Control / logic"
     geometry_type = "LineString"
     attributes = [

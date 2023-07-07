@@ -183,9 +183,9 @@ function write_flow_output(model::Model)
     Arrow.write(path, table; compress = :lz4)
 end
 
-function write_control_output(model::Model)
+function write_discrete_control_output(model::Model)
     config = model.config
-    record = model.integrator.p.control.record
+    record = model.integrator.p.discrete_control.record
 
     time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
 

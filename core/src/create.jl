@@ -156,8 +156,8 @@ function Basin(db::DB, config::Config)::Basin
     )
 end
 
-function Control(db::DB, config::Config)::Control
-    condition = load_structvector(db, config, ControlConditionV1)
+function DiscreteControl(db::DB, config::Config)::DiscreteControl
+    condition = load_structvector(db, config, DiscreteControlConditionV1)
 
     condition_value = fill(false, length(condition.node_id))
     control_state::Dict{Int, Tuple{String, Float64}} = Dict()
@@ -169,7 +169,7 @@ function Control(db::DB, config::Config)::Control
         end
     end
 
-    logic = load_structvector(db, config, ControlLogicV1)
+    logic = load_structvector(db, config, DiscreteControlLogicV1)
 
     logic_mapping = Dict{Tuple{Int, String}, String}()
 
@@ -185,7 +185,7 @@ function Control(db::DB, config::Config)::Control
         control_state = Vector{String}(),
     )
 
-    return Control(
+    return DiscreteControl(
         condition.node_id,
         condition.listen_node_id,
         condition.variable,
@@ -226,7 +226,7 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
     terminal = Terminal(db, config)
-    control = Control(db, config)
+    discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config)
 
     basin = Basin(db, config)
@@ -243,7 +243,7 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary,
         pump,
         terminal,
-        control,
+        discrete_control,
         pid_control,
         Dict{Int, Symbol}(),
     )
