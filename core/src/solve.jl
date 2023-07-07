@@ -366,9 +366,7 @@ function continuous_control!(
         end
 
         # Clip values outside pump flow rate bounds
-        if !isnan(min_flow_rate[i])
-            flow_rate = max(flow_rate, min_flow_rate[i])
-        end
+        flow_rate = max(flow_rate, min_flow_rate[i])
 
         if !isnan(max_flow_rate[i])
             flow_rate = min(flow_rate, max_flow_rate[i])

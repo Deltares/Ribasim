@@ -280,7 +280,7 @@ column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
-min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
+min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, defaults to 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 control_state         | String  | -            | (optional)
 

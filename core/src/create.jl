@@ -101,7 +101,7 @@ function Pump(db::DB, config::Config)::Pump
         flow_rates = static.flow_rate
     end
 
-    min_flow_rate = coalesce.(static.min_flow_rate, NaN)
+    min_flow_rate = coalesce.(static.min_flow_rate, 0.0)
     max_flow_rate = coalesce.(static.max_flow_rate, NaN)
 
     return Pump(node_ids, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
