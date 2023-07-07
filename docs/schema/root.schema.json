@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "ControlCondition": {
-            "$ref": "ControlCondition.schema.json"
+        "DiscreteControlLogic": {
+            "$ref": "DiscreteControlLogic.schema.json"
         },
         "Edge": {
             "$ref": "Edge.schema.json"
@@ -13,6 +13,9 @@
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
         },
+        "DiscreteControlCondition": {
+            "$ref": "DiscreteControlCondition.schema.json"
+        },
         "BasinForcing": {
             "$ref": "BasinForcing.schema.json"
         },
@@ -21,9 +24,6 @@
         },
         "LinearResistanceStatic": {
             "$ref": "LinearResistanceStatic.schema.json"
-        },
-        "ControlLogic": {
-            "$ref": "ControlLogic.schema.json"
         },
         "PidControlStatic": {
             "$ref": "PidControlStatic.schema.json"

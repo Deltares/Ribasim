@@ -18,7 +18,7 @@ from ribasim.geometry.node import Node
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
-from ribasim.node_types.control import Control
+from ribasim.node_types.discrete_control import DiscreteControl
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
@@ -74,7 +74,7 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
-    control : Optional[Control]
+    discrete_control : Optional[DiscreteControl]
         Discrete control logic.
     pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/weir.
@@ -98,7 +98,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     terminal: Optional[Terminal]
-    control: Optional[Control]
+    discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
     starttime: datetime.datetime
     endtime: datetime.datetime

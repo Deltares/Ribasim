@@ -28,8 +28,8 @@
         "truth_state",
         "control_state"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/ControlLogic.schema.json",
-    "title": "ControlLogic",
-    "description": "A ControlLogic object based on Ribasim.ControlLogicV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlLogic.schema.json",
+    "title": "DiscreteControlLogic",
+    "description": "A DiscreteControlLogic object based on Ribasim.DiscreteControlLogicV1",
     "type": "object"
 }

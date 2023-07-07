@@ -238,7 +238,7 @@ control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for output
 """
-struct Control <: AbstractParameterNode
+struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{Int}
     listen_node_id::Vector{Int}
     variable::Vector{String}
@@ -274,7 +274,7 @@ struct Parameters
     flow_boundary::FlowBoundary
     pump::Pump
     terminal::Terminal
-    control::Control
+    discrete_control::DiscreteControl
     pid_control::PidControl
     lookup::Dict{Int, Symbol}
 end

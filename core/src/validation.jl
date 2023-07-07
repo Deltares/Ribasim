@@ -2,8 +2,8 @@
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
-@schema "ribasim.control.condition" ControlCondition
-@schema "ribasim.control.logic" ControlLogic
+@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
+@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
@@ -52,7 +52,7 @@ neighbortypes(::Val{:FlowBoundary}) =
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:Control}) = Set((:Pump,))
+neighbortypes(::Val{:DiscreteControl}) = Set((:Pump,))
 neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
@@ -158,14 +158,14 @@ end
     node_id::Int
 end
 
-@version ControlConditionV1 begin
+@version DiscreteControlConditionV1 begin
     node_id::Int
     listen_node_id::Int
     variable::String
     greater_than::Float64
 end
 
-@version ControlLogicV1 begin
+@version DiscreteControlLogicV1 begin
     node_id::Int
     truth_state::String
     control_state::String

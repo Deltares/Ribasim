@@ -4,7 +4,7 @@ import pandas as pd
 import ribasim
 
 
-def pump_control_model() -> ribasim.Model:
+def pump_discrete_control_model() -> ribasim.Model:
     """Set up a basic model with a pump controlled based on basin levels"""
 
     # Set up the nodes:
@@ -25,7 +25,7 @@ def pump_control_model() -> ribasim.Model:
         "LinearResistance",
         "Basin",
         "Pump",
-        "Control",
+        "DiscreteControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -102,7 +102,7 @@ def pump_control_model() -> ribasim.Model:
         }
     )
 
-    control = ribasim.Control(condition=condition, logic=logic)
+    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     # Setup the pump:
     pump = ribasim.Pump(
@@ -127,13 +127,13 @@ def pump_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pump_control",
+        modelname="pump_discrete_control",
         node=node,
         edge=edge,
         basin=basin,
         linear_resistance=linear_resistance,
         pump=pump,
-        control=control,
+        discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
