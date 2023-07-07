@@ -389,14 +389,14 @@ class Model(BaseModel):
             if isinstance(input_entry, TableModel):
                 input_entry.sort()
 
-    def print_control_record(self, path: FilePath) -> None:
+    def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
         node_types, node_clss = Model.get_node_types()
 
         truth_dict = {"T": ">", "F": "<"}
 
-        if not self.control:
+        if not self.discrete_control:
             raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
@@ -408,8 +408,8 @@ class Model(BaseModel):
 
             out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
 
-            conditions = self.control.condition[
-                self.control.condition.node_id == control_node_id
+            conditions = self.discrete_control.condition[
+                self.discrete_control.condition.node_id == control_node_id
             ]
 
             for truth_value, (index, condition) in zip(

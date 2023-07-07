@@ -19,6 +19,6 @@ __all__ = [
     "pump_discrete_ontrol_model",
     "tabulated_rating_curve_model",
     "trivial_model",
-    "pump_control_model",
+    "pump_discrete_control_model",
     "pid_control_model_1",
 ]
