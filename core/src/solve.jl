@@ -399,12 +399,10 @@ function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)
     (; node_id, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
-        downstream_ids = outneighbors(graph_flow, id)
+        downstream_id = only(outneighbors(graph_flow, id))
         q = tables[i](get_level(p, upstream_basin_id))
         flow[upstream_basin_id, id] = q
-        for downstream_id in downstream_ids
-            flow[id, downstream_id] = q
-        end
+        flow[id, downstream_id] = q
     end
     return nothing
 end
