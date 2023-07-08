@@ -1,10 +1,20 @@
 function Connectivity(db::DB)::Connectivity
-    graph, edge_ids, edge_connection_types = create_graph(db, "flow")
+    graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
+    graph_control, edge_ids_control, edge_connection_types_control =
+        create_graph(db, "control")
 
-    flow = adjacency_matrix(graph, Float64)
+    flow = adjacency_matrix(graph_flow, Float64)
     nonzeros(flow) .= 0.0
 
-    return Connectivity(graph, flow, edge_ids, edge_connection_types)
+    return Connectivity(
+        graph_flow,
+        graph_control,
+        flow,
+        edge_ids_flow,
+        edge_ids_control,
+        edge_connection_types_flow,
+        edge_connection_types_control,
+    )
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
@@ -91,7 +101,10 @@ function Pump(db::DB, config::Config)::Pump
         flow_rates = static.flow_rate
     end
 
-    return Pump(node_ids, flow_rates, control_mapping)
+    min_flow_rate = coalesce.(static.min_flow_rate, 0.0)
+    max_flow_rate = coalesce.(static.max_flow_rate, NaN)
+
+    return Pump(node_ids, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
 end
 
 function Terminal(db::DB, config::Config)::Terminal
@@ -103,6 +116,7 @@ function Basin(db::DB, config::Config)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
+    current_area = zeros(n)
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -120,6 +134,11 @@ function Basin(db::DB, config::Config)::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
+    # If not specified, target_level = NaN
+    target_level = coalesce.(static.target_level, NaN)
+
+    dstorage = zero(target_level)
+
     return Basin(
         Indices(node_id),
         precipitation,
@@ -127,10 +146,13 @@ function Basin(db::DB, config::Config)::Basin
         drainage,
         infiltration,
         current_level,
+        current_area,
         area,
         level,
         storage,
+        target_level,
         time,
+        dstorage,
     )
 end
 
@@ -156,8 +178,6 @@ function Control(db::DB, config::Config)::Control
         logic_mapping[(node_id, truth_state)] = control_state_
     end
 
-    graph, _ = create_graph(db, "control")
-
     record = (
         time = Vector{Float64}(),
         control_node_id = Vector{Int}(),
@@ -173,14 +193,29 @@ function Control(db::DB, config::Config)::Control
         condition_value,
         control_state,
         logic_mapping,
-        graph,
         record,
     )
 end
 
-function Parameters(db::DB, config::Config)::Parameters
+function PidControl(db::DB, config::Config)::PidControl
+    static = load_structvector(db, config, PidControlStaticV1)
 
-    # Setup node/edges graph, so validate in `Connectivity`?
+    proportional = coalesce.(static.proportional, NaN)
+    integral = coalesce.(static.integral, NaN)
+    derivative = coalesce.(static.derivative, NaN)
+    error = zero(derivative)
+
+    return PidControl(
+        static.node_id,
+        static.listen_node_id,
+        proportional,
+        integral,
+        derivative,
+        error,
+    )
+end
+
+function Parameters(db::DB, config::Config)::Parameters
     connectivity = Connectivity(db)
 
     linear_resistance = LinearResistance(db, config)
@@ -192,6 +227,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config)
     terminal = Terminal(db, config)
     control = Control(db, config)
+    pid_control = PidControl(db, config)
 
     basin = Basin(db, config)
 
@@ -208,6 +244,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump,
         terminal,
         control,
+        pid_control,
         Dict{Int, Symbol}(),
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))

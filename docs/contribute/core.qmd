@@ -21,7 +21,7 @@ pkg> add Revise
 
 ## Setup Revise.jl
 
-Revise.jl is a library that allows you to modify code and use the changes without restarting Julia. 
+Revise.jl is a library that allows you to modify code and use the changes without restarting Julia.
 You can let it start automatically by following these [instructions](https://timholy.github.io/Revise.jl/stable/config/#Using-Revise-by-default-1).
 
 ## Install Quarto
@@ -49,8 +49,8 @@ cd Ribasim
 
 ## Install Visual Studio Code (optional)
 
-There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll down to see it. 
-We use and recommend Microsoft's free editor [Visual Studio Code](https://code.visualstudio.com/). 
+There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll down to see it.
+We use and recommend Microsoft's free editor [Visual Studio Code](https://code.visualstudio.com/).
 When combined with the [Julia extension](https://www.julia-vscode.org/) it provides a powerful and interactive development experience.
 
 

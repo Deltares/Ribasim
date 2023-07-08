@@ -43,7 +43,7 @@ jobs:
 
       - name: Install ribasim
         run: pip install --editable python/ribasim
-      
+
       - name: Install ribasim_testmodels
         run: pip install --editable python/ribasim_testmodels
 

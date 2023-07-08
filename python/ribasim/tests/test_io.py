@@ -60,13 +60,13 @@ def test_pydantic():
 
 
 def test_repr():
-    static_data_proper = pd.DataFrame(
+    static_data = pd.DataFrame(
         data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0]}
     )
 
-    pump_1 = Pump(static=static_data_proper)
+    pump_1 = Pump(static=static_data)
 
     assert (
         repr(pump_1)
-        == "<ribasim.Pump>\n   static: DataFrame(rows=3) (remarks, flow_rate, node_id, control_state)"
+        == "<ribasim.Pump>\n   static: DataFrame(rows=3)\n       (max_flow_rate, remarks, flow_rate, node_id,\n       control_state, min_flow_rate)"
     )

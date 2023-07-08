@@ -25,6 +25,9 @@
         "ControlLogic": {
             "$ref": "ControlLogic.schema.json"
         },
+        "PidControlStatic": {
+            "$ref": "PidControlStatic.schema.json"
+        },
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"
         },
