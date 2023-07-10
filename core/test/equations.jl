@@ -56,7 +56,7 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # as a compromise the relationship is taken to be 
 #   level(storage) = level_min + (storage - storage_min)/basin_area,
 # 
-# where the storage of the basins is assumed never to get below storage_min, after which the area fo the basin
+# where the storage of the basins is assumed never to get below storage_min, after which the area of the basin
 # is constant.
 
 # Equation: storage' = -(2*level(storage)-C)/resistance, storage(t0) = storage0
