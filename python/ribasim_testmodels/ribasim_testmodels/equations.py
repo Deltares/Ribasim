@@ -212,6 +212,7 @@ def rating_curve_model():
 
     return model
 
+
 def manning_resistance_model():
     """Set up a minimal model which uses a Manning resistance node."""
 
