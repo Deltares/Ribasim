@@ -106,7 +106,6 @@ def linear_resistance_model():
 
 def rating_curve_model():
     """Set up a minimal model which uses a tabulated rating curve node."""
-
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
@@ -212,7 +211,6 @@ def rating_curve_model():
     )
 
     return model
-
 
 def manning_resistance_model():
     """Set up a minimal model which uses a Manning resistance node."""

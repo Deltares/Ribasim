@@ -7,7 +7,7 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model
-from ribasim_testmodels.discrete_control import pump_control_model
+from ribasim_testmodels.discrete_control import pump_discrete_control_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -21,7 +21,7 @@ __all__ = [
     "basic_model",
     "basic_transient_model",
     "bucket_model",
-    "pump_control_model",
+    "pump_discrete_control_model",
     "tabulated_rating_curve_model",
     "trivial_model",
     "linear_resistance_model",

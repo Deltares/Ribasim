@@ -18,7 +18,7 @@ from ribasim.geometry.node import Node
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
-from ribasim.node_types.control import Control
+from ribasim.node_types.discrete_control import DiscreteControl
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
@@ -74,7 +74,7 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
-    control : Optional[Control]
+    discrete_control : Optional[DiscreteControl]
         Discrete control logic.
     pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/weir.
@@ -98,7 +98,7 @@ class Model(BaseModel):
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
     terminal: Optional[Terminal]
-    control: Optional[Control]
+    discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
     starttime: datetime.datetime
     endtime: datetime.datetime
@@ -315,8 +315,8 @@ class Model(BaseModel):
     def plot_control_listen(self, ax):
         edges = set()
 
-        if self.control:
-            condition = self.control.condition
+        if self.discrete_control:
+            condition = self.discrete_control.condition
 
             for node_id in condition.node_id.unique():
                 for listen_node_id in condition.loc[
@@ -389,14 +389,14 @@ class Model(BaseModel):
             if isinstance(input_entry, TableModel):
                 input_entry.sort()
 
-    def print_control_record(self, path: FilePath) -> None:
+    def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
         node_types, node_clss = Model.get_node_types()
 
         truth_dict = {"T": ">", "F": "<"}
 
-        if not self.control:
+        if not self.discrete_control:
             raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
@@ -408,8 +408,8 @@ class Model(BaseModel):
 
             out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
 
-            conditions = self.control.condition[
-                self.control.condition.node_id == control_node_id
+            conditions = self.discrete_control.condition[
+                self.discrete_control.condition.node_id == control_node_id
             ]
 
             for truth_value, (index, condition) in zip(
@@ -444,11 +444,13 @@ class Model(BaseModel):
                     & (static.control_state == control_state)
                 ].iloc[0]
 
+                names_and_values = []
                 for var in static.columns:
                     if var not in ["remarks", "node_id", "control_state"]:
                         value = row[var]
-                        out += f"{var} = {value},"
+                        if value is not None:
+                            names_and_values.append(f"{var} = {value}")
 
-                out = out[:-1] + "\n"
+                out += ", ".join(names_and_values) + "\n"
 
             print(out)
