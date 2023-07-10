@@ -1,9 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "max_flow_rate": {
+        "integral": {
             "format": "default",
-            "description": "max_flow_rate",
+            "description": "integral",
             "type": [
                 "number"
             ]
@@ -14,9 +14,14 @@
             "description": "a hack for pandera",
             "type": "string"
         },
-        "flow_rate": {
+        "listen_node_id": {
+            "format": "default",
+            "description": "listen_node_id",
+            "type": "integer"
+        },
+        "proportional": {
             "format": "double",
-            "description": "flow_rate",
+            "description": "proportional",
             "type": "number"
         },
         "node_id": {
@@ -24,16 +29,9 @@
             "description": "node_id",
             "type": "integer"
         },
-        "control_state": {
+        "derivative": {
             "format": "default",
-            "description": "control_state",
-            "type": [
-                "string"
-            ]
-        },
-        "min_flow_rate": {
-            "format": "default",
-            "description": "min_flow_rate",
+            "description": "derivative",
             "type": [
                 "number"
             ]
@@ -41,10 +39,11 @@
     },
     "required": [
         "node_id",
-        "flow_rate"
+        "listen_node_id",
+        "proportional"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
-    "title": "PumpStatic",
-    "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
+    "title": "PidControlStatic",
+    "description": "A PidControlStatic object based on Ribasim.PidControlStaticV1",
     "type": "object"
 }

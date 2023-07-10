@@ -127,11 +127,9 @@ function get_storages_and_levels(
     (; sol, p) = integrator
 
     node_id = p.basin.node_id.values::Vector{Int}
-    nbasin = length(node_id)
     tsteps = datetime_since.(timesteps(model), config.starttime)
-    ntsteps = length(tsteps)
 
-    storage = reshape(vec(sol), nbasin, ntsteps)
+    storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
         level[i, :] =
@@ -164,7 +162,7 @@ function write_flow_output(model::Model)
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(connectivity.flow)
-    unique_edge_ids = [connectivity.edge_ids[ij] for ij in zip(I, J)]
+    unique_edge_ids = [connectivity.edge_ids_flow[ij] for ij in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
 
@@ -185,9 +183,9 @@ function write_flow_output(model::Model)
     Arrow.write(path, table; compress = :lz4)
 end
 
-function write_control_output(model::Model)
+function write_discrete_control_output(model::Model)
     config = model.config
-    record = model.integrator.p.control.record
+    record = model.integrator.p.discrete_control.record
 
     time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
 

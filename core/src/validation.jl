@@ -2,8 +2,8 @@
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
-@schema "ribasim.control.condition" ControlCondition
-@schema "ribasim.control.logic" ControlLogic
+@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
+@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
@@ -15,6 +15,7 @@
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
+@schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 
@@ -25,9 +26,9 @@ isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), "."
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 function nodetype(sv::SchemaVersion{T, N}) where {T, N}
     n, k = split(string(T), ".")[2:3]
-    # Names derived from a schema are in underscores (basinforcing), 
+    # Names derived from a schema are in underscores (basinforcing),
     # so we parse the related record Ribasim.BasinForcingV1
-    # to derive BasinForcing from it. 
+    # to derive BasinForcing from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
     Symbol(node[begin:length(n)]), Symbol(k)
@@ -35,7 +36,7 @@ end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
-neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal))
+neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Basin}) = Set((
     :LinearResistance,
     :TabulatedRatingCurve,
@@ -48,9 +49,11 @@ neighbortypes(::Val{:FractionalFlow}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance))
+neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
+neighbortypes(::Val{:DiscreteControl}) = Set((:Pump,))
+neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
@@ -71,6 +74,8 @@ end
 @version PumpStaticV1 begin
     node_id::Int
     flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -81,6 +86,7 @@ end
     infiltration::Float64
     precipitation::Float64
     urban_runoff::Float64
+    target_level::Union{Missing, Float64}
 end
 
 @version BasinForcingV1 begin
@@ -154,17 +160,25 @@ end
     node_id::Int
 end
 
-@version ControlConditionV1 begin
+@version DiscreteControlConditionV1 begin
     node_id::Int
     listen_node_id::Int
     variable::String
     greater_than::Float64
 end
 
-@version ControlLogicV1 begin
+@version DiscreteControlLogicV1 begin
     node_id::Int
     truth_state::String
     control_state::String
+end
+
+@version PidControlStaticV1 begin
+    node_id::Int
+    listen_node_id::Int
+    proportional::Float64
+    integral::Union{Missing, Float64}
+    derivative::Union{Missing, Float64}
 end
 
 function variable_names(s::Any)

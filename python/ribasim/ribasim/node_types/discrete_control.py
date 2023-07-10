@@ -5,24 +5,24 @@ from pandera.typing import DataFrame
 from ribasim import models
 from ribasim.input_base import TableModel
 
-__all__ = ("Control",)
+__all__ = ("DiscreteControl",)
 
 
 class ConditionSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.ControlCondition)
+        dtype = PydanticModel(models.DiscreteControlCondition)
 
 
 class LogicSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.ControlLogic)
+        dtype = PydanticModel(models.DiscreteControlLogic)
 
 
-class Control(TableModel):
+class DiscreteControl(TableModel):
     """
     Defines the control logic.
 
@@ -30,6 +30,8 @@ class Control(TableModel):
     ----------
     condition : pandas.DataFrame
         Table with the information of control conditions.
+    logic : pandas.Dataframe
+        Table with the information of truth state to control state mapping.
     """
 
     condition: DataFrame[ConditionSchema]

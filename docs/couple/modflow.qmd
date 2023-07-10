@@ -104,7 +104,7 @@ conservation is not guaranteed. For example, based on its river levels,
 MODFLOW 6 may compute a infiltration flux. Ribasim then runs its timestep, and
 finds that given MODFLOW 6's infiltration flux, no water is present in the
 surface waters: the infiltration flux has been overestimated by MODFLOW 6, and
-mass is not conserved. 
+mass is not conserved.
 
 Such an error is avoided in the second scheme: states and fluxes only lag a
 single iteration behind, and the iterations are repeated until the difference
@@ -210,7 +210,7 @@ depends on the level of the boundary conditions and head of every cell of the
 groundwater model. If the surface waters of a basin empty, the water level will
 decrease and drainage and infiltration flows will change. Ideally, we can
 provide Ribasim with more information, so that it may estimate drainage and
-infiltration terms better. 
+infiltration terms better.
 
 As groundwater flow is often (approximately) linear, we can use linearization
 to more efficiently compute the flow from Ribasim's side as well. In the iterative
@@ -329,7 +329,7 @@ These values are stored in a netCDF dataset. This dataset must meet the followin
 requirements:
 
 1. It must contain a `x` and `y` coordinate. The extent and cell size of these
-coordinates must match the domain of the coupled MODFLOW 6 model exactly. 
+coordinates must match the domain of the coupled MODFLOW 6 model exactly.
 2. It must contain a variable (x, y) denoting the basin IDs.
 3. It must contain a volume-level variable (x, y, row, column) for every
 coupled MODFLOW 6 boundary condition, describing the volume-level lookup table
