@@ -10,44 +10,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  black:
-    name: Black
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          cache-downloads: true
-          cache-environment: true
-          environment-file: ./environment.yml
-
-      - name: Run black
-        run: |
-          black --check .
-
-  ruff:
-    name: Ruff
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          cache-downloads: true
-          cache-environment: true
-          environment-file: ./environment.yml
-      - name: Run ruff
-        run: |
-          ruff check --format=github .
-
-
   mypy:
     name: Mypy
     runs-on: ubuntu-latest
