@@ -10,6 +10,7 @@ from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.discrete_control import pump_discrete_control_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
+    manning_resistance_model,
     rating_curve_model,
 )
 from ribasim_testmodels.pid_control import pid_control_model_1
@@ -25,5 +26,6 @@ __all__ = [
     "trivial_model",
     "linear_resistance_model",
     "rating_curve_model",
+    "manning_resistance_model",
     "pid_control_model_1",
 ]
