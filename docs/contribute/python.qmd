@@ -43,7 +43,24 @@ In order to develop on `ribasim` locally, execute the following line inside your
 ```bash
 pip install --editable python/ribasim
 pip install --editable python/ribasim_testmodels
+pip install --editable python/ribasim_api
 ```
+
+## Install the pre-commit hook {#sec-precommit}
+
+If not already done, activate the environment:
+
+```
+conda activate ribasim
+```
+
+Pre-commit ensures that all linters are happy with your code before you commit your files.
+In order to install the pre-commit hook run:
+
+```bash
+pre-commit install
+```
+
 
 ## Running the tests {#sec-test}
 
