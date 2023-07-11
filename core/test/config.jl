@@ -54,3 +54,9 @@ end
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     Ribasim.algorithm(Ribasim.Solver(; algorithm = "Euler", autodiff = true))
 end
+
+@testset "snake_case" begin
+    @test Ribasim.snake_case("CamelCase") == "camel_case"
+    @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
+    @test Ribasim.snake_case("snake_case") == "snake_case"
+end
