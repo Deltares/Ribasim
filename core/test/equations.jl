@@ -145,3 +145,25 @@ end
 
     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
 end
+
+# Simple solutions: 
+# storage1 = storage1(t0) + (t-t0)*(frac*q_boundary - q_pump)
+# storage2 = storage2(t0) + (t-t0)*q_pump
+# Note: uses Euler algorithm
+@testset "MiscellaneousNodes" begin
+    toml_path = normpath(@__DIR__, "../../data/misc_nodes/misc_nodes.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; flow_boundary, fractional_flow, pump) = p
+
+    q_boundary = flow_boundary.flow_rate[1]
+    q_pump = pump.flow_rate[1]
+    frac = fractional_flow.fraction[1]
+
+    storage_both = Ribasim.get_storages_and_levels(model).storage
+    t = Ribasim.timesteps(model)
+
+    @test storage_both[1, :] ≈ storage_both[1, 1] .+ t .* (frac * q_boundary - q_pump)
+    @test storage_both[2, :] ≈ storage_both[2, 1] .+ t .* q_pump
+end

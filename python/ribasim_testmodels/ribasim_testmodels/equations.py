@@ -5,7 +5,7 @@ import ribasim
 
 
 def linear_resistance_model():
-    """Set up a minimal model which uses a linear resistance node."""
+    """Set up a minimal model which uses a linear_resistance node."""
 
     xy = np.array(
         [
@@ -105,7 +105,7 @@ def linear_resistance_model():
 
 
 def rating_curve_model():
-    """Set up a minimal model which uses a tabulated rating curve node."""
+    """Set up a minimal model which uses a tabulated_rating_curve node."""
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
@@ -214,7 +214,7 @@ def rating_curve_model():
 
 
 def manning_resistance_model():
-    """Set up a minimal model which uses a Manning resistance node."""
+    """Set up a minimal model which uses a manning_resistance node."""
 
     # Set up the nodes:
     xy = np.array(
@@ -305,6 +305,150 @@ def manning_resistance_model():
         manning_resistance=manning_resistance,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def miscellaneous_nodes_model():
+    """Set up a minimal model using flow_boundary, fractional_flow and pump nodes."""
+
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: FlowBoundary
+            (0.0, 1.0),  # 2: FractionalFlow
+            (0.0, 2.0),  # 3: Basin
+            (0.0, 3.0),  # 4: Pump
+            (0.0, 4.0),  # 5: Basin
+            (1.0, 0.0),  # 6: FractionalFlow
+            (2.0, 0.0),  # 7: Terminal
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "FlowBoundary",
+        "FractionalFlow",
+        "Basin",
+        "Pump",
+        "Basin",
+        "FractionalFlow",
+        "Terminal",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2, 3, 4, 1, 6], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 5, 6, 7], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": 3 * [3] + 3 * [5],
+            "area": 2 * [0.0, 100.0, 100.0],
+            "level": 2 * [0.0, 1.0, 2.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [3, 5],
+            "drainage": 2 * [0.0],
+            "potential_evaporation": 2 * [0.0],
+            "infiltration": 2 * [0.0],
+            "precipitation": 2 * [0.0],
+            "urban_runoff": 2 * [0.0],
+        }
+    )
+
+    state = pd.DataFrame(
+        data={
+            "node_id": [3, 5],
+            "storage": 2 * [1000.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1],
+                "flow_rate": [3e-4],
+            }
+        )
+    )
+
+    # Setup fractional flows:
+    fractional_flow = ribasim.FractionalFlow(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2, 6],
+                "fraction": [0.5, 0.5],
+            }
+        )
+    )
+
+    # Setup pump:
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4],
+                "flow_rate": [1e-4],
+            }
+        )
+    )
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [7],
+            }
+        )
+    )
+
+    # Setup solver:
+    solver = ribasim.Solver(
+        dt=24 * 24 * 60,
+        algorithm="Euler",
+    )
+
+    # Setup a model:
+    model = ribasim.Model(
+        modelname="misc_nodes",
+        node=node,
+        edge=edge,
+        basin=basin,
+        flow_boundary=flow_boundary,
+        pump=pump,
+        terminal=terminal,
+        fractional_flow=fractional_flow,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        solver=solver,
     )
 
     return model
