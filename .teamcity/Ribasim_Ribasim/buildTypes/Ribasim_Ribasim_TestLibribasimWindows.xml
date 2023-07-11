@@ -82,4 +82,3 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
     <cleanup />
   </settings>
 </build-type>
-

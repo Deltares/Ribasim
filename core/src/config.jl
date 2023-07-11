@@ -21,6 +21,14 @@ for sv in nodeschemas
     push!(nodekinds[node], kind)
 end
 
+"Convert a string from CamelCase to snake_case."
+function snake_case(str::AbstractString)::String
+    under_scored = replace(str, r"(?<!^)(?=[A-Z])" => "_")
+    return lowercase(under_scored)
+end
+
+snake_case(sym::Symbol)::Symbol = Symbol(snake_case(String(sym)))
+
 """
 Add fieldnames with Maybe{String} type to struct expression. Requires @option use before it.
 """
@@ -36,9 +44,10 @@ Add all TableOption subtypes as fields to struct expression. Requires @option us
 """
 macro addnodetypes(typ::Expr)
     for nodetype in nodetypes
+        node_type = snake_case(nodetype)
         push!(
             typ.args[3].args,
-            Expr(:(=), Expr(:(::), nodetype, nodetype), Expr(:call, nodetype)),
+            Expr(:(=), Expr(:(::), node_type, node_type), Expr(:call, node_type)),
         )
     end
     return esc(typ)
@@ -47,6 +56,7 @@ end
 # Generate structs for each nodetype for use in Config
 abstract type TableOption end
 for (T, kinds) in pairs(nodekinds)
+    T = snake_case(T)
     @eval @option @addfields struct $T <: TableOption end $kinds
 end
 const nodetypes = collect(keys(nodekinds))

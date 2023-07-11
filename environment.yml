@@ -7,6 +7,7 @@ dependencies:
   - black
   - black-jupyter
   - build
+  - datamodel-code-generator
   - geopandas
   - jupyterlab
   - matplotlib
@@ -15,9 +16,9 @@ dependencies:
   - pandas-stubs
   - pandera
   - pip
-  - datamodel-code-generator
   - pip:
     - quartodoc
+  - pre-commit
   - pyarrow
   - pydantic=1
   - pyogrio

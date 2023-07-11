@@ -28,7 +28,7 @@ TimerOutputs.complement!()
 include("validation.jl")
 include("solve.jl")
 include("config.jl")
-using .config: Config, Solver, algorithm
+using .config: Config, Solver, algorithm, snake_case
 include("utils.jl")
 include("lib.jl")
 include("io.jl")

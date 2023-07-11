@@ -112,4 +112,3 @@ call python python/ribasim/tests/conftest.py]]></param>
     <cleanup />
   </settings>
 </build-type>
-
