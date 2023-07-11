@@ -11,6 +11,7 @@ from ribasim_testmodels.discrete_control import pump_discrete_control_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
+    miscellaneous_nodes_model,
     rating_curve_model,
 )
 from ribasim_testmodels.pid_control import pid_control_model_1
@@ -28,4 +29,5 @@ __all__ = [
     "rating_curve_model",
     "manning_resistance_model",
     "pid_control_model_1",
+    "miscellaneous_nodes_model",
 ]
