@@ -185,7 +185,7 @@ def flow_condition_model():
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
+                "edge_type": (len(from_id) - 1) * ["flow"] + ["control"],
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -195,9 +195,9 @@ def flow_condition_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1, 3, 3, 6, 6, 9, 9],
-            "area": [0.0, 1000.0] * 4,
-            "level": [0.0, 1.0] * 4,
+            "node_id": [3, 3],
+            "area": [100.0, 100.0],
+            "level": [0.0, 1.0],
         }
     )
 
@@ -218,7 +218,7 @@ def flow_condition_model():
     level_boundary = ribasim.LevelBoundary(
         static=pd.DataFrame(
             data={
-                "node_id": [1.5],
+                "node_id": [1, 5],
                 "level": [10, 10],
             }
         )
