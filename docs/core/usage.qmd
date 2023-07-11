@@ -419,7 +419,7 @@ control_state  | String   | -    |
 
 #### DiscreteControl output
 
-The control table contains a record of when which node switch to which control state based on which control state.
+The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 
 column          | type
 --------------- | ----------
