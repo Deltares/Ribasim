@@ -190,7 +190,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     return DiscreteControl(
         condition.node_id,
-        condition.listen_node_id,
+        condition.listen_feature_id,
         condition.variable,
         condition.greater_than,
         condition_value,

@@ -142,14 +142,14 @@ function discrete_control_condition(out, storage, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_node_id, variable, greater_than)) in enumerate(
+    for (i, (listen_feature_id, variable, greater_than)) in enumerate(
         zip(
-            discrete_control.listen_node_id,
+            discrete_control.listen_feature_id,
             discrete_control.variable,
             discrete_control.greater_than,
         ),
     )
-        value = get_value(p, listen_node_id, variable, storage)
+        value = get_value(p, listen_feature_id, variable, storage)
         diff = value - greater_than
         out[i] = diff
     end

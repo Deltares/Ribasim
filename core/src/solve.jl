@@ -235,7 +235,7 @@ end
 
 """
 node_id: node ID of the Control node
-listen_node_id: the node ID of the node being condition on
+listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
@@ -245,7 +245,7 @@ record: Namedtuple with discrete control information for output
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{Int}
-    listen_node_id::Vector{Int}
+    listen_feature_id::Vector{Int}
     variable::Vector{String}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}

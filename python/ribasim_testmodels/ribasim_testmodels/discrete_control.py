@@ -81,7 +81,7 @@ def pump_discrete_control_model() -> ribasim.Model:
     condition = pd.DataFrame(
         data={
             "node_id": [5, 5],
-            "listen_node_id": [1, 3],
+            "listen_feature_id": [1, 3],
             "variable": ["level", "level"],
             "greater_than": [0.8, 0.4],
         }
@@ -244,7 +244,7 @@ def flow_condition_model():
         condition=pd.DataFrame(
             data={
                 "node_id": [6],
-                "listen_node_id": [2],
+                "listen_feature_id": [2],
                 "variable": ["flow"],
                 "greater_than": [1000],
             }

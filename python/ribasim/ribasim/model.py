@@ -322,15 +322,15 @@ class Model(BaseModel):
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
 
-                for listen_node_id, variable in zip(
-                    data_node_id.listen_node_id, data_node_id.variable
+                for listen_feature_id, variable in zip(
+                    data_node_id.listen_feature_id, data_node_id.variable
                 ):
                     point_start = self.node.static.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
                     if variable == "flow":
-                        edge_line = self.edge.static.geometry[listen_node_id - 1]
+                        edge_line = self.edge.static.geometry[listen_feature_id - 1]
                         print(edge_line, edge_line.xy)
                         x_end.append(np.mean(edge_line.xy[0]))
                         y_end.append(np.mean(edge_line.xy[1]))
@@ -431,12 +431,13 @@ class Model(BaseModel):
                 truth_state, conditions.iterrows()
             ):
                 var = condition["variable"]
-                listen_node_id = condition["listen_node_id"]
-                listen_node_type = self.node.static.loc[listen_node_id, "type"]
+                listen_feature_id = condition["listen_feature_id"]
+                listen_node_type = self.node.static.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
+                feature_type = "edge" if var == "flow" else "node"
 
-                out += f"\tFor node ID {listen_node_id} ({listen_node_type}): {var} {symbol} {greater_than}\n"
+                out += f"\tFor {feature_type} ID {listen_feature_id} ({listen_node_type}): {var} {symbol} {greater_than}\n"
 
             padding = len(enumeration) * " "
             out += f'\n{padding}This yielded control state "{control_state}":\n'
