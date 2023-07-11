@@ -313,16 +313,32 @@ class Model(BaseModel):
         return Model(**kwargs)
 
     def plot_control_listen(self, ax):
-        edges = set()
+        x_start, x_end = [], []
+        y_start, y_end = [], []
 
         if self.discrete_control:
             condition = self.discrete_control.condition
 
             for node_id in condition.node_id.unique():
-                for listen_node_id in condition.loc[
-                    condition.node_id == node_id, "listen_node_id"
-                ]:
-                    edges.add((node_id - 1, listen_node_id - 1))
+                data_node_id = condition[condition.node_id == node_id]
+
+                for listen_node_id, variable in zip(
+                    data_node_id.listen_node_id, data_node_id.variable
+                ):
+                    point_start = self.node.static.iloc[node_id - 1].geometry
+                    x_start.append(point_start.x)
+                    y_start.append(point_start.y)
+
+                    if variable == "flow":
+                        edge_line = self.edge.static.geometry[listen_node_id - 1]
+                        print(edge_line, edge_line.xy)
+                        x_end.append(np.mean(edge_line.xy[0]))
+                        y_end.append(np.mean(edge_line.xy[1]))
+
+                    else:
+                        point_end = self.node.static.iloc[node_id - 1]
+                        x_end.append(point_end.x)
+                        y_end.append(point_end.y)
 
         if self.pid_control:
             static = self.pid_control.static
@@ -331,19 +347,18 @@ class Model(BaseModel):
                 for listen_node_id in static.loc[
                     static.node_id == node_id, "listen_node_id"
                 ]:
-                    edges.add((node_id - 1, listen_node_id - 1))
+                    point_start = self.node.static.iloc[listen_node_id - 1].geometry
+                    x_start.append(point_start.x)
+                    y_start.append(point_start.y)
 
-        if len(edges) == 0:
+                    point_end = self.node.static.iloc[node_id - 1]
+                    x_end.append(point_end.x)
+                    y_end.append(point_end.y)
+
+        if len(x_start) == 0:
             return
 
-        start, end = list(zip(*edges))
-
         # This part can probably be done more efficiently
-        x_start = self.node.static.iloc[list(start)].geometry.x
-        y_start = self.node.static.iloc[list(start)].geometry.y
-        x_end = self.node.static.iloc[list(end)].geometry.x
-        y_end = self.node.static.iloc[list(end)].geometry.y
-
         for i, (x, y, x_, y_) in enumerate(zip(x_start, y_start, x_end, y_end)):
             ax.plot(
                 [x, x_],
