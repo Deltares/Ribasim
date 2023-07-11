@@ -7,8 +7,12 @@ from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
     bucket_model,
+    linear_resistance_model,
+    manning_resistance_model,
+    miscellaneous_nodes_model,
     pid_control_model_1,
     pump_discrete_control_model,
+    rating_curve_model,
     tabulated_rating_curve_model,
     trivial_model,
 )
@@ -45,4 +49,8 @@ if __name__ == "__main__":
     tabulated_rating_curve_model().write(datadir / "tabulated_rating_curve")
     pump_discrete_control_model().write(datadir / "pump_discrete_control")
     backwater_model().write(datadir / "backwater")
+    linear_resistance_model().write(datadir / "linear_resistance")
+    rating_curve_model().write(datadir / "rating_curve")
+    manning_resistance_model().write(datadir / "manning_resistance")
     pid_control_model_1().write(datadir / "pid_1")
+    miscellaneous_nodes_model().write(datadir / "misc_nodes")

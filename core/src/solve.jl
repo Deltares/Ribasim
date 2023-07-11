@@ -521,19 +521,19 @@ function formulate!(
 
     for (id, rate) in zip(node_id, flow_rate)
         # Requirement: edge points away from the flow boundary
-        dst_id = only(outneighbors(graph_flow, id))
+        for dst_id in outneighbors(graph_flow, id)
+            # Adding water is always possible
+            if rate >= 0
+                flow[id, dst_id] = rate
+            else
+                hasindex, basin_idx = id_index(basin.node_id, dst_id)
+                @assert hasindex "FlowBoundary intake not a Basin"
 
-        # Adding water is always possible
-        if rate >= 0
-            flow[id, dst_id] = rate
-        else
-            hasindex, basin_idx = id_index(basin.node_id, dst_id)
-            @assert hasindex "FlowBoundary intake not a Basin"
-
-            s = storage[basin_idx]
-            reduction_factor = min(s, 10.0) / 10.0
-            q = reduction_factor * rate
-            flow[id, dst_id] = q
+                s = storage[basin_idx]
+                reduction_factor = min(s, 10.0) / 10.0
+                q = reduction_factor * rate
+                flow[id, dst_id] = q
+            end
         end
     end
 end
@@ -623,8 +623,8 @@ function water_balance!(
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
-    formulate!(fractional_flow, p)
     formulate!(flow_boundary, p, storage)
+    formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
 
     # Now formulate du

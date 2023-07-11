@@ -176,7 +176,7 @@ reprf(x) = repr(convert(Vector{Float32}, x))
 
 See [here](python.qmd#sec-codecov) for monitoring of Python test coverage.
 
-Future: Test for the specific behaviour of each node type
+If the new node type introduces new (somewhat) complex behaviour, a good test is to construct a minimal model containing the new node type in `python/ribasim_testmodels/ribasim_testmodels/equations.py` and compare the simulation result to the analytical solution (if possible) in `core/test/equations.jl`.
 
 
 # Documentation
