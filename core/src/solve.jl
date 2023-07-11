@@ -14,6 +14,7 @@ struct Connectivity
     graph_control::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
+    edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
     edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}

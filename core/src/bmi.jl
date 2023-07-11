@@ -156,19 +156,22 @@ function discrete_control_condition(out, storage, t, integrator)
 end
 
 """
-Get a value for a condition. Currently only supports getting levels from basins.
+Get a value for a condition. Currently supports getting levels from basins and flows
+from flow edges.
 """
-function get_value(p::Parameters, node_id::Int, variable::String, storage)
-    # TODO: Add support for getting flow values
-
+function get_value(p::Parameters, feature_id::Int, variable::String, storage)
     if variable == "level"
         basin = p.basin
 
-        # NOTE: Getting the level with get_level does NOT work since water_balance!
-        # is not called during rootfinding for callback
-        hasindex, basin_idx = id_index(basin.node_id, node_id)
+        # NOTE: Getting the level with get_level does NOT work since basin.current_level
+        # is not updated during callback rootfinding
+        hasindex, basin_idx = id_index(basin.node_id, feature_id)
         _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
+    elseif variable == "flow"
+        connectivity = p.connectivity
+        edge = connectivity.edge_ids_flow_inv[feature_id]
+        value = connectivity.flow[edge]
     else
         throw(ValueError("Unsupported condition variable $variable."))
     end
