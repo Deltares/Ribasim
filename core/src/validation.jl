@@ -156,6 +156,7 @@ end
     active::Union{Missing, Bool}
     level::Float64
     discharge::Float64
+    control_state::Union{Missing, String}
 end
 
 @version TabulatedRatingCurveTimeV1 begin

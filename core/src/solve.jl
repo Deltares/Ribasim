@@ -129,6 +129,7 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     active::BitVector
     tables::Vector{Interpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 """

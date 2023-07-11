@@ -393,7 +393,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="tabulated_rating_curve",
+        modelname="tabulated_rating_curve_control",
         node=node,
         edge=edge,
         basin=basin,
