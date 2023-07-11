@@ -50,12 +50,12 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # The tests below are for the equations of flow associated with particular node types.
 # Each equation is tested by creating a minimal model containing the tested node and
 # comparing the simulation result to an analytical solution.
-# 
+#
 # To construct these analytical solutions it is nice to have a linear relationship between storage
 # and level, but this is not possible near the bottom of the basin because at the bottom the area has to be 0.
-# as a compromise the relationship is taken to be 
+# as a compromise the relationship is taken to be
 #   level(storage) = level_min + (storage - storage_min)/basin_area,
-# 
+#
 # where the storage of the basins is assumed never to get below storage_min, after which the area of the basin
 # is constant.
 
@@ -80,11 +80,11 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
 
-# Equation: storage' = -Q(level(storage)), storage(t0) = storage0, 
+# Equation: storage' = -Q(level(storage)), storage(t0) = storage0,
 # where Q(level) = α*(level-level_min)^2, hence
 # Equation: w' = -α/basin_area * w^2, w = (level(storage) - level_min)/basin_area
-# Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)), 
-# storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min)) 
+# Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
+# storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
 @testset "TabulatedRatingCurve" begin
     toml_path = normpath(@__DIR__, "../../data/rating_curve/rating_curve.toml")
     @test ispath(toml_path)
@@ -146,7 +146,7 @@ end
     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
 end
 
-# Simple solutions: 
+# Simple solutions:
 # storage1 = storage1(t0) + (t-t0)*(frac*q_boundary - q_pump)
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
