@@ -521,9 +521,7 @@ function formulate!(
 
     for (id, rate) in zip(node_id, flow_rate)
         # Requirement: edge points away from the flow boundary
-        # TODO: Check that only multiple outneighbours exist if these all go to fractionalflow
         for dst_id in outneighbors(graph_flow, id)
-
             # Adding water is always possible
             if rate >= 0
                 flow[id, dst_id] = rate
