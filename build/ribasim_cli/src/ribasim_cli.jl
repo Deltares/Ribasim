@@ -1,5 +1,7 @@
 module ribasim_cli
 
+using Logging: global_logger
+using TerminalLoggers: TerminalLogger
 using Ribasim
 
 function help(x)::Cint
@@ -26,6 +28,8 @@ function julia_main()::Cint
     end
 
     try
+        # show progress bar in terminal
+        global_logger(TerminalLogger())
         Ribasim.run(arg)
     catch
         Base.invokelatest(Base.display_error, current_exceptions())
