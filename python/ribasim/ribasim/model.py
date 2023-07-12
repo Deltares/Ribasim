@@ -335,7 +335,7 @@ class Model(BaseModel):
                         y_end.append(np.mean(edge_line.xy[1]))
 
                     else:
-                        point_end = self.node.static.iloc[node_id - 1]
+                        point_end = self.node.static.iloc[node_id - 1].geometry
                         x_end.append(point_end.x)
                         y_end.append(point_end.y)
 
