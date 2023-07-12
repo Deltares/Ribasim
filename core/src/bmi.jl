@@ -57,11 +57,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    set_initial_discrete_controlled_parameters!(
-        integrator,
-        parameters.discrete_control,
-        storage,
-    )
+    set_initial_discrete_controlled_parameters!(integrator, storage)
 
     return Model(integrator, config, saved_flow)
 end
@@ -75,9 +71,11 @@ end
 
 function set_initial_discrete_controlled_parameters!(
     integrator,
-    discrete_control::DiscreteControl,
     storage0::Vector{Float64},
-)
+)::Nothing
+    (; p) = integrator
+    (; basin, discrete_control) = p
+
     n_conditions = length(discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
     discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
@@ -160,15 +158,26 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow edges.
 """
 function get_value(p::Parameters, feature_id::Int, variable::String, storage)
-    if variable == "level"
-        basin = p.basin
+    (; basin) = p
 
-        # NOTE: Getting the level with get_level does NOT work since basin.current_level
-        # is not updated during callback rootfinding
+    if variable == "level"
         hasindex, basin_idx = id_index(basin.node_id, feature_id)
         _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
+
     elseif variable == "flow"
+
+        # Calculate all areas and levels for given storage
+        # TODO: This could be done cheaper, only looking at
+        # those basins that are relevant for the required flow
+        for i in eachindex(storage)
+            s = storage[i]
+            area, level = get_area_and_level(basin, i, s)
+            basin.current_level[i] = level
+            basin.current_area[i] = area
+        end
+
+        formulate_flows!(p, storage)
         connectivity = p.connectivity
         edge = connectivity.edge_ids_flow_inv[feature_id]
         value = connectivity.flow[edge]

@@ -226,7 +226,7 @@ def flow_condition_model():
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [2], "resistance": [1e3]})
+        static=pd.DataFrame(data={"node_id": [2], "resistance": [2e4]})
     )
 
     # Setup pump:
@@ -234,7 +234,7 @@ def flow_condition_model():
         static=pd.DataFrame(
             data={
                 "node_id": [4, 4],
-                "flow_rate": [0.0, 1e3],
+                "flow_rate": [0.0, 1e-3],
                 "control_state": ["off", "on"],
             }
         )
@@ -246,7 +246,7 @@ def flow_condition_model():
                 "node_id": [6],
                 "listen_feature_id": [2],
                 "variable": ["flow"],
-                "greater_than": [1000],
+                "greater_than": [20 / (24 * 60 * 60)],
             }
         ),
         logic=pd.DataFrame(

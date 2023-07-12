@@ -331,7 +331,6 @@ class Model(BaseModel):
 
                     if variable == "flow":
                         edge_line = self.edge.static.geometry[listen_feature_id - 1]
-                        print(edge_line, edge_line.xy)
                         x_end.append(np.mean(edge_line.xy[0]))
                         y_end.append(np.mean(edge_line.xy[1]))
 
