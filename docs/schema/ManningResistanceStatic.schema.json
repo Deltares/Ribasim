@@ -17,6 +17,13 @@
             "description": "a hack for pandera",
             "type": "string"
         },
+        "active": {
+            "format": "default",
+            "description": "active",
+            "type": [
+                "boolean"
+            ]
+        },
         "profile_width": {
             "format": "double",
             "description": "profile_width",

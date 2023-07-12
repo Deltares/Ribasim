@@ -19,11 +19,14 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    return LinearResistance(static.node_id, static.resistance)
+    active = coalesce.(static.active, true)
+
+    return LinearResistance(static.node_id, active, static.resistance)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
+    active = coalesce.(static.active, true)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
     static_node_ids = Set(static.node_id)
@@ -48,13 +51,15 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         end
         push!(interpolations, interpolation)
     end
-    return TabulatedRatingCurve(node_ids, interpolations, time)
+    return TabulatedRatingCurve(node_ids, active, interpolations, time)
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
+    active = coalesce.(static.active, true)
     return ManningResistance(
         static.node_id,
+        active,
         static.length,
         static.manning_n,
         static.profile_width,
@@ -64,21 +69,25 @@ end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    return FractionalFlow(static.node_id, static.fraction)
+    active = coalesce.(static.active, true)
+    return FractionalFlow(static.node_id, active, static.fraction)
 end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
-    return LevelBoundary(static.node_id, static.level)
+    active = coalesce.(static.active, true)
+    return LevelBoundary(static.node_id, active, static.level)
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
-    return FlowBoundary(static.node_id, static.flow_rate)
+    active = coalesce.(static.active, true)
+    return FlowBoundary(static.node_id, active, static.flow_rate)
 end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
+    active = coalesce.(static.active, true)
 
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
 
@@ -104,12 +113,13 @@ function Pump(db::DB, config::Config)::Pump
     min_flow_rate = coalesce.(static.min_flow_rate, 0.0)
     max_flow_rate = coalesce.(static.max_flow_rate, NaN)
 
-    return Pump(node_ids, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
+    return Pump(node_ids, active, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
 end
 
 function Terminal(db::DB, config::Config)::Terminal
     static = load_structvector(db, config, TerminalStaticV1)
-    return Terminal(static.node_id)
+    active = coalesce.(static.active, true)
+    return Terminal(static.node_id, active)
 end
 
 function Basin(db::DB, config::Config)::Basin
@@ -199,6 +209,7 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
+    active = coalesce.(static.active, true)
 
     proportional = coalesce.(static.proportional, NaN)
     integral = coalesce.(static.integral, NaN)
@@ -207,6 +218,7 @@ function PidControl(db::DB, config::Config)::PidControl
 
     return PidControl(
         static.node_id,
+        active,
         static.listen_node_id,
         proportional,
         integral,

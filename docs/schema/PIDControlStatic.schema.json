@@ -19,6 +19,13 @@
             "description": "listen_node_id",
             "type": "integer"
         },
+        "active": {
+            "format": "default",
+            "description": "active",
+            "type": [
+                "boolean"
+            ]
+        },
         "proportional": {
             "format": "double",
             "description": "proportional",

@@ -123,6 +123,7 @@ of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     tables::Vector{Interpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
 end
@@ -135,6 +136,7 @@ Requirements:
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     resistance::Vector{Float64}
 end
 
@@ -173,6 +175,7 @@ Requirements:
 """
 struct ManningResistance <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
@@ -188,6 +191,7 @@ Requirements:
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     fraction::Vector{Float64}
 end
 
@@ -198,6 +202,7 @@ The node_id are Indices to support fast lookup of level using ID.
 """
 struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     level::Vector{Float64}
 end
 
@@ -207,6 +212,7 @@ flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     flow_rate::Vector{Float64}
 end
 
@@ -217,6 +223,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     flow_rate::Vector{Float64}
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
@@ -228,6 +235,7 @@ node_id: node ID of the Terminal node
 """
 struct Terminal <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
 end
 
 """
@@ -256,6 +264,7 @@ end
 
 struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
+    active::BitVector
     listen_node_id::Vector{Int}
     proportional::Vector{Float64}
     integral::Vector{Float64}
@@ -336,12 +345,23 @@ function continuous_control!(
     (; min_flow_rate, max_flow_rate) = pump
     (; dstorage) = basin
     (; graph_control) = connectivity
-    (; node_id, proportional, integral, derivative, listen_node_id, error) = pid_control
+    (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
+        pid_control
 
     get_error!(pid_control, p)
 
     for (i, id) in enumerate(node_id)
+        # Should this integration continue when the PID node is inactive?
         du.integral[i] = error[i]
+
+        controlled_node_id = only(outneighbors(graph_control, id))
+        # TODO: support the use of id_index
+        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+
+        if !active[i]
+            pump.flow_rate[controlled_node_idx] = 0.0
+            return
+        end
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
@@ -372,9 +392,6 @@ function continuous_control!(
             flow_rate = min(flow_rate, max_flow_rate[i])
         end
 
-        controlled_node_id = only(outneighbors(graph_control, id))
-        # TODO: support the use of id_index
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
     return nothing
@@ -386,13 +403,19 @@ Directed graph: outflow is positive!
 function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, resistance) = linear_resistance
+    (; node_id, active, resistance) = linear_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
-        q = (get_level(p, basin_a_id) - get_level(p, basin_b_id)) / resistance[i]
-        flow[basin_a_id, id] = q
-        flow[id, basin_b_id] = q
+
+        if active[i]
+            q = (get_level(p, basin_a_id) - get_level(p, basin_b_id)) / resistance[i]
+            flow[basin_a_id, id] = q
+            flow[id, basin_b_id] = q
+        else
+            flow[basin_a_id, id] = 0.0
+            flow[id, basin_b_id] = 0.0
+        end
     end
     return nothing
 end
@@ -403,11 +426,17 @@ Directed graph: outflow is positive!
 function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, tables) = tabulated_rating_curve
+    (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
         downstream_ids = outneighbors(graph_flow, id)
-        q = tables[i](get_level(p, upstream_basin_id))
+
+        if active[i]
+            q = tables[i](get_level(p, upstream_basin_id))
+        else
+            q = 0.0
+        end
+
         flow[upstream_basin_id, id] = q
         for downstream_id in downstream_ids
             flow[id, downstream_id] = q
@@ -458,10 +487,17 @@ dry.
 function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothing
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, length, manning_n, profile_width, profile_slope) = manning_resistance
+    (; node_id, active, length, manning_n, profile_width, profile_slope) =
+        manning_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
+
+        if !active[i]
+            flow[basin_a_id, id] = 0.0
+            flow[id, basin_b_id] = 0.0
+            continue
+        end
 
         h_a = get_level(p, basin_a_id)
         h_b = get_level(p, basin_b_id)
@@ -501,11 +537,16 @@ end
 function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, fraction) = fractional_flow
+    (; node_id, active, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
-        upstream_id = only(inneighbors(graph_flow, id))
         downstream_id = only(outneighbors(graph_flow, id))
-        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
+
+        if active[i]
+            upstream_id = only(inneighbors(graph_flow, id))
+            flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
+        else
+            flow[id, downstream_id] = 0.0
+        end
     end
     return nothing
 end
@@ -517,11 +558,16 @@ function formulate!(
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, flow_rate) = flow_boundary
+    (; node_id, active, flow_rate) = flow_boundary
 
-    for (id, rate) in zip(node_id, flow_rate)
+    for (id, isactive, rate) in zip(node_id, active, flow_rate)
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
+            if !isactive
+                flow[id, dst_id] = 0.0
+                continue
+            end
+
             # Adding water is always possible
             if rate >= 0
                 flow[id, dst_id] = rate
@@ -541,10 +587,17 @@ end
 function formulate!(pump::Pump, p::Parameters, storage::SubArray{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, flow_rate) = pump
-    for (id, rate) in zip(node_id, flow_rate)
+    (; node_id, active, flow_rate) = pump
+    for (id, isactive, rate) in zip(node_id, active, flow_rate)
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
+
+        if !isactive
+            flow[src_id, id] = 0.0
+            flow[id, dst_id] = 0.0
+            continue
+        end
+
         # negative flow_rate means pumping against edge direction
         intake_id = rate >= 0 ? src_id : dst_id
 
