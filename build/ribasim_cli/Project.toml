@@ -5,8 +5,10 @@ version = "0.1.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 
 [compat]
 julia = "1.9"

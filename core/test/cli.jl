@@ -1,6 +1,7 @@
 using Test
 using Ribasim
 using IOCapture: capture
+using Logging: global_logger, ConsoleLogger
 
 include("../../build/ribasim_cli/src/ribasim_cli.jl")
 
@@ -21,3 +22,6 @@ end
     (; value) = capture(ribasim_cli.julia_main)
     @test value == 0
 end
+
+# the global logger is modified by ribasim_cli; set it back to the default
+global_logger(ConsoleLogger())
