@@ -5,55 +5,63 @@ function parse_static(
     defaults::NamedTuple,
 )::NamedTuple
     static_type = eltype(static)
-    columnnames = collect(fieldnames(static_type))
-    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames]
-    columnnames = columnnames[mask]
-    columntypes = collect(fieldtypes(static_type))[mask]
-    vals = Vector{Any}()
+    columnnames_static = collect(fieldnames(static_type))
+    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
+    columnnames_variables = columnnames[mask]
+    columntypes_variables = collect(fieldtypes(static_type))[mask]
+    vals = []
 
     node_ids = get_ids(db, nodetype)
     n_nodes = length(node_ids)
 
+    # Initialize the vectors for the output
     for i in eachindex(columntypes)
-        if isa(columntypes[i], Union)
-            columntype = nonmissingtype(columntypes[i])
+        if isa(columntypes_variables[i], Union)
+            columntype = nonmissingtype(columntypes_variables[i])
         else
-            columntype = columntypes[i]
+            columntype = columntypes_variables[i]
         end
 
         push!(vals, zeros(columntype, n_nodes))
     end
 
-    columnnames_variables = Tuple(copy(columnnames))
+    columnnames_out = copy(columnnames_variables)
 
-    push!(columnnames, :node_id)
+    push!(columnnames_out, :node_id)
     push!(vals, node_ids)
 
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
 
-    push!(columnnames, :control_mapping)
+    push!(columnnames_out, :control_mapping)
     push!(vals, control_mapping)
 
-    out = NamedTuple{Tuple(columnnames)}(Tuple(vals))
+    out = NamedTuple{Tuple(columnnames_out)}(Tuple(vals))
 
     if n_nodes == 0
         return out
     end
 
+    # Node id of the node being processed
     node_id = node_ids[1]
+
+    # Index in the output vectors for this node ID
     node_idx = 1
 
     for row in static
+
+        # I hope the alignment of values goes well, assumes ordered node IDs
         if node_id != row.node_id
             node_idx += 1
             node_id = row.node_id
         end
 
+        # If this row is a control state, add it to the control mapping
         if !ismissing(row.control_state)
             control_values = NamedTuple{columnnames_variables}(values(row)[mask])
             control_mapping[(row.node_id, row.control_state)] = control_values
         end
 
+        # Assign the parameter values to the output
         for columnname in columnnames_variables
             val = getfield(row, columnname)
 
