@@ -111,7 +111,7 @@ def basic_model() -> ribasim.Model:
 
     basin = ribasim.Basin(profile=profile, static=static)
 
-    # setup linear resistance:
+    # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
         static=pd.DataFrame(
             data={"node_id": [12, 10], "resistance": [5e3, (3600.0 * 24) / 100.0]}

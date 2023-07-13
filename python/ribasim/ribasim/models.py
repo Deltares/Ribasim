@@ -45,8 +45,8 @@ class LevelBoundaryStatic(BaseModel):
 
 class DiscreteControlCondition(BaseModel):
     remarks: Optional[str] = Field("", description="a hack for pandera")
-    listen_node_id: int = Field(..., description="listen_node_id")
     greater_than: float = Field(..., description="greater_than")
+    listen_feature_id: int = Field(..., description="listen_feature_id")
     node_id: int = Field(..., description="node_id")
     variable: str = Field(..., description="variable")
 
