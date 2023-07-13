@@ -1,3 +1,73 @@
+function parse_static(
+    static::StructVector,
+    db::DB,
+    nodetype::String,
+    defaults::NamedTuple,
+)::NamedTuple
+    static_type = eltype(static)
+    columnnames = collect(fieldnames(static_type))
+    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames]
+    columnnames = columnnames[mask]
+    columntypes = collect(fieldtypes(static_type))[mask]
+    vals = Vector{Any}()
+
+    node_ids = get_ids(db, nodetype)
+    n_nodes = length(node_ids)
+
+    for i in eachindex(columntypes)
+        if isa(columntypes[i], Union)
+            columntype = nonmissingtype(columntypes[i])
+        else
+            columntype = columntypes[i]
+        end
+
+        push!(vals, zeros(columntype, n_nodes))
+    end
+
+    columnnames_variables = Tuple(copy(columnnames))
+
+    push!(columnnames, :node_id)
+    push!(vals, node_ids)
+
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+
+    push!(columnnames, :control_mapping)
+    push!(vals, control_mapping)
+
+    out = NamedTuple{Tuple(columnnames)}(Tuple(vals))
+
+    if n_nodes == 0
+        return out
+    end
+
+    node_id = node_ids[1]
+    node_idx = 1
+
+    for row in static
+        if node_id != row.node_id
+            node_idx += 1
+            node_id = row.node_id
+        end
+
+        if !ismissing(row.control_state)
+            control_values = NamedTuple{columnnames_variables}(values(row)[mask])
+            control_mapping[(row.node_id, row.control_state)] = control_values
+        end
+
+        for columnname in columnnames_variables
+            val = getfield(row, columnname)
+
+            if ismissing(val)
+                val = getfield(defaults, columnname)
+            end
+
+            getfield(out, columnname)[node_idx] = val
+        end
+    end
+
+    return out
+end
+
 function Connectivity(db::DB)::Connectivity
     graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
     graph_control, edge_ids_control, edge_connection_types_control =
@@ -80,31 +150,16 @@ end
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
 
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN)
+    static_parsed = parse_static(static, db, "Pump", defaults)
 
-    if length(static.control_state) > 0 && !any(ismissing.(static.control_state))
-        # Starting flow_rates are first one found (can be updated by control initialisation)
-        node_ids::Vector{Int} = []
-        flow_rates::Vector{Float64} = []
-
-        for (node_id, control_state, row) in
-            zip(static.node_id, static.control_state, static)
-            if node_id ∉ node_ids
-                push!(node_ids, node_id)
-                push!(flow_rates, row.flow_rate)
-            end
-
-            control_mapping[(node_id, control_state)] = variable_nt(row)
-        end
-    else
-        node_ids = static.node_id
-        flow_rates = static.flow_rate
-    end
-
-    min_flow_rate = coalesce.(static.min_flow_rate, 0.0)
-    max_flow_rate = coalesce.(static.max_flow_rate, NaN)
-
-    return Pump(node_ids, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
+    return Pump(
+        static_parsed.node_id,
+        static_parsed.flow_rate,
+        static_parsed.min_flow_rate,
+        static_parsed.max_flow_rate,
+        static_parsed.control_mapping,
+    )
 end
 
 function Terminal(db::DB, config::Config)::Terminal
