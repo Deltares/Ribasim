@@ -3,7 +3,7 @@ function Connectivity(db::DB)::Connectivity
     graph_control, edge_ids_control, edge_connection_types_control =
         create_graph(db, "control")
 
-    edge_ids_flow_inv = dictionary(values(edge_ids_flow) .=> keys(edge_ids_flow))
+    edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
 
     flow = adjacency_matrix(graph_flow, Float64)
     nonzeros(flow) .= 0.0
