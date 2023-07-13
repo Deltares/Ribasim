@@ -166,7 +166,7 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int
-    listen_node_id::Int
+    listen_feature_id::Int
     variable::String
     greater_than::Float64
 end

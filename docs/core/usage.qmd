@@ -120,7 +120,7 @@ name it must have in the GeoPackage if it is stored there.
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
-  - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id n is bigger than 2.0 m'
+  - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 
 Adding a geometry to the node table can be helpful to examine models in
@@ -390,14 +390,14 @@ Currently the Julia core only supports controlling pumps.
 
 #### DiscreteControl / condition {#sec-condition}
 
-The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen node id is grater than the given value'.
+The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node/edge with the given listen feature id is grater than the given value'.
 
-column         | type     | unit    | restriction
--------------- | -------- | ------- | -----------
-node_id        | Int      | -       | sorted
-listen_node_id | Int      | -       |
-variable       | String   | -       | must be "level"
-greater_than   | Float64  | various |
+column            | type     | unit    | restriction
+----------------- | -------- | ------- | -----------
+node_id           | Int      | -       | sorted
+listen_feature_id | Int      | -       |
+variable          | String   | -       | must be "level" or "flow"
+greater_than      | Float64  | various |
 
 #### DiscreteControl / logic
 

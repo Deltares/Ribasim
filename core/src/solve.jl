@@ -14,6 +14,7 @@ struct Connectivity
     graph_control::DiGraph{Int}
     flow::SparseMatrixCSC{Float64, Int}
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
+    edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
     edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
@@ -22,6 +23,7 @@ struct Connectivity
         graph_control,
         flow,
         edge_ids_flow,
+        edge_ids_flow_inv,
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
@@ -42,6 +44,7 @@ struct Connectivity
                 graph_control,
                 flow,
                 edge_ids_flow,
+                edge_ids_flow_inv,
                 edge_ids_control,
                 edge_connection_types_flow,
                 edge_connection_types_control,
@@ -232,7 +235,7 @@ end
 
 """
 node_id: node ID of the Control node
-listen_node_id: the node ID of the node being condition on
+listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
@@ -242,7 +245,7 @@ record: Namedtuple with discrete control information for output
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{Int}
-    listen_node_id::Vector{Int}
+    listen_feature_id::Vector{Int}
     variable::Vector{String}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
@@ -286,9 +289,9 @@ Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
 function formulate!(
-    du::AbstractVector,
+    du::AbstractVector{Float64},
     basin::Basin,
-    storage::AbstractVector,
+    storage::AbstractVector{Float64},
     t::Real,
 )::Nothing
     for i in eachindex(storage)
@@ -513,7 +516,7 @@ end
 function formulate!(
     flow_boundary::FlowBoundary,
     p::Parameters,
-    storage::SubArray{Float64},
+    storage::AbstractVector{Float64},
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -538,7 +541,7 @@ function formulate!(
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, storage::SubArray{Float64})::Nothing
+function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
     (; node_id, flow_rate) = pump
@@ -587,23 +590,33 @@ function formulate!(
     return nothing
 end
 
-function water_balance!(
-    du::ComponentVector{Float64},
-    u::ComponentVector{Float64},
-    p::Parameters,
-    t,
-)::Nothing
+function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Nothing
     (;
-        connectivity,
-        basin,
         linear_resistance,
         manning_resistance,
         tabulated_rating_curve,
         fractional_flow,
         flow_boundary,
         pump,
-        pid_control,
     ) = p
+
+    formulate!(linear_resistance, p)
+    formulate!(manning_resistance, p)
+    formulate!(tabulated_rating_curve, p)
+    formulate!(flow_boundary, p, storage)
+    formulate!(fractional_flow, p)
+    formulate!(pump, p, storage)
+
+    return nothing
+end
+
+function water_balance!(
+    du::ComponentVector{Float64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    t,
+)::Nothing
+    (; connectivity, basin, pid_control) = p
 
     storage = u.storage
     integral = u.integral
@@ -620,12 +633,7 @@ function water_balance!(
     continuous_control!(du, pid_control, p, integral)
 
     # First formulate intermediate flows
-    formulate!(linear_resistance, p)
-    formulate!(manning_resistance, p)
-    formulate!(tabulated_rating_curve, p)
-    formulate!(flow_boundary, p, storage)
-    formulate!(fractional_flow, p)
-    formulate!(pump, p, storage)
+    formulate_flows!(p, storage)
 
     # Now formulate du
     formulate!(du, connectivity, basin)
