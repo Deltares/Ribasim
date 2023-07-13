@@ -57,11 +57,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.maxiters,
     )
 
-    set_initial_discrete_controlled_parameters!(
-        integrator,
-        parameters.discrete_control,
-        storage,
-    )
+    set_initial_discrete_controlled_parameters!(integrator, storage)
 
     return Model(integrator, config, saved_flow)
 end
@@ -75,9 +71,11 @@ end
 
 function set_initial_discrete_controlled_parameters!(
     integrator,
-    discrete_control::DiscreteControl,
     storage0::Vector{Float64},
-)
+)::Nothing
+    (; p) = integrator
+    (; basin, discrete_control) = p
+
     n_conditions = length(discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
     discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
@@ -142,33 +140,47 @@ function discrete_control_condition(out, storage, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_node_id, variable, greater_than)) in enumerate(
+    for (i, (listen_feature_id, variable, greater_than)) in enumerate(
         zip(
-            discrete_control.listen_node_id,
+            discrete_control.listen_feature_id,
             discrete_control.variable,
             discrete_control.greater_than,
         ),
     )
-        value = get_value(p, listen_node_id, variable, storage)
+        value = get_value(p, listen_feature_id, variable, storage)
         diff = value - greater_than
         out[i] = diff
     end
 end
 
 """
-Get a value for a condition. Currently only supports getting levels from basins.
+Get a value for a condition. Currently supports getting levels from basins and flows
+from flow edges.
 """
-function get_value(p::Parameters, node_id::Int, variable::String, storage)
-    # TODO: Add support for getting flow values
+function get_value(p::Parameters, feature_id::Int, variable::String, storage)
+    (; basin) = p
 
     if variable == "level"
-        basin = p.basin
-
-        # NOTE: Getting the level with get_level does NOT work since water_balance!
-        # is not called during rootfinding for callback
-        hasindex, basin_idx = id_index(basin.node_id, node_id)
+        hasindex, basin_idx = id_index(basin.node_id, feature_id)
         _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
+
+    elseif variable == "flow"
+
+        # Calculate all areas and levels for given storage
+        # TODO: This could be done cheaper, only looking at
+        # those basins that are relevant for the required flow
+        for i in eachindex(storage)
+            s = storage[i]
+            area, level = get_area_and_level(basin, i, s)
+            basin.current_level[i] = level
+            basin.current_area[i] = area
+        end
+
+        formulate_flows!(p, storage)
+        connectivity = p.connectivity
+        edge = connectivity.edge_ids_flow_inv[feature_id]
+        value = connectivity.flow[edge]
     else
         throw(ValueError("Unsupported condition variable $variable."))
     end

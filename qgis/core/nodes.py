@@ -414,7 +414,7 @@ class DiscreteControlCondition(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
-        QgsField("listen_node_id", QVariant.Int),
+        QgsField("listen_feature_id", QVariant.Int),
         QgsField("variable", QVariant.String),
         QgsField("greater_than", QVariant.Double),
     ]
