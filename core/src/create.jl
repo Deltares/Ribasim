@@ -49,8 +49,6 @@ function parse_static(
     node_idx = 1
 
     for row in static
-
-        # I hope the alignment of values goes well, assumes ordered node IDs
         if node_id != row.node_id
             node_idx += 1
             node_id = row.node_id
