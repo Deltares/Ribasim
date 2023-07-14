@@ -29,7 +29,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 [compat]
 Arrow = "2.3"
 BasicModelInterface = "0.1"
-ComponentArrays = "0.13.14"
+ComponentArrays = "0.13.14, 0.14"
 Configurations = "0.17"
 DBInterface = "2.4"
 DataInterpolations = "3.7"
