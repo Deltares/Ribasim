@@ -48,6 +48,8 @@ function parse_static(
     # Index in the output vectors for this node ID
     node_idx = 1
 
+    is_controllable = hasfield(static_type, :control_state)
+
     for row in static
         if node_id != row.node_id
             node_idx += 1
@@ -55,7 +57,7 @@ function parse_static(
         end
 
         # If this row is a control state, add it to the control mapping
-        if !ismissing(row.control_state)
+        if is_controllable && !ismissing(row.control_state)
             control_values = NamedTuple{columnnames_variables}(values(row)[mask])
             control_mapping[(row.node_id, row.control_state)] = control_values
         end
@@ -169,7 +171,7 @@ end
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     defaults = (; active = true)
-    static_parsed = parse_static(static, db, "Levelboundary", defaults)
+    static_parsed = parse_static(static, db, "LevelBoundary", defaults)
     return LevelBoundary(static_parsed.node_id, static_parsed.active, static_parsed.level)
 end
 
@@ -177,7 +179,11 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     defaults = (; active = true)
     static_parsed = parse_static(static, db, "FlowBoundary", defaults)
-    return FlowBoundary(static_parsed.node_id, static_parse.active, static_parsed.flow_rate)
+    return FlowBoundary(
+        static_parsed.node_id,
+        static_parsed.active,
+        static_parsed.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config)::Pump
