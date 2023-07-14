@@ -121,8 +121,7 @@ end
 
 function Terminal(db::DB, config::Config)::Terminal
     static = load_structvector(db, config, TerminalStaticV1)
-    active = coalesce.(static.active, true)
-    return Terminal(static.node_id, active)
+    return Terminal(static.node_id)
 end
 
 function Basin(db::DB, config::Config)::Basin

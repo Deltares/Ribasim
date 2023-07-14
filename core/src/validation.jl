@@ -169,7 +169,6 @@ end
 
 @version TerminalStaticV1 begin
     node_id::Int
-    active::Union{Missing, Bool}
 end
 
 @version DiscreteControlConditionV1 begin

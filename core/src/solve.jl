@@ -238,7 +238,6 @@ node_id: node ID of the Terminal node
 """
 struct Terminal <: AbstractParameterNode
     node_id::Vector{Int}
-    active::BitVector
 end
 
 """

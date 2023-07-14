@@ -46,7 +46,8 @@ def test_invalid_node_id(basic):
 
     # Add entry with invalid node ID
     model.pump.static = model.pump.static._append(
-        {"flow_rate": 1, "node_id": -1, "remarks": ""}, ignore_index=True
+        {"flow_rate": 1, "node_id": -1, "remarks": "", "active": True},
+        ignore_index=True,
     )
 
     with pytest.raises(
@@ -61,7 +62,7 @@ def test_node_id_duplicate(basic):
 
     # Add duplicate node ID
     model.pump.static = model.pump.static._append(
-        {"flow_rate": 1, "node_id": 1, "remarks": ""}, ignore_index=True
+        {"flow_rate": 1, "node_id": 1, "remarks": "", "active": True}, ignore_index=True
     )
 
     with pytest.raises(
