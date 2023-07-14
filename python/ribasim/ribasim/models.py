@@ -40,7 +40,6 @@ class LevelBoundaryStatic(BaseModel):
     active: Optional[bool] = Field(None, description="active")
     node_id: int = Field(..., description="node_id")
     level: float = Field(..., description="level")
-    control_state: Optional[str] = Field(None, description="control_state")
 
 
 class DiscreteControlCondition(BaseModel):
@@ -86,6 +85,7 @@ class PidControlStatic(BaseModel):
     proportional: float = Field(..., description="proportional")
     node_id: int = Field(..., description="node_id")
     derivative: Optional[float] = Field(None, description="derivative")
+    control_state: Optional[str] = Field(None, description="control_state")
 
 
 class ManningResistanceStatic(BaseModel):
@@ -104,7 +104,6 @@ class FlowBoundaryStatic(BaseModel):
     active: Optional[bool] = Field(None, description="active")
     flow_rate: float = Field(..., description="flow_rate")
     node_id: int = Field(..., description="node_id")
-    control_state: Optional[str] = Field(None, description="control_state")
 
 
 class Node(BaseModel):

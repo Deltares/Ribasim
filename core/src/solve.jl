@@ -141,6 +141,7 @@ struct LinearResistance <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     resistance::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 """
@@ -183,6 +184,7 @@ struct ManningResistance <: AbstractParameterNode
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 """
@@ -196,6 +198,7 @@ struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     fraction::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 """

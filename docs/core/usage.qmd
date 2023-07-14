@@ -312,7 +312,6 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
 flow_rate     | Float64 | $m^3 s^{-1}$ | -
-control_state | String  | -            | (optional)
 
 
 ### LinearResistance

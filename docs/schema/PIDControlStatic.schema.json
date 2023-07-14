@@ -42,6 +42,13 @@
             "type": [
                 "number"
             ]
+        },
+        "control_state": {
+            "format": "default",
+            "description": "control_state",
+            "type": [
+                "string"
+            ]
         }
     },
     "required": [
