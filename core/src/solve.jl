@@ -356,17 +356,16 @@ function continuous_control!(
     get_error!(pid_control, p)
 
     for (i, id) in enumerate(node_id)
-        # Should this integration continue when the PID node is inactive?
-        du.integral[i] = error[i]
-
         controlled_node_id = only(outneighbors(graph_control, id))
         # TODO: support the use of id_index
         controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
 
         if !active[i]
-            pump.flow_rate[controlled_node_idx] = 0.0
+            du.integral[i] = 0.0
             return
         end
+
+        du.integral[i] = error[i]
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
