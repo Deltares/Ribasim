@@ -7,7 +7,7 @@ function parse_static(
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
     mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
-    columnnames_variables = columnnames[mask]
+    columnnames_variables = columnnames_static[mask]
     columntypes_variables = collect(fieldtypes(static_type))[mask]
     vals = []
 
@@ -15,7 +15,7 @@ function parse_static(
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
-    for i in eachindex(columntypes)
+    for i in eachindex(columntypes_variables)
         if isa(columntypes_variables[i], Union)
             columntype = nonmissingtype(columntypes_variables[i])
         else
@@ -26,6 +26,7 @@ function parse_static(
     end
 
     columnnames_out = copy(columnnames_variables)
+    columnnames_variables = Tuple(columnnames_variables)
 
     push!(columnnames_out, :node_id)
     push!(vals, node_ids)
@@ -100,7 +101,13 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    return LinearResistance(static.node_id, static.resistance)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "LinearResistance", defaults)
+    return LinearResistance(
+        static_parsed.node_id,
+        static_parsed.resistance,
+        static_parsed.control_mapping,
+    )
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -134,18 +141,27 @@ end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "ManningResistance", defaults)
     return ManningResistance(
-        static.node_id,
-        static.length,
-        static.manning_n,
-        static.profile_width,
-        static.profile_slope,
+        static_parsed.node_id,
+        static_parsed.length,
+        static_parsed.manning_n,
+        static_parsed.profile_width,
+        static_parsed.profile_slope,
+        static_parsed.control_mapping,
     )
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    return FractionalFlow(static.node_id, static.fraction)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "FractionalFlow", defaults)
+    return FractionalFlow(
+        static_parsed.node_id,
+        static_parsed.fraction,
+        static_parsed.control_mapping,
+    )
 end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
@@ -265,18 +281,17 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
+    defaults = (proportional = NaN, integral = NaN, derivative = NaN)
+    static_parsed = parse_static(static, db, "PidControl", defaults)
 
-    proportional = coalesce.(static.proportional, NaN)
-    integral = coalesce.(static.integral, NaN)
-    derivative = coalesce.(static.derivative, NaN)
-    error = zero(derivative)
+    error = zero(static_parsed.node_id)
 
     return PidControl(
-        static.node_id,
-        static.listen_node_id,
-        proportional,
-        integral,
-        derivative,
+        static_parsed.node_id,
+        static_parsed.listen_node_id,
+        static_parsed.proportional,
+        static_parsed.integral,
+        static_parsed.derivative,
         error,
     )
 end
