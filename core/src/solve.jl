@@ -339,6 +339,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
 end
 
 function continuous_control!(
+    u::ComponentVector{Float64},
     du::ComponentVector{Float64},
     pid_control::PidControl,
     p::Parameters,
@@ -362,6 +363,7 @@ function continuous_control!(
 
         if !active[i]
             du.integral[i] = 0.0
+            u.integral[i] = 0.0
             return
         end
 

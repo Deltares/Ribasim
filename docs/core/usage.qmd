@@ -439,7 +439,7 @@ control_state   | String
 
 ### PidControl
 
-The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate vale.
+The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
 
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------
