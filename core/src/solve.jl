@@ -686,7 +686,7 @@ function water_balance!(
     formulate!(du, basin, storage, t)
 
     # PID control (does not set flows)
-    continuous_control!(du, pid_control, p, integral)
+    continuous_control!(u, du, pid_control, p, integral)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage)
