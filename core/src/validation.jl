@@ -123,13 +123,11 @@ end
 @version LevelBoundaryStaticV1 begin
     node_id::Int
     level::Float64
-    control_state::Union{Missing, String}
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     flow_rate::Float64
-    control_state::Union{Missing, String}
 end
 
 @version LinearResistanceStaticV1 begin
@@ -183,6 +181,7 @@ end
     proportional::Float64
     integral::Union{Missing, Float64}
     derivative::Union{Missing, Float64}
+    control_state::Union{Missing, String}
 end
 
 function variable_names(s::Any)

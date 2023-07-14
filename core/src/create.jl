@@ -1,3 +1,80 @@
+function parse_static(
+    static::StructVector,
+    db::DB,
+    nodetype::String,
+    defaults::NamedTuple,
+)::NamedTuple
+    static_type = eltype(static)
+    columnnames_static = collect(fieldnames(static_type))
+    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
+    columnnames_variables = columnnames_static[mask]
+    columntypes_variables = collect(fieldtypes(static_type))[mask]
+    vals = []
+
+    node_ids = get_ids(db, nodetype)
+    n_nodes = length(node_ids)
+
+    # Initialize the vectors for the output
+    for i in eachindex(columntypes_variables)
+        if isa(columntypes_variables[i], Union)
+            columntype = nonmissingtype(columntypes_variables[i])
+        else
+            columntype = columntypes_variables[i]
+        end
+
+        push!(vals, zeros(columntype, n_nodes))
+    end
+
+    columnnames_out = copy(columnnames_variables)
+    columnnames_variables = Tuple(columnnames_variables)
+
+    push!(columnnames_out, :node_id)
+    push!(vals, node_ids)
+
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+
+    push!(columnnames_out, :control_mapping)
+    push!(vals, control_mapping)
+
+    out = NamedTuple{Tuple(columnnames_out)}(Tuple(vals))
+
+    if n_nodes == 0
+        return out
+    end
+
+    # Node id of the node being processed
+    node_id = node_ids[1]
+
+    # Index in the output vectors for this node ID
+    node_idx = 1
+
+    for row in static
+        if node_id != row.node_id
+            node_idx += 1
+            node_id = row.node_id
+        end
+
+        # If this row is a control state, add it to the control mapping
+        if !ismissing(row.control_state)
+            control_values = NamedTuple{columnnames_variables}(values(row)[mask])
+            control_mapping[(row.node_id, row.control_state)] = control_values
+        end
+
+        # Assign the parameter values to the output
+        for columnname in columnnames_variables
+            val = getfield(row, columnname)
+
+            if ismissing(val)
+                val = getfield(defaults, columnname)
+            end
+
+            getfield(out, columnname)[node_idx] = val
+        end
+    end
+
+    return out
+end
+
 function Connectivity(db::DB)::Connectivity
     graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
     graph_control, edge_ids_control, edge_connection_types_control =
@@ -22,7 +99,13 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    return LinearResistance(static.node_id, static.resistance)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "LinearResistance", defaults)
+    return LinearResistance(
+        static_parsed.node_id,
+        static_parsed.resistance,
+        static_parsed.control_mapping,
+    )
 end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
@@ -56,18 +139,27 @@ end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "ManningResistance", defaults)
     return ManningResistance(
-        static.node_id,
-        static.length,
-        static.manning_n,
-        static.profile_width,
-        static.profile_slope,
+        static_parsed.node_id,
+        static_parsed.length,
+        static_parsed.manning_n,
+        static_parsed.profile_width,
+        static_parsed.profile_slope,
+        static_parsed.control_mapping,
     )
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    return FractionalFlow(static.node_id, static.fraction)
+    defaults = (;)
+    static_parsed = parse_static(static, db, "FractionalFlow", defaults)
+    return FractionalFlow(
+        static_parsed.node_id,
+        static_parsed.fraction,
+        static_parsed.control_mapping,
+    )
 end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
@@ -83,31 +175,16 @@ end
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
 
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN)
+    static_parsed = parse_static(static, db, "Pump", defaults)
 
-    if length(static.control_state) > 0 && !any(ismissing.(static.control_state))
-        # Starting flow_rates are first one found (can be updated by control initialisation)
-        node_ids::Vector{Int} = []
-        flow_rates::Vector{Float64} = []
-
-        for (node_id, control_state, row) in
-            zip(static.node_id, static.control_state, static)
-            if node_id ∉ node_ids
-                push!(node_ids, node_id)
-                push!(flow_rates, row.flow_rate)
-            end
-
-            control_mapping[(node_id, control_state)] = variable_nt(row)
-        end
-    else
-        node_ids = static.node_id
-        flow_rates = static.flow_rate
-    end
-
-    min_flow_rate = coalesce.(static.min_flow_rate, 0.0)
-    max_flow_rate = coalesce.(static.max_flow_rate, NaN)
-
-    return Pump(node_ids, flow_rates, min_flow_rate, max_flow_rate, control_mapping)
+    return Pump(
+        static_parsed.node_id,
+        static_parsed.flow_rate,
+        static_parsed.min_flow_rate,
+        static_parsed.max_flow_rate,
+        static_parsed.control_mapping,
+    )
 end
 
 function Terminal(db::DB, config::Config)::Terminal
@@ -202,18 +279,17 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
+    defaults = (proportional = NaN, integral = NaN, derivative = NaN)
+    static_parsed = parse_static(static, db, "PidControl", defaults)
 
-    proportional = coalesce.(static.proportional, NaN)
-    integral = coalesce.(static.integral, NaN)
-    derivative = coalesce.(static.derivative, NaN)
-    error = zero(derivative)
+    error = zero(static_parsed.node_id)
 
     return PidControl(
-        static.node_id,
-        static.listen_node_id,
-        proportional,
-        integral,
-        derivative,
+        static_parsed.node_id,
+        static_parsed.listen_node_id,
+        static_parsed.proportional,
+        static_parsed.integral,
+        static_parsed.derivative,
         error,
     )
 end
