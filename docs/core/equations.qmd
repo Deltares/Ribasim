@@ -37,7 +37,8 @@ Let $V$ be the set of node IDs and let $E$ be the set of ordered tuples $(i,j)$ 
 We can split the set of nodes into two subsets $V = B \cup N$, where $B$ is the set of basins and $N$ is the set of non-basins.
 The basins have an associated storage state and the non-basins dictate how water flows to or from basins.
 
-$\mathbf{u}(t)$ is given by all the states of the model, which are (currently) the storage of the basins.
+$\mathbf{u}(t)$ is given by all the states of the model, which are (currently) the storage of the basins and the integral terms of the PID controllers, the latter being explained in [3 PID controller](equations.qmd#sec-PID).
+
 Given a single basin with node ID $i \in B$, the equation that dictates the change of its storage over time is given by
 
 $$
@@ -239,7 +240,7 @@ Where $v$ is the average water velocity. $h_{\text{loss}}$ is a combination of
 friction and contraction/expansion losses:
 
 $$
-h_{\text{loss}} = S_f L + \frac{C}{2g} (v_b^2 - v_a^2)
+h_{\text{loss}} = S_f L + \frac{C}{2g} \left(v_b^2 - v_a^2\right)
 $$
 
 Where:
@@ -326,6 +327,13 @@ $$
 B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
 $$
 
+
+# PID controller {#sec-PID}
+
+The PID controller continuously sets the flow rate of a pump or weir to bring the level of a certain basin closer to its setpoint. If we denote the setpoint by $r(t)$ and the basin level by $y(t)$, then the error is given by
+$$
+e(t) = r(t) - y(t).
+$$
 
 # Allocated water balance terms
 
