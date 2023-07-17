@@ -126,11 +126,12 @@ detail in the [the MODFLOW coupling section](../couple/modflow.qmd) of the docum
 ## Upstream and downstream flow
 
 Ribasim's basins can be connected to each other, and each basin expects an
-explicit connection. Two connections are currently available for inter-basin
+explicit connection. These connections are currently available for inter-basin
 flows:
 
 1. `OutflowTable`
 2. `LinearResistance`
+3. `ManningResistance`
 
 The flow direction of the basin is not pre-determined: flow directions may
 freely reverse, provided the connection allows it. Currently, a `LinearResistance`
@@ -367,80 +368,7 @@ $$
 
 Note by @eq-error that the error is positive if the setpoint is larger than the basin level and negative if the setpoint is smaller than the basin level.
 
-We enforce the convention that when a pump is controlled its edge points away from the basin, and when a weir is controlled its edge points towards the basin. Therefore, positive flows of the pump and weir have opposite effects on the basin, and thus the parameters $K_p,K_i,K_d$ of the pump and weir must have oppositive signs to achieve the same goal.
-
-# Allocated water balance terms
-
-Ribasim has been designed with the functionality to allocate water to different
-users within each basin. The volume allocated is determined by the user demand,
-the available water, and the priority of each user with respect to other users
-within the same basin. The water demands for a given basin can be summarized into
-three user categories. The handling of the allocation of water for different
-user categories varies, as explained in more detail below.
-
-::: {.hidden}
-$$
- \def\qavail{{Q_\text{avail vol}}}
- \def\demwm{{D_{\text{wm}}}}
- \def\demuser{{D_\text{user}}}
-$$
-:::
-
-## General User
-
-The General User category include the users Agriculture, Industry and Public
-Water supply. These users extract water from the basin and the demand
-($\demuser$) is determined externally.  The source of water allocated to the
-General User is dependent on if the basin is a free-flowing type basin or a
-level-controlled basin.
-
-If the basin is free-flowing, the water source will be the available water within
-the basin. If the basin is level-controlled additional water can be sourced from
-the regional network, should the water available from the basin be insufficient
-to satisfy $\demuser$.
-
-The availability of water ($\qavail$) internally in a basin in a given timestep
-is calculated by @eq-q-avail. This volume is available to be extracted by the
-General Users. In the Ribasim prototype, additional water from the regional
-network is currently modelled as an unlimited supply.
-
-$$
-    \qavail = \frac{(P - E_\text{pot}) \cdot A}{\mathrm{Δ}t} - \min(0, Q_\text{infil} - Q_\text{drain} - Q_\text{runoff}).
-$$ {#eq-q-avail}
-
-Here $A$ is the area. The $\qavail$ can be assigned to multiple users in the same basin. Allocation is
-based upon user priority. For a given user, in the case where $\qavail >
-\demuser$, the user demand is satisfied and the remaining $\qavail$ becomes
-available for the user of next highest priority. For a given user, in the case
-where $\demuser > \qavail$ then all of the available water is assigned to the
-user. This results in an allocation shortage and no remaining local water for
-any users of lower priority.
-
-However, as discussed, if the basin is a level-controlled basin, additional water
-can then be sourced from the regional network and is allocated to satisfy the
-allocation shortage of the General User.
-
-The allocation of water is decided intermittently by a separate process. This
-separate process is not all-knowing and it may overextract. Like other water
-balance sinks, negative storage is avoided and smooth numerical behavior is
-ensured via an activation function:
-
-$$
-    Q_\text{user} = Q_\text{alloc} \cdot r
-$$ {#eq-userflow}
-
-## Flushing
-
-The flushing requirement for the basin is a special case of user. Flushing is
-required to maintain water quality in the basin. This is determined externally.
-Water from the national network flows into the basin, and the same volume gets
-removed from the basin back to the national network. This water cannot be
-allocated to other users and there is no net change to the water level in the
-basin or the $\qavail$, see @eq-flushing.
-
-$$
-    Q_\text{in} = -Q_\text{out}
-$$ {#eq-flushing}
+We enforce the convention that when a pump is controlled, its edge points away from the basin, and when a weir is controlled, its edge points towards the basin, so that the main flow direction along these edges is positive. Therefore, positive flows of the pump and weir have opposite effects on the basin, and thus the parameters $K_p,K_i,K_d$ of the pump and weir must have oppositive signs to achieve the same goal.
 
 # Numerical solution
 
