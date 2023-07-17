@@ -27,7 +27,7 @@ The problem is of the form
 
 $$
 \frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t),\quad t \in [t_0,t_\text{end}],
-$$
+$$ {#eq-system}
 
 i.e. a system of coupled first order ordinary differential equations, with initial condition $\mathbf{u}(t_0)= \mathbf{u}_0$ and time dependent input data denoted by $p(t)$.
 
@@ -280,7 +280,7 @@ $$
 Q_a = Q_b = Q
 $$
 
-Filling in:
+Substituting:
 
 $$
 h_a = h_b + Q^2 \frac{n^2}{A^2 R_h^{4/3}} L
@@ -333,7 +333,41 @@ $$
 The PID controller continuously sets the flow rate of a pump or weir to bring the level of a certain basin closer to its setpoint. If we denote the setpoint by $r(t)$ and the basin level by $y(t)$, then the error is given by
 $$
 e(t) = r(t) - y(t).
+$$ {#eq-error}
+
+The output of the PID controller for the flow rate of the pump or weir is then given by
 $$
+    Q_\text{PID}(t) = K_p e(t) + K_i\int_{t_0}^t e(\tau)\text{d}\tau + K_d \frac{\text{d}e}{\text{d}t},
+$$
+
+for given constant parameters $K_p,K_i,K_d$. The pump or weir can have associated minimum and maximum flow rates $Q_\min, Q_\max$, and so
+$$
+Q_\text{pump/weir} = \begin{align}
+\begin{cases}
+    Q_\min & \text{if} & Q_\text{PID} < Q_\min, \\
+    Q_\text{PID} & \text{if} & Q_\min \leq Q_\text{PID} \leq Q_\max, \\
+    Q_\max & \text{if} & Q_\text{PID} > Q_\max.
+\end{cases}
+\end{align}
+$$
+
+
+For the integral term we denote
+$$
+I(t) = \int_{t_0}^t e(\tau)\text{d}\tau.
+$$
+
+$I(t)$ is treated as a state of the system and thus it has its own equation in the system in @eq-system:
+$$
+\frac{\text{d}I}{\text{d}t} = e(t).
+$$
+
+
+## The sign of the parameters
+
+Note by @eq-error that the error is positive if the setpoint is larger than the basin level and negative if the setpoint is smaller than the basin level.
+
+We enforce the convention that when a pump is controlled its edge points away from the basin, and when a weir is controlled its edge points towards the basin. Therefore, positive flows of the pump and weir have opposite effects on the basin, and thus the parameters $K_p,K_i,K_d$ of the pump and weir must have oppositive signs to achieve the same goal.
 
 # Allocated water balance terms
 
