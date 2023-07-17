@@ -48,6 +48,8 @@ function parse_static(
     # Index in the output vectors for this node ID
     node_idx = 1
 
+    is_controllable = hasfield(static_type, :control_state)
+
     for row in static
         if node_id != row.node_id
             node_idx += 1
@@ -55,7 +57,7 @@ function parse_static(
         end
 
         # If this row is a control state, add it to the control mapping
-        if !ismissing(row.control_state)
+        if is_controllable && !ismissing(row.control_state)
             control_values = NamedTuple{columnnames_variables}(values(row)[mask])
             control_mapping[(row.node_id, row.control_state)] = control_values
         end
@@ -99,10 +101,11 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    defaults = (;)
+    defaults = (; active = true)
     static_parsed = parse_static(static, db, "LinearResistance", defaults)
     return LinearResistance(
         static_parsed.node_id,
+        static_parsed.active,
         static_parsed.resistance,
         static_parsed.control_mapping,
     )
@@ -110,6 +113,7 @@ end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
+    active = coalesce.(static.active, true)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
     static_node_ids = Set(static.node_id)
@@ -134,15 +138,16 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         end
         push!(interpolations, interpolation)
     end
-    return TabulatedRatingCurve(node_ids, interpolations, time)
+    return TabulatedRatingCurve(node_ids, active, interpolations, time)
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    defaults = (;)
+    defaults = (; active = true)
     static_parsed = parse_static(static, db, "ManningResistance", defaults)
     return ManningResistance(
         static_parsed.node_id,
+        static_parsed.active,
         static_parsed.length,
         static_parsed.manning_n,
         static_parsed.profile_width,
@@ -153,10 +158,11 @@ end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    defaults = (;)
+    defaults = (; active = true)
     static_parsed = parse_static(static, db, "FractionalFlow", defaults)
     return FractionalFlow(
         static_parsed.node_id,
+        static_parsed.active,
         static_parsed.fraction,
         static_parsed.control_mapping,
     )
@@ -164,22 +170,30 @@ end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
-    return LevelBoundary(static.node_id, static.level)
+    defaults = (; active = true)
+    static_parsed = parse_static(static, db, "LevelBoundary", defaults)
+    return LevelBoundary(static_parsed.node_id, static_parsed.active, static_parsed.level)
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
-    return FlowBoundary(static.node_id, static.flow_rate)
+    defaults = (; active = true)
+    static_parsed = parse_static(static, db, "FlowBoundary", defaults)
+    return FlowBoundary(
+        static_parsed.node_id,
+        static_parsed.active,
+        static_parsed.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN)
+    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     static_parsed = parse_static(static, db, "Pump", defaults)
 
     return Pump(
         static_parsed.node_id,
+        static_parsed.active,
         static_parsed.flow_rate,
         static_parsed.min_flow_rate,
         static_parsed.max_flow_rate,
@@ -279,13 +293,14 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
-    defaults = (proportional = NaN, integral = NaN, derivative = NaN)
+    defaults = (active = true, proportional = NaN, integral = NaN, derivative = NaN)
     static_parsed = parse_static(static, db, "PidControl", defaults)
 
     error = zero(static_parsed.node_id)
 
     return PidControl(
         static_parsed.node_id,
+        static_parsed.active,
         static_parsed.listen_node_id,
         static_parsed.proportional,
         static_parsed.integral,

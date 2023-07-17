@@ -122,6 +122,8 @@ name it must have in the GeoPackage if it is stored there.
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
   - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
+- PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller).
+  - `PidControl / static`: The proportional, integral and derivative parameters and which basin should be controlled.
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
@@ -229,6 +231,7 @@ Lets a fraction (in [0,1]) of the incoming flow trough.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
 fraction      | Float64 | -            | in the interval [0,1]
 control_state | String  | -            | (optional)
 
@@ -241,6 +244,7 @@ relation between the storage of a connected Basin (via the outlet level) and its
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
+active    | Bool    | -            | (optional, default true)
 level     | Float64 | $m$          | -
 discharge | Float64 | $m^3 s^{-1}$ | non-negative
 
@@ -279,8 +283,9 @@ Note that the intake must always be a Basin.
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
+active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $m^3 s^{-1}$ | -
-min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, defaults to 0.0)
+min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 control_state         | String  | -            | (optional)
 
@@ -294,8 +299,8 @@ exchange water with the basin based on the difference in water level between the
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
 level         | Float64 | $m^3$        | non-negative
-control_state | String  | -            | (optional)
 
 
 
@@ -311,6 +316,7 @@ Note that the connected node must always be a Basin.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
 flow_rate     | Float64 | $m^3 s^{-1}$ | -
 
 
@@ -321,6 +327,7 @@ Flow proportional to the level difference between the connected basins.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
 resistance    | Float64 | $sm^{-2}$    | -
 control_state | String  | -            | (optional)
 
@@ -332,6 +339,7 @@ Flow through this connection is estimated by conservation of energy and the Mann
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
 length        | Float64 | $m$          | positive
 manning_n     | Float64 | $s m^{-\frac{1}{3}}$          | positive
 profile_with  | Float64 | $m$          | positive
@@ -426,6 +434,23 @@ time            | DateTime
 control_node_id | Int
 truth_state     | String
 control_state   | String
+
+
+
+### PidControl
+
+The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
+
+column         | type     | unit     | restriction
+-------------- | -------- | -------- | -----------
+node_id        | Int      | -        | sorted
+active         | Bool     | -        | (optional, default true)
+listen_node_id | Int      | -        | -
+proportional   | Float64  | $s^{-1}$ | (optional, default 0.0)
+integral       | Float64  | $s^{-2}$ | (optional, default 0.0)
+derivative     | Floar64  | -        | (optional, default 0.0)
+control_state  | String   | -        | (optional)
+
 
 
 ## Example input files
