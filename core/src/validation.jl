@@ -77,6 +77,7 @@ end
 
 @version PumpStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
@@ -116,28 +117,33 @@ end
 
 @version FractionalFlowStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     fraction::Float64
     control_state::Union{Missing, String}
 end
 
 @version LevelBoundaryStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     level::Float64
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     flow_rate::Float64
 end
 
 @version LinearResistanceStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     resistance::Float64
     control_state::Union{Missing, String}
 end
 
 @version ManningResistanceStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     length::Float64
     manning_n::Float64
     profile_width::Float64
@@ -147,6 +153,7 @@ end
 
 @version TabulatedRatingCurveStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     level::Float64
     discharge::Float64
 end
@@ -177,6 +184,7 @@ end
 
 @version PidControlStaticV1 begin
     node_id::Int
+    active::Union{Missing, Bool}
     listen_node_id::Int
     proportional::Float64
     integral::Union{Missing, Float64}
