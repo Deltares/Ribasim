@@ -422,7 +422,7 @@ class DiscreteControlCondition(Input):
 
 
 class DiscreteControlLogic(Input):
-    input_type = "Control / logic"
+    input_type = "DiscreteControl / logic"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
