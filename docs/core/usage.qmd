@@ -241,12 +241,13 @@ control_state | String  | -            | (optional)
 This table is similar in structure to the Basin profile. The TabulatedRatingCurve gives a
 relation between the storage of a connected Basin (via the outlet level) and its outflow.
 
-column    | type    | unit         | restriction
---------- | ------- | ------------ | -----------
-node_id   | Int     | -            | sorted
-active    | Bool    | -            | (optional, default true)
-level     | Float64 | $m$          | -
-discharge | Float64 | $m^3 s^{-1}$ | non-negative
+column        | type    | unit         | restriction
+------------- | ------- | ------------ | -----------
+node_id       | Int     | -            | sorted
+active        | Bool    | -            | (optional, default true)
+level         | Float64 | $m$          | sorted per control_state
+discharge     | Float64 | $m^3 s^{-1}$ | non-negative
+control_state | String  | -            | (optional) sorted per node_id
 
 node_id | discharge  | level
 ------- |----------- |-------
