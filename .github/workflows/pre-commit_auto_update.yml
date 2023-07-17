@@ -1,9 +1,9 @@
 name: Pre-commit
 
 on:
-  # every day at midnight
   schedule:
-    - cron: "0 0 * * *"
+  # every monday morning
+    - cron: "0 7 * * MON"
   # on demand
   workflow_dispatch:
 
