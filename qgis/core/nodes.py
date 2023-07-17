@@ -217,6 +217,7 @@ class Edge(Input):
     attributes = [
         QgsField("from_node_id", QVariant.Int),
         QgsField("to_node_id", QVariant.Int),
+        QgsField("edge_type", QVariant.String),
     ]
 
     @classmethod
