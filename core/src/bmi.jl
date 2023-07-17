@@ -17,7 +17,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     try
         parameters = Parameters(db, config)
         if !valid_flow_neighbor_amounts(parameters)
-            error("Invalid neighbour amounts.")
+            error("Invalid neighbor amounts.")
         end
 
         # use state
