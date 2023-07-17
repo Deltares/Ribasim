@@ -62,6 +62,32 @@ neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
 
+# Allowed number of inneighbors and outneighbors per node type
+struct neighbor_amounts_bounds
+    in_min::Int
+    in_max::Int
+    out_min::Int
+    out_max::Int
+end
+
+neighbors_amounts_bounds(nodetype::Symbol) = neighbors_amounts_bounds(Val(nodetype))
+neighbors_amounts_bounds(::Val{:Basin}) =
+    neighbor_amounts_bounds(0, typemax(Int), 0, typemax(Int))
+neighbors_amounts_bounds(::Val{:LinearResistance}) =
+    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
+neighbors_amounts_bounds(::Val{:ManningResistance}) =
+    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
+neighbors_amounts_bounds(::Val{:TabulatedRatingCurve}) =
+    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
+neighbors_amounts_bounds(::Val{:FractionalFlow}) = neighbor_amounts_bounds(1, 1, 1, 1)
+neighbors_amounts_bounds(::Val{:LevelBoundary}) =
+    neighbor_amounts_bounds(0, typemax(Int), 0, typemax(Int))
+neighbors_amounts_bounds(::Val{:FlowBoundary}) =
+    neighbor_amounts_bounds(0, 0, 1, typemax(Int))
+neighbourtypes(::Any) = neighbor_amounts_bounds(0, 0, 0, 0)
+neighbors_amounts_bounds(::Val{:Pump}) = neighbor_amounts_bounds(1, 1, 1, typemax(Int))
+neighbors_amounts_bounds(::Val{:Terminal}) = neighbor_amounts_bounds(1, typemax(Int), 0, 0)
+
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int

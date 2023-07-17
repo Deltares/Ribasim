@@ -30,11 +30,11 @@ struct Connectivity
     )
         invalid_networks = Vector{String}()
 
-        if !is_valid(edge_ids_flow, edge_connection_types_flow)
+        if !valid_edges(edge_ids_flow, edge_connection_types_flow)
             push!(invalid_networks, "flow")
         end
 
-        if !is_valid(edge_ids_control, edge_connection_types_flow)
+        if !valid_edges(edge_ids_control, edge_connection_types_control)
             push!(invalid_networks, "control")
         end
 
@@ -56,10 +56,14 @@ struct Connectivity
     end
 end
 
-function is_valid(
+"""
+Test for each node given its node type whether the nodes that
+# are downstream ('down-edge') of this node are of an allowed type
+"""
+function valid_edges(
     edge_ids::Dictionary{Tuple{Int, Int}, Int},
     edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
-)
+)::Bool
     rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
     errors = String[]
     for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
@@ -293,6 +297,93 @@ struct Parameters
     discrete_control::DiscreteControl
     pid_control::PidControl
     lookup::Dict{Int, Symbol}
+end
+
+"""
+Test for each node given its node type whether it has an allowed
+number of flow inneighbors and flow outneighbors
+"""
+function valid_flow_neighbor_amounts(p::Parameters)::Bool
+    (;
+        connectivity,
+        basin,
+        linear_resistance,
+        manning_resistance,
+        tabulated_rating_curve,
+        fractional_flow,
+        level_boundary,
+        flow_boundary,
+        pump,
+        terminal,
+    ) = p
+
+    (; graph_flow) = connectivity
+
+    errors = String[]
+
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, basin))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, linear_resistance))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, manning_resistance))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, tabulated_rating_curve))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, fractional_flow))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, level_boundary))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, flow_boundary))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, pump))
+    append!(errors, valid_flow_neighbor_amounts(graph_flow, terminal))
+
+    return if isempty(errors)
+        true
+    else
+        @error join(errors, "\n")
+        false
+    end
+end
+
+function valid_flow_neighbor_amounts(
+    graph_flow::DiGraph{Int},
+    node::AbstractParameterNode,
+)::Vector{String}
+    node_id = node.node_id
+    node_type = typeof(node)
+
+    bounds = neighbors_amounts_bounds(nameof(node_type))
+
+    errors = String[]
+
+    for id in node_id
+        n_inneighbors = length(inneighbors(graph_flow, id))
+        n_outneighbors = length(outneighbors(graph_flow, id))
+
+        if n_inneighbors < bounds.in_min
+            push!(
+                errors,
+                "Nodes of type $node_type must have at least $(bounds.in_min) inneighbors (got $n_inneighbors for node #$id).",
+            )
+        end
+
+        if n_inneighbors > bounds.in_max
+            push!(
+                errors,
+                "Nodes of type $node_type can have at most $(bounds.in_max) inneighbors (got $n_inneighbors for node #$id).",
+            )
+        end
+
+        if n_outneighbors < bounds.out_min
+            push!(
+                errors,
+                "Nodes of type $node_type must have at least $(bounds.out_min) outneighbors (got $n_outneighbors for node #$id).",
+            )
+        end
+
+        if n_outneighbors > bounds.out_max
+            push!(
+                errors,
+                "Nodes of type $node_type can have at most $(bounds.out_max) inneighbors (got $n_outneighbors for node #$id).",
+            )
+        end
+    end
+
+    return errors
 end
 
 """
