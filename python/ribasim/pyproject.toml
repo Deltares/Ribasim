@@ -22,7 +22,7 @@ dependencies = [
     "geopandas",
     "matplotlib",
     "pandas",
-    "pandera != 16.0",
+    "pandera != 0.16.0",
     "pyarrow",
     "pydantic ~= 1.0",
     "pyogrio",
