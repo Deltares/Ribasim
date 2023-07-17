@@ -357,28 +357,28 @@ function valid_flow_neighbor_amounts(
         if n_inneighbors < bounds.in_min
             push!(
                 errors,
-                "Nodes of type $node_type must have at least $(bounds.in_min) inneighbors (got $n_inneighbors for node #$id).",
+                "Nodes of type $node_type must have at least $(bounds.in_min) inneighbor(s) (got $n_inneighbors for node #$id).",
             )
         end
 
         if n_inneighbors > bounds.in_max
             push!(
                 errors,
-                "Nodes of type $node_type can have at most $(bounds.in_max) inneighbors (got $n_inneighbors for node #$id).",
+                "Nodes of type $node_type can have at most $(bounds.in_max) inneighbor(s) (got $n_inneighbors for node #$id).",
             )
         end
 
         if n_outneighbors < bounds.out_min
             push!(
                 errors,
-                "Nodes of type $node_type must have at least $(bounds.out_min) outneighbors (got $n_outneighbors for node #$id).",
+                "Nodes of type $node_type must have at least $(bounds.out_min) outneighbor(s) (got $n_outneighbors for node #$id).",
             )
         end
 
         if n_outneighbors > bounds.out_max
             push!(
                 errors,
-                "Nodes of type $node_type can have at most $(bounds.out_max) inneighbors (got $n_outneighbors for node #$id).",
+                "Nodes of type $node_type can have at most $(bounds.out_max) inneighbor(s) (got $n_outneighbors for node #$id).",
             )
         end
     end
