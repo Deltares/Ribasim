@@ -116,6 +116,8 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     active = coalesce.(static.active, true)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
+    control_mapping = Dict{Tuple{Int64, String}, NamedTuple}()
+
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
     msg = "TabulatedRatingCurve cannot be in both static and time tables"
@@ -138,7 +140,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         end
         push!(interpolations, interpolation)
     end
-    return TabulatedRatingCurve(node_ids, active, interpolations, time)
+    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
