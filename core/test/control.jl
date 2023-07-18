@@ -1,4 +1,5 @@
 import Ribasim
+using Dates: Date
 
 @testset "Pump discrete control" begin
     toml_path =
@@ -63,4 +64,23 @@ end
     level = Ribasim.get_storages_and_levels(model).level[1, :]
     bound = 5 .* exp.(-0.03 .* timesteps)
     @test all(abs.(level .- basin.target_level[1]) .< bound)
+end
+
+@testset "TabulatedRatingCurve control" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/tabulated_rating_curve_control/tabulated_rating_curve_control.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; discrete_control) = p
+    # it takes until July 11th to fill the Basin above 0.5 m
+    # with the initial "high" control_state
+    @test discrete_control.record.control_state == ["high", "low"]
+    @test discrete_control.record.time[1] == 0.0
+    t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
+    @test Date(t) == Date("2020-07-11")
+    # then the rating curve is updated to the "low" control_state
+    @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
 end

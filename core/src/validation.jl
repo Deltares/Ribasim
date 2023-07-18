@@ -182,6 +182,7 @@ end
     active::Union{Missing, Bool}
     level::Float64
     discharge::Float64
+    control_state::Union{Missing, String}
 end
 
 @version TabulatedRatingCurveTimeV1 begin
@@ -256,19 +257,18 @@ end
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
+sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 
+sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
+sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
+
 const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
-const LevelLookupSchemas = Union{TabulatedRatingCurveStaticV1, BasinProfileV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
-end
-
-function sort_by_function(table::StructVector{<:LevelLookupSchemas})
-    return sort_by_id_level
 end
 
 """
