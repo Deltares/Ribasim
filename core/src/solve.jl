@@ -5,7 +5,7 @@ const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true
 Store the connectivity information
 
 graph_flow, graph_control: directed graph with vertices equal to ids
-flow: store the flow on every edge
+flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
@@ -93,7 +93,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
 struct Basin{C} <: AbstractParameterNode
-    node_id::Indices{Int}
+    node_id::Indices{Int64}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
@@ -108,9 +108,64 @@ struct Basin{C} <: AbstractParameterNode
     # target level of basins
     target_level::Vector{Float64}
     # data source for parameter updates
-    time::StructVector{BasinForcingV1, C, Int}
+    time::StructVector{BasinForcingV1, C, Int64}
     # Storage derivative for use in PID controller
     dstorage::Vector{Float64}
+
+    function Basin(
+        node_id,
+        precipitation,
+        potential_evaporation,
+        drainage,
+        infiltration,
+        current_level,
+        current_area,
+        area,
+        level,
+        storage,
+        target_level,
+        time,
+        dstorage,
+    )
+        errors = String[]
+
+        for (id, levels, areas) in zip(node_id, level, area)
+            if has_repeats(levels)
+                push!(
+                    errors,
+                    "Basin with node id #$id has repeated levels, this cannot be interpolated.",
+                )
+            end
+
+            if areas[1] != 0
+                push!(
+                    errors,
+                    "Basins must have area 0 at the lowest level (got area $(area[1]) for node #$id).",
+                )
+            end
+        end
+
+        return new(
+            node_id,
+            precipitation,
+            potential_evaporation,
+            drainage,
+            infiltration,
+            current_level,
+            current_area,
+            area,
+            level,
+            storage,
+            target_level,
+            time,
+            dstorage,
+        )
+    end
+end
+
+function has_repeats(sorted_vector::Vector{Float64})::Bool
+    diff_vector = diff(sorted_vector)
+    return any(diff_vector .!= 0)
 end
 
 """
