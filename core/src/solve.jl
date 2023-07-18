@@ -93,7 +93,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
 struct Basin{C} <: AbstractParameterNode
-    node_id::Indices{Int64}
+    node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
@@ -108,7 +108,7 @@ struct Basin{C} <: AbstractParameterNode
     # target level of basins
     target_level::Vector{Float64}
     # data source for parameter updates
-    time::StructVector{BasinForcingV1, C, Int64}
+    time::StructVector{BasinForcingV1, C, Int}
     # Storage derivative for use in PID controller
     dstorage::Vector{Float64}
 
@@ -127,45 +127,65 @@ struct Basin{C} <: AbstractParameterNode
         time,
         dstorage,
     ) where {C}
-        errors = String[]
-
-        for (id, levels, areas) in zip(node_id, level, area)
-            if has_repeats(levels)
-                push!(
-                    errors,
-                    "Basin with node id #$id has repeated levels, this cannot be interpolated.",
-                )
-            end
-
-            if areas[1] != 0
-                push!(
-                    errors,
-                    "Basins must have area 0 at the lowest level (got area $(area[1]) for node #$id).",
-                )
-            end
+        if valid_profiles(node_id, level, area)
+            return new{C}(
+                node_id,
+                precipitation,
+                potential_evaporation,
+                drainage,
+                infiltration,
+                current_level,
+                current_area,
+                area,
+                level,
+                storage,
+                target_level,
+                time,
+                dstorage,
+            )
+        else
+            error("Errors occurred when parsing Basin data.")
         end
-
-        return new{C}(
-            node_id,
-            precipitation,
-            potential_evaporation,
-            drainage,
-            infiltration,
-            current_level,
-            current_area,
-            area,
-            level,
-            storage,
-            target_level,
-            time,
-            dstorage,
-        )
     end
 end
 
 function has_repeats(sorted_vector::Vector{Float64})::Bool
     diff_vector = diff(sorted_vector)
     return any(diff_vector .!= 0)
+end
+
+"""
+Check whether the profile data has no repeats in the levels and the areas start at 0.
+"""
+function valid_profiles(
+    node_id::Indices{Int64},
+    level::Vector{Vector{Float64}},
+    area::Vector{Vector{Float64}},
+)::Bool
+    errors = String[]
+
+    for (id, levels, areas) in zip(node_id, level, area)
+        if has_repeats(levels)
+            push!(
+                errors,
+                "Basin with node id #$id has repeated levels, this cannot be interpolated.",
+            )
+        end
+
+        if areas[1] != 0
+            push!(
+                errors,
+                "Basins must have area 0 at the lowest level (got area $(areas[1]) for node #$id).",
+            )
+        end
+    end
+
+    return if isempty(errors)
+        true
+    else
+        @error join(errors, "\n")
+        false
+    end
 end
 
 """
