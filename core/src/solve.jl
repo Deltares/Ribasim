@@ -668,12 +668,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Noth
     return nothing
 end
 
-function water_balance!(
-    du::ComponentVector{Float64},
-    u::ComponentVector{Float64},
-    p::Parameters,
-    t,
-)::Nothing
+function water_balance!(du::ComponentVector, u::ComponentVector, p::Parameters, t)::Nothing
     (; connectivity, basin, pid_control) = p
 
     storage = u.storage

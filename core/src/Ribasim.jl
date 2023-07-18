@@ -2,6 +2,7 @@ module Ribasim
 
 import IterTools
 import BasicModelInterface as BMI
+import Symbolics
 
 using Arrow: Arrow, Table
 using Configurations: from_toml

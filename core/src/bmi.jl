@@ -39,7 +39,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
     @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(water_balance!, u0, timespan, parameters)
+        du0 = copy(u0)
+        jac_sparsity = Symbolics.jacobian_sparsity(
+            (du, u) -> water_balance!(du, u, parameters, 0.0),
+            du0,
+            u0,
+        )
+        f = ODEFunction(water_balance!; jac_prototype = float.(jac_sparsity))
+        prob = ODEProblem(f, u0, timespan, parameters)
     end
 
     callback, saved_flow = create_callbacks(parameters)

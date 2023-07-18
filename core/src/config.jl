@@ -4,6 +4,7 @@ using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
 using Legolas: Legolas, record_type
+using LinearSolve: KLUFactorization
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
@@ -142,11 +143,13 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         error("Given solver algorithm $(solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
     end
+    # kwargs = (; linsolve = KLUFactorization())
+    kwargs = (;)
     # not all algorithms support this keyword
     try
-        algotype(; solver.autodiff)
+        algotype(; solver.autodiff, kwargs...)
     catch
-        algotype()
+        algotype(; kwargs...)
     end
 end
 
