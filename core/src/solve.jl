@@ -75,11 +75,11 @@ function valid_edges(
             )
         end
     end
-    return if isempty(errors)
-        true
+    if isempty(errors)
+        return true
     else
         @error join(errors, "\n")
-        false
+        return false
     end
 end
 
@@ -303,7 +303,7 @@ end
 Test for each node given its node type whether it has an allowed
 number of flow inneighbors and flow outneighbors
 """
-function valid_flow_neighbor_amounts(p::Parameters)::Bool
+function valid_n_flow_neighbors(p::Parameters)::Bool
     (;
         connectivity,
         basin,
@@ -321,25 +321,25 @@ function valid_flow_neighbor_amounts(p::Parameters)::Bool
 
     errors = String[]
 
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, basin))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, linear_resistance))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, manning_resistance))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, tabulated_rating_curve))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, fractional_flow))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, level_boundary))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, flow_boundary))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, pump))
-    append!(errors, valid_flow_neighbor_amounts(graph_flow, terminal))
+    append!(errors, valid_n_flow_neighbors(graph_flow, basin))
+    append!(errors, valid_n_flow_neighbors(graph_flow, linear_resistance))
+    append!(errors, valid_n_flow_neighbors(graph_flow, manning_resistance))
+    append!(errors, valid_n_flow_neighbors(graph_flow, tabulated_rating_curve))
+    append!(errors, valid_n_flow_neighbors(graph_flow, fractional_flow))
+    append!(errors, valid_n_flow_neighbors(graph_flow, level_boundary))
+    append!(errors, valid_n_flow_neighbors(graph_flow, flow_boundary))
+    append!(errors, valid_n_flow_neighbors(graph_flow, pump))
+    append!(errors, valid_n_flow_neighbors(graph_flow, terminal))
 
-    return if isempty(errors)
-        true
+    if isempty(errors)
+        return true
     else
         @error join(errors, "\n")
-        false
+        return false
     end
 end
 
-function valid_flow_neighbor_amounts(
+function valid_n_flow_neighbors(
     graph_flow::DiGraph{Int},
     node::AbstractParameterNode,
 )::Vector{String}
@@ -378,7 +378,7 @@ function valid_flow_neighbor_amounts(
         if n_outneighbors > bounds.out_max
             push!(
                 errors,
-                "Nodes of type $node_type can have at most $(bounds.out_max) inneighbor(s) (got $n_outneighbors for node #$id).",
+                "Nodes of type $node_type can have at most $(bounds.out_max) outneighbor(s) (got $n_outneighbors for node #$id).",
             )
         end
     end
