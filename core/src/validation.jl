@@ -56,7 +56,13 @@ neighbortypes(::Val{:FlowBoundary}) =
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:DiscreteControl}) = Set((:Pump,))
+neighbortypes(::Val{:DiscreteControl}) = Set((
+    :Pump,
+    :TabulatedRatingCurve,
+    :LinearResistance,
+    :ManningResistance,
+    :FractionalFlow,
+))
 neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
