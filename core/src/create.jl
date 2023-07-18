@@ -113,7 +113,6 @@ end
 
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
-    active = coalesce.(static.active, true)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
     static_node_ids = Set(static.node_id)
@@ -125,17 +124,43 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     @assert issetequal(node_ids, union(static_node_ids, time_node_ids))
 
     interpolations = Interpolation[]
-    errors = String[]
+    control_mapping = Dict{Tuple{Int64, String}, NamedTuple}()
+    active = BitVector()
+
     for node_id in node_ids
-        interpolation, is_valid = if node_id in static_node_ids
+        if node_id in static_node_ids
+            # Loop over all static rating curves (groups) with this node_id.
+            # If it has a control_state add it to control_mapping.
+            # The last rating curve forms the initial condition and activity.
             source = "static"
-            qh_interpolation(node_id, static)
+            rows = searchsorted(static.node_id, node_id)
+            static_id = view(static, rows)
+            local is_active, interpolation
+            # coalesce control_state to nothing to avoid boolean groupby logic on missing
+            for group in
+                IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
+                control_state = first(group).control_state
+                is_active = coalesce(first(group).active, true)
+                # TODO: use qh_interpolation
+                interpolation = LinearInterpolation(
+                    [row.discharge for row in group],
+                    [row.level for row in group],
+                )
+                is_valid = true
+                if !ismissing(control_state)
+                    control_mapping[(node_id, control_state)] = (; tables = interpolation)
+                end
+            end
+            push!(interpolations, interpolation)
+            push!(active, is_active)
         elseif node_id in time_node_ids
             source = "time"
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            qh_interpolation(node_id, pre_table)
+            interpolation, is_valid = qh_interpolation(node_id, pre_table)
+            push!(interpolations, interpolation)
+            push!(active, true)
         else
             error("TabulatedRatingCurve node ID $node_id data not in any table.")
         end
@@ -148,7 +173,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
         end
     end
-    return TabulatedRatingCurve(node_ids, active, interpolations, time)
+    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
