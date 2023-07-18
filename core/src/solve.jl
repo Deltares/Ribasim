@@ -127,7 +127,8 @@ struct Basin{C} <: AbstractParameterNode
         time::StructVector{BasinForcingV1, C, Int},
         dstorage,
     ) where {C}
-        if valid_profiles(node_id, level, area)
+        errors = valid_profiles(node_id, level, area)
+        if isempty(errors)
             return new{C}(
                 node_id,
                 precipitation,
@@ -144,6 +145,7 @@ struct Basin{C} <: AbstractParameterNode
                 dstorage,
             )
         else
+            @error join(errors, "\n")
             error("Errors occurred when parsing Basin data.")
         end
     end
@@ -161,7 +163,7 @@ function valid_profiles(
     node_id::Indices{Int64},
     level::Vector{Vector{Float64}},
     area::Vector{Vector{Float64}},
-)::Bool
+)::Vector{String}
     errors = String[]
 
     for (id, levels, areas) in zip(node_id, level, area)
@@ -179,13 +181,7 @@ function valid_profiles(
             )
         end
     end
-
-    return if isempty(errors)
-        true
-    else
-        @error join(errors, "\n")
-        false
-    end
+    return errors
 end
 
 """
