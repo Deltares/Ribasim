@@ -75,12 +75,12 @@ end
     model = Ribasim.run(toml_path)
     p = model.integrator.p
     (; discrete_control) = p
-    # it takes until July 11th to fill the Basin above 0.5 m
+    # it takes some months to fill the Basin above 0.5 m
     # with the initial "high" control_state
     @test discrete_control.record.control_state == ["high", "low"]
     @test discrete_control.record.time[1] == 0.0
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
-    @test Date(t) == Date("2020-07-11")
+    @test Date(t) == Date("2020-03-15")
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
 end
