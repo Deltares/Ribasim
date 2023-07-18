@@ -136,10 +136,8 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             static_id = view(static, rows)
             local is_active, interpolation
             # coalesce control_state to nothing to avoid boolean groupby logic on missing
-            for group in IterTools.groupby(
-                row -> (row.node_id, coalesce(row.control_state, nothing)),
-                static_id,
-            )
+            for group in
+                IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
                 interpolation = LinearInterpolation(
@@ -150,7 +148,6 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                     control_mapping[(node_id, control_state)] = (; tables = interpolation)
                 end
             end
-            #
             push!(interpolations, interpolation)
             push!(active, is_active)
         elseif node_id in time_node_ids
