@@ -126,6 +126,7 @@ class TabulatedRatingCurveStatic(BaseModel):
     node_id: int = Field(..., description="node_id")
     discharge: float = Field(..., description="discharge")
     level: float = Field(..., description="level")
+    control_state: Optional[str] = Field(None, description="control_state")
 
 
 class BasinState(BaseModel):

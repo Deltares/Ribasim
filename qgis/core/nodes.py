@@ -217,6 +217,7 @@ class Edge(Input):
     attributes = [
         QgsField("from_node_id", QVariant.Int),
         QgsField("to_node_id", QVariant.Int),
+        QgsField("edge_type", QVariant.String),
     ]
 
     @classmethod
@@ -421,7 +422,7 @@ class DiscreteControlCondition(Input):
 
 
 class DiscreteControlLogic(Input):
-    input_type = "Control / logic"
+    input_type = "DiscreteControl / logic"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
