@@ -124,7 +124,7 @@ struct Basin{C} <: AbstractParameterNode
         level,
         storage,
         target_level,
-        time::StructVector{BasinForcingV1, C, Int64},
+        time,
         dstorage,
     ) where {C}
         errors = String[]
