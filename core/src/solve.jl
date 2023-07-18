@@ -124,9 +124,9 @@ struct Basin{C} <: AbstractParameterNode
         level,
         storage,
         target_level,
-        time,
+        time::StructVector{BasinForcingV1, C, Int64},
         dstorage,
-    )
+    ) where {C}
         errors = String[]
 
         for (id, levels, areas) in zip(node_id, level, area)
@@ -145,7 +145,7 @@ struct Basin{C} <: AbstractParameterNode
             end
         end
 
-        return new(
+        return new{C}(
             node_id,
             precipitation,
             potential_evaporation,
