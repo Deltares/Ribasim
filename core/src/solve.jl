@@ -124,7 +124,7 @@ struct Basin{C} <: AbstractParameterNode
         level,
         storage,
         target_level,
-        time,
+        time::StructVector{BasinForcingV1, C, Int},
         dstorage,
     ) where {C}
         if valid_profiles(node_id, level, area)
@@ -151,7 +151,7 @@ end
 
 function has_repeats(sorted_vector::Vector{Float64})::Bool
     diff_vector = diff(sorted_vector)
-    return any(diff_vector .!= 0)
+    return any(diff_vector .== 0)
 end
 
 """
