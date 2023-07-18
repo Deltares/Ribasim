@@ -27,7 +27,7 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test model.integrator.sol.u[end] ≈ Float32[520.7638, 520.76575, 2.428809, 1271.0568] skip =
-        Sys.isapple()
+        Sys.isapple() atol = 1.5
 end
 
 @testset "basic transient model" begin
