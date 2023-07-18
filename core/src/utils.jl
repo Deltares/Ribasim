@@ -164,10 +164,14 @@ end
 From a table with columns node_id, discharge (q) and level (h),
 create a LinearInterpolation from level to discharge for a given node_id.
 """
-function qh_interpolation(node_id::Int, table::StructVector)::LinearInterpolation
+function qh_interpolation(
+    node_id::Int,
+    table::StructVector,
+)::Tuple{LinearInterpolation, Bool}
     rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
-    return LinearInterpolation(table.discharge[rowrange], table.level[rowrange])
+    levels = table.level[rowrange]
+    return LinearInterpolation(table.discharge[rowrange], levels), !has_repeats(levels)
 end
 
 """

@@ -125,10 +125,13 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     @assert issetequal(node_ids, union(static_node_ids, time_node_ids))
 
     interpolations = Interpolation[]
+    errors = String[]
     for node_id in node_ids
-        interpolation = if node_id in static_node_ids
+        interpolation, is_valid = if node_id in static_node_ids
+            source = "static"
             qh_interpolation(node_id, static)
         elseif node_id in time_node_ids
+            source = "time"
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
@@ -136,7 +139,14 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         else
             error("TabulatedRatingCurve node ID $node_id data not in any table.")
         end
-        push!(interpolations, interpolation)
+        if !is_valid
+            push!(
+                errors,
+                "A Q(h) relationship for node #$node_id from $source has repeated levels, this can not be interpolated.",
+            )
+        else
+            push!(interpolations, interpolation)
+        end
     end
     return TabulatedRatingCurve(node_ids, active, interpolations, time)
 end
