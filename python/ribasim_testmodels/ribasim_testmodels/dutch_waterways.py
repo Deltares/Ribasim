@@ -76,11 +76,18 @@ def dutch_waterways_model():
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [3, 4, 11], "resistance": 3 * [1.0]})
+        static=pd.DataFrame(data={"node_id": [3, 4, 11], "resistance": 3 * [5e3]})
     )
 
-    # rating_curve = ribasim.TabulatedRatingcurve(
-    # )
+    rating_curve = ribasim.TabulatedRatingcurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": [8, 8, 13, 13],
+                "level": [7.45, 7.46, 4.45, 4.46],
+                "discharge": 2 * [418, 420.15],
+            }
+        )
+    )
 
     # Setup pump
     pump = ribasim.Pump(
@@ -89,6 +96,8 @@ def dutch_waterways_model():
                 "node_id": [9, 9, 14],
                 "control_state": ["low", "high", None],
                 "flow_rate": [15.0, 25.0, 1.0],
+                "flow_rate_min": [None, None, 0.0],
+                "flow_rate_max": [None, None, 50.0],
             }
         )
     )
@@ -100,7 +109,7 @@ def dutch_waterways_model():
 
     # Setup the level boundary
     level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(data={"node_id": [16], "level": [1]})
+        static=pd.DataFrame(data={"node_id": [16], "level": [3.0]})
     )
 
     # Setup terminal
@@ -112,8 +121,8 @@ def dutch_waterways_model():
             data={
                 "node_id": [20],
                 "listen_node_id": [12],
-                "proportional": [1.0],
-                "integral": [1.0],
+                "proportional": [-0.005],
+                "derivative": [-0.002],
             }
         )
     )
@@ -125,6 +134,7 @@ def dutch_waterways_model():
         pump,
         flow_boundary,
         level_boundary,
+        rating_curve,
         terminal,
         pid_control,
     )
@@ -181,6 +191,7 @@ def dutch_waterways_model():
         pump=pump,
         flow_boundary=flow_boundary,
         level_boundary=level_boundary,
+        tabulated_rating_curve=rating_curve,
         terminal=terminal,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
