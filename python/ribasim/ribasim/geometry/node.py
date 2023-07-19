@@ -48,11 +48,11 @@ class Node(TableModel):
     def get_node_ids_and_types(*nodes):
         node_type = pd.DataFrame(columns=["node_id", "node_type"])
 
-        for table_type in ["static", "time"]:
-            for node in nodes:
-                if not node:
-                    continue
+        for node in nodes:
+            if not node:
+                continue
 
+            for table_type in ["static", "time", "condition"]:
                 if hasattr(node, table_type):
                     table = getattr(node, table_type)
                     if table is not None:

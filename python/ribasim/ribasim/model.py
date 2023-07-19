@@ -311,6 +311,8 @@ class Model(BaseModel):
 
         if self.discrete_control:
             condition = self.discrete_control.condition
+            static_node = self.node.static
+            static_edge = self.edge.static
 
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
@@ -318,32 +320,43 @@ class Model(BaseModel):
                 for listen_feature_id, variable in zip(
                     data_node_id.listen_feature_id, data_node_id.variable
                 ):
-                    point_start = self.node.static.iloc[node_id - 1].geometry
+                    point_start = static_node[
+                        static_node.index == node_id
+                    ].geometry.iloc[0]
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
                     if variable == "flow":
-                        edge_line = self.edge.static.geometry[listen_feature_id - 1]
+                        edge_line = static_edge[
+                            static_edge.index == listen_feature_id - 1
+                        ].geometry.iloc[0]
                         x_end.append(np.mean(edge_line.xy[0]))
                         y_end.append(np.mean(edge_line.xy[1]))
 
                     else:
-                        point_end = self.node.static.iloc[node_id - 1].geometry
+                        point_end = static_node[
+                            static_node.index == listen_feature_id
+                        ].geometry.iloc[0]
                         x_end.append(point_end.x)
                         y_end.append(point_end.y)
 
         if self.pid_control:
-            static = self.pid_control.static
+            static_control = self.pid_control.static
+            static_node = self.node.static
 
-            for node_id in static.node_id.unique():
-                for listen_node_id in static.loc[
-                    static.node_id == node_id, "listen_node_id"
+            for node_id in static_control.node_id.unique():
+                for listen_node_id in static_control.loc[
+                    static_control.node_id == node_id, "listen_node_id"
                 ]:
-                    point_start = self.node.static.iloc[listen_node_id - 1].geometry
+                    point_start = static_node[
+                        static_node.index == node_id
+                    ].geometry.iloc[0]
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.node.static.iloc[node_id - 1]
+                    point_end = static_node[
+                        static_node.index == listen_node_id
+                    ].geometry.iloc[0]
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
