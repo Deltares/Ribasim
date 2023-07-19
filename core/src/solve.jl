@@ -403,7 +403,8 @@ function formulate!(
         basin.current_level[i] = level
         basin.current_area[i] = area
         bottom = basin.level[i][1]
-        fixed_area = median(basin.area[i])
+        # add all precipitation that falls within the profile
+        fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 

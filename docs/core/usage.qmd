@@ -223,6 +223,7 @@ node_id |   area | level
 We use the symbol $A$ for area, $h$ for level and $S$ for storage.
 The profile provides a function $A(h)$ for each basin.
 Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
+The maximum area is used to convert the precipitation flux into an inflow.
 
 ### FractionalFlow
 
