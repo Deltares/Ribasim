@@ -44,9 +44,9 @@ def bucket_model() -> ribasim.Model:
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1],
-            "area": [1000.0, 1000.0],
-            "level": [0.0, 1.0],
+            "node_id": [1, 1, 1],
+            "area": [0.0, 1000.0, 1000.0],
+            "level": [0.0, 0.1, 1.0],
         }
     )
 
