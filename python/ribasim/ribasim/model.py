@@ -190,7 +190,6 @@ class Model(BaseModel):
 
         # Check node IDs of node fields
         node_IDs_all = []
-        n_nodes = len(self.node.static)
 
         for name in self.fields():
             if name in node_names_all_snake_case:
@@ -213,12 +212,6 @@ class Model(BaseModel):
         if (node_ID_counts > 1).any():
             raise ValueError(
                 f"These node IDs were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
-            )
-
-        if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
-            node_IDs_missing = set(np.arange(n_nodes) + 1) - set(node_IDs_unique)
-            raise ValueError(
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static), but these node IDs are missing: {node_IDs_missing}."
             )
 
     def validate_model_node_IDs(self):

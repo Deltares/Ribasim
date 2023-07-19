@@ -144,7 +144,7 @@ def basic_model() -> ribasim.Model:
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ribasim.Node.get_node_types(
+    node_id, node_type = ribasim.Node.get_node_ids_and_types(
         basin,
         level_boundary,
         flow_boundary,
@@ -160,7 +160,7 @@ def basic_model() -> ribasim.Model:
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
             data={"type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
@@ -333,13 +333,13 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ribasim.Node.get_node_types(basin, rating_curve)
+    node_id, node_type = ribasim.Node.get_node_ids_and_types(basin, rating_curve)
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
             data={"type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )

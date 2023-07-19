@@ -45,7 +45,7 @@ class Node(TableModel):
         return True
 
     @staticmethod
-    def get_node_types(*nodes):
+    def get_node_ids_and_types(*nodes):
         node_type = pd.DataFrame(columns=["node_id", "node_type"])
 
         for table_type in ["static", "time"]:
@@ -67,7 +67,10 @@ class Node(TableModel):
         node_type = node_type.drop_duplicates(subset="node_id")
         node_type = node_type.sort_values("node_id")
 
-        return node_type.node_type.tolist()
+        node_id = node_type.node_id.tolist()
+        node_type = node_type.node_type.tolist()
+
+        return node_id, node_type
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """
