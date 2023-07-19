@@ -111,21 +111,31 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
     )
 end
 
-function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
-    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
-    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
-
+function parse_static_and_time_rating_curve(
+    db::DB,
+    config::Config,
+    static::StructVector{TabulatedRatingCurveStaticV1},
+    time::StructVector{TabulatedRatingCurveTimeV1, C, Int},
+)::Tuple{
+    Vector{Int},
+    BitVector,
+    Vector{Interpolation},
+    Dict{Tuple{Int64, String}, NamedTuple},
+    Vector{String},
+} where {C}
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
     msg = "TabulatedRatingCurve cannot be in both static and time tables"
     @assert isdisjoint(static_node_ids, time_node_ids) msg
     node_ids = get_ids(db, "TabulatedRatingCurve")
+
     msg = "TabulatedRatingCurve node IDs don't match"
-    @assert issetequal(node_ids, union(static_node_ids, time_node_ids))
+    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
 
     interpolations = Interpolation[]
     control_mapping = Dict{Tuple{Int64, String}, NamedTuple}()
     active = BitVector()
+    errors = []
 
     for node_id in node_ids
         if node_id in static_node_ids
@@ -141,12 +151,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
-                # TODO: use qh_interpolation
-                interpolation = LinearInterpolation(
-                    [row.discharge for row in group],
-                    [row.level for row in group],
-                )
-                is_valid = true
+                interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
                 if !ismissing(control_state)
                     control_mapping[(node_id, control_state)] = (; tables = interpolation)
                 end
@@ -167,12 +172,29 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         if !is_valid
             push!(
                 errors,
-                "A Q(h) relationship for node #$node_id from $source has repeated levels, this can not be interpolated.",
+                "A Q(h) relationship for node #$node_id from the $source table has repeated levels, this can not be interpolated.",
             )
-        else
-            push!(interpolations, interpolation)
         end
     end
+
+    if !isempty(errors)
+        @error join(errors, "\n")
+    end
+
+    return node_ids, active, interpolations, control_mapping, errors
+end
+
+function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
+    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
+    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
+
+    node_ids, active, interpolations, control_mapping, errors =
+        parse_static_and_time_rating_curve(db, config, static, time)
+
+    if !isempty(errors)
+        error("Errors occurred when parsing TabulatedRatingCurve data.")
+    end
+
     return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 

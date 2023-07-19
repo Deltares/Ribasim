@@ -8,6 +8,7 @@ from ribasim_testmodels import (
     basic_transient_model,
     bucket_model,
     flow_condition_model,
+    invalid_qh_model,
     linear_resistance_model,
     manning_resistance_model,
     miscellaneous_nodes_model,
@@ -60,3 +61,4 @@ if __name__ == "__main__":
     manning_resistance_model().write(datadir / "manning_resistance")
     pid_control_model_1().write(datadir / "pid_1")
     miscellaneous_nodes_model().write(datadir / "misc_nodes")
+    invalid_qh_model().write(datadir / "invalid_qh")
