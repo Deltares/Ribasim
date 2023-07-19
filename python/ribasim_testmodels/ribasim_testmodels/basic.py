@@ -7,80 +7,6 @@ import ribasim
 def basic_model() -> ribasim.Model:
     """Set up a basic model with all node types and static forcing"""
 
-    # Set up the nodes:
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: ManningResistance
-            (2.0, 0.0),  # 3: Basin
-            (3.0, 0.0),  # 4: TabulatedRatingCurve
-            (3.0, 1.0),  # 5: FractionalFlow
-            (3.0, 2.0),  # 6: Basin
-            (4.0, 1.0),  # 7: Pump
-            (4.0, 0.0),  # 8: FractionalFlow
-            (5.0, 0.0),  # 9: Basin
-            (6.0, 0.0),  # 10: LinearResistance
-            (2.0, 2.0),  # 11: LevelBoundary
-            (2.0, 1.0),  # 12: LinearResistance
-            (3.0, -1.0),  # 13: FractionalFlow
-            (3.0, -2.0),  # 14: Terminal
-            (3.0, 3.0),  # 15: Flowboundary
-            (0.0, 1.0),  # 16: FlowBoundary
-            (6.0, 1.0),  # 17: LevelBoundary
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = [
-        "Basin",
-        "ManningResistance",
-        "Basin",
-        "TabulatedRatingCurve",
-        "FractionalFlow",
-        "Basin",
-        "Pump",
-        "FractionalFlow",
-        "Basin",
-        "LinearResistance",
-        "LevelBoundary",
-        "LinearResistance",
-        "FractionalFlow",
-        "Terminal",
-        "FlowBoundary",
-        "FlowBoundary",
-        "LevelBoundary",
-    ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
-            data={"type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array(
-        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16, 10], dtype=np.int64
-    )
-    to_id = np.array(
-        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
-    )
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
     # Setup the basins:
     profile = pd.DataFrame(
         data={
@@ -194,6 +120,72 @@ def basic_model() -> ribasim.Model:
         )
     )
 
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.0),  # 2: ManningResistance
+            (2.0, 0.0),  # 3: Basin
+            (3.0, 0.0),  # 4: TabulatedRatingCurve
+            (3.0, 1.0),  # 5: FractionalFlow
+            (3.0, 2.0),  # 6: Basin
+            (4.0, 1.0),  # 7: Pump
+            (4.0, 0.0),  # 8: FractionalFlow
+            (5.0, 0.0),  # 9: Basin
+            (6.0, 0.0),  # 10: LinearResistance
+            (2.0, 2.0),  # 11: LevelBoundary
+            (2.0, 1.0),  # 12: LinearResistance
+            (3.0, -1.0),  # 13: FractionalFlow
+            (3.0, -2.0),  # 14: Terminal
+            (3.0, 3.0),  # 15: Flowboundary
+            (0.0, 1.0),  # 16: FlowBoundary
+            (6.0, 1.0),  # 17: LevelBoundary
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ribasim.Node.get_node_types(
+        basin,
+        level_boundary,
+        flow_boundary,
+        pump,
+        terminal,
+        linear_resistance,
+        manning_resistance,
+        rating_curve,
+        fractional_flow,
+    )
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array(
+        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16, 10], dtype=np.int64
+    )
+    to_id = np.array(
+        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
+    )
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
     # Setup a model:
     model = ribasim.Model(
         modelname="basic",
@@ -274,50 +266,6 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     Only the upstream Basin receives a (constant) precipitation.
     """
 
-    # Set up the nodes:
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 1.0),  # 2: TabulatedRatingCurve (static)
-            (1.0, -1.0),  # 3: TabulatedRatingCurve (time-varying)
-            (2.0, 0.0),  # 4: Basin
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = [
-        "Basin",
-        "TabulatedRatingCurve",
-        "TabulatedRatingCurve",
-        "Basin",
-    ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
-            data={"type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 1, 2, 3], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 4], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
     # Setup the basins:
     profile = pd.DataFrame(
         data={
@@ -372,6 +320,45 @@ def tabulated_rating_curve_model() -> ribasim.Model:
                 "discharge": [0.0, q1000, 0.0, q1000, 0.0, q1000],
             }
         ),
+    )
+
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 1.0),  # 2: TabulatedRatingCurve (static)
+            (1.0, -1.0),  # 3: TabulatedRatingCurve (time-varying)
+            (2.0, 0.0),  # 4: Basin
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ribasim.Node.get_node_types(basin, rating_curve)
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 1, 2, 3], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 4], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
     )
 
     # Setup a model:

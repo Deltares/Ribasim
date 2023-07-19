@@ -4,6 +4,7 @@ from typing import Any, Dict, Union
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pandera as pa
 from geopandas import GeoDataFrame
 from pandera.typing import DataFrame, Series
@@ -42,6 +43,31 @@ class Node(TableModel):
     @classmethod
     def hasfid(cls):
         return True
+
+    @staticmethod
+    def get_node_types(*nodes):
+        node_type = pd.DataFrame(columns=["node_id", "node_type"])
+
+        for table_type in ["static", "time"]:
+            for node in nodes:
+                if not node:
+                    continue
+
+                if hasattr(node, table_type):
+                    table = getattr(node, table_type)
+                    if table is not None:
+                        node_type_table = pd.DataFrame(
+                            data={
+                                "node_id": table.node_id,
+                                "node_type": len(table) * [node.get_input_type()],
+                            }
+                        )
+                        node_type = node_type._append(node_type_table)
+
+        node_type = node_type.drop_duplicates(subset="node_id")
+        node_type = node_type.sort_values("node_id")
+
+        return node_type.node_type.tolist()
 
     def write(self, directory: FilePath, modelname: str) -> None:
         """
