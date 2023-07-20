@@ -6,7 +6,7 @@ function parse_static(
 )::NamedTuple
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
-    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
+    mask = [!(symb in [:node_id, :control_state]) for symb in columnnames_static]
     columnnames_variables = columnnames_static[mask]
     columntypes_variables = collect(fieldtypes(static_type))[mask]
     vals = []
@@ -111,21 +111,6 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
     )
 end
 
-function parse_static_and_time_rating_curve(
-    db::DB,
-    config::Config,
-    static::StructVector{TabulatedRatingCurveStaticV1},
-    time::StructVector{TabulatedRatingCurveTimeV1, C, Int},
-)::Tuple{
-    Vector{Int},
-    BitVector,
-    Vector{Interpolation},
-    Dict{Tuple{Int, String}, NamedTuple},
-    Vector{String},
-} where {C}
-    return node_ids, active, interpolations, control_mapping, errors
-end
-
 function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
@@ -225,13 +210,47 @@ end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
-    defaults = (; active = true)
-    static_parsed = parse_static(static, db, "FlowBoundary", defaults)
-    return FlowBoundary(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.flow_rate,
-    )
+    time = load_structvector(db, config, FlowBoundaryTimeV1)
+
+    static = load_structvector(db, config, FlowBoundaryStaticV1)
+    time = load_structvector(db, config, FlowBoundaryTimeV1)
+
+    static_node_ids = Set(static.node_id)
+    time_node_ids = Set(time.node_id)
+    msg = "Flowboundary cannot be in both static and time tables"
+    @assert isdisjoint(static_node_ids, time_node_ids) msg
+    static_node_ids = collect(static_node_ids)
+    time_node_ids = collect(time_node_ids)
+    node_ids = get_ids(db, "FlowBoundary")
+
+    msg = "FlowBoundary node IDs don't match"
+    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
+
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    active = BitVector()
+    flow_rate = Float64[]
+
+    for node_id in node_ids
+        if node_id in static_node_ids
+            static_idx = findfirst(static_node_ids .== node_id)
+            row = static[static_idx]
+            push!(flow_rate, row.flow_rate)
+            push!(active, coalesce(row.active, true))
+        elseif node_id in time_node_ids
+            rows = searchsorted(time.node_id, node_id)
+            time_id = view(time, rows)
+            time_idx = searchsortedlast(time_id.time, config.starttime)
+            msg = "timeseries starts after model start time"
+            @assert time_idx > 0 msg
+            push!(active, true)
+            q = time_id[time_idx].flow_rate
+            push!(flow_rate, q)
+        else
+            error("FlowBoundary node ID $node_id data not in any table.")
+        end
+    end
+
+    return FlowBoundary(node_ids, active, flow_rate)
 end
 
 function Pump(db::DB, config::Config)::Pump
