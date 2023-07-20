@@ -14,7 +14,7 @@ using Dates: Date
     @test pump_control_mapping[(4, "off")].flow_rate == 0
     @test pump_control_mapping[(4, "on")].flow_rate == 1.0e-5
 
-    logic_mapping::Dict{Tuple{Int64, String}, String} =
+    logic_mapping::Dict{Tuple{Int, String}, String} =
         Dict((5, "TT") => "on", (5, "TF") => "off", (5, "FF") => "on", (5, "FT") => "off")
 
     @test discrete_control.logic_mapping == logic_mapping

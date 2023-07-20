@@ -160,7 +160,7 @@ end
 Check whether the profile data has no repeats in the levels and the areas start at 0.
 """
 function valid_profiles(
-    node_id::Indices{Int64},
+    node_id::Indices{Int},
     level::Vector{Vector{Float64}},
     area::Vector{Vector{Float64}},
 )::Vector{String}

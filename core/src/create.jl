@@ -120,7 +120,7 @@ function parse_static_and_time_rating_curve(
     Vector{Int},
     BitVector,
     Vector{Interpolation},
-    Dict{Tuple{Int64, String}, NamedTuple},
+    Dict{Tuple{Int, String}, NamedTuple},
     Vector{String},
 } where {C}
     static_node_ids = Set(static.node_id)
@@ -133,7 +133,7 @@ function parse_static_and_time_rating_curve(
     @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
 
     interpolations = Interpolation[]
-    control_mapping = Dict{Tuple{Int64, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
     active = BitVector()
     errors = []
 
