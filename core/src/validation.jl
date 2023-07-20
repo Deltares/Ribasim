@@ -277,16 +277,13 @@ function valid_profiles(
 
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
-            push!(
-                errors,
-                "Basin with node ID #$id has repeated levels, this cannot be interpolated.",
-            )
+            push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
         end
 
         if areas[1] != 0
             push!(
                 errors,
-                "Basins must have area 0 at the lowest level (got area $(areas[1]) for node #$id).",
+                "Basins profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
             )
         end
     end

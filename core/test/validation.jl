@@ -1,17 +1,16 @@
 using Ribasim
 using Dictionaries: Indices
-using StructArrays: StructVector
-using SQLite
+import SQLite
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
     level = [[0.0, 0.0]]
     area = [[100.0, 100.0]]
     errors = Ribasim.valid_profiles(node_id, level, area)
-    @test "Basin with node id #1 has repeated levels, this cannot be interpolated." ∈ errors
-    @test "Basins must have area 0 at the lowest level (got area 100.0 for node #1)." ∈
+    @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
+    @test "Basins profiles must start with area 0 at the bottom (got area 100.0 for node #1)." in
           errors
-    @test length(errors) = 2
+    @test length(errors) == 2
 end
 
 @testset "Q(h) validation" begin
@@ -27,9 +26,9 @@ end
 
     errors = Ribasim.parse_static_and_time_rating_curve(db, config, static, time)[end]
 
-    @test "A Q(h) relationship for node #1 from the static table has repeated levels, this can not be interpolated." ∈
+    @test "A Q(h) relationship for node #1 from the static table has repeated levels, this can not be interpolated." in
           errors
-    @test "A Q(h) relationship for node #2 from the time table has repeated levels, this can not be interpolated." ∈
+    @test "A Q(h) relationship for node #2 from the time table has repeated levels, this can not be interpolated." in
           errors
-    @test length(errors) = 2
+    @test length(errors) == 2
 end

@@ -171,7 +171,7 @@ function qh_interpolation(
     rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
     levels = table.level[rowrange]
-    return LinearInterpolation(table.discharge[rowrange], levels), !has_repeats(levels)
+    return LinearInterpolation(table.discharge[rowrange], levels), allunique(levels)
 end
 
 """
