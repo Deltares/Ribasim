@@ -79,7 +79,7 @@ def dutch_waterways_model():
         static=pd.DataFrame(data={"node_id": [3, 4, 11], "resistance": 3 * [5e3]})
     )
 
-    rating_curve = ribasim.TabulatedRatingcurve(
+    rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
                 "node_id": [8, 8, 13, 13],
@@ -127,6 +127,15 @@ def dutch_waterways_model():
         )
     )
 
+    # Setup discrete control
+    # condition = pd.DataFrame(
+    #     data={
+    #         "node_id": [19],
+    #         "listen_feature_id": [1],
+    #         "variable": ["level"],
+    #     }
+    # )
+
     # Set up the nodes:
     node_id, node_type = ribasim.Node.get_node_ids_and_types(
         basin,
@@ -156,11 +165,11 @@ def dutch_waterways_model():
 
     # Setup the edges:
     from_id_flow = np.array(
-        [1, 2, 3, 5, 2, 4, 6, 9, 10, 11, 12, 14, 15], dtype=np.int64
-    )  # 6, 8, 12, 13
+        [1, 2, 3, 5, 2, 4, 6, 9, 10, 11, 12, 14, 15, 6, 8, 12, 13], dtype=np.int64
+    )
     to_id_flow = np.array(
-        [2, 3, 5, 7, 4, 6, 9, 10, 11, 12, 14, 15, 16], dtype=np.int64
-    )  # 8, 10, 13, 15
+        [2, 3, 5, 7, 4, 6, 9, 10, 11, 12, 14, 15, 16, 8, 10, 13, 15], dtype=np.int64
+    )
 
     from_id_control = np.array([20], dtype=np.int64)
     to_id_control = np.array([14], dtype=np.int64)
