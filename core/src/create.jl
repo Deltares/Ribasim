@@ -123,6 +123,13 @@ function parse_static_and_time_rating_curve(
     Dict{Tuple{Int, String}, NamedTuple},
     Vector{String},
 } where {C}
+    return node_ids, active, interpolations, control_mapping, errors
+end
+
+function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
+    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
+    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
+
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
     msg = "TabulatedRatingCurve cannot be in both static and time tables"
@@ -135,7 +142,7 @@ function parse_static_and_time_rating_curve(
     interpolations = Interpolation[]
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
     active = BitVector()
-    errors = []
+    errors = false
 
     for node_id in node_ids
         if node_id in static_node_ids
@@ -170,28 +177,12 @@ function parse_static_and_time_rating_curve(
             error("TabulatedRatingCurve node ID $node_id data not in any table.")
         end
         if !is_valid
-            push!(
-                errors,
-                "A Q(h) relationship for node #$node_id from the $source table has repeated levels, this can not be interpolated.",
-            )
+            @error "A Q(h) relationship for TabulatedRatingCurve #$node_id from the $source table has repeated levels, this can not be interpolated."
+            errors = true
         end
     end
 
-    if !isempty(errors)
-        @error join(errors, "\n")
-    end
-
-    return node_ids, active, interpolations, control_mapping, errors
-end
-
-function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
-    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
-    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
-
-    node_ids, active, interpolations, control_mapping, errors =
-        parse_static_and_time_rating_curve(db, config, static, time)
-
-    if !isempty(errors)
+    if errors
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 

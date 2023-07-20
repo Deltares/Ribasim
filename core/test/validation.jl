@@ -1,6 +1,8 @@
 using Ribasim
 using Dictionaries: Indices
+using DataInterpolations: LinearInterpolation
 import SQLite
+using Logging
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
@@ -11,6 +13,13 @@ import SQLite
     @test "Basins profiles must start with area 0 at the bottom (got area 100.0 for node #1)." in
           errors
     @test length(errors) == 2
+
+    itp, valid = Ribasim.qh_interpolation([0.0, 0.0], [1.0, 2.0])
+    @test !valid
+    @test itp isa LinearInterpolation
+    itp, valid = Ribasim.qh_interpolation([0.0, 0.1], [1.0, 2.0])
+    @test valid
+    @test itp isa LinearInterpolation
 end
 
 @testset "Q(h) validation" begin
@@ -21,19 +30,19 @@ end
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
 
-    static = Ribasim.load_structvector(db, config, Ribasim.TabulatedRatingCurveStaticV1)
-    time = Ribasim.load_structvector(db, config, Ribasim.TabulatedRatingCurveTimeV1)
-
-    errors = @test_logs (:error,) Ribasim.parse_static_and_time_rating_curve(
-        db,
-        config,
-        static,
-        time,
-    )[end]
-
-    @test "A Q(h) relationship for node #1 from the static table has repeated levels, this can not be interpolated." in
-          errors
-    @test "A Q(h) relationship for node #2 from the time table has repeated levels, this can not be interpolated." in
-          errors
-    @test length(errors) == 2
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
+            db,
+            config,
+        )
+    end
+    @show logger.logs
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "A Q(h) relationship for TabulatedRatingCurve #1 from the static table has repeated levels, this can not be interpolated."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
 end

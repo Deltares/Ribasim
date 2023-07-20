@@ -160,8 +160,15 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     return idx_block_begin:idx_block_end
 end
 
+function qh_interpolation(
+    level::AbstractVector,
+    discharge::AbstractVector,
+)::Tuple{LinearInterpolation, Bool}
+    return LinearInterpolation(discharge, level), allunique(level)
+end
+
 """
-From a table with columns node_id, discharge (q) and level (h),
+From a table with columns node_id, discharge (Q) and level (h),
 create a LinearInterpolation from level to discharge for a given node_id.
 """
 function qh_interpolation(
@@ -170,8 +177,7 @@ function qh_interpolation(
 )::Tuple{LinearInterpolation, Bool}
     rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
-    levels = table.level[rowrange]
-    return LinearInterpolation(table.discharge[rowrange], levels), allunique(levels)
+    return qh_interpolation(table.level[rowrange], table.discharge[rowrange])
 end
 
 """
