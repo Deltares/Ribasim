@@ -156,7 +156,9 @@ class NewNodeTypeStatic:
 
 # Validation
 
-The new node type might have associated restrictions for a model with the new node type so that it behaves properly. Basic node ID and node type validation happens in `Model.validate_model` in `python/ribasim/ribasim/model.py`, which automatically considers all node types in the `node_types` module. Connectivity validation happens in `is_valid` in `core/src/solve.jl`. Connectivity rules are specified by stating the allowed downstread node types for `NewNodeType` in `core/src/validation.jl`:
+The new node type might have associated restrictions for a model with the new node type so that it behaves properly. Basic node ID and node type validation happens in `Model.validate_model` in `python/ribasim/ribasim/model.py`, which automatically considers all node types in the `node_types` module.
+
+Connectivity validation happens in `valid_edges` and `valid_n_flow_neighbors` in `core/src/solve.jl`. Connectivity rules are specified in `core/src/validation.jl`. Allowed upstream and downstream neighbor types for `NewNodeType` in are specified as follows:
 
 ```julia
 # set allowed downstream types
@@ -164,6 +166,23 @@ neighbortypes(::Val{:NewNodeType}) = Set((:Basin,))
 # add your newnodetype as acceptable downstream connection of other types
 neighbortypes(::Val{:Pump}) = Set((:Basin, :NewNodeType))
 ```
+
+The minimum and maximum allowed number of inneighbors and outneighbors for `NewNodeType` are specified as follows:
+
+```julia
+# Allowed number of inneighbors and outneighbors per node type
+struct neighbor_amounts_bounds
+    in_min::Int
+    in_max::Int
+    out_min::Int
+    out_max::Int
+end
+
+neighbors_amounts_bounds(::Val{:NewNodeType}) =
+    neighbor_amounts_bounds(0, 0, 1, typemax(Int))
+```
+
+Here `typemax(Int)` effectively means unbounded.
 
 
 # Tests

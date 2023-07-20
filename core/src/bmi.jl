@@ -16,6 +16,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     local parameters, state, n
     try
         parameters = Parameters(db, config)
+        if !valid_n_flow_neighbors(parameters)
+            error("Invalid number of connections for certain node types.")
+        end
+
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))

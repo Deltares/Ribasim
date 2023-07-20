@@ -56,11 +56,38 @@ neighbortypes(::Val{:FlowBoundary}) =
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:DiscreteControl}) = Set((:Pump,))
+neighbortypes(::Val{:DiscreteControl}) = Set((
+    :Pump,
+    :TabulatedRatingCurve,
+    :LinearResistance,
+    :ManningResistance,
+    :FractionalFlow,
+))
 neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
+
+# Allowed number of inneighbors and outneighbors per node type
+struct n_neighbor_bounds
+    in_min::Int
+    in_max::Int
+    out_min::Int
+    out_max::Int
+end
+
+n_neighbor_bounds(nodetype::Symbol) = n_neighbor_bounds(Val(nodetype))
+n_neighbor_bounds(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds(::Val{:LevelBoundary}) =
+    n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin

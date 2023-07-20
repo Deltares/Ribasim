@@ -451,7 +451,6 @@ listen_node_id | Int      | -        | -
 proportional   | Float64  | $s^{-1}$ | (optional, default 0.0)
 integral       | Float64  | $s^{-2}$ | (optional, default 0.0)
 derivative     | Floar64  | -        | (optional, default 0.0)
-control_state  | String   | -        | (optional)
 
 
 
