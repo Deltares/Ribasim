@@ -6,6 +6,7 @@ using SafeTestsets: @safetestset
 @testset "Ribasim" begin
     @safetestset "Input/Output" include("io.jl")
     @safetestset "Configuration" include("config.jl")
+    @safetestset "Validation" include("validation.jl")
     @safetestset "Equations" include("equations.jl")
     @safetestset "Run Test Models" include("run_models.jl")
     @safetestset "Basic Model Interface" include("bmi.jl")

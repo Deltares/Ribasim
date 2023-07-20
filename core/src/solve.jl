@@ -5,7 +5,7 @@ const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true
 Store the connectivity information
 
 graph_flow, graph_control: directed graph with vertices equal to ids
-flow: store the flow on every edge
+flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
@@ -56,33 +56,6 @@ struct Connectivity
     end
 end
 
-"""
-Test for each node given its node type whether the nodes that
-# are downstream ('down-edge') of this node are of an allowed type
-"""
-function valid_edges(
-    edge_ids::Dictionary{Tuple{Int, Int}, Int},
-    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
-)::Bool
-    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
-    errors = String[]
-    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
-        if !(to_type in neighbortypes(from_type))
-            a, b = rev_edge_ids[edge_id]
-            push!(
-                errors,
-                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
-            )
-        end
-    end
-    if isempty(errors)
-        return true
-    else
-        @error join(errors, "\n")
-        return false
-    end
-end
-
 abstract type AbstractParameterNode end
 
 """
@@ -115,6 +88,44 @@ struct Basin{C} <: AbstractParameterNode
     time::StructVector{BasinForcingV1, C, Int}
     # Storage derivative for use in PID controller
     dstorage::Vector{Float64}
+
+    function Basin(
+        node_id,
+        precipitation,
+        potential_evaporation,
+        drainage,
+        infiltration,
+        current_level,
+        current_area,
+        area,
+        level,
+        storage,
+        target_level,
+        time::StructVector{BasinForcingV1, C, Int},
+        dstorage,
+    ) where {C}
+        errors = valid_profiles(node_id, level, area)
+        if isempty(errors)
+            return new{C}(
+                node_id,
+                precipitation,
+                potential_evaporation,
+                drainage,
+                infiltration,
+                current_level,
+                current_area,
+                area,
+                level,
+                storage,
+                target_level,
+                time,
+                dstorage,
+            )
+        else
+            @error join(errors, "\n")
+            error("Errors occurred when parsing Basin data.")
+        end
+    end
 end
 
 """

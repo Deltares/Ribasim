@@ -291,3 +291,55 @@ function sorted_table!(
     end
     return table
 end
+
+"""
+Test for each node given its node type whether the nodes that
+# are downstream ('down-edge') of this node are of an allowed type
+"""
+function valid_edges(
+    edge_ids::Dictionary{Tuple{Int, Int}, Int},
+    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
+)::Bool
+    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
+    errors = String[]
+    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
+        if !(to_type in neighbortypes(from_type))
+            a, b = rev_edge_ids[edge_id]
+            push!(
+                errors,
+                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
+            )
+        end
+    end
+    if isempty(errors)
+        return true
+    else
+        @error join(errors, "\n")
+        return false
+    end
+end
+
+"""
+Check whether the profile data has no repeats in the levels and the areas start at 0.
+"""
+function valid_profiles(
+    node_id::Indices{Int},
+    level::Vector{Vector{Float64}},
+    area::Vector{Vector{Float64}},
+)::Vector{String}
+    errors = String[]
+
+    for (id, levels, areas) in zip(node_id, level, area)
+        if !allunique(levels)
+            push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
+        end
+
+        if areas[1] != 0
+            push!(
+                errors,
+                "Basins profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
+            )
+        end
+    end
+    return errors
+end
