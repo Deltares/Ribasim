@@ -6,7 +6,7 @@ title: "Python tooling development"
 
 ## Setting up conda
 
-In order to develop on `ribasim` locally, please follow the following steps:
+In order to develep on `ribasim` locally, please follow the following steps:
 
 - Download and install [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
