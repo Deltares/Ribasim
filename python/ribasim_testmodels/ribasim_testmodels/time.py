@@ -72,7 +72,7 @@ def flow_boundary_time_model():
     time = pd.date_range(
         start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
     ).astype("datetime64[s]")
-    flow_rate = np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
+    flow_rate = 1 + np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
 
     # Setup flow boundary:
     flow_boundary = ribasim.FlowBoundary(

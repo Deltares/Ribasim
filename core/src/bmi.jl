@@ -136,7 +136,8 @@ function create_callbacks(
             discrete_control_cb,
         )
     else
-        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+        callback =
+            CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, flow_boundary_cb)
     end
 
     return callback, saved_flow
@@ -333,7 +334,7 @@ function update_flow_boundary!(integrator)::Nothing
     timeblock = view(time, rows)
 
     for row in timeblock
-        i = searchsortedfirst(node_id, row.id)
+        i = searchsortedfirst(node_id, row.node_id)
         flow_rate[i] = row.flow_rate
     end
 end
