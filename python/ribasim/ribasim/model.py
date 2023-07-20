@@ -43,7 +43,7 @@ class Solver(BaseModel):
 
 class Model(BaseModel):
     """
-    A full Ribasim model schematisation with all input.
+    A full Ribasim model schematisasion with all input.
 
     Ribasim model containing the location of the nodes, the edges between the
     nodes, and the node parametrization.
