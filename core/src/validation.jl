@@ -264,3 +264,31 @@ function sorted_table!(
     end
     return table
 end
+
+"""
+Check whether the profile data has no repeats in the levels and the areas start at 0.
+"""
+function valid_profiles(
+    node_id::Indices{Int},
+    level::Vector{Vector{Float64}},
+    area::Vector{Vector{Float64}},
+)::Vector{String}
+    errors = String[]
+
+    for (id, levels, areas) in zip(node_id, level, area)
+        if !allunique(levels)
+            push!(
+                errors,
+                "Basin with node ID #$id has repeated levels, this cannot be interpolated.",
+            )
+        end
+
+        if areas[1] != 0
+            push!(
+                errors,
+                "Basins must have area 0 at the lowest level (got area $(areas[1]) for node #$id).",
+            )
+        end
+    end
+    return errors
+end
