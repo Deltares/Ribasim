@@ -5,7 +5,7 @@ using DataInterpolations: LinearInterpolation
 import SQLite
 using Logging
 
-@testset "Basin profile validation" begin
+@testset "Basin profile validution" begin
     node_id = Indices([1])
     level = [[0.0, 0.0]]
     area = [[100.0, 100.0]]
