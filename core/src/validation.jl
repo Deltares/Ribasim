@@ -12,6 +12,7 @@
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
+@schema "ribasim.flowboundary.time" FlowBoundaryTime
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
@@ -158,6 +159,12 @@ end
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
+    flow_rate::Float64
+end
+
+@version FlowBoundaryTimeV1 begin
+    node_id::Int
+    time::DateTime
     flow_rate::Float64
 end
 
