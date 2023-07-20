@@ -347,7 +347,7 @@ function valid_n_flow_neighbors(
     node_id = node.node_id
     node_type = typeof(node)
 
-    bounds = neighbors_amounts_bounds(nameof(node_type))
+    bounds = n_neighbor_bounds(nameof(node_type))
 
     errors = String[]
 

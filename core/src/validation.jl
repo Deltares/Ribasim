@@ -69,30 +69,25 @@ neighbortypes(::Val{:TabulatedRatingCurve}) =
 neighbortypes(::Any) = Set{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
-struct neighbor_amounts_bounds
+struct n_neighbor_bounds
     in_min::Int
     in_max::Int
     out_min::Int
     out_max::Int
 end
 
-neighbors_amounts_bounds(nodetype::Symbol) = neighbors_amounts_bounds(Val(nodetype))
-neighbors_amounts_bounds(::Val{:Basin}) =
-    neighbor_amounts_bounds(0, typemax(Int), 0, typemax(Int))
-neighbors_amounts_bounds(::Val{:LinearResistance}) =
-    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
-neighbors_amounts_bounds(::Val{:ManningResistance}) =
-    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
-neighbors_amounts_bounds(::Val{:TabulatedRatingCurve}) =
-    neighbor_amounts_bounds(1, 1, 1, typemax(Int))
-neighbors_amounts_bounds(::Val{:FractionalFlow}) = neighbor_amounts_bounds(1, 1, 1, 1)
-neighbors_amounts_bounds(::Val{:LevelBoundary}) =
-    neighbor_amounts_bounds(0, typemax(Int), 0, typemax(Int))
-neighbors_amounts_bounds(::Val{:FlowBoundary}) =
-    neighbor_amounts_bounds(0, 0, 1, typemax(Int))
-neighbourtypes(::Any) = neighbor_amounts_bounds(0, 0, 0, 0)
-neighbors_amounts_bounds(::Val{:Pump}) = neighbor_amounts_bounds(1, 1, 1, typemax(Int))
-neighbors_amounts_bounds(::Val{:Terminal}) = neighbor_amounts_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds(nodetype::Symbol) = n_neighbor_bounds(Val(nodetype))
+n_neighbor_bounds(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds(::Val{:LevelBoundary}) =
+    n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
