@@ -31,8 +31,8 @@ def flow_boundary_time_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1], dtype=np.int64)
-    to_id = np.array([2], dtype=np.int64)
+    from_id = np.array([1, 3], dtype=np.int64)
+    to_id = np.array([2, 2], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(

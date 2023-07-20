@@ -250,7 +250,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         end
     end
 
-    return FlowBoundary(node_ids, active, flow_rate)
+    return FlowBoundary(node_ids, active, flow_rate, time)
 end
 
 function Pump(db::DB, config::Config)::Pump

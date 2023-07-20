@@ -232,10 +232,11 @@ end
 node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
 """
-struct FlowBoundary <: AbstractParameterNode
+struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     flow_rate::Vector{Float64}
+    time::StructVector{FlowBoundaryTimeV1, C, Int}
 end
 
 """
