@@ -38,7 +38,6 @@ end
             config,
         )
     end
-    @show logger.logs
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
