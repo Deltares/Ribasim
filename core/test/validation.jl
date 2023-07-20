@@ -24,7 +24,12 @@ end
     static = Ribasim.load_structvector(db, config, Ribasim.TabulatedRatingCurveStaticV1)
     time = Ribasim.load_structvector(db, config, Ribasim.TabulatedRatingCurveTimeV1)
 
-    errors = Ribasim.parse_static_and_time_rating_curve(db, config, static, time)[end]
+    errors = @test_logs (:error,) Ribasim.parse_static_and_time_rating_curve(
+        db,
+        config,
+        static,
+        time,
+    )[end]
 
     @test "A Q(h) relationship for node #1 from the static table has repeated levels, this can not be interpolated." in
           errors
