@@ -46,6 +46,7 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
+end
 
 @testset "Neighbor count validation" begin
     graph_flow = DiGraph(6)
@@ -64,11 +65,11 @@ end
 
     errors = Ribasim.valid_n_flow_neighbors(graph_flow, pump)
 
-    @test "Nodes of type Ribasim.Pump can have at most 1 inneighbor(s) (got 2 for node #1)." ∈
+    @test "Nodes of type Ribasim.Pump can have at most 1 inneighbor(s) (got 2 for node #1)." in
           errors
-    @test "Nodes of type Ribasim.Pump must have at least 1 outneighbor(s) (got 0 for node #1)." ∈
+    @test "Nodes of type Ribasim.Pump must have at least 1 outneighbor(s) (got 0 for node #1)." in
           errors
-    @test "Nodes of type Ribasim.Pump must have at least 1 inneighbor(s) (got 0 for node #6)." ∈
+    @test "Nodes of type Ribasim.Pump must have at least 1 inneighbor(s) (got 0 for node #6)." in
           errors
     @test length(errors) == 3
 
