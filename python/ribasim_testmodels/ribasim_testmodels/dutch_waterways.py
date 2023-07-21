@@ -93,11 +93,12 @@ def dutch_waterways_model():
     pump = ribasim.Pump(
         static=pd.DataFrame(
             data={
-                "node_id": [9, 9, 14],
-                "control_state": ["low", "high", None],
-                "flow_rate": [15.0, 25.0, 1.0],
-                "flow_rate_min": [None, None, 0.0],
-                "flow_rate_max": [None, None, 50.0],
+                "node_id": 3 * [9] + [14],
+                "active": [True, True, False, None],
+                "control_state": ["pump_low", "pump_high", "rating_curve", None],
+                "flow_rate": [15.0, 25.0, float("nan"), 1.0],
+                "flow_rate_min": 3 * [None] + [0.0],
+                "flow_rate_max": 3 * [None] + [50.0],
             }
         )
     )
@@ -128,13 +129,74 @@ def dutch_waterways_model():
     )
 
     # Setup discrete control
-    # condition = pd.DataFrame(
-    #     data={
-    #         "node_id": [19],
-    #         "listen_feature_id": [1],
-    #         "variable": ["level"],
-    #     }
-    # )
+    condition = pd.DataFrame(
+        data={
+            "node_id": 5 * [17],
+            "listen_feature_id": 4 * [1] + [14],
+            "variable": 5 * ["flow"],
+            "greater_than": [250, 275, 750, 800, 0],
+        }
+    )
+
+    logic = pd.DataFrame(
+        data={
+            "node_id": 6 * [17],
+            "truth_state": ["FAAAA", "TFAAT", "TFAAF", "AATFF", "AATFT", "AAATA"],
+            "control_state": [
+                "pump_low",
+                "pump_low",
+                "pump_high",
+                "pump_high",
+                "rating_curve",
+                "rating_curve",
+            ],
+        }
+    )
+
+    # TODO: Make this function more generic (can probably be done more efficiently as well)
+    from itertools import product
+
+    def expand_logic(logic):
+        """
+        Expand truth states by creating rows with all possible substitution combinations
+        of 'F' and 'T' for 'A'.
+        """
+        logic_new = pd.DataFrame(columns=("node_id", "truth_state", "control_state"))
+
+        for i, row in logic.iterrows():
+            truth_state = row.truth_state
+            n_substitutions = truth_state.count("A")
+
+            truth_states_expanded = []
+
+            for substitution in product("TF", repeat=n_substitutions):
+                truth_state_expanded = ""
+                index_s = 0
+
+                for truth_value in truth_state:
+                    if truth_value == "A":
+                        truth_state_expanded += substitution[index_s]
+                        index_s += 1
+                    else:
+                        truth_state_expanded += truth_value
+
+                truth_states_expanded.append(truth_state_expanded)
+
+            rows_new = pd.DataFrame(
+                data={
+                    "node_id": row.node_id,
+                    "truth_state": truth_states_expanded,
+                    "control_state": row.control_state,
+                }
+            )
+
+            logic_new = pd.concat([logic_new, rows_new])
+
+        return logic_new
+
+    logic = expand_logic(logic)
+
+    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     # Set up the nodes:
     node_id, node_type = ribasim.Node.get_node_ids_and_types(
@@ -146,12 +208,37 @@ def dutch_waterways_model():
         rating_curve,
         terminal,
         pid_control,
+        discrete_control,
     )
 
-    n_nodes = len(node_type)
-    phi = np.linspace(0, 2 * np.pi, n_nodes, endpoint=False)
-    xy = np.stack([np.cos(phi), np.sin(phi)], axis=1)
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+    # n_nodes = len(node_type)
+    # phi = np.linspace(0, 2 * np.pi, n_nodes, endpoint=False)
+    # xy = np.stack([np.cos(phi), np.sin(phi)], axis=1)
+
+    xy = np.array(
+        [
+            (1310, 312),  # 1: LevelBoundary
+            (1281, 278),  # 2: Basin
+            (1283, 183),  # 3: LinearResistance
+            (1220, 186),  # 4: LinearResistance
+            (1342, 162),  # 5: Basin
+            (1134, 184),  # 6: Basin
+            (1383, 121),  # 7: Terminal
+            (1052, 201),  # 8: TabulatedRatingCurve
+            (1043, 188),  # 9: Pump
+            (920, 197),  # 10: Basin
+            (783, 237),  # 11: LinearResistance
+            (609, 186),  # 12: Basin
+            (430, 176),  # 13: TabulatedRatingCurve
+            (442, 164),  # 14: Pump
+            (369, 185),  # 15: Basin
+            (329, 202),  # 16: LevelBoundary
+            (1187, 276),  # 17: DiscreteControl
+            (511, 126),  # 20: PidControl
+        ]
+    )
+
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=405 - xy[:, 1])
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -203,6 +290,7 @@ def dutch_waterways_model():
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
         pid_control=pid_control,
+        discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

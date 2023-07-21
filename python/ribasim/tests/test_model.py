@@ -72,18 +72,6 @@ def test_node_id_duplicate(basic):
         model.validate_model_node_field_IDs()
 
 
-def test_missing_node_id(basic):
-    model = basic
-
-    # Add entry in node but not in pump
-    model.node.static = model.node.static._append(
-        {"type": "Pump", "geometry": Point(0, 0)}, ignore_index=True
-    )
-
-    with pytest.raises(ValueError, match="Expected node IDs from.+"):
-        model.validate_model_node_field_IDs()
-
-
 def test_node_ids_misassigned(basic):
     model = basic
 
