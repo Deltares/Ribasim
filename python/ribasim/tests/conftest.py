@@ -7,6 +7,7 @@ from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
     bucket_model,
+    flow_boundary_time_model,
     flow_condition_model,
     invalid_qh_model,
     linear_resistance_model,
@@ -62,3 +63,4 @@ if __name__ == "__main__":
     pid_control_model_1().write(datadir / "pid_1")
     miscellaneous_nodes_model().write(datadir / "misc_nodes")
     invalid_qh_model().write(datadir / "invalid_qh")
+    flow_boundary_time_model().write(datadir / "flow_boundary_time")

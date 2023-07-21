@@ -108,6 +108,7 @@ name it must have in the GeoPackage if it is stored there.
   - `LevelBoundary / static`: levels
 - FlowBoundary: sets a precribed flow like a one-sided pump
   - `FlowBoundary / static`: flow rate
+  - `FlowBoundary / time`: dynamic flow rate
 - LinearResistance: bidirectional flow based on water level difference between Basins
   - `LinearResistance / static`: conductances
 - ManningResistance: Flow through this connection is estimated by conservation of energy and the Manning-Gauckler formula to estimate friction losses.
@@ -194,7 +195,7 @@ to have a reasonable and safe default, a value must be provided in the static ta
 
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.
-The table must by sorted by time, and per time it must be sorted by node_id.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
 A linear interpolation between the given timesteps is currently done if the
 solver takes timesteps between the given data points. More options will be available later.
 
@@ -262,7 +263,7 @@ node_id | discharge  | level
 
 This table is the transient form of the `TabulatedRatingCurve` table.
 The only difference is that a time column is added.
-The table must by sorted by time, and per time it must be sorted by node_id.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
@@ -321,6 +322,19 @@ node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
 flow_rate     | Float64 | $m^3 s^{-1}$ | -
 
+### FlowBoundary / time
+
+This table is the transient form of the `FlowBoundary` table.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the flow rates can be updated over time.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column    | type     | unit         | restriction
+--------- | -------  | ------------ | -----------
+time      | DateTime | -            | sorted
+node_id   | Int      | -            | sorted per time
+flow_rate | Float64  | $m^3 s^{-1}$ | -
 
 ### LinearResistance
 
@@ -371,7 +385,7 @@ node_id  | Int      | -
 storage  | Float64  | $m^3$
 level    | Float64  | $m$
 
-The table is sorted by time, and per time it is sorted by node_id.
+The table is sorted by time, and per time it is sorted by `node_id`.
 
 ### Flow output
 

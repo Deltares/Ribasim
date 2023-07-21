@@ -231,11 +231,13 @@ end
 """
 node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
+time: Data of time-dependent flow rates
 """
-struct FlowBoundary <: AbstractParameterNode
+struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     flow_rate::Vector{Float64}
+    time::StructVector{FlowBoundaryTimeV1, C, Int}
 end
 
 """
@@ -463,7 +465,7 @@ function continuous_control!(
     for (i, id) in enumerate(node_id)
         controlled_node_id = only(outneighbors(graph_control, id))
         # TODO: support the use of id_index
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+        controlled_node_idx = searchsortedfirst(pump.node_id, controlled_node_id)
 
         if !active[i]
             du.integral[i] = 0.0

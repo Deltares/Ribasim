@@ -12,6 +12,7 @@
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
+@schema "ribasim.flowboundary.time" FlowBoundaryTime
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
@@ -161,6 +162,12 @@ end
     flow_rate::Float64
 end
 
+@version FlowBoundaryTimeV1 begin
+    node_id::Int
+    time::DateTime
+    flow_rate::Float64
+end
+
 @version LinearResistanceStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
@@ -266,7 +273,7 @@ sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 
-const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+const TimeSchemas = Union{TabulatedRatingCurveTimeV1, FlowBoundaryTimeV1, BasinForcingV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
