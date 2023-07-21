@@ -4,17 +4,17 @@ import pandas as pd
 import ribasim
 
 
-def bucket_model() -> ribasim.Model:
-    """Bucket model with just a single basin."""
-
-    # Set up the nodes:
+def invalid_qh_model():
     xy = np.array(
         [
-            (400.0, 200.0),  # Basin
+            (0.0, 0.0),  # 1: TabulatedRatingCurve
+            (0.0, 1.0),  # 2: TabulatedRatingCurve,
+            (0.0, 2.0),  # 3: Basin
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-    node_type = ["Basin"]
+    node_type = 2 * ["TabulatedRatingCurve"] + ["Basin"]
+
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
@@ -25,7 +25,7 @@ def bucket_model() -> ribasim.Model:
         )
     )
 
-    # Setup the dummy edges:
+    # Setup the edges:
     from_id = np.array([], dtype=np.int64)
     to_id = np.array([], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
@@ -44,22 +44,15 @@ def bucket_model() -> ribasim.Model:
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1, 1],
-            "area": [0.0, 1000.0, 1000.0],
-            "level": [0.0, 0.1, 1.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "storage": [1000.0],
+            "node_id": [3, 3],
+            "area": [0.0, 1.0],
+            "level": [0.0, 1.0],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": [1],
+            "node_id": [3],
             "drainage": [0.0],
             "potential_evaporation": [0.0],
             "infiltration": [0.0],
@@ -67,14 +60,36 @@ def bucket_model() -> ribasim.Model:
             "urban_runoff": [0.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    basin = ribasim.Basin(profile=profile, static=static)
+
+    rating_curve_static = pd.DataFrame(
+        data={"node_id": [1, 1], "level": [0.0, 0.0], "discharge": [1.0, 2.0]}
+    )
+    rating_curve_time = pd.DataFrame(
+        data={
+            "node_id": [2, 2],
+            "time": [
+                pd.Timestamp("2020-01"),
+                pd.Timestamp("2020-01"),
+            ],
+            "level": [0.0, 0.0],
+            "discharge": [1.0, 2.0],
+        }
+    )
+
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=rating_curve_static, time=rating_curve_time
+    )
 
     model = ribasim.Model(
-        modelname="bucket",
-        node=node,
+        modelname="invalid_qh",
         edge=edge,
+        node=node,
         basin=basin,
+        tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
+
     return model

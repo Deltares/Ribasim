@@ -12,6 +12,7 @@
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
+@schema "ribasim.flowboundary.time" FlowBoundaryTime
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
@@ -56,11 +57,40 @@ neighbortypes(::Val{:FlowBoundary}) =
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:DiscreteControl}) = Set((:Pump,))
+neighbortypes(::Val{:DiscreteControl}) = Set((
+    :Pump,
+    :TabulatedRatingCurve,
+    :LinearResistance,
+    :ManningResistance,
+    :FractionalFlow,
+))
 neighbortypes(::Val{:PidControl}) = Set((:Pump,))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
+
+# Allowed number of inneighbors and outneighbors per node type
+struct n_neighbor_bounds
+    in_min::Int
+    in_max::Int
+    out_min::Int
+    out_max::Int
+end
+
+n_neighbor_bounds(nodetype::Symbol) = n_neighbor_bounds(Val(nodetype))
+n_neighbor_bounds(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds(::Val{:LevelBoundary}) =
+    n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
+n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
@@ -131,6 +161,12 @@ end
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
+    flow_rate::Float64
+end
+
+@version FlowBoundaryTimeV1 begin
+    node_id::Int
+    time::DateTime
     flow_rate::Float64
 end
 
@@ -239,7 +275,7 @@ sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 
-const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+const TimeSchemas = Union{TabulatedRatingCurveTimeV1, FlowBoundaryTimeV1, BasinForcingV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
@@ -263,4 +299,83 @@ function sorted_table!(
         sort!(table; by)
     end
     return table
+end
+
+"""
+Test for each node given its node type whether the nodes that
+# are downstream ('down-edge') of this node are of an allowed type
+"""
+function valid_edges(
+    edge_ids::Dictionary{Tuple{Int, Int}, Int},
+    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
+)::Bool
+    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
+    errors = String[]
+    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
+        if !(to_type in neighbortypes(from_type))
+            a, b = rev_edge_ids[edge_id]
+            push!(
+                errors,
+                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
+            )
+        end
+    end
+    if isempty(errors)
+        return true
+    else
+        @error join(errors, "\n")
+        return false
+    end
+end
+
+"""
+Check whether the profile data has no repeats in the levels and the areas start at 0.
+"""
+function valid_profiles(
+    node_id::Indices{Int},
+    level::Vector{Vector{Float64}},
+    area::Vector{Vector{Float64}},
+)::Vector{String}
+    errors = String[]
+
+    for (id, levels, areas) in zip(node_id, level, area)
+        if !allunique(levels)
+            push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
+        end
+
+        if areas[1] != 0
+            push!(
+                errors,
+                "Basins profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
+            )
+        end
+    end
+    return errors
+end
+
+function valid_pid_connectivity(
+    pid_control_node_id::Vector{Int},
+    pid_control_listen_node_id::Vector{Int},
+    graph_flow::DiGraph{Int},
+    graph_control::DiGraph{Int},
+    basin_node_id::Indices{Int},
+)::Bool
+    errors = false
+
+    for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
+        pump_id = only(outneighbors(graph_control, id))
+        has_index, _ = id_index(basin_node_id, listen_id)
+        if !has_index
+            @error "Listen node #$listen_id of PidControl node #$id is not a Basin"
+            errors = true
+        end
+
+        pump_intake_id = only(inneighbors(graph_flow, pump_id))
+        if pump_intake_id != listen_id
+            @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled node #$pump_id"
+            errors = true
+        end
+    end
+
+    return !errors
 end

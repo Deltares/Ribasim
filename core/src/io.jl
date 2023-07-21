@@ -121,7 +121,7 @@ function get_storages_and_levels(
     model::Model,
 )::NamedTuple{
     (:time, :node_id, :storage, :level),
-    Tuple{Vector{Dates.DateTime}, Vector{Int64}, Matrix{Float64}, Matrix{Float64}},
+    Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
 }
     (; config, integrator) = model
     (; sol, p) = integrator

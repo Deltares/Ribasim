@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -15,6 +17,14 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.FlowBoundaryStatic)
 
 
+class TimeSchema(pa.SchemaModel):
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.FlowBoundaryTime)
+        coerce = True  # this is required, otherwise a SchemaInitError is raised
+
+
 class FlowBoundary(TableModel):
     """
     Sets a precribed flow like a one-sided pump.
@@ -23,6 +33,9 @@ class FlowBoundary(TableModel):
     ----------
     static : pandas.DataFrame
         Table with the constant flows.
+    time : pandas.DataFrame
+        Table with time-varying flow rates.
     """
 
     static: DataFrame[StaticSchema]
+    time: Optional[DataFrame[TimeSchema]] = None

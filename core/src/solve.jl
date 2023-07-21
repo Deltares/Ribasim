@@ -5,7 +5,7 @@ const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true
 Store the connectivity information
 
 graph_flow, graph_control: directed graph with vertices equal to ids
-flow: store the flow on every edge
+flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
@@ -30,11 +30,11 @@ struct Connectivity
     )
         invalid_networks = Vector{String}()
 
-        if !is_valid(edge_ids_flow, edge_connection_types_flow)
+        if !valid_edges(edge_ids_flow, edge_connection_types_flow)
             push!(invalid_networks, "flow")
         end
 
-        if !is_valid(edge_ids_control, edge_connection_types_flow)
+        if !valid_edges(edge_ids_control, edge_connection_types_control)
             push!(invalid_networks, "control")
         end
 
@@ -53,29 +53,6 @@ struct Connectivity
             invalid_networks = join(invalid_networks, ", ")
             error("Invalid network(s): $invalid_networks")
         end
-    end
-end
-
-function is_valid(
-    edge_ids::Dictionary{Tuple{Int, Int}, Int},
-    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
-)
-    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
-    errors = String[]
-    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
-        if !(to_type in neighbortypes(from_type))
-            a, b = rev_edge_ids[edge_id]
-            push!(
-                errors,
-                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
-            )
-        end
-    end
-    return if isempty(errors)
-        true
-    else
-        @error join(errors, "\n")
-        false
     end
 end
 
@@ -111,6 +88,44 @@ struct Basin{C} <: AbstractParameterNode
     time::StructVector{BasinForcingV1, C, Int}
     # Storage derivative for use in PID controller
     dstorage::Vector{Float64}
+
+    function Basin(
+        node_id,
+        precipitation,
+        potential_evaporation,
+        drainage,
+        infiltration,
+        current_level,
+        current_area,
+        area,
+        level,
+        storage,
+        target_level,
+        time::StructVector{BasinForcingV1, C, Int},
+        dstorage,
+    ) where {C}
+        errors = valid_profiles(node_id, level, area)
+        if isempty(errors)
+            return new{C}(
+                node_id,
+                precipitation,
+                potential_evaporation,
+                drainage,
+                infiltration,
+                current_level,
+                current_area,
+                area,
+                level,
+                storage,
+                target_level,
+                time,
+                dstorage,
+            )
+        else
+            @error join(errors, "\n")
+            error("Errors occurred when parsing Basin data.")
+        end
+    end
 end
 
 """
@@ -216,11 +231,13 @@ end
 """
 node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
+time: Data of time-dependent flow rates
 """
-struct FlowBoundary <: AbstractParameterNode
+struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     flow_rate::Vector{Float64}
+    time::StructVector{FlowBoundaryTimeV1, C, Int}
 end
 
 """
@@ -297,6 +314,94 @@ struct Parameters
 end
 
 """
+Test for each node given its node type whether it has an allowed
+number of flow inneighbors and flow outneighbors
+"""
+function valid_n_neighbors(p::Parameters)::Bool
+    (;
+        connectivity,
+        basin,
+        linear_resistance,
+        manning_resistance,
+        tabulated_rating_curve,
+        fractional_flow,
+        level_boundary,
+        flow_boundary,
+        pump,
+        terminal,
+        pid_control,
+        discrete_control,
+    ) = p
+
+    (; graph_flow, graph_control) = connectivity
+
+    errors = String[]
+
+    append!(errors, valid_n_neighbors(graph_flow, basin))
+    append!(errors, valid_n_neighbors(graph_flow, linear_resistance))
+    append!(errors, valid_n_neighbors(graph_flow, manning_resistance))
+    append!(errors, valid_n_neighbors(graph_flow, tabulated_rating_curve))
+    append!(errors, valid_n_neighbors(graph_flow, fractional_flow))
+    append!(errors, valid_n_neighbors(graph_flow, level_boundary))
+    append!(errors, valid_n_neighbors(graph_flow, flow_boundary))
+    append!(errors, valid_n_neighbors(graph_flow, pump))
+    append!(errors, valid_n_neighbors(graph_flow, terminal))
+    append!(errors, valid_n_neighbors(graph_control, pid_control))
+    append!(errors, valid_n_neighbors(graph_control, discrete_control))
+
+    if isempty(errors)
+        return true
+    else
+        @error join(errors, "\n")
+        return false
+    end
+end
+
+function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Vector{String}
+    node_id = node.node_id
+    node_type = typeof(node)
+
+    bounds = n_neighbor_bounds(nameof(node_type))
+
+    errors = String[]
+
+    for id in node_id
+        n_inneighbors = length(inneighbors(graph, id))
+        n_outneighbors = length(outneighbors(graph, id))
+
+        if n_inneighbors < bounds.in_min
+            push!(
+                errors,
+                "Nodes of type $node_type must have at least $(bounds.in_min) inneighbor(s) (got $n_inneighbors for node #$id).",
+            )
+        end
+
+        if n_inneighbors > bounds.in_max
+            push!(
+                errors,
+                "Nodes of type $node_type can have at most $(bounds.in_max) inneighbor(s) (got $n_inneighbors for node #$id).",
+            )
+        end
+
+        if n_outneighbors < bounds.out_min
+            push!(
+                errors,
+                "Nodes of type $node_type must have at least $(bounds.out_min) outneighbor(s) (got $n_outneighbors for node #$id).",
+            )
+        end
+
+        if n_outneighbors > bounds.out_max
+            push!(
+                errors,
+                "Nodes of type $node_type can have at most $(bounds.out_max) outneighbor(s) (got $n_outneighbors for node #$id).",
+            )
+        end
+    end
+
+    return errors
+end
+
+"""
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
@@ -312,7 +417,8 @@ function formulate!(
         basin.current_level[i] = level
         basin.current_area[i] = area
         bottom = basin.level[i][1]
-        fixed_area = median(basin.area[i])
+        # add all precipitation that falls within the profile
+        fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
 
@@ -333,7 +439,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
-        @assert has_index "Listen node $listened_node_id is not a basin."
+        @assert has_index "Listen node $listened_node_id is not a Basin."
         target_level = basin.target_level[listened_node_idx]
         error[i] = target_level - basin.current_level[listened_node_idx]
     end
@@ -360,7 +466,7 @@ function continuous_control!(
     for (i, id) in enumerate(node_id)
         controlled_node_id = only(outneighbors(graph_control, id))
         # TODO: support the use of id_index
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+        controlled_node_idx = searchsortedfirst(pump.node_id, controlled_node_id)
 
         if !active[i]
             du.integral[i] = 0.0
