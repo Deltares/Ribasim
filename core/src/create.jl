@@ -6,7 +6,7 @@ function parse_static(
 )::NamedTuple
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
-    mask = [!(symb in [:node_id, :control_state]) for symb in columnnames_static]
+    mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
     columnnames_variables = columnnames_static[mask]
     columntypes_variables = collect(fieldtypes(static_type))[mask]
     vals = []
@@ -217,22 +217,19 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
 
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
-    msg = "Flowboundary cannot be in both static and time tables"
+    msg = "FlowBoundary cannot be in both static and time tables"
     @assert isdisjoint(static_node_ids, time_node_ids) msg
-    static_node_ids = collect(static_node_ids)
-    time_node_ids = collect(time_node_ids)
     node_ids = get_ids(db, "FlowBoundary")
 
     msg = "FlowBoundary node IDs don't match"
     @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
 
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
     active = BitVector()
     flow_rate = Float64[]
 
     for node_id in node_ids
         if node_id in static_node_ids
-            static_idx = findfirst(static_node_ids .== node_id)
+            static_idx = findfirst(static.node_id .== node_id)
             row = static[static_idx]
             push!(flow_rate, row.flow_rate)
             push!(active, coalesce(row.active, true))

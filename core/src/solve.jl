@@ -231,6 +231,7 @@ end
 """
 node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
+time: Data of time-dependent flow rates
 """
 struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{Int}
