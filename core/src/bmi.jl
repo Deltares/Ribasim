@@ -99,7 +99,8 @@ function set_initial_discrete_controlled_parameters!(
 
     # For every discrete_control node find a condition_idx it listens to
     for discrete_control_node_id in unique(discrete_control.node_id)
-        condition_idx = findfirst(discrete_control.node_id .== discrete_control_node_id)
+        condition_idx =
+            searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
         discrete_control_affect!(integrator, condition_idx)
     end
 end
@@ -113,13 +114,17 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
-    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    (; starttime, basin, tabulated_rating_curve, flow_boundary, discrete_control) =
+        parameters
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
-    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve)
+    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
+
+    tstops = get_tstops(flow_boundary.time.time, starttime)
+    flow_boundary_cb = PresetTimeCallback(tstops, update_flow_boundary!)
 
     # add a single time step's contribution to the water balance step's totals
     # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
@@ -140,10 +145,12 @@ function create_callbacks(
             save_flow_cb,
             basin_cb,
             tabulated_rating_curve_cb,
+            flow_boundary_cb,
             discrete_control_cb,
         )
     else
-        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+        callback =
+            CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, flow_boundary_cb)
     end
 
     return callback, saved_flow
@@ -273,7 +280,7 @@ end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
     node = getfield(p, p.lookup[node_id])
-    idx = only(findall(node.node_id .== node_id))
+    idx = searchsortedfirst(node.node_id, node_id)
     new_state = node.control_mapping[(node_id, control_state)]
 
     for (field, value) in zip(keys(new_state), new_state)
@@ -312,7 +319,7 @@ function update_basin(integrator)::Nothing
 end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
-function update_tabulated_rating_curve(integrator)::Nothing
+function update_tabulated_rating_curve!(integrator)::Nothing
     (; node_id, tables, time) = integrator.p.tabulated_rating_curve
     t = datetime_since(integrator.t, integrator.p.starttime)
 
@@ -329,6 +336,20 @@ function update_tabulated_rating_curve(integrator)::Nothing
         tables[i] = LinearInterpolation(discharge, level)
     end
     return nothing
+end
+
+"Load updates from 'FlowBoundary / time' into parameters"
+function update_flow_boundary!(integrator)::Nothing
+    (; node_id, flow_rate, time) = integrator.p.flow_boundary
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(time.time, t)
+    timeblock = view(time, rows)
+
+    for row in timeblock
+        i = searchsortedfirst(node_id, row.node_id)
+        flow_rate[i] = row.flow_rate
+    end
 end
 
 function BMI.update(model::Model)::Model

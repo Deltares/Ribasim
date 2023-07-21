@@ -20,6 +20,7 @@ from ribasim_testmodels.equations import (
 )
 from ribasim_testmodels.invalid import invalid_qh_model
 from ribasim_testmodels.pid_control import pid_control_model_1
+from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
@@ -38,4 +39,5 @@ __all__ = [
     "miscellaneous_nodes_model",
     "tabulated_rating_curve_control_model",
     "invalid_qh_model",
+    "flow_boundary_time_model",
 ]
