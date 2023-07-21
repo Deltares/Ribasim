@@ -273,7 +273,7 @@ sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 
-const TimeSchemas = Union{TabulatedRatingCurveTimeV1, BasinForcingV1}
+const TimeSchemas = Union{TabulatedRatingCurveTimeV1, FlowBoundaryTimeV1, BasinForcingV1}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
