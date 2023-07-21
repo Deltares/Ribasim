@@ -16,8 +16,20 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     local parameters, state, n
     try
         parameters = Parameters(db, config)
-        if !valid_n_flow_neighbors(parameters)
+
+        if !valid_n_neighbors(parameters)
             error("Invalid number of connections for certain node types.")
+        end
+
+        (; pid_control, connectivity, basin) = parameters
+        if !valid_pid_connectivity(
+            pid_control.node_id,
+            pid_control.listen_node_id,
+            connectivity.graph_flow,
+            connectivity.graph_control,
+            basin.node_id,
+        )
+            error("Invalid PidControl connectivity.")
         end
 
         # use state

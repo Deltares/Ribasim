@@ -89,6 +89,8 @@ n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int
 neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
+n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
@@ -349,4 +351,31 @@ function valid_profiles(
         end
     end
     return errors
+end
+
+function valid_pid_connectivity(
+    pid_control_node_id::Vector{Int},
+    pid_control_listen_node_id::Vector{Int},
+    graph_flow::DiGraph{Int},
+    graph_control::DiGraph{Int},
+    basin_node_id::Indices{Int},
+)::Bool
+    errors = false
+
+    for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
+        pump_id = only(outneighbors(graph_control, id))
+        has_index, _ = id_index(basin_node_id, listen_id)
+        if !has_index
+            @error "Listen node #$listen_id of PidControl node #$id is not a Basin"
+            errors = true
+        end
+
+        pump_intake_id = only(inneighbors(graph_flow, pump_id))
+        if pump_intake_id != listen_id
+            @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled node #$pump_id"
+            errors = true
+        end
+    end
+
+    return !errors
 end

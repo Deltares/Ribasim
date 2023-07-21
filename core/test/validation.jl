@@ -62,7 +62,7 @@ end
         Dict{Tuple{Int, String}, NamedTuple}(),
     )
 
-    errors = Ribasim.valid_n_flow_neighbors(graph_flow, pump)
+    errors = Ribasim.valid_n_neighbors(graph_flow, pump)
 
     @test "Nodes of type Ribasim.Pump can have at most 1 inneighbor(s) (got 2 for node #1)." in
           errors
@@ -79,7 +79,41 @@ end
     fractional_flow =
         Ribasim.FractionalFlow([5], [true], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
-    errors = Ribasim.valid_n_flow_neighbors(graph_flow, fractional_flow)
+    errors = Ribasim.valid_n_neighbors(graph_flow, fractional_flow)
     @test only(errors) ==
           "Nodes of type Ribasim.FractionalFlow can have at most 1 outneighbor(s) (got 2 for node #5)."
+end
+
+@testset "PidControl connectivity validation" begin
+    pid_control_node_id = [1, 6]
+    pid_control_listen_node_id = [3, 5]
+
+    graph_flow = DiGraph(7)
+    graph_control = DiGraph(7)
+
+    add_edge!(graph_flow, 3, 4)
+    add_edge!(graph_flow, 7, 2)
+
+    add_edge!(graph_control, 1, 4)
+    add_edge!(graph_control, 6, 2)
+
+    basin_node_id = Indices([5, 7])
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_pid_connectivity(
+            pid_control_node_id,
+            pid_control_listen_node_id,
+            graph_flow,
+            graph_control,
+            basin_node_id,
+        )
+    end
+
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Listen node #5 of PidControl node #6 is not upstream of controlled node #2"
 end
