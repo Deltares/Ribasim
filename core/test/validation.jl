@@ -62,7 +62,7 @@ end
         Dict{Tuple{Int, String}, NamedTuple}(),
     )
 
-    errors = Ribasim.valid_n_flow_neighbors(graph_flow, pump)
+    errors = Ribasim.valid_n_neighbors(graph_flow, pump)
 
     @test "Nodes of type Ribasim.Pump can have at most 1 inneighbor(s) (got 2 for node #1)." in
           errors
@@ -79,7 +79,7 @@ end
     fractional_flow =
         Ribasim.FractionalFlow([5], [true], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
-    errors = Ribasim.valid_n_flow_neighbors(graph_flow, fractional_flow)
+    errors = Ribasim.valid_n_neighbors(graph_flow, fractional_flow)
     @test only(errors) ==
           "Nodes of type Ribasim.FractionalFlow can have at most 1 outneighbor(s) (got 2 for node #5)."
 end

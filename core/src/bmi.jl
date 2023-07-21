@@ -17,7 +17,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     try
         parameters = Parameters(db, config)
 
-        if !valid_n_flow_neighbors(parameters)
+        if !valid_n_neighbors(parameters)
             error("Invalid number of connections for certain node types.")
         end
 

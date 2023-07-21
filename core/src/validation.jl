@@ -88,6 +88,8 @@ n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int
 neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
+n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin

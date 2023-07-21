@@ -315,7 +315,7 @@ end
 Test for each node given its node type whether it has an allowed
 number of flow inneighbors and flow outneighbors
 """
-function valid_n_flow_neighbors(p::Parameters)::Bool
+function valid_n_neighbors(p::Parameters)::Bool
     (;
         connectivity,
         basin,
@@ -327,21 +327,25 @@ function valid_n_flow_neighbors(p::Parameters)::Bool
         flow_boundary,
         pump,
         terminal,
+        pid_control,
+        discrete_control,
     ) = p
 
-    (; graph_flow) = connectivity
+    (; graph_flow, graph_control) = connectivity
 
     errors = String[]
 
-    append!(errors, valid_n_flow_neighbors(graph_flow, basin))
-    append!(errors, valid_n_flow_neighbors(graph_flow, linear_resistance))
-    append!(errors, valid_n_flow_neighbors(graph_flow, manning_resistance))
-    append!(errors, valid_n_flow_neighbors(graph_flow, tabulated_rating_curve))
-    append!(errors, valid_n_flow_neighbors(graph_flow, fractional_flow))
-    append!(errors, valid_n_flow_neighbors(graph_flow, level_boundary))
-    append!(errors, valid_n_flow_neighbors(graph_flow, flow_boundary))
-    append!(errors, valid_n_flow_neighbors(graph_flow, pump))
-    append!(errors, valid_n_flow_neighbors(graph_flow, terminal))
+    append!(errors, valid_n_neighbors(graph_flow, basin))
+    append!(errors, valid_n_neighbors(graph_flow, linear_resistance))
+    append!(errors, valid_n_neighbors(graph_flow, manning_resistance))
+    append!(errors, valid_n_neighbors(graph_flow, tabulated_rating_curve))
+    append!(errors, valid_n_neighbors(graph_flow, fractional_flow))
+    append!(errors, valid_n_neighbors(graph_flow, level_boundary))
+    append!(errors, valid_n_neighbors(graph_flow, flow_boundary))
+    append!(errors, valid_n_neighbors(graph_flow, pump))
+    append!(errors, valid_n_neighbors(graph_flow, terminal))
+    append!(errors, valid_n_neighbors(graph_control, pid_control))
+    append!(errors, valid_n_neighbors(graph_control, discrete_control))
 
     if isempty(errors)
         return true
@@ -351,10 +355,7 @@ function valid_n_flow_neighbors(p::Parameters)::Bool
     end
 end
 
-function valid_n_flow_neighbors(
-    graph_flow::DiGraph{Int},
-    node::AbstractParameterNode,
-)::Vector{String}
+function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Vector{String}
     node_id = node.node_id
     node_type = typeof(node)
 
@@ -363,8 +364,8 @@ function valid_n_flow_neighbors(
     errors = String[]
 
     for id in node_id
-        n_inneighbors = length(inneighbors(graph_flow, id))
-        n_outneighbors = length(outneighbors(graph_flow, id))
+        n_inneighbors = length(inneighbors(graph, id))
+        n_outneighbors = length(outneighbors(graph, id))
 
         if n_inneighbors < bounds.in_min
             push!(
