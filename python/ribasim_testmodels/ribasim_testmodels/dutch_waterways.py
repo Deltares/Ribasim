@@ -76,7 +76,9 @@ def dutch_waterways_model():
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [3, 4, 11], "resistance": 3 * [5e3]})
+        static=pd.DataFrame(
+            data={"node_id": [3, 4, 11, 18, 19], "resistance": 5 * [5e3]}
+        )
     )
 
     rating_curve = ribasim.TabulatedRatingCurve(
@@ -96,7 +98,7 @@ def dutch_waterways_model():
                 "node_id": 3 * [9] + [14],
                 "active": [True, True, False, None],
                 "control_state": ["pump_low", "pump_high", "rating_curve", None],
-                "flow_rate": [15.0, 25.0, float("nan"), 1.0],
+                "flow_rate": [15.0, 25.0, 1.0, 1.0],
                 "flow_rate_min": 3 * [None] + [0.0],
                 "flow_rate_max": 3 * [None] + [50.0],
             }
@@ -104,17 +106,34 @@ def dutch_waterways_model():
     )
 
     # Setup flow boundary
+    n_times = 250
+    time = pd.date_range(
+        start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
+    ).astype("datetime64[s]")
+
+    # Flow rate curve from sine series
+    flow_rate = np.zeros(n_times)
+    x = np.linspace(0, 1, n_times)
+    n_terms = 5
+    for i in np.arange(1, 2 * n_terms, 2):
+        flow_rate += 4 / (i * np.pi) * np.sin(2 * i * np.pi * x)
+
+    b = (250 + 800) / 2
+    a = 800 - b
+
+    # Scale to desired magnitude
+    flow_rate = a * flow_rate + b
+
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [500]})
+        time=pd.DataFrame(
+            data={"node_id": n_times * [1], "time": time, "flow_rate": flow_rate}
+        )
     )
 
     # Setup the level boundary
     level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(data={"node_id": [16], "level": [3.0]})
+        static=pd.DataFrame(data={"node_id": [7, 16], "level": 2 * [3.0]})
     )
-
-    # Setup terminal
-    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [7]}))
 
     # Setup PID control
     pid_control = ribasim.PidControl(
@@ -132,7 +151,7 @@ def dutch_waterways_model():
     condition = pd.DataFrame(
         data={
             "node_id": 5 * [17],
-            "listen_feature_id": 4 * [1] + [14],
+            "listen_feature_id": 4 * [1] + [12],
             "variable": 5 * ["flow"],
             "greater_than": [250, 275, 750, 800, 0],
         }
@@ -206,7 +225,6 @@ def dutch_waterways_model():
         flow_boundary,
         level_boundary,
         rating_curve,
-        terminal,
         pid_control,
         discrete_control,
     )
@@ -223,7 +241,7 @@ def dutch_waterways_model():
             (1220, 186),  # 4: LinearResistance
             (1342, 162),  # 5: Basin
             (1134, 184),  # 6: Basin
-            (1383, 121),  # 7: Terminal
+            (1383, 121),  # 7: LevelBoundary
             (1052, 201),  # 8: TabulatedRatingCurve
             (1043, 188),  # 9: Pump
             (920, 197),  # 10: Basin
@@ -234,6 +252,8 @@ def dutch_waterways_model():
             (369, 185),  # 15: Basin
             (329, 202),  # 16: LevelBoundary
             (1187, 276),  # 17: DiscreteControl
+            (1362, 142),  # 18: LinearResistance
+            (349, 194),  # 19: LinearResistance
             (511, 126),  # 20: PidControl
         ]
     )
@@ -252,14 +272,16 @@ def dutch_waterways_model():
 
     # Setup the edges:
     from_id_flow = np.array(
-        [1, 2, 3, 5, 2, 4, 6, 9, 10, 11, 12, 14, 15, 6, 8, 12, 13], dtype=np.int64
+        [1, 2, 3, 2, 4, 6, 9, 10, 11, 12, 14, 6, 8, 12, 13, 5, 18, 15, 19],
+        dtype=np.int64,
     )
     to_id_flow = np.array(
-        [2, 3, 5, 7, 4, 6, 9, 10, 11, 12, 14, 15, 16, 8, 10, 13, 15], dtype=np.int64
+        [2, 3, 5, 4, 6, 9, 10, 11, 12, 14, 15, 8, 10, 13, 15, 18, 7, 19, 16],
+        dtype=np.int64,
     )
 
-    from_id_control = np.array([20], dtype=np.int64)
-    to_id_control = np.array([14], dtype=np.int64)
+    from_id_control = np.array([20, 17, 17], dtype=np.int64)
+    to_id_control = np.array([14, 8, 9], dtype=np.int64)
 
     from_id = np.concatenate([from_id_flow, from_id_control])
     to_id = np.concatenate([to_id_flow, to_id_control])
@@ -288,7 +310,6 @@ def dutch_waterways_model():
         flow_boundary=flow_boundary,
         level_boundary=level_boundary,
         tabulated_rating_curve=rating_curve,
-        terminal=terminal,
         pid_control=pid_control,
         discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
@@ -302,5 +323,10 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     model = dutch_waterways_model()
+
     model.plot()
+
+    df_flow = model.flow_boundary.time.pivot_table(index="time", values=["flow_rate"])
+    df_flow.plot()
+
     plt.show()

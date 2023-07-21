@@ -37,5 +37,5 @@ class FlowBoundary(TableModel):
         Table with time-varying flow rates.
     """
 
-    static: DataFrame[StaticSchema]
+    static: Optional[DataFrame[StaticSchema]] = None
     time: Optional[DataFrame[TimeSchema]] = None
