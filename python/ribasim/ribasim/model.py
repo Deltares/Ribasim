@@ -350,7 +350,7 @@ class Model(BaseModel):
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.node.static.iloc[node_id - 1]
+                    point_end = self.node.static.iloc[node_id - 1].geometry
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
