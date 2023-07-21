@@ -110,8 +110,10 @@ end
         )
     end
 
+    @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
     @test logger.logs[2].level == Error
-    @test logger.logs[2].message == Listen node "#5 of PidControl node #6 is not upstream of controlled node #2"
+    @test logger.logs[2].message ==
+          "Listen node #5 of PidControl node #6 is not upstream of controlled node #2"
 end
