@@ -166,22 +166,22 @@ class BasinStatic(BaseModel):
 
 
 class Root(BaseModel):
-    DiscreteControlLogic: Optional[DiscreteControlLogic] = None
-    Edge: Optional[Edge] = None
-    FlowBoundaryTime: Optional[FlowBoundaryTime] = None
-    PumpStatic: Optional[PumpStatic] = None
-    LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
-    DiscreteControlCondition: Optional[DiscreteControlCondition] = None
-    BasinForcing: Optional[BasinForcing] = None
-    FractionalFlowStatic: Optional[FractionalFlowStatic] = None
-    LinearResistanceStatic: Optional[LinearResistanceStatic] = None
-    PidControlStatic: Optional[PidControlStatic] = None
-    ManningResistanceStatic: Optional[ManningResistanceStatic] = None
-    FlowBoundaryStatic: Optional[FlowBoundaryStatic] = None
-    Node: Optional[Node] = None
+    TerminalStatic: Optional[TerminalStatic] = None
     TabulatedRatingCurveTime: Optional[TabulatedRatingCurveTime] = None
     TabulatedRatingCurveStatic: Optional[TabulatedRatingCurveStatic] = None
+    PumpStatic: Optional[PumpStatic] = None
+    PidControlStatic: Optional[PidControlStatic] = None
+    Node: Optional[Node] = None
+    ManningResistanceStatic: Optional[ManningResistanceStatic] = None
+    LinearResistanceStatic: Optional[LinearResistanceStatic] = None
+    LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
+    FractionalFlowStatic: Optional[FractionalFlowStatic] = None
+    FlowBoundaryTime: Optional[FlowBoundaryTime] = None
+    FlowBoundaryStatic: Optional[FlowBoundaryStatic] = None
+    Edge: Optional[Edge] = None
+    DiscreteControlLogic: Optional[DiscreteControlLogic] = None
+    DiscreteControlCondition: Optional[DiscreteControlCondition] = None
+    BasinStatic: Optional[BasinStatic] = None
     BasinState: Optional[BasinState] = None
     BasinProfile: Optional[BasinProfile] = None
-    TerminalStatic: Optional[TerminalStatic] = None
-    BasinStatic: Optional[BasinStatic] = None
+    BasinForcing: Optional[BasinForcing] = None

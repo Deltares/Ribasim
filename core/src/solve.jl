@@ -465,7 +465,7 @@ function continuous_control!(
     for (i, id) in enumerate(node_id)
         controlled_node_id = only(outneighbors(graph_control, id))
         # TODO: support the use of id_index
-        controlled_node_idx = findfirst(pump.node_id .== controlled_node_id)
+        controlled_node_idx = searchsortedfirst(pump.node_id, controlled_node_id)
 
         if !active[i]
             du.integral[i] = 0.0

@@ -212,9 +212,6 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static = load_structvector(db, config, FlowBoundaryStaticV1)
-    time = load_structvector(db, config, FlowBoundaryTimeV1)
-
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
     msg = "FlowBoundary cannot be in both static and time tables"
@@ -229,7 +226,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
 
     for node_id in node_ids
         if node_id in static_node_ids
-            static_idx = findfirst(static.node_id .== node_id)
+            static_idx = searchsortedfirst(static.node_id, node_id)
             row = static[static_idx]
             push!(flow_rate, row.flow_rate)
             push!(active, coalesce(row.active, true))

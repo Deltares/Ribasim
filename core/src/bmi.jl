@@ -87,7 +87,8 @@ function set_initial_discrete_controlled_parameters!(
 
     # For every discrete_control node find a condition_idx it listens to
     for discrete_control_node_id in unique(discrete_control.node_id)
-        condition_idx = findfirst(discrete_control.node_id .== discrete_control_node_id)
+        condition_idx =
+            searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
         discrete_control_affect!(integrator, condition_idx)
     end
 end
@@ -267,7 +268,7 @@ end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
     node = getfield(p, p.lookup[node_id])
-    idx = only(findall(node.node_id .== node_id))
+    idx = searchsortedfirst(node.node_id, node_id)
     new_state = node.control_mapping[(node_id, control_state)]
 
     for (field, value) in zip(keys(new_state), new_state)
