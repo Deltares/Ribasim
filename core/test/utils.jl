@@ -55,32 +55,31 @@ end
     )
 end
 
-@testset "Expand control_mapping" begin
-    control_mapping = Dict{Tuple{Int, String}, String}()
-    control_mapping[(1, "*T*")] = "foo"
-    control_mapping[(2, "FF")] = "bar"
+@testset "Expand logic_mapping" begin
+    logic_mapping = Dict{Tuple{Int, String}, String}()
+    logic_mapping[(1, "*T*")] = "foo"
+    logic_mapping[(2, "FF")] = "bar"
+    Ribasim.expand_logic_mapping!(logic_mapping)
 
-    Ribasim.expand_control_mapping!(control_mapping)
-
-    @test control_mapping[(1, "TTT")] == "foo"
-    @test control_mapping[(1, "FTT")] == "foo"
-    @test control_mapping[(1, "TTF")] == "foo"
-    @test control_mapping[(1, "FTF")] == "foo"
-    @test control_mapping[(2, "FF")] == "bar"
-    @test length(control_mapping) == 5
+    @test logic_mapping[(1, "TTT")] == "foo"
+    @test logic_mapping[(1, "FTT")] == "foo"
+    @test logic_mapping[(1, "TTF")] == "foo"
+    @test logic_mapping[(1, "FTF")] == "foo"
+    @test logic_mapping[(2, "FF")] == "bar"
+    @test length(logic_mapping) == 5
 
     new_key = (3, "duck")
-    control_mapping[new_key] = "bar"
+    logic_mapping[new_key] = "bar"
 
-    @test_throws "Truth state 'duck' contains illegal characters or is empty." Ribasim.expand_control_mapping!(
-        control_mapping,
+    @test_throws "Truth state 'duck' contains illegal characters or is empty." Ribasim.expand_logic_mapping!(
+        logic_mapping,
     )
 
-    delete!(control_mapping, new_key)
+    delete!(logic_mapping, new_key)
 
-    control_mapping[(3, "")] = "bar"
+    logic_mapping[(3, "")] = "bar"
 
-    @test_throws "Truth state '' contains illegal characters or is empty." Ribasim.expand_control_mapping!(
-        control_mapping,
+    @test_throws "Truth state '' contains illegal characters or is empty." Ribasim.expand_logic_mapping!(
+        logic_mapping,
     )
 end

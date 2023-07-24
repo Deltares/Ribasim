@@ -329,10 +329,10 @@ function basin_bottoms(
 end
 
 """
-Replace all truth states in the control mapping containing wildcards with
+Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
-function expand_control_mapping!(control_mapping::Dict{Tuple{Int, String}, String})::Nothing
+function expand_logic_mapping!(logic_mapping::Dict{Tuple{Int, String}, String})::Nothing
     keys_old = collect(keys(control_mapping))
 
     for (node_id, truth_state) in keys_old
@@ -343,12 +343,11 @@ function expand_control_mapping!(control_mapping::Dict{Tuple{Int, String}, Strin
         n_wildcards = count(==('*'), truth_state)
 
         if n_wildcards > 0
-            control_state = control_mapping[(node_id, truth_state)]
-            delete!(control_mapping, (node_id, truth_state))
+            control_state = logic_mapping[(node_id, truth_state)]
+            delete!(logic_mapping, (node_id, truth_state))
             for substitution in Iterators.product(fill(['T', 'F'], n_wildcards)...)
                 truth_state_new = ""
                 s_index = 0
-                substitution_iterator = iterate(substitution)
 
                 for truth_value in truth_state
                     truth_state_new *= if truth_value == '*'
@@ -359,7 +358,7 @@ function expand_control_mapping!(control_mapping::Dict{Tuple{Int, String}, Strin
                     end
                 end
 
-                control_mapping[(node_id, truth_state_new)] = control_state
+                logic_mapping[(node_id, truth_state_new)] = control_state
             end
         end
     end
