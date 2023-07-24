@@ -65,6 +65,7 @@ const nodetypes = collect(keys(nodekinds))
     algorithm::String = "QNDF"
     autodiff::Bool = false
     saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
+    adaptive::Bool = true
     dt::Float64 = 0.0
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-3
