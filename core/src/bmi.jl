@@ -101,7 +101,8 @@ function set_initial_discrete_controlled_parameters!(
     for discrete_control_node_id in unique(discrete_control.node_id)
         condition_idx =
             searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
-        discrete_control_affect!(integrator, condition_idx)
+        # TODO: this now assumes an upcrossing of condition condition_idx
+        discrete_control_affect!(integrator, condition_idx, true)
     end
 end
 
@@ -218,7 +219,7 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     discrete_control = integrator.p.discrete_control
     discrete_control.condition_value[condition_idx] = true
 
-    discrete_control_affect!(integrator, condition_idx)
+    discrete_control_affect!(integrator, condition_idx, true)
 end
 
 """
@@ -228,13 +229,13 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
     discrete_control = integrator.p.discrete_control
     discrete_control.condition_value[condition_idx] = false
 
-    discrete_control_affect!(integrator, condition_idx)
+    discrete_control_affect!(integrator, condition_idx, false)
 end
 
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bool)::None
+function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bool)::Nothing
     p = integrator.p
     (; discrete_control, connectivity) = p
 
