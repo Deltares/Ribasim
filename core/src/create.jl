@@ -333,6 +333,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         logic_mapping[(node_id, truth_state)] = control_state_
     end
 
+    logic_mapping = expand_logic_mapping(logic_mapping)
+
     record = (
         time = Vector{Float64}(),
         control_node_id = Vector{Int}(),
