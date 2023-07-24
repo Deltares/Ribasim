@@ -4,6 +4,7 @@ import IterTools
 import BasicModelInterface as BMI
 
 using Arrow: Arrow, Table
+using Base.Iterators
 using Configurations: from_toml
 using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation

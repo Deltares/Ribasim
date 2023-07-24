@@ -327,3 +327,40 @@ function basin_bottoms(
     bottom_b = something(bottom_b, bottom_a)
     return bottom_a, bottom_b
 end
+
+"""
+Replace all truth states in the control mapping containing wildcards with
+all possible explicit truth states.
+"""
+function expand_control_mapping!(control_mapping::Dict{Tuple{Int, String}, String})::Nothing
+    keys_old = collect(keys(control_mapping))
+
+    for (node_id, truth_state) in keys_old
+        pattern = r"^[ $(TF*)* ]+$"
+        msg = "Truth state \'$truth_state\' contains illegal characters or is empty."
+        @assert occursin(pattern, truth_state) msg
+
+        n_wildcards = count(==('*'), truth_state)
+
+        if n_wildcards > 0
+            control_state = control_mapping[(node_id, truth_state)]
+            delete!(control_mapping, (node_id, truth_state))
+            for substitution in Iterators.product(fill(['T', 'F'], n_wildcards)...)
+                truth_state_new = ""
+                s_index = 0
+                substitution_iterator = iterate(substitution)
+
+                for truth_value in truth_state
+                    truth_state_new *= if truth_value == '*'
+                        s_index += 1
+                        substitution[s_index]
+                    else
+                        truth_value
+                    end
+                end
+
+                control_mapping[(node_id, truth_state_new)] = control_state
+            end
+        end
+    end
+end
