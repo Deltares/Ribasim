@@ -77,6 +77,37 @@ function parse_static(
     return out
 end
 
+function expand_control_mapping!(control_mapping::Dict{Tuple{Int, String}, String})::None
+    keys_old = collect(keys(control_mapping))
+
+    for (node_id, truth_state) in keys_old
+        pattern = r"^[ $(TF*)* ]+$"
+        msg = "Truth state $truth_state contains illegal characters or is empty."
+        @assert occursin(pattern, truth_state) msg
+
+        n_wildcards = count(truth_state, '*')
+
+        if n_wildcards > 0
+            control_state = control_mapping[truth_state]
+            delete!(control_mapping, truth_state)
+            for substitution in IterTools.product(fill(['T', 'F'], n_wildcards)...)
+                truth_state_new = ""
+                substitution_iterator = iterate(substitution)
+
+                for truth_value in truth_state
+                    truth_state_new *= if truth_value == 'A'
+                        next(substitution_iterator)
+                    else
+                        truth_value
+                    end
+                end
+
+                control_mapping[(node_id, truth_state_new)] = control_state
+            end
+        end
+    end
+end
+
 function Connectivity(db::DB)::Connectivity
     graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
     graph_control, edge_ids_control, edge_connection_types_control =
