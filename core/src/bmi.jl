@@ -234,7 +234,7 @@ end
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(integrator, condition_idx)
+function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bool)::None
     p = integrator.p
     (; discrete_control, connectivity) = p
 
@@ -246,11 +246,34 @@ function discrete_control_affect!(integrator, condition_idx)
 
     # Get the truth state for this discrete_control node
     condition_value_local = discrete_control.condition_value[condition_ids]
-    truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
+    truth_values = [ifelse(b, "T", "F") for b in condition_value_local]
+    truth_state = join(truth_values, "")
 
+    # Get the truth specific about the latest crossing
+    truth_values[condition_idx] = upcrossing ? "U" : "D"
+    truth_state_crossing_specific = join(truth_values, "")
+
+    # @reviewer: what is the cleanest way to do this?
     # What the local control state should be
-    control_state_new =
-        discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
+    truth_state_new =
+        if haskey(
+            discrete_control.logic_mapping,
+            (discrete_control_node_id, truth_state_crossing_specific),
+        )
+            discrete_control.logic_mapping[(
+                discrete_control_node_id,
+                truth_state_crossing_specific,
+            )]
+        elseif haskey(
+            discrete_control.logic_mapping,
+            (discrete_control_node_id, truth_state),
+        )
+            discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
+        else
+            error(
+                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node #$discrete_control_node_id.",
+            )
+        end
 
     # What the local control state is
     # TODO: Check time elapsed since control change
