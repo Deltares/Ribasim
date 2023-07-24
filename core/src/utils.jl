@@ -333,7 +333,7 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping!(logic_mapping::Dict{Tuple{Int, String}, String})::Nothing
-    keys_old = collect(keys(control_mapping))
+    keys_old = collect(keys(logic_mapping))
 
     for (node_id, truth_state) in keys_old
         pattern = r"^[ $(TF*)* ]+$"
