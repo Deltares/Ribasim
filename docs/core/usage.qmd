@@ -106,7 +106,7 @@ name it must have in the GeoPackage if it is stored there.
   - `FractionalFlow / static`: fractions
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
-- FlowBoundary: sets a precribed flow like a one-sided pump
+- FlowBoundary: sets a precribed flow into the model
   - `FlowBoundary / static`: flow rate
   - `FlowBoundary / time`: dynamic flow rate
 - LinearResistance: bidirectional flow based on water level difference between Basins
@@ -280,14 +280,13 @@ discharge | Float64  | $m^3 s^{-1}$ | non-negative
 Pump water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.
-A negative flow rate means pumping against the edge direction.
-Note that the intake must always be a Basin.
+The intake must be either a Basin or LevelBoundary.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 active                | Bool    | -            | (optional, default true)
-flow_rate             | Float64 | $m^3 s^{-1}$ | -
+flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 control_state         | String  | -            | (optional)

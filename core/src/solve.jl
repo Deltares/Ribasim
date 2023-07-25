@@ -702,6 +702,8 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = pump
     for (id, isactive, rate) in zip(node_id, active, flow_rate)
+        @assert rate >= 0 "Pump flow rate must be positive, found $rate for Pump #$id"
+
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
@@ -711,10 +713,7 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             continue
         end
 
-        # negative flow_rate means pumping against edge direction
-        intake_id = rate >= 0 ? src_id : dst_id
-
-        hasindex, basin_idx = id_index(basin.node_id, intake_id)
+        hasindex, basin_idx = id_index(basin.node_id, src_id)
 
         if hasindex
             # Pumping from basin
@@ -723,7 +722,7 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             q = reduction_factor * rate
         else
             # Pumping from level boundary
-            @assert intake_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
+            @assert src_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
             q = rate
         end
 
