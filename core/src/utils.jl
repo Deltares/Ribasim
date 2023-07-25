@@ -340,7 +340,7 @@ function get_compressor(config::Config)
         Arrow.CodecZstd.TranscodingStreams.initialize(c)
     end
 end
-  
+
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
