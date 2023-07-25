@@ -54,3 +54,48 @@ end
         6,
     )
 end
+
+@testset "Expand logic_mapping" begin
+    logic_mapping = Dict{Tuple{Int, String}, String}()
+    logic_mapping[(1, "*T*")] = "foo"
+    logic_mapping[(2, "FF")] = "bar"
+    logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping)
+
+    @test logic_mapping_expanded[(1, "TTT")] == "foo"
+    @test logic_mapping_expanded[(1, "FTT")] == "foo"
+    @test logic_mapping_expanded[(1, "TTF")] == "foo"
+    @test logic_mapping_expanded[(1, "FTF")] == "foo"
+    @test logic_mapping_expanded[(2, "FF")] == "bar"
+    @test length(logic_mapping_expanded) == 5
+
+    new_key = (3, "duck")
+    logic_mapping[new_key] = "quack"
+
+    @test_throws "Truth state 'duck' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
+        logic_mapping,
+    )
+
+    delete!(logic_mapping, new_key)
+
+    new_key = (3, "")
+    logic_mapping[new_key] = "bar"
+
+    @test_throws "Truth state '' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
+        logic_mapping,
+    )
+
+    delete!(logic_mapping, new_key)
+
+    new_key = (1, "FTT")
+    logic_mapping[new_key] = "foo"
+
+    # This should not throw an error, as although "FTT" for node_id = 1 is already covered above, this is consistent
+    Ribasim.expand_logic_mapping(logic_mapping)
+
+    new_key = (1, "TTF")
+    logic_mapping[new_key] = "bar"
+
+    @test_throws "Multiple control states found for DiscreteControl node #1 for truth state `TTF`: foo, bar." Ribasim.expand_logic_mapping(
+        logic_mapping,
+    )
+end

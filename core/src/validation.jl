@@ -346,7 +346,7 @@ function valid_profiles(
         if areas[1] != 0
             push!(
                 errors,
-                "Basins profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
+                "Basin profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
             )
         end
     end

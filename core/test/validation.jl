@@ -11,7 +11,7 @@ using Logging
     area = [[100.0, 100.0]]
     errors = Ribasim.valid_profiles(node_id, level, area)
     @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
-    @test "Basins profiles must start with area 0 at the bottom (got area 100.0 for node #1)." in
+    @test "Basin profiles must start with area 0 at the bottom (got area 100.0 for node #1)." in
           errors
     @test length(errors) == 2
 

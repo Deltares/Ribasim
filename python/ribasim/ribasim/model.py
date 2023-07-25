@@ -35,6 +35,7 @@ class Solver(BaseModel):
     algorithm: Optional[str]
     autodiff: Optional[bool]
     saveat: Optional[Union[float, List[float]]]
+    adaptive: Optional[bool]
     dt: Optional[float]
     abstol: Optional[float]
     reltol: Optional[float]
