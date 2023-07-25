@@ -34,15 +34,9 @@ jobs:
         with:
           project: core
 
-      - uses: actions/cache@v3
-        env:
-          cache-name: cache-artifacts
+      - uses: julia-actions/cache@v1
         with:
-          path: ~/.julia/artifacts
-          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-test-${{ env.cache-name }}-
-            ${{ runner.os }}-test-
+          cache-compiled: "true"
 
       - name: Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
