@@ -89,7 +89,6 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Output <: TableOption
-    waterbalance::String = "waterbalance.arrow"
     basin::String = "output/basin.arrow"
     flow::String = "output/flow.arrow"
     control::String = "output/control.arrow"

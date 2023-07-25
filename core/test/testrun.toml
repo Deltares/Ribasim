@@ -10,9 +10,6 @@ output_dir = "../data/lhm"
 
 geopackage = "model.gpkg"
 
-[output]
-waterbalance = "waterbalance.arrow"
-
 [basin]
 forcing = "forcing.arrow"
 
