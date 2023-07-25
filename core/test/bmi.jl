@@ -27,9 +27,10 @@ end
 @testset "fixed timestepping" begin
     dict = to_dict(config_template)
     dt = 3600
-    dict["solver"] = Ribasim.Solver(; algorithm = "Euler", dt)
+    dict["solver"] = Ribasim.Solver(; algorithm = "ImplicitEuler", adaptive = false, dt)
     config = from_dict(Ribasim.Config, dict)
-    @test config.solver.algorithm == "Euler"
+    @test config.solver.algorithm == "ImplicitEuler"
+    @test !config.solver.adaptive
     model = BMI.initialize(Ribasim.Model, config)
 
     @test BMI.get_time_step(model) == dt

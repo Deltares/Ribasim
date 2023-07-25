@@ -67,6 +67,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         progress_name = "Simulating",
         callback,
         config.solver.saveat,
+        config.solver.adaptive,
         config.solver.dt,
         config.solver.abstol,
         config.solver.reltol,
