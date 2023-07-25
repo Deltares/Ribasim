@@ -71,6 +71,19 @@ const nodetypes = collect(keys(nodekinds))
     maxiters::Int = 1e9
 end
 
+@enum Compression begin
+    zstd
+    lz4
+end
+function Base.convert(::Type{Compression}, str::AbstractString)
+    i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
+    if isnothing(i)
+        i = 1
+        @warn "Compression algorithm $str not supported, using $(Compression(i))."
+    end
+    return Compression(i - 1)
+end
+
 # Separate struct, as basin clashes with nodetype
 @option struct Output <: TableOption
     waterbalance::String = "waterbalance.arrow"
@@ -78,6 +91,8 @@ end
     flow::String = "output/flow.arrow"
     control::String = "output/control.arrow"
     outstate::Maybe{String}
+    compression::Compression = "zstd"
+    compressionlevel::Int = 6
 end
 
 @option @addnodetypes struct Config

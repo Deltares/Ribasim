@@ -327,3 +327,16 @@ function basin_bottoms(
     bottom_b = something(bottom_b, bottom_a)
     return bottom_a, bottom_b
 end
+
+"Get the compressor based on the Config"
+function get_compressor(config::Config)
+    compressor = config.output.compression
+    compressionlevel = config.output.compressionlevel
+    return if compressor == lz4
+        c = Arrow.LZ4FrameCompressor(; compressionlevel)
+        Arrow.CodecLz4.TranscodingStreams.initialize(c)
+    elseif compressor == zstd
+        c = Arrow.ZstdCompressor(; level = compressionlevel)
+        Arrow.CodecZstd.TranscodingStreams.initialize(c)
+    end
+end

@@ -79,9 +79,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 end
 
 function BMI.finalize(model::Model)::Model
-    write_basin_output(model)
-    write_flow_output(model)
-    write_discrete_control_output(model)
+    compress = get_compressor(model.config)
+    write_basin_output(model, compress)
+    write_flow_output(model, compress)
+    write_discrete_control_output(model, compress)
     return model
 end
 
