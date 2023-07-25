@@ -8,6 +8,7 @@ from ribasim_testmodels.basic import (
 )
 from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.discrete_control import (
+    crossing_specific_control_model,
     flow_condition_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
@@ -40,4 +41,5 @@ __all__ = [
     "tabulated_rating_curve_control_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
+    "crossing_specific_control_model",
 ]

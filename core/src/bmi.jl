@@ -256,11 +256,12 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
 
     # @reviewer: what is the cleanest way to do this?
     # What the local control state should be
-    truth_state_new =
+    control_state_new =
         if haskey(
             discrete_control.logic_mapping,
             (discrete_control_node_id, truth_state_crossing_specific),
         )
+            truth_state_used = truth_state_crossing_specific
             discrete_control.logic_mapping[(
                 discrete_control_node_id,
                 truth_state_crossing_specific,
@@ -269,12 +270,15 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
             discrete_control.logic_mapping,
             (discrete_control_node_id, truth_state),
         )
+            truth_state_used = truth_state
             discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
         else
             error(
                 "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node #$discrete_control_node_id.",
             )
         end
+
+    println("$truth_values, $truth_state_used, $control_state_new")
 
     # What the local control state is
     # TODO: Check time elapsed since control change
@@ -288,7 +292,7 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
 
         push!(record.time, integrator.t)
         push!(record.control_node_id, discrete_control_node_id)
-        push!(record.truth_state, truth_state)
+        push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
@@ -300,6 +304,7 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
         discrete_control.control_state[discrete_control_node_id] =
             (control_state_new, integrator.t)
     end
+    return nothing
 end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
