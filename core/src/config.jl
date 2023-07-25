@@ -76,6 +76,7 @@ end
     zstd
     lz4
 end
+
 function Base.convert(::Type{Compression}, str::AbstractString)
     i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
     if isnothing(i)
@@ -94,7 +95,7 @@ end
     control::String = "output/control.arrow"
     outstate::Maybe{String}
     compression::Compression = "zstd"
-    compressionlevel::Int = 6
+    compression_level::Int = 6
 end
 
 @option @addnodetypes struct Config

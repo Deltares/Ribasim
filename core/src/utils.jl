@@ -331,7 +331,7 @@ end
 "Get the compressor based on the Config"
 function get_compressor(config::Config)
     compressor = config.output.compression
-    compressionlevel = config.output.compressionlevel
+    compressionlevel = config.output.compression_level
     return if compressor == lz4
         c = Arrow.LZ4FrameCompressor(; compressionlevel)
         Arrow.CodecLz4.TranscodingStreams.initialize(c)

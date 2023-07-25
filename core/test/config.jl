@@ -20,7 +20,7 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
         @test config.output.compression == Ribasim.zstd
-        @test config.output.compressionlevel == 6
+        @test config.output.compression_level == 6
     end
 
     @testset "output" begin
