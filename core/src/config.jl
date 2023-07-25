@@ -79,8 +79,9 @@ end
 function Base.convert(::Type{Compression}, str::AbstractString)
     i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
     if isnothing(i)
-        i = 1
-        @warn "Compression algorithm $str not supported, using $(Compression(i))."
+        throw(
+            "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
+        )
     end
     return Compression(i - 1)
 end
