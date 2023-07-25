@@ -7,6 +7,7 @@ from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
     bucket_model,
+    conditions_on_discrete_flow_model,
     crossing_specific_control_model,
     flow_boundary_time_model,
     flow_condition_model,
@@ -66,3 +67,4 @@ if __name__ == "__main__":
     invalid_qh_model().write(datadir / "invalid_qh")
     flow_boundary_time_model().write(datadir / "flow_boundary_time")
     crossing_specific_control_model().write(datadir / "crossing_specific_control")
+    conditions_on_discrete_flow_model().write(datadir / "conditions_on_discrete_flow")
