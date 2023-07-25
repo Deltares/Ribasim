@@ -56,6 +56,7 @@ jobs:
       - uses: julia-actions/cache@v1
         with:
           cache-compiled: "true"
+          cache-registries: "true"
       - uses: julia-actions/julia-buildpkg@v1
         with:
           project: core

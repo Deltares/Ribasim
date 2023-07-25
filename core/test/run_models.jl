@@ -158,6 +158,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
