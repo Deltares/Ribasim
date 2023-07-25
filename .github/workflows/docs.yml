@@ -37,6 +37,7 @@ jobs:
       - uses: julia-actions/cache@v1
         with:
           cache-compiled: "true"
+          cache-registries: "true"
 
       - name: Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
