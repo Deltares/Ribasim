@@ -327,3 +327,54 @@ function basin_bottoms(
     bottom_b = something(bottom_b, bottom_a)
     return bottom_a, bottom_b
 end
+
+"""
+Replace the truth states in the logic mapping which contain wildcards with
+all possible explicit truth states.
+"""
+function expand_logic_mapping(
+    logic_mapping::Dict{Tuple{Int, String}, String},
+)::Dict{Tuple{Int, String}, String}
+    logic_mapping_expanded = Dict{Tuple{Int, String}, String}()
+
+    for (node_id, truth_state) in keys(logic_mapping)
+        pattern = r"^[TF\*]+$"
+        msg = "Truth state \'$truth_state\' contains illegal characters or is empty."
+        @assert occursin(pattern, truth_state) msg
+
+        control_state = logic_mapping[(node_id, truth_state)]
+        n_wildcards = count(==('*'), truth_state)
+
+        if n_wildcards > 0
+
+            # Loop over all substitution sets for the wildcards
+            for substitution in Iterators.product(fill(['T', 'F'], n_wildcards)...)
+                truth_state_new = ""
+                s_index = 0
+
+                # If a wildcard is found replace it, otherwise take the old truth value
+                for truth_value in truth_state
+                    truth_state_new *= if truth_value == '*'
+                        s_index += 1
+                        substitution[s_index]
+                    else
+                        truth_value
+                    end
+                end
+
+                new_key = (node_id, truth_state_new)
+
+                if haskey(logic_mapping_expanded, new_key)
+                    control_state_existing = logic_mapping_expanded[new_key]
+                    msg = "Multiple control states found for DiscreteControl node #$node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
+                    @assert control_state_existing == control_state msg
+                else
+                    logic_mapping_expanded[new_key] = control_state
+                end
+            end
+        else
+            logic_mapping_expanded[(node_id, truth_state)] = control_state
+        end
+    end
+    return logic_mapping_expanded
+end
