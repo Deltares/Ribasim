@@ -19,6 +19,14 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
         @test config.update_timestep == 86400.0
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
+        @test config.output.compression == Ribasim.zstd
+        @test config.output.compression_level == 6
+    end
+
+    @testset "output" begin
+        o = Ribasim.config.Output()
+        @test o isa Ribasim.config.Output
+        @test_throws Exception Output(compression = "lz5")
     end
 
     @testset "docs" begin

@@ -328,6 +328,19 @@ function basin_bottoms(
     return bottom_a, bottom_b
 end
 
+"Get the compressor based on the Config"
+function get_compressor(config::Config)
+    compressor = config.output.compression
+    compressionlevel = config.output.compression_level
+    return if compressor == lz4
+        c = Arrow.LZ4FrameCompressor(; compressionlevel)
+        Arrow.CodecLz4.TranscodingStreams.initialize(c)
+    elseif compressor == zstd
+        c = Arrow.ZstdCompressor(; level = compressionlevel)
+        Arrow.CodecZstd.TranscodingStreams.initialize(c)
+    end
+end
+
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
