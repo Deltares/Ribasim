@@ -66,6 +66,7 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     toml_path = normpath(@__DIR__, "../../data/linear_resistance/linear_resistance.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
 
     t = Ribasim.timesteps(model)
@@ -89,6 +90,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/rating_curve/rating_curve.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
 
     t = Ribasim.timesteps(model)
@@ -120,6 +122,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/manning_resistance/manning_resistance.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
     (; manning_resistance) = p
 
@@ -154,6 +157,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/misc_nodes/misc_nodes.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p
 
