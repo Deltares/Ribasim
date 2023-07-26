@@ -415,7 +415,8 @@ end
 
 """
 Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
-of the ODE problem.
+of the ODE problem. All nodes are taken into consideration, also the ones
+that are inactive.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     (;
