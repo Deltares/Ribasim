@@ -391,3 +391,120 @@ function expand_logic_mapping(
     end
     return logic_mapping_expanded
 end
+
+"""
+Get the state index of the basins that are connected to a node of given id via fractional flow.
+"""
+function get_fractional_flow_connected_basins(node_id::Int, p::Parameters)::Vector{Int}
+    (; connectivity, fractional_flow, basin) = p
+    (; graph_flow) = connectivity
+
+    basin_idxs = Int[]
+
+    for first_outneighbor_id in outneighbors(graph_flow, node_id)
+        if first_outneighbor_id in fractional_flow.node_id
+            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
+            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            if has_index
+                push!(basin_idxs, basin_idx)
+            end
+        end
+    end
+    return basin_idxs
+end
+
+"""
+Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
+of the ODE problem.
+"""
+function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
+    (;
+        linear_resistance,
+        manning_resistance,
+        pump,
+        tabulated_rating_curve,
+        connectivity,
+        basin,
+        pid_control,
+    ) = p
+    (; graph_flow, graph_control) = connectivity
+
+    n_basins = length(basin.node_id)
+    n_states = n_basins + length(pid_control.node_id)
+    jac_prototype = spzeros(n_states, n_states)
+
+    # Contributions of LinearResistance, ManningResistance
+    for node in [linear_resistance, manning_resistance]
+        for id in node.node_id
+
+            # Only if the inneighbor and the outneighbor are basins
+            # do we get a contribution
+            id_in = only(inneighbors(graph_flow, id))
+            id_out = only(outneighbors(graph_flow, id))
+
+            has_index_in, idx_in = id_index(basin.node_id, id_in)
+            has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+            if has_index_in && has_index_out
+                jac_prototype[idx_in, idx_out] = 1.0
+                jac_prototype[idx_out, idx_in] = 1.0
+            end
+        end
+    end
+
+    # Contributions of Pump, TabulatedRatingCurve
+    for node in [pump, manning_resistance, tabulated_rating_curve]
+        for id in node.node_id
+            id_in = only(inneighbors(graph_flow, id))
+
+            # For inneighbors only directly connected basins give a contribution
+            has_index_in, idx_in = id_index(basin.node_id, id_in)
+
+            # For outneighbors there can be directly connected basins
+            # or basins connected via a fractional flow
+            if has_index_in
+                idxs_out = get_fractional_flow_connected_basins(id, p)
+
+                if isempty(idxs_out)
+                    id_out = only(outneighbors(graph_flow, id))
+                    has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+                    if has_index_out
+                        push!(idxs_out, idx_out)
+                    end
+                end
+
+                for idx_out in idxs_out
+                    jac_prototype[idx_in, idx_out] = 1.0
+                end
+            end
+        end
+    end
+
+    # Contributions of PidControl
+    for (pid_idx, (listen_node_id, id)) in
+        enumerate(zip(pid_control.listen_node_id, pid_control.node_id))
+        id_out = only(outneighbors(graph_control, id))
+        id_out_in = only(inneighbors(graph_control, id_out))
+
+        _, listen_idx = id_index(basin.node_id, listen_node_id)
+
+        # PID control integral state
+        pid_state_idx = n_basins + pid_idx
+        jac_prototype[pid_state_idx, listen_idx] = 1.0
+        jac_prototype[listen_idx, pid_state_idx] = 1.0
+
+        # The basin upstream of the pump
+        has_index, idx_out_in = id_index(basin.node_id, id_out_in)
+
+        if has_index
+            jac_prototype[pid_state_idx, idx_out_in] = 1.0
+            jac_prototype[idx_out_in, pid_state_idx] = 1.0
+
+            # The basin upstream of the pump also depends on the controlled basin
+            jac_prototype[listen_idx, idx_out_in] = 1.0
+        end
+    end
+
+    return jac_prototype
+end
