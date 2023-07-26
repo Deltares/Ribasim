@@ -50,8 +50,7 @@ neighbortypes(::Val{:Basin}) = Set((
     :FlowBoundary,
 ))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:FractionalFlow}) =
-    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
