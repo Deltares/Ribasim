@@ -70,6 +70,8 @@ function formulate!(new_node_type::NewNodeType, p::Parameters)::Nothing
 end
 ```
 
+If the new node type can create dependendies between basins, this has to be taken into account in the sparsity structure of the Jacobian of `water_balance!` which is constructed in the function `get_jac_prototype` in `src\utils.jl`.
+
 
 # Python I/O
 
