@@ -352,8 +352,9 @@ function expand_logic_mapping(
 
     for (node_id, truth_state) in keys(logic_mapping)
         pattern = r"^[TF\*]+$"
-        msg = "Truth state \'$truth_state\' contains illegal characters or is empty."
-        @assert occursin(pattern, truth_state) msg
+        if !occursin(pattern, truth_state)
+            error("Truth state \'$truth_state\' contains illegal characters or is empty.")
+        end
 
         control_state = logic_mapping[(node_id, truth_state)]
         n_wildcards = count(==('*'), truth_state)
@@ -392,56 +393,29 @@ function expand_logic_mapping(
     return logic_mapping_expanded
 end
 
+"""Get all node fieldnames of the parameter object."""
+nodefields(p::Parameters) = (
+    name for
+    name in fieldnames(typeof(p)) if fieldtype(typeof(p), name) <: AbstractParameterNode
+)
+
 """
 Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
-    (;
-        linear_resistance,
-        manning_resistance,
-        pump,
-        tabulated_rating_curve,
-        basin,
-        pid_control,
-    ) = p
+    (; basin, pid_control) = p
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
     jac_prototype = spzeros(n_states, n_states)
 
-    # Resistance type nodes; contributions to the Jacobian if
-    # the unique nodes upstream and downstream are both basins
-    update_jac_prototype!(jac_prototype, p, linear_resistance)
-    update_jac_prototype!(jac_prototype, p, manning_resistance)
-
-    # One-directional flow describing nodes; contributions to the Jacobian
-    # if the unique nodes upstream and possibly multiple noes downstream are basins
-    update_jac_prototype!(jac_prototype, p, pump)
-    update_jac_prototype!(jac_prototype, p, tabulated_rating_curve)
-
-    # PidControl nodes; the controlled basin affects itself
-    # and the basins upstream and downstream of the controlled node
-    # affect eachother (if there is a basin upstream of the pump)
-    # For explanation for the integral term see below
-    update_jac_prototype!(jac_prototype, p, pid_control)
+    for nodefield in nodefields(p)
+        update_jac_prototype!(jac_prototype, p, getfield(p, nodefield))
+    end
 
     return jac_prototype
-end
-
-"""
-Set a value in the Jacobian prototype after checking it wasn't already set
-"""
-function set_nonzero!(
-    jac_prototype::SparseMatrixCSC{Float64, Int64},
-    i::Int,
-    j::Int,
-)::Nothing
-    msg = "Attempt at setting Jacobian nonzero twice for indices $i,$j."
-    @assert iszero(jac_prototype[i, j]) msg
-    jac_prototype[i, j] = 1.0
-    return nothing
 end
 
 """
@@ -467,11 +441,38 @@ function update_jac_prototype!(
         has_index_out, idx_out = id_index(basin.node_id, id_out)
 
         if has_index_in && has_index_out
-            set_nonzero!(jac_prototype, idx_in, idx_out)
-            set_nonzero!(jac_prototype, idx_out, idx_in)
+            jac_prototype[idx_in, idx_out] = 1.0
+            jac_prototype[idx_out, idx_in] = 1.0
         end
     end
     return nothing
+end
+
+"""
+Method for nodes that do not contribute to the Jacobian
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::AbstractParameterNode,
+)::Nothing
+    node_type = nameof(typeof(node))
+
+    if !isa(
+        node,
+        Union{
+            Basin,
+            DiscreteControl,
+            FlowBoundary,
+            FractionalFlow,
+            LevelBoundary,
+            Terminal,
+        },
+    )
+        error(
+            "It is not specified how nodes of type $node_type contribute to the Jacobian prototype.",
+        )
+    end
 end
 
 """
@@ -509,7 +510,7 @@ function update_jac_prototype!(
             end
 
             for idx_out in idxs_out
-                set_nonzero!(jac_prototype, idx_in, idx_out)
+                jac_prototype[idx_in, idx_out] = 1.0
             end
         end
     end
@@ -540,18 +541,18 @@ function update_jac_prototype!(
 
         # PID control integral state
         pid_state_idx = n_basins + pid_idx
-        set_nonzero!(jac_prototype, pid_state_idx, listen_idx)
-        set_nonzero!(jac_prototype, listen_idx, pid_state_idx)
+        jac_prototype[pid_state_idx, listen_idx] = 1.0
+        jac_prototype[listen_idx, pid_state_idx] = 1.0
 
         # The basin upstream of the pump
         has_index, idx_out_in = id_index(basin.node_id, id_out_in)
 
         if has_index
-            set_nonzero!(jac_prototype, pid_state_idx, idx_out_in)
-            set_nonzero!(jac_prototype, idx_out_in, pid_state_idx)
+            jac_prototype[pid_state_idx, idx_out_in] = 1.0
+            jac_prototype[idx_out_in, pid_state_idx] = 1.0
 
             # The basin upstream of the pump also depends on the controlled basin
-            set_nonzero!(jac_prototype, listen_idx, idx_out_in)
+            jac_prototype[listen_idx, idx_out_in] = 1.0
         end
     end
     return nothing

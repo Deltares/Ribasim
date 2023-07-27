@@ -292,8 +292,9 @@ function sorted_table!(
     by = sort_by_function(table)
     if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
         et = eltype(table)
-        msg = "Arrow table for $et not sorted as required."
-        @assert issorted(table; by) msg
+        if !issorted(table; by)
+            error("Arrow table for $et not sorted as required.")
+        end
     else
         sort!(table; by)
     end
