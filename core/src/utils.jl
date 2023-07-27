@@ -393,27 +393,6 @@ function expand_logic_mapping(
 end
 
 """
-Get the state index of the basins that are connected to a node of given id via fractional flow.
-"""
-function get_fractional_flow_connected_basins(node_id::Int, p::Parameters)::Vector{Int}
-    (; connectivity, fractional_flow, basin) = p
-    (; graph_flow) = connectivity
-
-    basin_idxs = Int[]
-
-    for first_outneighbor_id in outneighbors(graph_flow, node_id)
-        if first_outneighbor_id in fractional_flow.node_id
-            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
-            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
-            if has_index
-                push!(basin_idxs, basin_idx)
-            end
-        end
-    end
-    return basin_idxs
-end
-
-"""
 Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
@@ -424,67 +403,117 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
         manning_resistance,
         pump,
         tabulated_rating_curve,
-        connectivity,
         basin,
         pid_control,
     ) = p
-    (; graph_flow, graph_control) = connectivity
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
     jac_prototype = spzeros(n_states, n_states)
 
-    # Contributions of LinearResistance, ManningResistance
-    for node in [linear_resistance, manning_resistance]
-        for id in node.node_id
+    # Resistance type nodes; contributions to the Jacobian if
+    # the unique nodes upstream and downstream are both basins
+    update_jac_prototype!(jac_prototype, p, linear_resistance)
+    update_jac_prototype!(jac_prototype, p, manning_resistance)
 
-            # Only if the inneighbor and the outneighbor are basins
-            # do we get a contribution
-            id_in = only(inneighbors(graph_flow, id))
-            id_out = only(outneighbors(graph_flow, id))
+    # One-directional flow describing nodes; contributions to the Jacobian
+    # if the unique nodes upstream and possibly multiple noes downstream are basins
+    update_jac_prototype!(jac_prototype, p, pump)
+    update_jac_prototype!(jac_prototype, p, tabulated_rating_curve)
 
-            has_index_in, idx_in = id_index(basin.node_id, id_in)
-            has_index_out, idx_out = id_index(basin.node_id, id_out)
+    # PidControl nodes; the controlled basin affects itself
+    # and the basins upstream and downstream of the controlled node
+    # affect eachother (if there is a basin upstream of the pump)
+    update_jac_prototype!(jac_prototype, p, pid_control)
 
-            if has_index_in && has_index_out
+    return jac_prototype
+end
+
+"""
+If both the unique node upstream and the unique node downstream of these
+nodes are basins, then these directly depend on eachother and affect the Jacobian 2x
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::Union{LinearResistance, ManningResistance},
+)::Nothing
+    (; basin, connectivity) = p
+    (; graph_flow) = connectivity
+
+    for id in node.node_id
+
+        # Only if the inneighbor and the outneighbor are basins
+        # do we get a contribution
+        id_in = only(inneighbors(graph_flow, id))
+        id_out = only(outneighbors(graph_flow, id))
+
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+        has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+        if has_index_in && has_index_out
+            jac_prototype[idx_in, idx_out] = 1.0
+            jac_prototype[idx_out, idx_in] = 1.0
+        end
+    end
+end
+
+"""
+If both the unique node upstream and the nodes down stream (or one node further
+if a fractional flow is in between) are basins, then the downstream basin depends
+on the upstream basin(s) and affect the Jacobian as many times as there are downstream basins
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::Union{Pump, TabulatedRatingCurve},
+)::Nothing
+    (; basin, fractional_flow, connectivity) = p
+    (; graph_flow) = connectivity
+
+    for id in node.node_id
+        id_in = only(inneighbors(graph_flow, id))
+
+        # For inneighbors only directly connected basins give a contribution
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+
+        # For outneighbors there can be directly connected basins
+        # or basins connected via a fractional flow
+        if has_index_in
+            idxs_out =
+                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
+
+            if isempty(idxs_out)
+                id_out = only(outneighbors(graph_flow, id))
+                has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+                if has_index_out
+                    push!(idxs_out, idx_out)
+                end
+            end
+
+            for idx_out in idxs_out
                 jac_prototype[idx_in, idx_out] = 1.0
-                jac_prototype[idx_out, idx_in] = 1.0
             end
         end
     end
+end
 
-    # Contributions of Pump, TabulatedRatingCurve
-    for node in [pump, manning_resistance, tabulated_rating_curve]
-        for id in node.node_id
-            id_in = only(inneighbors(graph_flow, id))
+"""
+The controlled basin affects itself and the basins upstream and downstream of the controlled pump
+affect eachother if there is a basin upstream of the pump
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::PidControl,
+)::Nothing
+    (; basin, connectivity) = p
+    (; graph_control) = connectivity
 
-            # For inneighbors only directly connected basins give a contribution
-            has_index_in, idx_in = id_index(basin.node_id, id_in)
+    n_basins = length(basin.node_id)
 
-            # For outneighbors there can be directly connected basins
-            # or basins connected via a fractional flow
-            if has_index_in
-                idxs_out = get_fractional_flow_connected_basins(id, p)
-
-                if isempty(idxs_out)
-                    id_out = only(outneighbors(graph_flow, id))
-                    has_index_out, idx_out = id_index(basin.node_id, id_out)
-
-                    if has_index_out
-                        push!(idxs_out, idx_out)
-                    end
-                end
-
-                for idx_out in idxs_out
-                    jac_prototype[idx_in, idx_out] = 1.0
-                end
-            end
-        end
-    end
-
-    # Contributions of PidControl
-    for (pid_idx, (listen_node_id, id)) in
-        enumerate(zip(pid_control.listen_node_id, pid_control.node_id))
+    for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
         id_out = only(outneighbors(graph_control, id))
         id_out_in = only(inneighbors(graph_control, id_out))
 
@@ -506,6 +535,27 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
             jac_prototype[listen_idx, idx_out_in] = 1.0
         end
     end
+end
 
-    return jac_prototype
+"""
+Get the state index of the basins that are connected to a node of given id via fractional flow.
+"""
+function get_fractional_flow_connected_basins(
+    node_id::Int,
+    basin::Basin,
+    fractional_flow::FractionalFlow,
+    graph_flow::DiGraph{Int},
+)::Vector{Int}
+    basin_idxs = Int[]
+
+    for first_outneighbor_id in outneighbors(graph_flow, node_id)
+        if first_outneighbor_id in fractional_flow.node_id
+            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
+            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            if has_index
+                push!(basin_idxs, basin_idx)
+            end
+        end
+    end
+    return basin_idxs
 end
