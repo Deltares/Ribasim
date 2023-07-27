@@ -424,9 +424,24 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     # PidControl nodes; the controlled basin affects itself
     # and the basins upstream and downstream of the controlled node
     # affect eachother (if there is a basin upstream of the pump)
+    # For explanation for the integral term see below
     update_jac_prototype!(jac_prototype, p, pid_control)
 
     return jac_prototype
+end
+
+"""
+Set a value in the Jacobian prototype after checking it wasn't already set
+"""
+function set_nonzero!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    i::Int,
+    j::Int,
+)::Nothing
+    msg = "Attempt at setting Jacobian nonzero twice for indices $i,$j."
+    @assert iszero(jac_prototype[i, j]) msg
+    jac_prototype[i, j] = 1.0
+    return nothing
 end
 
 """
@@ -452,10 +467,11 @@ function update_jac_prototype!(
         has_index_out, idx_out = id_index(basin.node_id, id_out)
 
         if has_index_in && has_index_out
-            jac_prototype[idx_in, idx_out] = 1.0
-            jac_prototype[idx_out, idx_in] = 1.0
+            set_nonzero!(jac_prototype, idx_in, idx_out)
+            set_nonzero!(jac_prototype, idx_out, idx_in)
         end
     end
+    return nothing
 end
 
 """
@@ -493,15 +509,18 @@ function update_jac_prototype!(
             end
 
             for idx_out in idxs_out
-                jac_prototype[idx_in, idx_out] = 1.0
+                set_nonzero!(jac_prototype, idx_in, idx_out)
             end
         end
     end
+    return nothing
 end
 
 """
 The controlled basin affects itself and the basins upstream and downstream of the controlled pump
-affect eachother if there is a basin upstream of the pump
+affect eachother if there is a basin upstream of the pump. The state for the integral term
+and the controlled basin affect eachother, and the same for the integral state and the basin
+upstream of the pump if it is indeed a basin.
 """
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
@@ -521,20 +540,21 @@ function update_jac_prototype!(
 
         # PID control integral state
         pid_state_idx = n_basins + pid_idx
-        jac_prototype[pid_state_idx, listen_idx] = 1.0
-        jac_prototype[listen_idx, pid_state_idx] = 1.0
+        set_nonzero!(jac_prototype, pid_state_idx, listen_idx)
+        set_nonzero!(jac_prototype, listen_idx, pid_state_idx)
 
         # The basin upstream of the pump
         has_index, idx_out_in = id_index(basin.node_id, id_out_in)
 
         if has_index
-            jac_prototype[pid_state_idx, idx_out_in] = 1.0
-            jac_prototype[idx_out_in, pid_state_idx] = 1.0
+            set_nonzero!(jac_prototype, pid_state_idx, idx_out_in)
+            set_nonzero!(jac_prototype, idx_out_in, pid_state_idx)
 
             # The basin upstream of the pump also depends on the controlled basin
-            jac_prototype[listen_idx, idx_out_in] = 1.0
+            set_nonzero!(jac_prototype, listen_idx, idx_out_in)
         end
     end
+    return nothing
 end
 
 """
