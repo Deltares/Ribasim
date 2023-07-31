@@ -12,7 +12,7 @@ from ribasim_testmodels import (
     invalid_qh_model,
     linear_resistance_model,
     manning_resistance_model,
-    miscellaneous_nodes_model,
+    misc_nodes_model,
     pid_control_model,
     pump_discrete_control_model,
     rating_curve_model,
@@ -61,6 +61,6 @@ if __name__ == "__main__":
     rating_curve_model().write(datadir / "rating_curve")
     manning_resistance_model().write(datadir / "manning_resistance")
     pid_control_model().write(datadir / "pid_control")
-    miscellaneous_nodes_model().write(datadir / "misc_nodes")
+    misc_nodes_model().write(datadir / "misc_nodes")
     invalid_qh_model().write(datadir / "invalid_qh")
     flow_boundary_time_model().write(datadir / "flow_boundary_time")

@@ -15,7 +15,7 @@ from ribasim_testmodels.discrete_control import (
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
-    miscellaneous_nodes_model,
+    misc_nodes_model,
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import invalid_qh_model
@@ -36,7 +36,7 @@ __all__ = [
     "rating_curve_model",
     "manning_resistance_model",
     "pid_control_model",
-    "miscellaneous_nodes_model",
+    "misc_nodes_model",
     "tabulated_rating_curve_control_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
