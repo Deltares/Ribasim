@@ -262,7 +262,7 @@ def basic_transient_model(model) -> ribasim.Model:
     model.basin.forcing = forcing
     model.basin.state = state
 
-    model.modelname = "basic-transient"
+    model.modelname = "basic_transient"
     return model
 
 

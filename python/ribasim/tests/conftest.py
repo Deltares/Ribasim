@@ -49,7 +49,7 @@ if __name__ == "__main__":
     trivial_model().write(datadir / "trivial")
     bucket_model().write(datadir / "bucket")
     basic_model().write(datadir / "basic")
-    basic_transient_model(basic_model()).write(datadir / "basic-transient")
+    basic_transient_model(basic_model()).write(datadir / "basic_transient")
     tabulated_rating_curve_model().write(datadir / "tabulated_rating_curve")
     tabulated_rating_curve_control_model().write(
         datadir / "tabulated_rating_curve_control"

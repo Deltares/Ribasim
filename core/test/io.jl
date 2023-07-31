@@ -69,7 +69,7 @@ function to_arrow_table(
 end
 
 @testset "table sort" begin
-    toml_path = normpath(@__DIR__, "../../data/basic-transient/basic-transient.toml")
+    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
     config = Ribasim.parsefile(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
