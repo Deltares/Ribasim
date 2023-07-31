@@ -3,7 +3,9 @@
   <name>Build Python Wheels</name>
   <description />
   <settings>
-    <parameters />
+    <parameters>
+      <param name="conda_env_path" value=" %system.teamcity.build.checkoutDir%\pyEnv " />
+    </parameters>
     <build-runners />
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
