@@ -3,6 +3,9 @@
   <name>Build Python Wheels</name>
   <description />
   <settings>
+    <options>
+      <option name="artifactRules" value="ribasim-0.2.0-py3-none-any.whl" />
+    </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/pyEnv" />
       <param name="conda_mm_path" value="%system.teamcity.build.checkoutDir%/mmEnv" />
