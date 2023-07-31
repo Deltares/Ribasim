@@ -14,10 +14,9 @@ set -euxo pipefail
 . /usr/share/Modules/init/bash
 rm -rf %conda_env_path%
 module load anaconda3
-conda create -p "%conda_env_path%_mm" -c conda-forge -y python=3.10 micromamba
-conda activate "%conda_env_path%_mm"
-micromamba create -p %conda_env_path% --file=environment.yaml
-micromamba run -p %conda_env_path% pip wheel python/ribasim --no-deps]]></param>
+conda create -p "%conda_env_path%mm" -c conda-forge -y python=3.10 micromamba
+conda run -p "%conda_env_path%mm" micromamba create -p %conda_env_path% --file=environment.yaml
+conda run -p "%conda_env_path%mm" micromamba run -p %conda_env_path% pip wheel python/ribasim --no-deps]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
