@@ -4,7 +4,7 @@ import pandas as pd
 import ribasim
 
 
-def pid_control_model_1():
+def pid_control_model():
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
 
     xy = np.array(
@@ -124,7 +124,7 @@ def pid_control_model_1():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pid_1",
+        modelname="pid_control",
         node=node,
         edge=edge,
         basin=basin,
