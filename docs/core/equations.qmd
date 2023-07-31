@@ -301,12 +301,11 @@ with respect to $\Delta h$ tends to $\pm \infty$ as $\Delta h$ tends to 0. There
 we use the slightly modified expression
 
 $$
-Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{\Delta h}{L} s(\Delta h)},
+Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{\Delta h}{L} s(\Delta h)}
 $$
 
-where $s(x) = \frac{2}{\pi}\arctan{50x}$ can be thought of as a smooth approximation of the sign function.
+to smooth out this problem. Here $s(x) = \frac{2}{\pi}\arctan{50x}$ can be thought of as a smooth approximation of the sign function.
 
-to smooth out this problem.
 
 :::{.callout-note}
 The computation of $S_f$ is not exact: we base it on a representative area and
