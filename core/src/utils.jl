@@ -421,6 +421,7 @@ end
 """
 If both the unique node upstream and the unique node downstream of these
 nodes are basins, then these directly depend on eachother and affect the Jacobian 2x
+Basins always depend on themselves.
 """
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
@@ -431,14 +432,19 @@ function update_jac_prototype!(
     (; graph_flow) = connectivity
 
     for id in node.node_id
-
-        # Only if the inneighbor and the outneighbor are basins
-        # do we get a contribution
         id_in = only(inneighbors(graph_flow, id))
         id_out = only(outneighbors(graph_flow, id))
 
         has_index_in, idx_in = id_index(basin.node_id, id_in)
         has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+        if has_index_in
+            jac_prototype[idx_in, idx_in] = 1.0
+        end
+
+        if has_index_out
+            jac_prototype[idx_out, idx_out] = 1.0
+        end
 
         if has_index_in && has_index_out
             jac_prototype[idx_in, idx_out] = 1.0
@@ -473,12 +479,14 @@ function update_jac_prototype!(
             "It is not specified how nodes of type $node_type contribute to the Jacobian prototype.",
         )
     end
+    return nothing
 end
 
 """
 If both the unique node upstream and the nodes down stream (or one node further
 if a fractional flow is in between) are basins, then the downstream basin depends
 on the upstream basin(s) and affect the Jacobian as many times as there are downstream basins
+Upstream basins always depend on themselves.
 """
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
@@ -496,8 +504,11 @@ function update_jac_prototype!(
 
         # For outneighbors there can be directly connected basins
         # or basins connected via a fractional flow
+        # (but not both at the same time!)
         if has_index_in
-            idxs_out =
+            jac_prototype[idx_in, idx_in] = 1.0
+
+            _, idxs_out =
                 get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
 
             if isempty(idxs_out)
@@ -507,10 +518,10 @@ function update_jac_prototype!(
                 if has_index_out
                     push!(idxs_out, idx_out)
                 end
-            end
-
-            for idx_out in idxs_out
-                jac_prototype[idx_in, idx_out] = 1.0
+            else
+                for idx_out in idxs_out
+                    jac_prototype[idx_in, idx_out] = 1.0
+                end
             end
         end
     end
@@ -559,14 +570,15 @@ function update_jac_prototype!(
 end
 
 """
-Get the state index of the basins that are connected to a node of given id via fractional flow.
+Get the node type specific indices of the fractional flows and basins that are consecutively connected to a node of given id.
 """
 function get_fractional_flow_connected_basins(
     node_id::Int,
     basin::Basin,
     fractional_flow::FractionalFlow,
     graph_flow::DiGraph{Int},
-)::Vector{Int}
+)::Tuple{Vector{Int}, Vector{Int}}
+    fractional_flow_idxs = Int[]
     basin_idxs = Int[]
 
     for first_outneighbor_id in outneighbors(graph_flow, node_id)
@@ -574,9 +586,13 @@ function get_fractional_flow_connected_basins(
             second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
             has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
             if has_index
+                push!(
+                    fractional_flow_idxs,
+                    searchsortedfirst(fractional_flow.node_id, first_outneighbor_id),
+                )
                 push!(basin_idxs, basin_idx)
             end
         end
     end
-    return basin_idxs
+    return fractional_flow_idxs, basin_idxs
 end

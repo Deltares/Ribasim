@@ -401,6 +401,19 @@ function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Ve
     return errors
 end
 
+function set_current_area_and_level!(
+    basin::Basin,
+    storage::AbstractVector{Float64},
+    t::Real,
+)::Nothing
+    for i in eachindex(storage)
+        s = storage[i]
+        area, level = get_area_and_level(basin, i, s)
+        basin.current_level[i] = level
+        basin.current_area[i] = area
+    end
+end
+
 """
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
@@ -412,12 +425,11 @@ function formulate!(
     t::Real,
 )::Nothing
     for i in eachindex(storage)
-        s = storage[i]
-        area, level = get_area_and_level(basin, i, s)
-        basin.current_level[i] = level
-        basin.current_area[i] = area
-        bottom = basin.level[i][1]
         # add all precipitation that falls within the profile
+        level = basin.current_level[i]
+        area = basin.current_area[i]
+
+        bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -593,7 +605,7 @@ The hydraulic radius is defined as:
 
 Where P is the wetted perimeter.
 
-The "upstream" water depth is used to compute cross-sectional area and
+The average of the upstream and downstream water depth is used to compute cross-sectional area and
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
@@ -789,6 +801,9 @@ function water_balance!(
     nonzeros(connectivity.flow) .= 0.0
 
     # ensures current_level is current
+    set_current_area_and_level!(basin, storage, t)
+
+    # Basin forcings
     formulate!(du, basin, storage, t)
 
     # PID control (does not set flows)
@@ -820,5 +835,311 @@ function track_waterbalance!(u, t, integrator)::Nothing
     p.evaporation.total .+= p.evaporation.value .* dt
     p.infiltration.total .+= p.infiltration.value .* dt
     p.drainage.total .+= p.drainage.value .* dt
+    return nothing
+end
+
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    linear_resistance::LinearResistance,
+)::Nothing
+    (; basin, connectivity) = p
+    (; active, resistance, node_id) = linear_resistance
+    (; graph_flow) = connectivity
+
+    for (id, isactive, R) in zip(node_id, active, resistance)
+        if !isactive
+            continue
+        end
+
+        id_in = only(inneighbors(graph_flow, id))
+        id_out = only(outneighbors(graph_flow, id))
+
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+        has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+        if has_index_in
+            area_in = basin.current_area[idx_in]
+            term_in = 1 / (area_in * R)
+            J[idx_in, idx_in] -= term_in
+        end
+
+        if has_index_out
+            area_out = basin.current_area[idx_out]
+            term_out = 1 / (area_out * R)
+            J[idx_out, idx_out] -= term_out
+        end
+
+        if has_index_in && has_index_out
+            J[idx_in, idx_out] += term_out
+            J[idx_out, idx_in] += term_in
+        end
+    end
+    return nothing
+end
+
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    manning_resistance::ManningResistance,
+)::Nothing
+    (; basin, connectivity) = p
+    (; node_id, active, length, manning_n, profile_width, profile_slope) =
+        manning_resistance
+    (; graph_flow) = connectivity
+
+    for (i, id) in enumerate(node_id)
+        if !active[i]
+            continue
+        end
+
+        #TODO: this was copied from formulate! for the manning_resistance,
+        # maybe put in separate function
+        basin_a_id = only(inneighbors(graph_flow, id))
+        basin_b_id = only(outneighbors(graph_flow, id))
+
+        h_a = get_level(p, basin_a_id)
+        h_b = get_level(p, basin_b_id)
+        bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
+        slope = profile_slope[i]
+        width = profile_width[i]
+        n = manning_n[i]
+        L = length[i]
+
+        Δh = h_a - h_b
+        q_sign = sign(Δh)
+
+        # Average d, A, R
+        d_a = h_a - bottom_a
+        d_b = h_b - bottom_b
+        d = 0.5 * (d_a + d_b)
+
+        A_a = width * d + slope * d_a^2
+        A_b = width * d + slope * d_b^2
+        A = 0.5 * (A_a + A_b)
+
+        slope_unit_length = sqrt(slope^2 + 1.0)
+        P_a = width + 2.0 * d_a * slope_unit_length
+        P_b = width + 2.0 * d_b * slope_unit_length
+        R_h_a = A_a / P_a
+        R_h_b = A_b / P_b
+        R_h = 0.5 * (R_h_a + R_h_b)
+
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+
+        id_in = only(inneighbors(graph_flow, id))
+        id_out = only(outneighbors(graph_flow, id))
+
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+        has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+        if has_index_in
+            basin_in_area = basin.current_area[idx_in]
+            ∂A_a = (width + 2 * slope * d_a) / basin_in_area
+            ∂A = 0.5 * ∂A_a
+            ∂P_a = 2 * slope_unit_length / basin_in_area
+            ∂R_h_a = (P_a * ∂A_a - A_a * ∂P_a) / P_a^2
+            ∂R_h_b = width / (2 * basin_in_area * P_b)
+            ∂R_h = 0.5 * (∂R_h_a + ∂R_h_b)
+            # TODO: Is there a better way to handle Δh = 0?
+            term_in = q * (∂A / A + ∂R_h / R_h + 1 / (2 * basin_in_area * (Δh + 1e-10)))
+            J[idx_in, idx_in] -= term_in
+        end
+
+        if has_index_out
+            basin_out_area = basin.current_area[idx_out]
+            ∂A_b = (width + 2 * slope * d_b) / basin_out_area
+            ∂A = 0.5 * ∂A_b
+            ∂P_b = 2 * slope_unit_length / basin_out_area
+            ∂R_h_b = (P_b * ∂A_b - A_b * ∂P_b) / P_b^2
+            ∂R_h_b = width / (2 * basin_out_area * P_b)
+            ∂R_h = 0.5 * (∂R_h_b + ∂R_h_a)
+            # TODO: Is there a better way to handle Δh = 0?
+            term_out = q * (∂A / A + ∂R_h / R_h - 1 / (2 * basin_out_area * (Δh + 1e-10)))
+
+            J[idx_out, idx_out] -= term_out
+        end
+
+        if has_index_in && has_index_out
+            J[idx_in, idx_out] += term_out
+            J[idx_out, idx_in] += term_in
+        end
+    end
+    return nothing
+end
+
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    pump::Pump,
+)::Nothing
+    (; basin, fractional_flow, connectivity) = p
+    (; node_id, flow_rate) = pump
+
+    (; graph_flow) = connectivity
+
+    for (i, id) in enumerate(node_id)
+        id_in = only(inneighbors(graph_flow, id))
+
+        # For inneighbors only directly connected basins give a contribution
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+
+        # For outneighbors there can be directly connected basins
+        # or basins connected via a fractional flow
+        # (but not both at the same time!)
+        if has_index_in
+            s = u.storage[idx_in]
+
+            if s < 10.0
+                dq = flow_rate[i] / 10.0
+
+                J[idx_in, idx_in] -= dq
+
+                has_index_out, idx_out = id_index(basin.node_id, id_in)
+
+                idxs_fractional_flow, idxs_out = get_fractional_flow_connected_basins(
+                    id,
+                    basin,
+                    fractional_flow,
+                    graph_flow,
+                )
+
+                if isempty(idxs_out)
+                    id_out = only(outneighbors(graph_flow, id))
+                    has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+                    if has_index_out
+                        J[idx_in, idx_out] = dq
+                    end
+                else
+                    for (idx_fractional_flow, idx_out) in
+                        zip(idxs_fractional_flow, idxs_out)
+                        J[idx_in, idx_out] +=
+                            dq * fractional_flow.fraction[idx_fractional_flow]
+                    end
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    tabulated_rating_curve::TabulatedRatingCurve,
+)::Nothing
+    (; basin, fractional_flow, connectivity) = p
+    (; node_id, tables) = tabulated_rating_curve
+    (; graph_flow) = connectivity
+
+    for (i, id) in enumerate(node_id)
+        id_in = only(inneighbors(graph_flow, id))
+
+        # For inneighbors only directly connected basins give a contribution
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+
+        # For outneighbors there can be directly connected basins
+        # or basins connected via a fractional flow
+        if has_index_in
+            # Computing this slope here is silly,
+            # should eventually be computed pre-simulation and cached!
+            table = tables[i]
+            levels = table.t
+            flows = table.u
+            level = basin.current_level[idx_in]
+            level_smaller_idx = searchsortedlast(table.t, level)
+            if level_smaller_idx == 0
+                level_smaller_idx = 1
+            elseif level_smaller_idx == length(flows)
+                level_smaller_idx = length(flows) - 1
+            end
+
+            slope =
+                (flows[level_smaller_idx + 1] - flows[level_smaller_idx]) /
+                (levels[level_smaller_idx + 1] - levels[level_smaller_idx])
+
+            dq = slope / basin.current_area[idx_in]
+
+            J[idx_in, idx_in] -= dq
+
+            idxs_fractional_flow, idxs_out =
+                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
+
+            if isempty(idxs_out)
+                id_out = only(outneighbors(graph_flow, id))
+                has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+                if has_index_out
+                    J[idx_in, idx_out] = dq
+                end
+            else
+                for (idx_fractional_flow, idx_out) in zip(idxs_fractional_flow, idxs_out)
+                    J[idx_in, idx_out] += dq * fractional_flow.fraction[idx_fractional_flow]
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    pid_control::PidControl,
+)::Nothing
+    return nothing
+end
+
+"""
+Method for nodes that do not contribute to the Jacobian
+"""
+function formulate_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    node::AbstractParameterNode,
+)::Nothing
+    node_type = nameof(typeof(node))
+
+    if !isa(
+        node,
+        Union{
+            Basin,
+            DiscreteControl,
+            FlowBoundary,
+            FractionalFlow,
+            LevelBoundary,
+            Terminal,
+        },
+    )
+        error(
+            "It is not specified how nodes of type $node_type contribute to the Jacobian prototype.",
+        )
+    end
+    return nothing
+end
+
+function water_balance_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    t,
+)::Nothing
+    (; basin) = p
+    J .= 0.0
+
+    # Ensures current_level and current_area are current
+    set_current_area_and_level!(basin, u.storage, t)
+
+    for nodefield in nodefields(p)
+        formulate_jac!(J, u, p, getfield(p, nodefield))
+    end
+
     return nothing
 end

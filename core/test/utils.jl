@@ -113,9 +113,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 2, 3, 4, 6]
-    @test jac_prototype.rowval == [2, 1, 2, 2, 3]
-    @test jac_prototype.nzval == ones(5)
+    @test jac_prototype.colptr == [1, 3, 5, 7, 9]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 4]
+    @test jac_prototype.nzval == ones(8)
 
     toml_path = normpath(@__DIR__, "../../data/pid_1/pid_1.toml")
 
@@ -128,7 +128,7 @@ end
 
     @test jac_prototype.m == 2
     @test jac_prototype.n == 2
-    @test jac_prototype.colptr == [1, 2, 3]
-    @test jac_prototype.rowval == [2, 1]
-    @test jac_prototype.nzval == ones(2)
+    @test jac_prototype.colptr == [1, 3, 4]
+    @test jac_prototype.rowval == [1, 2, 1]
+    @test jac_prototype.nzval == ones(3)
 end
