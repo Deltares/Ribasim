@@ -40,6 +40,10 @@ aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCli
       </extension>
     </build-extensions>
     <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_606" sourceBuildTypeId="Ribasim_Ribasim_BuildPythonWheels" cleanDestination="false">
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <artifact sourcePath="ribasim*.whl" />
+      </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
         <artifact sourcePath="ribasim_cli.zip" />
@@ -52,3 +56,4 @@ aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCli
     <cleanup />
   </settings>
 </build-type>
+
