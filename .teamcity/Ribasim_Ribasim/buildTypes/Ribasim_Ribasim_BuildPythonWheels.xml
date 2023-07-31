@@ -22,7 +22,9 @@ micromamba run -p %conda_env_path% pip wheel python/ribasim --no-deps]]></param>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
-    <requirements />
+    <requirements>
+      <does-not-equal id="RQ_296" name="env.OS" value="Windows_NT" />
+    </requirements>
     <build-triggers />
     <cleanup />
   </settings>
