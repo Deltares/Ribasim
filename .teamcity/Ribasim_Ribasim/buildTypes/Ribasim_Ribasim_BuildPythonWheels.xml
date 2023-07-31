@@ -10,6 +10,7 @@
       <runner id="RUNNER_2223" name="Build wheel" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[rm -rf %conda_env_path%
+module load anaconda3
 conda create -p %conda_env_path%_mm -c conda-forge -y python=3.10 micromamba
 conda activate %conda_env_path%_mm
 micromamba create ribasim -p %conda_env_path% --file=environment.yaml
