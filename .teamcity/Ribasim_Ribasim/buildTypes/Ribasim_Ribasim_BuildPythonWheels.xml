@@ -5,6 +5,7 @@
   <settings>
     <parameters>
       <param name="conda_env_path" value=" %system.teamcity.build.checkoutDir%/pyEnv " />
+      <param name="conda_mm_path" value="%system.teamcity.build.checkoutDir%/mmEnv" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2223" name="Build wheel" type="simpleRunner">
