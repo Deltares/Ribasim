@@ -76,7 +76,7 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     limit_storage = 450.0
     decay_rate = -1 / (basin_area * p.linear_resistance.resistance[1])
     storage_analytic =
-        limit_storage .+ (storage[1] - limit_storage) .* exp.(decay_rate .* t)
+        @. limit_storage + (storage[1] - limit_storage) * exp.(decay_rate * t)
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
@@ -99,7 +99,7 @@ end
     storage_min = 50.0
     α = 24 * 60 * 60
     storage_analytic =
-        storage_min .+ 1 ./ (t ./ (α * basin_area^2) .+ 1 / (storage[1] - storage_min))
+        @. storage_min + 1 / (t / (α * basin_area^2) + 1 / (storage[1] - storage_min))
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
@@ -132,7 +132,7 @@ end
     storage_min = 50.0
     level_min = 1.0
     basin_area = p.basin.area[1][2]
-    level = level_min .+ (storage .- storage_min) / basin_area
+    level = @. level_min + (storage - storage_min) / basin_area
     C = sum(storage_both[:, 1])
     Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
     w = manning_resistance.profile_width[1]
@@ -140,11 +140,11 @@ end
     n = manning_resistance.manning_n[1]
     K = -((w * Λ / 2)^(5 / 3)) * ((w + Λ)^(2 / 3)) / (basin_area * n * sqrt(L))
 
-    RHS = sqrt.(2 * level .- Λ)
-    RHS ./= ((2 .* level .+ w) .* (2 * Λ .- 2 .* level .+ w) ./ ((Λ + w)^2)) .^ (2 / 3)
-    RHS ./= (1 ./ (4 * Λ .* level .+ 2 * Λ * w .- 4 .* level .^ 2 .+ w^2)) .^ (2 / 3)
+    RHS = @. sqrt(2 * level - Λ)
+    RHS ./= @. ((2 * level + w) * (2 * Λ - 2 * level + w) / ((Λ + w)^2))^(2 / 3)
+    RHS ./= @. (1 / (4 * Λ * level + 2 * Λ * w - 4 * level^2 + w^2))^(2 / 3)
 
-    LHS = RHS[1] .+ t .* K
+    LHS = @. RHS[1] + t * K
 
     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
 end
@@ -168,6 +168,6 @@ end
     storage_both = Ribasim.get_storages_and_levels(model).storage
     t = Ribasim.timesteps(model)
 
-    @test storage_both[1, :] ≈ storage_both[1, 1] .+ t .* (frac * q_boundary - q_pump)
-    @test storage_both[2, :] ≈ storage_both[2, 1] .+ t .* q_pump
+    @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
+    @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end
