@@ -58,4 +58,3 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
     <cleanup />
   </settings>
 </build-type>
-
