@@ -639,7 +639,7 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * π / 2 * atan(50 * Δh))
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(1000 * Δh))
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q

@@ -304,7 +304,7 @@ $$
 Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{\Delta h}{L} s(\Delta h)}
 $$
 
-to smooth out this problem. Here $s(x) = \frac{2}{\pi}\arctan{50x}$ can be thought of as a smooth approximation of the sign function.
+to smooth out this problem. Here $s(x) = \frac{2}{\pi}\arctan{1000x}$ can be thought of as a smooth approximation of the sign function.
 
 
 :::{.callout-note}
