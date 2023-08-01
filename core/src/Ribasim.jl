@@ -25,6 +25,7 @@ const to = TimerOutput()
 TimerOutputs.complement!()
 
 include("validation.jl")
+include("jac.jl")
 include("solve.jl")
 include("config.jl")
 using .config: Config, Solver, algorithm, snake_case, zstd, lz4
