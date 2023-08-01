@@ -78,6 +78,7 @@ struct Basin{C} <: AbstractParameterNode
     # cache this to avoid recomputation
     current_level::Vector{Float64}
     current_area::Vector{Float64}
+    current_darea::Vector{Float64}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -97,6 +98,7 @@ struct Basin{C} <: AbstractParameterNode
         infiltration,
         current_level,
         current_area,
+        current_darea,
         area,
         level,
         storage,
@@ -114,6 +116,7 @@ struct Basin{C} <: AbstractParameterNode
                 infiltration,
                 current_level,
                 current_area,
+                current_darea,
                 area,
                 level,
                 storage,
@@ -408,9 +411,10 @@ function set_current_area_and_level!(
 )::Nothing
     for i in eachindex(storage)
         s = storage[i]
-        area, level = get_area_and_level(basin, i, s)
+        area, level, darea = get_area_and_level(basin, i, s)
         basin.current_level[i] = level
         basin.current_area[i] = area
+        basin.current_darea[i] = darea
     end
 end
 
@@ -843,6 +847,7 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     linear_resistance::LinearResistance,
+    t::Float64,
 )::Nothing
     (; basin, connectivity) = p
     (; active, resistance, node_id) = linear_resistance
@@ -884,6 +889,7 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     manning_resistance::ManningResistance,
+    t::Float64,
 )::Nothing
     (; basin, connectivity) = p
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
@@ -944,7 +950,7 @@ function formulate_jac!(
             ∂R_h_b = width / (2 * basin_in_area * P_b)
             ∂R_h = 0.5 * (∂R_h_a + ∂R_h_b)
             # TODO: Is there a better way to handle Δh = 0?
-            term_in = q * (∂A / A + ∂R_h / R_h + 1 / (2 * basin_in_area * (Δh + 1e-10)))
+            term_in = q * (∂A / A + ∂R_h / R_h + 1 / (2 * basin_in_area * Δh))
             J[idx_in, idx_in] -= term_in
         end
 
@@ -957,7 +963,7 @@ function formulate_jac!(
             ∂R_h_b = width / (2 * basin_out_area * P_b)
             ∂R_h = 0.5 * (∂R_h_b + ∂R_h_a)
             # TODO: Is there a better way to handle Δh = 0?
-            term_out = q * (∂A / A + ∂R_h / R_h - 1 / (2 * basin_out_area * (Δh + 1e-10)))
+            term_out = q * (∂A / A + ∂R_h / R_h - 1 / (2 * basin_out_area * Δh))
 
             J[idx_out, idx_out] -= term_out
         end
@@ -975,13 +981,22 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     pump::Pump,
+    t::Float64,
 )::Nothing
-    (; basin, fractional_flow, connectivity) = p
-    (; node_id, flow_rate) = pump
+    (; basin, fractional_flow, connectivity, pid_control) = p
+    (; active, node_id, flow_rate) = pump
 
     (; graph_flow) = connectivity
 
     for (i, id) in enumerate(node_id)
+        if !active[i]
+            continue
+        end
+
+        if id in pid_control.listen_node_id
+            continue
+        end
+
         id_in = only(inneighbors(graph_flow, id))
 
         # For inneighbors only directly connected basins give a contribution
@@ -1032,12 +1047,17 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     tabulated_rating_curve::TabulatedRatingCurve,
+    t::Float64,
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
-    (; node_id, tables) = tabulated_rating_curve
+    (; node_id, active, tables) = tabulated_rating_curve
     (; graph_flow) = connectivity
 
     for (i, id) in enumerate(node_id)
+        if !active[i]
+            continue
+        end
+
         id_in = only(inneighbors(graph_flow, id))
 
         # For inneighbors only directly connected basins give a contribution
@@ -1092,7 +1112,108 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     pid_control::PidControl,
+    t::Float64,
 )::Nothing
+    (; basin, connectivity, pump) = p
+    (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
+        pid_control
+    (; min_flow_rate, max_flow_rate) = pump
+    (; graph_flow, graph_control) = connectivity
+
+    get_error!(pid_control, p)
+
+    n_basins = length(basin.node_id)
+    integral_value = u.integral
+
+    for (i, id) in enumerate(node_id)
+        if !active[i]
+            continue
+        end
+
+        # TODO: This has been copied from continuous_control!, maybe
+        # put in separate function
+        flow_rate = 0.0
+
+        K_p = proportional[i]
+        if !isnan(K_p)
+            flow_rate += K_p * error[i]
+        end
+
+        K_d = derivative[i]
+        if !isnan(K_d)
+            # dlevel/dstorage = 1/area
+            area = basin.current_area[listened_node_idx]
+
+            error_deriv = -dstorage[listened_node_idx] / area
+            flow_rate += K_d * error_deriv
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            # coefficient * current value of integral
+            flow_rate += K_i * integral_value[i]
+        end
+
+        # Clip values outside pump flow rate bounds
+        was_clipped = false
+
+        if flow_rate < min_flow_rate[i]
+            was_clipped = true
+            flow_rate = min_flow_rate[i]
+        end
+
+        if !isnan(max_flow_rate[i])
+            if flow_rate > max_flow_rate[i]
+                was_clipped = true
+                flow_rate = max_flow_rate[i]
+            end
+        end
+
+        id_pump = only(outneighbors(graph_control, id))
+        listen_id = listen_node_id[i]
+        _, listen_idx = id_index(basin.node_id, listen_id)
+        listen_area = basin.current_area[listen_idx]
+
+        # PID control integral state
+        pid_state_idx = n_basins + i
+        J[pid_state_idx, listen_idx] -= 1 / listen_area
+
+        # If the flow rate is clipped to one of the bounds it does
+        # not change with storages and thus doesn't contribute to the
+        # Jacobian
+        if was_clipped
+            continue
+        end
+
+        storage_controlled = u.storage[listen_idx]
+        phi = storage_controlled < 10.0 ? storage_controlled / 10 : 1.0
+        dphi = storage_controlled < 10.0 ? 1 / 10 : 0.0
+
+        dq = dphi * flow_rate
+
+        if !isnan(K_p)
+            dq += K_p * phi / listen_area
+        end
+
+        if !isnan(K_d)
+            dq += K_d * flow_rate * basin.current_darea[listen_idx] / listen_area^2
+            dq /= 1.0 + K_d * phi / listen_area
+        end
+
+        J[listen_idx, listen_idx] -= dq
+
+        if !isnan(K_i)
+            J[listen_idx, pid_state_idx] -= K_i * phi
+        end
+
+        id_out = only(outneighbors(graph_flow, id_pump))
+        has_index, idx_out_out = id_index(basin.node_id, id_out)
+
+        if has_index
+            jac_prototype[pid_state_idx, idx_out_out] += K_i * phi
+            jac_prototype[listen_idx, idx_out_out] += dq
+        end
+    end
     return nothing
 end
 
@@ -1104,6 +1225,7 @@ function formulate_jac!(
     u::ComponentVector{Float64},
     p::Parameters,
     node::AbstractParameterNode,
+    t::Float64,
 )::Nothing
     node_type = nameof(typeof(node))
 
@@ -1119,7 +1241,7 @@ function formulate_jac!(
         },
     )
         error(
-            "It is not specified how nodes of type $node_type contribute to the Jacobian prototype.",
+            "It is not specified how nodes of type $node_type contribute to the Jacobian.",
         )
     end
     return nothing
@@ -1138,7 +1260,7 @@ function water_balance_jac!(
     set_current_area_and_level!(basin, u.storage, t)
 
     for nodefield in nodefields(p)
-        formulate_jac!(J, u, p, getfield(p, nodefield))
+        formulate_jac!(J, u, p, getfield(p, nodefield), t)
     end
 
     return nothing

@@ -55,11 +55,15 @@ function create_storage_tables(
     return area, level, storage
 end
 
+"""
+Compute the area and level of a basin given its storage.
+Also returns darea/dlevel as it is needed for the Jacobian.
+"""
 function get_area_and_level(
     basin::Basin,
     state_idx::Int,
     storage::Float64,
-)::Tuple{Float64, Float64}
+)::Tuple{Float64, Float64, Float64}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -72,7 +76,7 @@ function get_area_and_level(
     area_discrete::Vector{Float64},
     level_discrete::Vector{Float64},
     storage::Float64,
-)::Tuple{Float64, Float64}
+)::Tuple{Float64, Float64, Float64}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -80,6 +84,13 @@ function get_area_and_level(
         # This can only happen if the storage is 0
         level = level_discrete[1]
         area = area_discrete[1]
+
+        level_lower = level
+        level_higher = level_discrete[2]
+        area_lower = area
+        area_higher = area_discrete[2]
+
+        darea = (area_higher - area_lower) / (level_higher - level_lower)
 
     elseif storage_idx == length(storage_discrete) + 1
         # With a storage above the profile, use a linear extrapolation of area(level)
@@ -96,14 +107,14 @@ function get_area_and_level(
 
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
+            darea = 0.0
             area = area_lower
             level =
                 level_higher +
                 level_diff * (storage - storage_higher) / (storage_higher - storage_lower)
         else
-            area = sqrt(
-                area_higher^2 + 2 * (storage - storage_higher) * area_diff / level_diff,
-            )
+            darea = area_diff / level_diff
+            area = sqrt(area_higher^2 + 2 * (storage - storage_higher) * darea)
             level = level_lower + level_diff * (area - area_lower) / area_diff
         end
 
@@ -120,19 +131,20 @@ function get_area_and_level(
 
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
+            darea = 0
             area = area_lower
             level =
                 level_lower +
                 level_diff * (storage - storage_lower) / (storage_higher - storage_lower)
 
         else
-            area =
-                sqrt(area_lower^2 + 2 * (storage - storage_lower) * area_diff / level_diff)
+            darea = area_diff / level_diff
+            area = sqrt(area_lower^2 + 2 * (storage - storage_lower) * darea)
             level = level_lower + level_diff * (area - area_lower) / area_diff
         end
     end
 
-    return area, level
+    return area, level, darea
 end
 
 """
@@ -540,30 +552,33 @@ function update_jac_prototype!(
     node::PidControl,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_control) = connectivity
+    (; graph_control, graph_flow) = connectivity
 
     n_basins = length(basin.node_id)
 
     for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
-        id_out = only(outneighbors(graph_control, id))
-        id_out_in = only(inneighbors(graph_control, id_out))
+        id_pump = only(outneighbors(graph_control, id))
+        id_pump_out = only(inneighbors(graph_flow, id_pump))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
+        # Controlled basin affects itself
+        jac_prototype[listen_idx, listen_idx] = 1.0
+
         # PID control integral state
         pid_state_idx = n_basins + pid_idx
-        jac_prototype[pid_state_idx, listen_idx] = 1.0
         jac_prototype[listen_idx, pid_state_idx] = 1.0
+        jac_prototype[pid_state_idx, listen_idx] = 1.0
 
-        # The basin upstream of the pump
-        has_index, idx_out_in = id_index(basin.node_id, id_out_in)
+        # The basin downstream of the pump
+        has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
 
         if has_index
-            jac_prototype[pid_state_idx, idx_out_in] = 1.0
-            jac_prototype[idx_out_in, pid_state_idx] = 1.0
+            # The basin downstream of the pu,p PID control integral state
+            jac_prototype[pid_state_idx, idx_out_out] = 1.0
 
-            # The basin upstream of the pump also depends on the controlled basin
-            jac_prototype[listen_idx, idx_out_in] = 1.0
+            # The basin downstream of the pump also depends on the controlled basin
+            jac_prototype[listen_idx, idx_out_out] = 1.0
         end
     end
     return nothing
