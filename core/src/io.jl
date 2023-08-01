@@ -84,7 +84,15 @@ function load_structvector(
     if table isa Query && haskey(nt, :time)
         # time has type timestamp and is stored as a String in the GeoPackage
         # currently SQLite.jl does not automatically convert it to DateTime
-        nt = merge(nt, (; time = DateTime.(nt.time, dateformat"yyyy-mm-dd HH:MM:SS.s")))
+        nt = merge(
+            nt,
+            (;
+                time = DateTime.(
+                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                    dateformat"yyyy-mm-dd HH:MM:SS.s",
+                )
+            ),
+        )
     end
 
     table = StructVector{T}(nt)
