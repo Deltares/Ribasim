@@ -7,12 +7,14 @@
     <build-runners>
       <runner id="RUNNER_537" name="Push to nightly S3" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[#!/bin/bash
+          <param name="script.content"><![CDATA[#!/usr/bin/env bash
+set -euxo pipefail
 . /usr/share/Modules/init/bash
 
 module load aws
 aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip
-aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip]]></param>
+aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip
+aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -40,6 +42,10 @@ aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCli
       </extension>
     </build-extensions>
     <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_606" sourceBuildTypeId="Ribasim_Ribasim_BuildPythonWheels" cleanDestination="false">
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <artifact sourcePath="ribasim*.whl" />
+      </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
         <artifact sourcePath="ribasim_cli.zip" />
@@ -52,3 +58,4 @@ aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCli
     <cleanup />
   </settings>
 </build-type>
+
