@@ -55,7 +55,7 @@ end
 end
 
 @testset "PID control" begin
-    toml_path = normpath(@__DIR__, "../../data/pid_1/pid_1.toml")
+    toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     basin = model.integrator.p.basin

@@ -118,7 +118,7 @@ end
     @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 4]
     @test jac_prototype.nzval == ones(8)
 
-    toml_path = normpath(@__DIR__, "../../data/pid_1/pid_1.toml")
+    toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
 
     cfg = Ribasim.parsefile(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
