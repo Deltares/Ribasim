@@ -89,7 +89,12 @@ function formulate_jac!(
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+        k = 1000.0
+        kΔh = k * Δh
+        atankΔh = atan(k * Δh)
+        ΔhatankΔh = Δh * atankΔh
+
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(ΔhatankΔh / L)
 
         id_in = only(inneighbors(graph_flow, id))
         id_out = only(outneighbors(graph_flow, id))
@@ -105,8 +110,9 @@ function formulate_jac!(
             ∂R_h_a = (P_a * ∂A_a - A_a * ∂P_a) / P_a^2
             ∂R_h_b = width / (2 * basin_in_area * P_b)
             ∂R_h = 0.5 * (∂R_h_a + ∂R_h_b)
-            # TODO: Is there a better way to handle Δh = 0?
-            term_in = q * (∂A / A + ∂R_h / R_h + 1 / (2 * basin_in_area * Δh))
+            sqrt_contribution =
+                (atankΔh + kΔh / (1 + kΔh^2)) / (basin_in_area * sqrt(2 * π) * ΔhatankΔh)
+            term_in = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
             J[idx_in, idx_in] -= term_in
         end
 
@@ -118,8 +124,9 @@ function formulate_jac!(
             ∂R_h_b = (P_b * ∂A_b - A_b * ∂P_b) / P_b^2
             ∂R_h_b = width / (2 * basin_out_area * P_b)
             ∂R_h = 0.5 * (∂R_h_b + ∂R_h_a)
-            # TODO: Is there a better way to handle Δh = 0?
-            term_out = q * (∂A / A + ∂R_h / R_h - 1 / (2 * basin_out_area * Δh))
+            sqrt_contribution =
+                (atankΔh + kΔh / (1 + kΔh^2)) / (basin_out_area * sqrt(2 * π) * ΔhatankΔh)
+            term_out = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
 
             J[idx_out, idx_out] -= term_out
         end

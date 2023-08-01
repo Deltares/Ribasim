@@ -19,14 +19,15 @@ using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable, getcolumn
+using TerminalLoggers
 using TimerOutputs
 
 const to = TimerOutput()
 TimerOutputs.complement!()
 
 include("validation.jl")
-include("jac.jl")
 include("solve.jl")
+include("jac.jl")
 include("config.jl")
 using .config: Config, Solver, algorithm, snake_case, zstd, lz4
 include("utils.jl")

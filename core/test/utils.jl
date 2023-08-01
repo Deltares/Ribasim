@@ -22,6 +22,7 @@ end
     # create two basins with different bottoms/levels
     area = [[0.0, 1.0], [0.0, 1.0]]
     level = [[0.0, 1.0], [4.0, 5.0]]
+    darea = zeros(2)
     storage = Ribasim.profile_storage.(level, area)
     target_level = [0.0, 0.0]
     dstorage = target_level
