@@ -37,4 +37,3 @@ conda run -p "%conda_env_path%mm" micromamba run -p %conda_env_path% pip wheel p
     <cleanup />
   </settings>
 </build-type>
-
