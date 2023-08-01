@@ -310,7 +310,7 @@ def manning_resistance_model():
     return model
 
 
-def miscellaneous_nodes_model():
+def misc_nodes_model():
     """Set up a minimal model using flow_boundary, fractional_flow and pump nodes."""
 
     xy = np.array(
