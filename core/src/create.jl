@@ -252,7 +252,7 @@ function Pump(db::DB, config::Config)::Pump
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     static_parsed = parse_static(static, db, "Pump", defaults)
 
-    # TODO: use this in formulate! (and formulate_jac!) for pump
+    # TODO: use this in formulate_jac! for pump
     is_pid_controlled = falses(length(static_parsed.node_id))
 
     return Pump(
