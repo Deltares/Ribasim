@@ -434,14 +434,19 @@ end
 
 function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
-    (; listen_node_id, error) = pid_control
+    (; listen_node_id) = pid_control
+
+    Error = pid_control.error
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
         target_level = basin.target_level[listened_node_idx]
-        error[i] = target_level - basin.current_level[listened_node_idx]
+        if isnan(target_level)
+            error("No target level specified for listen basin #$listened_node_id.")
+        end
+        Error[i] = target_level - basin.current_level[listened_node_idx]
     end
 end
 
@@ -485,6 +490,8 @@ function continuous_control!(
             flow_rate += proportional[i] * error[i]
         end
 
+        println(flow_rate)
+
         if !isnan(derivative[i])
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
@@ -493,17 +500,26 @@ function continuous_control!(
             flow_rate += derivative[i] * error_deriv
         end
 
+        println(flow_rate)
+
         if !isnan(integral[i])
             # coefficient * current value of integral
             flow_rate += integral[i] * integral_value[i]
         end
 
+        println(flow_rate)
+
         # Clip values outside pump flow rate bounds
         flow_rate = max(flow_rate, min_flow_rate[i])
+
+        println(flow_rate)
 
         if !isnan(max_flow_rate[i])
             flow_rate = min(flow_rate, max_flow_rate[i])
         end
+
+        println(flow_rate)
+        println("-------------------")
 
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
