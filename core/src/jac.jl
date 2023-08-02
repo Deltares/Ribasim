@@ -20,7 +20,7 @@ function water_balance_jac!(
     set_current_area_and_level!(basin, u.storage, t)
 
     for nodefield in nodefields(p)
-        formulate_jac!(J, u, p, getfield(p, nodefield), t)
+        formulate_jac!(getfield(p, nodefield), J, u, p, t)
     end
 
     return nothing
@@ -30,10 +30,10 @@ end
 The contributions of LinearResistance nodes to the Jacobian.
 """
 function formulate_jac!(
+    linear_resistance::LinearResistance,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    linear_resistance::LinearResistance,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
@@ -77,10 +77,10 @@ end
 The contributions of ManningResistance nodes to the Jacobian.
 """
 function formulate_jac!(
+    manning_resistance::ManningResistance,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    manning_resistance::ManningResistance,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
@@ -131,8 +131,10 @@ function formulate_jac!(
         kΔh = k * Δh
         atankΔh = atan(k * Δh)
         ΔhatankΔh = Δh * atankΔh
+        R_hpow = R_h^(2 / 3)
+        root = sqrt(2 / π * ΔhatankΔh)
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(ΔhatankΔh / L)
+        q = q_sign * A / n * R_hpow * root / sqrt(L)
 
         id_in = only(inneighbors(graph_flow, id))
         id_out = only(outneighbors(graph_flow, id))
@@ -155,7 +157,13 @@ function formulate_jac!(
                     (atankΔh + kΔh / (1 + kΔh^2)) /
                     (basin_in_area * sqrt(2 * π * ΔhatankΔh))
             end
-            term_in = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
+            # term_in = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
+            term_in =
+                q_sign * (
+                    ∂A * R_hpow * root +
+                    A * R_hpow * ∂R_h / R_h * root +
+                    A * R_hpow * sqrt_contribution
+                ) / (n * sqrt(L))
             J[idx_in, idx_in] -= term_in
         end
 
@@ -174,8 +182,13 @@ function formulate_jac!(
                     (atankΔh + kΔh / (1 + kΔh^2)) /
                     (basin_out_area * sqrt(2 * π * ΔhatankΔh))
             end
-            term_out = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
-
+            # term_out = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
+            term_out =
+                q_sign * (
+                    ∂A * R_hpow * root +
+                    A * R_hpow * ∂R_h / R_h * root +
+                    A * R_hpow * sqrt_contribution
+                ) / (n * sqrt(L))
             J[idx_out, idx_out] -= term_out
         end
 
@@ -191,10 +204,10 @@ end
 The contributions of Pump nodes to the Jacobian.
 """
 function formulate_jac!(
+    pump::Pump,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    pump::Pump,
     t::Float64,
 )::Nothing
     (; basin, fractional_flow, connectivity, pid_control) = p
@@ -262,10 +275,10 @@ end
 The contributions of TabulatedRatingCurve nodes to the Jacobian.
 """
 function formulate_jac!(
+    tabulated_rating_curve::TabulatedRatingCurve,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    tabulated_rating_curve::TabulatedRatingCurve,
     t::Float64,
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
@@ -293,14 +306,16 @@ function formulate_jac!(
             level = basin.current_level[idx_in]
             level_smaller_idx = searchsortedlast(table.t, level)
             if level_smaller_idx == 0
-                level_smaller_idx = 1
-            elseif level_smaller_idx == length(flows)
-                level_smaller_idx = length(flows) - 1
-            end
+                slope = 0.0
+            else
+                if level_smaller_idx == length(flows)
+                    level_smaller_idx = length(flows) - 1
+                end
 
-            slope =
-                (flows[level_smaller_idx + 1] - flows[level_smaller_idx]) /
-                (levels[level_smaller_idx + 1] - levels[level_smaller_idx])
+                slope =
+                    (flows[level_smaller_idx + 1] - flows[level_smaller_idx]) /
+                    (levels[level_smaller_idx + 1] - levels[level_smaller_idx])
+            end
 
             dq = slope / basin.current_area[idx_in]
 
@@ -332,10 +347,10 @@ end
 The contributions of TabulatedRatingCurve nodes to the Jacobian.
 """
 function formulate_jac!(
+    pid_control::PidControl,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    pid_control::PidControl,
     t::Float64,
 )::Nothing
     # TODO: update after pid_control equation test merge
@@ -446,10 +461,10 @@ end
 Method for nodes that do not contribute to the Jacobian
 """
 function formulate_jac!(
+    node::AbstractParameterNode,
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
-    node::AbstractParameterNode,
     t::Float64,
 )::Nothing
     node_type = nameof(typeof(node))

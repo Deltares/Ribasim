@@ -78,6 +78,8 @@ struct Basin{C} <: AbstractParameterNode
     # cache this to avoid recomputation
     current_level::Vector{Float64}
     current_area::Vector{Float64}
+    # The derivative of the area with respect to the level
+    # used for the analytical Jacobian
     current_darea::Vector{Float64}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
