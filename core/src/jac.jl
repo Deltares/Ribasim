@@ -1,3 +1,34 @@
+"""
+The Jacobian is a n x n sparse matrix where n is the number of basins plus the number of
+PidControl nodes. Each basin has a storage state, and each PidControl node has an error integral
+state. If we write water_balance! as f(u, p(t), t) where u is the vector of all states, then
+J[i,j] = ∂f_j/∂u_i. f_j dictates the time derivative of state j.
+
+J is very sparse because each state only depends on a small number of other states.
+For more on the sparsity see get_jac_prototype.
+"""
+function water_balance_jac!(
+    J::SparseMatrixCSC{Float64, Int64},
+    u::ComponentVector{Float64},
+    p::Parameters,
+    t,
+)::Nothing
+    (; basin) = p
+    J .= 0.0
+
+    # Ensures current_level and current_area are current
+    set_current_area_and_level!(basin, u.storage, t)
+
+    for nodefield in nodefields(p)
+        formulate_jac!(J, u, p, getfield(p, nodefield), t)
+    end
+
+    return nothing
+end
+
+"""
+The contributions of LinearResistance nodes to the Jacobian.
+"""
 function formulate_jac!(
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
@@ -10,6 +41,8 @@ function formulate_jac!(
     (; graph_flow) = connectivity
 
     for (id, isactive, R) in zip(node_id, active, resistance)
+
+        # Inactive nodes do not contribute
         if !isactive
             continue
         end
@@ -40,6 +73,9 @@ function formulate_jac!(
     return nothing
 end
 
+"""
+The contributions of ManningResistance nodes to the Jacobian.
+"""
 function formulate_jac!(
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
@@ -53,6 +89,8 @@ function formulate_jac!(
     (; graph_flow) = connectivity
 
     for (i, id) in enumerate(node_id)
+
+        # Inactive nodes do not contribute
         if !active[i]
             continue
         end
@@ -149,6 +187,9 @@ function formulate_jac!(
     return nothing
 end
 
+"""
+The contributions of Pump nodes to the Jacobian.
+"""
 function formulate_jac!(
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
@@ -162,13 +203,13 @@ function formulate_jac!(
     (; graph_flow) = connectivity
 
     for (i, id) in enumerate(node_id)
+
+        # Inactive nodes do not contribute
         if !active[i]
             continue
         end
 
-        if id in pid_control.listen_node_id
-            continue
-        end
+        #TODO: skip if pump is pid controlled
 
         id_in = only(inneighbors(graph_flow, id))
 
@@ -195,6 +236,8 @@ function formulate_jac!(
                     graph_flow,
                 )
 
+                # Assumes either one outneighbor basin or one or more
+                # outneighbor fractional flows
                 if isempty(idxs_out)
                     id_out = only(outneighbors(graph_flow, id))
                     has_index_out, idx_out = id_index(basin.node_id, id_out)
@@ -215,6 +258,9 @@ function formulate_jac!(
     return nothing
 end
 
+"""
+The contributions of TabulatedRatingCurve nodes to the Jacobian.
+"""
 function formulate_jac!(
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
@@ -263,6 +309,8 @@ function formulate_jac!(
             idxs_fractional_flow, idxs_out =
                 get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
 
+            # Assumes either one outneighbor basin or one or more
+            # outneighbor fractional flows
             if isempty(idxs_out)
                 id_out = only(outneighbors(graph_flow, id))
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
@@ -280,6 +328,9 @@ function formulate_jac!(
     return nothing
 end
 
+"""
+The contributions of TabulatedRatingCurve nodes to the Jacobian.
+"""
 function formulate_jac!(
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
@@ -287,6 +338,7 @@ function formulate_jac!(
     pid_control::PidControl,
     t::Float64,
 )::Nothing
+    # TODO: update after pid_control equation test merge
     (; basin, connectivity, pump) = p
     (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
         pid_control
@@ -417,24 +469,5 @@ function formulate_jac!(
             "It is not specified how nodes of type $node_type contribute to the Jacobian.",
         )
     end
-    return nothing
-end
-
-function water_balance_jac!(
-    J::SparseMatrixCSC{Float64, Int64},
-    u::ComponentVector{Float64},
-    p::Parameters,
-    t,
-)::Nothing
-    (; basin) = p
-    J .= 0.0
-
-    # Ensures current_level and current_area are current
-    set_current_area_and_level!(basin, u.storage, t)
-
-    for nodefield in nodefields(p)
-        formulate_jac!(J, u, p, getfield(p, nodefield), t)
-    end
-
     return nothing
 end
