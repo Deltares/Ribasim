@@ -110,8 +110,13 @@ function formulate_jac!(
             ∂R_h_a = (P_a * ∂A_a - A_a * ∂P_a) / P_a^2
             ∂R_h_b = width / (2 * basin_in_area * P_b)
             ∂R_h = 0.5 * (∂R_h_a + ∂R_h_b)
-            sqrt_contribution =
-                (atankΔh + kΔh / (1 + kΔh^2)) / (basin_in_area * sqrt(2 * π) * ΔhatankΔh)
+            if Δh == 0
+                sqrt_contribution = 2 / (sqrt(2 * π) * basin_in_area)
+            else
+                sqrt_contribution =
+                    (atankΔh + kΔh / (1 + kΔh^2)) /
+                    (basin_in_area * sqrt(2 * π * ΔhatankΔh))
+            end
             term_in = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
             J[idx_in, idx_in] -= term_in
         end
@@ -124,8 +129,13 @@ function formulate_jac!(
             ∂R_h_b = (P_b * ∂A_b - A_b * ∂P_b) / P_b^2
             ∂R_h_b = width / (2 * basin_out_area * P_b)
             ∂R_h = 0.5 * (∂R_h_b + ∂R_h_a)
-            sqrt_contribution =
-                (atankΔh + kΔh / (1 + kΔh^2)) / (basin_out_area * sqrt(2 * π) * ΔhatankΔh)
+            if Δh == 0
+                sqrt_contribution = 2 / (sqrt(2 * π) * basin_out_area)
+            else
+                sqrt_contribution =
+                    (atankΔh + kΔh / (1 + kΔh^2)) /
+                    (basin_out_area * sqrt(2 * π * ΔhatankΔh))
+            end
             term_out = q * (∂A / A + ∂R_h / R_h + sqrt_contribution)
 
             J[idx_out, idx_out] -= term_out
@@ -190,7 +200,7 @@ function formulate_jac!(
                     has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                     if has_index_out
-                        J[idx_in, idx_out] = dq
+                        J[idx_in, idx_out] += dq
                     end
                 else
                     for (idx_fractional_flow, idx_out) in
@@ -258,7 +268,7 @@ function formulate_jac!(
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
-                    J[idx_in, idx_out] = dq
+                    J[idx_in, idx_out] += dq
                 end
             else
                 for (idx_fractional_flow, idx_out) in zip(idxs_fractional_flow, idxs_out)

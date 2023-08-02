@@ -36,6 +36,7 @@ end
         [2.0, 3.0],
         area,
         level,
+        darea,
         storage,
         target_level,
         StructVector{Ribasim.BasinForcingV1}(undef, 0),
