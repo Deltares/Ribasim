@@ -86,8 +86,6 @@ struct Basin{C} <: AbstractParameterNode
     target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
-    # Storage derivative for use in PID controller
-    dstorage::Vector{Float64}
 
     function Basin(
         node_id,
@@ -102,7 +100,6 @@ struct Basin{C} <: AbstractParameterNode
         storage,
         target_level,
         time::StructVector{BasinForcingV1, C, Int},
-        dstorage,
     ) where {C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)
@@ -119,7 +116,6 @@ struct Basin{C} <: AbstractParameterNode
                 storage,
                 target_level,
                 time,
-                dstorage,
             )
         else
             @error join(errors, "\n")
@@ -252,6 +248,7 @@ struct Pump <: AbstractParameterNode
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    is_pid_controlled::BitVector
 end
 
 """
@@ -461,7 +458,6 @@ function continuous_control!(
     # TODO: also support time varying target levels
     (; connectivity, pump, basin) = p
     (; min_flow_rate, max_flow_rate) = pump
-    (; dstorage) = basin
     (; graph_control) = connectivity
     (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
         pid_control
@@ -483,26 +479,31 @@ function continuous_control!(
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
+        storage_listened_basin = u.storage[listened_node_idx]
+        phi = storage_listened_basin < 10.0 ? storage_listened_basin / 10.0 : 1.0
 
         flow_rate = 0.0
 
         if !isnan(proportional[i])
-            flow_rate += proportional[i] * error[i]
+            flow_rate += phi * proportional[i] * error[i]
+        end
+
+        if !isnan(integral[i])
+            # coefficient * current value of integral
+            flow_rate += phi * integral[i] * integral_value[i]
         end
 
         if !isnan(derivative[i])
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
-            level_derivative = dstorage[listened_node_idx] / area
-            target_level_derivative = 0.0
-
-            error_deriv = target_level_derivative - level_derivative
-            flow_rate += derivative[i] * error_deriv
-        end
-
-        if !isnan(integral[i])
-            # coefficient * current value of integral
-            flow_rate += integral[i] * integral_value[i]
+            dlevel = du.storage[listened_node_idx] / area
+            dtarget_level = 0.0
+            du_listened_basin_old = du.storage[listened_node_idx]
+            du_listened_basin =
+                (du_listened_basin_old - flow_rate - phi * derivative[i] * dtarget_level) /
+                (1 - phi * derivative[i] / area)
+            du.storage[listened_node_idx] = du_listened_basin
+            flow_rate = du_listened_basin - du_listened_basin_old
         end
 
         # Clip values outside pump flow rate bounds
@@ -512,7 +513,6 @@ function continuous_control!(
             flow_rate = min(flow_rate, max_flow_rate[i])
         end
 
-        println(flow_rate)
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
     return nothing
@@ -715,6 +715,10 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
+        # if
+
+        # end
+
         if !isactive
             flow[src_id, id] = 0.0
             flow[id, dst_id] = 0.0
@@ -791,22 +795,20 @@ function water_balance!(
     storage = u.storage
     integral = u.integral
 
-    basin.dstorage .= du.storage
-
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
     # ensures current_level is current
     formulate!(du, basin, storage, t)
 
-    # PID control (does not set flows)
-    continuous_control!(u, du, pid_control, p, integral)
-
     # First formulate intermediate flows
     formulate_flows!(p, storage)
 
     # Now formulate du
     formulate!(du, connectivity, basin)
+
+    # PID control (changes the du of PID controlled basins)
+    continuous_control!(u, du, pid_control, p, integral)
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
