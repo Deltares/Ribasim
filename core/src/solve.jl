@@ -490,37 +490,29 @@ function continuous_control!(
             flow_rate += proportional[i] * error[i]
         end
 
-        println(flow_rate)
-
         if !isnan(derivative[i])
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
+            level_derivative = dstorage[listened_node_idx] / area
+            target_level_derivative = 0.0
 
-            error_deriv = -dstorage[listened_node_idx] / area
+            error_deriv = target_level_derivative - level_derivative
             flow_rate += derivative[i] * error_deriv
         end
-
-        println(flow_rate)
 
         if !isnan(integral[i])
             # coefficient * current value of integral
             flow_rate += integral[i] * integral_value[i]
         end
 
-        println(flow_rate)
-
         # Clip values outside pump flow rate bounds
         flow_rate = max(flow_rate, min_flow_rate[i])
-
-        println(flow_rate)
 
         if !isnan(max_flow_rate[i])
             flow_rate = min(flow_rate, max_flow_rate[i])
         end
 
         println(flow_rate)
-        println("-------------------")
-
         pump.flow_rate[controlled_node_idx] = flow_rate
     end
     return nothing

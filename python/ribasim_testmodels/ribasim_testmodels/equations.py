@@ -551,7 +551,7 @@ def pid_control_equation_model():
             data={
                 "node_id": [4],
                 "listen_node_id": [1],
-                "proportional": [-1.2],
+                "proportional": [-2.5],
                 "integral": [-3e-3],
                 "derivative": [10.0],
             }

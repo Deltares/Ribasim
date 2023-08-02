@@ -529,30 +529,33 @@ function update_jac_prototype!(
     node::PidControl,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_control) = connectivity
+    (; graph_control, graph_flow) = connectivity
 
     n_basins = length(basin.node_id)
 
     for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
-        id_out = only(outneighbors(graph_control, id))
-        id_out_in = only(inneighbors(graph_control, id_out))
+        id_pump = only(outneighbors(graph_control, id))
+        id_pump_out = only(inneighbors(graph_flow, id_pump))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
+        # Controlled basin affects itself
+        jac_prototype[listen_idx, listen_idx] = 1.0
+
         # PID control integral state
         pid_state_idx = n_basins + pid_idx
-        jac_prototype[pid_state_idx, listen_idx] = 1.0
         jac_prototype[listen_idx, pid_state_idx] = 1.0
+        jac_prototype[pid_state_idx, listen_idx] = 1.0
 
-        # The basin upstream of the pump
-        has_index, idx_out_in = id_index(basin.node_id, id_out_in)
+        # The basin downstream of the pump
+        has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
 
         if has_index
-            jac_prototype[pid_state_idx, idx_out_in] = 1.0
-            jac_prototype[idx_out_in, pid_state_idx] = 1.0
+            # The basin downstream of the pu,p PID control integral state
+            jac_prototype[pid_state_idx, idx_out_out] = 1.0
 
-            # The basin upstream of the pump also depends on the controlled basin
-            jac_prototype[listen_idx, idx_out_in] = 1.0
+            # The basin downstream of the pump also depends on the controlled basin
+            jac_prototype[listen_idx, idx_out_out] = 1.0
         end
     end
     return nothing
