@@ -21,7 +21,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        (; pid_control, connectivity, basin) = parameters
+        (; pid_control, connectivity, basin, pump) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
@@ -30,6 +30,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             basin.node_id,
         )
             error("Invalid PidControl connectivity.")
+        end
+
+        for id in pid_control.node_id
+            id_pump = only(outneighbors(connectivity.graph_control, id))
+            pump_idx = findsorted(pump.node_id, id_pump)
+            pump.is_pid_controlled[pump_idx] = true
         end
 
         # use state

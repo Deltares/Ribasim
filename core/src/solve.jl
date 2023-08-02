@@ -456,9 +456,9 @@ function continuous_control!(
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
-    (; connectivity, pump, basin) = p
+    (; connectivity, pump, basin, fractional_flow) = p
     (; min_flow_rate, max_flow_rate) = pump
-    (; graph_control) = connectivity
+    (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
         pid_control
 
@@ -502,18 +502,53 @@ function continuous_control!(
             du_listened_basin =
                 (du_listened_basin_old - flow_rate - phi * derivative[i] * dtarget_level) /
                 (1 - phi * derivative[i] / area)
-            du.storage[listened_node_idx] = du_listened_basin
-            flow_rate = du_listened_basin - du_listened_basin_old
+            flow_rate = du_listened_basin_old - du_listened_basin
         end
 
         # Clip values outside pump flow rate bounds
-        flow_rate = max(flow_rate, min_flow_rate[i])
+        was_clipped = false
+
+        if flow_rate < min_flow_rate[i]
+            was_clipped = true
+            flow_rate = min_flow_rate[i]
+        end
 
         if !isnan(max_flow_rate[i])
-            flow_rate = min(flow_rate, max_flow_rate[i])
+            if flow_rate > max_flow_rate[i]
+                was_clipped = true
+                flow_rate = max_flow_rate[i]
+            end
         end
 
         pump.flow_rate[controlled_node_idx] = flow_rate
+        du.storage[listened_node_idx] -= flow_rate
+
+        # Set flow for connected edges
+        src_id = only(inneighbors(graph_flow, controlled_node_id))
+        dst_id = only(outneighbors(graph_flow, controlled_node_id)) # TODO: also take fractional flow into account
+
+        flow[src_id, controlled_node_id] = flow_rate
+        flow[controlled_node_id, dst_id] = flow_rate
+
+        has_index, dst_idx = id_index(basin.node_id, dst_id)
+        if has_index
+            du.storage[dst_idx] += flow_rate
+        end
+
+        for id in outneighbors(graph_flow, controlled_node_id)
+            if id in fractional_flow.node_id
+                after_ff_id = only(outneighbours(graph_flow, id))
+                ff_idx = findsorted(fractional_flow, id)
+                flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
+                flow[id, after_ff_id] = flow_rate_fraction
+
+                has_index, basin_idx = id_index(basin.node_id, after_ff_id)
+
+                if has_index
+                    du.storage[basin_idx] += flow_rate_fraction
+                end
+            end
+        end
     end
     return nothing
 end
@@ -708,20 +743,21 @@ end
 function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, active, flow_rate) = pump
-    for (id, isactive, rate) in zip(node_id, active, flow_rate)
+    (; node_id, active, flow_rate, is_pid_controlled) = pump
+    for (id, isactive, rate, pid_controlled) in
+        zip(node_id, active, flow_rate, is_pid_controlled)
         @assert rate >= 0 "Pump flow rate must be positive, found $rate for Pump #$id"
 
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
-        # if
-
-        # end
-
         if !isactive
             flow[src_id, id] = 0.0
             flow[id, dst_id] = 0.0
+            continue
+        end
+
+        if pid_controlled
             continue
         end
 

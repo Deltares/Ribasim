@@ -60,6 +60,7 @@ end
         [0.0, 0.0],
         [1.0, 1.0],
         Dict{Tuple{Int, String}, NamedTuple}(),
+        falses(2),
     )
 
     errors = Ribasim.valid_n_neighbors(graph_flow, pump)

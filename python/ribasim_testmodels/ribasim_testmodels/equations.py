@@ -552,7 +552,7 @@ def pid_control_equation_model():
                 "node_id": [4],
                 "listen_node_id": [1],
                 "proportional": [-2.5],
-                "integral": [-3e-3],
+                "integral": [-0.001],
                 "derivative": [10.0],
             }
         )
@@ -567,7 +567,7 @@ def pid_control_equation_model():
         terminal=terminal,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-01 00:30:00",
+        endtime="2020-01-01 00:05:00",
     )
 
     return model

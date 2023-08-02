@@ -126,7 +126,7 @@ end
 
     @test jac_prototype.m == 2
     @test jac_prototype.n == 2
-    @test jac_prototype.colptr == [1, 2, 3]
-    @test jac_prototype.rowval == [2, 1]
-    @test jac_prototype.nzval == ones(2)
+    @test jac_prototype.colptr == [1, 3, 4]
+    @test jac_prototype.rowval == [1, 2, 1]
+    @test jac_prototype.nzval == ones(3)
 end
