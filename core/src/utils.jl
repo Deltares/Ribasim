@@ -140,9 +140,11 @@ For an element `id` and a vector of elements `ids`, get the range of indices of 
 consecutive block of `id`.
 Returns the empty range `1:0` if `id` is not in `ids`.
 
-```
-#                  1 2 3 4 5 6 7 8 9
-findlastgroup(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
+```jldoctest
+#                         1 2 3 4 5 6 7 8 9
+Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
+# output
+6:8
 ```
 """
 function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
