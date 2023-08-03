@@ -453,3 +453,121 @@ def misc_nodes_model():
     )
 
     return model
+
+
+def pid_control_equation_model():
+    """Set up a model with pid control for an analytical solution test"""
+
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.0),  # 2: Pump
+            (2.0, 0.0),  # 3: Terminal
+            (0.5, 1.0),  # 4: PidControl
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["Basin", "Pump", "Terminal", "PidControl"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2, 4], dtype=np.int64)
+    to_id = np.array([2, 3, 2], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": ["flow", "flow", "control"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1, 1],
+            "area": [0.0, 100.0, 100.0],
+            "level": [0.0, 1.0, 2.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [0.0],
+            "urban_runoff": [0.0],
+            "target_level": [10.0],
+        }
+    )
+
+    state = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "storage": [1500.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup pump:
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2],
+                "flow_rate": [0.0],  # irrelevant, will be overwritten
+            }
+        )
+    )
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [3],
+            }
+        )
+    )
+
+    # Setup PID control
+    pid_control = ribasim.PidControl(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4],
+                "listen_node_id": [1],
+                "proportional": [-2.5],
+                "integral": [-0.001],
+                "derivative": [10.0],
+            }
+        )
+    )
+
+    model = ribasim.Model(
+        modelname="pid_control_equation",
+        node=node,
+        edge=edge,
+        basin=basin,
+        pump=pump,
+        terminal=terminal,
+        pid_control=pid_control,
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-01-01 00:05:00",
+    )
+
+    return model
