@@ -480,42 +480,41 @@ function continuous_control!(
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
         storage_listened_basin = u.storage[listened_node_idx]
-        phi = storage_listened_basin < 10.0 ? storage_listened_basin / 10.0 : 1.0
+        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
 
         flow_rate = 0.0
 
-        if !isnan(proportional[i])
-            flow_rate += phi * proportional[i] * error[i]
+        K_p = proportional[i]
+        if !isnan(K_p)
+            flow_rate += reduction_factor * K_p * error[i]
         end
 
-        if !isnan(integral[i])
-            # coefficient * current value of integral
-            flow_rate += phi * integral[i] * integral_value[i]
+        K_i = integral[i]
+        if !isnan(K_i)
+            flow_rate += reduction_factor * K_i * integral_value[i]
         end
 
-        if !isnan(derivative[i])
+        K_d = derivative[i]
+        if !isnan(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
-            dlevel = du.storage[listened_node_idx] / area
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
             du_listened_basin =
-                (du_listened_basin_old - flow_rate - phi * derivative[i] * dtarget_level) /
-                (1 - phi * derivative[i] / area)
+                (
+                    du_listened_basin_old - flow_rate -
+                    reduction_factor * K_d * dtarget_level
+                ) / (1 - reduction_factor * K_d / area)
             flow_rate = du_listened_basin_old - du_listened_basin
         end
 
         # Clip values outside pump flow rate bounds
-        was_clipped = false
-
         if flow_rate < min_flow_rate[i]
-            was_clipped = true
             flow_rate = min_flow_rate[i]
         end
 
         if !isnan(max_flow_rate[i])
             if flow_rate > max_flow_rate[i]
-                was_clipped = true
                 flow_rate = max_flow_rate[i]
             end
         end
