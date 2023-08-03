@@ -433,7 +433,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
     (; listen_node_id) = pid_control
 
-    Error = pid_control.error
+    pid_error = pid_control.error
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
@@ -443,7 +443,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
         if isnan(target_level)
             error("No target level specified for listen basin #$listened_node_id.")
         end
-        Error[i] = target_level - basin.current_level[listened_node_idx]
+        pid_error[i] = target_level - basin.current_level[listened_node_idx]
     end
 end
 
