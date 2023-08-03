@@ -500,6 +500,9 @@ function continuous_control!(
             area = basin.current_area[listened_node_idx]
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
+            # The expression below is the solution to an implicit equation for
+            # du_listened_basin. This equation results from the fact that if the derivative
+            # term in the PID controller is used, the controlled pump flow rate depends on itself.
             du_listened_basin =
                 (
                     du_listened_basin_old - flow_rate -
@@ -509,25 +512,21 @@ function continuous_control!(
         end
 
         # Clip values outside pump flow rate bounds
-        if flow_rate < min_flow_rate[i]
-            flow_rate = min_flow_rate[i]
-        end
-
-        if !isnan(max_flow_rate[i])
-            if flow_rate > max_flow_rate[i]
-                flow_rate = max_flow_rate[i]
-            end
-        end
+        flow_rate = clamp(flow_rate, min_flow_rate[i], max_flow_rate[i])
 
         pump.flow_rate[controlled_node_idx] = flow_rate
         du.storage[listened_node_idx] -= flow_rate
 
         # Set flow for connected edges
         src_id = only(inneighbors(graph_flow, controlled_node_id))
-        dst_id = only(outneighbors(graph_flow, controlled_node_id)) # TODO: also take fractional flow into account
+        dst_id = only(outneighbors(graph_flow, controlled_node_id))
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
+
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
 
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
