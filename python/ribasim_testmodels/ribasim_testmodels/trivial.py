@@ -51,7 +51,7 @@ def trivial_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1],
-            "area": [0.0, 1000.0],
+            "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
     )

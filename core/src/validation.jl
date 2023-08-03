@@ -254,8 +254,6 @@ function is_consistent(node, edge, state, static, profile, forcing)
 
     # TODO Check statics
 
-    # TODO Check profiles
-
     # TODO Check forcings
 
     true
@@ -322,13 +320,13 @@ function valid_edges(
     if isempty(errors)
         return true
     else
-        @error join(errors, "\n")
+        foreach(x -> @error(x), errors)
         return false
     end
 end
 
 """
-Check whether the profile data has no repeats in the levels and the areas start at 0.
+Check whether the profile data has no repeats in the levels and the areas start positive.
 """
 function valid_profiles(
     node_id::Indices{Int},
@@ -342,10 +340,10 @@ function valid_profiles(
             push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
         end
 
-        if areas[1] != 0
+        if areas[1] <= 0
             push!(
                 errors,
-                "Basin profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
+                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node #$id).",
             )
         end
     end

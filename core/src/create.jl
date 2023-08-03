@@ -251,6 +251,9 @@ function Pump(db::DB, config::Config)::Pump
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     static_parsed = parse_static(static, db, "Pump", defaults)
 
+    # TODO: use this in formulate_jac! for pump
+    is_pid_controlled = falses(length(static_parsed.node_id))
+
     return Pump(
         static_parsed.node_id,
         static_parsed.active,
@@ -258,6 +261,7 @@ function Pump(db::DB, config::Config)::Pump
         static_parsed.min_flow_rate,
         static_parsed.max_flow_rate,
         static_parsed.control_mapping,
+        is_pid_controlled,
     )
 end
 
@@ -291,8 +295,6 @@ function Basin(db::DB, config::Config)::Basin
     # If not specified, target_level = NaN
     target_level = coalesce.(static.target_level, NaN)
 
-    dstorage = zero(target_level)
-
     return Basin(
         Indices(node_id),
         precipitation,
@@ -306,7 +308,6 @@ function Basin(db::DB, config::Config)::Basin
         storage,
         target_level,
         time,
-        dstorage,
     )
 end
 
