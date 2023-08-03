@@ -53,7 +53,6 @@ if __name__ == "__main__":
         for model_generator in (
             backwater_model,
             basic_model,
-            basic_transient_model,
             bucket_model,
             dutch_waterways_model,
             flow_boundary_time_model,
