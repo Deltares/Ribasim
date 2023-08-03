@@ -50,8 +50,7 @@ neighbortypes(::Val{:Basin}) = Set((
     :FlowBoundary,
 ))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:FractionalFlow}) =
-    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
@@ -293,8 +292,9 @@ function sorted_table!(
     by = sort_by_function(table)
     if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
         et = eltype(table)
-        msg = "Arrow table for $et not sorted as required."
-        @assert issorted(table; by) msg
+        if !issorted(table; by)
+            error("Arrow table for $et not sorted as required.")
+        end
     else
         sort!(table; by)
     end

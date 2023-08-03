@@ -14,6 +14,8 @@ geopackage = "model.gpkg"  # required
 flow = "output/flow.arrow"        # optional, default "output/flow.arrow"
 basin = "output/basin.arrow"      # optional, default "output/basin.arrow"
 control = "output/control.arrow"  # optional, default "output/control.arrow"
+compression = "zstd"  # optional, default "zstd", also supports "lz4"
+compression_level = 6  # optional, default 6
 
 # Specific tables can also go into Arrow files rather than the GeoPackage.
 # For large tables this can benefit from better compressed file sizes.

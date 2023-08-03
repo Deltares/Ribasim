@@ -84,7 +84,15 @@ function load_structvector(
     if table isa Query && haskey(nt, :time)
         # time has type timestamp and is stored as a String in the GeoPackage
         # currently SQLite.jl does not automatically convert it to DateTime
-        nt = merge(nt, (; time = DateTime.(nt.time, dateformat"yyyy-mm-dd HH:MM:SS.s")))
+        nt = merge(
+            nt,
+            (;
+                time = DateTime.(
+                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                    dateformat"yyyy-mm-dd HH:MM:SS.s",
+                )
+            ),
+        )
     end
 
     table = StructVector{T}(nt)
@@ -139,7 +147,7 @@ function get_storages_and_levels(
     return (; time = tsteps, node_id, storage, level)
 end
 
-function write_basin_output(model::Model)
+function write_basin_output(model::Model, compress)
     (; config, integrator) = model
     (; p) = integrator
 
@@ -153,10 +161,10 @@ function write_basin_output(model::Model)
     basin = (; time, node_id, storage = vec(data.storage), level = vec(data.level))
     path = output_path(config, config.output.basin)
     mkpath(dirname(path))
-    Arrow.write(path, basin; compress = :lz4)
+    Arrow.write(path, basin; compress)
 end
 
-function write_flow_output(model::Model)
+function write_flow_output(model::Model, compress)
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
@@ -180,10 +188,10 @@ function write_flow_output(model::Model)
     table = (; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
     mkpath(dirname(path))
-    Arrow.write(path, table; compress = :lz4)
+    Arrow.write(path, table; compress)
 end
 
-function write_discrete_control_output(model::Model)
+function write_discrete_control_output(model::Model, compress)
     config = model.config
     record = model.integrator.p.discrete_control.record
 
@@ -193,5 +201,5 @@ function write_discrete_control_output(model::Model)
 
     path = output_path(config, config.output.control)
     mkpath(dirname(path))
-    Arrow.write(path, table; compress = :lz4)
+    Arrow.write(path, table; compress)
 end

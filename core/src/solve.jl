@@ -639,7 +639,7 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(1000 * Δh))
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
@@ -702,6 +702,8 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = pump
     for (id, isactive, rate) in zip(node_id, active, flow_rate)
+        @assert rate >= 0 "Pump flow rate must be positive, found $rate for Pump #$id"
+
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
@@ -711,10 +713,7 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             continue
         end
 
-        # negative flow_rate means pumping against edge direction
-        intake_id = rate >= 0 ? src_id : dst_id
-
-        hasindex, basin_idx = id_index(basin.node_id, intake_id)
+        hasindex, basin_idx = id_index(basin.node_id, src_id)
 
         if hasindex
             # Pumping from basin
@@ -723,7 +722,7 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             q = reduction_factor * rate
         else
             # Pumping from level boundary
-            @assert intake_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
+            @assert src_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
             q = rate
         end
 

@@ -109,6 +109,13 @@ quartodoc build
 You typically only have to run this once, or if you want to check out how it looks after
 changing Python docstrings.
 
+The Julia API reference is created using Documenter.jl by running this command from the `docs/` folder:
+
+```bash
+julia --project -e "using Pkg; Pkg.instantiate()"  # needed once
+julia --project make.jl  # after changing the Julia docstrings
+```
+
 In order to preview documentation you can run the following command from the `docs/` folder.
 Afterwards, a browser tab will open with the rendered documentation, updating it as you
 make changes.

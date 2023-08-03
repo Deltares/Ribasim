@@ -54,8 +54,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
+
+    jac_prototype = get_jac_prototype(parameters)
+    RHS = ODEFunction(water_balance!; jac_prototype)
+
     @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(water_balance!, u0, timespan, parameters)
+        prob = ODEProblem(RHS, u0, timespan, parameters)
     end
 
     callback, saved_flow = create_callbacks(parameters)
@@ -80,9 +84,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 end
 
 function BMI.finalize(model::Model)::Model
-    write_basin_output(model)
-    write_flow_output(model)
-    write_discrete_control_output(model)
+    compress = get_compressor(model.config)
+    write_basin_output(model, compress)
+    write_flow_output(model, compress)
+    write_discrete_control_output(model, compress)
     return model
 end
 

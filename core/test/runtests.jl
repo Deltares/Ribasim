@@ -14,5 +14,6 @@ using SafeTestsets: @safetestset
     @safetestset "Utility functions" include("utils.jl")
     @safetestset "Control" include("control.jl")
     @safetestset "Time" include("time.jl")
+    @safetestset "Docs" include("docs.jl")
     Aqua.test_all(Ribasim; ambiguities = false)
 end

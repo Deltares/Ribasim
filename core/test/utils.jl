@@ -3,6 +3,7 @@ using Dictionaries: Indices
 using Test
 using DataInterpolations: LinearInterpolation
 using StructArrays: StructVector
+using SQLite
 
 @testset "id_index" begin
     ids = Indices([2, 4, 6])
@@ -98,4 +99,36 @@ end
     @test_throws "Multiple control states found for DiscreteControl node #1 for truth state `TTF`: foo, bar." Ribasim.expand_logic_mapping(
         logic_mapping,
     )
+end
+
+@testset "Jacobian sparsity" begin
+    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+
+    cfg = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
+    db = SQLite.DB(gpkg_path)
+
+    p = Ribasim.Parameters(db, cfg)
+    jac_prototype = Ribasim.get_jac_prototype(p)
+
+    @test jac_prototype.m == 4
+    @test jac_prototype.n == 4
+    @test jac_prototype.colptr == [1, 2, 3, 4, 6]
+    @test jac_prototype.rowval == [2, 1, 2, 2, 3]
+    @test jac_prototype.nzval == ones(5)
+
+    toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
+
+    cfg = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
+    db = SQLite.DB(gpkg_path)
+
+    p = Ribasim.Parameters(db, cfg)
+    jac_prototype = Ribasim.get_jac_prototype(p)
+
+    @test jac_prototype.m == 2
+    @test jac_prototype.n == 2
+    @test jac_prototype.colptr == [1, 2, 3]
+    @test jac_prototype.rowval == [2, 1]
+    @test jac_prototype.nzval == ones(2)
 end

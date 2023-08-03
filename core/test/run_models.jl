@@ -31,7 +31,7 @@ end
 end
 
 @testset "basic transient model" begin
-    toml_path = normpath(@__DIR__, "../../data/basic-transient/basic-transient.toml")
+    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -158,6 +158,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
@@ -169,7 +170,7 @@ end
     # numerical choices to make in terms of what the representative friction
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
-    @test all(isapprox.(h_expected, h_actual; atol = 0.01))
+    @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass
     @test all(isapprox.(model.saved_flow.saveval[end], 5.0)) skip = Sys.isapple()
 end

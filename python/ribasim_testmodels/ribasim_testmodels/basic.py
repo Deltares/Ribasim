@@ -254,7 +254,7 @@ def basic_transient_model(model) -> ribasim.Model:
     model.basin.forcing = forcing
     model.basin.state = state
 
-    model.modelname = "basic-transient"
+    model.modelname = "basic_transient"
     return model
 
 
@@ -309,7 +309,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             data={
                 "node_id": [3, 3, 3, 3, 3, 3],
                 "time": [
-                    pd.Timestamp("2020-01"),
+                    # test subsecond precision
+                    pd.Timestamp("2020-01-01 00:00:00.000001"),
                     pd.Timestamp("2020-01"),
                     pd.Timestamp("2020-02"),
                     pd.Timestamp("2020-02"),
