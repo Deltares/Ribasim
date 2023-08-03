@@ -370,28 +370,40 @@ function formulate_jac!(
             continue
         end
 
+        id_pump = only(outneighbors(graph_control, id))
+        listened_node_id = listen_node_id[i]
+        _, listened_node_idx = id_index(basin.node_id, listened_node_id)
+        listen_area = basin.current_area[listened_node_idx]
+
         # TODO: This has been copied from continuous_control!, maybe
         # put in separate function
         flow_rate = 0.0
 
         K_p = proportional[i]
         if !isnan(K_p)
-            flow_rate += K_p * error[i]
+            flow_rate += reduction_factor * K_p * error[i]
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            flow_rate += reduction_factor * K_i * integral_value[i]
         end
 
         K_d = derivative[i]
         if !isnan(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
-
-            error_deriv = -dstorage[listened_node_idx] / area
-            flow_rate += K_d * error_deriv
-        end
-
-        K_i = integral[i]
-        if !isnan(K_i)
-            # coefficient * current value of integral
-            flow_rate += K_i * integral_value[i]
+            dtarget_level = 0.0
+            du_listened_basin_old = du.storage[listened_node_idx]
+            # The expression below is the solution to an implicit equation for
+            # du_listened_basin. This equation results from the fact that if the derivative
+            # term in the PID controller is used, the controlled pump flow rate depends on itself.
+            du_listened_basin =
+                (
+                    du_listened_basin_old - flow_rate -
+                    reduction_factor * K_d * dtarget_level
+                ) / (1 - reduction_factor * K_d / area)
+            flow_rate = du_listened_basin_old - du_listened_basin
         end
 
         # Clip values outside pump flow rate bounds
@@ -409,14 +421,9 @@ function formulate_jac!(
             end
         end
 
-        id_pump = only(outneighbors(graph_control, id))
-        listen_id = listen_node_id[i]
-        _, listen_idx = id_index(basin.node_id, listen_id)
-        listen_area = basin.current_area[listen_idx]
-
         # PID control integral state
         pid_state_idx = n_basins + i
-        J[pid_state_idx, listen_idx] -= 1 / listen_area
+        J[pid_state_idx, listened_node_idx] -= 1 / listen_area
 
         # If the flow rate is clipped to one of the bounds it does
         # not change with storages and thus doesn't contribute to the
@@ -425,33 +432,33 @@ function formulate_jac!(
             continue
         end
 
-        storage_controlled = u.storage[listen_idx]
-        phi = storage_controlled < 10.0 ? storage_controlled / 10 : 1.0
-        dphi = storage_controlled < 10.0 ? 1 / 10 : 0.0
+        storage_listened_basin = u.storage[listened_node_idx]
+        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
+        dreduction_factor = storage_controlled < 10.0 ? 1 / 10 : 0.0
 
-        dq = dphi * flow_rate
+        dq = dreduction_factor * flow_rate
 
         if !isnan(K_p)
-            dq += K_p * phi / listen_area
+            dq += K_p * reduction_factor / listen_area
+        end
+
+        if !isnan(K_i)
+            J[listened_node_idx, pid_state_idx] -= K_i * reduction_factor
         end
 
         if !isnan(K_d)
-            dq += K_d * flow_rate * basin.current_darea[listen_idx] / listen_area^2
-            dq /= 1.0 + K_d * phi / listen_area
+            dq += K_d * flow_rate * basin.current_darea[listened_node_idx] / listen_area^2
+            dq /= 1.0 + K_d * reduction_factor / listen_area
         end
 
-        J[listen_idx, listen_idx] -= dq
-
-        if !isnan(K_i)
-            J[listen_idx, pid_state_idx] -= K_i * phi
-        end
+        J[listened_node_idx, listened_node_idx] -= dq
 
         id_out = only(outneighbors(graph_flow, id_pump))
         has_index, idx_out_out = id_index(basin.node_id, id_out)
 
         if has_index
-            jac_prototype[pid_state_idx, idx_out_out] += K_i * phi
-            jac_prototype[listen_idx, idx_out_out] += dq
+            jac_prototype[pid_state_idx, idx_out_out] += K_i * reduction_factor
+            jac_prototype[listened_node_idx, idx_out_out] += dq
         end
     end
     return nothing
