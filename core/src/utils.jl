@@ -576,7 +576,7 @@ function update_jac_prototype!(
         has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
 
         if has_index
-            # The basin downstream of the pu,p PID control integral state
+            # The basin downstream of the pump PID control integral state
             jac_prototype[pid_state_idx, idx_out_out] = 1.0
 
             # The basin downstream of the pump also depends on the controlled basin
