@@ -146,7 +146,6 @@ end
 
 @version FractionalFlowStaticV1 begin
     node_id::Int
-    active::Union{Missing, Bool}
     fraction::Float64
     control_state::Union{Missing, String}
 end

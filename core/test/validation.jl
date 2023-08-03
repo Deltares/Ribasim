@@ -77,7 +77,7 @@ end
     add_edge!(graph_flow, 5, 4)
 
     fractional_flow =
-        Ribasim.FractionalFlow([5], [true], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
+        Ribasim.FractionalFlow([5], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
     errors = Ribasim.valid_n_neighbors(graph_flow, fractional_flow)
     @test only(errors) ==
