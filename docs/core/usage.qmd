@@ -207,7 +207,7 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-area      | Float64 | $m^2$        | non-negative, per node_id: start at 0 and increasing
+area      | Float64 | $m^2$        | non-negative, per node_id: start positive and increasing
 level     | Float64 | $m$          | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
@@ -217,14 +217,15 @@ per ID. Using a very large number of rows may impact performance.
 
 node_id |   area | level
 ------- |------- |-------
-      2 |    0.0 |   6.0
+      2 |    1.0 |   6.0
       2 | 1000.0 |   7.0
       2 | 1000.0 |   9.0
-      3 |    0.0 |   2.2
+      3 |    1.0 |   2.2
 
 We use the symbol $A$ for area, $h$ for level and $S$ for storage.
 The profile provides a function $A(h)$ for each basin.
 Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
+The minimum area cannot be zero to avoid numerical issues.
 The maximum area is used to convert the precipitation flux into an inflow.
 
 ### FractionalFlow

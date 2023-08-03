@@ -118,7 +118,7 @@ struct Basin{C} <: AbstractParameterNode
                 time,
             )
         else
-            @error join(errors, "\n")
+            foreach(x -> @error(x), errors)
             error("Errors occurred when parsing Basin data.")
         end
     end
@@ -349,7 +349,7 @@ function valid_n_neighbors(p::Parameters)::Bool
     if isempty(errors)
         return true
     else
-        @error join(errors, "\n")
+        foreach(x -> @error(x), errors)
         return false
     end
 end

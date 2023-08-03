@@ -8,10 +8,10 @@ using Logging
 @testset "Basin profile validation" begin
     node_id = Indices([1])
     level = [[0.0, 0.0]]
-    area = [[100.0, 100.0]]
+    area = [[0.0, 100.0]]
     errors = Ribasim.valid_profiles(node_id, level, area)
     @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
-    @test "Basin profiles must start with area 0 at the bottom (got area 100.0 for node #1)." in
+    @test "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area 0.0 for node #1)." in
           errors
     @test length(errors) == 2
 
