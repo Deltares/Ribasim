@@ -376,3 +376,56 @@ function valid_pid_connectivity(
 
     return !errors
 end
+
+"""
+Check that nodes that have fractional flow outneighbors do not have any other type of
+outneighbor, and that the fractions leaving a node add up to ≈1.
+"""
+function valid_fractional_flow(
+    graph_flow::DiGraph{Int},
+    node_id::Vector{Int},
+    fraction::Vector{Float64},
+)::Bool
+    errors = String[]
+
+    # Node ids that have fractional flow outneighbors
+    src_ids = Set{Int}()
+
+    for id in node_id
+        union!(src_ids, inneighbors(graph_flow, id))
+    end
+
+    node_id_set = Set(node_id)
+
+    for src_id in src_ids
+        src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
+        if src_outneighbor_ids ⊈ node_id
+            push!(
+                errors,
+                "Node #$src_id combines fractional flow outneighbors with other outneigbor types.",
+            )
+        end
+
+        fraction_sum = 0.0
+
+        for ff_id in intersect(src_outneighbor_ids, node_id_set)
+            ff_idx = findsorted(node_id, ff_id)
+            fraction_sum += fraction[ff_idx]
+        end
+
+        if fraction_sum ≉ 1
+            push!(
+                errors,
+                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id.",
+            )
+        end
+    end
+
+    if !isempty(errors)
+        foreach(x -> @error(x), errors)
+        return false
+    else
+        return true
+    end
+    return nothing
+end
