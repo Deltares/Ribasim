@@ -379,7 +379,7 @@ end
 
 """
 Check that nodes that have fractional flow outneighbors do not have any other type of
-outneighbor, and that the fractions leaving a node add up to ≈1.
+outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
 """
 function valid_fractional_flow(
     graph_flow::DiGraph{Int},
@@ -410,7 +410,15 @@ function valid_fractional_flow(
 
         for ff_id in intersect(src_outneighbor_ids, node_id_set)
             ff_idx = findsorted(node_id, ff_id)
-            fraction_sum += fraction[ff_idx]
+            frac = fraction[ff_idx]
+            fraction_sum += frac
+
+            if frac <= 0
+                push!(
+                    errors,
+                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id.",
+                )
+            end
         end
 
         if fraction_sum ≉ 1
