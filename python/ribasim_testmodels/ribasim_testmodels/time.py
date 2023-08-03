@@ -50,7 +50,7 @@ def flow_boundary_time_model():
     profile = pd.DataFrame(
         data={
             "node_id": [2, 2],
-            "area": [0.0, 1000.0],
+            "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
     )
