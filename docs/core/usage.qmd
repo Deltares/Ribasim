@@ -321,7 +321,7 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
-flow_rate     | Float64 | $m^3 s^{-1}$ | -
+flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
 
 ### FlowBoundary / time
 
@@ -335,7 +335,7 @@ column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
 time      | DateTime | -            | sorted
 node_id   | Int      | -            | sorted per time
-flow_rate | Float64  | $m^3 s^{-1}$ | -
+flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 ### LinearResistance
 
