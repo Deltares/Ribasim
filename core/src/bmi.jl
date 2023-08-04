@@ -126,17 +126,13 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
-    (; starttime, basin, tabulated_rating_curve, flow_boundary, discrete_control) =
-        parameters
+    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
-
-    tstops = get_tstops(flow_boundary.time.time, starttime)
-    flow_boundary_cb = PresetTimeCallback(tstops, update_flow_boundary!)
 
     # add a single time step's contribution to the water balance step's totals
     # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
@@ -157,12 +153,10 @@ function create_callbacks(
             save_flow_cb,
             basin_cb,
             tabulated_rating_curve_cb,
-            flow_boundary_cb,
             discrete_control_cb,
         )
     else
-        callback =
-            CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, flow_boundary_cb)
+        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
     end
 
     return callback, saved_flow
