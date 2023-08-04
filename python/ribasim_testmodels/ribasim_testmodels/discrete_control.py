@@ -56,9 +56,9 @@ def pump_discrete_control_model() -> ribasim.Model:
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1, 1, 3, 3, 3],
-            "area": [0.0, 100.0, 100.0] * 2,
-            "level": [0.0, 0.001, 1.0] * 2,
+            "node_id": [1, 1, 3, 3],
+            "area": [100.0, 100.0] * 2,
+            "level": [0.0, 1.0] * 2,
         }
     )
 
@@ -195,9 +195,9 @@ def flow_condition_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [3, 3, 3],
-            "area": [0.0, 100.0, 100.0],
-            "level": [0.0, 0.001, 1.0],
+            "node_id": [3, 3],
+            "area": [100.0, 100.0],
+            "level": [0.0, 1.0],
         }
     )
 
@@ -331,7 +331,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1],
-            "area": [0.0, 1000.0],
+            "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
     )

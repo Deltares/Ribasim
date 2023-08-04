@@ -21,7 +21,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        (; pid_control, connectivity, basin, pump) = parameters
+        (; pid_control, connectivity, basin, pump, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
@@ -30,6 +30,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             basin.node_id,
         )
             error("Invalid PidControl connectivity.")
+        end
+
+        if !valid_fractional_flow(
+            connectivity.graph_flow,
+            fractional_flow.node_id,
+            fractional_flow.fraction,
+        )
+            error("Invalid fractional flow node combinations found.")
         end
 
         for id in pid_control.node_id

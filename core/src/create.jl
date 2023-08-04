@@ -195,7 +195,6 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static_parsed = parse_static(static, db, "FractionalFlow", defaults)
     return FractionalFlow(
         static_parsed.node_id,
-        static_parsed.active,
         static_parsed.fraction,
         static_parsed.control_mapping,
     )

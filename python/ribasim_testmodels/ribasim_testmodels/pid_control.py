@@ -60,6 +60,7 @@ def pid_control_model():
 
     level = np.linspace(0, R, n)
     area = np.pi * level * (2 * R - level)
+    area[0] = 0.01
 
     profile = pd.DataFrame(data={"node_id": n * [2], "level": level, "area": area})
 

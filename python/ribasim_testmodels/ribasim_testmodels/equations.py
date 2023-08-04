@@ -49,7 +49,7 @@ def linear_resistance_model():
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 1],
-            "area": [0.0, 100.0, 100.0],
+            "area": [0.01, 100.0, 100.0],
             "level": [0.0, 1.0, 2.0],
         }
     )
@@ -147,7 +147,7 @@ def rating_curve_model():
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 1],
-            "area": [0.0, 100.0, 100.0],
+            "area": [0.01, 100.0, 100.0],
             "level": [0.0, 1.0, 2.0],
         }
     )
@@ -258,7 +258,7 @@ def manning_resistance_model():
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 1, 3, 3, 3],
-            "area": 2 * [0.0, 100.0, 100.0],
+            "area": 2 * [0.01, 100.0, 100.0],
             "level": 2 * [0.0, 1.0, 2.0],
         }
     )
@@ -366,7 +366,7 @@ def misc_nodes_model():
     profile = pd.DataFrame(
         data={
             "node_id": 3 * [3] + 3 * [5],
-            "area": 2 * [0.0, 100.0, 100.0],
+            "area": 2 * [0.01, 100.0, 100.0],
             "level": 2 * [0.0, 1.0, 2.0],
         }
     )
@@ -500,7 +500,7 @@ def pid_control_equation_model():
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 1],
-            "area": [0.0, 100.0, 100.0],
+            "area": [0.01, 100.0, 100.0],
             "level": [0.0, 1.0, 2.0],
         }
     )
