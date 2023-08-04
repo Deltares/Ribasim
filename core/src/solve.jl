@@ -723,20 +723,10 @@ function formulate!(
                 continue
             end
 
-            rate = flow_rate[i](t)
+            rate = flow_rate[i](datetime_since(t, p.starttime))
 
             # Adding water is always possible
-            if rate >= 0
-                flow[id, dst_id] = rate
-            else
-                hasindex, basin_idx = id_index(basin.node_id, dst_id)
-                @assert hasindex "FlowBoundary intake not a Basin"
-
-                s = storage[basin_idx]
-                reduction_factor = min(s, 10.0) / 10.0
-                q = reduction_factor * rate
-                flow[id, dst_id] = q
-            end
+            flow[id, dst_id] = rate
         end
     end
 end
@@ -804,7 +794,7 @@ end
 function formulate_flows!(
     p::Parameters,
     storage::AbstractVector{Float64},
-    Float64::t,
+    t::Float64,
 )::Nothing
     (;
         linear_resistance,
@@ -829,7 +819,7 @@ function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
     p::Parameters,
-    t::Floate64,
+    t::Float64,
 )::Nothing
     (; connectivity, basin, pid_control) = p
 

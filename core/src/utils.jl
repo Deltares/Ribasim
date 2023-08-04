@@ -163,7 +163,7 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
 end
 
 function flow_rate_interpolation(
-    time::AbstractVector[Float64],
+    time::AbstractVector,
     flow_rate::AbstractVector{Float64},
 )::Tuple{LinearInterpolation, Bool}
     return LinearInterpolation(flow_rate, time), allunique(time)

@@ -230,9 +230,15 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         if node_id in static_node_ids
             static_idx = searchsortedfirst(static.node_id, node_id)
             row = static[static_idx]
+            if row.flow_rate <= 0
+                errors = true
+                @error(
+                    "Currently negative flow boundary flow rates are not supported, got static $(row.flowrate) for #$node_id."
+                )
+            end
             # Trivial interpolation for static flow rate
             # TODO: How do I get the relative endtime in seconds?
-            interpolation = LinearInterpolation([flow_rate, flow_rate], [0.0, 1.0])
+            interpolation = LinearInterpolation([row.flow_rate, row.flow_rate], [0.0, 1.0])
             push!(flow_rate, Interpolation)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
@@ -245,8 +251,13 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             pre_table = view(time, 1:idx_starttime)
             interpolation, is_valid = flow_rate_interpolation(node_id, pre_table)
             if !is_valid
-                @error "A flow_rate time series for FlowBoundary #$node_idhas repeated times, this can not be interpolated."
+                @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
                 errors = true
+            end
+            if any(interpolation.u .<= 0)
+                @error(
+                    "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
+                )
             end
             push!(flow_rate, interpolation)
             push!(active, true)
