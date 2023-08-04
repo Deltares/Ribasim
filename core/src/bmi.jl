@@ -225,7 +225,7 @@ function get_value(p::Parameters, feature_id::Int, variable::String, storage)
         edge = connectivity.edge_ids_flow_inv[feature_id]
         value = connectivity.flow[edge]
     else
-        throw(ValueError("Unsupported condition variable $variable."))
+        error("Unsupported condition variable $variable.")
     end
 
     return value

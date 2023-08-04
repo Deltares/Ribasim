@@ -211,7 +211,7 @@ function formulate_jac!(
     t::Float64,
 )::Nothing
     (; basin, fractional_flow, connectivity, pid_control) = p
-    (; active, node_id, flow_rate) = pump
+    (; active, node_id, flow_rate, is_pid_controlled) = pump
 
     (; graph_flow) = connectivity
 
@@ -222,7 +222,9 @@ function formulate_jac!(
             continue
         end
 
-        #TODO: skip if pump is pid controlled
+        if is_pid_controlled[i]
+            continue
+        end
 
         id_in = only(inneighbors(graph_flow, id))
 
@@ -365,6 +367,15 @@ function formulate_jac!(
     n_basins = length(basin.node_id)
     integral_value = u.integral
 
+    if any(.!isnan.(derivative))
+        # Calling water_balance is expensive, but it is a sure way of getting
+        # the proper du for the pid controlled basins
+        # TODO: Do not allocate new memory here, make field of struct
+        du = copy(u)
+        du .= 0.0
+        water_balance!(du, u, p, t)
+    end
+
     for (i, id) in enumerate(node_id)
         if !active[i]
             continue
@@ -374,6 +385,8 @@ function formulate_jac!(
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
         listen_area = basin.current_area[listened_node_idx]
+        storage_listened_basin = u.storage[listened_node_idx]
+        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
 
         # TODO: This has been copied from continuous_control!, maybe
         # put in separate function
@@ -432,14 +445,12 @@ function formulate_jac!(
             continue
         end
 
-        storage_listened_basin = u.storage[listened_node_idx]
-        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
-        dreduction_factor = storage_controlled < 10.0 ? 1 / 10 : 0.0
+        dreduction_factor = storage_listened_basin < 10.0 ? 1 / 10 : 0.0
 
         dq = dreduction_factor * flow_rate
 
         if !isnan(K_p)
-            dq += K_p * reduction_factor / listen_area
+            dq -= K_p * reduction_factor / listen_area
         end
 
         if !isnan(K_i)
@@ -447,8 +458,10 @@ function formulate_jac!(
         end
 
         if !isnan(K_d)
-            dq += K_d * flow_rate * basin.current_darea[listened_node_idx] / listen_area^2
-            dq /= 1.0 + K_d * reduction_factor / listen_area
+            dq +=
+                K_d * du[listened_node_idx] * basin.current_darea[listened_node_idx] /
+                (listen_area^2)
+            dq /= 1.0 - K_d * reduction_factor / listen_area
         end
 
         J[listened_node_idx, listened_node_idx] -= dq
