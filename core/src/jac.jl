@@ -16,7 +16,7 @@ function water_balance_jac!(
     (; basin) = p
     J .= 0.0
 
-    # Ensures current_level and current_area are current
+    # Ensures current_* vectors are current
     set_current_area_and_level!(basin, u.storage, t)
 
     for nodefield in nodefields(p)
