@@ -156,10 +156,26 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_begin = if isnothing(idx_block_begin)
         1
     else
-        # can happen if that if id is the only ID in ids
+        # can happen if that id is the only ID in ids
         idx_block_begin + 1
     end
     return idx_block_begin:idx_block_end
+end
+
+function flow_rate_interpolation(
+    time::AbstractVector[Float64],
+    flow_rate::AbstractVector{Float64},
+)::Tuple{LinearInterpolation, Bool}
+    return LinearInterpolation(flow_rate, time), allunique(time)
+end
+
+function flow_rate_interpolation(
+    node_id::Int,
+    table::StructVector,
+)::Tuple{LinearInterpolation, Bool}
+    rowrange = findlastgroup(node_id, table.node_id)
+    @assert !isempty(rowrange) "timeseries starts after model start time"
+    return flow_rate_interpolation(table.time[rowrange], table.flow_rate[rowrange])
 end
 
 function qh_interpolation(

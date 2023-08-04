@@ -232,7 +232,7 @@ time: Data of time-dependent flow rates
 struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Float64}
+    flow_rate::Vector{LinearInterpolation}
     time::StructVector{FlowBoundaryTimeV1, C, Int}
 end
 
@@ -709,18 +709,21 @@ function formulate!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector{Float64},
+    t::Float64,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
-    for (id, isactive, rate) in zip(node_id, active, flow_rate)
+    for (id, i) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
-            if !isactive
+            if !active[i]
                 flow[id, dst_id] = 0.0
                 continue
             end
+
+            rate = flow_rate[i](t)
 
             # Adding water is always possible
             if rate >= 0
@@ -798,7 +801,11 @@ function formulate!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Nothing
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector{Float64},
+    Float64::t,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -811,7 +818,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Noth
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
-    formulate!(flow_boundary, p, storage)
+    formulate!(flow_boundary, p, storage, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
 
@@ -822,7 +829,7 @@ function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
     p::Parameters,
-    t,
+    t::Floate64,
 )::Nothing
     (; connectivity, basin, pid_control) = p
 
@@ -836,7 +843,7 @@ function water_balance!(
     formulate!(du, basin, storage, t)
 
     # First formulate intermediate flows
-    formulate_flows!(p, storage)
+    formulate_flows!(p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, basin)

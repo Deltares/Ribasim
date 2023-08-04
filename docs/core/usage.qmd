@@ -420,7 +420,7 @@ column            | type     | unit    | restriction
 ----------------- | -------- | ------- | -----------
 node_id           | Int      | -       | sorted
 listen_feature_id | Int      | -       |
-variable          | String   | -       | must be "level" or "flow"
+variable          | String   | -       | must be "level" or "flow_rate"
 greater_than      | Float64  | various |
 
 #### DiscreteControl / logic

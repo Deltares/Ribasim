@@ -165,7 +165,7 @@ end
 """
 Listens for changes in condition truths.
 """
-function discrete_control_condition(out, storage, t, integrator)
+function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
@@ -176,7 +176,7 @@ function discrete_control_condition(out, storage, t, integrator)
             discrete_control.greater_than,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, storage)
+        value = get_value(p, listen_feature_id, variable, u.storage, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -184,32 +184,35 @@ end
 
 """
 Get a value for a condition. Currently supports getting levels from basins and flows
-from flow edges.
+from flow boundaries.
 """
-function get_value(p::Parameters, feature_id::Int, variable::String, storage)
-    (; basin) = p
+function get_value(
+    p::Parameters,
+    feature_id::Int,
+    variable::String,
+    storage::AbstractVector{Float64},
+    t::Float64,
+)
+    (; basin, flow_boundary) = p
 
     if variable == "level"
-        hasindex, basin_idx = id_index(basin.node_id, feature_id)
+        has_index, basin_idx = id_index(basin.node_id, feature_id)
+
+        if !has_index
+            error("Level condition node #$feature_id is not a basin.")
+        end
+
         _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
 
-    elseif variable == "flow"
+    elseif variable == "flow_rate"
+        flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
 
-        # Calculate all areas and levels for given storage
-        # TODO: This could be done cheaper, only looking at
-        # those basins that are relevant for the required flow
-        for i in eachindex(storage)
-            s = storage[i]
-            area, level = get_area_and_level(basin, i, s)
-            basin.current_level[i] = level
-            basin.current_area[i] = area
+        if isnothng(flow_boundary_idx)
+            error("Flow condition node #$feature_id is not a flow boundary.")
         end
 
-        formulate_flows!(p, storage)
-        connectivity = p.connectivity
-        edge = connectivity.edge_ids_flow_inv[feature_id]
-        value = connectivity.flow[edge]
+        value = flow_boundary.flow_rate[flow_boundary_idx](t)
     else
         throw(ValueError("Unsupported condition variable $variable."))
     end
@@ -342,20 +345,6 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         tables[i] = LinearInterpolation(discharge, level)
     end
     return nothing
-end
-
-"Load updates from 'FlowBoundary / time' into parameters"
-function update_flow_boundary!(integrator)::Nothing
-    (; node_id, flow_rate, time) = integrator.p.flow_boundary
-    t = datetime_since(integrator.t, integrator.p.starttime)
-
-    rows = searchsorted(time.time, t)
-    timeblock = view(time, rows)
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, row.node_id)
-        flow_rate[i] = row.flow_rate
-    end
 end
 
 function BMI.update(model::Model)::Model
