@@ -402,7 +402,7 @@ function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Ve
     return errors
 end
 
-function set_current_area_and_level!(
+function set_current_basin_properties!(
     basin::Basin,
     storage::AbstractVector{Float64},
     t::Real,
@@ -845,8 +845,8 @@ function water_balance!(
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
-    # ensures current_level is current
-    set_current_area_and_level!(basin, storage, t)
+    # Ensures current_* vectors are current
+    set_current_basin_properties!(basin, storage, t)
 
     # Basin forcings
     formulate!(du, basin, storage, t)

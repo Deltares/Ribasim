@@ -17,7 +17,7 @@ function water_balance_jac!(
     J .= 0.0
 
     # Ensures current_* vectors are current
-    set_current_area_and_level!(basin, u.storage, t)
+    set_current_basin_properties!(basin, u.storage, t)
 
     for nodefield in nodefields(p)
         formulate_jac!(getfield(p, nodefield), J, u, p, t)
@@ -134,8 +134,6 @@ function formulate_jac!(
         R_hpow = R_h^(2 / 3)
         root = sqrt(2 / π * ΔhatankΔh)
 
-        q = q_sign * A / n * R_hpow * root / sqrt(L)
-
         id_in = only(inneighbors(graph_flow, id))
         id_out = only(outneighbors(graph_flow, id))
 
@@ -150,6 +148,9 @@ function formulate_jac!(
             ∂R_h_a = (P_a * ∂A_a - A_a * ∂P_a) / P_a^2
             ∂R_h_b = width / (2 * basin_in_area * P_b)
             ∂R_h = 0.5 * (∂R_h_a + ∂R_h_b)
+            # This float exact comparison is deliberate since `sqrt_contribution` has a
+            # removable singularity, i.e. it doesn't exist at $\Delta h = 0$ because of
+            # division by zero but the limit Δh → 0 does exist and is equal to the given value.
             if Δh == 0
                 sqrt_contribution = 2 / (sqrt(2 * π) * basin_in_area)
             else
@@ -175,6 +176,9 @@ function formulate_jac!(
             ∂R_h_b = (P_b * ∂A_b - A_b * ∂P_b) / P_b^2
             ∂R_h_b = width / (2 * basin_out_area * P_b)
             ∂R_h = 0.5 * (∂R_h_b + ∂R_h_a)
+            # This float exact comparison is deliberate since `sqrt_contribution` has a
+            # removable singularity, i.e. it doesn't exist at $\Delta h = 0$ because of
+            # division by zero but the limit Δh → 0 does exist and is equal to the given value.
             if Δh == 0
                 sqrt_contribution = 2 / (sqrt(2 * π) * basin_out_area)
             else
