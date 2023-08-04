@@ -375,8 +375,7 @@ function formulate_jac!(
         # Calling water_balance is expensive, but it is a sure way of getting
         # the proper du for the pid controlled basins
         # TODO: Do not allocate new memory here, make field of struct
-        du = copy(u)
-        du .= 0.0
+        du = zero(u)
         water_balance!(du, u, p, t)
     end
 
