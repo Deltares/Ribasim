@@ -131,7 +131,7 @@ function get_area_and_level(
 
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
-            darea = 0
+            darea = 0.0
             area = area_lower
             level =
                 level_lower +

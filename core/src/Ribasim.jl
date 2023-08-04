@@ -19,7 +19,7 @@ using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable, getcolumn
-using TerminalLoggers
+using TerminalLoggers: TerminalLogger
 using TimerOutputs
 
 const to = TimerOutput()
