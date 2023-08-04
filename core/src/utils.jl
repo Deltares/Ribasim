@@ -587,7 +587,8 @@ function update_jac_prototype!(
 end
 
 """
-Get the node type specific indices of the fractional flows and basins that are consecutively connected to a node of given id.
+Get the node type specific indices of the fractional flows and basins,
+that are consecutively connected to a node of given id.
 """
 function get_fractional_flow_connected_basins(
     node_id::Int,
