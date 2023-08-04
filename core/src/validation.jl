@@ -386,7 +386,7 @@ function valid_fractional_flow(
     node_id::Vector{Int},
     fraction::Vector{Float64},
 )::Bool
-    errors = String[]
+    errors = false
 
     # Node ids that have fractional flow outneighbors
     src_ids = Set{Int}()
@@ -400,9 +400,9 @@ function valid_fractional_flow(
     for src_id in src_ids
         src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
         if src_outneighbor_ids ⊈ node_id
-            push!(
-                errors,
-                "Node #$src_id combines fractional flow outneighbors with other outneigbor types.",
+            errors = true
+            @error(
+                "Node #$src_id combines fractional flow outneighbors with other outneigbor types."
             )
         end
 
@@ -414,26 +414,19 @@ function valid_fractional_flow(
             fraction_sum += frac
 
             if frac <= 0
-                push!(
-                    errors,
-                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id.",
+                errors = true
+                @error(
+                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id."
                 )
             end
         end
 
         if fraction_sum ≉ 1
-            push!(
-                errors,
-                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id.",
+            errors = true
+            @error(
+                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
             )
         end
     end
-
-    if !isempty(errors)
-        foreach(x -> @error(x), errors)
-        return false
-    else
-        return true
-    end
-    return nothing
+    return !errors
 end
