@@ -78,7 +78,7 @@ end
     add_edge!(graph_flow, 5, 4)
 
     fractional_flow =
-        Ribasim.FractionalFlow([5], [true], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
+        Ribasim.FractionalFlow([5], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
     errors = Ribasim.valid_n_neighbors(graph_flow, fractional_flow)
     @test only(errors) ==
@@ -117,4 +117,38 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Listen node #5 of PidControl node #6 is not upstream of controlled node #2"
+end
+
+@testset "FractionalFlow validation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/invalid_fractional_flow/invalid_fractional_flow.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(config, config.geopackage)
+    db = SQLite.DB(gpkg_path)
+    p = Ribasim.Parameters(db, config)
+    (; connectivity, fractional_flow) = p
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_fractional_flow(
+            connectivity.graph_flow,
+            fractional_flow.node_id,
+            fractional_flow.fraction,
+        )
+    end
+
+    @test length(logger.logs) == 3
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Node #7 combines fractional flow outneighbors with other outneigbor types."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Fractional flow nodes must have non-negative fractions, got -0.1 for #3."
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "The sum of fractional flow fractions leaving a node must be ≈1, got 0.4 for #7."
 end
