@@ -20,8 +20,15 @@ function water_balance_jac!(
     set_current_basin_properties!(basin, u.storage, t)
 
     for nodefield in nodefields(p)
+        if nodefield == :pid_control
+            continue
+        end
+
         formulate_jac!(getfield(p, nodefield), J, u, p, t)
     end
+
+    # PID control must be done last
+    formulate_jac!(p.pid_control, J, u, p, t)
 
     return nothing
 end
@@ -389,40 +396,37 @@ function formulate_jac!(
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
         listen_area = basin.current_area[listened_node_idx]
         storage_listened_basin = u.storage[listened_node_idx]
+        area = basin.current_area[listened_node_idx]
         reduction_factor = min(storage_listened_basin, 10.0) / 10.0
-
-        # TODO: This has been copied from continuous_control!, maybe
-        # put in separate function
-        flow_rate = 0.0
-
-        K_p = proportional[i]
-        if !isnan(K_p)
-            flow_rate += reduction_factor * K_p * error[i]
-        end
-
-        K_i = integral[i]
-        if !isnan(K_i)
-            flow_rate += reduction_factor * K_i * integral_value[i]
-        end
 
         K_d = derivative[i]
         if !isnan(K_d)
             # dlevel/dstorage = 1/area
-            area = basin.current_area[listened_node_idx]
+            D = 1.0 - K_d * reduction_factor / area
+        else
+            D = 1.0
+        end
+
+        E = 0.0
+
+        K_p = proportional[i]
+        if !isnan(K_p)
+            E += K_p * error[i]
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            E += K_i * integral_value[i]
+        end
+
+        if !isnan(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
-            # The expression below is the solution to an implicit equation for
-            # du_listened_basin. This equation results from the fact that if the derivative
-            # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            du_listened_basin =
-                (
-                    du_listened_basin_old - flow_rate -
-                    reduction_factor * K_d * dtarget_level
-                ) / (1 - reduction_factor * K_d / area)
-            flow_rate = du_listened_basin_old - du_listened_basin
+            E += K_d * (dtarget_level - du_listened_basin_old / area)
         end
 
         # Clip values outside pump flow rate bounds
+        flow_rate = reduction_factor * E / D
         was_clipped = false
 
         if flow_rate < min_flow_rate[i]
@@ -448,24 +452,43 @@ function formulate_jac!(
             continue
         end
 
-        dreduction_factor = storage_listened_basin < 10.0 ? 1 / 10 : 0.0
+        # Only in this case the reduction factor has a non-zero derivative
+        reduction_factor_regime = (storage_listened_basin < 10.0)
 
-        dq = dreduction_factor * flow_rate
+        # Computing D and E derivatives
+        if !isnan(K_d)
+            darea = basin.current_darea[listened_node_idx]
+            dD = reduction_factor * darea
+
+            if reduction_factor_regime
+                dD -= dreduction_factor / area
+            end
+
+            dD *= K_d
+
+            dE =
+                -K_d * (
+                    area * J[listened_node_idx, listened_node_idx] -
+                    du.storage[listened_node_idx] * darea
+                ) / (area^2)
+        else
+            dD = 0.0
+            dE = 0.0
+        end
 
         if !isnan(K_p)
-            dq -= K_p * reduction_factor / listen_area
+            dE -= K_p / area
         end
 
-        if !isnan(K_i)
-            J[listened_node_idx, pid_state_idx] -= K_i * reduction_factor
+        if reduction_factor_regime
+            dreduction_factor = 0.1
+
+            dq = dreduction_factor * E / D
+        else
+            dq = 0.0
         end
 
-        if !isnan(K_d)
-            dq +=
-                K_d * du[listened_node_idx] * basin.current_darea[listened_node_idx] /
-                (listen_area^2)
-            dq /= 1.0 - K_d * reduction_factor / listen_area
-        end
+        dq += reduction_factor * (D * dE - E * dD) / (D^2)
 
         J[listened_node_idx, listened_node_idx] -= dq
 
@@ -473,8 +496,8 @@ function formulate_jac!(
         has_index, idx_out_out = id_index(basin.node_id, id_out)
 
         if has_index
-            jac_prototype[pid_state_idx, idx_out_out] += K_i * reduction_factor
-            jac_prototype[listened_node_idx, idx_out_out] += dq
+            J[pid_state_idx, idx_out_out] += K_i * reduction_factor / D
+            J[listened_node_idx, idx_out_out] += dq
         end
     end
     return nothing

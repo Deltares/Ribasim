@@ -474,7 +474,7 @@ Note that when the calculated pump flow lies outside $[Q_\min, Q_\max]$, the pum
 
 $$
 \begin{align}
-    E(u_\text{PID}) &= K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right) \\
+    E(u_\text{PID}) &= K_pe + K_iI + K_d \left(\dot{\text{SP}}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right) \\
     D(u_\text{PID}) &= 1-\phi(u_\text{PID})\frac{K_d}{A(u_\text{PID})}
 \end{align}
 $$

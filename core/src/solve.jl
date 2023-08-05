@@ -501,35 +501,40 @@ function continuous_control!(
 
         flow_rate = 0.0
 
-        K_p = proportional[i]
-        if !isnan(K_p)
-            flow_rate += reduction_factor * K_p * error[i]
-        end
-
-        K_i = integral[i]
-        if !isnan(K_i)
-            flow_rate += reduction_factor * K_i * integral_value[i]
-        end
-
         K_d = derivative[i]
         if !isnan(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
+            D = 1.0 - K_d * reduction_factor / area
+        else
+            D = 1.0
+        end
+
+        K_p = proportional[i]
+        if !isnan(K_p)
+            flow_rate += reduction_factor * K_p * error[i] / D
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            flow_rate += reduction_factor * K_i * integral_value[i] / D
+        end
+
+        if !isnan(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            du_listened_basin =
-                (
-                    du_listened_basin_old - flow_rate -
-                    reduction_factor * K_d * dtarget_level
-                ) / (1 - reduction_factor * K_d / area)
-            flow_rate = du_listened_basin_old - du_listened_basin
+            flow_rate += K_d * (dtarget_level - du_listened_basin_old / area) / D
         end
 
         # Clip values outside pump flow rate bounds
         flow_rate = clamp(flow_rate, min_flow_rate[i], max_flow_rate[i])
+
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
 
         pump.flow_rate[controlled_node_idx] = flow_rate
         du.storage[listened_node_idx] -= flow_rate
@@ -540,10 +545,6 @@ function continuous_control!(
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
-
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
 
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
@@ -831,6 +832,9 @@ function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Noth
     return nothing
 end
 
+"""
+The right hand side function of the system of ODEs set up by Ribasim.
+"""
 function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
