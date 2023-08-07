@@ -229,11 +229,10 @@ node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
 time: Data of time-dependent flow rates
 """
-struct FlowBoundary{C} <: AbstractParameterNode
+struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{LinearInterpolation}
-    time::StructVector{FlowBoundaryTimeV1, C, Int}
+    flow_rate::Vector{Interpolation}
 end
 
 """
@@ -723,7 +722,7 @@ function formulate!(
                 continue
             end
 
-            rate = flow_rate[i](datetime_since(t, p.starttime))
+            rate = flow_rate[i](t)
 
             # Adding water is always possible
             flow[id, dst_id] = rate

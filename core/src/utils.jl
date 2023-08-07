@@ -163,19 +163,16 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
 end
 
 function flow_rate_interpolation(
+    starttime::DateTime,
     time::AbstractVector,
-    flow_rate::AbstractVector{Float64},
-)::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(flow_rate, time), allunique(time)
-end
-
-function flow_rate_interpolation(
     node_id::Int,
-    table::StructVector,
 )::Tuple{LinearInterpolation, Bool}
-    rowrange = findlastgroup(node_id, table.node_id)
-    @assert !isempty(rowrange) "timeseries starts after model start time"
-    return flow_rate_interpolation(table.time[rowrange], table.flow_rate[rowrange])
+    rows = searchsorted(time.node_id, node_id)
+    flow_rates = time.flow_rate[rows]
+    times = time.time[rows]
+    times = [-Inf; seconds_since.(times, starttime); Inf]
+    flow_rates = [flow_rates[1]; flow_rates; flow_rates[end]]
+    return LinearInterpolation(flow_rates, times), allunique(times)
 end
 
 function qh_interpolation(
