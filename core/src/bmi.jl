@@ -74,7 +74,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     timespan = (zero(t_end), t_end)
 
     jac_prototype = get_jac_prototype(parameters)
-    RHS = ODEFunction(water_balance!; jac_prototype)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
@@ -209,13 +209,8 @@ function get_value(
     (; basin, flow_boundary) = p
 
     if variable == "level"
-        has_index, basin_idx = id_index(basin.node_id, feature_id)
-
-        if !has_index
-            error("Level condition node #$feature_id is not a basin.")
-        end
-
-        _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
+        hasindex, basin_idx = id_index(basin.node_id, feature_id)
+        _, level, _ = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
 
     elseif variable == "flow_rate"
@@ -227,7 +222,7 @@ function get_value(
 
         value = flow_boundary.flow_rate[flow_boundary_idx](t)
     else
-        throw(ValueError("Unsupported condition variable $variable."))
+        error("Unsupported condition variable $variable.")
     end
 
     return value

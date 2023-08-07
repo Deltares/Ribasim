@@ -73,7 +73,7 @@ def pump_discrete_control_model() -> ribasim.Model:
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [1, 3], "storage": [100.0, 0.0]})
+    state = pd.DataFrame(data={"node_id": [1, 3], "storage": [100.0, 1e-3]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 

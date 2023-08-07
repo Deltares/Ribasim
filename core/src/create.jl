@@ -298,6 +298,7 @@ function Basin(db::DB, config::Config)::Basin
     n = length(node_id)
     current_level = zeros(n)
     current_area = zeros(n)
+    current_darea = zeros(n)
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -326,6 +327,7 @@ function Basin(db::DB, config::Config)::Basin
         infiltration,
         current_level,
         current_area,
+        current_darea,
         area,
         level,
         storage,

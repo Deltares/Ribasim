@@ -78,6 +78,9 @@ struct Basin{C} <: AbstractParameterNode
     # cache this to avoid recomputation
     current_level::Vector{Float64}
     current_area::Vector{Float64}
+    # The derivative of the area with respect to the level
+    # used for the analytical Jacobian
+    current_darea::Vector{Float64}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -95,6 +98,7 @@ struct Basin{C} <: AbstractParameterNode
         infiltration,
         current_level,
         current_area,
+        current_darea,
         area,
         level,
         storage,
@@ -111,6 +115,7 @@ struct Basin{C} <: AbstractParameterNode
                 infiltration,
                 current_level,
                 current_area,
+                current_darea,
                 area,
                 level,
                 storage,
@@ -396,6 +401,20 @@ function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Ve
     return errors
 end
 
+function set_current_basin_properties!(
+    basin::Basin,
+    storage::AbstractVector{Float64},
+    t::Real,
+)::Nothing
+    for i in eachindex(storage)
+        s = storage[i]
+        area, level, darea = get_area_and_level(basin, i, s)
+        basin.current_level[i] = level
+        basin.current_area[i] = area
+        basin.current_darea[i] = darea
+    end
+end
+
 """
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
@@ -407,12 +426,11 @@ function formulate!(
     t::Real,
 )::Nothing
     for i in eachindex(storage)
-        s = storage[i]
-        area, level = get_area_and_level(basin, i, s)
-        basin.current_level[i] = level
-        basin.current_area[i] = area
-        bottom = basin.level[i][1]
         # add all precipitation that falls within the profile
+        level = basin.current_level[i]
+        area = basin.current_area[i]
+
+        bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -482,35 +500,40 @@ function continuous_control!(
 
         flow_rate = 0.0
 
-        K_p = proportional[i]
-        if !isnan(K_p)
-            flow_rate += reduction_factor * K_p * error[i]
-        end
-
-        K_i = integral[i]
-        if !isnan(K_i)
-            flow_rate += reduction_factor * K_i * integral_value[i]
-        end
-
         K_d = derivative[i]
         if !isnan(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
+            D = 1.0 - K_d * reduction_factor / area
+        else
+            D = 1.0
+        end
+
+        K_p = proportional[i]
+        if !isnan(K_p)
+            flow_rate += reduction_factor * K_p * error[i] / D
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            flow_rate += reduction_factor * K_i * integral_value[i] / D
+        end
+
+        if !isnan(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            du_listened_basin =
-                (
-                    du_listened_basin_old - flow_rate -
-                    reduction_factor * K_d * dtarget_level
-                ) / (1 - reduction_factor * K_d / area)
-            flow_rate = du_listened_basin_old - du_listened_basin
+            flow_rate += K_d * (dtarget_level - du_listened_basin_old / area) / D
         end
 
         # Clip values outside pump flow rate bounds
         flow_rate = clamp(flow_rate, min_flow_rate[i], max_flow_rate[i])
+
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
 
         pump.flow_rate[controlled_node_idx] = flow_rate
         du.storage[listened_node_idx] -= flow_rate
@@ -521,10 +544,6 @@ function continuous_control!(
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
-
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
 
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
@@ -632,7 +651,7 @@ The hydraulic radius is defined as:
 
 Where P is the wetted perimeter.
 
-The "upstream" water depth is used to compute cross-sectional area and
+The average of the upstream and downstream water depth is used to compute cross-sectional area and
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
@@ -677,8 +696,9 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
         R_h_a = A_a / P_a
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
+        k = 1000.0
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(1000 * Δh))
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh))
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
@@ -803,6 +823,9 @@ function formulate_flows!(
     return nothing
 end
 
+"""
+The right hand side function of the system of ODEs set up by Ribasim.
+"""
 function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
@@ -817,7 +840,10 @@ function water_balance!(
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
-    # ensures current_level is current
+    # Ensures current_* vectors are current
+    set_current_basin_properties!(basin, storage, t)
+
+    # Basin forcings
     formulate!(du, basin, storage, t)
 
     # First formulate intermediate flows
