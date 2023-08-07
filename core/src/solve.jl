@@ -698,13 +698,8 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
-function formulate!(
-    flow_boundary::FlowBoundary,
-    p::Parameters,
-    storage::AbstractVector{Float64},
-    t::Float64,
-)::Nothing
-    (; connectivity, basin) = p
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Nothing
+    (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
@@ -801,7 +796,7 @@ function formulate_flows!(
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
-    formulate!(flow_boundary, p, storage, t)
+    formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
 
