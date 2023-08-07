@@ -235,7 +235,6 @@ Lets a fraction (in [0,1]) of the incoming flow trough.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
-active        | Bool    | -            | (optional, default true)
 fraction      | Float64 | -            | in the interval [0,1]
 control_state | String  | -            | (optional)
 

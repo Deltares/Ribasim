@@ -208,7 +208,6 @@ Requirements:
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
-    active::BitVector
     fraction::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
@@ -690,16 +689,11 @@ end
 function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, active, fraction) = fractional_flow
+    (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
-
-        if active[i]
-            upstream_id = only(inneighbors(graph_flow, id))
-            flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
-        else
-            flow[id, downstream_id] = 0.0
-        end
+        upstream_id = only(inneighbors(graph_flow, id))
+        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
     end
     return nothing
 end
