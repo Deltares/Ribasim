@@ -13,12 +13,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
-
-    # tstops for transient flow_boundary
-    time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
-    tstops = get_tstops(time_flow_boundary.time, config.starttime)
-
-    local parameters, state, n
+    local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
 
@@ -50,6 +45,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             pump_idx = findsorted(pump.node_id, id_pump)
             pump.is_pid_controlled[pump_idx] = true
         end
+
+        # tstops for transient flow_boundary
+        time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
+        tstops = get_tstops(time_flow_boundary.time, config.starttime)
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -190,7 +189,7 @@ function discrete_control_condition(out, u, t, integrator)
             discrete_control.greater_than,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, u.storage, t)
+        value = get_value(p, listen_feature_id, variable, u, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -222,7 +221,7 @@ function get_value(
     elseif variable == "flow_rate"
         flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
 
-        if isnothng(flow_boundary_idx)
+        if isnothing(flow_boundary_idx)
             error("Flow condition node #$feature_id is not a flow boundary.")
         end
 

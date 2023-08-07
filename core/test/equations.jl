@@ -206,7 +206,7 @@ end
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p
 
-    q_boundary = flow_boundary.flow_rate[1]
+    q_boundary = flow_boundary.flow_rate[1].u[1]
     q_pump = pump.flow_rate[1]
     frac = fractional_flow.fraction[1]
 

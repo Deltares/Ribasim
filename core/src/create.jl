@@ -234,7 +234,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             if row.flow_rate <= 0
                 errors = true
                 @error(
-                    "Currently negative flow boundary flow rates are not supported, got static $(row.flowrate) for #$node_id."
+                    "Currently negative flow boundary flow rates are not supported, got static $(row.flow_rate) for #$node_id."
                 )
             end
             # Trivial interpolation for static flow rate
@@ -249,10 +249,11 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
                 @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
                 errors = true
             end
-            if any(interpolation.u .<= 0)
+            if any(interpolation.u .< 0)
                 @error(
                     "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
                 )
+                errors = true
             end
             push!(flow_rate, interpolation)
             push!(active, true)

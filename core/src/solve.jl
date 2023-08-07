@@ -703,7 +703,7 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Not
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
-    for (id, i) in enumerate(node_id)
+    for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
             if !active[i]

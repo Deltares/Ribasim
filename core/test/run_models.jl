@@ -26,7 +26,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
-    @test model.integrator.sol.u[end] ≈ Float32[520.7638, 520.76575, 2.428809, 1271.0568] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 end
 
@@ -37,7 +37,7 @@ end
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[472.42212, 472.43506, 1.4570278, 1275.7897] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[469.98773, 469.9858, 422.17743, 1427.4329] skip =
         Sys.isapple()
 end
 
