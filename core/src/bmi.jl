@@ -13,6 +13,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
+
+    # tstops for transient flow_boundary
+    time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
+    tstops = get_tstops(time_flow_boundary.time, config.starttime)
+
     local parameters, state, n
     try
         parameters = Parameters(db, config)
@@ -84,6 +89,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         progress = true,
         progress_name = "Simulating",
         callback,
+        tstops,
         config.solver.saveat,
         config.solver.adaptive,
         config.solver.dt,

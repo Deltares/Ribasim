@@ -225,6 +225,8 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
 
     errors = false
 
+    t_end = seconds_since(config.endtime, config.starttime)
+
     for node_id in node_ids
         if node_id in static_node_ids
             static_idx = searchsortedfirst(static.node_id, node_id)
@@ -236,12 +238,13 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
                 )
             end
             # Trivial interpolation for static flow rate
-            interpolation = LinearInterpolation([row.flow_rate, row.flow_rate], [-Inf, Inf])
+            interpolation =
+                LinearInterpolation([row.flow_rate, row.flow_rate], [0.0, t_end])
             push!(flow_rate, interpolation)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
             interpolation, is_valid =
-                flow_rate_interpolation(config.starttime, time, node_id)
+                flow_rate_interpolation(config.starttime, t_end, time, node_id)
             if !is_valid
                 @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
                 errors = true

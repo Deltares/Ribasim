@@ -164,14 +164,24 @@ end
 
 function flow_rate_interpolation(
     starttime::DateTime,
+    t_end::Float64,
     time::AbstractVector,
     node_id::Int,
 )::Tuple{LinearInterpolation, Bool}
     rows = searchsorted(time.node_id, node_id)
     flow_rates = time.flow_rate[rows]
-    times = time.time[rows]
-    times = [-Inf; seconds_since.(times, starttime); Inf]
-    flow_rates = [flow_rates[1]; flow_rates; flow_rates[end]]
+    times = seconds_since.(time.time[rows], starttime)
+    # Add extra timestep at start for constant extrapolation
+    if times[1] > 0
+        pushfirst!(times, 0.0)
+        pushfirst!(flow_rates, flow_rates[1])
+    end
+    # Add extra timestep at end for constant extrapolation
+    if times[end] < t_end
+        push!(times, t_end)
+        push!(flow_rates, flow_rates[end])
+    end
+
     return LinearInterpolation(flow_rates, times), allunique(times)
 end
 
