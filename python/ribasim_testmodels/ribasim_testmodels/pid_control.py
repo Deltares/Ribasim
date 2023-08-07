@@ -134,7 +134,7 @@ def pid_control_model():
         pump=pump,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-07-01 00:00:00",
     )
 
     return model

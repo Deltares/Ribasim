@@ -22,6 +22,7 @@ end
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
     level = [[0.0, 1.0], [4.0, 5.0]]
+    darea = zeros(2)
     storage = Ribasim.profile_storage.(level, area)
     target_level = [0.0, 0.0]
     basin = Ribasim.Basin(
@@ -32,6 +33,7 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
+        darea,
         area,
         level,
         storage,
@@ -111,9 +113,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 2, 3, 4, 6]
-    @test jac_prototype.rowval == [2, 1, 2, 2, 3]
-    @test jac_prototype.nzval == ones(5)
+    @test jac_prototype.colptr == [1, 3, 5, 7, 9]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 4]
+    @test jac_prototype.nzval == ones(8)
 
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
 
