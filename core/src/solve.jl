@@ -233,11 +233,10 @@ node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
 time: Data of time-dependent flow rates
 """
-struct FlowBoundary{C} <: AbstractParameterNode
+struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Float64}
-    time::StructVector{FlowBoundaryTimeV1, C, Int}
+    flow_rate::Vector{Interpolation}
 end
 
 """
@@ -719,35 +718,23 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
-function formulate!(
-    flow_boundary::FlowBoundary,
-    p::Parameters,
-    storage::AbstractVector{Float64},
-)::Nothing
-    (; connectivity, basin) = p
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Nothing
+    (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
-    for (id, isactive, rate) in zip(node_id, active, flow_rate)
+    for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
-            if !isactive
+            if !active[i]
                 flow[id, dst_id] = 0.0
                 continue
             end
 
-            # Adding water is always possible
-            if rate >= 0
-                flow[id, dst_id] = rate
-            else
-                hasindex, basin_idx = id_index(basin.node_id, dst_id)
-                @assert hasindex "FlowBoundary intake not a Basin"
+            rate = flow_rate[i](t)
 
-                s = storage[basin_idx]
-                reduction_factor = min(s, 10.0) / 10.0
-                q = reduction_factor * rate
-                flow[id, dst_id] = q
-            end
+            # Adding water is always possible
+            flow[id, dst_id] = rate
         end
     end
 end
@@ -812,7 +799,11 @@ function formulate!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Nothing
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector{Float64},
+    t::Float64,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -825,7 +816,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Noth
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
-    formulate!(flow_boundary, p, storage)
+    formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
 
@@ -839,7 +830,7 @@ function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
     p::Parameters,
-    t,
+    t::Float64,
 )::Nothing
     (; connectivity, basin, pid_control) = p
 
@@ -856,7 +847,7 @@ function water_balance!(
     formulate!(du, basin, storage, t)
 
     # First formulate intermediate flows
-    formulate_flows!(p, storage)
+    formulate_flows!(p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, basin)

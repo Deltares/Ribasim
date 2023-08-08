@@ -168,10 +168,33 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_begin = if isnothing(idx_block_begin)
         1
     else
-        # can happen if that if id is the only ID in ids
+        # can happen if that id is the only ID in ids
         idx_block_begin + 1
     end
     return idx_block_begin:idx_block_end
+end
+
+function flow_rate_interpolation(
+    starttime::DateTime,
+    t_end::Float64,
+    time::AbstractVector,
+    node_id::Int,
+)::Tuple{LinearInterpolation, Bool}
+    rows = searchsorted(time.node_id, node_id)
+    flow_rates = time.flow_rate[rows]
+    times = seconds_since.(time.time[rows], starttime)
+    # Add extra timestep at start for constant extrapolation
+    if times[1] > 0
+        pushfirst!(times, 0.0)
+        pushfirst!(flow_rates, flow_rates[1])
+    end
+    # Add extra timestep at end for constant extrapolation
+    if times[end] < t_end
+        push!(times, t_end)
+        push!(flow_rates, flow_rates[end])
+    end
+
+    return LinearInterpolation(flow_rates, times), allunique(times)
 end
 
 function qh_interpolation(

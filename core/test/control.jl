@@ -45,13 +45,12 @@ end
 
     timesteps = Ribasim.timesteps(model)
     t_control = discrete_control.record.time[2]
-    t_control_index = findfirst(timesteps .≈ t_control)
+    t_control_index = searchsortedfirst(timesteps, t_control)
 
-    @test isapprox(
-        model.saved_flow.saveval[t_control_index][2],
-        discrete_control.greater_than[1],
-        rtol = 0.005,
-    )
+    greater_than = discrete_control.greater_than[1]
+    flow_t_control = model.saved_flow.saveval[t_control_index][1]
+
+    @test isapprox(flow_t_control, greater_than, rtol = 0.005)
 end
 
 @testset "PID control" begin

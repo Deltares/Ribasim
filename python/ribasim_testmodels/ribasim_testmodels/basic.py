@@ -170,7 +170,7 @@ def basic_model() -> ribasim.Model:
         static=pd.DataFrame(
             data={
                 "node_id": [15, 16],
-                "flow_rate": [-1e-4, 1e-4],
+                "flow_rate": [1e-4, 1e-4],
             }
         )
     )

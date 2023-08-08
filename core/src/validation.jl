@@ -42,13 +42,8 @@ end
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Basin}) = Set((
-    :LinearResistance,
-    :TabulatedRatingCurve,
-    :ManningResistance,
-    :Pump,
-    :FlowBoundary,
-))
+neighbortypes(::Val{:Basin}) =
+    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
