@@ -183,11 +183,11 @@ basins (external nodes) in a network.
 2. `LevelBoundary`
 3. `FlowBoundary`
 
-### Pump
+### Pump and weir
 
-The behaviour of the pump is very straight forward if it is not PID controlled. Its flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
+The behaviour of pumps and weirs is very straight forward if these nodes are not PID controlled. Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
 $$
-Q_\text{pump} = \phi(u)q
+Q_\text{pump/weir} = \phi(u)q
 $$
 
 Here $u$ is the storage of the upstream basin. The reduction factor
@@ -415,10 +415,10 @@ $$ {#eq-PIDflow}
 
 for given constant parameters $K_p,K_i,K_d$. The pump or weir can have associated minimum and maximum flow rates $Q_\min, Q_\max$, and so
 $$
-Q_\text{pump/weir} = \text{clip}(\phi(u_\text{PID})Q_\text{PID}; Q_\min, Q_\max)
+Q_\text{pump/weir} = \text{clip}(\phi(u_\text{us})Q_\text{PID}; Q_\min, Q_\max).
 $$
 
-where $u_\text{PID}$ is the storage of the controlled basin, $\phi$ is the reduction factor (see @eq-pumpreductionfactor) and
+Here $u_\text{us}$ is the storage of the basin upstream of the pump or weir, $\phi$ is the reduction factor (see @eq-pumpreductionfactor) and
 
 $$
 \text{clip}(Q; Q_\min, Q_\max) =
@@ -450,16 +450,16 @@ $$
 where $A(u_\text{PID})$ is the area of the controlled basin. The complexity arises from the fact that $Q_\text{PID}$ is a contribution to $\frac{\text{d}u_\text{PID}}{\text{d}t} = f_\text{PID}$, which makes @eq-PIDflow an implicit equation for $Q_\text{PID}$. We define
 
 $$
-f_\text{PID} = \hat{f}_\text{PID} - Q_\text{pump/weir},
+f_\text{PID} = \hat{f}_\text{PID} \pm Q_\text{pump/weir},
 $$
 
-that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controlled basin storage state without the contribution of the PID controlled pump. The minus sign comes from the fact that the pump is puming away from the controlled basin.
+that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controlled basin storage state without the contribution of the PID controlled pump. The plus sign holds for a weir and the minus sign for a pump, dictated by the way the pump and weir connectivity to the controlled basin is enforced.
 
 Using this, solving @eq-PIDflow for $Q_\text{PID}$ yields
 $$
-Q_\text{pump/weir} = \text{clip}\left(\phi(u_\text{PID})\frac{K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right)}{1-\phi(u_\text{PID})\frac{K_d}{A(u_\text{PID})}};Q_\min,Q_\max\right),
+Q_\text{pump/weir} = \text{clip}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right)}{1\pm\phi(u_\text{us})\frac{K_d}{A(u_\text{PID})}};Q_\min,Q_\max\right),
 $$
-where the clipping is again done last. Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning that the PID controlled pump flow rate has to be computed after all other contributions to the PID controlled basin's storage are known.
+where the clipping is again done last. Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning that the PID controlled pump/weir flow rate has to be computed after all other contributions to the PID controlled basin's storage are known.
 
 ## Jacobian contributions
 
@@ -475,7 +475,7 @@ Note that when the calculated pump flow lies outside $[Q_\min, Q_\max]$, the pum
 $$
 \begin{align}
     E(u_\text{PID}) &= K_pe + K_iI + K_d \left(\dot{\text{SP}}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right) \\
-    D(u_\text{PID}) &= 1-\phi(u_\text{PID})\frac{K_d}{A(u_\text{PID})}
+    D(u_\text{PID}) &= 1 \pm \phi(u_\text{PID})\frac{K_d}{A(u_\text{PID})}
 \end{align}
 $$
 
@@ -489,7 +489,7 @@ For the derivative with respect to $u_\text{PID}$ we need the derivative of the 
 $$
 \begin{align}
     E'(u_\text{PID}) &= -\frac{K_p}{A(u_\text{PID})} - K_d\frac{A(u_\text{PID})\frac{\partial\hat{f}_\text{PID}}{\partial u_\text{PID}} - \hat{f}_\text{PID}A'(u_\text{PID})}{A(u_\text{PID})^2}\\
-    D'(u_\text{PID}) &= - K_d\left[\frac{\phi'(u_\text{PID})}{A(u_\text{PID})}- \phi(u_\text{PID})\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}\right]
+    D'(u_\text{PID}) &= \pm K_d\left[\frac{\phi'(u_\text{PID})}{A(u_\text{PID})}- \phi(u_\text{PID})\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}\right]
 \end{align}
 $$
 For computational efficiency we exploit that $\phi'(u_\text{PID})$ is mostly $0$. Note that
