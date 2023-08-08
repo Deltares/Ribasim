@@ -327,7 +327,9 @@ flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
 This table is the transient form of the `FlowBoundary` table.
 The only difference is that a time column is added.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
-With this the flow rates can be updated over time.
+With this the flow rates can be updated over time. In between the given times the
+flow rate is interpolated linearly, and outside the flow rate is constant given by the
+nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column    | type     | unit         | restriction
