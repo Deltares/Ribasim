@@ -212,17 +212,17 @@ function formulate_jac!(
 end
 
 """
-The contributions of Pump nodes to the Jacobian.
+The contributions of Pump and Weir nodes to the Jacobian.
 """
 function formulate_jac!(
-    pump::Pump,
+    node::Union{Pump, Weir},
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; basin, fractional_flow, connectivity, pid_control) = p
-    (; active, node_id, flow_rate, is_pid_controlled) = pump
+    (; basin, fractional_flow, connectivity) = p
+    (; active, node_id, flow_rate, is_pid_controlled) = node
 
     (; graph_flow) = connectivity
 
@@ -357,7 +357,7 @@ function formulate_jac!(
 end
 
 """
-The contributions of TabulatedRatingCurve nodes to the Jacobian.
+The contributions of PidControl nodes to the Jacobian.
 """
 function formulate_jac!(
     pid_control::PidControl,
@@ -366,8 +366,7 @@ function formulate_jac!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    # TODO: update after pid_control equation test merge
-    (; basin, connectivity, pump) = p
+    (; basin, connectivity, pump, weir) = p
     (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
         pid_control
     (; min_flow_rate, max_flow_rate) = pump
@@ -391,18 +390,17 @@ function formulate_jac!(
             continue
         end
 
-        id_pump = only(outneighbors(graph_control, id))
+        id_controlled = only(outneighbors(graph_control, id))
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
         listen_area = basin.current_area[listened_node_idx]
         storage_listened_basin = u.storage[listened_node_idx]
-        area = basin.current_area[listened_node_idx]
         reduction_factor = min(storage_listened_basin, 10.0) / 10.0
 
         K_d = derivative[i]
         if !isnan(K_d)
             # dlevel/dstorage = 1/area
-            D = 1.0 - K_d * reduction_factor / area
+            D = 1.0 - K_d * reduction_factor / listen_area
         else
             D = 1.0
         end
@@ -422,7 +420,7 @@ function formulate_jac!(
         if !isnan(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
-            E += K_d * (dtarget_level - du_listened_basin_old / area)
+            E += K_d * (dtarget_level - du_listened_basin_old / listen_area)
         end
 
         # Clip values outside pump flow rate bounds
@@ -461,23 +459,23 @@ function formulate_jac!(
             dD = reduction_factor * darea
 
             if reduction_factor_regime
-                dD -= dreduction_factor / area
+                dD -= dreduction_factor / listen_area
             end
 
             dD *= K_d
 
             dE =
                 -K_d * (
-                    area * J[listened_node_idx, listened_node_idx] -
+                    listen_area * J[listened_node_idx, listened_node_idx] -
                     du.storage[listened_node_idx] * darea
-                ) / (area^2)
+                ) / (listen_area^2)
         else
             dD = 0.0
             dE = 0.0
         end
 
         if !isnan(K_p)
-            dE -= K_p / area
+            dE -= K_p / listen_area
         end
 
         if reduction_factor_regime

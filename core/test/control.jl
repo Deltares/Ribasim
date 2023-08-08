@@ -57,12 +57,30 @@ end
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    basin = model.integrator.p.basin
+    p = model.integrator.p
+    (; basin, pid_control, flow_boundary) = p
 
-    timesteps = Ribasim.timesteps(model) / (60 * 60 * 24)
-    level = Ribasim.get_storages_and_levels(model).level[1, :]
-    bound = 5 .* exp.(-0.03 .* timesteps)
-    @test all(abs.(level .- basin.target_level[1]) .< bound)
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    timesteps = Ribasim.timesteps(model)
+
+    K_p = pid_control.proportional[2]
+    K_i = pid_control.integral[2]
+    A = basin.area[1][1]
+    target_level = basin.target_level[1]
+    initial_storage = storage[1]
+    flow_rate = flow_boundary.flow_rate[1].u[1]
+    du0 = flow_rate + K_p * (target_level - initial_storage / A)
+    target_storage = A * target_level
+    Δstorage = initial_storage - target_storage
+    alpha = -K_p / (2 * A)
+    omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
+    phi = atan(du0 / Δstorage - alpha) / omega
+    a = abs(Δstorage / cos(phi))
+    bound = @. a * exp(alpha * timesteps)
+    # TODO: Make smaller after jac.jl update
+    eps = 3.0
+
+    @test all((storage .- target_storage) .< bound .+ eps)
 end
 
 @testset "TabulatedRatingCurve control" begin

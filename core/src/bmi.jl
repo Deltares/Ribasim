@@ -21,13 +21,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        (; pid_control, connectivity, basin, pump, fractional_flow) = parameters
+        (; pid_control, connectivity, basin, pump, weir, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
             connectivity.graph_flow,
             connectivity.graph_control,
             basin.node_id,
+            pump.node_id,
         )
             error("Invalid PidControl connectivity.")
         end
@@ -41,9 +42,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         end
 
         for id in pid_control.node_id
-            id_pump = only(outneighbors(connectivity.graph_control, id))
-            pump_idx = findsorted(pump.node_id, id_pump)
-            pump.is_pid_controlled[pump_idx] = true
+            id_controlled = only(outneighbors(connectivity.graph_control, id))
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            if isnothing(pump_idx)
+                weir_idx = findsorted(weir.node_id, id_controlled)
+                weir.is_pid_controlled[weir_idx] = true
+            else
+                pump.is_pid_controlled[pump_idx] = true
+            end
         end
 
         # tstops for transient flow_boundary
@@ -74,7 +80,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     timespan = (zero(t_end), t_end)
 
     jac_prototype = get_jac_prototype(parameters)
-    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
+    # TODO: Undo this and update jac.jl
+    RHS = ODEFunction(water_balance!; jac_prototype)#, jac = water_balance_jac!)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
