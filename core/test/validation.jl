@@ -88,6 +88,7 @@ end
 @testset "PidControl connectivity validation" begin
     pid_control_node_id = [1, 6]
     pid_control_listen_node_id = [3, 5]
+    pump_node_id = [2, 4]
 
     graph_flow = DiGraph(7)
     graph_control = DiGraph(7)
@@ -108,6 +109,7 @@ end
             graph_flow,
             graph_control,
             basin_node_id,
+            pump_node_id,
         )
     end
 
@@ -116,7 +118,7 @@ end
     @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Listen node #5 of PidControl node #6 is not upstream of controlled node #2"
+          "Listen node #5 of PidControl node #6 is not upstream of controlled pump #2"
 end
 
 # This test model is not written on Ubuntu CI, see #479
