@@ -139,6 +139,12 @@ callback.
 
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
+
+node_id: node ID of the TabulatedRatingCurve node
+active: whether this node is active and thus contributes flows
+tables: The current Q(h) relationships
+time: The time table used for updating the tables
+control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{Int}
@@ -153,6 +159,11 @@ Requirements:
 
 * from: must be (Basin,) node
 * to: must be (Basin,) node
+
+node_id: node ID of the LinearResistance node
+active: whether this node is active and thus contributes flows
+resistance: the resistance to flow; Q = Δh/resistance
+control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{Int}
@@ -210,6 +221,10 @@ Requirements:
 * from: must be (TabulatedRatingCurve,) node
 * to: must be (Basin,) node
 * fraction must be positive.
+
+node_id: node ID of the TabulatedRatingCurve node
+fraction: The fraction in [0,1] of flow the node lets through
+control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
@@ -219,8 +234,8 @@ end
 
 """
 node_id: node ID of the LevelBoundary node
+active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
-The node_id are Indices to support fast lookup of level using ID.
 """
 struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{Int}
@@ -230,8 +245,8 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
+active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
-time: Data of time-dependent flow rates
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
@@ -241,8 +256,12 @@ end
 
 """
 node_id: node ID of the Pump node
+active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
+min_flow_rate: The minimal flow rate of the pump
+max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
+is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
@@ -255,6 +274,25 @@ struct Pump <: AbstractParameterNode
 end
 
 """
+node_id: node ID of the Weir node
+active: whether this node is active and thus contributes flow
+flow_rate: target flow rate
+min_flow_rate: The minimal flow rate of the weir
+max_flow_rate: The maximum flow rate of the weir
+control_mapping: dictionary from (node_id, control_state) to target flow rate
+is_pid_controlled: whether the flow rate of this weir is governed by PID control
+"""
+struct Weir <: AbstractParameterNode
+    node_id::Vector{Int}
+    active::BitVector
+    flow_rate::Vector{Float64}
+    min_flow_rate::Vector{Float64}
+    max_flow_rate::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    is_pid_controlled:BitVector
+end
+
+"""
 node_id: node ID of the Terminal node
 """
 struct Terminal <: AbstractParameterNode
@@ -262,7 +300,7 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the Control node
+node_id: node ID of the DiscreteControl node
 listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
@@ -285,6 +323,15 @@ struct DiscreteControl <: AbstractParameterNode
     }
 end
 
+"""
+node_id: node ID of the PidControl node
+active: whether this node is active and thus sets flow rates
+listen_node_id: the id of the basin being controlled
+proportional: the coefficient of the term proportional to the error
+integral: the coefficient of the term proportional to the integral of the error
+derivative: the coefficient of the term proportional to the derivative of the error
+error: the current error; basin_target_level - current_level
+"""
 struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
