@@ -535,21 +535,32 @@ function continuous_control!(
             return
         end
 
-        controlled_node_id = only(outneighbors(graph_control, id))
-        controls_pump = (controlled_node_id in pump.node_id)
-
-        controlled_node_idx = if controls_pump
-            findsorted(pump.node_id, controlled_node_id)
-        else
-            findsorted(weir.node_id, controlled_node_id)
-        end
-
         du.integral[i] = error[i]
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
-        storage_listened_basin = u.storage[listened_node_idx]
-        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
+
+        controlled_node_id = only(outneighbors(graph_control, id))
+        controls_pump = (controlled_node_id in pump.node_id)
+
+        if controls_pump
+            controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
+
+            listened_basin_storage = u.storage[listened_node_idx]
+            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+        else
+            controlled_node_idx = findsorted(weir.node_id, controlled_node_id)
+
+            # Upstream node of weir does not have to be a basin
+            upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
+            has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
+            if has_index
+                upstream_basin_storage = u.storage[upstream_basin_idx]
+                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+            else
+                reduction_factor = 1.0
+            end
+        end
 
         flow_rate = 0.0
 

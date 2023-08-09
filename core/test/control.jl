@@ -76,8 +76,8 @@ end
     omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
     phi = atan(du0 / Δstorage - alpha) / omega
     a = abs(Δstorage / cos(phi))
+    # This bound is the exact envelope of the analytical solution
     bound = @. a * exp(alpha * timesteps)
-    # TODO: Make smaller after jac.jl update
     eps = 3.0
 
     @test all((storage .- target_storage) .< bound .+ eps)

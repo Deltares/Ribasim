@@ -63,19 +63,13 @@ def pid_control_model():
         data={"node_id": [2, 2], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
     )
 
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation, 1 mm/d evaporation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    evaporation = 0.001 / seconds_in_day
-
     static = pd.DataFrame(
         data={
             "node_id": [2],
             "drainage": [0.0],
-            "potential_evaporation": [evaporation],
+            "potential_evaporation": [0.0],
             "infiltration": [0.0],
-            "precipitation": [precipitation],
+            "precipitation": [0.0],
             "urban_runoff": [0.0],
             "target_level": [5.0],
         }

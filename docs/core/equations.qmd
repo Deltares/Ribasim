@@ -441,13 +441,17 @@ $$
 \frac{\text{d}I}{\text{d}t} = e(t).
 $$
 
+::: {.callout-note}
+In the case of the controlled weir, the upstream node can also be a level boundary. In this case we define $\phi = 1$.
+:::
+
 ## The derivative term
 
 When $K_d \ne 0$ this adds a level of complexity. We can see this by looking at the error derivative more closely:
 $$
 \frac{\text{d}e}{\text{d}t} = \frac{\text{d}\text{SP}}{\text{d}t} - \frac{1}{A(u_\text{PID})}\frac{\text{d}u_\text{PID}}{\text{d}t},
 $$
-where $A(u_\text{PID})$ is the area of the controlled basin. The complexity arises from the fact that $Q_\text{PID}$ is a contribution to $\frac{\text{d}u_\text{PID}}{\text{d}t} = f_\text{PID}$, which makes @eq-PIDflow an implicit equation for $Q_\text{PID}$. We define
+where $A(u_\text{PID})$ is the area of the controlled basin as a function of the storage of the controlled basin $u_\text{PID}$. The complexity arises from the fact that $Q_\text{PID}$ is a contribution to $\frac{\text{d}u_\text{PID}}{\text{d}t} = f_\text{PID}$, which makes @eq-PIDflow an implicit equation for $Q_\text{PID}$. We define
 
 $$
 f_\text{PID} = \hat{f}_\text{PID} \pm Q_\text{pump/weir},
@@ -474,34 +478,66 @@ Note that when the calculated pump flow lies outside $[Q_\min, Q_\max]$, the pum
 
 $$
 \begin{align}
-    E(u_\text{PID}) &= K_pe + K_iI + K_d \left(\dot{\text{SP}}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right) \\
-    D(u_\text{PID}) &= 1 \pm \phi(u_\text{PID})\frac{K_d}{A(u_\text{PID})}
+    E &= K_pe + K_iI + K_d \left(\dot{\text{SP}}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right) \\
+    D &= 1 \pm \phi(u_\text{us})\frac{K_d}{A(u_\text{PID})}
 \end{align}
 $$
 
 Then
 
 $$
-\frac{\partial Q_\text{pump/weir}}{\partial I} = K_i\frac{\phi(u_\text{PID})}{D(u_\text{PID})}.
+\frac{\partial Q_\text{pump/weir}}{\partial I} = K_i\frac{\phi(u_\text{us})}{D}.
 $$
 
-For the derivative with respect to $u_\text{PID}$ we need the derivative of the enumerator and denominator:
+For the derivative of $Q_\text{pump/weir}$ with respect to storages we need the derivatives of the enumerator and denominator.
+
+For the denominator we distinguish 2 possibilities:
+
+- If the controlled node is a pump, then $u_\text{us} \equiv u_\text{PID}$ and so $D$ is only a function of $u_\text{PID}$:
+$$
+\frac{\text{d}D}{\text{d}u_\text{PID}} = - K_d\left[\frac{\phi'(u_\text{PID})}{A(u_\text{PID})}- \phi(u_\text{PID})\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}\right]
+$$
+- If the controlled node is a weir, then $D$ is a function of two distinct storages (assuming the upstream node is indeed a basin):
 $$
 \begin{align}
-    E'(u_\text{PID}) &= -\frac{K_p}{A(u_\text{PID})} - K_d\frac{A(u_\text{PID})\frac{\partial\hat{f}_\text{PID}}{\partial u_\text{PID}} - \hat{f}_\text{PID}A'(u_\text{PID})}{A(u_\text{PID})^2}\\
-    D'(u_\text{PID}) &= \pm K_d\left[\frac{\phi'(u_\text{PID})}{A(u_\text{PID})}- \phi(u_\text{PID})\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}\right]
+    \frac{\partial D}{\partial u_\text{PID}} &= \phi(u_\text{us})K_d\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}, \\
+    \frac{\partial D}{\partial u_\text{us}} &= -\phi'(u_\text{us})K_d\frac{1}{A(u_\text{PID})}.
 \end{align}
 $$
-For computational efficiency we exploit that $\phi'(u_\text{PID})$ is mostly $0$. Note that
+
+For the enumerator there distinguish 2 cases:
+
+- The partial derivative with respect to $u_\text{PID}$:
+$$
+\frac{\partial E}{\partial u_\text{PID}} = -\frac{K_p}{A(u_\text{PID})} - K_d\frac{A(u_\text{PID})\frac{\partial\hat{f}_\text{PID}}{\partial u_\text{PID}} - \hat{f}_\text{PID}A'(u_\text{PID})}{A(u_\text{PID})^2}.
+$$
+- The partial derivative with respect to a different storage $u_i$:
+$$
+\frac{\partial E}{\partial u_i} = - \frac{K_d}{A(u_\text{PID})}\frac{\partial \hat{f}_\text{PID}}{\partial u_i}.
+$$
+
+For computational efficiency we exploit that $\phi'$ is mostly $0$. Note that
 
 $$
-    \frac{\partial\hat{f}_\text{PID}}{\partial u_\text{PID}} = \hat{J}[\text{PID},\text{PID}],
+\frac{\partial\hat{f}_\text{PID}}{\partial u_i} = \hat{J}[i,\text{PID}],
 $$
-\emph{i.e.} the Jacobian term of the dependence of $u_\text{PID}$ on itself without the contribution of the PID controlled pump/weir. Note thus that also the Jacobian contribution of the PID controlled pump can only be computed after the other contributions to the Jacobian of $u_\text{PID}$ to itself are known.
+\emph{i.e.} the Jacobian term of the dependence of $u_\text{PID}$ on $u_i$ without the contribution of the PID controlled pump/weir. Note thus that also the Jacobian contribution of the PID controlled pump can only be computed after the other contributions to the Jacobian are known.
 
-The partial derivative with respect to $u_\text{PID}$ is then given by
+The partial derivatives of $Q_\text{pump}$ are then given by
 $$
-\frac{\partial Q_\text{pump/weir}}{\partial u_\text{PID}} = \phi'(u_\text{PID})\frac{E(u_\text{PID})}{D(u_\text{PID})} + \phi(u_\text{PID})\frac{D(u_\text{PID})E'(u_\text{PID}) - E(u_\text{PID})D'(u_\text{PID})}{D(u_\text{PID})^2}.
+\begin{align}
+    \frac{\partial Q_\text{pump}}{\partial u_\text{PID}} &= \phi'(u_\text{PID})\frac{E}{D} + \frac{\phi(u_\text{PID})}{D^2}\left[D\frac{\partial E}{\partial u_\text{PID}} - E\frac{\text{d}D}{\text{d}u_\text{PID}}\right], \\
+    \frac{\partial Q_\text{pump}}{\partial u_i} &= \frac{\phi(u_\text{PID})}{D}\frac{\partial E}{\partial u_i} \qquad (i \ne \text{PID}).
+\end{align}
+$$
+
+The partial derivatives of $Q_\text{weir}$ are given by
+$$
+\begin{align}
+    \frac{\partial Q_\text{weir}}{\partial u_\text{PID}} &= \frac{\phi(u_\text{us})}{D^2}\left[D\frac{\partial E}{\partial u_\text{PID}} - E\frac{\partial D}{\partial u_\text{PID}}\right], \\
+    \frac{\partial Q_\text{weir}}{\partial u_\text{us}} &= \phi'(u_\text{us})\frac{E}{D} + \frac{\phi(u_\text{us})}{D^2}\left[D\frac{\partial E}{\partial u_\text{us}} - E\frac{\partial D}{\partial u_\text{us}}\right], \\
+    \frac{\partial Q_\text{weir}}{\partial u_i} &= \frac{\phi(u_\text{us})}{D}\frac{\partial E}{\partial u_i} \qquad (i \ne \text{PID, us}).
+\end{align}
 $$
 
 ## The sign of the parameters

@@ -80,8 +80,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     timespan = (zero(t_end), t_end)
 
     jac_prototype = get_jac_prototype(parameters)
-    # TODO: Undo this and update jac.jl
-    RHS = ODEFunction(water_balance!; jac_prototype)#, jac = water_balance_jac!)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
