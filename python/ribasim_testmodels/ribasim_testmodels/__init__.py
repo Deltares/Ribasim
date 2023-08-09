@@ -17,9 +17,13 @@ from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
     misc_nodes_model,
+    pid_control_equation_model,
     rating_curve_model,
 )
-from ribasim_testmodels.invalid import invalid_qh_model
+from ribasim_testmodels.invalid import (
+    invalid_fractional_flow_model,
+    invalid_qh_model,
+)
 from ribasim_testmodels.pid_control import pid_control_model
 from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
@@ -42,4 +46,6 @@ __all__ = [
     "dutch_waterways_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
+    "pid_control_equation_model",
+    "invalid_fractional_flow_model",
 ]

@@ -45,7 +45,7 @@ def invalid_qh_model():
     profile = pd.DataFrame(
         data={
             "node_id": [3, 3],
-            "area": [0.0, 1.0],
+            "area": [0.01, 1.0],
             "level": [0.0, 1.0],
         }
     )
@@ -88,6 +88,108 @@ def invalid_qh_model():
         node=node,
         basin=basin,
         tabulated_rating_curve=rating_curve,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def invalid_fractional_flow_model():
+    xy = np.array(
+        [
+            (0.0, 1.0),  # 1: Basin
+            (-1.0, 0.0),  # 2: Basin
+            (0.0, -1.0),  # 3: FractionalFlow
+            (1.0, 0.0),  # 4: FractionalFlow
+            (0.0, -2.0),  # 5: Terminal
+            (0.0, 2.0),  # 6: Terminal
+            (0.0, 0.0),  # 7: TabulatedRatingCurve
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "Basin",
+        "Basin",
+        "FractionalFlow",
+        "FractionalFlow",
+        "Terminal",
+        "Terminal",
+        "TabulatedRatingCurve",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 7, 7, 3, 7, 4], dtype=np.int64)
+    to_id = np.array([7, 2, 3, 5, 4, 6], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1, 2, 2],
+            "area": 2 * [0.01, 1.0],
+            "level": 2 * [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [1, 2],
+            "drainage": 2 * [0.0],
+            "potential_evaporation": 2 * [0.0],
+            "infiltration": 2 * [0.0],
+            "precipitation": 2 * [0.0],
+            "urban_runoff": 2 * [0.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static)
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [5, 6]}))
+
+    # Setup the fractional flow:
+    fractional_flow = ribasim.FractionalFlow(
+        static=pd.DataFrame(data={"node_id": [3, 4], "fraction": [-0.1, 0.5]})
+    )
+
+    # Setup the tabulated rating curve:
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={"node_id": [7, 7], "level": [0.0, 1.0], "discharge": [0.0, 50.0]}
+        )
+    )
+
+    model = ribasim.Model(
+        modelname="invalid_fractional_Flow",
+        node=node,
+        edge=edge,
+        basin=basin,
+        fractional_flow=fractional_flow,
+        tabulated_rating_curve=rating_curve,
+        terminal=terminal,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

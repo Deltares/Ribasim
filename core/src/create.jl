@@ -195,7 +195,6 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static_parsed = parse_static(static, db, "FractionalFlow", defaults)
     return FractionalFlow(
         static_parsed.node_id,
-        static_parsed.active,
         static_parsed.fraction,
         static_parsed.control_mapping,
     )
@@ -222,35 +221,61 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
 
     active = BitVector()
-    flow_rate = Float64[]
+    flow_rate = Interpolation[]
+
+    errors = false
+
+    t_end = seconds_since(config.endtime, config.starttime)
 
     for node_id in node_ids
         if node_id in static_node_ids
             static_idx = searchsortedfirst(static.node_id, node_id)
             row = static[static_idx]
-            push!(flow_rate, row.flow_rate)
+            if row.flow_rate <= 0
+                errors = true
+                @error(
+                    "Currently negative flow boundary flow rates are not supported, got static $(row.flow_rate) for #$node_id."
+                )
+            end
+            # Trivial interpolation for static flow rate
+            interpolation =
+                LinearInterpolation([row.flow_rate, row.flow_rate], [0.0, t_end])
+            push!(flow_rate, interpolation)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
-            rows = searchsorted(time.node_id, node_id)
-            time_id = view(time, rows)
-            time_idx = searchsortedlast(time_id.time, config.starttime)
-            msg = "timeseries starts after model start time"
-            @assert time_idx > 0 msg
+            interpolation, is_valid =
+                flow_rate_interpolation(config.starttime, t_end, time, node_id)
+            if !is_valid
+                @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
+                errors = true
+            end
+            if any(interpolation.u .< 0)
+                @error(
+                    "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
+                )
+                errors = true
+            end
+            push!(flow_rate, interpolation)
             push!(active, true)
-            q = time_id[time_idx].flow_rate
-            push!(flow_rate, q)
         else
             error("FlowBoundary node ID $node_id data not in any table.")
         end
     end
 
-    return FlowBoundary(node_ids, active, flow_rate, time)
+    if errors
+        error("Errors occurred when parsing FlowBoundary data.")
+    end
+
+    return FlowBoundary(node_ids, active, flow_rate)
 end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     static_parsed = parse_static(static, db, "Pump", defaults)
+
+    # TODO: use this in formulate_jac! for pump
+    is_pid_controlled = falses(length(static_parsed.node_id))
 
     return Pump(
         static_parsed.node_id,
@@ -259,6 +284,7 @@ function Pump(db::DB, config::Config)::Pump
         static_parsed.min_flow_rate,
         static_parsed.max_flow_rate,
         static_parsed.control_mapping,
+        is_pid_controlled,
     )
 end
 
@@ -272,6 +298,7 @@ function Basin(db::DB, config::Config)::Basin
     n = length(node_id)
     current_level = zeros(n)
     current_area = zeros(n)
+    current_darea = zeros(n)
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -292,8 +319,6 @@ function Basin(db::DB, config::Config)::Basin
     # If not specified, target_level = NaN
     target_level = coalesce.(static.target_level, NaN)
 
-    dstorage = zero(target_level)
-
     return Basin(
         Indices(node_id),
         precipitation,
@@ -302,12 +327,12 @@ function Basin(db::DB, config::Config)::Basin
         infiltration,
         current_level,
         current_area,
+        current_darea,
         area,
         level,
         storage,
         target_level,
         time,
-        dstorage,
     )
 end
 

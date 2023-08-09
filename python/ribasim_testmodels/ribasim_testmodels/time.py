@@ -50,7 +50,7 @@ def flow_boundary_time_model():
     profile = pd.DataFrame(
         data={
             "node_id": [2, 2],
-            "area": [0.0, 1000.0],
+            "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
     )
@@ -70,7 +70,7 @@ def flow_boundary_time_model():
 
     n_times = 100
     time = pd.date_range(
-        start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
+        start="2020-03-01 00:00:00", end="2020-10-01 00:00:00", periods=n_times
     ).astype("datetime64[s]")
     flow_rate = 1 + np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
 

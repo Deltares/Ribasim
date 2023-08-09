@@ -42,13 +42,8 @@ end
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Basin}) = Set((
-    :LinearResistance,
-    :TabulatedRatingCurve,
-    :ManningResistance,
-    :Pump,
-    :FlowBoundary,
-))
+neighbortypes(::Val{:Basin}) =
+    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
@@ -146,7 +141,6 @@ end
 
 @version FractionalFlowStaticV1 begin
     node_id::Int
-    active::Union{Missing, Bool}
     fraction::Float64
     control_state::Union{Missing, String}
 end
@@ -255,8 +249,6 @@ function is_consistent(node, edge, state, static, profile, forcing)
 
     # TODO Check statics
 
-    # TODO Check profiles
-
     # TODO Check forcings
 
     true
@@ -323,13 +315,13 @@ function valid_edges(
     if isempty(errors)
         return true
     else
-        @error join(errors, "\n")
+        foreach(x -> @error(x), errors)
         return false
     end
 end
 
 """
-Check whether the profile data has no repeats in the levels and the areas start at 0.
+Check whether the profile data has no repeats in the levels and the areas start positive.
 """
 function valid_profiles(
     node_id::Indices{Int},
@@ -343,10 +335,10 @@ function valid_profiles(
             push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
         end
 
-        if areas[1] != 0
+        if areas[1] <= 0
             push!(
                 errors,
-                "Basin profiles must start with area 0 at the bottom (got area $(areas[1]) for node #$id).",
+                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node #$id).",
             )
         end
     end
@@ -377,5 +369,59 @@ function valid_pid_connectivity(
         end
     end
 
+    return !errors
+end
+
+"""
+Check that nodes that have fractional flow outneighbors do not have any other type of
+outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
+"""
+function valid_fractional_flow(
+    graph_flow::DiGraph{Int},
+    node_id::Vector{Int},
+    fraction::Vector{Float64},
+)::Bool
+    errors = false
+
+    # Node ids that have fractional flow outneighbors
+    src_ids = Set{Int}()
+
+    for id in node_id
+        union!(src_ids, inneighbors(graph_flow, id))
+    end
+
+    node_id_set = Set(node_id)
+
+    for src_id in src_ids
+        src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
+        if src_outneighbor_ids ⊈ node_id
+            errors = true
+            @error(
+                "Node #$src_id combines fractional flow outneighbors with other outneigbor types."
+            )
+        end
+
+        fraction_sum = 0.0
+
+        for ff_id in intersect(src_outneighbor_ids, node_id_set)
+            ff_idx = findsorted(node_id, ff_id)
+            frac = fraction[ff_idx]
+            fraction_sum += frac
+
+            if frac <= 0
+                errors = true
+                @error(
+                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id."
+                )
+            end
+        end
+
+        if fraction_sum ≉ 1
+            errors = true
+            @error(
+                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
+            )
+        end
+    end
     return !errors
 end

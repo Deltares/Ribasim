@@ -26,7 +26,7 @@ end
 
 @testset "fixed timestepping" begin
     dict = to_dict(config_template)
-    dt = 3600
+    dt = 10
     dict["solver"] = Ribasim.Solver(; algorithm = "ImplicitEuler", adaptive = false, dt)
     config = from_dict(Ribasim.Config, dict)
     @test config.solver.algorithm == "ImplicitEuler"

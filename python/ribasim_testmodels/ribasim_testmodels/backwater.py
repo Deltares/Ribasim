@@ -54,9 +54,9 @@ def backwater_model():
     # Rectangular profile, width of 1.0 m.
     profile = pd.DataFrame(
         data={
-            "node_id": np.repeat(ids[node_type == "Basin"], 3),
-            "area": [0.0, 20.0, 20.0] * n_basin,
-            "level": [0.0, 0.01, 1.0] * n_basin,
+            "node_id": np.repeat(ids[node_type == "Basin"], 2),
+            "area": [20.0, 20.0] * n_basin,
+            "level": [0.0, 1.0] * n_basin,
         }
     )
     static = pd.DataFrame(

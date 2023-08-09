@@ -149,6 +149,51 @@ end
     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
 end
 
+# The second order linear inhomogeneous ODE for this model is derived by
+# differentiating the equation for the storage of the controlled basin
+# once to time to get rid of the integral term.
+@testset "PID control" begin
+    toml_path =
+        normpath(@__DIR__, "../../data/pid_control_equation/pid_control_equation.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    p = model.integrator.p
+    (; basin, pid_control) = p
+
+    storage = Ribasim.get_storages_and_levels(model).storage[:]
+    t = Ribasim.timesteps(model)
+
+    K_p = pid_control.proportional[1]
+    K_i = pid_control.integral[1]
+    K_d = pid_control.derivative[1]
+    storage_min = 50
+    level_min = basin.level[1][2]
+    SP = basin.target_level[1]
+    storage0 = storage[1]
+    area = basin.area[1][2]
+    level0 = level_min + (storage0 - storage_min) / area
+
+    α = 1 - K_d / area
+    β = -K_p / area
+    γ = -K_i / area
+    δ = -K_i * (SP - level_min + storage_min / area)
+
+    λ_1 = (-β + sqrt(β^2 - 4 * α * γ)) / (2 * α)
+    λ_2 = (-β - sqrt(β^2 - 4 * α * γ)) / (2 * α)
+
+    c_1 = storage0 - δ / γ
+    c_2 = -K_p * (SP - level0) / (1 - K_d / area)
+
+    Δλ = λ_2 - λ_1
+    k_1 = (λ_2 * c_1 - c_2) / Δλ
+    k_2 = (-λ_1 * c_1 + c_2) / Δλ
+
+    storage_predicted = @. k_1 * exp(λ_1 * t) + k_2 * exp(λ_2 * t) + δ / γ
+
+    @test all(isapprox.(storage, storage_predicted; rtol = 0.001))
+end
+
 # Simple solutions:
 # storage1 = storage1(t0) + (t-t0)*(frac*q_boundary - q_pump)
 # storage2 = storage2(t0) + (t-t0)*q_pump
@@ -161,7 +206,7 @@ end
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p
 
-    q_boundary = flow_boundary.flow_rate[1]
+    q_boundary = flow_boundary.flow_rate[1].u[1]
     q_pump = pump.flow_rate[1]
     frac = fractional_flow.fraction[1]
 
