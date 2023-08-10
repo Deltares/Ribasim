@@ -77,7 +77,7 @@ def pump_discrete_control_model() -> ribasim.Model:
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
-    # Setup the control:
+    # Setup the discrete control:
     condition = pd.DataFrame(
         data={
             "node_id": [5, 5],
@@ -376,13 +376,13 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [3]}))
 
-    # Setup the control:
+    # Setup the discrete control:
     condition = pd.DataFrame(
         data={
             "node_id": [4],
-            "listen_feature_id": 1,
-            "variable": "level",
-            "greater_than": 0.5,
+            "listen_feature_id": [1],
+            "variable": ["level"],
+            "greater_than": [0.5],
         }
     )
 
