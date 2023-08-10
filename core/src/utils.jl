@@ -378,6 +378,56 @@ function get_compressor(config::Config)
     end
 end
 
+"Check whether control states are defined for discrete controlled nodes."
+function valid_discrete_control(p::Parameters)::Bool
+    (; discrete_control, connectivity, lookup) = p
+    (; graph_control) = connectivity
+    (; node_id, logic_mapping) = discrete_control
+
+    errors = false
+
+    for id in node_id
+        # Get control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
+
+        for (key, control_state) in logic_mapping
+            if key[1] == id
+                push!(control_states_discrete_control, control_state)
+            end
+        end
+
+        # Check whether these control states are defined for the
+        # control outneighbors
+        for id_outneighbor in outneighbors(graph_control, id)
+
+            # Node object for the outneighbor node type
+            node = getfield(p, lookup[id_outneighbor])
+
+            # Get control states of the controlled node
+            control_states_controlled = Set{String}()
+
+            # It is known that this node type has a control mapping, otherwise
+            # connectivity validation would have failed.
+            for (controlled_id, control_state) in keys(node.control_mapping)
+                if controlled_id == id_outneighbor
+                    push!(control_states_controlled, control_state)
+                end
+            end
+
+            undefined_control_states =
+                setdiff(control_states_discrete_control, control_states_controlled)
+
+            if !isempty(undefined_control_states)
+                undefined_list = collect(undefined_control_states)
+                node_type = typeof(node)
+                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.

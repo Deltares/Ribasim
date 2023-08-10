@@ -21,6 +21,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
+        if !valid_discrete_control(parameters)
+            error("Invalid discrete control state definition(s).")
+        end
+
         (; pid_control, connectivity, basin, pump, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
