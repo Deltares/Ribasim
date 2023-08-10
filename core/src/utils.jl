@@ -414,10 +414,8 @@ function valid_discrete_control(p::Parameters)::Bool
                 end
             end
 
-            undefined_control_states = filter(
-                control_state -> !(control_state in control_states_controlled),
-                control_states_discrete_control,
-            )
+            undefined_control_states =
+                setdiff(control_states_discrete_control, control_states_controlled)
 
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
