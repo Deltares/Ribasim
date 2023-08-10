@@ -382,7 +382,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "Flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of $node_type #$id_controlled."
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of #$id_controlled."
         end
     end
 
@@ -392,7 +392,7 @@ function valid_flow_rates(
         end
         if flow_rate_ < 0.0
             errors = true
-            @error "Flow rates must be non-negative, found $flow_rate_ for static $node_type #$id."
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static #$id."
         end
     end
 
