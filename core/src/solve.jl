@@ -271,6 +271,30 @@ struct Pump <: AbstractParameterNode
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
+
+    function Pump(
+        node_id,
+        active,
+        flow_rate,
+        min_flow_rate,
+        max_flow_rate,
+        control_mapping,
+        is_pid_controlled,
+    )
+        if valid_flow_rates(node_id, flow_rate, control_mapping, :Pump)
+            return new(
+                node_id,
+                active,
+                flow_rate,
+                min_flow_rate,
+                max_flow_rate,
+                control_mapping,
+                is_pid_controlled,
+            )
+        else
+            error("Invalid Pump flow rate(s).")
+        end
+    end
 end
 
 """
@@ -290,6 +314,30 @@ struct Weir <: AbstractParameterNode
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
+
+    function Weir(
+        node_id,
+        active,
+        flow_rate,
+        min_flow_rate,
+        max_flow_rate,
+        control_mapping,
+        is_pid_controlled,
+    )
+        if valid_flow_rates(node_id, flow_rate, control_mapping, :Weir)
+            return new(
+                node_id,
+                active,
+                flow_rate,
+                min_flow_rate,
+                max_flow_rate,
+                control_mapping,
+                is_pid_controlled,
+            )
+        else
+            error("Invalid Weir flow rate(s).")
+        end
+    end
 end
 
 """
@@ -824,12 +872,6 @@ function formulate!(
     (; node_id, active, flow_rate, is_pid_controlled) = node
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
-        if rate < 0
-            error(
-                "$(typeof(node)) flow rate must be non-negative, found $rate for Pump #$id.",
-            )
-        end
-
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 

@@ -359,6 +359,46 @@ function valid_profiles(
     return errors
 end
 
+"""
+Test whether static or discrete controlled flow rates are indeed non-negative.
+"""
+function valid_flow_rates(
+    node_id::Vector{Int},
+    flow_rate::Vector{Float64},
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple},
+    node_type::Symbol,
+)::Bool
+    errors = false
+
+    # Collect ids of discrete controlled nodes so that they do not give another error
+    # if their initial value is also invalid.
+    ids_controlled = Int[]
+
+    for (key, control_values) in pairs(control_mapping)
+        id_controlled = key[1]
+        push!(ids_controlled, id_controlled)
+        flow_rate_ = get(control_values, :flow_rate, 1)
+
+        if flow_rate_ < 0.0
+            errors = true
+            control_state = key[2]
+            @error "Flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of $node_type #$id_controlled."
+        end
+    end
+
+    for (id, flow_rate_) in zip(node_id, flow_rate)
+        if id in ids_controlled
+            continue
+        end
+        if flow_rate_ < 0.0
+            errors = true
+            @error "Flow rates must be non-negative, found $flow_rate_ for static $node_type #$id."
+        end
+    end
+
+    return !errors
+end
+
 function valid_pid_connectivity(
     pid_control_node_id::Vector{Int},
     pid_control_listen_node_id::Vector{Int},
