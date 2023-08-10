@@ -106,7 +106,7 @@ name it must have in the GeoPackage if it is stored there.
   - `FractionalFlow / static`: fractions
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
-- FlowBoundary: sets a precribed flow like a one-sided pump
+- FlowBoundary: sets a precribed flow into the model
   - `FlowBoundary / static`: flow rate
   - `FlowBoundary / time`: dynamic flow rate
 - LinearResistance: bidirectional flow based on water level difference between Basins
@@ -186,6 +186,7 @@ potential_evaporation | Float64 | $m s^{-1}$   | non-negative
 drainage              | Float64 | $m^3 s^{-1}$ | non-negative
 infiltration          | Float64 | $m^3 s^{-1}$ | non-negative
 urban_runoff          | Float64 | $m^3 s^{-1}$ | non-negative
+target_level          | Float64 | $m^3$        | (optional)
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
@@ -206,7 +207,7 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-area      | Float64 | $m^2$        | non-negative, per node_id: start at 0 and increasing
+area      | Float64 | $m^2$        | non-negative, per node_id: start positive and increasing
 level     | Float64 | $m$          | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
@@ -216,14 +217,15 @@ per ID. Using a very large number of rows may impact performance.
 
 node_id |   area | level
 ------- |------- |-------
-      2 |    0.0 |   6.0
+      2 |    1.0 |   6.0
       2 | 1000.0 |   7.0
       2 | 1000.0 |   9.0
-      3 |    0.0 |   2.2
+      3 |    1.0 |   2.2
 
 We use the symbol $A$ for area, $h$ for level and $S$ for storage.
 The profile provides a function $A(h)$ for each basin.
 Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
+The minimum area cannot be zero to avoid numerical issues.
 The maximum area is used to convert the precipitation flux into an inflow.
 
 ### FractionalFlow
@@ -233,7 +235,6 @@ Lets a fraction (in [0,1]) of the incoming flow trough.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
-active        | Bool    | -            | (optional, default true)
 fraction      | Float64 | -            | in the interval [0,1]
 control_state | String  | -            | (optional)
 
@@ -280,14 +281,13 @@ discharge | Float64  | $m^3 s^{-1}$ | non-negative
 Pump water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.
-A negative flow rate means pumping against the edge direction.
-Note that the intake must always be a Basin.
+The intake must be either a Basin or LevelBoundary.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 active                | Bool    | -            | (optional, default true)
-flow_rate             | Float64 | $m^3 s^{-1}$ | -
+flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 control_state         | String  | -            | (optional)
@@ -320,21 +320,23 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
-flow_rate     | Float64 | $m^3 s^{-1}$ | -
+flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
 
 ### FlowBoundary / time
 
 This table is the transient form of the `FlowBoundary` table.
 The only difference is that a time column is added.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
-With this the flow rates can be updated over time.
+With this the flow rates can be updated over time. In between the given times the
+flow rate is interpolated linearly, and outside the flow rate is constant given by the
+nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
 time      | DateTime | -            | sorted
 node_id   | Int      | -            | sorted per time
-flow_rate | Float64  | $m^3 s^{-1}$ | -
+flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 ### LinearResistance
 
@@ -419,7 +421,7 @@ column            | type     | unit    | restriction
 ----------------- | -------- | ------- | -----------
 node_id           | Int      | -       | sorted
 listen_feature_id | Int      | -       |
-variable          | String   | -       | must be "level" or "flow"
+variable          | String   | -       | must be "level" or "flow_rate"
 greater_than      | Float64  | various |
 
 #### DiscreteControl / logic
@@ -455,7 +457,7 @@ control_state   | String
 
 ### PidControl
 
-The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
+The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0. For computational efficiency, if one of the terms should not be used, set its coefficient to `NaN` in stead of $0$.
 
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------

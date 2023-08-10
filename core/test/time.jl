@@ -5,9 +5,12 @@ using Ribasim
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    t = model.saved_flow.t
     flow = [flows[1] for flows in model.saved_flow.saveval]
-    flow_expected = @. 1 + sin(0.5 * π * model.saved_flow.t / t[end])^2
+    i_start = searchsortedlast(flow, 1)
+    i_end = searchsortedfirst(flow, 2)
 
-    @test isapprox(flow, flow_expected, rtol = 0.005)
+    t = model.saved_flow.t[i_start:i_end]
+    flow_expected = @. 1 + sin(0.5 * π * (t - t[1]) / (t[end] - t[1]))^2
+
+    @test isapprox(flow[i_start:i_end], flow_expected, rtol = 0.001)
 end

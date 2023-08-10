@@ -58,9 +58,9 @@ def pump_discrete_control_model() -> ribasim.Model:
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1, 1, 3, 3, 3],
-            "area": [0.0, 100.0, 100.0] * 2,
-            "level": [0.0, 0.001, 1.0] * 2,
+            "node_id": [1, 1, 3, 3],
+            "area": [100.0, 100.0] * 2,
+            "level": [0.0, 1.0] * 2,
         }
     )
 
@@ -75,11 +75,11 @@ def pump_discrete_control_model() -> ribasim.Model:
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [1, 3], "storage": [100.0, 0.0]})
+    state = pd.DataFrame(data={"node_id": [1, 3], "storage": [100.0, 1e-3]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
-    # Setup the control:
+    # Setup the discrete control:
     condition = pd.DataFrame(
         data={
             "node_id": [5, 5],
@@ -149,22 +149,20 @@ def flow_condition_model():
     # Set up the nodes:
     xy = np.array(
         [
-            (0.0, 0.0),  # 1: LevelBoundary
-            (1.0, 0.0),  # 2: LinearResistance
-            (2.0, 0.0),  # 3: Basin
-            (3.0, 0.0),  # 4: Pump
-            (4.0, 0.0),  # 5: LevelBoundary
-            (3.0, 1.0),  # 6: DiscreteControl
+            (0.0, 0.0),  # 1: FlowBoundary
+            (1.0, 0.0),  # 2: Basin
+            (2.0, 0.0),  # 3: Pump
+            (3.0, 0.0),  # 4: Terminal
+            (1.0, 1.0),  # 5: DiscreteControl
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
     node_type = [
-        "LevelBoundary",
-        "LinearResistance",
+        "FlowBoundary",
         "Basin",
         "Pump",
-        "LevelBoundary",
+        "Terminal",
         "DiscreteControl",
     ]
 
@@ -179,8 +177,8 @@ def flow_condition_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 5, 4, 6], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 3, 4], dtype=np.int64)
+    from_id = np.array([1, 2, 3, 5], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -197,15 +195,15 @@ def flow_condition_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [3, 3, 3],
-            "area": [0.0, 100.0, 100.0],
-            "level": [0.0, 0.001, 1.0],
+            "node_id": [2, 2],
+            "area": [100.0, 100.0],
+            "level": [0.0, 1.0],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": [3],
+            "node_id": [2],
             "drainage": [0.0],
             "potential_evaporation": [0.0],
             "infiltration": [0.0],
@@ -214,28 +212,15 @@ def flow_condition_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(data={"node_id": [2], "storage": [2500]})
 
-    # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [1, 5],
-                "level": [10, 10],
-            }
-        )
-    )
-
-    # Setup linear resistance:
-    linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [2], "resistance": [2e4]})
-    )
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
         static=pd.DataFrame(
             data={
-                "node_id": [4, 4],
+                "node_id": [3, 3],
                 "flow_rate": [0.0, 1e-3],
                 "control_state": ["off", "on"],
             }
@@ -245,19 +230,39 @@ def flow_condition_model():
     discrete_control = ribasim.DiscreteControl(
         condition=pd.DataFrame(
             data={
-                "node_id": [6],
-                "listen_feature_id": [2],
-                "variable": ["flow"],
+                "node_id": [5],
+                "listen_feature_id": [1],
+                "variable": ["flow_rate"],
                 "greater_than": [20 / (24 * 60 * 60)],
             }
         ),
         logic=pd.DataFrame(
             data={
-                "node_id": [6, 6],
+                "node_id": [5, 5],
                 "truth_state": ["T", "F"],
                 "control_state": ["off", "on"],
             }
         ),
+    )
+
+    # Setup flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        time=pd.DataFrame(
+            data={
+                "node_id": [1, 1],
+                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                "flow_rate": [0.0, 40 / (24 * 60 * 60)],
+            }
+        )
+    )
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4],
+            }
+        )
     )
 
     # Setup a model:
@@ -266,9 +271,9 @@ def flow_condition_model():
         node=node,
         edge=edge,
         basin=basin,
-        level_boundary=level_boundary,
         pump=pump,
-        linear_resistance=linear_resistance,
+        flow_boundary=flow_boundary,
+        terminal=terminal,
         discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
@@ -333,7 +338,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     profile = pd.DataFrame(
         data={
             "node_id": [1, 1],
-            "area": [0.0, 1000.0],
+            "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
     )
@@ -373,13 +378,13 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [3]}))
 
-    # Setup the control:
+    # Setup the discrete control:
     condition = pd.DataFrame(
         data={
             "node_id": [4],
-            "listen_feature_id": 1,
-            "variable": "level",
-            "greater_than": 0.5,
+            "listen_feature_id": [1],
+            "variable": ["level"],
+            "greater_than": [0.5],
         }
     )
 

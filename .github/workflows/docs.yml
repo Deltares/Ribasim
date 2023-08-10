@@ -37,6 +37,7 @@ jobs:
       - uses: julia-actions/cache@v1
         with:
           cache-compiled: "true"
+          cache-registries: "true"
 
       - name: Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
@@ -60,6 +61,12 @@ jobs:
         run: |
           quartodoc build
           rm objects.json
+
+      - name: Generate Julia docs
+        working-directory: docs
+        run: |
+          julia --project -e "using Pkg; Pkg.instantiate()"
+          julia --project make.jl
 
       - name: Render Quarto Project
         run: "quarto render docs --to html --execute"

@@ -11,11 +11,14 @@ from ribasim_testmodels import (
     crossing_specific_control_model,
     flow_boundary_time_model,
     flow_condition_model,
+    invalid_control_states_model,
+    invalid_fractional_flow_model,
     invalid_qh_model,
     linear_resistance_model,
     manning_resistance_model,
-    miscellaneous_nodes_model,
-    pid_control_model_1,
+    misc_nodes_model,
+    pid_control_equation_model,
+    pid_control_model,
     pump_discrete_control_model,
     rating_curve_model,
     tabulated_rating_curve_control_model,
@@ -51,7 +54,7 @@ if __name__ == "__main__":
     trivial_model().write(datadir / "trivial")
     bucket_model().write(datadir / "bucket")
     basic_model().write(datadir / "basic")
-    basic_transient_model(basic_model()).write(datadir / "basic-transient")
+    basic_transient_model(basic_model()).write(datadir / "basic_transient")
     tabulated_rating_curve_model().write(datadir / "tabulated_rating_curve")
     tabulated_rating_curve_control_model().write(
         datadir / "tabulated_rating_curve_control"
@@ -62,9 +65,12 @@ if __name__ == "__main__":
     linear_resistance_model().write(datadir / "linear_resistance")
     rating_curve_model().write(datadir / "rating_curve")
     manning_resistance_model().write(datadir / "manning_resistance")
-    pid_control_model_1().write(datadir / "pid_1")
-    miscellaneous_nodes_model().write(datadir / "misc_nodes")
+    pid_control_model().write(datadir / "pid_control")
+    misc_nodes_model().write(datadir / "misc_nodes")
     invalid_qh_model().write(datadir / "invalid_qh")
+    invalid_fractional_flow_model().write(datadir / "invalid_fractional_flow")
     flow_boundary_time_model().write(datadir / "flow_boundary_time")
     crossing_specific_control_model().write(datadir / "crossing_specific_control")
     conditions_on_discrete_flow_model().write(datadir / "conditions_on_discrete_flow")
+    pid_control_equation_model().write(datadir / "pid_control_equation")
+    invalid_control_states_model().write(datadir / "invalid_control_states")

@@ -4,7 +4,7 @@ import pandas as pd
 import ribasim
 
 
-def pid_control_model_1():
+def pid_control_model():
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
 
     xy = np.array(
@@ -60,6 +60,7 @@ def pid_control_model_1():
 
     level = np.linspace(0, R, n)
     area = np.pi * level * (2 * R - level)
+    area[0] = 0.01
 
     profile = pd.DataFrame(data={"node_id": n * [2], "level": level, "area": area})
 
@@ -124,7 +125,7 @@ def pid_control_model_1():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pid_1",
+        modelname="pid_control",
         node=node,
         edge=edge,
         basin=basin,
@@ -133,7 +134,7 @@ def pid_control_model_1():
         pump=pump,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-07-01 00:00:00",
     )
 
     return model

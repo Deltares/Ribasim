@@ -9,10 +9,12 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-vcs-permalinks
-      - id: end-of-file-fixer
+      -
+        id: end-of-file-fixer
+        exclude: '.teamcity'
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.280
+    rev: v0.0.282
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -26,6 +28,6 @@ repos:
     hooks:
       - id: nbstripout
   - repo: https://github.com/crate-ci/typos
-    rev: v1.16.1
+    rev: v1.16.2
     hooks:
       - id: typos

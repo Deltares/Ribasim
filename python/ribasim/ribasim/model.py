@@ -323,24 +323,14 @@ class Model(BaseModel):
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
 
-                for listen_feature_id, variable in zip(
-                    data_node_id.listen_feature_id, data_node_id.variable
-                ):
+                for listen_feature_id in data_node_id.listen_feature_id:
                     point_start = self.node.static.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    if variable == "flow":
-                        edge_line = self.edge.static.geometry[listen_feature_id - 1]
-                        x_end.append(np.mean(edge_line.xy[0]))
-                        y_end.append(np.mean(edge_line.xy[1]))
-
-                    else:
-                        point_end = self.node.static.iloc[
-                            listen_feature_id - 1
-                        ].geometry
-                        x_end.append(point_end.x)
-                        y_end.append(point_end.y)
+                    point_end = self.node.static.iloc[listen_feature_id - 1].geometry
+                    x_end.append(point_end.x)
+                    y_end.append(point_end.y)
 
         if self.pid_control:
             static = self.pid_control.static

@@ -55,11 +55,15 @@ function create_storage_tables(
     return area, level, storage
 end
 
+"""
+Compute the area and level of a basin given its storage.
+Also returns darea/dlevel as it is needed for the Jacobian.
+"""
 function get_area_and_level(
     basin::Basin,
     state_idx::Int,
     storage::Float64,
-)::Tuple{Float64, Float64}
+)::Tuple{Float64, Float64, Float64}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -72,7 +76,7 @@ function get_area_and_level(
     area_discrete::Vector{Float64},
     level_discrete::Vector{Float64},
     storage::Float64,
-)::Tuple{Float64, Float64}
+)::Tuple{Float64, Float64, Float64}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -80,6 +84,13 @@ function get_area_and_level(
         # This can only happen if the storage is 0
         level = level_discrete[1]
         area = area_discrete[1]
+
+        level_lower = level
+        level_higher = level_discrete[2]
+        area_lower = area
+        area_higher = area_discrete[2]
+
+        darea = (area_higher - area_lower) / (level_higher - level_lower)
 
     elseif storage_idx == length(storage_discrete) + 1
         # With a storage above the profile, use a linear extrapolation of area(level)
@@ -96,14 +107,14 @@ function get_area_and_level(
 
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
+            darea = 0.0
             area = area_lower
             level =
                 level_higher +
                 level_diff * (storage - storage_higher) / (storage_higher - storage_lower)
         else
-            area = sqrt(
-                area_higher^2 + 2 * (storage - storage_higher) * area_diff / level_diff,
-            )
+            darea = area_diff / level_diff
+            area = sqrt(area_higher^2 + 2 * (storage - storage_higher) * darea)
             level = level_lower + level_diff * (area - area_lower) / area_diff
         end
 
@@ -120,19 +131,20 @@ function get_area_and_level(
 
         if area_diff ≈ 0
             # Constant area means linear interpolation of level
+            darea = 0.0
             area = area_lower
             level =
                 level_lower +
                 level_diff * (storage - storage_lower) / (storage_higher - storage_lower)
 
         else
-            area =
-                sqrt(area_lower^2 + 2 * (storage - storage_lower) * area_diff / level_diff)
+            darea = area_diff / level_diff
+            area = sqrt(area_lower^2 + 2 * (storage - storage_lower) * darea)
             level = level_lower + level_diff * (area - area_lower) / area_diff
         end
     end
 
-    return area, level
+    return area, level, darea
 end
 
 """
@@ -140,9 +152,11 @@ For an element `id` and a vector of elements `ids`, get the range of indices of 
 consecutive block of `id`.
 Returns the empty range `1:0` if `id` is not in `ids`.
 
-```
-#                  1 2 3 4 5 6 7 8 9
-findlastgroup(2, [5,4,2,2,5,2,2,2,1])  # -> 6:8
+```jldoctest
+#                         1 2 3 4 5 6 7 8 9
+Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
+# output
+6:8
 ```
 """
 function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
@@ -154,10 +168,33 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_begin = if isnothing(idx_block_begin)
         1
     else
-        # can happen if that if id is the only ID in ids
+        # can happen if that id is the only ID in ids
         idx_block_begin + 1
     end
     return idx_block_begin:idx_block_end
+end
+
+function flow_rate_interpolation(
+    starttime::DateTime,
+    t_end::Float64,
+    time::AbstractVector,
+    node_id::Int,
+)::Tuple{LinearInterpolation, Bool}
+    rows = searchsorted(time.node_id, node_id)
+    flow_rates = time.flow_rate[rows]
+    times = seconds_since.(time.time[rows], starttime)
+    # Add extra timestep at start for constant extrapolation
+    if times[1] > 0
+        pushfirst!(times, 0.0)
+        pushfirst!(flow_rates, flow_rates[1])
+    end
+    # Add extra timestep at end for constant extrapolation
+    if times[end] < t_end
+        push!(times, t_end)
+        push!(flow_rates, flow_rates[end])
+    end
+
+    return LinearInterpolation(flow_rates, times), allunique(times)
 end
 
 function qh_interpolation(
@@ -328,6 +365,69 @@ function basin_bottoms(
     return bottom_a, bottom_b
 end
 
+"Get the compressor based on the Config"
+function get_compressor(config::Config)
+    compressor = config.output.compression
+    compressionlevel = config.output.compression_level
+    return if compressor == lz4
+        c = Arrow.LZ4FrameCompressor(; compressionlevel)
+        Arrow.CodecLz4.TranscodingStreams.initialize(c)
+    elseif compressor == zstd
+        c = Arrow.ZstdCompressor(; level = compressionlevel)
+        Arrow.CodecZstd.TranscodingStreams.initialize(c)
+    end
+end
+
+"Check whether control states are defined for discrete controlled nodes."
+function valid_discrete_control(p::Parameters)::Bool
+    (; discrete_control, connectivity, lookup) = p
+    (; graph_control) = connectivity
+    (; node_id, logic_mapping) = discrete_control
+
+    errors = false
+
+    for id in node_id
+        # Get control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
+
+        for (key, control_state) in logic_mapping
+            if key[1] == id
+                push!(control_states_discrete_control, control_state)
+            end
+        end
+
+        # Check whether these control states are defined for the
+        # control outneighbors
+        for id_outneighbor in outneighbors(graph_control, id)
+
+            # Node object for the outneighbor node type
+            node = getfield(p, lookup[id_outneighbor])
+
+            # Get control states of the controlled node
+            control_states_controlled = Set{String}()
+
+            # It is known that this node type has a control mapping, otherwise
+            # connectivity validation would have failed.
+            for (controlled_id, control_state) in keys(node.control_mapping)
+                if controlled_id == id_outneighbor
+                    push!(control_states_controlled, control_state)
+                end
+            end
+
+            undefined_control_states =
+                setdiff(control_states_discrete_control, control_states_controlled)
+
+            if !isempty(undefined_control_states)
+                undefined_list = collect(undefined_control_states)
+                node_type = typeof(node)
+                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
@@ -339,8 +439,9 @@ function expand_logic_mapping(
 
     for (node_id, truth_state) in keys(logic_mapping)
         pattern = r"^[TF\*]+$"
-        msg = "Truth state \'$truth_state\' contains illegal characters or is empty."
-        @assert occursin(pattern, truth_state) msg
+        if !occursin(pattern, truth_state)
+            error("Truth state \'$truth_state\' contains illegal characters or is empty.")
+        end
 
         control_state = logic_mapping[(node_id, truth_state)]
         n_wildcards = count(==('*'), truth_state)
@@ -377,4 +478,212 @@ function expand_logic_mapping(
         end
     end
     return logic_mapping_expanded
+end
+
+"""Get all node fieldnames of the parameter object."""
+nodefields(p::Parameters) = (
+    name for
+    name in fieldnames(typeof(p)) if fieldtype(typeof(p), name) <: AbstractParameterNode
+)
+
+"""
+Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
+of the ODE problem. All nodes are taken into consideration, also the ones
+that are inactive.
+"""
+function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
+    (; basin, pid_control) = p
+
+    n_basins = length(basin.node_id)
+    n_states = n_basins + length(pid_control.node_id)
+    jac_prototype = spzeros(n_states, n_states)
+
+    for nodefield in nodefields(p)
+        update_jac_prototype!(jac_prototype, p, getfield(p, nodefield))
+    end
+
+    return jac_prototype
+end
+
+"""
+If both the unique node upstream and the unique node downstream of these
+nodes are basins, then these directly depend on eachother and affect the Jacobian 2x
+Basins always depend on themselves.
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::Union{LinearResistance, ManningResistance},
+)::Nothing
+    (; basin, connectivity) = p
+    (; graph_flow) = connectivity
+
+    for id in node.node_id
+        id_in = only(inneighbors(graph_flow, id))
+        id_out = only(outneighbors(graph_flow, id))
+
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+        has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+        if has_index_in
+            jac_prototype[idx_in, idx_in] = 1.0
+        end
+
+        if has_index_out
+            jac_prototype[idx_out, idx_out] = 1.0
+        end
+
+        if has_index_in && has_index_out
+            jac_prototype[idx_in, idx_out] = 1.0
+            jac_prototype[idx_out, idx_in] = 1.0
+        end
+    end
+    return nothing
+end
+
+"""
+Method for nodes that do not contribute to the Jacobian
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::AbstractParameterNode,
+)::Nothing
+    node_type = nameof(typeof(node))
+
+    if !isa(
+        node,
+        Union{
+            Basin,
+            DiscreteControl,
+            FlowBoundary,
+            FractionalFlow,
+            LevelBoundary,
+            Terminal,
+        },
+    )
+        error(
+            "It is not specified how nodes of type $node_type contribute to the Jacobian prototype.",
+        )
+    end
+    return nothing
+end
+
+"""
+If both the unique node upstream and the nodes down stream (or one node further
+if a fractional flow is in between) are basins, then the downstream basin depends
+on the upstream basin(s) and affect the Jacobian as many times as there are downstream basins
+Upstream basins always depend on themselves.
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::Union{Pump, TabulatedRatingCurve},
+)::Nothing
+    (; basin, fractional_flow, connectivity) = p
+    (; graph_flow) = connectivity
+
+    for id in node.node_id
+        id_in = only(inneighbors(graph_flow, id))
+
+        # For inneighbors only directly connected basins give a contribution
+        has_index_in, idx_in = id_index(basin.node_id, id_in)
+
+        # For outneighbors there can be directly connected basins
+        # or basins connected via a fractional flow
+        # (but not both at the same time!)
+        if has_index_in
+            jac_prototype[idx_in, idx_in] = 1.0
+
+            _, idxs_out =
+                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
+
+            if isempty(idxs_out)
+                id_out = only(outneighbors(graph_flow, id))
+                has_index_out, idx_out = id_index(basin.node_id, id_out)
+
+                if has_index_out
+                    push!(idxs_out, idx_out)
+                end
+            else
+                for idx_out in idxs_out
+                    jac_prototype[idx_in, idx_out] = 1.0
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+The controlled basin affects itself and the basins upstream and downstream of the controlled pump
+affect eachother if there is a basin upstream of the pump. The state for the integral term
+and the controlled basin affect eachother, and the same for the integral state and the basin
+upstream of the pump if it is indeed a basin.
+"""
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    p::Parameters,
+    node::PidControl,
+)::Nothing
+    (; basin, connectivity) = p
+    (; graph_control, graph_flow) = connectivity
+
+    n_basins = length(basin.node_id)
+
+    for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
+        id_pump = only(outneighbors(graph_control, id))
+        id_pump_out = only(inneighbors(graph_flow, id_pump))
+
+        _, listen_idx = id_index(basin.node_id, listen_node_id)
+
+        # Controlled basin affects itself
+        jac_prototype[listen_idx, listen_idx] = 1.0
+
+        # PID control integral state
+        pid_state_idx = n_basins + pid_idx
+        jac_prototype[listen_idx, pid_state_idx] = 1.0
+        jac_prototype[pid_state_idx, listen_idx] = 1.0
+
+        # The basin downstream of the pump
+        has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
+
+        if has_index
+            # The basin downstream of the pump PID control integral state
+            jac_prototype[pid_state_idx, idx_out_out] = 1.0
+
+            # The basin downstream of the pump also depends on the controlled basin
+            jac_prototype[listen_idx, idx_out_out] = 1.0
+        end
+    end
+    return nothing
+end
+
+"""
+Get the node type specific indices of the fractional flows and basins,
+that are consecutively connected to a node of given id.
+"""
+function get_fractional_flow_connected_basins(
+    node_id::Int,
+    basin::Basin,
+    fractional_flow::FractionalFlow,
+    graph_flow::DiGraph{Int},
+)::Tuple{Vector{Int}, Vector{Int}}
+    fractional_flow_idxs = Int[]
+    basin_idxs = Int[]
+
+    for first_outneighbor_id in outneighbors(graph_flow, node_id)
+        if first_outneighbor_id in fractional_flow.node_id
+            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
+            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            if has_index
+                push!(
+                    fractional_flow_idxs,
+                    searchsortedfirst(fractional_flow.node_id, first_outneighbor_id),
+                )
+                push!(basin_idxs, basin_idx)
+            end
+        end
+    end
+    return fractional_flow_idxs, basin_idxs
 end

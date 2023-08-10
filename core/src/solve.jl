@@ -78,6 +78,9 @@ struct Basin{C} <: AbstractParameterNode
     # cache this to avoid recomputation
     current_level::Vector{Float64}
     current_area::Vector{Float64}
+    # The derivative of the area with respect to the level
+    # used for the analytical Jacobian
+    current_darea::Vector{Float64}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -86,8 +89,6 @@ struct Basin{C} <: AbstractParameterNode
     target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
-    # Storage derivative for use in PID controller
-    dstorage::Vector{Float64}
 
     function Basin(
         node_id,
@@ -97,12 +98,12 @@ struct Basin{C} <: AbstractParameterNode
         infiltration,
         current_level,
         current_area,
+        current_darea,
         area,
         level,
         storage,
         target_level,
         time::StructVector{BasinForcingV1, C, Int},
-        dstorage,
     ) where {C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)
@@ -114,15 +115,15 @@ struct Basin{C} <: AbstractParameterNode
                 infiltration,
                 current_level,
                 current_area,
+                current_darea,
                 area,
                 level,
                 storage,
                 target_level,
                 time,
-                dstorage,
             )
         else
-            @error join(errors, "\n")
+            foreach(x -> @error(x), errors)
             error("Errors occurred when parsing Basin data.")
         end
     end
@@ -212,7 +213,6 @@ Requirements:
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
-    active::BitVector
     fraction::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
@@ -233,11 +233,10 @@ node_id: node ID of the FlowBoundary node
 flow_rate: target flow rate
 time: Data of time-dependent flow rates
 """
-struct FlowBoundary{C} <: AbstractParameterNode
+struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Float64}
-    time::StructVector{FlowBoundaryTimeV1, C, Int}
+    flow_rate::Vector{Interpolation}
 end
 
 """
@@ -252,6 +251,7 @@ struct Pump <: AbstractParameterNode
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    is_pid_controlled::BitVector
 end
 
 """
@@ -352,7 +352,7 @@ function valid_n_neighbors(p::Parameters)::Bool
     if isempty(errors)
         return true
     else
-        @error join(errors, "\n")
+        foreach(x -> @error(x), errors)
         return false
     end
 end
@@ -401,6 +401,20 @@ function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Ve
     return errors
 end
 
+function set_current_basin_properties!(
+    basin::Basin,
+    storage::AbstractVector{Float64},
+    t::Real,
+)::Nothing
+    for i in eachindex(storage)
+        s = storage[i]
+        area, level, darea = get_area_and_level(basin, i, s)
+        basin.current_level[i] = level
+        basin.current_area[i] = area
+        basin.current_darea[i] = darea
+    end
+end
+
 """
 Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
@@ -412,12 +426,11 @@ function formulate!(
     t::Real,
 )::Nothing
     for i in eachindex(storage)
-        s = storage[i]
-        area, level = get_area_and_level(basin, i, s)
-        basin.current_level[i] = level
-        basin.current_area[i] = area
-        bottom = basin.level[i][1]
         # add all precipitation that falls within the profile
+        level = basin.current_level[i]
+        area = basin.current_area[i]
+
+        bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         reduction_factor = min(depth, 0.1) / 0.1
@@ -434,14 +447,19 @@ end
 
 function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
-    (; listen_node_id, error) = pid_control
+    (; listen_node_id) = pid_control
+
+    pid_error = pid_control.error
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
         target_level = basin.target_level[listened_node_idx]
-        error[i] = target_level - basin.current_level[listened_node_idx]
+        if isnan(target_level)
+            error("No target level specified for listen basin #$listened_node_id.")
+        end
+        pid_error[i] = target_level - basin.current_level[listened_node_idx]
     end
 end
 
@@ -454,10 +472,9 @@ function continuous_control!(
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
-    (; connectivity, pump, basin) = p
+    (; connectivity, pump, basin, fractional_flow) = p
     (; min_flow_rate, max_flow_rate) = pump
-    (; dstorage) = basin
-    (; graph_control) = connectivity
+    (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
         pid_control
 
@@ -478,34 +495,75 @@ function continuous_control!(
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
+        storage_listened_basin = u.storage[listened_node_idx]
+        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
 
         flow_rate = 0.0
 
-        if !isnan(proportional[i])
-            flow_rate += proportional[i] * error[i]
-        end
-
-        if !isnan(derivative[i])
+        K_d = derivative[i]
+        if !isnan(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
-
-            error_deriv = -dstorage[listened_node_idx] / area
-            flow_rate += derivative[i] * error_deriv
+            D = 1.0 - K_d * reduction_factor / area
+        else
+            D = 1.0
         end
 
-        if !isnan(integral[i])
-            # coefficient * current value of integral
-            flow_rate += integral[i] * integral_value[i]
+        K_p = proportional[i]
+        if !isnan(K_p)
+            flow_rate += reduction_factor * K_p * error[i] / D
+        end
+
+        K_i = integral[i]
+        if !isnan(K_i)
+            flow_rate += reduction_factor * K_i * integral_value[i] / D
+        end
+
+        if !isnan(K_d)
+            dtarget_level = 0.0
+            du_listened_basin_old = du.storage[listened_node_idx]
+            # The expression below is the solution to an implicit equation for
+            # du_listened_basin. This equation results from the fact that if the derivative
+            # term in the PID controller is used, the controlled pump flow rate depends on itself.
+            flow_rate += K_d * (dtarget_level - du_listened_basin_old / area) / D
         end
 
         # Clip values outside pump flow rate bounds
-        flow_rate = max(flow_rate, min_flow_rate[i])
+        flow_rate = clamp(flow_rate, min_flow_rate[i], max_flow_rate[i])
 
-        if !isnan(max_flow_rate[i])
-            flow_rate = min(flow_rate, max_flow_rate[i])
-        end
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
 
         pump.flow_rate[controlled_node_idx] = flow_rate
+        du.storage[listened_node_idx] -= flow_rate
+
+        # Set flow for connected edges
+        src_id = only(inneighbors(graph_flow, controlled_node_id))
+        dst_id = only(outneighbors(graph_flow, controlled_node_id))
+
+        flow[src_id, controlled_node_id] = flow_rate
+        flow[controlled_node_id, dst_id] = flow_rate
+
+        has_index, dst_idx = id_index(basin.node_id, dst_id)
+        if has_index
+            du.storage[dst_idx] += flow_rate
+        end
+
+        for id in outneighbors(graph_flow, controlled_node_id)
+            if id in fractional_flow.node_id
+                after_ff_id = only(outneighbours(graph_flow, id))
+                ff_idx = findsorted(fractional_flow, id)
+                flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
+                flow[id, after_ff_id] = flow_rate_fraction
+
+                has_index, basin_idx = id_index(basin.node_id, after_ff_id)
+
+                if has_index
+                    du.storage[basin_idx] += flow_rate_fraction
+                end
+            end
+        end
     end
     return nothing
 end
@@ -593,7 +651,7 @@ The hydraulic radius is defined as:
 
 Where P is the wetted perimeter.
 
-The "upstream" water depth is used to compute cross-sectional area and
+The average of the upstream and downstream water depth is used to compute cross-sectional area and
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
@@ -638,8 +696,9 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
         R_h_a = A_a / P_a
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
+        k = 1000.0
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(abs(Δh) / L)
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh))
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
@@ -650,49 +709,32 @@ end
 function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, active, fraction) = fractional_flow
+    (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
-
-        if active[i]
-            upstream_id = only(inneighbors(graph_flow, id))
-            flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
-        else
-            flow[id, downstream_id] = 0.0
-        end
+        upstream_id = only(inneighbors(graph_flow, id))
+        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
     end
     return nothing
 end
 
-function formulate!(
-    flow_boundary::FlowBoundary,
-    p::Parameters,
-    storage::AbstractVector{Float64},
-)::Nothing
-    (; connectivity, basin) = p
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Nothing
+    (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
-    for (id, isactive, rate) in zip(node_id, active, flow_rate)
+    for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
-            if !isactive
+            if !active[i]
                 flow[id, dst_id] = 0.0
                 continue
             end
 
-            # Adding water is always possible
-            if rate >= 0
-                flow[id, dst_id] = rate
-            else
-                hasindex, basin_idx = id_index(basin.node_id, dst_id)
-                @assert hasindex "FlowBoundary intake not a Basin"
+            rate = flow_rate[i](t)
 
-                s = storage[basin_idx]
-                reduction_factor = min(s, 10.0) / 10.0
-                q = reduction_factor * rate
-                flow[id, dst_id] = q
-            end
+            # Adding water is always possible
+            flow[id, dst_id] = rate
         end
     end
 end
@@ -700,8 +742,11 @@ end
 function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})::Nothing
     (; connectivity, basin, level_boundary) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, active, flow_rate) = pump
-    for (id, isactive, rate) in zip(node_id, active, flow_rate)
+    (; node_id, active, flow_rate, is_pid_controlled) = pump
+    for (id, isactive, rate, pid_controlled) in
+        zip(node_id, active, flow_rate, is_pid_controlled)
+        @assert rate >= 0 "Pump flow rate must be positive, found $rate for Pump #$id"
+
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
@@ -711,10 +756,11 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             continue
         end
 
-        # negative flow_rate means pumping against edge direction
-        intake_id = rate >= 0 ? src_id : dst_id
+        if pid_controlled
+            continue
+        end
 
-        hasindex, basin_idx = id_index(basin.node_id, intake_id)
+        hasindex, basin_idx = id_index(basin.node_id, src_id)
 
         if hasindex
             # Pumping from basin
@@ -723,7 +769,7 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             q = reduction_factor * rate
         else
             # Pumping from level boundary
-            @assert intake_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
+            @assert src_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
             q = rate
         end
 
@@ -753,7 +799,11 @@ function formulate!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Nothing
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector{Float64},
+    t::Float64,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -766,40 +816,44 @@ function formulate_flows!(p::Parameters, storage::AbstractVector{Float64})::Noth
     formulate!(linear_resistance, p)
     formulate!(manning_resistance, p)
     formulate!(tabulated_rating_curve, p)
-    formulate!(flow_boundary, p, storage)
+    formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
 
     return nothing
 end
 
+"""
+The right hand side function of the system of ODEs set up by Ribasim.
+"""
 function water_balance!(
     du::ComponentVector{Float64},
     u::ComponentVector{Float64},
     p::Parameters,
-    t,
+    t::Float64,
 )::Nothing
     (; connectivity, basin, pid_control) = p
 
     storage = u.storage
     integral = u.integral
 
-    basin.dstorage .= du.storage
-
     du .= 0.0
     nonzeros(connectivity.flow) .= 0.0
 
-    # ensures current_level is current
+    # Ensures current_* vectors are current
+    set_current_basin_properties!(basin, storage, t)
+
+    # Basin forcings
     formulate!(du, basin, storage, t)
 
-    # PID control (does not set flows)
-    continuous_control!(u, du, pid_control, p, integral)
-
     # First formulate intermediate flows
-    formulate_flows!(p, storage)
+    formulate_flows!(p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, basin)
+
+    # PID control (changes the du of PID controlled basins)
+    continuous_control!(u, du, pid_control, p, integral)
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain

@@ -13,7 +13,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
-    local parameters, state, n
+    local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
 
@@ -21,7 +21,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        (; pid_control, connectivity, basin) = parameters
+        if !valid_discrete_control(parameters)
+            error("Invalid discrete control state definition(s).")
+        end
+
+        (; pid_control, connectivity, basin, pump, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
@@ -31,6 +35,24 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         )
             error("Invalid PidControl connectivity.")
         end
+
+        if !valid_fractional_flow(
+            connectivity.graph_flow,
+            fractional_flow.node_id,
+            fractional_flow.fraction,
+        )
+            error("Invalid fractional flow node combinations found.")
+        end
+
+        for id in pid_control.node_id
+            id_pump = only(outneighbors(connectivity.graph_control, id))
+            pump_idx = findsorted(pump.node_id, id_pump)
+            pump.is_pid_controlled[pump_idx] = true
+        end
+
+        # tstops for transient flow_boundary
+        time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
+        tstops = get_tstops(time_flow_boundary.time, config.starttime)
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -54,8 +76,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
+
+    jac_prototype = get_jac_prototype(parameters)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
+
     @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(water_balance!, u0, timespan, parameters)
+        prob = ODEProblem(RHS, u0, timespan, parameters)
     end
 
     callback, saved_flow = create_callbacks(parameters)
@@ -66,6 +92,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         progress = true,
         progress_name = "Simulating",
         callback,
+        tstops,
         config.solver.saveat,
         config.solver.adaptive,
         config.solver.dt,
@@ -80,9 +107,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 end
 
 function BMI.finalize(model::Model)::Model
-    write_basin_output(model)
-    write_flow_output(model)
-    write_discrete_control_output(model)
+    compress = get_compressor(model.config)
+    write_basin_output(model, compress)
+    write_flow_output(model, compress)
+    write_discrete_control_output(model, compress)
     return model
 end
 
@@ -116,17 +144,13 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
-    (; starttime, basin, tabulated_rating_curve, flow_boundary, discrete_control) =
-        parameters
+    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
-
-    tstops = get_tstops(flow_boundary.time.time, starttime)
-    flow_boundary_cb = PresetTimeCallback(tstops, update_flow_boundary!)
 
     # add a single time step's contribution to the water balance step's totals
     # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
@@ -147,12 +171,10 @@ function create_callbacks(
             save_flow_cb,
             basin_cb,
             tabulated_rating_curve_cb,
-            flow_boundary_cb,
             discrete_control_cb,
         )
     else
-        callback =
-            CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb, flow_boundary_cb)
+        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
     end
 
     return callback, saved_flow
@@ -161,7 +183,7 @@ end
 """
 Listens for changes in condition truths.
 """
-function discrete_control_condition(out, storage, t, integrator)
+function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
@@ -172,7 +194,7 @@ function discrete_control_condition(out, storage, t, integrator)
             discrete_control.greater_than,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, storage)
+        value = get_value(p, listen_feature_id, variable, u, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -180,34 +202,32 @@ end
 
 """
 Get a value for a condition. Currently supports getting levels from basins and flows
-from flow edges.
+from flow boundaries.
 """
-function get_value(p::Parameters, feature_id::Int, variable::String, storage)
-    (; basin) = p
+function get_value(
+    p::Parameters,
+    feature_id::Int,
+    variable::String,
+    storage::AbstractVector{Float64},
+    t::Float64,
+)
+    (; basin, flow_boundary) = p
 
     if variable == "level"
         hasindex, basin_idx = id_index(basin.node_id, feature_id)
-        _, level = get_area_and_level(basin, basin_idx, storage[basin_idx])
+        _, level, _ = get_area_and_level(basin, basin_idx, storage[basin_idx])
         value = level
 
-    elseif variable == "flow"
+    elseif variable == "flow_rate"
+        flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
 
-        # Calculate all areas and levels for given storage
-        # TODO: This could be done cheaper, only looking at
-        # those basins that are relevant for the required flow
-        for i in eachindex(storage)
-            s = storage[i]
-            area, level = get_area_and_level(basin, i, s)
-            basin.current_level[i] = level
-            basin.current_area[i] = area
+        if isnothing(flow_boundary_idx)
+            error("Flow condition node #$feature_id is not a flow boundary.")
         end
 
-        formulate_flows!(p, storage)
-        connectivity = p.connectivity
-        edge = connectivity.edge_ids_flow_inv[feature_id]
-        value = connectivity.flow[edge]
+        value = flow_boundary.flow_rate[flow_boundary_idx](t)
     else
-        throw(ValueError("Unsupported condition variable $variable."))
+        error("Unsupported condition variable $variable.")
     end
 
     return value
@@ -366,20 +386,6 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         tables[i] = LinearInterpolation(discharge, level)
     end
     return nothing
-end
-
-"Load updates from 'FlowBoundary / time' into parameters"
-function update_flow_boundary!(integrator)::Nothing
-    (; node_id, flow_rate, time) = integrator.p.flow_boundary
-    t = datetime_since(integrator.t, integrator.p.starttime)
-
-    rows = searchsorted(time.time, t)
-    timeblock = view(time, rows)
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, row.node_id)
-        flow_rate[i] = row.flow_rate
-    end
 end
 
 function BMI.update(model::Model)::Model

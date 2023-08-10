@@ -66,6 +66,7 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     toml_path = normpath(@__DIR__, "../../data/linear_resistance/linear_resistance.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
 
     t = Ribasim.timesteps(model)
@@ -75,7 +76,7 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
     limit_storage = 450.0
     decay_rate = -1 / (basin_area * p.linear_resistance.resistance[1])
     storage_analytic =
-        limit_storage .+ (storage[1] - limit_storage) .* exp.(decay_rate .* t)
+        @. limit_storage + (storage[1] - limit_storage) * exp.(decay_rate * t)
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
@@ -89,6 +90,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/rating_curve/rating_curve.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
 
     t = Ribasim.timesteps(model)
@@ -97,7 +99,7 @@ end
     storage_min = 50.0
     α = 24 * 60 * 60
     storage_analytic =
-        storage_min .+ 1 ./ (t ./ (α * basin_area^2) .+ 1 / (storage[1] - storage_min))
+        @. storage_min + 1 / (t / (α * basin_area^2) + 1 / (storage[1] - storage_min))
 
     @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
 end
@@ -120,6 +122,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/manning_resistance/manning_resistance.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
     (; manning_resistance) = p
 
@@ -129,7 +132,7 @@ end
     storage_min = 50.0
     level_min = 1.0
     basin_area = p.basin.area[1][2]
-    level = level_min .+ (storage .- storage_min) / basin_area
+    level = @. level_min + (storage - storage_min) / basin_area
     C = sum(storage_both[:, 1])
     Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
     w = manning_resistance.profile_width[1]
@@ -137,13 +140,58 @@ end
     n = manning_resistance.manning_n[1]
     K = -((w * Λ / 2)^(5 / 3)) * ((w + Λ)^(2 / 3)) / (basin_area * n * sqrt(L))
 
-    RHS = sqrt.(2 * level .- Λ)
-    RHS ./= ((2 .* level .+ w) .* (2 * Λ .- 2 .* level .+ w) ./ ((Λ + w)^2)) .^ (2 / 3)
-    RHS ./= (1 ./ (4 * Λ .* level .+ 2 * Λ * w .- 4 .* level .^ 2 .+ w^2)) .^ (2 / 3)
+    RHS = @. sqrt(2 * level - Λ)
+    RHS ./= @. ((2 * level + w) * (2 * Λ - 2 * level + w) / ((Λ + w)^2))^(2 / 3)
+    RHS ./= @. (1 / (4 * Λ * level + 2 * Λ * w - 4 * level^2 + w^2))^(2 / 3)
 
-    LHS = RHS[1] .+ t .* K
+    LHS = @. RHS[1] + t * K
 
     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
+end
+
+# The second order linear inhomogeneous ODE for this model is derived by
+# differentiating the equation for the storage of the controlled basin
+# once to time to get rid of the integral term.
+@testset "PID control" begin
+    toml_path =
+        normpath(@__DIR__, "../../data/pid_control_equation/pid_control_equation.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    p = model.integrator.p
+    (; basin, pid_control) = p
+
+    storage = Ribasim.get_storages_and_levels(model).storage[:]
+    t = Ribasim.timesteps(model)
+
+    K_p = pid_control.proportional[1]
+    K_i = pid_control.integral[1]
+    K_d = pid_control.derivative[1]
+    storage_min = 50
+    level_min = basin.level[1][2]
+    SP = basin.target_level[1]
+    storage0 = storage[1]
+    area = basin.area[1][2]
+    level0 = level_min + (storage0 - storage_min) / area
+
+    α = 1 - K_d / area
+    β = -K_p / area
+    γ = -K_i / area
+    δ = -K_i * (SP - level_min + storage_min / area)
+
+    λ_1 = (-β + sqrt(β^2 - 4 * α * γ)) / (2 * α)
+    λ_2 = (-β - sqrt(β^2 - 4 * α * γ)) / (2 * α)
+
+    c_1 = storage0 - δ / γ
+    c_2 = -K_p * (SP - level0) / (1 - K_d / area)
+
+    Δλ = λ_2 - λ_1
+    k_1 = (λ_2 * c_1 - c_2) / Δλ
+    k_2 = (-λ_1 * c_1 + c_2) / Δλ
+
+    storage_predicted = @. k_1 * exp(λ_1 * t) + k_2 * exp(λ_2 * t) + δ / γ
+
+    @test all(isapprox.(storage, storage_predicted; rtol = 0.001))
 end
 
 # Simple solutions:
@@ -154,16 +202,17 @@ end
     toml_path = normpath(@__DIR__, "../../data/misc_nodes/misc_nodes.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p
 
-    q_boundary = flow_boundary.flow_rate[1]
+    q_boundary = flow_boundary.flow_rate[1].u[1]
     q_pump = pump.flow_rate[1]
     frac = fractional_flow.fraction[1]
 
     storage_both = Ribasim.get_storages_and_levels(model).storage
     t = Ribasim.timesteps(model)
 
-    @test storage_both[1, :] ≈ storage_both[1, 1] .+ t .* (frac * q_boundary - q_pump)
-    @test storage_both[2, :] ≈ storage_both[2, 1] .+ t .* q_pump
+    @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
+    @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end
