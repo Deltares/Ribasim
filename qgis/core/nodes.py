@@ -224,6 +224,21 @@ class Edge(Input):
     def is_spatial(cls):
         return True
 
+    def set_editor_widget(self) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName("edge_type")
+        setup = QgsEditorWidgetSetup(
+            "ValueMap",
+            {"map": {node: node for node in EDGETYPES}},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
+        layer_form_config = layer.editFormConfig()
+        layer_form_config.setReuseLastValue(1, True)
+        layer.setEditFormConfig(layer_form_config)
+
+        return
+
     @property
     def renderer(self) -> QgsCategorizedSymbolRenderer:
         MARKERS = {
@@ -263,14 +278,6 @@ class Edge(Input):
             attrName="edge_type", categories=categories
         )
         return renderer
-
-    def set_read_only(self) -> None:
-        layer = self.layer
-        config = layer.editFormConfig()
-        for index in range(len(layer.fields())):
-            config.setReadOnly(index, True)
-        layer.setEditFormConfig(config)
-        return
 
 
 class BasinProfile(Input):
@@ -447,6 +454,7 @@ NODES = {cls.input_type: cls for cls in Input.__subclasses__()}
 NONSPATIALNODETYPES = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
+EDGETYPES = {"flow", "control"}
 
 
 def load_nodes_from_geopackage(path: str) -> Dict[str, Input]:
