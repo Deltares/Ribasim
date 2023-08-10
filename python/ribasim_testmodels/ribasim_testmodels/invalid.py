@@ -64,6 +64,7 @@ def invalid_qh_model():
     basin = ribasim.Basin(profile=profile, static=static)
 
     rating_curve_static = pd.DataFrame(
+        # Invalid: levels must not be repeated
         data={"node_id": [1, 1], "level": [0.0, 0.0], "discharge": [1.0, 2.0]}
     )
     rating_curve_time = pd.DataFrame(
@@ -73,6 +74,7 @@ def invalid_qh_model():
                 pd.Timestamp("2020-01"),
                 pd.Timestamp("2020-01"),
             ],
+            # Invalid: levels must not be repeated
             "level": [0.0, 0.0],
             "discharge": [1.0, 2.0],
         }
@@ -130,6 +132,7 @@ def invalid_fractional_flow_model():
     )
 
     # Setup the edges:
+    # Invalid: Node #7 combines fractional flow outneighbors with other outneigbor types.
     from_id = np.array([1, 7, 7, 3, 7, 4], dtype=np.int64)
     to_id = np.array([7, 2, 3, 5, 4, 6], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
@@ -172,6 +175,7 @@ def invalid_fractional_flow_model():
 
     # Setup the fractional flow:
     fractional_flow = ribasim.FractionalFlow(
+        # Invalid: fractions must be non-negative and add up to approximately 1
         static=pd.DataFrame(data={"node_id": [3, 4], "fraction": [-0.1, 0.5]})
     )
 
@@ -259,7 +263,12 @@ def invalid_control_states_model():
     # Setup pump:
     pump = ribasim.Pump(
         static=pd.DataFrame(
+            # Invalid: DiscreteControl node #4 with control state 'foo'
+            # points to this pump but this control state is not defined for
+            # this pump. The pump having a control state that is not defined
+            # for DiscreteControl node #4 is fine.
             data={
+                "control_state": ["bar"],
                 "node_id": [2],
                 "flow_rate": [0.5 / 3600],
             }
@@ -276,7 +285,7 @@ def invalid_control_states_model():
         )
     )
 
-    # Setup the control:
+    # Setup the discrete control:
     condition = pd.DataFrame(
         data={
             "node_id": [4],

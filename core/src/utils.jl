@@ -398,8 +398,10 @@ function valid_discrete_control(p::Parameters)::Bool
 
         # Check whether these control states are defined for the
         # control outneighbors
-        for id_out in outneighbors(graph_control, id)
-            node = getfield(p, lookup[id_out])
+        for id_outneighbor in outneighbors(graph_control, id)
+
+            # Node object for the outneighbor node type
+            node = getfield(p, lookup[id_outneighbor])
 
             # Get control states of the controlled node
             control_states_controlled = Set{String}()
@@ -407,7 +409,7 @@ function valid_discrete_control(p::Parameters)::Bool
             # It is known that this node type has a control mapping, otherwise
             # connectivity validation would have failed.
             for (controlled_id, control_state) in keys(node.control_mapping)
-                if controlled_id == id_out
+                if controlled_id == id_outneighbor
                     push!(control_states_controlled, control_state)
                 end
             end
@@ -420,7 +422,7 @@ function valid_discrete_control(p::Parameters)::Bool
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node)
-                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_out: $undefined_list."
+                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
                 errors = true
             end
         end
