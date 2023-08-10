@@ -9,6 +9,7 @@ from ribasim_testmodels import (
     bucket_model,
     flow_boundary_time_model,
     flow_condition_model,
+    invalid_control_states_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
     linear_resistance_model,
@@ -68,3 +69,4 @@ if __name__ == "__main__":
     invalid_fractional_flow_model().write(datadir / "invalid_fractional_flow")
     flow_boundary_time_model().write(datadir / "flow_boundary_time")
     pid_control_equation_model().write(datadir / "pid_control_equation")
+    invalid_control_states_model().write(datadir / "invalid_control_states")

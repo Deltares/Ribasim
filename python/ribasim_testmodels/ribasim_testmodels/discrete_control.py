@@ -380,9 +380,9 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     condition = pd.DataFrame(
         data={
             "node_id": [4],
-            "listen_feature_id": 1,
-            "variable": "level",
-            "greater_than": 0.5,
+            "listen_feature_id": [1],
+            "variable": ["level"],
+            "greater_than": [0.5],
         }
     )
 

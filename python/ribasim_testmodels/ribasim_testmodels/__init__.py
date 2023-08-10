@@ -20,6 +20,7 @@ from ribasim_testmodels.equations import (
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import (
+    invalid_control_states_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
 )
@@ -46,4 +47,5 @@ __all__ = [
     "flow_boundary_time_model",
     "pid_control_equation_model",
     "invalid_fractional_flow_model",
+    "invalid_control_states_model",
 ]

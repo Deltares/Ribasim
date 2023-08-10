@@ -22,7 +22,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         end
 
         if !valid_discrete_control(parameters)
-            error("Invalid discrete control logic.")
+            error("Invalid discrete control state definition(s).")
         end
 
         (; pid_control, connectivity, basin, pump, fractional_flow) = parameters

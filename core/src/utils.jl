@@ -399,28 +399,28 @@ function valid_discrete_control(p::Parameters)::Bool
         # Check whether these control states are defined for the
         # control outneighbors
         for id_out in outneighbors(graph_control, id)
-            node = getfield(p, p.lookup[id_out])
-            node_type = typeof(node)
-            if hasfield(node_type, :control_mapping)
-                # Get control states of the controlled node
-                control_states_controlled = Set{String}()
-                for (controlled_id, control_state) in keys(node.control_mapping)
-                    if controlled_id == id_out
-                        push!(control_states_controlled, control_state)
-                    end
-                end
+            node = getfield(p, lookup[id_out])
 
-                undefined_control_states = filter(
-                    control_state -> !(control_state in control_states_controlled),
-                    control_states_discrete_control,
-                )
+            # Get control states of the controlled node
+            control_states_controlled = Set{String}()
 
-                if !isempty(undefined_control_states)
-                    @error "These control states from DiscreteControl node #$id are not defined for controlled node #$id_out: $undefined_control_states."
-                    errors = true
+            # It is known that this node type has a control mapping, otherwise
+            # connectivity validation would have failed.
+            for (controlled_id, control_state) in keys(node.control_mapping)
+                if controlled_id == id_out
+                    push!(control_states_controlled, control_state)
                 end
-            else
-                @error "Control outneighbor #$id_out of type $node_type of DiscreteControl node #$id is not controllable."
+            end
+
+            undefined_control_states = filter(
+                control_state -> !(control_state in control_states_controlled),
+                control_states_discrete_control,
+            )
+
+            if !isempty(undefined_control_states)
+                undefined_list = collect(undefined_control_states)
+                node_type = typeof(node)
+                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_out: $undefined_list."
                 errors = true
             end
         end
