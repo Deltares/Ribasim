@@ -160,7 +160,7 @@ def dutch_waterways_model():
     logic = pd.DataFrame(
         data={
             "node_id": 6 * [17],
-            "truth_state": ["FAAAA", "TFAAT", "TFAAF", "AATFF", "AATFT", "AAATA"],
+            "truth_state": ["F****", "TF**T", "TF**F", "**TFF", "**TFT", "***T*"],
             "control_state": [
                 "pump_low",
                 "pump_low",
@@ -171,49 +171,6 @@ def dutch_waterways_model():
             ],
         }
     )
-
-    # TODO: Make this function more generic (can probably be done more efficiently as well)
-    from itertools import product
-
-    def expand_logic(logic):
-        """
-        Expand truth states by creating rows with all possible substitution combinations
-        of 'F' and 'T' for 'A'.
-        """
-        logic_new = pd.DataFrame(columns=("node_id", "truth_state", "control_state"))
-
-        for i, row in logic.iterrows():
-            truth_state = row.truth_state
-            n_substitutions = truth_state.count("A")
-
-            truth_states_expanded = []
-
-            for substitution in product("TF", repeat=n_substitutions):
-                truth_state_expanded = ""
-                index_s = 0
-
-                for truth_value in truth_state:
-                    if truth_value == "A":
-                        truth_state_expanded += substitution[index_s]
-                        index_s += 1
-                    else:
-                        truth_state_expanded += truth_value
-
-                truth_states_expanded.append(truth_state_expanded)
-
-            rows_new = pd.DataFrame(
-                data={
-                    "node_id": row.node_id,
-                    "truth_state": truth_states_expanded,
-                    "control_state": row.control_state,
-                }
-            )
-
-            logic_new = pd.concat([logic_new, rows_new])
-
-        return logic_new
-
-    logic = expand_logic(logic)
 
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
@@ -228,10 +185,6 @@ def dutch_waterways_model():
         pid_control,
         discrete_control,
     )
-
-    # n_nodes = len(node_type)
-    # phi = np.linspace(0, 2 * np.pi, n_nodes, endpoint=False)
-    # xy = np.stack([np.cos(phi), np.sin(phi)], axis=1)
 
     xy = np.array(
         [
