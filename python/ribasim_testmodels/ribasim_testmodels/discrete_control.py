@@ -418,6 +418,15 @@ def crossing_specific_control_model():
     crossing-direction specific.
     """
 
+    # Forcing
+    start = "2020-01-01 00:00:00"
+    end = "2021-01-01 00:00:00"
+    n_times = 1000
+    time = pd.date_range(start=start, end=end, periods=n_times).astype("datetime64[s]")
+    forcing = 3e-3 * np.sin(np.linspace(0.0, 15 * np.pi, n_times))
+    forcing[1 * n_times // 4 : 2 * n_times // 4] = 3e-3
+    forcing[2 * n_times // 4 : 3 * n_times // 4] = -3e-3
+
     xy = np.array(
         [
             (0.0, 0.0),  # 1: FlowBoundary
@@ -468,7 +477,7 @@ def crossing_specific_control_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [2, 2, 2],
+            "node_id": [2, 2],
             "area": [1000.0, 1000.0],
             "level": [0.0, 1.0],
         }
@@ -485,9 +494,25 @@ def crossing_specific_control_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2], "storage": [12e3]})
+    zeros = np.zeros(n_times)
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    forcing_basin = pd.DataFrame(
+        data={
+            "node_id": n_times * [2],
+            "time": time,
+            "drainage": zeros,
+            "potential_evaporation": zeros,
+            "infiltration": np.maximum(-forcing, 0.0),
+            "precipitation": zeros,
+            "urban_runoff": zeros,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [2], "storage": [8e3]})
+
+    basin = ribasim.Basin(
+        profile=profile, static=static, state=state, forcing=forcing_basin
+    )
 
     # Setup pump
     pump = ribasim.Pump(
@@ -495,7 +520,7 @@ def crossing_specific_control_model():
             data={
                 "node_id": 3 * [3] + 3 * [4],
                 "control_state": 2 * ["none", "in", "out"],
-                "flow_rate": [0.0, 1e-3, 0.0, 0.0, 0.0, 1e-3],
+                "flow_rate": [0.0, 5e-3, 0.0, 0.0, 0.0, 5e-3],
             }
         )
     )
@@ -506,15 +531,13 @@ def crossing_specific_control_model():
     )
 
     # Setup flow boundary
-    n_times = 100
-    time = pd.date_range(
-        start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
-    ).astype("datetime64[s]")
-    flow_rate = np.full_like(time, 5e-4, dtype=np.float64)
-
     flow_boundary = ribasim.FlowBoundary(
         time=pd.DataFrame(
-            data={"node_id": n_times * [1], "time": time, "flow_rate": flow_rate}
+            data={
+                "node_id": n_times * [1],
+                "time": time,
+                "flow_rate": np.maximum(forcing, 0.0),
+            }
         )
     )
 
@@ -547,8 +570,8 @@ def crossing_specific_control_model():
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,
         discrete_control=discrete_control,
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime=start,
+        endtime=end,
     )
 
     return model
