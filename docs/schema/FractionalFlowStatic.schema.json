@@ -7,13 +7,6 @@
             "description": "a hack for pandera",
             "type": "string"
         },
-        "active": {
-            "format": "default",
-            "description": "active",
-            "type": [
-                "boolean"
-            ]
-        },
         "node_id": {
             "format": "default",
             "description": "node_id",

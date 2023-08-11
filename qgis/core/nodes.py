@@ -177,6 +177,7 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
+            "Weir": (QColor("yellow"), "Weir", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
@@ -325,8 +326,10 @@ class TabulatedRatingCurveStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("level", QVariant.Double),
         QgsField("discharge", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -356,6 +359,7 @@ class LinearResistanceStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("resistance", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
@@ -366,6 +370,7 @@ class ManningResistanceStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("length", QVariant.Double),
         QgsField("manning_n", QVariant.Double),
         QgsField("profile_width", QVariant.Double),
@@ -379,8 +384,8 @@ class LevelBoundaryStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("level", QVariant.Double),
-        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -389,7 +394,23 @@ class PumpStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("min_flow_rate", QVariant.Double),
+        QgsField("max_flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
+    ]
+
+
+class WeirStatic(Input):
+    input_type = "Weir / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
+        QgsField("flow_rate", QVariant.Double),
+        QgsField("min_flow_rate", QVariant.Double),
+        QgsField("max_flow_rate", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
 
@@ -405,8 +426,18 @@ class FlowBoundaryStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("flow_rate", QVariant.Double),
-        QgsField("control_state", QVariant.String),
+    ]
+
+
+class FlowBoundaryTime(Input):
+    input_type = "FlowBoundary / time"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_id", QVariant.Int),
+        QgsField("flow_rate", QVariant.Double),
     ]
 
 
@@ -436,6 +467,7 @@ class PidControlStatic(Input):
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("listen_node_id", QVariant.Int),
         QgsField("proportional", QVariant.Double),
         QgsField("integral", QVariant.Double),

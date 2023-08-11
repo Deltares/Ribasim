@@ -105,6 +105,7 @@ class Node(TableModel):
             "ManningResistance": "D",
             "TabulatedRatingCurve": "D",
             "Pump": "h",
+            "Weir": "h",
             "Terminal": "s",
             "FlowBoundary": "h",
             "DiscreteControl": "*",
@@ -120,6 +121,7 @@ class Node(TableModel):
             "ManningResistance": "r",
             "TabulatedRatingCurve": "g",
             "Pump": "0.5",  # grayscale level
+            "Weir": "y",
             "Terminal": "m",
             "FlowBoundary": "m",
             "DiscreteControl": "k",

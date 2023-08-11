@@ -126,9 +126,9 @@ end
     p = Ribasim.Parameters(db, cfg)
     jac_prototype = Ribasim.get_jac_prototype(p)
 
-    @test jac_prototype.m == 2
-    @test jac_prototype.n == 2
-    @test jac_prototype.colptr == [1, 3, 4]
-    @test jac_prototype.rowval == [1, 2, 1]
-    @test jac_prototype.nzval == ones(3)
+    @test jac_prototype.m == 3
+    @test jac_prototype.n == 3
+    @test jac_prototype.colptr == [1, 4, 5, 6]
+    @test jac_prototype.rowval == [1, 2, 3, 1, 1]
+    @test jac_prototype.nzval == ones(5)
 end

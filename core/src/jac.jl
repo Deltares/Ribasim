@@ -212,17 +212,17 @@ function formulate_jac!(
 end
 
 """
-The contributions of Pump nodes to the Jacobian.
+The contributions of Pump and Weir nodes to the Jacobian.
 """
 function formulate_jac!(
-    pump::Pump,
+    node::Union{Pump, Weir},
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; basin, fractional_flow, connectivity, pid_control) = p
-    (; active, node_id, flow_rate, is_pid_controlled) = pump
+    (; basin, fractional_flow, connectivity) = p
+    (; active, node_id, flow_rate, is_pid_controlled) = node
 
     (; graph_flow) = connectivity
 
@@ -357,7 +357,7 @@ function formulate_jac!(
 end
 
 """
-The contributions of TabulatedRatingCurve nodes to the Jacobian.
+The contributions of PidControl nodes to the Jacobian.
 """
 function formulate_jac!(
     pid_control::PidControl,
@@ -366,8 +366,7 @@ function formulate_jac!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    # TODO: update after pid_control equation test merge
-    (; basin, connectivity, pump) = p
+    (; basin, connectivity, pump, weir) = p
     (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
         pid_control
     (; min_flow_rate, max_flow_rate) = pump
@@ -391,18 +390,40 @@ function formulate_jac!(
             continue
         end
 
-        id_pump = only(outneighbors(graph_control, id))
+        controlled_node_id = only(outneighbors(graph_control, id))
+        controls_pump = (controlled_node_id in pump.node_id)
+
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
         listen_area = basin.current_area[listened_node_idx]
-        storage_listened_basin = u.storage[listened_node_idx]
-        area = basin.current_area[listened_node_idx]
-        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
+
+        if controls_pump
+            controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
+
+            listened_basin_storage = u.storage[listened_node_idx]
+            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+        else
+            controlled_node_idx = findsorted(weir.node_id, controlled_node_id)
+
+            # Upstream node of weir does not have to be a basin
+            upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
+            has_upstream_index, upstream_basin_idx =
+                id_index(basin.node_id, upstream_node_id)
+            if has_upstream_index
+                upstream_basin_storage = u.storage[upstream_basin_idx]
+                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+            else
+                reduction_factor = 1.0
+            end
+        end
 
         K_d = derivative[i]
         if !isnan(K_d)
-            # dlevel/dstorage = 1/area
-            D = 1.0 - K_d * reduction_factor / area
+            if controls_pump
+                D = 1.0 - K_d * reduction_factor / listen_area
+            else
+                D = 1.0 + K_d * reduction_factor / listen_area
+            end
         else
             D = 1.0
         end
@@ -422,22 +443,22 @@ function formulate_jac!(
         if !isnan(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
-            E += K_d * (dtarget_level - du_listened_basin_old / area)
+            E += K_d * (dtarget_level - du_listened_basin_old / listen_area)
         end
 
         # Clip values outside pump flow rate bounds
         flow_rate = reduction_factor * E / D
         was_clipped = false
 
-        if flow_rate < min_flow_rate[i]
+        if flow_rate < min_flow_rate[controlled_node_idx]
             was_clipped = true
-            flow_rate = min_flow_rate[i]
+            flow_rate = min_flow_rate[controlled_node_idx]
         end
 
-        if !isnan(max_flow_rate[i])
-            if flow_rate > max_flow_rate[i]
+        if !isnan(max_flow_rate[controlled_node_idx])
+            if flow_rate > max_flow_rate[controlled_node_idx]
                 was_clipped = true
-                flow_rate = max_flow_rate[i]
+                flow_rate = max_flow_rate[controlled_node_idx]
             end
         end
 
@@ -453,51 +474,87 @@ function formulate_jac!(
         end
 
         # Only in this case the reduction factor has a non-zero derivative
-        reduction_factor_regime = (storage_listened_basin < 10.0)
+        reduction_factor_regime = if controls_pump
+            listened_basin_storage < 10.0
+        else
+            if has_upstream_index
+                upstream_basin_storage < 10.0
+            else
+                false
+            end
+        end
 
         # Computing D and E derivatives
         if !isnan(K_d)
             darea = basin.current_darea[listened_node_idx]
-            dD = reduction_factor * darea
+
+            dD_du_listen = reduction_factor * darea / (listen_area^2)
 
             if reduction_factor_regime
-                dD -= dreduction_factor / area
+                if controls_pump
+                    dD_du_listen -= 0.1 / darea
+                else
+                    dD_du_upstream = -0.1 * K_d / area
+                end
+            else
+                dD_du_upstream = 0.0
             end
 
-            dD *= K_d
+            dD_du_listen *= K_d
 
-            dE =
+            dE_du_listen =
                 -K_d * (
-                    area * J[listened_node_idx, listened_node_idx] -
+                    listen_area * J[listened_node_idx, listened_node_idx] -
                     du.storage[listened_node_idx] * darea
-                ) / (area^2)
+                ) / (listen_area^2)
         else
-            dD = 0.0
-            dE = 0.0
+            dD_du_listen = 0.0
+            dD_du_upstream = 0.0
+            dE_du_listen = 0.0
         end
 
         if !isnan(K_p)
-            dE -= K_p / area
+            dE_du_listen -= K_p / listen_area
         end
 
-        if reduction_factor_regime
-            dreduction_factor = 0.1
+        dQ_du_listen = reduction_factor * (D * dE_du_listen - E * dD_du_listen) / (D^2)
 
-            dq = dreduction_factor * E / D
+        if controls_pump && reduction_factor_regime
+            dQ_du_listen += 0.1 * E / D
+        end
+
+        if controls_pump
+            J[listened_node_idx, listened_node_idx] -= dQ_du_listen
+
+            downstream_node_id = only(outneighbors(graph_flow, controlled_node_id))
+            has_downstream_index, downstream_node_idx =
+                id_index(basin.node_id, downstream_node_id)
+
+            if has_downstream_index
+                J[listened_node_idx, downstream_node_idx] += dQ_du_listen
+            end
         else
-            dq = 0.0
+            J[listened_node_idx, listened_node_idx] += dQ_du_listen
+
+            if has_upstream_index
+                J[listened_node_idx, upstream_basin_idx] -= dQ_du_listen
+            end
         end
 
-        dq += reduction_factor * (D * dE - E * dD) / (D^2)
+        if !controls_pump
+            if !isnan(K_d) && has_upstream_index
+                dE_du_upstream = -K_d * J[upstream_basin_idx, listened_node_idx] / area
 
-        J[listened_node_idx, listened_node_idx] -= dq
+                dQ_du_upstream =
+                    reduction_factor * (D * dE_du_upstream - E * dD_du_upstream) / (D^2)
 
-        id_out = only(outneighbors(graph_flow, id_pump))
-        has_index, idx_out_out = id_index(basin.node_id, id_out)
+                if reduction_factor_regime
+                    dQ_du_upstream += 0.1 * E / D
+                end
 
-        if has_index
-            J[pid_state_idx, idx_out_out] += K_i * reduction_factor / D
-            J[listened_node_idx, idx_out_out] += dq
+                J[upstream_basin_idx, listened_node_idx] += dQ_du_upstream
+                J[upstream_basin_idx, upstream_basin_idx] -= dQ_du_upstream
+            end
         end
     end
     return nothing
