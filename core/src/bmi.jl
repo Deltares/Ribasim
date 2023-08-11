@@ -136,7 +136,6 @@ function set_initial_discrete_controlled_parameters!(
     for discrete_control_node_id in unique(discrete_control.node_id)
         condition_idx =
             searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
-        # TODO: this now assumes an upcrossing of condition condition_idx
         discrete_control_affect!(integrator, condition_idx, missing)
     end
 end
