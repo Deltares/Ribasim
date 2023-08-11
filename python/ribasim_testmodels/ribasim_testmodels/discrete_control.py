@@ -412,10 +412,11 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     return model
 
 
-def crossing_specific_control_model():
+def level_setpoint_with_minmax_model():
     """
-    Set up a model with DiscreteControl with truth states that are
-    crossing-direction specific.
+    Set up a minimal model in which the level of a basin is kept within an acceptable range
+    around a setpoint while being affected by time-varying forcing.
+    This is done by bringing the level back to the setpoint once the level goes beyond this range.
     """
 
     # Forcing
@@ -562,7 +563,7 @@ def crossing_specific_control_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        modelname="crossing_specific_control",
+        modelname="level_setpoint_with_minmax",
         node=node,
         edge=edge,
         basin=basin,
@@ -575,12 +576,3 @@ def crossing_specific_control_model():
     )
 
     return model
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    model = crossing_specific_control_model()
-    model.plot()
-
-    plt.show()
