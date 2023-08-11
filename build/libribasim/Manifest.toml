@@ -9,6 +9,11 @@ git-tree-sha1 = "e58c18d2312749847a74f5be80bb0fa53da102bd"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 version = "0.1.5"
 
+[[deps.AbstractTrees]]
+git-tree-sha1 = "faa260e4cb5aba097a73fab382dd4b5819d8ec8c"
+uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+version = "0.4.4"
+
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
 git-tree-sha1 = "76289dc51920fdc6e0013c872ba9551d54961c24"
@@ -524,6 +529,12 @@ git-tree-sha1 = "cef2dd16402718cf5f412e610813e2ec20d94a64"
 uuid = "0fc2ff8b-aaa3-5acd-a817-1944a5e08891"
 version = "0.8.4"
 
+[[deps.LeftChildRightSiblingTrees]]
+deps = ["AbstractTrees"]
+git-tree-sha1 = "fb6803dafae4a5d62ea5cab204b1e657d9737e7f"
+uuid = "1d6d02ad-be62-4b6b-8a6d-2f90e265016e"
+version = "0.2.0"
+
 [[deps.Legolas]]
 deps = ["Arrow", "Tables", "UUIDs"]
 git-tree-sha1 = "c73733acf06976806a5511e58bfcb86798bd3fb1"
@@ -815,6 +826,12 @@ version = "1.4.0"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
+[[deps.ProgressLogging]]
+deps = ["Logging", "SHA", "UUIDs"]
+git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
+uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+version = "0.1.4"
+
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -869,7 +886,7 @@ uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
 
 [[deps.Ribasim]]
-deps = ["Arrow", "BasicModelInterface", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "Dictionaries", "DiffEqCallbacks", "Graphs", "IterTools", "Legolas", "OrdinaryDiffEq", "SQLite", "SciMLBase", "SparseArrays", "StructArrays", "Tables", "TimerOutputs"]
+deps = ["Arrow", "BasicModelInterface", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "Dictionaries", "DiffEqCallbacks", "FiniteDiff", "Graphs", "IterTools", "Legolas", "Logging", "OrdinaryDiffEq", "SQLite", "SciMLBase", "SparseArrays", "StructArrays", "Tables", "TerminalLoggers", "TimerOutputs"]
 path = "../../core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "0.1.0"
@@ -1117,6 +1134,12 @@ version = "1.10.1"
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 version = "1.10.0"
+
+[[deps.TerminalLoggers]]
+deps = ["LeftChildRightSiblingTrees", "Logging", "Markdown", "Printf", "ProgressLogging", "UUIDs"]
+git-tree-sha1 = "f133fab380933d042f6796eda4e130272ba520ca"
+uuid = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
+version = "0.1.7"
 
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
