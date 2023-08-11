@@ -4,11 +4,19 @@ function parse_static(
     nodetype::String,
     defaults::NamedTuple,
 )::NamedTuple
+    # E.g. `PumpStatic`
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
     mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
+
+    # The names of the variables that can define a control state
     columnnames_variables = columnnames_static[mask]
+
+    # The types of the variables that can define a control state
     columntypes_variables = collect(fieldtypes(static_type))[mask]
+
+    # A vector of vectors, for each variable the (initial) values for all nodes
+    # of the current type
     vals = []
 
     node_ids = get_ids(db, nodetype)
@@ -273,11 +281,26 @@ function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     static_parsed = parse_static(static, db, "Pump", defaults)
-
-    # TODO: use this in formulate_jac! for pump
     is_pid_controlled = falses(length(static_parsed.node_id))
 
     return Pump(
+        static_parsed.node_id,
+        static_parsed.active,
+        static_parsed.flow_rate,
+        static_parsed.min_flow_rate,
+        static_parsed.max_flow_rate,
+        static_parsed.control_mapping,
+        is_pid_controlled,
+    )
+end
+
+function Weir(db::DB, config::Config)::Weir
+    static = load_structvector(db, config, WeirStaticV1)
+    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
+    static_parsed = parse_static(static, db, "Weir", defaults)
+    is_pid_controlled = falses(length(static_parsed.node_id))
+
+    return Weir(
         static_parsed.node_id,
         static_parsed.active,
         static_parsed.flow_rate,
@@ -407,6 +430,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
+    weir = Weir(db, config)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config)
@@ -424,6 +448,7 @@ function Parameters(db::DB, config::Config)::Parameters
         level_boundary,
         flow_boundary,
         pump,
+        weir,
         terminal,
         discrete_control,
         pid_control,

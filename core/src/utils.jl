@@ -578,13 +578,17 @@ Upstream basins always depend on themselves.
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
     p::Parameters,
-    node::Union{Pump, TabulatedRatingCurve},
+    node::Union{Pump, Weir, TabulatedRatingCurve},
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
     (; graph_flow) = connectivity
 
-    for id in node.node_id
+    for (i, id) in enumerate(node.node_id)
         id_in = only(inneighbors(graph_flow, id))
+
+        if hasfield(typeof(node), :is_pid_controlled) && node.is_pid_controlled[i]
+            continue
+        end
 
         # For inneighbors only directly connected basins give a contribution
         has_index_in, idx_in = id_index(basin.node_id, id_in)
@@ -626,14 +630,17 @@ function update_jac_prototype!(
     p::Parameters,
     node::PidControl,
 )::Nothing
-    (; basin, connectivity) = p
+    (; basin, connectivity, pump) = p
     (; graph_control, graph_flow) = connectivity
 
     n_basins = length(basin.node_id)
 
-    for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
-        id_pump = only(outneighbors(graph_control, id))
-        id_pump_out = only(inneighbors(graph_flow, id_pump))
+    for i in eachindex(node.node_id)
+        listen_node_id = node.listen_node_id[i]
+        id = node.node_id[i]
+
+        # ID of controlled pump/weir
+        id_controlled = only(outneighbors(graph_control, id))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
@@ -641,19 +648,36 @@ function update_jac_prototype!(
         jac_prototype[listen_idx, listen_idx] = 1.0
 
         # PID control integral state
-        pid_state_idx = n_basins + pid_idx
+        pid_state_idx = n_basins + i
         jac_prototype[listen_idx, pid_state_idx] = 1.0
         jac_prototype[pid_state_idx, listen_idx] = 1.0
 
-        # The basin downstream of the pump
-        has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
+        if id_controlled in pump.node_id
+            id_pump_out = only(inneighbors(graph_flow, id_controlled))
 
-        if has_index
-            # The basin downstream of the pump PID control integral state
-            jac_prototype[pid_state_idx, idx_out_out] = 1.0
+            # The basin downstream of the pump
+            has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
 
-            # The basin downstream of the pump also depends on the controlled basin
-            jac_prototype[listen_idx, idx_out_out] = 1.0
+            if has_index
+                # The basin downstream of the pump depends on PID control integral state
+                jac_prototype[pid_state_idx, idx_out_out] = 1.0
+
+                # The basin downstream of the pump also depends on the controlled basin
+                jac_prototype[listen_idx, idx_out_out] = 1.0
+            end
+        else
+            id_weir_in = only(outneighbors(graph_flow, id_controlled))
+
+            # The basin upstream of the weir
+            has_index, idx_out_in = id_index(basin.node_id, id_weir_in)
+
+            if has_index
+                # The basin upstream of the weir depends on the PID control integral state
+                jac_prototype[pid_state_idx, idx_out_in] = 1.0
+
+                # The basin upstream of the weir also depends on the controlled basin
+                jac_prototype[listen_idx, idx_out_in] = 1.0
+            end
         end
     end
     return nothing
