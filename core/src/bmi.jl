@@ -131,7 +131,7 @@ function set_initial_discrete_controlled_parameters!(
         condition_idx =
             searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
         # TODO: this now assumes an upcrossing of condition condition_idx
-        discrete_control_affect!(integrator, condition_idx, true)
+        discrete_control_affect!(integrator, condition_idx, missing)
     end
 end
 
@@ -208,14 +208,14 @@ function get_value(
     p::Parameters,
     feature_id::Int,
     variable::String,
-    storage::AbstractVector{Float64},
+    u::AbstractVector{Float64},
     t::Float64,
 )
     (; basin, flow_boundary) = p
 
     if variable == "level"
         hasindex, basin_idx = id_index(basin.node_id, feature_id)
-        _, level, _ = get_area_and_level(basin, basin_idx, storage[basin_idx])
+        _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
         value = level
 
     elseif variable == "flow_rate"
@@ -237,26 +237,74 @@ end
 An upcrossing means that a condition (always greater than) becomes true.
 """
 function discrete_control_affect_upcrossing!(integrator, condition_idx)
-    discrete_control = integrator.p.discrete_control
-    discrete_control.condition_value[condition_idx] = true
+    (; p, u, t) = integrator
+    (; discrete_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = discrete_control
 
-    discrete_control_affect!(integrator, condition_idx, true)
+    condition_value[condition_idx] = true
+
+    control_state_change = discrete_control_affect!(integrator, condition_idx, true)
+
+    # Check whether the control state change changed the direction of the crossing
+    # NOTE: This works for level conditions, but not for flow conditions on an
+    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
+    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
+    # giving the possibility of logical paradoxes where certain parameter changes immediately
+    # undo the truth state that caused that parameter change.
+    if variable[condition_idx] == "level" && control_state_change
+        # Calling water_balance is expensive, but it is a sure way of getting
+        # du for the basin of this level condition
+        du = zero(u)
+        water_balance!(du, u, p, t)
+        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+
+        if du[condition_basin_idx] < 0.0
+            condition_value[condition_idx] = false
+            discrete_control_affect!(integrator, condition_idx, false)
+        end
+    end
 end
 
 """
 An downcrossing means that a condition (always greater than) becomes false.
 """
 function discrete_control_affect_downcrossing!(integrator, condition_idx)
-    discrete_control = integrator.p.discrete_control
-    discrete_control.condition_value[condition_idx] = false
+    (; p, u, t) = integrator
+    (; discrete_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = discrete_control
 
-    discrete_control_affect!(integrator, condition_idx, false)
+    condition_value[condition_idx] = false
+
+    control_state_change = discrete_control_affect!(integrator, condition_idx, false)
+
+    # Check whether the control state change changed the direction of the crossing
+    # NOTE: This works for level conditions, but not for flow conditions on an
+    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
+    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
+    # giving the possibility of logical paradoxes where certain parameter changes immediately
+    # undo the truth state that caused that parameter change.
+    if variable[condition_idx] == "level" && control_state_change
+        # Calling water_balance is expensive, but it is a sure way of getting
+        # du for the basin of this level condition
+        du = zero(u)
+        water_balance!(du, u, p, t)
+        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+
+        if du[condition_basin_idx] > 0.0
+            condition_value[condition_idx] = true
+            discrete_control_affect!(integrator, condition_idx, true)
+        end
+    end
 end
 
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bool)::Nothing
+function discrete_control_affect!(
+    integrator,
+    condition_idx::Int,
+    upcrossing::Union{Bool, Missing},
+)::Bool
     p = integrator.p
     (; discrete_control, connectivity) = p
 
@@ -272,10 +320,11 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
     truth_state = join(truth_values, "")
 
     # Get the truth specific about the latest crossing
-    truth_values[condition_idx] = upcrossing ? "U" : "D"
+    if !ismissing(upcrossing)
+        truth_values[condition_idx] = upcrossing ? "U" : "D"
+    end
     truth_state_crossing_specific = join(truth_values, "")
 
-    # @reviewer: what is the cleanest way to do this?
     # What the local control state should be
     control_state_new =
         if haskey(
@@ -299,14 +348,15 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
             )
         end
 
-    println("$truth_values, $truth_state_used, $control_state_new")
-
     # What the local control state is
     # TODO: Check time elapsed since control change
     control_state_now, control_state_start =
         discrete_control.control_state[discrete_control_node_id]
 
+    control_state_change = false
+
     if control_state_now != control_state_new
+        control_state_change = true
 
         # Store control action in record
         record = discrete_control.record
@@ -325,7 +375,7 @@ function discrete_control_affect!(integrator, condition_idx::Int, upcrossing::Bo
         discrete_control.control_state[discrete_control_node_id] =
             (control_state_new, integrator.t)
     end
-    return nothing
+    return control_state_change
 end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
