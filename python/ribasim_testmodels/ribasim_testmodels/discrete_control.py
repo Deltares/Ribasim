@@ -1,5 +1,3 @@
-from itertools import product
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -414,57 +412,32 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     return model
 
 
-# TODO: This function has to be removed once the wildcard branch has been merged
-def expand_logic(logic):
-    """
-    Expand truth states by creating rows with all possible substitution combinations
-    of 'F' and 'T' for '*'.
-    """
-    logic_new = pd.DataFrame(columns=("node_id", "truth_state", "control_state"))
-
-    for i, row in logic.iterrows():
-        truth_state = row.truth_state
-        n_substitutions = truth_state.count("*")
-
-        truth_states_expanded = []
-
-        for substitution in product("TF", repeat=n_substitutions):
-            truth_state_expanded = ""
-            index_s = 0
-
-            for truth_value in truth_state:
-                if truth_value == "*":
-                    truth_state_expanded += substitution[index_s]
-                    index_s += 1
-                else:
-                    truth_state_expanded += truth_value
-
-            truth_states_expanded.append(truth_state_expanded)
-
-        rows_new = pd.DataFrame(
-            data={
-                "node_id": row.node_id,
-                "truth_state": truth_states_expanded,
-                "control_state": row.control_state,
-            }
-        )
-
-        logic_new = pd.concat([logic_new, rows_new])
-
-    return logic_new
-
-
 def crossing_specific_control_model():
     """
     Set up a model with DiscreteControl with truth states that are
     crossing-direction specific.
     """
 
-    xy = np.zeros((4, 2))
-    xy[:, 0] = np.arange(4)
-    xy = np.append(xy, [[1.5, 1.0]], axis=0)
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: FlowBoundary
+            (1.0, 0.0),  # 2: Basin
+            (2.0, 0.5),  # 3: Pump
+            (2.0, -0.5),  # 4: Pump
+            (3.0, 0.0),  # 5: LevelBoundary
+            (1.0, 1.5),  # 6: DiscreteControl
+        ]
+    )
+
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-    node_type = ["FlowBoundary", "Basin", "Pump", "LevelBoundary", "DiscreteControl"]
+    node_type = [
+        "FlowBoundary",
+        "Basin",
+        "Pump",
+        "Pump",
+        "LevelBoundary",
+        "DiscreteControl",
+    ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -477,15 +450,15 @@ def crossing_specific_control_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 4, 3, 5], dtype=np.int64)
-    to_id = np.array([2, 3, 2, 3], dtype=np.int64)
+    from_id = np.array([1, 2, 4, 5, 3, 6, 6], dtype=np.int64)
+    to_id = np.array([2, 4, 5, 3, 2, 3, 4], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": 3 * ["flow"] + ["control"],
+                "edge_type": 5 * ["flow"] + 2 * ["control"],
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -496,8 +469,8 @@ def crossing_specific_control_model():
     profile = pd.DataFrame(
         data={
             "node_id": [2, 2, 2],
-            "area": [0.0, 1000.0, 1000.0],
-            "level": [0.0, 0.001, 1.0],
+            "area": [1000.0, 1000.0],
+            "level": [0.0, 1.0],
         }
     )
 
@@ -520,16 +493,16 @@ def crossing_specific_control_model():
     pump = ribasim.Pump(
         static=pd.DataFrame(
             data={
-                "node_id": 3 * [3],
-                "control_state": ["off", "up", "down"],
-                "flow_rate": [0.0, 1e-3, -1e-3],
+                "node_id": 3 * [3] + 3 * [4],
+                "control_state": 2 * ["none", "in", "out"],
+                "flow_rate": [0.0, 1e-3, 0.0, 0.0, 0.0, 1e-3],
             }
         )
     )
 
     # Setup level boundary
     level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(data={"node_id": [4], "level": [10.0]})
+        static=pd.DataFrame(data={"node_id": [5], "level": [10.0]})
     )
 
     # Setup flow boundary
@@ -548,7 +521,7 @@ def crossing_specific_control_model():
     # Setup discrete control
     condition = pd.DataFrame(
         data={
-            "node_id": 3 * [5],
+            "node_id": 3 * [6],
             "listen_feature_id": 3 * [2],
             "variable": 3 * ["level"],
             "greater_than": [5.0, 10.0, 15.0],
@@ -557,13 +530,11 @@ def crossing_specific_control_model():
 
     logic = pd.DataFrame(
         data={
-            "node_id": 5 * [5],
+            "node_id": 5 * [6],
             "truth_state": ["FFF", "U**", "T*F", "**D", "TTT"],
-            "control_state": ["up", "up", "off", "down", "down"],
+            "control_state": ["in", "in", "none", "out", "out"],
         }
     )
-
-    logic = expand_logic(logic)
 
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
@@ -581,3 +552,12 @@ def crossing_specific_control_model():
     )
 
     return model
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    model = crossing_specific_control_model()
+    model.plot()
+
+    plt.show()
