@@ -419,33 +419,26 @@ def level_setpoint_with_minmax_model():
     This is done by bringing the level back to the setpoint once the level goes beyond this range.
     """
 
-    # Forcing
-    start = "2020-01-01 00:00:00"
-    end = "2021-01-01 00:00:00"
-    n_times = 1000
-    time = pd.date_range(start=start, end=end, periods=n_times).astype("datetime64[s]")
-    forcing = 3e-3 * np.sin(np.linspace(0.0, 15 * np.pi, n_times))
-    forcing[1 * n_times // 4 : 2 * n_times // 4] = 3e-3
-    forcing[2 * n_times // 4 : 3 * n_times // 4] = -3e-3
-
     xy = np.array(
         [
-            (0.0, 0.0),  # 1: FlowBoundary
-            (1.0, 0.0),  # 2: Basin
-            (2.0, 0.5),  # 3: Pump
-            (2.0, -0.5),  # 4: Pump
-            (3.0, 0.0),  # 5: LevelBoundary
-            (1.0, 1.5),  # 6: DiscreteControl
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.5),  # 2: Pump
+            (1.0, -0.5),  # 3: Pump
+            (2.0, 0.0),  # 4: LevelBoundary
+            (-1.0, 0.0),  # 5: TabulatedRatingCurve
+            (-2.0, 0.0),  # 6: Terminal
+            (0.0, 1.5),  # 7: DiscreteControl
         ]
     )
 
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
     node_type = [
-        "FlowBoundary",
         "Basin",
         "Pump",
         "Pump",
         "LevelBoundary",
+        "TabulatedRatingCurve",
+        "Terminal",
         "DiscreteControl",
     ]
 
@@ -460,15 +453,15 @@ def level_setpoint_with_minmax_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 4, 5, 3, 6, 6], dtype=np.int64)
-    to_id = np.array([2, 4, 5, 3, 2, 3, 4], dtype=np.int64)
+    from_id = np.array([1, 3, 4, 2, 1, 5, 7, 7], dtype=np.int64)
+    to_id = np.array([3, 4, 2, 1, 5, 6, 2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": 5 * ["flow"] + 2 * ["control"],
+                "edge_type": 6 * ["flow"] + 2 * ["control"],
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -478,7 +471,7 @@ def level_setpoint_with_minmax_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [2, 2],
+            "node_id": [1, 1],
             "area": [1000.0, 1000.0],
             "level": [0.0, 1.0],
         }
@@ -486,7 +479,7 @@ def level_setpoint_with_minmax_model():
 
     static = pd.DataFrame(
         data={
-            "node_id": [2],
+            "node_id": [1],
             "drainage": [0.0],
             "potential_evaporation": [0.0],
             "infiltration": [0.0],
@@ -495,66 +488,49 @@ def level_setpoint_with_minmax_model():
         }
     )
 
-    zeros = np.zeros(n_times)
+    state = pd.DataFrame(data={"node_id": [1], "storage": [2e4]})
 
-    forcing_basin = pd.DataFrame(
-        data={
-            "node_id": n_times * [2],
-            "time": time,
-            "drainage": zeros,
-            "potential_evaporation": zeros,
-            "infiltration": np.maximum(-forcing, 0.0),
-            "precipitation": zeros,
-            "urban_runoff": zeros,
-        }
-    )
-
-    state = pd.DataFrame(data={"node_id": [2], "storage": [8e3]})
-
-    basin = ribasim.Basin(
-        profile=profile, static=static, state=state, forcing=forcing_basin
-    )
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup pump
     pump = ribasim.Pump(
         static=pd.DataFrame(
             data={
-                "node_id": 3 * [3] + 3 * [4],
+                "node_id": 3 * [2] + 3 * [3],
                 "control_state": 2 * ["none", "in", "out"],
-                "flow_rate": [0.0, 5e-3, 0.0, 0.0, 0.0, 5e-3],
+                "flow_rate": [0.0, 2e-3, 0.0, 0.0, 0.0, 2e-3],
             }
         )
     )
 
     # Setup level boundary
     level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(data={"node_id": [5], "level": [10.0]})
+        static=pd.DataFrame(data={"node_id": [4], "level": [10.0]})
     )
 
-    # Setup flow boundary
-    flow_boundary = ribasim.FlowBoundary(
-        time=pd.DataFrame(
-            data={
-                "node_id": n_times * [1],
-                "time": time,
-                "flow_rate": np.maximum(forcing, 0.0),
-            }
+    # Setup the rating curve
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={"node_id": 2 * [5], "level": [2.0, 15.0], "discharge": [0.0, 1e-3]}
         )
     )
+
+    # Setup the terminal
+    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [6]}))
 
     # Setup discrete control
     condition = pd.DataFrame(
         data={
-            "node_id": 3 * [6],
-            "listen_feature_id": 3 * [2],
+            "node_id": 3 * [7],
+            "listen_feature_id": 3 * [1],
             "variable": 3 * ["level"],
-            "greater_than": [5.0, 10.0, 15.0],
+            "greater_than": [5.0, 10.0, 15.0],  # min, setpoint, max
         }
     )
 
     logic = pd.DataFrame(
         data={
-            "node_id": 5 * [6],
+            "node_id": 5 * [7],
             "truth_state": ["FFF", "U**", "T*F", "**D", "TTT"],
             "control_state": ["in", "in", "none", "out", "out"],
         }
@@ -569,10 +545,11 @@ def level_setpoint_with_minmax_model():
         basin=basin,
         pump=pump,
         level_boundary=level_boundary,
-        flow_boundary=flow_boundary,
+        tabulated_rating_curve=rating_curve,
+        terminal=terminal,
         discrete_control=discrete_control,
-        starttime=start,
-        endtime=end,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
     )
 
     return model
