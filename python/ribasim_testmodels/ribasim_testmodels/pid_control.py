@@ -71,7 +71,6 @@ def pid_control_model():
             "infiltration": [0.0],
             "precipitation": [0.0],
             "urban_runoff": [0.0],
-            "target_level": [5.0],
         }
     )
 
@@ -125,6 +124,7 @@ def pid_control_model():
             data={
                 "node_id": [5, 7],
                 "listen_node_id": [2, 2],
+                "target_level": [5.0, 5.0],
                 "proportional": [-1e-3, 1e-3],
                 "integral": [-1e-7, 1e-7],
             }

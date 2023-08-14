@@ -169,7 +169,7 @@ end
     K_d = pid_control.derivative[1]
     storage_min = 50
     level_min = basin.level[1][2]
-    SP = basin.target_level[1]
+    SP = pid_control.target_level[1]
     storage0 = storage[1]
     area = basin.area[1][2]
     level0 = level_min + (storage0 - storage_min) / area

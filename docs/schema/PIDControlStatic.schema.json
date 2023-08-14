@@ -27,9 +27,11 @@
             ]
         },
         "proportional": {
-            "format": "double",
+            "format": "default",
             "description": "proportional",
-            "type": "number"
+            "type": [
+                "number"
+            ]
         },
         "node_id": {
             "format": "default",
@@ -49,12 +51,17 @@
             "type": [
                 "string"
             ]
+        },
+        "target_level": {
+            "format": "double",
+            "description": "target_level",
+            "type": "number"
         }
     },
     "required": [
         "node_id",
         "listen_node_id",
-        "proportional"
+        "target_level"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
     "title": "PidControlStatic",

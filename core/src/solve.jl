@@ -85,8 +85,6 @@ struct Basin{C} <: AbstractParameterNode
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    # target level of basins
-    target_level::Vector{Float64}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
 
@@ -102,7 +100,6 @@ struct Basin{C} <: AbstractParameterNode
         area,
         level,
         storage,
-        target_level,
         time::StructVector{BasinForcingV1, C, Int},
     ) where {C}
         errors = valid_profiles(node_id, level, area)
@@ -119,7 +116,6 @@ struct Basin{C} <: AbstractParameterNode
                 area,
                 level,
                 storage,
-                target_level,
                 time,
             )
         else
@@ -384,6 +380,7 @@ struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
+    target_level::Vector{Int}
     proportional::Vector{Float64}
     integral::Vector{Float64}
     derivative::Vector{Float64}
@@ -543,7 +540,7 @@ end
 
 function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
-    (; listen_node_id) = pid_control
+    (; listen_node_id, target_level) = pid_control
 
     pid_error = pid_control.error
 
@@ -551,11 +548,8 @@ function get_error!(pid_control::PidControl, p::Parameters)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        target_level = basin.target_level[listened_node_idx]
-        if isnan(target_level)
-            error("No target level specified for listen basin #$listened_node_id.")
-        end
-        pid_error[i] = target_level - basin.current_level[listened_node_idx]
+        pid_error[i] =
+            target_level[listened_node_idx] - basin.current_level[listened_node_idx]
     end
 end
 
