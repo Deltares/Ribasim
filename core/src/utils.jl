@@ -490,6 +490,10 @@ nodefields(p::Parameters) = (
 Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
+
+Note: the name 'prototype' does not mean this code is a prototype, it comes
+from the naming convention of this sparsity structure in the
+differentialequations.jl docs.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control) = p

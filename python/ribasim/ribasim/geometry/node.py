@@ -63,7 +63,11 @@ class Node(TableModel):
         gdf = gpd.GeoDataFrame(data=dataframe)
         gdf = gdf.set_geometry("geometry")
 
-        gdf.to_file(directory / f"{modelname}.gpkg", layer=name)
+        gdf.to_file(
+            directory / f"{modelname}.gpkg",
+            layer=name,
+            driver="GPKG",  # engine="pyogrio"
+        )
 
         return
 

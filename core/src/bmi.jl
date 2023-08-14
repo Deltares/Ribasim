@@ -220,6 +220,9 @@ function get_value(
 
     if variable == "level"
         hasindex, basin_idx = id_index(basin.node_id, feature_id)
+        if !hasindex
+            error("Level listen feature_id '$feature_id' is not a basin node id.")
+        end
         _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
         value = level
 
