@@ -66,7 +66,7 @@ end
     K_p = pid_control.proportional[2]
     K_i = pid_control.integral[2]
     A = basin.area[1][1]
-    target_level = basin.target_level[1]
+    target_level = pid_control.target[1]
     initial_storage = storage[1]
     flow_rate = flow_boundary.flow_rate[1].u[1]
     du0 = flow_rate + K_p * (target_level - initial_storage / A)

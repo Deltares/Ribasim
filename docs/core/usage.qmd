@@ -186,7 +186,6 @@ potential_evaporation | Float64 | $m s^{-1}$   | non-negative
 drainage              | Float64 | $m^3 s^{-1}$ | non-negative
 infiltration          | Float64 | $m^3 s^{-1}$ | non-negative
 urban_runoff          | Float64 | $m^3 s^{-1}$ | non-negative
-target_level          | Float64 | $m^3$        | (optional)
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
@@ -408,11 +407,6 @@ The table is sorted by time, and per time the same edge_id order is used, though
 
 DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
-:::{.callout-note}
-Currently the Julia core only supports controlling pumps.
-:::
-
-
 #### DiscreteControl / condition {#sec-condition}
 
 The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node/edge with the given listen feature id is grater than the given value'.
@@ -461,11 +455,14 @@ The PidControl node controls the level in a basin by continuously controlling th
 
 The pump must be an outneighbor of the controlled basin, the weir must be an inneighbor. Thus for the same coefficient values in `proportional`, `integral` and `derivative`, the pump and weir have the oppositve effect on the controlled basin.
 
+In the future controlling the flow on a particular edge could be supported.
+
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------
 node_id        | Int      | -        | sorted
 active         | Bool     | -        | (optional, default true)
 listen_node_id | Int      | -        | -
+target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | (optional, default 0.0)
 integral       | Float64  | $s^{-2}$ | (optional, default 0.0)
 derivative     | Floar64  | -        | (optional, default 0.0)

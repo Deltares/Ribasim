@@ -339,9 +339,6 @@ function Basin(db::DB, config::Config)::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    # If not specified, target_level = NaN
-    target_level = coalesce.(static.target_level, NaN)
-
     return Basin(
         Indices(node_id),
         precipitation,
@@ -354,7 +351,6 @@ function Basin(db::DB, config::Config)::Basin
         area,
         level,
         storage,
-        target_level,
         time,
     )
 end
@@ -413,6 +409,7 @@ function PidControl(db::DB, config::Config)::PidControl
         static_parsed.node_id,
         static_parsed.active,
         static_parsed.listen_node_id,
+        static_parsed.target,
         static_parsed.proportional,
         static_parsed.integral,
         static_parsed.derivative,
