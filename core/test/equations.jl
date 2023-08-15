@@ -18,7 +18,7 @@ TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     sleep(0.1)
 end
 
-show(Ribasim.to)
+# show(Ribasim.to)  # commented out to avoid spamming the test output
 println()
 is_running_under_teamcity() && teamcity_message("qh_relation", TimerOutputs.todict(to))
 reset_timer!(Ribasim.to)
@@ -28,7 +28,7 @@ reset_timer!(Ribasim.to)
     sleep(0.05)
 end
 
-show(Ribasim.to)
+# show(Ribasim.to)  # commented out to avoid spamming the test output
 println()
 is_running_under_teamcity() && teamcity_message("forcing_eqs", TimerOutputs.todict(to))
 TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)

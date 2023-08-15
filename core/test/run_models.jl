@@ -1,3 +1,4 @@
+using Logging: Debug, with_logger
 using Test
 using Ribasim
 import BasicModelInterface as BMI
@@ -23,11 +24,20 @@ end
 @testset "basic model" begin
     toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+
+    logger = TestLogger()
+    model = with_logger(logger) do
+        Ribasim.run(toml_path)
+    end
+
     @test model isa Ribasim.Model
     @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
+
+    @test length(logger.logs) == 5
+    @test logger.logs[1].level == Debug
+    @test logger.logs[1].message == "Read database into memory."
 end
 
 @testset "basic transient model" begin

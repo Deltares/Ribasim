@@ -4,6 +4,7 @@ using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
 using Legolas: Legolas, record_type
+using Logging: LogLevel
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
@@ -97,6 +98,19 @@ end
     compression_level::Int = 6
 end
 
+function Base.convert(::Type{LogLevel}, level::AbstractString)
+    level == "debug" && return LogLevel(-1000)
+    level == "info" && return LogLevel(0)
+    level == "warn" && return LogLevel(1000)
+    level == "error" && return LogLevel(2000)
+    throw("verbosity $level not supported, choose one of: debug info warn error.")
+end
+
+@option struct Logging <: TableOption
+    verbosity::LogLevel = "info"
+    timing::Bool = false
+end
+
 @option @addnodetypes struct Config
     starttime::DateTime
     endtime::DateTime
@@ -116,6 +130,8 @@ end
     output::Output = Output()
 
     solver::Solver = Solver()
+
+    logging::Logging = Logging()
 end
 
 # TODO Use with proper alignment
