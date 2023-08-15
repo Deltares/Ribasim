@@ -66,7 +66,7 @@ class Node(TableModel):
         gdf.to_file(
             directory / f"{modelname}.gpkg",
             layer=name,
-            driver="GPKG",  # engine="pyogrio"
+            driver="GPKG",
         )
 
         return
