@@ -550,7 +550,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        pid_error[i] = target[listened_node_idx] - basin.current_level[listened_node_idx]
+        pid_error[i] = target[i] - basin.current_level[listened_node_idx]
     end
 end
 
