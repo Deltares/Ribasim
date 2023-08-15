@@ -1,5 +1,6 @@
 import datetime
 import inspect
+from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional, Type, Union, cast
 
@@ -41,6 +42,18 @@ class Solver(BaseModel):
     abstol: Optional[float]
     reltol: Optional[float]
     maxiters: Optional[int]
+
+
+class Verbosity(str, Enum):
+    debug = "debug"
+    info = "info"
+    warn = "warn"
+    error = "error"
+
+
+class Logging(BaseModel):
+    verbosity: Optional[Verbosity] = Verbosity.info
+    timings: Optional[bool] = False
 
 
 class Model(BaseModel):
@@ -88,6 +101,8 @@ class Model(BaseModel):
         End time of the simulation.
     solver : Optional[Solver]
         Solver settings.
+    logging : Optional[logging]
+        Logging settings.
     """
 
     modelname: str
@@ -108,6 +123,7 @@ class Model(BaseModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
+    logging: Optional[Logging]
 
     class Config:
         validate_assignment = True
@@ -143,6 +159,13 @@ class Model(BaseModel):
         if self.solver is not None:
             section = {k: v for k, v in self.solver.dict().items() if v is not None}
             content["solver"] = section
+
+        # TODO This should be rewritten as self.dict(exclude_unset=True, exclude_defaults=True)
+        # after we make sure that we have a (sub)model that's only the config, instead
+        # the mix of models and config it is now.
+        if self.logging is not None:
+            section = {k: v for k, v in self.logging.dict().items() if v is not None}
+            content["logging"] = section
 
         with open(directory / f"{self.modelname}.toml", "wb") as f:
             tomli_w.dump(content, f)

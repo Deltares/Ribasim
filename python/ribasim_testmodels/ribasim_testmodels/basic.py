@@ -194,6 +194,9 @@ def basic_model() -> ribasim.Model:
         )
     )
 
+    # Setup logging
+    logging = ribasim.Logging(verbosity="debug")
+
     # Setup a model:
     model = ribasim.Model(
         modelname="basic",
@@ -210,6 +213,7 @@ def basic_model() -> ribasim.Model:
         fractional_flow=fractional_flow,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        logging=logging,
     )
 
     return model
