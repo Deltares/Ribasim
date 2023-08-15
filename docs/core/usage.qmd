@@ -407,11 +407,6 @@ The table is sorted by time, and per time the same edge_id order is used, though
 
 DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
-:::{.callout-note}
-Currently the Julia core only supports controlling pumps.
-:::
-
-
 #### DiscreteControl / condition {#sec-condition}
 
 The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node/edge with the given listen feature id is grater than the given value'.
