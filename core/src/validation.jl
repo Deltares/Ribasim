@@ -129,7 +129,6 @@ end
     infiltration::Float64
     precipitation::Float64
     urban_runoff::Float64
-    target_level::Union{Missing, Float64}
 end
 
 @version BasinForcingV1 begin
@@ -230,7 +229,8 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     listen_node_id::Int
-    proportional::Float64
+    target::Float64
+    proportional::Union{Missing, Float64}
     integral::Union{Missing, Float64}
     derivative::Union{Missing, Float64}
     control_state::Union{Missing, String}

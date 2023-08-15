@@ -513,7 +513,6 @@ def pid_control_equation_model():
             "infiltration": [0.0],
             "precipitation": [0.0],
             "urban_runoff": [0.0],
-            "target_level": [10.0],
         }
     )
 
@@ -551,6 +550,7 @@ def pid_control_equation_model():
             data={
                 "node_id": [4],
                 "listen_node_id": [1],
+                "target": [10],
                 "proportional": [-2.5],
                 "integral": [-0.001],
                 "derivative": [10.0],
