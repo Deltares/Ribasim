@@ -61,9 +61,6 @@ def dutch_waterways_model():
         }
     )
 
-    target_level = n_basins * [None]
-    target_level[4] = 6.0
-
     static = pd.DataFrame(
         data={
             "node_id": basin_node_ids,
@@ -161,6 +158,7 @@ def dutch_waterways_model():
             data={
                 "node_id": [20],
                 "listen_node_id": [12],
+                "target": [6.0],
                 "proportional": [-0.005],
                 "derivative": [-0.002],
             }
