@@ -229,7 +229,7 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     listen_node_id::Int
-    target_level::Float64
+    target::Float64
     proportional::Union{Missing, Float64}
     integral::Union{Missing, Float64}
     derivative::Union{Missing, Float64}

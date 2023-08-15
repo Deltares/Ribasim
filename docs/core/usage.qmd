@@ -460,12 +460,14 @@ The PidControl node controls the level in a basin by continuously controlling th
 
 The pump must be an outneighbor of the controlled basin, the weir must be an inneighbor. Thus for the same coefficient values in `proportional`, `integral` and `derivative`, the pump and weir have the oppositve effect on the controlled basin.
 
+In the future controlling the flow on a particular edge could be supported.
+
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------
 node_id        | Int      | -        | sorted
 active         | Bool     | -        | (optional, default true)
 listen_node_id | Int      | -        | -
-target_level   | Float64  | $m$      | -
+target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | (optional, default 0.0)
 integral       | Float64  | $s^{-2}$ | (optional, default 0.0)
 derivative     | Floar64  | -        | (optional, default 0.0)

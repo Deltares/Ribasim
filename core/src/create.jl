@@ -409,7 +409,7 @@ function PidControl(db::DB, config::Config)::PidControl
         static_parsed.node_id,
         static_parsed.active,
         static_parsed.listen_node_id,
-        static_parsed.target_level,
+        static_parsed.target,
         static_parsed.proportional,
         static_parsed.integral,
         static_parsed.derivative,

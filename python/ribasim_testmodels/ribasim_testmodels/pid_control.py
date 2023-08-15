@@ -124,7 +124,7 @@ def pid_control_model():
             data={
                 "node_id": [5, 7],
                 "listen_node_id": [2, 2],
-                "target_level": [5.0, 5.0],
+                "target": [5.0, 5.0],
                 "proportional": [-1e-3, 1e-3],
                 "integral": [-1e-7, 1e-7],
             }

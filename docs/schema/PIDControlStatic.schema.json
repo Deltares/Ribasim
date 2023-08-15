@@ -38,6 +38,11 @@
             "description": "node_id",
             "type": "integer"
         },
+        "target": {
+            "format": "double",
+            "description": "target",
+            "type": "number"
+        },
         "derivative": {
             "format": "default",
             "description": "derivative",
@@ -51,17 +56,12 @@
             "type": [
                 "string"
             ]
-        },
-        "target_level": {
-            "format": "double",
-            "description": "target_level",
-            "type": "number"
         }
     },
     "required": [
         "node_id",
         "listen_node_id",
-        "target_level"
+        "target"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
     "title": "PidControlStatic",

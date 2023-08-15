@@ -368,19 +368,21 @@ struct DiscreteControl <: AbstractParameterNode
 end
 
 """
+PID control currently only supports regulating basin levels.
+
 node_id: node ID of the PidControl node
 active: whether this node is active and thus sets flow rates
 listen_node_id: the id of the basin being controlled
 proportional: the coefficient of the term proportional to the error
 integral: the coefficient of the term proportional to the integral of the error
 derivative: the coefficient of the term proportional to the derivative of the error
-error: the current error; basin_target_level - current_level
+error: the current error; basin_target - current_level
 """
 struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
-    target_level::Vector{Int}
+    target::Vector{Int}
     proportional::Vector{Float64}
     integral::Vector{Float64}
     derivative::Vector{Float64}
@@ -540,7 +542,7 @@ end
 
 function get_error!(pid_control::PidControl, p::Parameters)
     (; basin) = p
-    (; listen_node_id, target_level) = pid_control
+    (; listen_node_id, target) = pid_control
 
     pid_error = pid_control.error
 
@@ -548,8 +550,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        pid_error[i] =
-            target_level[listened_node_idx] - basin.current_level[listened_node_idx]
+        pid_error[i] = target[listened_node_idx] - basin.current_level[listened_node_idx]
     end
 end
 
