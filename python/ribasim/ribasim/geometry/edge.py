@@ -67,7 +67,7 @@ class Edge(TableModel):
             gdf["geometry"] = None
         gdf.to_file(
             directory / f"{modelname}.gpkg", layer=name, driver="GPKG"
-        )  # , engine="pyogrio"
+        )
 
         return
 
