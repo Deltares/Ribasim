@@ -101,3 +101,33 @@ end
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
 end
+
+@testset "Setpoint with bounds control" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/level_setpoint_with_minmax/level_setpoint_with_minmax.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; discrete_control) = p
+    (; record, greater_than) = discrete_control
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
+    timesteps = Ribasim.timesteps(model)
+
+    t_none_1 = discrete_control.record.time[2]
+    t_in = discrete_control.record.time[3]
+    t_none_2 = discrete_control.record.time[4]
+
+    level_min = greater_than[1]
+    setpoint = greater_than[2]
+
+    t_1_none_index = findfirst(timesteps .≈ t_none_1)
+    t_in_index = findfirst(timesteps .≈ t_in)
+    t_2_none_index = findfirst(timesteps .≈ t_none_2)
+
+    @test record.control_state == ["out", "none", "in", "none"]
+    @test level[t_1_none_index] ≈ setpoint
+    @test level[t_in_index] ≈ level_min
+    @test level[t_2_none_index] ≈ setpoint
+end

@@ -410,3 +410,146 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     )
 
     return model
+
+
+def level_setpoint_with_minmax_model():
+    """
+    Set up a minimal model in which the level of a basin is kept within an acceptable range
+    around a setpoint while being affected by time-varying forcing.
+    This is done by bringing the level back to the setpoint once the level goes beyond this range.
+    """
+
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (1.0, 0.5),  # 2: Pump
+            (1.0, -0.5),  # 3: Pump
+            (2.0, 0.0),  # 4: LevelBoundary
+            (-1.0, 0.0),  # 5: TabulatedRatingCurve
+            (-2.0, 0.0),  # 6: Terminal
+            (0.0, 1.5),  # 7: DiscreteControl
+        ]
+    )
+
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+    node_type = [
+        "Basin",
+        "Pump",
+        "Pump",
+        "LevelBoundary",
+        "TabulatedRatingCurve",
+        "Terminal",
+        "DiscreteControl",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 3, 4, 2, 1, 5, 7, 7], dtype=np.int64)
+    to_id = np.array([3, 4, 2, 1, 5, 6, 2, 3], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": 6 * ["flow"] + 2 * ["control"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1],
+            "area": [1000.0, 1000.0],
+            "level": [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [1],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [0.0],
+            "urban_runoff": [0.0],
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [1], "storage": [2e4]})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup pump
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": 3 * [2] + 3 * [3],
+                "control_state": 2 * ["none", "in", "out"],
+                "flow_rate": [0.0, 2e-3, 0.0, 0.0, 0.0, 2e-3],
+            }
+        )
+    )
+
+    # Setup level boundary
+    level_boundary = ribasim.LevelBoundary(
+        static=pd.DataFrame(data={"node_id": [4], "level": [10.0]})
+    )
+
+    # Setup the rating curve
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={"node_id": 2 * [5], "level": [2.0, 15.0], "discharge": [0.0, 1e-3]}
+        )
+    )
+
+    # Setup the terminal
+    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [6]}))
+
+    # Setup discrete control
+    condition = pd.DataFrame(
+        data={
+            "node_id": 3 * [7],
+            "listen_feature_id": 3 * [1],
+            "variable": 3 * ["level"],
+            "greater_than": [5.0, 10.0, 15.0],  # min, setpoint, max
+        }
+    )
+
+    logic = pd.DataFrame(
+        data={
+            "node_id": 5 * [7],
+            "truth_state": ["FFF", "U**", "T*F", "**D", "TTT"],
+            "control_state": ["in", "in", "none", "out", "out"],
+        }
+    )
+
+    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+
+    model = ribasim.Model(
+        modelname="level_setpoint_with_minmax",
+        node=node,
+        edge=edge,
+        basin=basin,
+        pump=pump,
+        level_boundary=level_boundary,
+        tabulated_rating_curve=rating_curve,
+        terminal=terminal,
+        discrete_control=discrete_control,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
