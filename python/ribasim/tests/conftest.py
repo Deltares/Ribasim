@@ -12,6 +12,7 @@ from ribasim_testmodels import (
     invalid_control_states_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
+    level_setpoint_with_minmax_model,
     linear_resistance_model,
     manning_resistance_model,
     misc_nodes_model,
@@ -68,5 +69,6 @@ if __name__ == "__main__":
     invalid_qh_model().write(datadir / "invalid_qh")
     invalid_fractional_flow_model().write(datadir / "invalid_fractional_flow")
     flow_boundary_time_model().write(datadir / "flow_boundary_time")
+    level_setpoint_with_minmax_model().write(datadir / "level_setpoint_with_minmax")
     pid_control_equation_model().write(datadir / "pid_control_equation")
     invalid_control_states_model().write(datadir / "invalid_control_states")

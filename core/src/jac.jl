@@ -391,7 +391,15 @@ function formulate_jac!(
         end
 
         controlled_node_id = only(outneighbors(graph_control, id))
-        controls_pump = (controlled_node_id in pump.node_id)
+        controls_pump = insorted(controlled_node_id, pump.node_id)
+
+        if !controls_pump
+            if !insorted(controlled_node_id, weir.node_id)
+                error(
+                    "Node #$controlled_node_id controlled by PidControl #$id is neither a Pump nor a Weir.",
+                )
+            end
+        end
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
