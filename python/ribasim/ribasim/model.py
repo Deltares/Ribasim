@@ -53,7 +53,7 @@ class Verbosity(str, Enum):
 
 class Logging(BaseModel):
     verbosity: Optional[Verbosity] = Verbosity.info
-    timings: Optional[bool] = False
+    timing: Optional[bool] = False
 
 
 class Model(BaseModel):
