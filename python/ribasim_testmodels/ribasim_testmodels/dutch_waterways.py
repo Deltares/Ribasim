@@ -30,7 +30,7 @@ def dutch_waterways_model():
 
     totalwidth = np.array(
         [
-            0.0,
+            10.0,
             88.0,
             137.0,
             139.0,
@@ -61,6 +61,9 @@ def dutch_waterways_model():
         }
     )
 
+    target_level = n_basins * [None]
+    target_level[4] = 6.0
+
     static = pd.DataFrame(
         data={
             "node_id": basin_node_ids,
@@ -84,9 +87,26 @@ def dutch_waterways_model():
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
-                "node_id": [8, 8, 13, 13],
-                "level": [7.45, 7.46, 4.45, 4.46],
-                "discharge": 2 * [418, 420.15],
+                "control_state": [
+                    "pump_low",
+                    "pump_high",
+                    "rating_curve",
+                    "rating_curve",
+                    None,
+                    None,
+                ],
+                "node_id": [8, 8, 8, 8, 13, 13],
+                "active": [False, False, True, True, None, None],
+                "level": [
+                    0.0,
+                    0.0,
+                    7.45,
+                    7.46,
+                    4.45,
+                    4.46,
+                ],  # The level and discharge for "pump_low", "pump_high" are irrelevant
+                "discharge": [0.0, 0.0]
+                + 2 * [418, 420.15],  # since the rating curve is not active here
             }
         )
     )
@@ -150,21 +170,20 @@ def dutch_waterways_model():
     # Setup discrete control
     condition = pd.DataFrame(
         data={
-            "node_id": 5 * [17],
-            "listen_feature_id": 4 * [1] + [12],
-            "variable": 5 * ["flow"],
-            "greater_than": [250, 275, 750, 800, 0],
+            "node_id": 4 * [17],
+            "listen_feature_id": 4 * [1],
+            "variable": 4 * ["flow_rate"],
+            "greater_than": [250, 275, 750, 800],
         }
     )
 
     logic = pd.DataFrame(
         data={
-            "node_id": 6 * [17],
-            "truth_state": ["F****", "TF**T", "TF**F", "**TFF", "**TFT", "***T*"],
+            "node_id": 5 * [17],
+            "truth_state": ["FFFF", "U***", "T**F", "***D", "TTTT"],
             "control_state": [
                 "pump_low",
                 "pump_low",
-                "pump_high",
                 "pump_high",
                 "rating_curve",
                 "rating_curve",
