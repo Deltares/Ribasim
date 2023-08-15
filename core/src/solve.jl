@@ -139,6 +139,12 @@ callback.
 
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
+
+node_id: node ID of the TabulatedRatingCurve node
+active: whether this node is active and thus contributes flows
+tables: The current Q(h) relationships
+time: The time table used for updating the tables
+control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{Int}
@@ -153,6 +159,11 @@ Requirements:
 
 * from: must be (Basin,) node
 * to: must be (Basin,) node
+
+node_id: node ID of the LinearResistance node
+active: whether this node is active and thus contributes flows
+resistance: the resistance to flow; Q = Δh/resistance
+control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{Int}
@@ -210,6 +221,10 @@ Requirements:
 * from: must be (TabulatedRatingCurve,) node
 * to: must be (Basin,) node
 * fraction must be positive.
+
+node_id: node ID of the TabulatedRatingCurve node
+fraction: The fraction in [0,1] of flow the node lets through
+control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{Int}
@@ -219,8 +234,8 @@ end
 
 """
 node_id: node ID of the LevelBoundary node
+active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
-The node_id are Indices to support fast lookup of level using ID.
 """
 struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{Int}
@@ -230,8 +245,8 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
+active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
-time: Data of time-dependent flow rates
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
@@ -241,8 +256,12 @@ end
 
 """
 node_id: node ID of the Pump node
+active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
+min_flow_rate: The minimal flow rate of the pump
+max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
+is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
@@ -252,6 +271,73 @@ struct Pump <: AbstractParameterNode
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
+
+    function Pump(
+        node_id,
+        active,
+        flow_rate,
+        min_flow_rate,
+        max_flow_rate,
+        control_mapping,
+        is_pid_controlled,
+    )
+        if valid_flow_rates(node_id, flow_rate, control_mapping, :Pump)
+            return new(
+                node_id,
+                active,
+                flow_rate,
+                min_flow_rate,
+                max_flow_rate,
+                control_mapping,
+                is_pid_controlled,
+            )
+        else
+            error("Invalid Pump flow rate(s).")
+        end
+    end
+end
+
+"""
+node_id: node ID of the Weir node
+active: whether this node is active and thus contributes flow
+flow_rate: target flow rate
+min_flow_rate: The minimal flow rate of the weir
+max_flow_rate: The maximum flow rate of the weir
+control_mapping: dictionary from (node_id, control_state) to target flow rate
+is_pid_controlled: whether the flow rate of this weir is governed by PID control
+"""
+struct Weir <: AbstractParameterNode
+    node_id::Vector{Int}
+    active::BitVector
+    flow_rate::Vector{Float64}
+    min_flow_rate::Vector{Float64}
+    max_flow_rate::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    is_pid_controlled::BitVector
+
+    function Weir(
+        node_id,
+        active,
+        flow_rate,
+        min_flow_rate,
+        max_flow_rate,
+        control_mapping,
+        is_pid_controlled,
+    )
+        if valid_flow_rates(node_id, flow_rate, control_mapping, :Weir)
+            return new(
+                node_id,
+                active,
+                flow_rate,
+                min_flow_rate,
+                max_flow_rate,
+                control_mapping,
+                is_pid_controlled,
+            )
+        else
+            error("Invalid Weir flow rate(s).")
+        end
+    end
 end
 
 """
@@ -262,7 +348,7 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the Control node
+node_id: node ID of the DiscreteControl node
 listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
@@ -285,6 +371,15 @@ struct DiscreteControl <: AbstractParameterNode
     }
 end
 
+"""
+node_id: node ID of the PidControl node
+active: whether this node is active and thus sets flow rates
+listen_node_id: the id of the basin being controlled
+proportional: the coefficient of the term proportional to the error
+integral: the coefficient of the term proportional to the integral of the error
+derivative: the coefficient of the term proportional to the derivative of the error
+error: the current error; basin_target_level - current_level
+"""
 struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
@@ -307,6 +402,7 @@ struct Parameters
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
     pump::Pump
+    weir::Weir
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl
@@ -472,7 +568,7 @@ function continuous_control!(
 )::Nothing
     # TODO: Also support being able to control weir
     # TODO: also support time varying target levels
-    (; connectivity, pump, basin, fractional_flow) = p
+    (; connectivity, pump, weir, basin, fractional_flow) = p
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
@@ -481,10 +577,6 @@ function continuous_control!(
     get_error!(pid_control, p)
 
     for (i, id) in enumerate(node_id)
-        controlled_node_id = only(outneighbors(graph_control, id))
-        # TODO: support the use of id_index
-        controlled_node_idx = searchsortedfirst(pump.node_id, controlled_node_id)
-
         if !active[i]
             du.integral[i] = 0.0
             u.integral[i] = 0.0
@@ -495,8 +587,28 @@ function continuous_control!(
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
-        storage_listened_basin = u.storage[listened_node_idx]
-        reduction_factor = min(storage_listened_basin, 10.0) / 10.0
+
+        controlled_node_id = only(outneighbors(graph_control, id))
+        controls_pump = (controlled_node_id in pump.node_id)
+
+        if controls_pump
+            controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
+
+            listened_basin_storage = u.storage[listened_node_idx]
+            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+        else
+            controlled_node_idx = findsorted(weir.node_id, controlled_node_id)
+
+            # Upstream node of weir does not have to be a basin
+            upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
+            has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
+            if has_index
+                upstream_basin_storage = u.storage[upstream_basin_idx]
+                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+            else
+                reduction_factor = 1.0
+            end
+        end
 
         flow_rate = 0.0
 
@@ -529,14 +641,22 @@ function continuous_control!(
         end
 
         # Clip values outside pump flow rate bounds
-        flow_rate = clamp(flow_rate, min_flow_rate[i], max_flow_rate[i])
+        flow_rate = clamp(
+            flow_rate,
+            min_flow_rate[controlled_node_idx],
+            max_flow_rate[controlled_node_idx],
+        )
 
         # Below du.storage is updated. This is normally only done
         # in formulate!(du, connectivity, basin), but in this function
         # flows are set so du has to be updated too.
-
-        pump.flow_rate[controlled_node_idx] = flow_rate
-        du.storage[listened_node_idx] -= flow_rate
+        if controls_pump
+            pump.flow_rate[controlled_node_idx] = flow_rate
+            du.storage[listened_node_idx] -= flow_rate
+        else
+            weir.flow_rate[controlled_node_idx] = flow_rate
+            du.storage[listened_node_idx] += flow_rate
+        end
 
         # Set flow for connected edges
         src_id = only(inneighbors(graph_flow, controlled_node_id))
@@ -550,17 +670,20 @@ function continuous_control!(
             du.storage[dst_idx] += flow_rate
         end
 
-        for id in outneighbors(graph_flow, controlled_node_id)
-            if id in fractional_flow.node_id
-                after_ff_id = only(outneighbours(graph_flow, id))
-                ff_idx = findsorted(fractional_flow, id)
-                flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
-                flow[id, after_ff_id] = flow_rate_fraction
+        # When the controlled pump flows out into fractional flow nodes
+        if controls_pump
+            for id in outneighbors(graph_flow, controlled_node_id)
+                if id in fractional_flow.node_id
+                    after_ff_id = only(outneighbours(graph_flow, id))
+                    ff_idx = findsorted(fractional_flow, id)
+                    flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
+                    flow[id, after_ff_id] = flow_rate_fraction
 
-                has_index, basin_idx = id_index(basin.node_id, after_ff_id)
+                    has_index, basin_idx = id_index(basin.node_id, after_ff_id)
 
-                if has_index
-                    du.storage[basin_idx] += flow_rate_fraction
+                    if has_index
+                        du.storage[basin_idx] += flow_rate_fraction
+                    end
                 end
             end
         end
@@ -739,14 +862,16 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Not
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})::Nothing
-    (; connectivity, basin, level_boundary) = p
+function formulate!(
+    node::Union{Pump, Weir},
+    p::Parameters,
+    storage::AbstractVector{Float64},
+)::Nothing
+    (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, active, flow_rate, is_pid_controlled) = pump
+    (; node_id, active, flow_rate, is_pid_controlled) = node
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
-        @assert rate >= 0 "Pump flow rate must be positive, found $rate for Pump #$id"
-
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
@@ -769,7 +894,6 @@ function formulate!(pump::Pump, p::Parameters, storage::AbstractVector{Float64})
             q = reduction_factor * rate
         else
             # Pumping from level boundary
-            @assert src_id in level_boundary.node_id "Pump intake is neither basin nor level_boundary"
             q = rate
         end
 
@@ -811,6 +935,7 @@ function formulate_flows!(
         fractional_flow,
         flow_boundary,
         pump,
+        weir,
     ) = p
 
     formulate!(linear_resistance, p)
@@ -819,6 +944,7 @@ function formulate_flows!(
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
+    formulate!(weir, p, storage)
 
     return nothing
 end

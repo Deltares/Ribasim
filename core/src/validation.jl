@@ -4,7 +4,6 @@
 @schema "ribasim.edge" Edge
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
 @schema "ribasim.basin.profile" BasinProfile
@@ -17,8 +16,10 @@
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
+@schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
+@schema "ribasim.weir.static" WeirStatic
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
@@ -42,23 +43,26 @@ end
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:Weir}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Basin}) =
-    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump))
+    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump, :Weir))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) = Set((:LinearResistance, :ManningResistance, :Pump))
+neighbortypes(::Val{:LevelBoundary}) =
+    Set((:LinearResistance, :ManningResistance, :Pump, :Weir))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:DiscreteControl}) = Set((
     :Pump,
+    :Weir,
     :TabulatedRatingCurve,
     :LinearResistance,
     :ManningResistance,
     :FractionalFlow,
 ))
-neighbortypes(::Val{:PidControl}) = Set((:Pump,))
+neighbortypes(::Val{:PidControl}) = Set((:Pump, :Weir))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
@@ -82,6 +86,7 @@ n_neighbor_bounds(::Val{:LevelBoundary}) =
 n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:Weir}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
@@ -100,6 +105,15 @@ end
 end
 
 @version PumpStaticV1 begin
+    node_id::Int
+    active::Union{Missing, Bool}
+    flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
+    control_state::Union{Missing, String}
+end
+
+@version WeirStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     flow_rate::Float64
@@ -345,27 +359,77 @@ function valid_profiles(
     return errors
 end
 
+"""
+Test whether static or discrete controlled flow rates are indeed non-negative.
+"""
+function valid_flow_rates(
+    node_id::Vector{Int},
+    flow_rate::Vector{Float64},
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple},
+    node_type::Symbol,
+)::Bool
+    errors = false
+
+    # Collect ids of discrete controlled nodes so that they do not give another error
+    # if their initial value is also invalid.
+    ids_controlled = Int[]
+
+    for (key, control_values) in pairs(control_mapping)
+        id_controlled = key[1]
+        push!(ids_controlled, id_controlled)
+        flow_rate_ = get(control_values, :flow_rate, 1)
+
+        if flow_rate_ < 0.0
+            errors = true
+            control_state = key[2]
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of #$id_controlled."
+        end
+    end
+
+    for (id, flow_rate_) in zip(node_id, flow_rate)
+        if id in ids_controlled
+            continue
+        end
+        if flow_rate_ < 0.0
+            errors = true
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static #$id."
+        end
+    end
+
+    return !errors
+end
+
 function valid_pid_connectivity(
     pid_control_node_id::Vector{Int},
     pid_control_listen_node_id::Vector{Int},
     graph_flow::DiGraph{Int},
     graph_control::DiGraph{Int},
     basin_node_id::Indices{Int},
+    pump_node_id::Vector{Int},
 )::Bool
     errors = false
 
     for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
-        pump_id = only(outneighbors(graph_control, id))
         has_index, _ = id_index(basin_node_id, listen_id)
         if !has_index
             @error "Listen node #$listen_id of PidControl node #$id is not a Basin"
             errors = true
         end
 
-        pump_intake_id = only(inneighbors(graph_flow, pump_id))
-        if pump_intake_id != listen_id
-            @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled node #$pump_id"
-            errors = true
+        controlled_id = only(outneighbors(graph_control, id))
+
+        if controlled_id in pump_node_id
+            pump_intake_id = only(inneighbors(graph_flow, controlled_id))
+            if pump_intake_id != listen_id
+                @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled pump #$controlled_id"
+                errors = true
+            end
+        else
+            weir_outflow_id = only(outneighbors(graph_flow, controlled_id))
+            if weir_outflow_id != listen_id
+                @error "Listen node #$listen_id of PidControl node #$id is not downstream of controlled weir #$controlled_id"
+                errors = true
+            end
         end
     end
 

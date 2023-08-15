@@ -57,12 +57,30 @@ end
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    basin = model.integrator.p.basin
+    p = model.integrator.p
+    (; basin, pid_control, flow_boundary) = p
 
-    timesteps = Ribasim.timesteps(model) / (60 * 60 * 24)
-    level = Ribasim.get_storages_and_levels(model).level[1, :]
-    bound = 5 .* exp.(-0.03 .* timesteps)
-    @test all(abs.(level .- basin.target_level[1]) .< bound)
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    timesteps = Ribasim.timesteps(model)
+
+    K_p = pid_control.proportional[2]
+    K_i = pid_control.integral[2]
+    A = basin.area[1][1]
+    target_level = basin.target_level[1]
+    initial_storage = storage[1]
+    flow_rate = flow_boundary.flow_rate[1].u[1]
+    du0 = flow_rate + K_p * (target_level - initial_storage / A)
+    target_storage = A * target_level
+    Δstorage = initial_storage - target_storage
+    alpha = -K_p / (2 * A)
+    omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
+    phi = atan(du0 / Δstorage - alpha) / omega
+    a = abs(Δstorage / cos(phi))
+    # This bound is the exact envelope of the analytical solution
+    bound = @. a * exp(alpha * timesteps)
+    eps = 3.0
+
+    @test all((storage .- target_storage) .< bound .+ eps)
 end
 
 @testset "TabulatedRatingCurve control" begin
@@ -82,4 +100,34 @@ end
     @test Date(t) == Date("2020-03-15")
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
+end
+
+@testset "Setpoint with bounds control" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/level_setpoint_with_minmax/level_setpoint_with_minmax.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; discrete_control) = p
+    (; record, greater_than) = discrete_control
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
+    timesteps = Ribasim.timesteps(model)
+
+    t_none_1 = discrete_control.record.time[2]
+    t_in = discrete_control.record.time[3]
+    t_none_2 = discrete_control.record.time[4]
+
+    level_min = greater_than[1]
+    setpoint = greater_than[2]
+
+    t_1_none_index = findfirst(timesteps .≈ t_none_1)
+    t_in_index = findfirst(timesteps .≈ t_in)
+    t_2_none_index = findfirst(timesteps .≈ t_none_2)
+
+    @test record.control_state == ["out", "none", "in", "none"]
+    @test level[t_1_none_index] ≈ setpoint
+    @test level[t_in_index] ≈ level_min
+    @test level[t_2_none_index] ≈ setpoint
 end

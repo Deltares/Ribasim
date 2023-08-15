@@ -177,6 +177,7 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
+            "Weir": (QColor("yellow"), "Weir", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
@@ -224,6 +225,21 @@ class Edge(Input):
     def is_spatial(cls):
         return True
 
+    def set_editor_widget(self) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName("edge_type")
+        setup = QgsEditorWidgetSetup(
+            "ValueMap",
+            {"map": {node: node for node in EDGETYPES}},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
+        layer_form_config = layer.editFormConfig()
+        layer_form_config.setReuseLastValue(1, True)
+        layer.setEditFormConfig(layer_form_config)
+
+        return
+
     @property
     def renderer(self) -> QgsCategorizedSymbolRenderer:
         MARKERS = {
@@ -263,14 +279,6 @@ class Edge(Input):
             attrName="edge_type", categories=categories
         )
         return renderer
-
-    def set_read_only(self) -> None:
-        layer = self.layer
-        config = layer.editFormConfig()
-        for index in range(len(layer.fields())):
-            config.setReadOnly(index, True)
-        layer.setEditFormConfig(config)
-        return
 
 
 class BasinProfile(Input):
@@ -325,8 +333,10 @@ class TabulatedRatingCurveStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("level", QVariant.Double),
         QgsField("discharge", QVariant.Double),
+        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -356,6 +366,7 @@ class LinearResistanceStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("resistance", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
@@ -366,6 +377,7 @@ class ManningResistanceStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("length", QVariant.Double),
         QgsField("manning_n", QVariant.Double),
         QgsField("profile_width", QVariant.Double),
@@ -379,8 +391,8 @@ class LevelBoundaryStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("level", QVariant.Double),
-        QgsField("control_state", QVariant.String),
     ]
 
 
@@ -389,7 +401,23 @@ class PumpStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("flow_rate", QVariant.Double),
+        QgsField("min_flow_rate", QVariant.Double),
+        QgsField("max_flow_rate", QVariant.Double),
+        QgsField("control_state", QVariant.String),
+    ]
+
+
+class WeirStatic(Input):
+    input_type = "Weir / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
+        QgsField("flow_rate", QVariant.Double),
+        QgsField("min_flow_rate", QVariant.Double),
+        QgsField("max_flow_rate", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
 
@@ -405,8 +433,18 @@ class FlowBoundaryStatic(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("flow_rate", QVariant.Double),
-        QgsField("control_state", QVariant.String),
+    ]
+
+
+class FlowBoundaryTime(Input):
+    input_type = "FlowBoundary / time"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("time", QVariant.DateTime),
+        QgsField("node_id", QVariant.Int),
+        QgsField("flow_rate", QVariant.Double),
     ]
 
 
@@ -436,6 +474,7 @@ class PidControlStatic(Input):
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
         QgsField("listen_node_id", QVariant.Int),
         QgsField("proportional", QVariant.Double),
         QgsField("integral", QVariant.Double),
@@ -447,6 +486,7 @@ NODES = {cls.input_type: cls for cls in Input.__subclasses__()}
 NONSPATIALNODETYPES = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
+EDGETYPES = {"flow", "control"}
 
 
 def load_nodes_from_geopackage(path: str) -> Dict[str, Input]:

@@ -88,6 +88,7 @@ end
 @testset "PidControl connectivity validation" begin
     pid_control_node_id = [1, 6]
     pid_control_listen_node_id = [3, 5]
+    pump_node_id = [2, 4]
 
     graph_flow = DiGraph(7)
     graph_control = DiGraph(7)
@@ -108,6 +109,7 @@ end
             graph_flow,
             graph_control,
             basin_node_id,
+            pump_node_id,
         )
     end
 
@@ -116,7 +118,7 @@ end
     @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Listen node #5 of PidControl node #6 is not upstream of controlled node #2"
+          "Listen node #5 of PidControl node #6 is not upstream of controlled pump #2"
 end
 
 # This test model is not written on Ubuntu CI, see #479
@@ -154,4 +156,66 @@ if !Sys.islinux()
         @test logger.logs[3].message ==
               "The sum of fractional flow fractions leaving a node must be ≈1, got 0.4 for #7."
     end
+end
+
+@testset "Control state validation" begin
+    toml_path =
+        normpath(@__DIR__, "../../data/invalid_control_states/invalid_control_states.toml")
+    @test ispath(toml_path)
+
+    cfg = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
+    db = SQLite.DB(gpkg_path)
+    p = Ribasim.Parameters(db, cfg)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_discrete_control(p)
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "These control states from DiscreteControl node #4 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+end
+
+@testset "Pump/weir flow rate sign validation" begin
+    logger = TestLogger()
+
+    with_logger(logger) do
+        @test_throws "Invalid Weir flow rate(s)." Ribasim.Weir(
+            [1],
+            [true],
+            [-1.0],
+            [NaN],
+            [NaN],
+            Dict{Tuple{Int, String}, NamedTuple}(),
+            [false],
+        )
+    end
+
+    @assert length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Weir flow rates must be non-negative, found -1.0 for static #1."
+
+    logger = TestLogger()
+
+    with_logger(logger) do
+        @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
+            [1],
+            [true],
+            [-1.0],
+            [NaN],
+            [NaN],
+            Dict{Tuple{Int, String}, NamedTuple}((1, "foo") => (; flow_rate = -1.0)),
+            [false],
+        )
+    end
+
+    # Only the invalid control state flow_rate yields an error
+    @assert length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Pump flow rates must be non-negative, found -1.0 for control state 'foo' of #1."
 end

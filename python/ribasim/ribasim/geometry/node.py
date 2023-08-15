@@ -92,7 +92,11 @@ class Node(TableModel):
         gdf = gpd.GeoDataFrame(data=dataframe)
         gdf = gdf.set_geometry("geometry")
 
-        gdf.to_file(directory / f"{modelname}.gpkg", layer=name)
+        gdf.to_file(
+            directory / f"{modelname}.gpkg",
+            layer=name,
+            driver="GPKG",
+        )
 
         return
 
@@ -134,6 +138,7 @@ class Node(TableModel):
             "ManningResistance": "D",
             "TabulatedRatingCurve": "D",
             "Pump": "h",
+            "Weir": "h",
             "Terminal": "s",
             "FlowBoundary": "h",
             "DiscreteControl": "*",
@@ -149,6 +154,7 @@ class Node(TableModel):
             "ManningResistance": "r",
             "TabulatedRatingCurve": "g",
             "Pump": "0.5",  # grayscale level
+            "Weir": "y",
             "Terminal": "m",
             "FlowBoundary": "m",
             "DiscreteControl": "k",

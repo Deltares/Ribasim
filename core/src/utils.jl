@@ -378,6 +378,56 @@ function get_compressor(config::Config)
     end
 end
 
+"Check whether control states are defined for discrete controlled nodes."
+function valid_discrete_control(p::Parameters)::Bool
+    (; discrete_control, connectivity, lookup) = p
+    (; graph_control) = connectivity
+    (; node_id, logic_mapping) = discrete_control
+
+    errors = false
+
+    for id in node_id
+        # Get control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
+
+        for (key, control_state) in logic_mapping
+            if key[1] == id
+                push!(control_states_discrete_control, control_state)
+            end
+        end
+
+        # Check whether these control states are defined for the
+        # control outneighbors
+        for id_outneighbor in outneighbors(graph_control, id)
+
+            # Node object for the outneighbor node type
+            node = getfield(p, lookup[id_outneighbor])
+
+            # Get control states of the controlled node
+            control_states_controlled = Set{String}()
+
+            # It is known that this node type has a control mapping, otherwise
+            # connectivity validation would have failed.
+            for (controlled_id, control_state) in keys(node.control_mapping)
+                if controlled_id == id_outneighbor
+                    push!(control_states_controlled, control_state)
+                end
+            end
+
+            undefined_control_states =
+                setdiff(control_states_discrete_control, control_states_controlled)
+
+            if !isempty(undefined_control_states)
+                undefined_list = collect(undefined_control_states)
+                node_type = typeof(node)
+                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
@@ -388,7 +438,7 @@ function expand_logic_mapping(
     logic_mapping_expanded = Dict{Tuple{Int, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
-        pattern = r"^[TF\*]+$"
+        pattern = r"^[TFUD\*]+$"
         if !occursin(pattern, truth_state)
             error("Truth state \'$truth_state\' contains illegal characters or is empty.")
         end
@@ -440,6 +490,10 @@ nodefields(p::Parameters) = (
 Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
+
+Note: the name 'prototype' does not mean this code is a prototype, it comes
+from the naming convention of this sparsity structure in the
+differentialequations.jl docs.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control) = p
@@ -528,13 +582,17 @@ Upstream basins always depend on themselves.
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
     p::Parameters,
-    node::Union{Pump, TabulatedRatingCurve},
+    node::Union{Pump, Weir, TabulatedRatingCurve},
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
     (; graph_flow) = connectivity
 
-    for id in node.node_id
+    for (i, id) in enumerate(node.node_id)
         id_in = only(inneighbors(graph_flow, id))
+
+        if hasfield(typeof(node), :is_pid_controlled) && node.is_pid_controlled[i]
+            continue
+        end
 
         # For inneighbors only directly connected basins give a contribution
         has_index_in, idx_in = id_index(basin.node_id, id_in)
@@ -576,14 +634,17 @@ function update_jac_prototype!(
     p::Parameters,
     node::PidControl,
 )::Nothing
-    (; basin, connectivity) = p
+    (; basin, connectivity, pump) = p
     (; graph_control, graph_flow) = connectivity
 
     n_basins = length(basin.node_id)
 
-    for (pid_idx, (listen_node_id, id)) in enumerate(zip(node.listen_node_id, node.node_id))
-        id_pump = only(outneighbors(graph_control, id))
-        id_pump_out = only(inneighbors(graph_flow, id_pump))
+    for i in eachindex(node.node_id)
+        listen_node_id = node.listen_node_id[i]
+        id = node.node_id[i]
+
+        # ID of controlled pump/weir
+        id_controlled = only(outneighbors(graph_control, id))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
@@ -591,19 +652,36 @@ function update_jac_prototype!(
         jac_prototype[listen_idx, listen_idx] = 1.0
 
         # PID control integral state
-        pid_state_idx = n_basins + pid_idx
+        pid_state_idx = n_basins + i
         jac_prototype[listen_idx, pid_state_idx] = 1.0
         jac_prototype[pid_state_idx, listen_idx] = 1.0
 
-        # The basin downstream of the pump
-        has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
+        if id_controlled in pump.node_id
+            id_pump_out = only(inneighbors(graph_flow, id_controlled))
 
-        if has_index
-            # The basin downstream of the pump PID control integral state
-            jac_prototype[pid_state_idx, idx_out_out] = 1.0
+            # The basin downstream of the pump
+            has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
 
-            # The basin downstream of the pump also depends on the controlled basin
-            jac_prototype[listen_idx, idx_out_out] = 1.0
+            if has_index
+                # The basin downstream of the pump depends on PID control integral state
+                jac_prototype[pid_state_idx, idx_out_out] = 1.0
+
+                # The basin downstream of the pump also depends on the controlled basin
+                jac_prototype[listen_idx, idx_out_out] = 1.0
+            end
+        else
+            id_weir_in = only(outneighbors(graph_flow, id_controlled))
+
+            # The basin upstream of the weir
+            has_index, idx_out_in = id_index(basin.node_id, id_weir_in)
+
+            if has_index
+                # The basin upstream of the weir depends on the PID control integral state
+                jac_prototype[pid_state_idx, idx_out_in] = 1.0
+
+                # The basin upstream of the weir also depends on the controlled basin
+                jac_prototype[listen_idx, idx_out_in] = 1.0
+            end
         end
     end
     return nothing

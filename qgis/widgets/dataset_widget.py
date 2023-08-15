@@ -191,7 +191,6 @@ class DatasetWidget(QWidget):
         fields = edge.fields()
         field1 = fields.indexFromName("from_node_id")
         field2 = fields.indexFromName("to_node_id")
-        field3 = fields.indexFromName("edge_type")
         try:
             # Avoid infinite recursion
             edge.blockSignals(True)
@@ -201,7 +200,7 @@ class DatasetWidget(QWidget):
                     # Nota bene: will fail with numpy integers, has to be Python type!
                     edge.changeAttributeValue(fid, field1, int(id1))
                     edge.changeAttributeValue(fid, field2, int(id2))
-                    edge.changeAttributeValue(fid, field3, "flow")
+
         finally:
             edge.blockSignals(False)
 
@@ -212,7 +211,7 @@ class DatasetWidget(QWidget):
         layer: Any,
         destination: Any,
         renderer: Any = None,
-        suppress: bool = None,
+        suppress: bool = False,
         on_top: bool = False,
         labels: Any = None,
     ) -> QgsMapLayer:
@@ -229,8 +228,6 @@ class DatasetWidget(QWidget):
         element = item.element
         layer, renderer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        if element.input_type == "Edge":
-            suppress = True
         self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
         element.set_editor_widget()
         element.set_read_only()
@@ -294,11 +291,7 @@ class DatasetWidget(QWidget):
             layer = item.element.layer
             if layer is not None:
                 config = layer.editFormConfig()
-                # Always suppress the attribute form pop-up for edges.
-                if item.element.input_type == "Edge":
-                    config.setSuppress(True)
-                else:
-                    config.setSuppress(suppress)
+                config.setSuppress(suppress)
                 layer.setEditFormConfig(config)
 
     def active_nodes(self):

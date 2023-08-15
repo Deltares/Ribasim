@@ -28,6 +28,7 @@ from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
+from ribasim.node_types.weir import Weir
 from ribasim.types import FilePath
 
 
@@ -73,6 +74,8 @@ class Model(BaseModel):
         Tabulated rating curve describing flow based on the upstream water level.
     pump : Optional[Pump]
         Prescribed flow rate from one basin to the other.
+    weir : Optional[Weir]
+        Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
     discrete_control : Optional[DiscreteControl]
@@ -98,6 +101,7 @@ class Model(BaseModel):
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
+    weir: Optional[Weir]
     terminal: Optional[Terminal]
     discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]

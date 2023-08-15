@@ -11,9 +11,11 @@ def pid_control_model():
         [
             (0.0, 0.0),  # 1: FlowBoundary
             (1.0, 0.0),  # 2: Basin
-            (2.0, 0.0),  # 3: Pump
+            (2.0, 0.5),  # 3: Pump
             (3.0, 0.0),  # 4: LevelBoundary
             (1.5, 1.0),  # 5: PidControl
+            (2.0, -0.5),  # 6: Weir
+            (1.5, -1.0),  # 7: PidControl
         ]
     )
 
@@ -24,6 +26,8 @@ def pid_control_model():
         "Basin",
         "Pump",
         "LevelBoundary",
+        "PidControl",
+        "Weir",
         "PidControl",
     ]
 
@@ -38,8 +42,8 @@ def pid_control_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 3, 5], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 3], dtype=np.int64)
+    from_id = np.array([1, 2, 3, 4, 6, 5, 7], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 6, 2, 3, 6], dtype=np.int64)
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
@@ -47,7 +51,7 @@ def pid_control_model():
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": 3 * ["flow"] + ["control"],
+                "edge_type": 5 * ["flow"] + 2 * ["control"],
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -55,34 +59,30 @@ def pid_control_model():
     )
 
     # Setup the basins:
-    R = 10.0
-    n = 10
-
-    level = np.linspace(0, R, n)
-    area = np.pi * level * (2 * R - level)
-    area[0] = 0.01
-
-    profile = pd.DataFrame(data={"node_id": n * [2], "level": level, "area": area})
-
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation, 1 mm/d evaporation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    evaporation = 0.001 / seconds_in_day
+    profile = pd.DataFrame(
+        data={"node_id": [2, 2], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
+    )
 
     static = pd.DataFrame(
         data={
             "node_id": [2],
             "drainage": [0.0],
-            "potential_evaporation": [evaporation],
+            "potential_evaporation": [0.0],
             "infiltration": [0.0],
-            "precipitation": [precipitation],
+            "precipitation": [0.0],
             "urban_runoff": [0.0],
-            "target_level": [R / 2],
+            "target_level": [5.0],
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(
+        data={
+            "node_id": [2],
+            "storage": [500.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
@@ -90,7 +90,16 @@ def pid_control_model():
             data={
                 "node_id": [3],
                 "flow_rate": [0.0],  # Will be overwritten by PID controller
-                "min_flow_rate": [0.0],
+            }
+        )
+    )
+
+    # Setup weir:
+    weir = ribasim.Weir(
+        static=pd.DataFrame(
+            data={
+                "node_id": [6],
+                "flow_rate": [0.0],  # Will be overwritten by PID controller
             }
         )
     )
@@ -114,11 +123,10 @@ def pid_control_model():
     pid_control = ribasim.PidControl(
         static=pd.DataFrame(
             data={
-                "node_id": [5],
-                "listen_node_id": [2],
-                "proportional": [-1e-3],
-                "derivative": [None],
-                "integral": [-1e-7],
+                "node_id": [5, 7],
+                "listen_node_id": [2, 2],
+                "proportional": [-1e-3, 1e-3],
+                "integral": [-1e-7, 1e-7],
             }
         )
     )
@@ -132,6 +140,7 @@ def pid_control_model():
         flow_boundary=flow_boundary,
         level_boundary=level_boundary,
         pump=pump,
+        weir=weir,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
         endtime="2020-07-01 00:00:00",

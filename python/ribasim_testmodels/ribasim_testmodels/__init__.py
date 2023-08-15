@@ -9,6 +9,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.discrete_control import (
     flow_condition_model,
+    level_setpoint_with_minmax_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
@@ -21,11 +22,14 @@ from ribasim_testmodels.equations import (
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import (
+    invalid_control_states_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
 )
 from ribasim_testmodels.pid_control import pid_control_model
-from ribasim_testmodels.time import flow_boundary_time_model
+from ribasim_testmodels.time import (
+    flow_boundary_time_model,
+)
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
@@ -48,4 +52,6 @@ __all__ = [
     "flow_boundary_time_model",
     "pid_control_equation_model",
     "invalid_fractional_flow_model",
+    "invalid_control_states_model",
+    "level_setpoint_with_minmax_model",
 ]

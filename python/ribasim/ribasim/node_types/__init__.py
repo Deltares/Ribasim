@@ -9,6 +9,7 @@ from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
+from ribasim.node_types.weir import Weir
 
 __all__ = [
     "Basin",
@@ -17,6 +18,7 @@ __all__ = [
     "LinearResistance",
     "ManningResistance",
     "Pump",
+    "Weir",
     "FlowBoundary",
     "TabulatedRatingCurve",
     "Terminal",

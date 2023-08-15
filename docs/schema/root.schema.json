@@ -13,6 +13,9 @@
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
+        "WeirStatic": {
+            "$ref": "WeirStatic.schema.json"
+        },
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
         },

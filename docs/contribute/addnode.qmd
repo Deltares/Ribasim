@@ -29,6 +29,9 @@ There can be several schemas associated with a single node type. To define a sch
 ```julia
 @schema "ribasim.newnodetype.static" NewNodeTypeStatic
 
+"""
+node_id: node ID of the NewNodeType node
+"""
 @version NewNodeTypeStaticV1 begin
     node_id::Int
     # Other fields
@@ -44,9 +47,15 @@ Now we define the function that is called in the second bullet above, in `create
 ```julia
 function NewNodeType(db::DB, config::Config)::NewNodeType
     static = load_structvector(db, config, NewNodeTypeStaticV1)
+    defaults = (; active = true)
+    # Process potential control states in the static data
+    static_parsed = parse_static(static, db, "Weir", defaults)
 
     # Unpack the fields of static as inputs for the NewNodeType constructor
-    return NewNodeType(static.node_id, static.some_property)
+    return NewNodeType(
+        static_parsed.node_id,
+        static_parsed.some_property,
+        static_parsed.control_mapping)
 end
 ```
 
@@ -148,7 +157,7 @@ In `python/ribasim/ribasim/model.py`, add
 - `from ribasim.new_node_type import NewNodeType`;
 - new_node_type as a parameter and in the docstring of the `Model` class.
 
-In `python/ribasim/ribasim/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
+In `python/ribasim/ribasim/geometry/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
 
 # QGIS plugin
 

@@ -21,13 +21,18 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        (; pid_control, connectivity, basin, pump, fractional_flow) = parameters
+        if !valid_discrete_control(parameters)
+            error("Invalid discrete control state definition(s).")
+        end
+
+        (; pid_control, connectivity, basin, pump, weir, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
             connectivity.graph_flow,
             connectivity.graph_control,
             basin.node_id,
+            pump.node_id,
         )
             error("Invalid PidControl connectivity.")
         end
@@ -41,9 +46,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         end
 
         for id in pid_control.node_id
-            id_pump = only(outneighbors(connectivity.graph_control, id))
-            pump_idx = findsorted(pump.node_id, id_pump)
-            pump.is_pid_controlled[pump_idx] = true
+            id_controlled = only(outneighbors(connectivity.graph_control, id))
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            if isnothing(pump_idx)
+                weir_idx = findsorted(weir.node_id, id_controlled)
+                weir.is_pid_controlled[weir_idx] = true
+            else
+                pump.is_pid_controlled[pump_idx] = true
+            end
         end
 
         # tstops for transient flow_boundary
@@ -126,7 +136,7 @@ function set_initial_discrete_controlled_parameters!(
     for discrete_control_node_id in unique(discrete_control.node_id)
         condition_idx =
             searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
-        discrete_control_affect!(integrator, condition_idx)
+        discrete_control_affect!(integrator, condition_idx, missing)
     end
 end
 
@@ -203,14 +213,17 @@ function get_value(
     p::Parameters,
     feature_id::Int,
     variable::String,
-    storage::AbstractVector{Float64},
+    u::AbstractVector{Float64},
     t::Float64,
 )
     (; basin, flow_boundary) = p
 
     if variable == "level"
         hasindex, basin_idx = id_index(basin.node_id, feature_id)
-        _, level, _ = get_area_and_level(basin, basin_idx, storage[basin_idx])
+        if !hasindex
+            error("Level listen feature_id '$feature_id' is not a basin node id.")
+        end
+        _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
         value = level
 
     elseif variable == "flow_rate"
@@ -232,26 +245,74 @@ end
 An upcrossing means that a condition (always greater than) becomes true.
 """
 function discrete_control_affect_upcrossing!(integrator, condition_idx)
-    discrete_control = integrator.p.discrete_control
-    discrete_control.condition_value[condition_idx] = true
+    (; p, u, t) = integrator
+    (; discrete_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = discrete_control
 
-    discrete_control_affect!(integrator, condition_idx)
+    condition_value[condition_idx] = true
+
+    control_state_change = discrete_control_affect!(integrator, condition_idx, true)
+
+    # Check whether the control state change changed the direction of the crossing
+    # NOTE: This works for level conditions, but not for flow conditions on an
+    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
+    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
+    # giving the possibility of logical paradoxes where certain parameter changes immediately
+    # undo the truth state that caused that parameter change.
+    if variable[condition_idx] == "level" && control_state_change
+        # Calling water_balance is expensive, but it is a sure way of getting
+        # du for the basin of this level condition
+        du = zero(u)
+        water_balance!(du, u, p, t)
+        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+
+        if du[condition_basin_idx] < 0.0
+            condition_value[condition_idx] = false
+            discrete_control_affect!(integrator, condition_idx, false)
+        end
+    end
 end
 
 """
 An downcrossing means that a condition (always greater than) becomes false.
 """
 function discrete_control_affect_downcrossing!(integrator, condition_idx)
-    discrete_control = integrator.p.discrete_control
-    discrete_control.condition_value[condition_idx] = false
+    (; p, u, t) = integrator
+    (; discrete_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = discrete_control
 
-    discrete_control_affect!(integrator, condition_idx)
+    condition_value[condition_idx] = false
+
+    control_state_change = discrete_control_affect!(integrator, condition_idx, false)
+
+    # Check whether the control state change changed the direction of the crossing
+    # NOTE: This works for level conditions, but not for flow conditions on an
+    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
+    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
+    # giving the possibility of logical paradoxes where certain parameter changes immediately
+    # undo the truth state that caused that parameter change.
+    if variable[condition_idx] == "level" && control_state_change
+        # Calling water_balance is expensive, but it is a sure way of getting
+        # du for the basin of this level condition
+        du = zero(u)
+        water_balance!(du, u, p, t)
+        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+
+        if du[condition_basin_idx] > 0.0
+            condition_value[condition_idx] = true
+            discrete_control_affect!(integrator, condition_idx, true)
+        end
+    end
 end
 
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(integrator, condition_idx)
+function discrete_control_affect!(
+    integrator,
+    condition_idx::Int,
+    upcrossing::Union{Bool, Missing},
+)::Bool
     p = integrator.p
     (; discrete_control, connectivity) = p
 
@@ -263,25 +324,54 @@ function discrete_control_affect!(integrator, condition_idx)
 
     # Get the truth state for this discrete_control node
     condition_value_local = discrete_control.condition_value[condition_ids]
-    truth_state = join([ifelse(b, "T", "F") for b in condition_value_local], "")
+    truth_values = [ifelse(b, "T", "F") for b in condition_value_local]
+    truth_state = join(truth_values, "")
+
+    # Get the truth specific about the latest crossing
+    if !ismissing(upcrossing)
+        truth_values[condition_idx] = upcrossing ? "U" : "D"
+    end
+    truth_state_crossing_specific = join(truth_values, "")
 
     # What the local control state should be
     control_state_new =
-        discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
+        if haskey(
+            discrete_control.logic_mapping,
+            (discrete_control_node_id, truth_state_crossing_specific),
+        )
+            truth_state_used = truth_state_crossing_specific
+            discrete_control.logic_mapping[(
+                discrete_control_node_id,
+                truth_state_crossing_specific,
+            )]
+        elseif haskey(
+            discrete_control.logic_mapping,
+            (discrete_control_node_id, truth_state),
+        )
+            truth_state_used = truth_state
+            discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
+        else
+            error(
+                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node #$discrete_control_node_id.",
+            )
+        end
 
     # What the local control state is
     # TODO: Check time elapsed since control change
     control_state_now, control_state_start =
         discrete_control.control_state[discrete_control_node_id]
 
+    control_state_change = false
+
     if control_state_now != control_state_new
+        control_state_change = true
 
         # Store control action in record
         record = discrete_control.record
 
         push!(record.time, integrator.t)
         push!(record.control_node_id, discrete_control_node_id)
-        push!(record.truth_state, truth_state)
+        push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
@@ -293,6 +383,7 @@ function discrete_control_affect!(integrator, condition_idx)
         discrete_control.control_state[discrete_control_node_id] =
             (control_state_new, integrator.t)
     end
+    return control_state_change
 end
 
 function set_control_params!(p::Parameters, node_id::Int, control_state::String)
