@@ -65,9 +65,7 @@ class Edge(TableModel):
             gdf = gdf.set_geometry("geometry")
         else:
             gdf["geometry"] = None
-        gdf.to_file(
-            directory / f"{modelname}.gpkg", layer=name, driver="GPKG"
-        )
+        gdf.to_file(directory / f"{modelname}.gpkg", layer=name, driver="GPKG")
 
         return
 
