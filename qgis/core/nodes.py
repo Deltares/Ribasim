@@ -323,7 +323,7 @@ class BasinState(Input):
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
-        QgsField("storage", QVariant.Double),
+        QgsField("level", QVariant.Double),
         QgsField("concentration", QVariant.Double),
     ]
 
