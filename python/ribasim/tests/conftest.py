@@ -10,6 +10,7 @@ from ribasim_testmodels import (
     flow_boundary_time_model,
     flow_condition_model,
     invalid_control_states_model,
+    invalid_edge_types_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
     level_setpoint_with_minmax_model,
@@ -72,3 +73,4 @@ if __name__ == "__main__":
     level_setpoint_with_minmax_model().write(datadir / "level_setpoint_with_minmax")
     pid_control_equation_model().write(datadir / "pid_control_equation")
     invalid_control_states_model().write(datadir / "invalid_control_states")
+    invalid_edge_types_model().write(datadir / "invalid_edge_types")
