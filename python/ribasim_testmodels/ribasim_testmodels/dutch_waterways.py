@@ -48,7 +48,7 @@ def dutch_waterways_model():
         ]
     )
 
-    basin_node_ids = np.array([2, 5, 6, 10, 12, 15])
+    basin_node_ids = np.array([2, 5, 6, 10, 12, 15], dtype=int)
     n_basins = len(basin_node_ids)
 
     length = 1e4
@@ -72,7 +72,11 @@ def dutch_waterways_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(
+        data={"node_id": basin_node_ids, "level": [8.31, 7.5, 7.5, 7.0, 6.0, 5.5]}
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
