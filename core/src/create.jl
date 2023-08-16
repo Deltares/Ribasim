@@ -294,13 +294,13 @@ function Pump(db::DB, config::Config)::Pump
     )
 end
 
-function Weir(db::DB, config::Config)::Weir
-    static = load_structvector(db, config, WeirStaticV1)
+function Outlet(db::DB, config::Config)::Outlet
+    static = load_structvector(db, config, OutletStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
-    static_parsed = parse_static(static, db, "Weir", defaults)
+    static_parsed = parse_static(static, db, "Outlet", defaults)
     is_pid_controlled = falses(length(static_parsed.node_id))
 
-    return Weir(
+    return Outlet(
         static_parsed.node_id,
         static_parsed.active,
         static_parsed.flow_rate,
@@ -427,7 +427,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
     pump = Pump(db, config)
-    weir = Weir(db, config)
+    outlet = Outlet(db, config)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config)
@@ -445,7 +445,7 @@ function Parameters(db::DB, config::Config)::Parameters
         level_boundary,
         flow_boundary,
         pump,
-        weir,
+        outlet,
         terminal,
         discrete_control,
         pid_control,

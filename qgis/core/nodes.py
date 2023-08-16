@@ -177,7 +177,7 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
-            "Weir": (QColor("yellow"), "Weir", shape.Hexagon),
+            "Outlet": (QColor("yellow"), "Outlet", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
@@ -409,8 +409,8 @@ class PumpStatic(Input):
     ]
 
 
-class WeirStatic(Input):
-    input_type = "Weir / static"
+class OutletStatic(Input):
+    input_type = "Outlet / static"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),

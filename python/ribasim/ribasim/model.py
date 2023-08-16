@@ -24,11 +24,11 @@ from ribasim.node_types.fractional_flow import FractionalFlow
 from ribasim.node_types.level_boundary import LevelBoundary
 from ribasim.node_types.linear_resistance import LinearResistance
 from ribasim.node_types.manning_resistance import ManningResistance
+from ribasim.node_types.outlet import Outlet
 from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
-from ribasim.node_types.weir import Weir
 from ribasim.types import FilePath
 
 
@@ -74,14 +74,14 @@ class Model(BaseModel):
         Tabulated rating curve describing flow based on the upstream water level.
     pump : Optional[Pump]
         Prescribed flow rate from one basin to the other.
-    weir : Optional[Weir]
+    outlet : Optional[Outlet]
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
     discrete_control : Optional[DiscreteControl]
         Discrete control logic.
     pid_control : Optional[PidControl]
-        PID controller attempting to set the level of a basin to a desired value using a pump/weir.
+        PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -101,7 +101,7 @@ class Model(BaseModel):
     manning_resistance: Optional[ManningResistance]
     tabulated_rating_curve: Optional[TabulatedRatingCurve]
     pump: Optional[Pump]
-    weir: Optional[Weir]
+    outlet: Optional[Outlet]
     terminal: Optional[Terminal]
     discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
