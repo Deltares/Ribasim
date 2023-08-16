@@ -68,7 +68,7 @@ def linear_resistance_model():
     state = pd.DataFrame(
         data={
             "node_id": [1],
-            "level": [1.0 + (1e3 - 1e-2 - (1e2 - 1e-2) / 2) / 1e2],
+            "level": [10.5],
         }
     )
 
@@ -166,7 +166,7 @@ def rating_curve_model():
     state = pd.DataFrame(
         data={
             "node_id": [1],
-            "level": [1.0 + (1e3 - (1e2 - 1e-2) / 2) / 1e2],
+            "level": [10.5],
         }
     )
 
@@ -277,10 +277,7 @@ def manning_resistance_model():
     state = pd.DataFrame(
         data={
             "node_id": [1, 3],
-            "level": [
-                1.0 + (1e3 - (1e2 - 1e-2) / 2) / 1e2,
-                1.0 + (5e2 - (1e2 - 1e-2) / 2) / 1e2,
-            ],
+            "level": [9.5, 4.5],
         }
     )
 
@@ -388,7 +385,7 @@ def misc_nodes_model():
     state = pd.DataFrame(
         data={
             "node_id": [3, 5],
-            "level": 2 * [1.0 + (1e3 - (1e2 - 1e-2) / 2) / 1e2],
+            "level": 2 * [10.5],
         }
     )
 
@@ -522,7 +519,7 @@ def pid_control_equation_model():
     state = pd.DataFrame(
         data={
             "node_id": [1],
-            "level": [1.0 + (1.5e3 - (1e2 - 1e-2) / 2) / 1e2],
+            "level": [10.5],
         }
     )
 
@@ -553,7 +550,7 @@ def pid_control_equation_model():
             data={
                 "node_id": [4],
                 "listen_node_id": [1],
-                "target": [10],
+                "target": [10.0],
                 "proportional": [-2.5],
                 "integral": [-0.001],
                 "derivative": [10.0],
