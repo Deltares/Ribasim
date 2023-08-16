@@ -7,20 +7,20 @@
             "description": "a hack for pandera",
             "type": "string"
         },
-        "storage": {
-            "format": "double",
-            "description": "storage",
-            "type": "number"
-        },
         "node_id": {
             "format": "default",
             "description": "node_id",
             "type": "integer"
+        },
+        "level": {
+            "format": "double",
+            "description": "level",
+            "type": "number"
         }
     },
     "required": [
         "node_id",
-        "storage"
+        "level"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
     "title": "BasinState",

@@ -53,7 +53,7 @@ def bucket_model() -> ribasim.Model:
     state = pd.DataFrame(
         data={
             "node_id": [1],
-            "storage": [1000.0],
+            "level": [1.0],
         }
     )
 
