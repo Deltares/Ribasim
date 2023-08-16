@@ -194,7 +194,7 @@ end
         )
     end
 
-    @assert length(logger.logs) == 1
+    @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
           "Weir flow rates must be non-negative, found -1.0 for static #1."
@@ -214,8 +214,29 @@ end
     end
 
     # Only the invalid control state flow_rate yields an error
-    @assert length(logger.logs) == 1
+    @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
           "Pump flow rates must be non-negative, found -1.0 for control state 'foo' of #1."
+end
+
+@testset "Edge type validation" begin
+    toml_path = normpath(@__DIR__, "../../data/invalid_edge_types/invalid_edge_types.toml")
+    @test ispath(toml_path)
+
+    cfg = Ribasim.parsefile(toml_path)
+    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
+    db = SQLite.DB(gpkg_path)
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_edge_types(db)
+    end
+
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
 end

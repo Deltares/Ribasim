@@ -1,3 +1,17 @@
+"Check that only supported edge types are declared."
+function valid_edge_types(db::DB)::Bool
+    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    errors = false
+
+    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+        if edge_type ∉ ["flow", "control"]
+            errors = true
+            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+        end
+    end
+    return !errors
+end
+
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
 function create_graph(
     db::DB,
