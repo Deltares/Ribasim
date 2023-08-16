@@ -176,7 +176,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "These control states from DiscreteControl node #4 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+          "These control states from DiscreteControl node #4 are not defined for controlled Pump #2: [\"foo\"]."
 end
 
 @testset "Pump/weir flow rate sign validation" begin
