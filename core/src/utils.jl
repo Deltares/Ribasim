@@ -71,15 +71,18 @@ function get_storages_from_levels(
 
         if level < bottom
             node_id = basin.node_id[i]
-            @error "The level $level of basin #$node_id is lower than the bottom of this basin #$bottom."
+            @error "The level $level of basin #$node_id is lower than the bottom of this basin $bottom."
             errors = true
+            push!(storages, NaN)
+            continue
         end
 
         level_lower_index = searchsortedlast(level_discrete, level)
 
         # If the level is equal to the bottom then the storage is 0
         if level_lower_index == 0
-            return 0.0
+            push!(storages, 0.0)
+            continue
         elseif level_lower_index == length(level_discrete)
             level_lower_index -= 1
         end

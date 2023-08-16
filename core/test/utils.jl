@@ -4,6 +4,7 @@ using Test
 using DataInterpolations: LinearInterpolation
 using StructArrays: StructVector
 using SQLite
+using Logging
 
 @testset "id_index" begin
     ids = Indices([2, 4, 6])
@@ -52,6 +53,67 @@ end
         1,
         6,
     )
+end
+
+@testset "Convert levels to storages" begin
+    level = [
+        0.0,
+        0.42601923740838954,
+        1.1726055542568279,
+        1.9918063978301288,
+        2.945965660308591,
+        3.7918607426596513,
+        4.378609443214641,
+        4.500422081139986,
+        4.638188322915925,
+        5.462975756944211,
+    ]
+    area = [
+        0.5284895347829252,
+        0.7036603783547138,
+        0.6831597656207129,
+        0.7582032614294112,
+        0.5718206017422349,
+        0.5390282084391234,
+        0.9650081130058792,
+        0.07071025361013983,
+        0.10659325339342585,
+        1.1,
+    ]
+    storage = Ribasim.profile_storage(level, area)
+    basin = Ribasim.Basin(
+        Indices([1]),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        [area],
+        [level],
+        [storage],
+        StructVector{Ribasim.BasinForcingV1}(undef, 0),
+    )
+
+    logger = TestLogger()
+    with_logger(logger) do
+        storages, errors = Ribasim.get_storages_from_levels(basin, [-1.0])
+        @test isnan(storages[1])
+        @test errors
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "The level -1.0 of basin #1 is lower than the bottom of this basin 0.0."
+
+    # Converting from storages to levels and back should return the same storages
+    storages = range(0.0, 2 * storage[end], 50)
+    levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
+    storages_ = [only(Ribasim.get_storages_from_levels(basin, [l])[1]) for l in levels]
+
+    @test storages ≈ storages_
 end
 
 @testset "Expand logic_mapping" begin
