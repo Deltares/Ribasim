@@ -344,7 +344,8 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node
+node_id: node ID of the DiscreteControl node; these are not unique but repeated
+    by the amount of conditions of this DiscreteControl node
 listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition

@@ -201,7 +201,7 @@ def invalid_fractional_flow_model():
     return model
 
 
-def invalid_control_states_model():
+def invalid_discrete_control_model():
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
@@ -298,7 +298,9 @@ def invalid_control_states_model():
     logic = pd.DataFrame(
         data={
             "node_id": [4],
-            "truth_state": ["F"],
+            # Invalid: DiscreteControl node #4 has 1 condition so
+            # truth states have to be of length 1
+            "truth_state": ["FF"],
             "control_state": ["foo"],
         }
     )
@@ -308,7 +310,7 @@ def invalid_control_states_model():
     basin = ribasim.Basin(profile=profile, static=static)
 
     model = ribasim.Model(
-        modelname="invalid_control_states",
+        modelname="invalid_discrete_control",
         node=node,
         edge=edge,
         basin=basin,
