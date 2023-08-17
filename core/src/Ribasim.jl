@@ -13,6 +13,8 @@ using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
+using Logging: current_logger, min_enabled_level, with_logger
+using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
 using SciMLBase
 using SparseArrays
