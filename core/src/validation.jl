@@ -355,6 +355,13 @@ function valid_profiles(
                 "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node #$id).",
             )
         end
+
+        if areas[end] < areas[end - 1]
+            push!(
+                errors,
+                "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #$id.",
+            )
+        end
     end
     return errors
 end

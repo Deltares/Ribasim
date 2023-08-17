@@ -7,13 +7,15 @@ using Logging
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
-    level = [[0.0, 0.0]]
-    area = [[0.0, 100.0]]
+    level = [[0.0, 0.0, 1.0]]
+    area = [[0.0, 100.0, 90]]
     errors = Ribasim.valid_profiles(node_id, level, area)
     @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
     @test "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area 0.0 for node #1)." in
           errors
-    @test length(errors) == 2
+    @test "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1." in
+          errors
+    @test length(errors) == 3
 
     itp, valid = Ribasim.qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid
