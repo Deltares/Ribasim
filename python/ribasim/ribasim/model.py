@@ -256,8 +256,6 @@ class Model(BaseModel):
                 msg.append(f"These node IDs are unexpected: {node_IDs_over}.")
 
             raise ValueError(" ".join(msg))
-        else:
-            print("Good")
 
     def validate_model_node_IDs(self):
         """Check whether the node IDs in the node field correspond to the node IDs on the node type fields."""
