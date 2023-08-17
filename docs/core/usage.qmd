@@ -123,7 +123,7 @@ name it must have in the GeoPackage if it is stored there.
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
   - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
-- PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [Wikipedia](https://en.wikipedia.org/wiki/PID_controller) and [PID controller in equations](equations.qmd#sec-PID).
+- PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [Wikipedia](https://en.wikipedia.org/wiki/PID_controller) and [PID controller in equations](equations.qmd#sec-PID).
   - `PidControl / static`: The proportional, integral and derivative parameters and which basin should be controlled.
 
 Adding a geometry to the node table can be helpful to examine models in
@@ -167,7 +167,7 @@ Basin node types have state.
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-storage   | Float64 | $m^3$        | non-negative
+level     | Float64 | $m$          | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
 
@@ -275,7 +275,7 @@ level     | Float64  | $m$          | -
 discharge | Float64  | $m^3 s^{-1}$ | non-negative
 
 
-### Pump and weir
+### Pump and outlet
 
 Pump/conduct water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
@@ -451,9 +451,9 @@ control_state   | String
 
 ### PidControl
 
-The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or weir. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0. For computational efficiency, if one of the terms should not be used, set its coefficient to `NaN` in stead of $0$.
+The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0. For computational efficiency, if one of the terms should not be used, set its coefficient to `NaN` in stead of $0$.
 
-The pump must be an outneighbor of the controlled basin, the weir must be an inneighbor. Thus for the same coefficient values in `proportional`, `integral` and `derivative`, the pump and weir have the oppositve effect on the controlled basin.
+The pump must be an outneighbor of the controlled basin, the outlet must be an inneighbor. Thus for the same coefficient values in `proportional`, `integral` and `derivative`, the pump and outlet have the oppositve effect on the controlled basin.
 
 In the future controlling the flow on a particular edge could be supported.
 

@@ -73,7 +73,7 @@ def pump_discrete_control_model() -> ribasim.Model:
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [1, 3], "storage": [100.0, 1e-3]})
+    state = pd.DataFrame(data={"node_id": [1, 3], "level": [1.0, 1e-5]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
@@ -210,7 +210,7 @@ def flow_condition_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2], "storage": [2500]})
+    state = pd.DataFrame(data={"node_id": [2], "level": [2.5]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
@@ -488,7 +488,7 @@ def level_setpoint_with_minmax_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [1], "storage": [2e4]})
+    state = pd.DataFrame(data={"node_id": [1], "level": [20.0]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 

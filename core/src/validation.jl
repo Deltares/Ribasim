@@ -19,7 +19,7 @@
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.weir.static" WeirStatic
+@schema "ribasim.outlet.static" OutletStatic
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
@@ -43,26 +43,26 @@ end
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Weir}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:Outlet}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Basin}) =
-    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump, :Weir))
+    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump, :Outlet))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:LevelBoundary}) =
-    Set((:LinearResistance, :ManningResistance, :Pump, :Weir))
+    Set((:LinearResistance, :ManningResistance, :Pump, :Outlet))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:DiscreteControl}) = Set((
     :Pump,
-    :Weir,
+    :Outlet,
     :TabulatedRatingCurve,
     :LinearResistance,
     :ManningResistance,
     :FractionalFlow,
 ))
-neighbortypes(::Val{:PidControl}) = Set((:Pump, :Weir))
+neighbortypes(::Val{:PidControl}) = Set((:Pump, :Outlet))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
     Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Any) = Set{Symbol}()
@@ -86,7 +86,7 @@ n_neighbor_bounds(::Val{:LevelBoundary}) =
 n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:Weir}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
@@ -113,7 +113,7 @@ end
     control_state::Union{Missing, String}
 end
 
-@version WeirStaticV1 begin
+@version OutletStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     flow_rate::Float64
@@ -149,7 +149,7 @@ end
 
 @version BasinStateV1 begin
     node_id::Int
-    storage::Float64
+    level::Float64
 end
 
 @version FractionalFlowStaticV1 begin
@@ -425,9 +425,9 @@ function valid_pid_connectivity(
                 errors = true
             end
         else
-            weir_outflow_id = only(outneighbors(graph_flow, controlled_id))
-            if weir_outflow_id != listen_id
-                @error "Listen node #$listen_id of PidControl node #$id is not downstream of controlled weir #$controlled_id"
+            outlet_outflow_id = only(outneighbors(graph_flow, controlled_id))
+            if outlet_outflow_id != listen_id
+                @error "Listen node #$listen_id of PidControl node #$id is not downstream of controlled outlet #$controlled_id"
                 errors = true
             end
         end

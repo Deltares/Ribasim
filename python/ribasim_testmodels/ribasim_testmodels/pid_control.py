@@ -14,7 +14,7 @@ def pid_control_model():
             (2.0, 0.5),  # 3: Pump
             (3.0, 0.0),  # 4: LevelBoundary
             (1.5, 1.0),  # 5: PidControl
-            (2.0, -0.5),  # 6: Weir
+            (2.0, -0.5),  # 6: Outlet
             (1.5, -1.0),  # 7: PidControl
         ]
     )
@@ -27,7 +27,7 @@ def pid_control_model():
         "Pump",
         "LevelBoundary",
         "PidControl",
-        "Weir",
+        "Outlet",
         "PidControl",
     ]
 
@@ -77,7 +77,7 @@ def pid_control_model():
     state = pd.DataFrame(
         data={
             "node_id": [2],
-            "storage": [500.0],
+            "level": [0.5],
         }
     )
 
@@ -93,8 +93,8 @@ def pid_control_model():
         )
     )
 
-    # Setup weir:
-    weir = ribasim.Weir(
+    # Setup outlet:
+    outlet = ribasim.Outlet(
         static=pd.DataFrame(
             data={
                 "node_id": [6],
@@ -140,7 +140,7 @@ def pid_control_model():
         flow_boundary=flow_boundary,
         level_boundary=level_boundary,
         pump=pump,
-        weir=weir,
+        outlet=outlet,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
         endtime="2020-07-01 00:00:00",

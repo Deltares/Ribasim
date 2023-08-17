@@ -30,7 +30,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, connectivity, basin, pump, weir, fractional_flow) = parameters
+        (; pid_control, connectivity, basin, pump, outlet, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
@@ -54,8 +54,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             id_controlled = only(outneighbors(connectivity.graph_control, id))
             pump_idx = findsorted(pump.node_id, id_controlled)
             if isnothing(pump_idx)
-                weir_idx = findsorted(weir.node_id, id_controlled)
-                weir.is_pid_controlled[weir_idx] = true
+                outlet_idx = findsorted(outlet.node_id, id_controlled)
+                outlet.is_pid_controlled[outlet_idx] = true
             else
                 pump.is_pid_controlled[pump_idx] = true
             end
@@ -78,7 +78,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
-        state.storage
+        storages, errors =
+            get_storages_from_levels(parameters.basin, state.level)
+        if errors
+            error(
+                "Encountered errors while parsing the initial levels of basins.",
+            )
+        end
+        storages
     end::Vector{Float64}
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control

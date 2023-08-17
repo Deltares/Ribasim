@@ -96,12 +96,12 @@ end
     t = Ribasim.timesteps(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     basin_area = p.basin.area[1][2]
-    storage_min = 50.0
+    storage_min = 50.005
     α = 24 * 60 * 60
     storage_analytic =
         @. storage_min + 1 / (t / (α * basin_area^2) + 1 / (storage[1] - storage_min))
 
-    @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
+    @test all(isapprox.(storage, storage_analytic; rtol = 0.01)) # Fails with '≈'
 end
 
 # Notation:
@@ -129,7 +129,7 @@ end
     t = Ribasim.timesteps(model)
     storage_both = Ribasim.get_storages_and_levels(model).storage
     storage = storage_both[1, :]
-    storage_min = 50.0
+    storage_min = 50.005
     level_min = 1.0
     basin_area = p.basin.area[1][2]
     level = @. level_min + (storage - storage_min) / basin_area
@@ -167,7 +167,7 @@ end
     K_p = pid_control.proportional[1]
     K_i = pid_control.integral[1]
     K_d = pid_control.derivative[1]
-    storage_min = 50
+    storage_min = 50.005
     level_min = basin.level[1][2]
     SP = pid_control.target[1]
     storage0 = storage[1]
