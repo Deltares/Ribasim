@@ -81,7 +81,7 @@ def dutch_waterways_model():
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
         static=pd.DataFrame(
-            data={"node_id": [3, 4, 11, 18, 19], "resistance": 5 * [5e3]}
+            data={"node_id": [3, 4, 11, 18, 19], "resistance": 5 * [1e-2]}
         )
     )
 
