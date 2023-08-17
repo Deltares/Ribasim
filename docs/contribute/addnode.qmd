@@ -49,7 +49,7 @@ function NewNodeType(db::DB, config::Config)::NewNodeType
     static = load_structvector(db, config, NewNodeTypeStaticV1)
     defaults = (; active = true)
     # Process potential control states in the static data
-    static_parsed = parse_static(static, db, "Weir", defaults)
+    static_parsed = parse_static(static, db, "Outlet", defaults)
 
     # Unpack the fields of static as inputs for the NewNodeType constructor
     return NewNodeType(

@@ -50,8 +50,8 @@
         "node_id",
         "flow_rate"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/WeirStatic.schema.json",
-    "title": "WeirStatic",
-    "description": "A WeirStatic object based on Ribasim.WeirStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/OutletStatic.schema.json",
+    "title": "OutletStatic",
+    "description": "A OutletStatic object based on Ribasim.OutletStaticV1",
     "type": "object"
 }
