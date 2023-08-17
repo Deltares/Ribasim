@@ -149,7 +149,7 @@ end
 
 @version BasinStateV1 begin
     node_id::Int
-    storage::Float64
+    level::Float64
 end
 
 @version FractionalFlowStaticV1 begin

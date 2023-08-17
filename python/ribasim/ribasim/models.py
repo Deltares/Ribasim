@@ -148,8 +148,8 @@ class TabulatedRatingCurveStatic(BaseModel):
 
 class BasinState(BaseModel):
     remarks: Optional[str] = Field("", description="a hack for pandera")
-    storage: float = Field(..., description="storage")
     node_id: int = Field(..., description="node_id")
+    level: float = Field(..., description="level")
 
 
 class BasinProfile(BaseModel):

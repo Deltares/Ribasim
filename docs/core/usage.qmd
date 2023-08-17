@@ -167,7 +167,7 @@ Basin node types have state.
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int     | -            | sorted
-storage   | Float64 | $m^3$        | non-negative
+level     | Float64 | $m$          | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
 

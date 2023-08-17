@@ -77,7 +77,7 @@ def pid_control_model():
     state = pd.DataFrame(
         data={
             "node_id": [2],
-            "storage": [500.0],
+            "level": [0.5],
         }
     )
 

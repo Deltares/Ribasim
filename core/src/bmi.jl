@@ -72,7 +72,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
-        state.storage
+        storages, errors =
+            get_storages_from_levels(parameters.basin, state.level)
+        if errors
+            error(
+                "Encountered errors while parsing the initial levels of basins.",
+            )
+        end
+        storages
     end::Vector{Float64}
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control

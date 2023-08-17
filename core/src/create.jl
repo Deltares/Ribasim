@@ -86,6 +86,10 @@ function parse_static(
 end
 
 function Connectivity(db::DB)::Connectivity
+    if !valid_edge_types(db)
+        error("Invalid edge types found.")
+    end
+
     graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
     graph_control, edge_ids_control, edge_connection_types_control =
         create_graph(db, "control")

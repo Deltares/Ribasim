@@ -254,7 +254,7 @@ def basic_transient_model(model) -> ribasim.Model:
     state = pd.DataFrame(
         data={
             "node_id": basin_ids,
-            "storage": 1000.0,
+            "level": 1.4,
             "concentration": 0.0,
         }
     )

@@ -1,3 +1,17 @@
+"Check that only supported edge types are declared."
+function valid_edge_types(db::DB)::Bool
+    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    errors = false
+
+    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+        if edge_type ∉ ["flow", "control"]
+            errors = true
+            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+        end
+    end
+    return !errors
+end
+
 "Return a directed graph, and a mapping from source and target nodes to edge fid."
 function create_graph(
     db::DB,
@@ -53,6 +67,57 @@ function create_storage_tables(
         push!(storage, group_storage)
     end
     return area, level, storage
+end
+
+"""Get the storage of a basin from its level."""
+function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
+    storage_discrete = basin.storage[state_idx]
+    area_discrete = basin.area[state_idx]
+    level_discrete = basin.level[state_idx]
+    bottom = first(level_discrete)
+
+    if level < bottom
+        node_id = basin.node_id[state_idx]
+        @error "The level $level of basin #$node_id is lower than the bottom of this basin $bottom."
+        return NaN
+    end
+
+    level_lower_index = searchsortedlast(level_discrete, level)
+
+    # If the level is equal to the bottom then the storage is 0
+    if level_lower_index == 0
+        return 0.0
+    end
+
+    level_lower_index = min(level_lower_index, length(level_discrete) - 1)
+
+    darea =
+        (area_discrete[level_lower_index + 1] - area_discrete[level_lower_index]) /
+        (level_discrete[level_lower_index + 1] - level_discrete[level_lower_index])
+
+    level_lower = level_discrete[level_lower_index]
+    area_lower = area_discrete[level_lower_index]
+    level_diff = level - level_lower
+
+    storage =
+        storage_discrete[level_lower_index] +
+        area_lower * level_diff +
+        0.5 * darea * level_diff^2
+
+    return storage
+end
+
+"""Compute the storages of the basins based on the water level of the basins."""
+function get_storages_from_levels(
+    basin::Basin,
+    levels::Vector{Float64},
+)::Tuple{Vector{Float64}, Bool}
+    storages = Float64[]
+
+    for (i, level) in enumerate(levels)
+        push!(storages, get_storage_from_level(basin, i, level))
+    end
+    return storages, any(isnan.(storages))
 end
 
 """
