@@ -62,7 +62,7 @@ for (T, kinds) in pairs(nodekinds)
 end
 const nodetypes = collect(keys(nodekinds))
 
-@option struct Solver
+@option struct Solver <: TableOption
     algorithm::String = "QNDF"
     autodiff::Bool = false
     saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
@@ -82,7 +82,9 @@ function Base.convert(::Type{Compression}, str::AbstractString)
     i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
     if isnothing(i)
         throw(
-            "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
+            ArgumentError(
+                "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
+            ),
         )
     end
     return Compression(i - 1)
@@ -98,16 +100,8 @@ end
     compression_level::Int = 6
 end
 
-function Base.convert(::Type{LogLevel}, level::AbstractString)
-    level == "debug" && return LogLevel(-1000)
-    level == "info" && return LogLevel(0)
-    level == "warn" && return LogLevel(1000)
-    level == "error" && return LogLevel(2000)
-    throw("verbosity $level not supported, choose one of: debug info warn error.")
-end
-
 @option struct Logging <: TableOption
-    verbosity::LogLevel = "info"
+    verbosity::LogLevel = LogLevel(0)
     timing::Bool = false
 end
 
@@ -132,6 +126,18 @@ end
     solver::Solver = Solver()
 
     logging::Logging = Logging()
+end
+
+function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
+    level == "debug" && return LogLevel(-1000)
+    level == "info" && return LogLevel(0)
+    level == "warn" && return LogLevel(1000)
+    level == "error" && return LogLevel(2000)
+    throw(
+        ArgumentError(
+            "verbosity $level not supported, choose one of: debug info warn error.",
+        ),
+    )
 end
 
 # TODO Use with proper alignment
