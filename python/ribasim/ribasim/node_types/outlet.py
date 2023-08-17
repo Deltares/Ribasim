@@ -5,17 +5,17 @@ from pandera.typing import DataFrame
 from ribasim import models
 from ribasim.input_base import TableModel
 
-__all__ = ("Weir",)
+__all__ = ("Outlet",)
 
 
 class StaticSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.WeirStatic)
+        dtype = PydanticModel(models.OutletStatic)
 
 
-class Weir(TableModel):
+class Outlet(TableModel):
     """
     Conducts water from a source node to a destination node.
     The set flow rate will be used unless the intake storage is less than 10m3,

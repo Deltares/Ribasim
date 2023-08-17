@@ -647,7 +647,7 @@ Upstream basins always depend on themselves.
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
     p::Parameters,
-    node::Union{Pump, Weir, TabulatedRatingCurve},
+    node::Union{Pump, Outlet, TabulatedRatingCurve},
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
     (; graph_flow) = connectivity
@@ -708,7 +708,7 @@ function update_jac_prototype!(
         listen_node_id = node.listen_node_id[i]
         id = node.node_id[i]
 
-        # ID of controlled pump/weir
+        # ID of controlled pump/outlet
         id_controlled = only(outneighbors(graph_control, id))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
@@ -735,16 +735,16 @@ function update_jac_prototype!(
                 jac_prototype[listen_idx, idx_out_out] = 1.0
             end
         else
-            id_weir_in = only(outneighbors(graph_flow, id_controlled))
+            id_outlet_in = only(outneighbors(graph_flow, id_controlled))
 
-            # The basin upstream of the weir
-            has_index, idx_out_in = id_index(basin.node_id, id_weir_in)
+            # The basin upstream of the outlet
+            has_index, idx_out_in = id_index(basin.node_id, id_outlet_in)
 
             if has_index
-                # The basin upstream of the weir depends on the PID control integral state
+                # The basin upstream of the outlet depends on the PID control integral state
                 jac_prototype[pid_state_idx, idx_out_in] = 1.0
 
-                # The basin upstream of the weir also depends on the controlled basin
+                # The basin upstream of the outlet also depends on the controlled basin
                 jac_prototype[listen_idx, idx_out_in] = 1.0
             end
         end

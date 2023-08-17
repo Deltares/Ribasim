@@ -294,15 +294,15 @@ struct Pump <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the Weir node
+node_id: node ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
-min_flow_rate: The minimal flow rate of the weir
-max_flow_rate: The maximum flow rate of the weir
+min_flow_rate: The minimal flow rate of the outlet
+max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_pid_controlled: whether the flow rate of this weir is governed by PID control
+is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
-struct Weir <: AbstractParameterNode
+struct Outlet <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     flow_rate::Vector{Float64}
@@ -311,7 +311,7 @@ struct Weir <: AbstractParameterNode
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
 
-    function Weir(
+    function Outlet(
         node_id,
         active,
         flow_rate,
@@ -320,7 +320,7 @@ struct Weir <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     )
-        if valid_flow_rates(node_id, flow_rate, control_mapping, :Weir)
+        if valid_flow_rates(node_id, flow_rate, control_mapping, :Outlet)
             return new(
                 node_id,
                 active,
@@ -331,7 +331,7 @@ struct Weir <: AbstractParameterNode
                 is_pid_controlled,
             )
         else
-            error("Invalid Weir flow rate(s).")
+            error("Invalid Outlet flow rate(s).")
         end
     end
 end
@@ -401,7 +401,7 @@ struct Parameters
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
     pump::Pump
-    weir::Weir
+    outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl
@@ -561,9 +561,9 @@ function continuous_control!(
     p::Parameters,
     integral_value::SubArray{Float64},
 )::Nothing
-    # TODO: Also support being able to control weir
+    # TODO: Also support being able to control outlet
     # TODO: also support time varying target levels
-    (; connectivity, pump, weir, basin, fractional_flow) = p
+    (; connectivity, pump, outlet, basin, fractional_flow) = p
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
@@ -592,9 +592,9 @@ function continuous_control!(
             listened_basin_storage = u.storage[listened_node_idx]
             reduction_factor = min(listened_basin_storage, 10.0) / 10.0
         else
-            controlled_node_idx = findsorted(weir.node_id, controlled_node_id)
+            controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
-            # Upstream node of weir does not have to be a basin
+            # Upstream node of outlet does not have to be a basin
             upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
@@ -649,7 +649,7 @@ function continuous_control!(
             pump.flow_rate[controlled_node_idx] = flow_rate
             du.storage[listened_node_idx] -= flow_rate
         else
-            weir.flow_rate[controlled_node_idx] = flow_rate
+            outlet.flow_rate[controlled_node_idx] = flow_rate
             du.storage[listened_node_idx] += flow_rate
         end
 
@@ -858,7 +858,7 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Not
 end
 
 function formulate!(
-    node::Union{Pump, Weir},
+    node::Union{Pump, Outlet},
     p::Parameters,
     storage::AbstractVector{Float64},
 )::Nothing
@@ -930,7 +930,7 @@ function formulate_flows!(
         fractional_flow,
         flow_boundary,
         pump,
-        weir,
+        outlet,
     ) = p
 
     formulate!(linear_resistance, p)
@@ -939,7 +939,7 @@ function formulate_flows!(
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
-    formulate!(weir, p, storage)
+    formulate!(outlet, p, storage)
 
     return nothing
 end

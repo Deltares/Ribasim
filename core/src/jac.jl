@@ -212,10 +212,10 @@ function formulate_jac!(
 end
 
 """
-The contributions of Pump and Weir nodes to the Jacobian.
+The contributions of Pump and Outlet nodes to the Jacobian.
 """
 function formulate_jac!(
-    node::Union{Pump, Weir},
+    node::Union{Pump, Outlet},
     J::SparseMatrixCSC{Float64, Int64},
     u::ComponentVector{Float64},
     p::Parameters,
@@ -366,7 +366,7 @@ function formulate_jac!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; basin, connectivity, pump, weir) = p
+    (; basin, connectivity, pump, outlet) = p
     (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
         pid_control
     (; min_flow_rate, max_flow_rate) = pump
@@ -394,9 +394,9 @@ function formulate_jac!(
         controls_pump = insorted(controlled_node_id, pump.node_id)
 
         if !controls_pump
-            if !insorted(controlled_node_id, weir.node_id)
+            if !insorted(controlled_node_id, outlet.node_id)
                 error(
-                    "Node #$controlled_node_id controlled by PidControl #$id is neither a Pump nor a Weir.",
+                    "Node #$controlled_node_id controlled by PidControl #$id is neither a Pump nor an Outlet.",
                 )
             end
         end
@@ -411,9 +411,9 @@ function formulate_jac!(
             listened_basin_storage = u.storage[listened_node_idx]
             reduction_factor = min(listened_basin_storage, 10.0) / 10.0
         else
-            controlled_node_idx = findsorted(weir.node_id, controlled_node_id)
+            controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
-            # Upstream node of weir does not have to be a basin
+            # Upstream node of outlet does not have to be a basin
             upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
             has_upstream_index, upstream_basin_idx =
                 id_index(basin.node_id, upstream_node_id)
