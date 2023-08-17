@@ -209,7 +209,7 @@ makes sure that the flow of the pump goes to $0$ as the upstream basin dries out
 The Tabulated Rating Curve is a tabulation of a basin's discharge behavior. It describes
 a piecewise linear relationship between the basin's level and its
 discharge. It can be understood as an empirical description of a basin's
-properties. This can include a outlet, but also the lumped hydraulic behavior of the
+properties. This can include an outlet, but also the lumped hydraulic behavior of the
 upstream channels.
 
 <!-- Is this still true? -->
@@ -457,7 +457,7 @@ $$
 f_\text{PID} = \hat{f}_\text{PID} \pm Q_\text{pump/outlet},
 $$
 
-that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controlled basin storage state without the contribution of the PID controlled pump. The plus sign holds for a outlet and the minus sign for a pump, dictated by the way the pump and outlet connectivity to the controlled basin is enforced.
+that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controlled basin storage state without the contribution of the PID controlled pump. The plus sign holds for an outlet and the minus sign for a pump, dictated by the way the pump and outlet connectivity to the controlled basin is enforced.
 
 Using this, solving @eq-PIDflow for $Q_\text{PID}$ yields
 $$
@@ -497,7 +497,7 @@ For the denominator we distinguish 2 possibilities:
 $$
 \frac{\text{d}D}{\text{d}u_\text{PID}} = - K_d\left[\frac{\phi'(u_\text{PID})}{A(u_\text{PID})}- \phi(u_\text{PID})\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}\right]
 $$
-- If the controlled node is a outlet, then $D$ is a function of two distinct storages (assuming the upstream node is indeed a basin):
+- If the controlled node is an outlet, then $D$ is a function of two distinct storages (assuming the upstream node is indeed a basin):
 $$
 \begin{align}
     \frac{\partial D}{\partial u_\text{PID}} &= \phi(u_\text{us})K_d\frac{A'(u_\text{PID})}{A(u_\text{PID})^2}, \\
@@ -544,7 +544,7 @@ $$
 
 Note by @eq-error that the error is positive if the setpoint is larger than the basin level and negative if the setpoint is smaller than the basin level.
 
-We enforce the convention that when a pump is controlled, its edge points away from the basin, and when a outlet is controlled, its edge points towards the basin, so that the main flow direction along these edges is positive. Therefore, positive flows of the pump and outlet have opposite effects on the basin, and thus the parameters $K_p,K_i,K_d$ of the pump and outlet must have oppositive signs to achieve the same goal.
+We enforce the convention that when a pump is controlled, its edge points away from the basin, and when an outlet is controlled, its edge points towards the basin, so that the main flow direction along these edges is positive. Therefore, positive flows of the pump and outlet have opposite effects on the basin, and thus the parameters $K_p,K_i,K_d$ of the pump and outlet must have oppositive signs to achieve the same goal.
 
 # Numerical solution
 

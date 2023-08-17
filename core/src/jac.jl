@@ -396,7 +396,7 @@ function formulate_jac!(
         if !controls_pump
             if !insorted(controlled_node_id, outlet.node_id)
                 error(
-                    "Node #$controlled_node_id controlled by PidControl #$id is neither a Pump nor a Outlet.",
+                    "Node #$controlled_node_id controlled by PidControl #$id is neither a Pump nor an Outlet.",
                 )
             end
         end
