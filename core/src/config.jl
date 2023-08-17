@@ -4,7 +4,7 @@ using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
 using Legolas: Legolas, record_type
-using Logging: Logging, LogLevel
+using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
@@ -101,7 +101,7 @@ end
 end
 
 @option struct Logging <: TableOption
-    verbosity::LogLevel = Logging.Info
+    verbosity::LogLevel = Info
     timing::Bool = false
 end
 
@@ -129,10 +129,10 @@ end
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
-    level == "debug" && return Logging.Debug
-    level == "info" && return Logging.Info
-    level == "warn" && return Logging.Warn
-    level == "error" && return Logging.Error
+    level == "debug" && return Debug
+    level == "info" && return Info
+    level == "warn" && return Warn
+    level == "error" && return Error
     throw(
         ArgumentError(
             "verbosity $level not supported, choose one of: debug info warn error.",
