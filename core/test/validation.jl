@@ -13,7 +13,7 @@ using Logging
     @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
     @test "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area 0.0 for node #1)." in
           errors
-    @test "Basin profiles cannot have decreasing area at the top since this can not be extrapolated physically, found decreasing top areas for node #1." in
+    @test "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1." in
           errors
     @test length(errors) == 3
 
