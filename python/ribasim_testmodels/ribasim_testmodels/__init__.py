@@ -22,6 +22,7 @@ from ribasim_testmodels.equations import (
 )
 from ribasim_testmodels.invalid import (
     invalid_control_states_model,
+    invalid_edge_types_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
 )
@@ -52,4 +53,5 @@ __all__ = [
     "invalid_fractional_flow_model",
     "invalid_control_states_model",
     "level_setpoint_with_minmax_model",
+    "invalid_edge_types_model",
 ]
