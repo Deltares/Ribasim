@@ -160,9 +160,11 @@ if !Sys.islinux()
     end
 end
 
-@testset "Control state validation" begin
-    toml_path =
-        normpath(@__DIR__, "../../data/invalid_control_states/invalid_control_states.toml")
+@testset "DiscreteControl logic validation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/invalid_discrete_control/invalid_discrete_control.toml",
+    )
     @test ispath(toml_path)
 
     cfg = Ribasim.parsefile(toml_path)
@@ -175,9 +177,12 @@ end
         @test !Ribasim.valid_discrete_control(p)
     end
 
-    @test length(logger.logs) == 1
+    @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
+          "DiscreteControl node #4 has 1 condition(s), which is inconsistent with these truth state(s): [\"FF\"]."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
           "These control states from DiscreteControl node #4 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
 end
 
