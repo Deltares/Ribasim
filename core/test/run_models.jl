@@ -51,6 +51,28 @@ end
         Sys.isapple()
 end
 
+@testset "sparse and jac solver options" begin
+    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = true)
+    sparse_jac = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = true)
+    dense_jac = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = false)
+    sparse_fdm = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = false)
+    dense_fdm = Ribasim.run(config)
+
+    @test successful_retcode(sparse_jac)
+    @test successful_retcode(dense_jac)
+    @test successful_retcode(sparse_fdm)
+    @test successful_retcode(dense_fdm)
+
+    @test dense_jac.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end]
+    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
+end
+
 @testset "TabulatedRatingCurve model" begin
     toml_path =
         normpath(@__DIR__, "../../data/tabulated_rating_curve/tabulated_rating_curve.toml")
