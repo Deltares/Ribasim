@@ -1,14 +1,13 @@
 """
-The Jacobian is a n x n sparse matrix where n is the number of basins plus the number of
+The Jacobian is a n x n matrix where n is the number of basins plus the number of
 PidControl nodes. Each basin has a storage state, and each PidControl node has an error integral
-state. If we write water_balance! as f(u, p(t), t) where u is the vector of all states, then
-J[i,j] = ∂f_j/∂u_i. f_j dictates the time derivative of state j.
+state. If we write `water_balance!` as `f(u, p(t), t)` where u is the vector of all states, then
+`J[i,j] = ∂f_j/∂u_i`. f_j dictates the time derivative of state j.
 
-J is very sparse because each state only depends on a small number of other states.
-For more on the sparsity see get_jac_prototype.
+For more on the sparsity see [`get_jac_prototype`](@ref).
 """
 function water_balance_jac!(
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t,

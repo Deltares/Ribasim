@@ -23,19 +23,17 @@ compression_level = 6            # optional, default 6
 [basin]
 forcing = "forcing.arrow"
 
-
 [solver]
 algorithm = "QNDF" # optional, default "QNDF"
-# autodiff can only be set to true for implicit solvers, but is not yet supported
-autodiff = false # optional, default false
-# saveat can be a number, which is the saving interval in seconds, or
-# it can be a list of numbers, which are the times in seconds since start that are saved
-saveat = []     # optional, default [], which will save every timestep
-adaptive = true # optional, default true
-dt = 0.0        # optional, default 0.0
-abstol = 1e-6   # optional, default 1e-6
-reltol = 1e-3   # optional, default 1e-3
-maxiters = 1e9  # optional, default 1e9
+saveat = []        # optional, default [], which saves every timestep
+adaptive = true    # optional, default true
+dt = 0.0           # optional, default 0.0
+abstol = 1e-6      # optional, default 1e-6
+reltol = 1e-3      # optional, default 1e-3
+maxiters = 1e9     # optional, default 1e9
+sparse = true      # optional, default true
+jac = true         # optional, default true
+autodiff = false   # optional, default false
 
 [logging]
 # defines the logging level of Ribasim
