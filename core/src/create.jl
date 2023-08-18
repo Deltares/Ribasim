@@ -236,6 +236,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     flow_rate = Interpolation[]
 
     errors = false
+    t_end = seconds_since(config.endtime, config.starttime)
 
     for node_id in node_ids
         if node_id in static_node_ids
