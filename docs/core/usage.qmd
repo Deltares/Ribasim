@@ -111,7 +111,7 @@ name it must have in the GeoPackage if it is stored there.
   - `FlowBoundary / time`: dynamic flow rate
 - LinearResistance: bidirectional flow based on water level difference between Basins
   - `LinearResistance / static`: conductances
-- ManningResistance: Flow through this connection is estimated by conservation of energy and the Manning-Gauckler formula to estimate friction losses.
+- ManningResistance: Flow through this connection is estimated by conservation of energy and the Manning-Gauckler formula to estimate friction losses
   - `ManningResistance / static`: properties
 - TabulatedRatingCurve: Basin outflow relation
   - `TabulatedRatingCurve / static`: rating curve
@@ -124,7 +124,8 @@ name it must have in the GeoPackage if it is stored there.
   - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 - PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [Wikipedia](https://en.wikipedia.org/wiki/PID_controller) and [PID controller in equations](equations.qmd#sec-PID).
-  - `PidControl / static`: The proportional, integral and derivative parameters and which basin should be controlled.
+  - `PidControl / static`: The proportional, integral, and derivative parameters, the target value and which basin should be controlled
+  - `PidControl / time`: same as `static` but varying over time.
 
 Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
@@ -324,7 +325,7 @@ flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
 ### FlowBoundary / time
 
 This table is the transient form of the `FlowBoundary` table.
-The only difference is that a time column is added.
+The only differences are that a time column is added and the nodes are assumed to be active so this column is removed.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the flow rates can be updated over time. In between the given times the
 flow rate is interpolated linearly, and outside the flow rate is constant given by the
@@ -451,7 +452,7 @@ control_state   | String
 
 ### PidControl
 
-The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0. For computational efficiency, if one of the terms should not be used, set its coefficient to `NaN` in stead of $0$.
+The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
 
 The pump must be an outneighbor of the controlled basin, the outlet must be an inneighbor. Thus for the same coefficient values in `proportional`, `integral` and `derivative`, the pump and outlet have the oppositve effect on the controlled basin.
 
@@ -463,10 +464,30 @@ node_id        | Int      | -        | sorted
 active         | Bool     | -        | (optional, default true)
 listen_node_id | Int      | -        | -
 target         | Float64  | $m$      | -
-proportional   | Float64  | $s^{-1}$ | (optional, default 0.0)
-integral       | Float64  | $s^{-2}$ | (optional, default 0.0)
-derivative     | Floar64  | -        | (optional, default 0.0)
+proportional   | Float64  | $s^{-1}$ | -
+integral       | Float64  | $s^{-2}$ | -
+derivative     | Floar64  | -        | -
 
+
+### PidControl / time
+
+This table is the transient form of the `PidControl` table.
+The differences are that a time column is added and the nodes are assumed to be active so this column is removed.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the target level and PID coefficients can be updated over time. In between the given times the
+these values interpolated linearly, and outside these values area constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column         | type     | unit     | restriction
+-------------- | -------- | -------- | -----------
+node_id        | Int      | -        | sorted
+time           | DateTime | -        | sorted
+listen_node_id | Int      | -        | -
+target         | Float64  | $m$      | -
+proportional   | Float64  | $s^{-1}$ | -
+integral       | Float64  | $s^{-2}$ | -
+derivative     | Float64  | -        | -
 
 
 ## Example input files
