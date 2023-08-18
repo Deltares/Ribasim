@@ -24,11 +24,12 @@ toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
 end
 
 @testset "fixed timestepping" begin
+    dt = 10.0
     config = Ribasim.Config(
         toml_path;
         solver_algorithm = "ImplicitEuler",
         solver_adaptive = false,
-        solver_dt = 10,
+        solver_dt = dt,
     )
     @test config.solver.algorithm == "ImplicitEuler"
     @test !config.solver.adaptive

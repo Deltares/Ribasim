@@ -37,7 +37,7 @@ The contributions of LinearResistance nodes to the Jacobian.
 """
 function formulate_jac!(
     linear_resistance::LinearResistance,
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
@@ -84,7 +84,7 @@ The contributions of ManningResistance nodes to the Jacobian.
 """
 function formulate_jac!(
     manning_resistance::ManningResistance,
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
@@ -215,7 +215,7 @@ The contributions of Pump and Outlet nodes to the Jacobian.
 """
 function formulate_jac!(
     node::Union{Pump, Outlet},
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
@@ -288,7 +288,7 @@ The contributions of TabulatedRatingCurve nodes to the Jacobian.
 """
 function formulate_jac!(
     tabulated_rating_curve::TabulatedRatingCurve,
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
@@ -360,7 +360,7 @@ The contributions of PidControl nodes to the Jacobian.
 """
 function formulate_jac!(
     pid_control::PidControl,
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
@@ -572,7 +572,7 @@ Method for nodes that do not contribute to the Jacobian
 """
 function formulate_jac!(
     node::AbstractParameterNode,
-    J::SparseMatrixCSC{Float64, Int64},
+    J::AbstractMatrix,
     u::ComponentVector{Float64},
     p::Parameters,
     t::Float64,
