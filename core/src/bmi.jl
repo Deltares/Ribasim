@@ -96,8 +96,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
 
-    jac_prototype = config.jac_prototype ? get_jac_prototype(parameters) : nothing
-    jac = config.jac ? water_balance_jac! : nothing
+    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac = config.solver.jac ? water_balance_jac! : nothing
     RHS = ODEFunction(water_balance!; jac_prototype, jac)
 
     @timeit_debug to "Setup ODEProblem" begin
