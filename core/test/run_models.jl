@@ -2,7 +2,7 @@ using Logging: Debug, with_logger
 using Test
 using Ribasim
 import BasicModelInterface as BMI
-using SciMLBase
+using SciMLBase: successful_retcode
 import Tables
 
 @testset "trivial model" begin
@@ -10,7 +10,7 @@ import Tables
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
 end
 
 @testset "bucket model" begin
@@ -18,7 +18,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
 end
 
 @testset "basic model" begin
@@ -31,7 +31,7 @@ end
     end
 
     @test model isa Ribasim.Model
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
@@ -45,7 +45,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
     @test length(model.integrator.p.basin.precipitation) == 4
     @test model.integrator.sol.u[end] ≈ Float32[469.8923, 469.89038, 410.71472, 1427.4194] skip =
         Sys.isapple()
@@ -57,7 +57,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[5.949285, 725.9446] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
@@ -168,7 +168,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test model.integrator.sol.retcode == Ribasim.ReturnCode.Success
+    @test successful_retcode(model)
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
