@@ -358,6 +358,7 @@ struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{Int}
     listen_feature_id::Vector{Int}
     variable::Vector{String}
+    look_ahead::Vector{Float64}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
     control_state::Dict{Int, Tuple{String, Float64}}

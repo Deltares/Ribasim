@@ -26,6 +26,13 @@
             "format": "default",
             "description": "variable",
             "type": "string"
+        },
+        "look_ahead": {
+            "format": "default",
+            "description": "look_ahead",
+            "type": [
+                "number"
+            ]
         }
     },
     "required": [

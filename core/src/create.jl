@@ -382,6 +382,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
+    look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
         time = Vector{Float64}(),
@@ -394,6 +395,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         condition.node_id, # Not unique
         condition.listen_feature_id,
         condition.variable,
+        look_ahead,
         condition.greater_than,
         condition_value,
         control_state,
