@@ -26,7 +26,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        if !valid_discrete_control(parameters)
+        if !valid_discrete_control(parameters, config)
             error("Invalid discrete control state definition(s).")
         end
 
@@ -213,14 +213,15 @@ function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_feature_id, variable, greater_than)) in enumerate(
+    for (i, (listen_feature_id, variable, greater_than, look_ahead)) in enumerate(
         zip(
             discrete_control.listen_feature_id,
             discrete_control.variable,
             discrete_control.greater_than,
+            discrete_control.look_ahead,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, u, t)
+        value = get_value(p, listen_feature_id, variable, look_ahead, u, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -234,6 +235,7 @@ function get_value(
     p::Parameters,
     feature_id::Int,
     variable::String,
+    Δt::Float64,
     u::AbstractVector{Float64},
     t::Float64,
 )
@@ -254,7 +256,7 @@ function get_value(
             error("Flow condition node #$feature_id is not a flow boundary.")
         end
 
-        value = flow_boundary.flow_rate[flow_boundary_idx](t)
+        value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
     else
         error("Unsupported condition variable $variable.")
     end
