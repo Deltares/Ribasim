@@ -85,6 +85,28 @@ function parse_static(
     return out
 end
 
+function static_and_time_node_ids(
+    db::DB,
+    static::StructVector,
+    time::StructVector,
+    node_type::String,
+)::Tuple{Set{Int}, Set{Int}, Vector{Int}, Bool}
+    static_node_ids = Set(static.node_id)
+    time_node_ids = Set(time.node_id)
+    node_ids = get_ids(db, node_type)
+    doubles = intersect(static_node_ids, time_node_ids)
+    errors = false
+    if !isempty(doubles)
+        errors = true
+        @error "$node_type cannot be in both static and time tables, found these node IDs in both: $doubles."
+    end
+    if !issetequal(node_ids, union(static_node_ids, time_node_ids))
+        errors = true
+        @error "$node_type node IDs don't match."
+    end
+    return static_node_ids, time_node_ids, node_ids, !errors
+end
+
 function Connectivity(db::DB)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
@@ -127,14 +149,14 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
-    static_node_ids = Set(static.node_id)
-    time_node_ids = Set(time.node_id)
-    msg = "TabulatedRatingCurve cannot be in both static and time tables"
-    @assert isdisjoint(static_node_ids, time_node_ids) msg
-    node_ids = get_ids(db, "TabulatedRatingCurve")
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
 
-    msg = "TabulatedRatingCurve node IDs don't match"
-    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
+    if !valid
+        error(
+            "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
+        )
+    end
 
     interpolations = Interpolation[]
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
@@ -223,14 +245,12 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static_node_ids = Set(static.node_id)
-    time_node_ids = Set(time.node_id)
-    msg = "FlowBoundary cannot be in both static and time tables"
-    @assert isdisjoint(static_node_ids, time_node_ids) msg
-    node_ids = get_ids(db, "FlowBoundary")
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "FlowBoundary")
 
-    msg = "FlowBoundary node IDs don't match"
-    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
+    if !valid
+        error("Problems encountered when parsing FlowBoundary static and time node IDs.")
+    end
 
     active = BitVector()
     flow_rate = Interpolation[]
@@ -404,7 +424,16 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
-    defaults = (active = true, proportional = NaN, integral = NaN, derivative = NaN)
+    time = load_structvector(db, config, PidControlTimeV1)
+
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "PidControl")
+
+    if !valid
+        error("Problems encountered when parsing PidControl static and time node IDs.")
+    end
+
+    defaults = (active = true, proportional = 0.0, integral = 0.0, derivative = 0.0)
     static_parsed = parse_static(static, db, "PidControl", defaults)
 
     error = zero(static_parsed.node_id)
