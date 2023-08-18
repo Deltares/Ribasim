@@ -2,11 +2,9 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
         "integral": {
-            "format": "default",
+            "format": "double",
             "description": "integral",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         },
         "remarks": {
             "format": "default",
@@ -27,11 +25,9 @@
             ]
         },
         "proportional": {
-            "format": "default",
+            "format": "double",
             "description": "proportional",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         },
         "node_id": {
             "format": "default",
@@ -44,11 +40,9 @@
             "type": "number"
         },
         "derivative": {
-            "format": "default",
+            "format": "double",
             "description": "derivative",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         },
         "control_state": {
             "format": "default",
@@ -61,7 +55,10 @@
     "required": [
         "node_id",
         "listen_node_id",
-        "target"
+        "target",
+        "proportional",
+        "integral",
+        "derivative"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
     "title": "PidControlStatic",

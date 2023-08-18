@@ -231,9 +231,9 @@ end
     active::Union{Missing, Bool}
     listen_node_id::Int
     target::Float64
-    proportional::Union{Missing, Float64}
-    integral::Union{Missing, Float64}
-    derivative::Union{Missing, Float64}
+    proportional::Float64
+    integral::Float64
+    derivative::Float64
     control_state::Union{Missing, String}
 end
 
@@ -242,9 +242,9 @@ end
     listen_node_id::Int
     time::DateTime
     target::Float64
-    proportional::Union{Missing, Float64}
-    integral::Union{Missing, Float64}
-    derivative::Union{Missing, Float64}
+    proportional::Float64
+    integral::Float64
+    derivative::Float64
     control_state::Union{Missing, String}
 end
 

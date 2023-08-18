@@ -127,6 +127,7 @@ def pid_control_model():
                 "target": [5.0, 5.0],
                 "proportional": [-1e-3, 1e-3],
                 "integral": [-1e-7, 1e-7],
+                "derivative": [0.0, 0.0],
             }
         )
     )

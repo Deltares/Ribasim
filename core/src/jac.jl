@@ -367,12 +367,16 @@ function formulate_jac!(
     t::Float64,
 )::Nothing
     (; basin, connectivity, pump, outlet) = p
-    (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
-        pid_control
+    (; node_id, active, listen_node_id, pid_params, error) = pid_control
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_flow, graph_control) = connectivity
 
-    get_error!(pid_control, p)
+    # TODO: is there a nicer way to do this?
+    pid_params_interpolated = [params(t) for params in pid_params]
+    targets = [params[1] for params in pid_params_interpolated]
+    derivative = [params[4] for params in pid_params_interpolated]
+
+    get_error!(pid_control, p, targets)
 
     n_basins = length(basin.node_id)
     integral_value = u.integral
@@ -425,8 +429,9 @@ function formulate_jac!(
             end
         end
 
-        K_d = derivative[i]
-        if !isnan(K_d)
+        K_p, K_i, K_d = pid_params_interpolated[i][2:4]
+
+        if !iszero(K_d)
             if controls_pump
                 D = 1.0 - K_d * reduction_factor / listen_area
             else
@@ -438,17 +443,15 @@ function formulate_jac!(
 
         E = 0.0
 
-        K_p = proportional[i]
-        if !isnan(K_p)
+        if !iszero(K_p)
             E += K_p * error[i]
         end
 
-        K_i = integral[i]
-        if !isnan(K_i)
+        if !iszero(K_i)
             E += K_i * integral_value[i]
         end
 
-        if !isnan(K_d)
+        if !iszero(K_d)
             dtarget_level = 0.0
             du_listened_basin_old = du.storage[listened_node_idx]
             E += K_d * (dtarget_level - du_listened_basin_old / listen_area)
@@ -493,7 +496,7 @@ function formulate_jac!(
         end
 
         # Computing D and E derivatives
-        if !isnan(K_d)
+        if !iszero(K_d)
             darea = basin.current_darea[listened_node_idx]
 
             dD_du_listen = reduction_factor * darea / (listen_area^2)
@@ -521,7 +524,7 @@ function formulate_jac!(
             dE_du_listen = 0.0
         end
 
-        if !isnan(K_p)
+        if !iszero(K_p)
             dE_du_listen -= K_p / listen_area
         end
 

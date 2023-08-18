@@ -193,7 +193,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            error("TabulatedRatingCurve node ID $node_id data not in any table.")
+            error("TabulatedRatingCurve node #$node_id data not in any table.")
         end
         if !is_valid
             @error "A Q(h) relationship for TabulatedRatingCurve #$node_id from the $source table has repeated levels, this can not be interpolated."
@@ -252,12 +252,10 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
     end
 
+    t_end = seconds_since(config.endtime, config.starttime)
     active = BitVector()
     flow_rate = Interpolation[]
-
     errors = false
-
-    t_end = seconds_since(config.endtime, config.starttime)
 
     for node_id in node_ids
         if node_id in static_node_ids
@@ -278,7 +276,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             interpolation, is_valid =
                 flow_rate_interpolation(config.starttime, t_end, time, node_id)
             if !is_valid
-                @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
+                @error "A FlowRate time series for FlowBoundary node #$node_id has repeated times, this can not be interpolated."
                 errors = true
             end
             if any(interpolation.u .< 0)
@@ -290,7 +288,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             push!(flow_rate, interpolation)
             push!(active, true)
         else
-            error("FlowBoundary node ID $node_id data not in any table.")
+            error("FlowBoundary node #$node_id data not in any table.")
         end
     end
 
@@ -433,21 +431,44 @@ function PidControl(db::DB, config::Config)::PidControl
         error("Problems encountered when parsing PidControl static and time node IDs.")
     end
 
-    defaults = (active = true, proportional = 0.0, integral = 0.0, derivative = 0.0)
-    static_parsed = parse_static(static, db, "PidControl", defaults)
+    t_end = seconds_since(config.endtime, config.starttime)
+    active = BitVector()
+    pid_params = VectorInterpolation[]
+    listen_node_id = Int[]
+    errors = false
 
-    error = zero(static_parsed.node_id)
+    for node_id in node_ids
+        if node_id in static_node_ids
+            static_idx = searchsortedfirst(static.node_id, node_id)
+            row = static[static_idx]
+            push!(listen_node_id, row.listen_node_id)
+            # Trivial interpolations for static PID control parameters
+            params = [row.target, row.proportional, row.integral, row.derivative]
+            interpolation = LinearInterpolation([params, params], [0.0, t_end])
+            push!(pid_params, interpolation)
+            push!(active, coalesce(row.active, true))
+        elseif node_id in time_node_ids
+            interpolation, is_valid =
+                pid_params_interpolation(config.starttime, t_end, time, node_id)
+            if !is_valid
+                @error "A time series for PidControl node #$node_id has repeated times, this can not be interpolated."
+                errors = true
+            end
+            push!(pid_params, interpolation)
+            push!(active, true)
+        else
+            error("FlowBoundary node #$node_id data not in any table.")
+            errors = true
+        end
+    end
 
-    return PidControl(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.listen_node_id,
-        static_parsed.target,
-        static_parsed.proportional,
-        static_parsed.integral,
-        static_parsed.derivative,
-        error,
-    )
+    if errors
+        error("Errors occurred when parsing PidControl data.")
+    end
+
+    pid_error = zero(node_ids)
+
+    return PidControl(node_ids, active, listen_node_id, pid_params, pid_error)
 end
 
 function Parameters(db::DB, config::Config)::Parameters

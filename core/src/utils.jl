@@ -239,6 +239,8 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     return idx_block_begin:idx_block_end
 end
 
+# TODO: generalize to scalar interpolation of any variable,
+# or only keep generalized pid_params_interpolation
 function flow_rate_interpolation(
     starttime::DateTime,
     t_end::Float64,
@@ -260,6 +262,15 @@ function flow_rate_interpolation(
     end
 
     return LinearInterpolation(flow_rates, times), allunique(times)
+end
+
+# TODO: generalize to vector interpolation of any set of variables
+function pid_params_interpolation(
+    starttime::DateTime,
+    t_end::Float64,
+    time::AbstractVector,
+    node_id::Int,
+)::Tuple{LinearInterpolation, Bool}
 end
 
 function qh_interpolation(

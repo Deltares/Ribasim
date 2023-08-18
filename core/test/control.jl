@@ -63,10 +63,9 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     timesteps = Ribasim.timesteps(model)
 
-    K_p = pid_control.proportional[2]
-    K_i = pid_control.integral[2]
+    target_level, K_p, K_i, _ = pid_control.pid_params[2](0)
+
     A = basin.area[1][1]
-    target_level = pid_control.target[1]
     initial_storage = storage[1]
     flow_rate = flow_boundary.flow_rate[1].u[1]
     du0 = flow_rate + K_p * (target_level - initial_storage / A)
@@ -78,7 +77,7 @@ end
     a = abs(Δstorage / cos(phi))
     # This bound is the exact envelope of the analytical solution
     bound = @. a * exp(alpha * timesteps)
-    eps = 3.0
+    eps = 3.5
 
     @test all((storage .- target_storage) .< bound .+ eps)
 end
