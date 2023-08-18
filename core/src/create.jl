@@ -431,7 +431,6 @@ function PidControl(db::DB, config::Config)::PidControl
         error("Problems encountered when parsing PidControl static and time node IDs.")
     end
 
-    t_end = seconds_since(config.endtime, config.starttime)
     active = BitVector()
     pid_params = VectorInterpolation[]
     listen_node_id = Int[]
@@ -444,7 +443,8 @@ function PidControl(db::DB, config::Config)::PidControl
             push!(listen_node_id, row.listen_node_id)
             # Trivial interpolations for static PID control parameters
             params = [row.target, row.proportional, row.integral, row.derivative]
-            interpolation = LinearInterpolation([params, params], [0.0, t_end])
+            interpolation =
+                LinearInterpolation([params, params], [nextfloat(-Inf), prevfloat(Inf)])
             push!(pid_params, interpolation)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
