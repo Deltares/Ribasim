@@ -1,12 +1,11 @@
 using Test
-using Configurations: from_dict, to_dict
+using Configurations: from_toml
 using Ribasim
 import BasicModelInterface as BMI
 
 include("../../build/libribasim/src/libribasim.jl")
 
 toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
-config_template = Ribasim.parsefile(toml_path)
 
 @testset "adaptive timestepping" begin
     model = BMI.initialize(Ribasim.Model, toml_path)
@@ -25,10 +24,12 @@ config_template = Ribasim.parsefile(toml_path)
 end
 
 @testset "fixed timestepping" begin
-    dict = to_dict(config_template)
-    dt = 10
-    dict["solver"] = Ribasim.Solver(; algorithm = "ImplicitEuler", adaptive = false, dt)
-    config = from_dict(Ribasim.Config, dict)
+    config = Ribasim.Config(
+        toml_path;
+        solver_algorithm = "ImplicitEuler",
+        solver_adaptive = false,
+        solver_dt = 10,
+    )
     @test config.solver.algorithm == "ImplicitEuler"
     @test !config.solver.adaptive
     model = BMI.initialize(Ribasim.Model, config)

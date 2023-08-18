@@ -1,5 +1,5 @@
 function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
-    config = parsefile(config_path)
+    config = Config(config_path)
     BMI.initialize(T, config)
 end
 
@@ -507,7 +507,7 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
-run(config_file::AbstractString)::Model = run(parsefile(config_file))
+run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
     (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)

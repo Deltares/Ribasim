@@ -14,7 +14,7 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     )
 
     @testset "testrun" begin
-        config = Ribasim.parsefile(normpath(@__DIR__, "testrun.toml"))
+        config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
         @test config isa Ribasim.Config
         @test config.update_timestep == 86400.0
         @test config.endtime > config.starttime
@@ -30,7 +30,7 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     end
 
     @testset "docs" begin
-        Ribasim.parsefile(normpath(@__DIR__, "docs.toml"))
+        Ribasim.Config(normpath(@__DIR__, "docs.toml"))
     end
 end
 
