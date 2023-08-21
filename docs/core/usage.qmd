@@ -31,8 +31,42 @@ format. It contains settings, as well as paths to other input and output files.
 ```{.toml include="../../core/test/docs.toml"}
 ```
 
-For more information on the solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
+#### Solver settings
+
+The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
+Common reasons to modify the solver settings are to adjust the calculation or output stepsizes: `adaptive`, `dt`, and `saveat`.
+If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
+
+The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
+It is an implicit method that supports the default `adaptive = true` timestepping.
+The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
+
+The `dt` controls the stepsize.
+When `adaptive = true` this only applies to the initial stepsize, and the default of 0.0 means that it is automatically determined.
+When `adaptive = false` a suitable `dt` must always be provided.
+The value is in seconds, so `dt = 3600.0` corresponds to an hourly timestep.
+
+By default the calculation and output stepsize are the same, with `saveat = []`, which will save every timestep.
+`saveat` can be a number, which is the saving interval in seconds, or it can be a list of numbers, which are the times in seconds since start that are saved.
+For instance, `saveat = 86400.0` will save output after every day that passed.
+
+The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
+For implicit solvers it must be calculated often, which can be expensive to do.
+There are several methods to do this.
+By default Ribasim uses an analytical Jacobian function written by the Ribasim developers.
+This is enabled by default, with the solver setting `jac = true`.
+If this is not used, the Jacobian is calculated with a finite difference method, which can be less accurate and more expensive.
+In the future we want to additionally support `autodiff = true` to calculate the Jacobian with automatic differentiation.
+
+By default the Jacobian matrix is a sparse matrix (`sparse = true`).
+Since each state typically only depends on a small number of other states, this is generally more efficient, especially for larger models.
+The sparsity structure is calculated from the network and provided as a Jacobian prototype to the solver.
+For small or highly connected models it could be faster to use a dense Jacobian matrix instead by setting `sparse = false`.
+
+The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
+
+The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
 
 ### GeoPackage and Arrow tables
 
