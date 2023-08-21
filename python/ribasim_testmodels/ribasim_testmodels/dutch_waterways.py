@@ -274,6 +274,8 @@ def dutch_waterways_model():
         )
     )
 
+    solver = ribasim.Solver(jac=False)
+
     model = ribasim.Model(
         modelname="dutch_waterways",
         node=node,
@@ -286,6 +288,7 @@ def dutch_waterways_model():
         tabulated_rating_curve=rating_curve,
         pid_control=pid_control,
         discrete_control=discrete_control,
+        solver=solver,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
