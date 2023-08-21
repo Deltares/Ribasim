@@ -314,21 +314,12 @@ function formulate_jac!(
             # Computing this slope here is silly,
             # should eventually be computed pre-simulation and cached!
             table = tables[i]
-            levels = table.t
-            flows = table.u
             level = basin.current_level[idx_in]
-            level_smaller_idx = searchsortedlast(table.t, level)
-            if level_smaller_idx == 0
-                slope = 0.0
-            else
-                if level_smaller_idx == length(flows)
-                    level_smaller_idx = length(flows) - 1
-                end
-
-                slope =
-                    (flows[level_smaller_idx + 1] - flows[level_smaller_idx]) /
-                    (levels[level_smaller_idx + 1] - levels[level_smaller_idx])
-            end
+            slope = scalar_interpolation_derivative(
+                table,
+                level;
+                extrapolate_up_constant = false,
+            )
 
             dq = slope / basin.current_area[idx_in]
 
@@ -367,16 +358,14 @@ function formulate_jac!(
     t::Float64,
 )::Nothing
     (; basin, connectivity, pump, outlet) = p
-    (; node_id, active, listen_node_id, pid_params, error) = pid_control
+    (; node_id, active, listen_node_id, pid_params, target, error) = pid_control
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_flow, graph_control) = connectivity
 
-    # TODO: is there a nicer way to do this?
     pid_params_interpolated = [params(t) for params in pid_params]
-    targets = [params[1] for params in pid_params_interpolated]
-    derivative = [params[4] for params in pid_params_interpolated]
+    derivative = [params[3] for params in pid_params_interpolated]
 
-    get_error!(pid_control, p, targets)
+    get_error!(pid_control, p, t)
 
     n_basins = length(basin.node_id)
     integral_value = u.integral
@@ -429,7 +418,7 @@ function formulate_jac!(
             end
         end
 
-        K_p, K_i, K_d = pid_params_interpolated[i][2:4]
+        K_p, K_i, K_d = pid_params_interpolated[i]
 
         if !iszero(K_d)
             if controls_pump
@@ -452,7 +441,7 @@ function formulate_jac!(
         end
 
         if !iszero(K_d)
-            dtarget_level = 0.0
+            dtarget_level = scalar_interpolation_derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_idx]
             E += K_d * (dtarget_level - du_listened_basin_old / listen_area)
         end

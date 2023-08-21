@@ -63,7 +63,8 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     timesteps = Ribasim.timesteps(model)
 
-    target_level, K_p, K_i, _ = pid_control.pid_params[2](0)
+    K_p, K_i, _ = pid_control.pid_params[2](0)
+    target_level = pid_control.target[2](0)
 
     A = basin.area[1][1]
     initial_storage = storage[1]
