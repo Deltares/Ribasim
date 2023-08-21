@@ -10,6 +10,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         throw(SystemError("GeoPackage file not found: $gpkg_path"))
     end
 
+    # Setup timing logging
+    if config.logging.timing
+        TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
+    end
+
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
@@ -67,6 +72,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # always close the GeoPackage, also in case of an error
         close(db)
     end
+    @debug "Read database into memory."
 
     storage = if isempty(state)
         # default to nearly empty basins, perhaps make required input
@@ -96,8 +102,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
     end
+    @debug "Setup ODEProblem."
 
     callback, saved_flow = create_callbacks(parameters)
+    @debug "Created callbacks."
 
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
@@ -113,6 +121,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         config.solver.reltol,
         config.solver.maxiters,
     )
+    @debug "Setup integrator."
+
+    if config.logging.timing
+        @show Ribasim.to
+    end
 
     set_initial_discrete_controlled_parameters!(integrator, storage)
 
@@ -124,6 +137,7 @@ function BMI.finalize(model::Model)::Model
     write_basin_output(model, compress)
     write_flow_output(model, compress)
     write_discrete_control_output(model, compress)
+    @debug "Wrote output."
     return model
 end
 
@@ -494,9 +508,26 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
 run(config_file::AbstractString)::Model = run(parsefile(config_file))
 
+function is_current_module(log)
+    (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)
+end
+
 function run(config::Config)::Model
-    model = BMI.initialize(Model, config)
-    solve!(model.integrator)
-    BMI.finalize(model)
-    return model
+    logger = current_logger()
+
+    # Reconfigure the logger if necessary with the correct loglevel
+    # but make sure to only log from Ribasim
+    if min_enabled_level(logger) != config.logging.verbosity
+        logger = EarlyFilteredLogger(
+            is_current_module,
+            LevelOverrideLogger(config.logging.verbosity, logger),
+        )
+    end
+
+    with_logger(logger) do
+        model = BMI.initialize(Model, config)
+        solve!(model.integrator)
+        BMI.finalize(model)
+        return model
+    end
 end

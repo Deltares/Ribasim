@@ -451,14 +451,31 @@ function valid_discrete_control(p::Parameters)::Bool
 
     errors = false
 
-    for id in node_id
-        # Get control states of this DiscreteControl node
+    for id in unique(node_id)
+        # The control states of this DiscreteControl node
         control_states_discrete_control = Set{String}()
 
+        # The truth states of this DiscreteControl node with the wrong length
+        truth_states_wrong_length = String[]
+
+        # The number of conditions of this DiscreteControl node
+        n_conditions = length(searchsorted(node_id, id))
+
         for (key, control_state) in logic_mapping
-            if key[1] == id
+            id_, truth_state = key
+
+            if id_ == id
                 push!(control_states_discrete_control, control_state)
             end
+
+            if length(truth_state) != n_conditions
+                push!(truth_states_wrong_length, truth_state)
+            end
+        end
+
+        if !isempty(truth_states_wrong_length)
+            errors = true
+            @error "DiscreteControl node #$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the

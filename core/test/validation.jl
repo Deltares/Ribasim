@@ -7,13 +7,15 @@ using Logging
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
-    level = [[0.0, 0.0]]
-    area = [[0.0, 100.0]]
+    level = [[0.0, 0.0, 1.0]]
+    area = [[0.0, 100.0, 90]]
     errors = Ribasim.valid_profiles(node_id, level, area)
     @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
     @test "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area 0.0 for node #1)." in
           errors
-    @test length(errors) == 2
+    @test "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1." in
+          errors
+    @test length(errors) == 3
 
     itp, valid = Ribasim.qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid
@@ -158,9 +160,11 @@ if !Sys.islinux()
     end
 end
 
-@testset "Control state validation" begin
-    toml_path =
-        normpath(@__DIR__, "../../data/invalid_control_states/invalid_control_states.toml")
+@testset "DiscreteControl logic validation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/invalid_discrete_control/invalid_discrete_control.toml",
+    )
     @test ispath(toml_path)
 
     cfg = Ribasim.parsefile(toml_path)
@@ -173,9 +177,12 @@ end
         @test !Ribasim.valid_discrete_control(p)
     end
 
-    @test length(logger.logs) == 1
+    @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
+          "DiscreteControl node #4 has 1 condition(s), which is inconsistent with these truth state(s): [\"FF\"]."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
           "These control states from DiscreteControl node #4 are not defined for controlled Pump #2: [\"foo\"]."
 end
 

@@ -392,7 +392,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        condition.node_id,
+        condition.node_id, # Not unique
         condition.listen_feature_id,
         condition.variable,
         condition.greater_than,

@@ -4,6 +4,7 @@ using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
 using Legolas: Legolas, record_type
+using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
@@ -61,7 +62,7 @@ for (T, kinds) in pairs(nodekinds)
 end
 const nodetypes = collect(keys(nodekinds))
 
-@option struct Solver
+@option struct Solver <: TableOption
     algorithm::String = "QNDF"
     autodiff::Bool = false
     saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
@@ -81,7 +82,9 @@ function Base.convert(::Type{Compression}, str::AbstractString)
     i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
     if isnothing(i)
         throw(
-            "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
+            ArgumentError(
+                "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
+            ),
         )
     end
     return Compression(i - 1)
@@ -95,6 +98,11 @@ end
     outstate::Maybe{String}
     compression::Compression = "zstd"
     compression_level::Int = 6
+end
+
+@option struct Logging <: TableOption
+    verbosity::LogLevel = Info
+    timing::Bool = false
 end
 
 @option @addnodetypes struct Config
@@ -116,6 +124,20 @@ end
     output::Output = Output()
 
     solver::Solver = Solver()
+
+    logging::Logging = Logging()
+end
+
+function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
+    level == "debug" && return Debug
+    level == "info" && return Info
+    level == "warn" && return Warn
+    level == "error" && return Error
+    throw(
+        ArgumentError(
+            "verbosity $level not supported, choose one of: debug info warn error.",
+        ),
+    )
 end
 
 # TODO Use with proper alignment
