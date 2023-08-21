@@ -268,8 +268,10 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
                 )
             end
             # Trivial interpolation for static flow rate
-            interpolation =
-                LinearInterpolation([row.flow_rate, row.flow_rate], [0.0, t_end])
+            interpolation = LinearInterpolation(
+                [row.flow_rate, row.flow_rate],
+                [nextfloat(-Inf), prevfloat(Inf)],
+            )
             push!(flow_rate, interpolation)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
@@ -400,6 +402,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
+    look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
         time = Vector{Float64}(),
@@ -412,6 +415,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         condition.node_id, # Not unique
         condition.listen_feature_id,
         condition.variable,
+        look_ahead,
         condition.greater_than,
         condition_value,
         control_state,

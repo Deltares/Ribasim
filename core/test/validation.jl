@@ -29,7 +29,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/invalid_qh/invalid_qh.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.parsefile(toml_path)
+    config = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
 
@@ -132,7 +132,7 @@ if !Sys.islinux()
         )
         @test ispath(toml_path)
 
-        config = Ribasim.parsefile(toml_path)
+        config = Ribasim.Config(toml_path)
         gpkg_path = Ribasim.input_path(config, config.geopackage)
         db = SQLite.DB(gpkg_path)
         p = Ribasim.Parameters(db, config)
@@ -167,23 +167,32 @@ end
     )
     @test ispath(toml_path)
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
     p = Ribasim.Parameters(db, cfg)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p)
+        @test !Ribasim.valid_discrete_control(p, cfg)
     end
 
-    @test length(logger.logs) == 2
+    @test length(logger.logs) == 5
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "DiscreteControl node #4 has 1 condition(s), which is inconsistent with these truth state(s): [\"FF\"]."
+          "DiscreteControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "These control states from DiscreteControl node #4 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+          "These control states from DiscreteControl node #5 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "Look ahead supplied for non-timeseries listen variable 'level' from listen node #1."
+    @test logger.logs[4].level == Error
+    @test logger.logs[4].message ==
+          "Look ahead for listen variable 'flow_rate' from listen node #4 goes past timeseries end during simulation."
+    @test logger.logs[5].level == Error
+    @test logger.logs[5].message ==
+          "Negative look ahead supplied for listen variable 'flow_rate' from listen node #4."
 end
 
 @testset "Pump/outlet flow rate sign validation" begin
@@ -231,7 +240,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/invalid_edge_types/invalid_edge_types.toml")
     @test ispath(toml_path)
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
     logger = TestLogger()

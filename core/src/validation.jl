@@ -218,6 +218,7 @@ end
     listen_feature_id::Int
     variable::String
     greater_than::Float64
+    look_ahead::Union{Missing, Float64}
 end
 
 @version DiscreteControlLogicV1 begin

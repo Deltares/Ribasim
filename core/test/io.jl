@@ -70,7 +70,7 @@ end
 
 @testset "table sort" begin
     toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
-    config = Ribasim.parsefile(toml_path)
+    config = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
 

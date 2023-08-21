@@ -1,5 +1,5 @@
 function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
-    config = parsefile(config_path)
+    config = Config(config_path)
     BMI.initialize(T, config)
 end
 
@@ -26,7 +26,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        if !valid_discrete_control(parameters)
+        if !valid_discrete_control(parameters, config)
             error("Invalid discrete control state definition(s).")
         end
 
@@ -96,8 +96,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
 
-    jac_prototype = get_jac_prototype(parameters)
-    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
+    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac = config.solver.jac ? water_balance_jac! : nothing
+    RHS = ODEFunction(water_balance!; jac_prototype, jac)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
@@ -213,14 +214,15 @@ function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_feature_id, variable, greater_than)) in enumerate(
+    for (i, (listen_feature_id, variable, greater_than, look_ahead)) in enumerate(
         zip(
             discrete_control.listen_feature_id,
             discrete_control.variable,
             discrete_control.greater_than,
+            discrete_control.look_ahead,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, u, t)
+        value = get_value(p, listen_feature_id, variable, look_ahead, u, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -234,6 +236,7 @@ function get_value(
     p::Parameters,
     feature_id::Int,
     variable::String,
+    Δt::Float64,
     u::AbstractVector{Float64},
     t::Float64,
 )
@@ -254,7 +257,7 @@ function get_value(
             error("Flow condition node #$feature_id is not a flow boundary.")
         end
 
-        value = flow_boundary.flow_rate[flow_boundary_idx](t)
+        value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
     else
         error("Unsupported condition variable $variable.")
     end
@@ -506,7 +509,7 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
-run(config_file::AbstractString)::Model = run(parsefile(config_file))
+run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
     (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)

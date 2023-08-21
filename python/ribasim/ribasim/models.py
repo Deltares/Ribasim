@@ -55,6 +55,7 @@ class DiscreteControlCondition(BaseModel):
     listen_feature_id: int = Field(..., description="listen_feature_id")
     node_id: int = Field(..., description="node_id")
     variable: str = Field(..., description="variable")
+    look_ahead: Optional[float] = Field(None, description="look_ahead")
 
 
 class BasinForcing(BaseModel):
