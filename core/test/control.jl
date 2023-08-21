@@ -64,27 +64,36 @@ end
     p = model.integrator.p
     (; basin, pid_control, flow_boundary) = p
 
-    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
     timesteps = Ribasim.timesteps(model)
+
+    target_itp = pid_control.target[1]
+    t_target_change = target_itp.t[2]
+    idx_target_change = searchsortedlast(timesteps, t_target_change)
 
     K_p, K_i, _ = pid_control.pid_params[2](0)
     target_level = pid_control.target[2](0)
 
     A = basin.area[1][1]
-    initial_storage = storage[1]
+    initial_level = level[1]
     flow_rate = flow_boundary.flow_rate[1].u[1]
-    du0 = flow_rate + K_p * (target_level - initial_storage / A)
-    target_storage = A * target_level
-    Δstorage = initial_storage - target_storage
+    du0 = flow_rate + K_p * (target_level - initial_level)
+    Δlevel = initial_level - target_level
     alpha = -K_p / (2 * A)
     omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
-    phi = atan(du0 / Δstorage - alpha) / omega
-    a = abs(Δstorage / cos(phi))
+    phi = atan(du0 / (A * Δlevel) - alpha) / omega
+    a = abs(Δlevel / cos(phi))
     # This bound is the exact envelope of the analytical solution
-    bound = @. a * exp(alpha * timesteps)
-    eps = 3.5
-
-    @test all((storage .- target_storage) .< bound .+ eps)
+    bound = @. a * exp(alpha * timesteps[1:idx_target_change])
+    eps = 3.5e-3
+    # Initial convergence to target level
+    @test all(@. abs(level[1:idx_target_change] - target_level) < bound + eps)
+    # Later closeness to target level
+    @test all(
+        @. abs(
+            level[idx_target_change:end] - target_itp(timesteps[idx_target_change:end]),
+        ) < 5e-2
+    )
 end
 
 @testset "TabulatedRatingCurve control" begin
