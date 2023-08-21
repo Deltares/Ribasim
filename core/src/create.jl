@@ -158,7 +158,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         )
     end
 
-    interpolations = Interpolation[]
+    interpolations = ScalarInterpolation[]
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
     active = BitVector()
     errors = false
@@ -254,7 +254,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
 
     t_end = seconds_since(config.endtime, config.starttime)
     active = BitVector()
-    flow_rate = Interpolation[]
+    flow_rate = ScalarInterpolation[]
     errors = false
 
     for node_id in node_ids
@@ -274,7 +274,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
             interpolation, is_valid =
-                flow_rate_interpolation(config.starttime, t_end, time, node_id)
+                get_scalar_interpolation(config.starttime, t_end, time, node_id, :flow_rate)
             if !is_valid
                 @error "A FlowRate time series for FlowBoundary node #$node_id has repeated times, this can not be interpolated."
                 errors = true
@@ -433,8 +433,11 @@ function PidControl(db::DB, config::Config)::PidControl
 
     active = BitVector()
     pid_params = VectorInterpolation[]
+    target = ScalarInterpolation[]
     listen_node_id = Int[]
     errors = false
+
+    t_end = seconds_since(config.endtime, config.starttime)
 
     for node_id in node_ids
         if node_id in static_node_ids
@@ -442,19 +445,31 @@ function PidControl(db::DB, config::Config)::PidControl
             row = static[static_idx]
             push!(listen_node_id, row.listen_node_id)
             # Trivial interpolations for static PID control parameters
-            params = [row.target, row.proportional, row.integral, row.derivative]
-            interpolation =
-                LinearInterpolation([params, params], [nextfloat(-Inf), prevfloat(Inf)])
-            push!(pid_params, interpolation)
+            timespan = [nextfloat(-Inf), prevfloat(Inf)]
+            params = [row.proportional, row.integral, row.derivative]
+            interpolation_pid_params = LinearInterpolation([params, params], timespan)
+            interpolation_target = LinearInterpolation([row.target, row.target], timespan)
+            push!(pid_params, interpolation_pid_params)
+            push!(target, interpolation_target)
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
-            interpolation, is_valid =
-                pid_params_interpolation(config.starttime, t_end, time, node_id)
-            if !is_valid
+            interpolation_pid_params, is_valid_params = get_vector_interpolation(
+                config.starttime,
+                t_end,
+                time,
+                node_id,
+                [:proportional, :integral, :derivative],
+            )
+            interpolation_target, is_valid_target =
+                get_scalar_interpolation(config.starttime, t_end, time, node_id, :target)
+            if !(is_valid_params && is_valid_target)
                 @error "A time series for PidControl node #$node_id has repeated times, this can not be interpolated."
                 errors = true
             end
-            push!(pid_params, interpolation)
+            time_first_idx = searchsortedfirst(time.node_id, node_id)
+            push!(listen_node_id, time[time_first_idx].listen_node_id)
+            push!(pid_params, interpolation_pid_params)
+            push!(target, interpolation_target)
             push!(active, true)
         else
             error("FlowBoundary node #$node_id data not in any table.")
@@ -468,7 +483,7 @@ function PidControl(db::DB, config::Config)::PidControl
 
     pid_error = zero(node_ids)
 
-    return PidControl(node_ids, active, listen_node_id, pid_params, pid_error)
+    return PidControl(node_ids, active, listen_node_id, target, pid_params, pid_error)
 end
 
 function Parameters(db::DB, config::Config)::Parameters
