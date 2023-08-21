@@ -573,6 +573,9 @@ Get a sparse matrix whose sparsity matches the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
 
+In Ribasim the Jacobian is typically sparse because each state only depends on a small
+number of other states.
+
 Note: the name 'prototype' does not mean this code is a prototype, it comes
 from the naming convention of this sparsity structure in the
 differentialequations.jl docs.

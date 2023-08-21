@@ -119,9 +119,19 @@ function output_path(config::Config, path::String)
     return normpath(config.relative_dir, config.output_dir, path)
 end
 
-"Parse a TOML file to a Config"
-function parsefile(config_path::AbstractString)::Config
-    return from_toml(Config, config_path; relative_dir = dirname(normpath(config_path)))
+"""
+    Config(config_path::AbstractString; kwargs...)
+
+Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
+keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
+"""
+function Config(config_path::AbstractString; kwargs...)::Config
+    return from_toml(
+        Config,
+        config_path;
+        relative_dir = dirname(normpath(config_path)),
+        kwargs...,
+    )
 end
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"

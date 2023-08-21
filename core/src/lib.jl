@@ -30,3 +30,7 @@ function Base.show(io::IO, model::Model)
     nsaved = length(timesteps(model))
     println(io, "Model(ts: $nsaved, t: $t)")
 end
+
+function SciMLBase.successful_retcode(model::Model)::Bool
+    return SciMLBase.successful_retcode(model.integrator.sol)
+end

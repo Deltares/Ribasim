@@ -1,5 +1,5 @@
 function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
-    config = parsefile(config_path)
+    config = Config(config_path)
     BMI.initialize(T, config)
 end
 
@@ -96,8 +96,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     timespan = (zero(t_end), t_end)
 
-    jac_prototype = get_jac_prototype(parameters)
-    RHS = ODEFunction(water_balance!; jac_prototype, jac = water_balance_jac!)
+    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac = config.solver.jac ? water_balance_jac! : nothing
+    RHS = ODEFunction(water_balance!; jac_prototype, jac)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
@@ -506,7 +507,7 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
-run(config_file::AbstractString)::Model = run(parsefile(config_file))
+run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
     (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)

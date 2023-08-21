@@ -35,13 +35,15 @@ from ribasim.types import FilePath
 
 class Solver(BaseModel):
     algorithm: Optional[str]
-    autodiff: Optional[bool]
     saveat: Optional[Union[float, List[float]]]
     adaptive: Optional[bool]
     dt: Optional[float]
     abstol: Optional[float]
     reltol: Optional[float]
     maxiters: Optional[int]
+    sparse: Optional[bool]
+    jac: Optional[bool]
+    autodiff: Optional[bool]
 
 
 class Verbosity(str, Enum):

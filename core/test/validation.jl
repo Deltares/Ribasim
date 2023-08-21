@@ -29,7 +29,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/invalid_qh/invalid_qh.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.parsefile(toml_path)
+    config = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
 
@@ -132,7 +132,7 @@ if !Sys.islinux()
         )
         @test ispath(toml_path)
 
-        config = Ribasim.parsefile(toml_path)
+        config = Ribasim.Config(toml_path)
         gpkg_path = Ribasim.input_path(config, config.geopackage)
         db = SQLite.DB(gpkg_path)
         p = Ribasim.Parameters(db, config)
@@ -167,7 +167,7 @@ end
     )
     @test ispath(toml_path)
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
     p = Ribasim.Parameters(db, cfg)
@@ -231,7 +231,7 @@ end
     toml_path = normpath(@__DIR__, "../../data/invalid_edge_types/invalid_edge_types.toml")
     @test ispath(toml_path)
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
     logger = TestLogger()

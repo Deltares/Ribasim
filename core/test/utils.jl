@@ -164,7 +164,7 @@ end
 @testset "Jacobian sparsity" begin
     toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
 
@@ -179,7 +179,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
 
-    cfg = Ribasim.parsefile(toml_path)
+    cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
     db = SQLite.DB(gpkg_path)
 
