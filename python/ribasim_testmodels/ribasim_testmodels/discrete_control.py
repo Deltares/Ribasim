@@ -232,6 +232,7 @@ def flow_condition_model():
                 "listen_feature_id": [1],
                 "variable": ["flow_rate"],
                 "greater_than": [20 / (24 * 60 * 60)],
+                "look_ahead": [60 * 24 * 60 * 60],
             }
         ),
         logic=pd.DataFrame(
@@ -248,7 +249,7 @@ def flow_condition_model():
         time=pd.DataFrame(
             data={
                 "node_id": [1, 1],
-                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                "time": ["2020-01-01 00:00:00", "2022-01-01 00:00:00"],
                 "flow_rate": [0.0, 40 / (24 * 60 * 60)],
             }
         )

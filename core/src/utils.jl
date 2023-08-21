@@ -443,12 +443,18 @@ function get_compressor(config::Config)
     end
 end
 
-"Check whether control states are defined for discrete controlled nodes."
-function valid_discrete_control(p::Parameters)::Bool
+"""
+Check:
+- whether control states are defined for discrete controlled nodes;
+- Whether the supplied truth states have the proper length;
+- Whether look_ahead is only supplied for condition variables given by a time-series.
+"""
+function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, connectivity, lookup) = p
     (; graph_control) = connectivity
-    (; node_id, logic_mapping) = discrete_control
+    (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
 
+    t_end = seconds_since(config.endtime, config.starttime)
     errors = false
 
     for id in unique(node_id)
@@ -504,6 +510,34 @@ function valid_discrete_control(p::Parameters)::Bool
                 node_type = typeof(node)
                 @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
                 errors = true
+            end
+        end
+    end
+    for (Δt, var, feature_id) in zip(look_ahead, variable, listen_feature_id)
+        if !iszero(Δt)
+            node_type = p.lookup[feature_id]
+            # TODO: If more transient listen variables must be supported, this validation must be more specific
+            # (e.g. for some node some variables are transient, some not).
+            if node_type ∉ [:flow_boundary]
+                errors = true
+                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node #$feature_id."
+            else
+                if Δt < 0
+                    errors = true
+                    @error "Negative look ahead supplied for listen variable '$var' from listen node #$feature_id."
+                else
+                    node = getfield(p, node_type)
+                    idx = if node_type == :Basin
+                        id_index(node.node_id, feature_id)
+                    else
+                        searchsortedfirst(node.node_id, feature_id)
+                    end
+                    interpolation = getfield(node, Symbol(var))[idx]
+                    if t_end + Δt > interpolation.t[end]
+                        errors = true
+                        @error "Look ahead for listen variable '$var' from listen node #$feature_id goes past timeseries end during simulation."
+                    end
+                end
             end
         end
     end
