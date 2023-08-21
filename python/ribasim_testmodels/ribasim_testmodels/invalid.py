@@ -206,13 +206,14 @@ def invalid_discrete_control_model():
         [
             (0.0, 0.0),  # 1: Basin
             (1.0, 0.0),  # 2: Pump
-            (2.0, 0.0),  # 3: LevelBoundary
-            (1.0, 1.0),  # 4: DiscreteControl
+            (2.0, 0.0),  # 3: Basin
+            (3.0, 0.0),  # 4: FlowBoundary
+            (1.0, 1.0),  # 5: DiscreteControl
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["Basin", "Pump", "LevelBoundary", "DiscreteControl"]
+    node_type = ["Basin", "Pump", "Basin", "FlowBoundary", "DiscreteControl"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -225,15 +226,15 @@ def invalid_discrete_control_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 4], dtype=np.int64)
-    to_id = np.array([2, 3, 2], dtype=np.int64)
+    from_id = np.array([1, 2, 4, 5], dtype=np.int64)
+    to_id = np.array([2, 3, 3, 2], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": ["flow", "flow", "control"],
+                "edge_type": ["flow", "flow", "flow", "control"],
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -243,22 +244,24 @@ def invalid_discrete_control_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1],
-            "area": [0.01, 1.0],
-            "level": [0.0, 1.0],
+            "node_id": [1, 1, 3, 3],
+            "area": 2 * [0.01, 1.0],
+            "level": 2 * [0.0, 1.0],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": [1],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
+            "node_id": [1, 3],
+            "drainage": 2 * [0.0],
+            "potential_evaporation": 2 * [0.0],
+            "infiltration": 2 * [0.0],
+            "precipitation": 2 * [0.0],
+            "urban_runoff": 2 * [0.0],
         }
     )
+
+    basin = ribasim.Basin(profile=profile, static=static)
 
     # Setup pump:
     pump = ribasim.Pump(
@@ -276,11 +279,12 @@ def invalid_discrete_control_model():
     )
 
     # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(
+    flow_boundary = ribasim.FlowBoundary(
+        time=pd.DataFrame(
             data={
-                "node_id": [3],
-                "level": [1.5],
+                "node_id": 2 * [4],
+                "flow_rate": [1.0, 2.0],
+                "time": ["2020-01-01 00:00:00", "2020-11-01 00:00:00"],
             }
         )
     )
@@ -288,26 +292,28 @@ def invalid_discrete_control_model():
     # Setup the discrete control:
     condition = pd.DataFrame(
         data={
-            "node_id": [4],
-            "listen_feature_id": [1],
-            "variable": ["level"],
-            "greater_than": [0.5],
+            "node_id": 3 * [5],
+            "listen_feature_id": [1, 4, 4],
+            "variable": ["level", "flow_rate", "flow_rate"],
+            "greater_than": [0.5, 1.5, 1.5],
+            # Invalid: look_ahead can only be specified for timeseries variables.
+            # Invalid: this look_ahead will go past the provided timeseries during simulation.
+            # Invalid: look_ahead must be non-negative.
+            "look_ahead": [100.0, 40 * 24 * 60 * 60, -10.0],
         }
     )
 
     logic = pd.DataFrame(
         data={
-            "node_id": [4],
-            # Invalid: DiscreteControl node #4 has 1 condition so
-            # truth states have to be of length 1
-            "truth_state": ["FF"],
+            "node_id": [5],
+            # Invalid: DiscreteControl node #4 has 2 conditions so
+            # truth states have to be of length 2
+            "truth_state": ["FFFF"],
             "control_state": ["foo"],
         }
     )
 
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
-
-    basin = ribasim.Basin(profile=profile, static=static)
 
     model = ribasim.Model(
         modelname="invalid_discrete_control",
@@ -315,7 +321,7 @@ def invalid_discrete_control_model():
         edge=edge,
         basin=basin,
         pump=pump,
-        level_boundary=level_boundary,
+        flow_boundary=flow_boundary,
         discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",

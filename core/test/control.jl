@@ -41,16 +41,20 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control) = p
+    (; discrete_control, flow_boundary) = p
+
+    Δt = discrete_control.look_ahead[1]
 
     timesteps = Ribasim.timesteps(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(timesteps, t_control)
 
     greater_than = discrete_control.greater_than[1]
-    flow_t_control = model.saved_flow.saveval[t_control_index][1]
+    flow_t_control = flow_boundary.flow_rate[1](t_control)
+    flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
-    @test isapprox(flow_t_control, greater_than, rtol = 0.005)
+    @test !isapprox(flow_t_control, greater_than; rtol = 0.005)
+    @test isapprox(flow_t_control_ahead, greater_than, rtol = 0.005)
 end
 
 @testset "PID control" begin
