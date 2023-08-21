@@ -36,7 +36,7 @@ conda run -p "%conda_env_path%mm" micromamba run -p %conda_env_path% pip wheel p
     <build-triggers>
       <build-trigger id="TRIGGER_557" type="vcsTrigger">
         <parameters>
-          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="branchFilter" value="+:main" />
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
