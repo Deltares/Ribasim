@@ -2,6 +2,7 @@ module ribasim_cli
 
 using Logging: global_logger
 using TerminalLoggers: TerminalLogger
+using SciMLBase: successful_retcode
 using Ribasim
 
 function help(x)::Cint
@@ -30,13 +31,13 @@ function julia_main()::Cint
     try
         # show progress bar in terminal
         global_logger(TerminalLogger())
-        Ribasim.run(arg)
+        model = Ribasim.run(arg)
+        println(model.integrator.sol.retcode)
+        return successful_retcode(model)
     catch
         Base.invokelatest(Base.display_error, current_exceptions())
         return 1
     end
-
-    return 0
 end
 
 end # module
