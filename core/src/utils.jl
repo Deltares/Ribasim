@@ -849,7 +849,14 @@ struct FlatVector{T} <: AbstractVector{T}
     v::Vector{Vector{T}}
 end
 
-Base.length(fv::FlatVector) = length(fv.v) * length(first(fv.v))
+function Base.length(fv::FlatVector)
+    return if isempty(fv.v)
+        0
+    else
+        length(fv.v) * length(first(fv.v))
+    end
+end
+
 Base.size(fv::FlatVector) = (length(fv),)
 
 function Base.getindex(fv::FlatVector, i::Int)

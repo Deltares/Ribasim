@@ -202,4 +202,9 @@ end
     @test fv[begin] == 2.2
     @test fv[5] == 6.4
     @test fv[end] == 7.4
+
+    vv = Vector{Float64}[]
+    fv = Ribasim.FlatVector(vv)
+    @test isempty(fv)
+    @test length(fv) == 0
 end
