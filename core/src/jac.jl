@@ -313,21 +313,12 @@ function formulate_jac!(
             # Computing this slope here is silly,
             # should eventually be computed pre-simulation and cached!
             table = tables[i]
-            levels = table.t
-            flows = table.u
             level = basin.current_level[idx_in]
-            level_smaller_idx = searchsortedlast(table.t, level)
-            if level_smaller_idx == 0
-                slope = 0.0
-            else
-                if level_smaller_idx == length(flows)
-                    level_smaller_idx = length(flows) - 1
-                end
-
-                slope =
-                    (flows[level_smaller_idx + 1] - flows[level_smaller_idx]) /
-                    (levels[level_smaller_idx + 1] - levels[level_smaller_idx])
-            end
+            slope = scalar_interpolation_derivative(
+                table,
+                level;
+                extrapolate_up_constant = false,
+            )
 
             dq = slope / basin.current_area[idx_in]
 
@@ -366,12 +357,14 @@ function formulate_jac!(
     t::Float64,
 )::Nothing
     (; basin, connectivity, pump, outlet) = p
-    (; node_id, active, listen_node_id, proportional, integral, derivative, error) =
-        pid_control
+    (; node_id, active, listen_node_id, pid_params, target, error) = pid_control
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_flow, graph_control) = connectivity
 
-    get_error!(pid_control, p)
+    pid_params_interpolated = [params(t) for params in pid_params]
+    derivative = [params[3] for params in pid_params_interpolated]
+
+    get_error!(pid_control, p, t)
 
     n_basins = length(basin.node_id)
     integral_value = u.integral
@@ -424,8 +417,9 @@ function formulate_jac!(
             end
         end
 
-        K_d = derivative[i]
-        if !isnan(K_d)
+        K_p, K_i, K_d = pid_params_interpolated[i]
+
+        if !iszero(K_d)
             if controls_pump
                 D = 1.0 - K_d * reduction_factor / listen_area
             else
@@ -437,18 +431,16 @@ function formulate_jac!(
 
         E = 0.0
 
-        K_p = proportional[i]
-        if !isnan(K_p)
+        if !iszero(K_p)
             E += K_p * error[i]
         end
 
-        K_i = integral[i]
-        if !isnan(K_i)
+        if !iszero(K_i)
             E += K_i * integral_value[i]
         end
 
-        if !isnan(K_d)
-            dtarget_level = 0.0
+        if !iszero(K_d)
+            dtarget_level = scalar_interpolation_derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_idx]
             E += K_d * (dtarget_level - du_listened_basin_old / listen_area)
         end
@@ -492,7 +484,7 @@ function formulate_jac!(
         end
 
         # Computing D and E derivatives
-        if !isnan(K_d)
+        if !iszero(K_d)
             darea = basin.current_darea[listened_node_idx]
 
             dD_du_listen = reduction_factor * darea / (listen_area^2)
@@ -520,7 +512,7 @@ function formulate_jac!(
             dE_du_listen = 0.0
         end
 
-        if !isnan(K_p)
+        if !iszero(K_p)
             dE_du_listen -= K_p / listen_area
         end
 

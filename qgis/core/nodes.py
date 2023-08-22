@@ -476,6 +476,21 @@ class PidControlStatic(Input):
         QgsField("node_id", QVariant.Int),
         QgsField("active", QVariant.Bool),
         QgsField("listen_node_id", QVariant.Int),
+        QgsField("target", QVariant.Float64),
+        QgsField("proportional", QVariant.Double),
+        QgsField("integral", QVariant.Double),
+        QgsField("derivative", QVariant.Double),
+    ]
+
+
+class PidControlTime(Input):
+    input_type = "PidControl / static"
+    geometry_type = "LineString"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("listen_node_id", QVariant.Int),
+        QgsField("time", QVariant.DateTime),
+        QgsField("target", QVariant.Float64),
         QgsField("proportional", QVariant.Double),
         QgsField("integral", QVariant.Double),
         QgsField("derivative", QVariant.Double),

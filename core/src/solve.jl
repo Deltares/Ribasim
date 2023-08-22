@@ -1,5 +1,8 @@
 ## types and functions
-const Interpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
+const ScalarInterpolation =
+    LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
+const VectorInterpolation =
+    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
 """
 Store the connectivity information
@@ -145,7 +148,7 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    tables::Vector{Interpolation}
+    tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
@@ -247,7 +250,7 @@ flow_rate: target flow rate
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Interpolation}
+    flow_rate::Vector{ScalarInterpolation}
 end
 
 """
@@ -375,19 +378,17 @@ PID control currently only supports regulating basin levels.
 node_id: node ID of the PidControl node
 active: whether this node is active and thus sets flow rates
 listen_node_id: the id of the basin being controlled
-proportional: the coefficient of the term proportional to the error
-integral: the coefficient of the term proportional to the integral of the error
-derivative: the coefficient of the term proportional to the derivative of the error
+pid_params: a vector interpolation for parameters changing over time.
+    The parameters are respectively target, proportional, integral, derivative,
+    where the last three are the coefficients for the PID equation.
 error: the current error; basin_target - current_level
 """
 struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
-    target::Vector{Int}
-    proportional::Vector{Float64}
-    integral::Vector{Float64}
-    derivative::Vector{Float64}
+    target::Vector{ScalarInterpolation}
+    pid_params::Vector{VectorInterpolation}
     error::Vector{Float64}
 end
 
@@ -542,7 +543,7 @@ function formulate!(
     return nothing
 end
 
-function get_error!(pid_control::PidControl, p::Parameters)
+function get_error!(pid_control::PidControl, p::Parameters, t::Float64)
     (; basin) = p
     (; listen_node_id, target) = pid_control
 
@@ -552,7 +553,7 @@ function get_error!(pid_control::PidControl, p::Parameters)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        pid_error[i] = target[listened_node_idx] - basin.current_level[listened_node_idx]
+        pid_error[i] = target[i](t) - basin.current_level[listened_node_idx]
     end
 end
 
@@ -562,16 +563,14 @@ function continuous_control!(
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray{Float64},
+    t::Float64,
 )::Nothing
-    # TODO: Also support being able to control outlet
-    # TODO: also support time varying target levels
     (; connectivity, pump, outlet, basin, fractional_flow) = p
     (; min_flow_rate, max_flow_rate) = pump
     (; graph_control, graph_flow, flow) = connectivity
-    (; node_id, active, proportional, integral, derivative, listen_node_id, error) =
-        pid_control
+    (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
 
-    get_error!(pid_control, p)
+    get_error!(pid_control, p, t)
 
     for (i, id) in enumerate(node_id)
         if !active[i]
@@ -609,8 +608,9 @@ function continuous_control!(
 
         flow_rate = 0.0
 
-        K_d = derivative[i]
-        if !isnan(K_d)
+        K_p, K_i, K_d = pid_params[i](t)
+
+        if !iszero(K_d)
             # dlevel/dstorage = 1/area
             area = basin.current_area[listened_node_idx]
             D = 1.0 - K_d * reduction_factor / area
@@ -618,18 +618,16 @@ function continuous_control!(
             D = 1.0
         end
 
-        K_p = proportional[i]
-        if !isnan(K_p)
+        if !iszero(K_p)
             flow_rate += reduction_factor * K_p * error[i] / D
         end
 
-        K_i = integral[i]
-        if !isnan(K_i)
+        if !iszero(K_i)
             flow_rate += reduction_factor * K_i * integral_value[i] / D
         end
 
-        if !isnan(K_d)
-            dtarget_level = 0.0
+        if !iszero(K_d)
+            dtarget_level = scalar_interpolation_derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
@@ -976,7 +974,7 @@ function water_balance!(
     formulate!(du, connectivity, basin)
 
     # PID control (changes the du of PID controlled basins)
-    continuous_control!(u, du, pid_control, p, integral)
+    continuous_control!(u, du, pid_control, p, integral, t)
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain

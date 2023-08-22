@@ -17,12 +17,10 @@
             "description": "listen_node_id",
             "type": "integer"
         },
-        "active": {
-            "format": "default",
-            "description": "active",
-            "type": [
-                "boolean"
-            ]
+        "time": {
+            "format": "date-time",
+            "description": "time",
+            "type": "string"
         },
         "proportional": {
             "format": "double",
@@ -55,13 +53,14 @@
     "required": [
         "node_id",
         "listen_node_id",
+        "time",
         "target",
         "proportional",
         "integral",
         "derivative"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
-    "title": "PidControlStatic",
-    "description": "A PidControlStatic object based on Ribasim.PidControlStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/PidControlTime.schema.json",
+    "title": "PidControlTime",
+    "description": "A PidControlTime object based on Ribasim.PidControlTimeV1",
     "type": "object"
 }
