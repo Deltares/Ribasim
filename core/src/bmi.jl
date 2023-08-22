@@ -105,7 +105,14 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters)
+    # expand scalar saveat for SavingCallback
+    saveat = if config.solver.saveat isa Number
+        range(timespan...; step = config.solver.saveat)
+    else
+        config.solver.saveat
+    end
+
+    callback, saved_flow = create_callbacks(parameters; saveat)
     @debug "Created callbacks."
 
     @timeit_debug to "Setup integrator" integrator = init(
@@ -169,7 +176,8 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    parameters,
+    parameters;
+    saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
 
@@ -184,7 +192,8 @@ function create_callbacks(
     # flows: save the flows over time, as a Vector of the nonzeros(flow)
 
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow; save_start = false)
+
+    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
