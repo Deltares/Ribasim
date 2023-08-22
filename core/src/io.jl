@@ -193,7 +193,7 @@ function write_flow_output(model::Model, compress)
     edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
-    flow = collect(Iterators.flatten(saveval))
+    flow = FlatVector(saveval)
 
     table = (; time, edge_id, from_node_id, to_node_id, flow)
     path = output_path(config, config.output.flow)
