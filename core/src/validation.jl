@@ -17,6 +17,7 @@
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
+@schema "ribasim.pidcontrol.time" PidControlTime
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
@@ -238,9 +239,20 @@ end
     active::Union{Missing, Bool}
     listen_node_id::Int
     target::Float64
-    proportional::Union{Missing, Float64}
-    integral::Union{Missing, Float64}
-    derivative::Union{Missing, Float64}
+    proportional::Float64
+    integral::Float64
+    derivative::Float64
+    control_state::Union{Missing, String}
+end
+
+@version PidControlTimeV1 begin
+    node_id::Int
+    listen_node_id::Int
+    time::DateTime
+    target::Float64
+    proportional::Float64
+    integral::Float64
+    derivative::Float64
     control_state::Union{Missing, String}
 end
 

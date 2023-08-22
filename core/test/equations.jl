@@ -19,7 +19,6 @@ TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
 end
 
 # show(Ribasim.to)  # commented out to avoid spamming the test output
-println()
 is_running_under_teamcity() && teamcity_message("qh_relation", TimerOutputs.todict(to))
 reset_timer!(Ribasim.to)
 
@@ -29,7 +28,6 @@ reset_timer!(Ribasim.to)
 end
 
 # show(Ribasim.to)  # commented out to avoid spamming the test output
-println()
 is_running_under_teamcity() && teamcity_message("forcing_eqs", TimerOutputs.todict(to))
 TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 
@@ -163,13 +161,11 @@ end
 
     storage = Ribasim.get_storages_and_levels(model).storage[:]
     t = Ribasim.timesteps(model)
+    SP = pid_control.target[1](0)
+    K_p, K_i, K_d = pid_control.pid_params[1](0)
 
-    K_p = pid_control.proportional[1]
-    K_i = pid_control.integral[1]
-    K_d = pid_control.derivative[1]
     storage_min = 50.005
     level_min = basin.level[1][2]
-    SP = pid_control.target[1]
     storage0 = storage[1]
     area = basin.area[1][2]
     level0 = level_min + (storage0 - storage_min) / area

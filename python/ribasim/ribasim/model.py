@@ -371,18 +371,24 @@ class Model(BaseModel):
 
         if self.pid_control:
             static = self.pid_control.static
+            time = self.pid_control.time
+            node_static = self.node.static
 
-            for node_id in static.node_id.unique():
-                for listen_node_id in static.loc[
-                    static.node_id == node_id, "listen_node_id"
-                ]:
-                    point_start = self.node.static.iloc[listen_node_id - 1].geometry
-                    x_start.append(point_start.x)
-                    y_start.append(point_start.y)
+            for table in [static, time]:
+                if table is None:
+                    continue
 
-                    point_end = self.node.static.iloc[node_id - 1].geometry
-                    x_end.append(point_end.x)
-                    y_end.append(point_end.y)
+                for node_id in table.node_id.unique():
+                    for listen_node_id in table.loc[
+                        table.node_id == node_id, "listen_node_id"
+                    ].unique():
+                        point_start = node_static.iloc[listen_node_id - 1].geometry
+                        x_start.append(point_start.x)
+                        y_start.append(point_start.y)
+
+                        point_end = node_static.iloc[node_id - 1].geometry
+                        x_end.append(point_end.x)
+                        y_end.append(point_end.y)
 
         if len(x_start) == 0:
             return

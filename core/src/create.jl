@@ -117,6 +117,28 @@ function parse_static_and_time(
     return out, errors
 end
 
+function static_and_time_node_ids(
+    db::DB,
+    static::StructVector,
+    time::StructVector,
+    node_type::String,
+)::Tuple{Set{Int}, Set{Int}, Vector{Int}, Bool}
+    static_node_ids = Set(static.node_id)
+    time_node_ids = Set(time.node_id)
+    node_ids = get_ids(db, node_type)
+    doubles = intersect(static_node_ids, time_node_ids)
+    errors = false
+    if !isempty(doubles)
+        errors = true
+        @error "$node_type cannot be in both static and time tables, found these node IDs in both: $doubles."
+    end
+    if !issetequal(node_ids, union(static_node_ids, time_node_ids))
+        errors = true
+        @error "$node_type node IDs don't match."
+    end
+    return static_node_ids, time_node_ids, node_ids, !errors
+end
+
 function Connectivity(db::DB)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
@@ -159,16 +181,16 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
-    static_node_ids = Set(static.node_id)
-    time_node_ids = Set(time.node_id)
-    msg = "TabulatedRatingCurve cannot be in both static and time tables"
-    @assert isdisjoint(static_node_ids, time_node_ids) msg
-    node_ids = get_ids(db, "TabulatedRatingCurve")
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
 
-    msg = "TabulatedRatingCurve node IDs don't match"
-    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
+    if !valid
+        error(
+            "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
+        )
+    end
 
-    interpolations = Interpolation[]
+    interpolations = ScalarInterpolation[]
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
     active = BitVector()
     errors = false
@@ -203,7 +225,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            error("TabulatedRatingCurve node ID $node_id data not in any table.")
+            error("TabulatedRatingCurve node #$node_id data not in any table.")
         end
         if !is_valid
             @error "A Q(h) relationship for TabulatedRatingCurve #$node_id from the $source table has repeated levels, this can not be interpolated."
@@ -255,20 +277,17 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static_node_ids = Set(static.node_id)
-    time_node_ids = Set(time.node_id)
-    msg = "FlowBoundary cannot be in both static and time tables"
-    @assert isdisjoint(static_node_ids, time_node_ids) msg
-    node_ids = get_ids(db, "FlowBoundary")
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "FlowBoundary")
 
-    msg = "FlowBoundary node IDs don't match"
-    @assert issetequal(node_ids, union(static_node_ids, time_node_ids)) msg
+    if !valid
+        error("Problems encountered when parsing FlowBoundary static and time node IDs.")
+    end
 
-    active = BitVector()
-    flow_rate = Interpolation[]
-
-    errors = false
     t_end = seconds_since(config.endtime, config.starttime)
+    active = BitVector()
+    flow_rate = ScalarInterpolation[]
+    errors = false
 
     for node_id in node_ids
         if node_id in static_node_ids
@@ -289,9 +308,9 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             push!(active, coalesce(row.active, true))
         elseif node_id in time_node_ids
             interpolation, is_valid =
-                flow_rate_interpolation(config.starttime, t_end, time, node_id)
+                get_scalar_interpolation(config.starttime, t_end, time, node_id, :flow_rate)
             if !is_valid
-                @error "A flow_rate time series for FlowBoundary #$node_id has repeated times, this can not be interpolated."
+                @error "A FlowRate time series for FlowBoundary node #$node_id has repeated times, this can not be interpolated."
                 errors = true
             end
             if any(interpolation.u .< 0)
@@ -303,7 +322,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
             push!(flow_rate, interpolation)
             push!(active, true)
         else
-            error("FlowBoundary node ID $node_id data not in any table.")
+            error("FlowBoundary node #$node_id data not in any table.")
         end
     end
 
@@ -439,21 +458,68 @@ end
 
 function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
-    defaults = (active = true, proportional = NaN, integral = NaN, derivative = NaN)
-    static_parsed = parse_static(static, db, "PidControl", defaults)
+    time = load_structvector(db, config, PidControlTimeV1)
 
-    error = zero(static_parsed.node_id)
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "PidControl")
 
-    return PidControl(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.listen_node_id,
-        static_parsed.target,
-        static_parsed.proportional,
-        static_parsed.integral,
-        static_parsed.derivative,
-        error,
-    )
+    if !valid
+        error("Problems encountered when parsing PidControl static and time node IDs.")
+    end
+
+    active = BitVector()
+    pid_params = VectorInterpolation[]
+    target = ScalarInterpolation[]
+    listen_node_id = Int[]
+    errors = false
+
+    t_end = seconds_since(config.endtime, config.starttime)
+
+    for node_id in node_ids
+        if node_id in static_node_ids
+            static_idx = searchsortedfirst(static.node_id, node_id)
+            row = static[static_idx]
+            push!(listen_node_id, row.listen_node_id)
+            # Trivial interpolations for static PID control parameters
+            timespan = [nextfloat(-Inf), prevfloat(Inf)]
+            params = [row.proportional, row.integral, row.derivative]
+            interpolation_pid_params = LinearInterpolation([params, params], timespan)
+            interpolation_target = LinearInterpolation([row.target, row.target], timespan)
+            push!(pid_params, interpolation_pid_params)
+            push!(target, interpolation_target)
+            push!(active, coalesce(row.active, true))
+        elseif node_id in time_node_ids
+            interpolation_pid_params, is_valid_params = get_vector_interpolation(
+                config.starttime,
+                t_end,
+                time,
+                node_id,
+                [:proportional, :integral, :derivative],
+            )
+            interpolation_target, is_valid_target =
+                get_scalar_interpolation(config.starttime, t_end, time, node_id, :target)
+            if !(is_valid_params && is_valid_target)
+                @error "A time series for PidControl node #$node_id has repeated times, this can not be interpolated."
+                errors = true
+            end
+            time_first_idx = searchsortedfirst(time.node_id, node_id)
+            push!(listen_node_id, time[time_first_idx].listen_node_id)
+            push!(pid_params, interpolation_pid_params)
+            push!(target, interpolation_target)
+            push!(active, true)
+        else
+            error("FlowBoundary node #$node_id data not in any table.")
+            errors = true
+        end
+    end
+
+    if errors
+        error("Errors occurred when parsing PidControl data.")
+    end
+
+    pid_error = zero(node_ids)
+
+    return PidControl(node_ids, active, listen_node_id, target, pid_params, pid_error)
 end
 
 function Parameters(db::DB, config::Config)::Parameters

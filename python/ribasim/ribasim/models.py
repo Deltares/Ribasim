@@ -85,14 +85,26 @@ class LinearResistanceStatic(BaseModel):
 
 
 class PidControlStatic(BaseModel):
-    integral: Optional[float] = Field(None, description="integral")
+    integral: float = Field(..., description="integral")
     remarks: Optional[str] = Field("", description="a hack for pandera")
     listen_node_id: int = Field(..., description="listen_node_id")
     active: Optional[bool] = Field(None, description="active")
-    proportional: Optional[float] = Field(None, description="proportional")
+    proportional: float = Field(..., description="proportional")
     node_id: int = Field(..., description="node_id")
     target: float = Field(..., description="target")
-    derivative: Optional[float] = Field(None, description="derivative")
+    derivative: float = Field(..., description="derivative")
+    control_state: Optional[str] = Field(None, description="control_state")
+
+
+class PidControlTime(BaseModel):
+    integral: float = Field(..., description="integral")
+    remarks: Optional[str] = Field("", description="a hack for pandera")
+    listen_node_id: int = Field(..., description="listen_node_id")
+    time: datetime = Field(..., description="time")
+    proportional: float = Field(..., description="proportional")
+    node_id: int = Field(..., description="node_id")
+    target: float = Field(..., description="target")
+    derivative: float = Field(..., description="derivative")
     control_state: Optional[str] = Field(None, description="control_state")
 
 
@@ -200,6 +212,7 @@ class Root(BaseModel):
     Node: Optional[Node] = None
     OutletStatic: Optional[OutletStatic] = None
     PidControlStatic: Optional[PidControlStatic] = None
+    PidControlTime: Optional[PidControlTime] = None
     PumpStatic: Optional[PumpStatic] = None
     TabulatedRatingCurveStatic: Optional[TabulatedRatingCurveStatic] = None
     TabulatedRatingCurveTime: Optional[TabulatedRatingCurveTime] = None

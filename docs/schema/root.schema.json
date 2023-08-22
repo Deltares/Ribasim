@@ -31,6 +31,9 @@
         "PidControlStatic": {
             "$ref": "PidControlStatic.schema.json"
         },
+        "PidControlTime": {
+            "$ref": "PidControlTime.schema.json"
+        },
         "ManningResistanceStatic": {
             "$ref": "ManningResistanceStatic.schema.json"
         },
