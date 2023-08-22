@@ -77,7 +77,7 @@ def pid_control_model():
     state = pd.DataFrame(
         data={
             "node_id": [2],
-            "level": [0.5],
+            "level": [6.0],
         }
     )
 
@@ -120,13 +120,24 @@ def pid_control_model():
 
     # Setup PID control
     pid_control = ribasim.PidControl(
-        static=pd.DataFrame(
+        time=pd.DataFrame(
             data={
-                "node_id": [5, 7],
-                "listen_node_id": [2, 2],
-                "target": [5.0, 5.0],
-                "proportional": [-1e-3, 1e-3],
-                "integral": [-1e-7, 1e-7],
+                "node_id": 4 * [5, 7],
+                "time": [
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                ],
+                "listen_node_id": 4 * [2, 2],
+                "target": [5.0, 5.0, 5.0, 5.0, 7.5, 7.5, 7.5, 7.5],
+                "proportional": 4 * [-1e-3, 1e-3],
+                "integral": 4 * [-1e-7, 1e-7],
+                "derivative": 4 * [0.0, 0.0],
             }
         )
     )
@@ -143,7 +154,7 @@ def pid_control_model():
         outlet=outlet,
         pid_control=pid_control,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-07-01 00:00:00",
+        endtime="2020-12-01 00:00:00",
     )
 
     return model
