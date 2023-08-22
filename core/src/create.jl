@@ -1,88 +1,120 @@
-function parse_static(
+function parse_static_and_time(
     static::StructVector,
+    time::Union{StructVector, Missing},
     db::DB,
+    config::Config,
     nodetype::String,
     defaults::NamedTuple,
+    interpolatables::Vector{Symbol, Bool},
 )::NamedTuple
     # E.g. `PumpStatic`
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
+    # Mask out columns that do not denote parameters
     mask = [symb ∉ [:node_id, :control_state] for symb in columnnames_static]
 
-    # The names of the variables that can define a control state
-    columnnames_variables = columnnames_static[mask]
+    # The names of the parameters that can define a control state
+    parameter_names = columnnames_static[mask]
 
     # The types of the variables that can define a control state
-    columntypes_variables = collect(fieldtypes(static_type))[mask]
+    parameter_types = collect(fieldtypes(static_type))[mask]
 
-    # A vector of vectors, for each variable the (initial) values for all nodes
+    # A vector of vectors, for each parameter the (initial) values for all nodes
     # of the current type
-    vals = []
+    vals_out = []
 
     node_ids = get_ids(db, nodetype)
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
-    for i in eachindex(columntypes_variables)
-        if isa(columntypes_variables[i], Union)
-            columntype = nonmissingtype(columntypes_variables[i])
+    for i in eachindex(parameter_types)
+        # If the type is a union, then the associated parameter is optional and
+        # the type is of the form Union{Missing,ActualType}
+        if isa(parameter_types[i], Union)
+            columntype = nonmissingtype(parameter_types[i])
         else
-            columntype = columntypes_variables[i]
+            columntype = parameter_types[i]
         end
 
-        push!(vals, zeros(columntype, n_nodes))
+        push!(vals_out, zeros(columntype, n_nodes))
     end
 
-    columnnames_out = copy(columnnames_variables)
-    columnnames_variables = Tuple(columnnames_variables)
+    # The keys of the output NamedTuple
+    keys_out = copy(parameter_names)
 
-    push!(columnnames_out, :node_id)
-    push!(vals, node_ids)
+    # The names of the parameters associated with a node of the current type
+    parameter_names = Tuple(parameter_names)
 
+    push!(keys_out, :node_id)
+    push!(vals_out, node_ids)
+
+    # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of
+    # parameter values to be assigned to the node with this node_id in the case of this control_state
     control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
 
-    push!(columnnames_out, :control_mapping)
-    push!(vals, control_mapping)
+    push!(keys_out, :control_mapping)
+    push!(vals_out, control_mapping)
 
-    out = NamedTuple{Tuple(columnnames_out)}(Tuple(vals))
+    # The output namedtuple
+    out = NamedTuple{Tuple(keys_out)}(Tuple(vals))
 
     if n_nodes == 0
         return out
     end
 
-    # Node id of the node being processed
-    node_id = node_ids[1]
-
-    # Index in the output vectors for this node ID
-    node_idx = 1
-
-    is_controllable = hasfield(static_type, :control_state)
-
-    for row in static
-        if node_id != row.node_id
-            node_idx += 1
-            node_id = row.node_id
-        end
-
-        # If this row is a control state, add it to the control mapping
-        if is_controllable && !ismissing(row.control_state)
-            control_values = NamedTuple{columnnames_variables}(values(row)[mask])
-            control_mapping[(row.node_id, row.control_state)] = control_values
-        end
-
-        # Assign the parameter values to the output
-        for columnname in columnnames_variables
-            val = getfield(row, columnname)
-
-            if ismissing(val)
-                val = getfield(defaults, columnname)
-            end
-
-            getfield(out, columnname)[node_idx] = val
-        end
+    # Get node IDs of static nodes if the static table exists
+    time_node_ids = if ismissing(static)
+        Int[]
+    else
+        Set(static.node_id)
     end
 
-    return out
+    # Get node IDs of transient nodes if the time table exists
+    time_node_ids = if ismissing(time)
+        Int[]
+    else
+        Set(time.node_id)
+    end
+
+    errors = false
+    t_end = seconds_since(config.endtime, config.starttime)
+    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+
+    for (node_idx, node_id) in zip(node_ids)
+        if node_id in static_node_ids
+            # TODO: Handle control states
+            static_idx = searchsortedfirst(static.node_id, node_id)
+            row = static[static_idx]
+            for parameter_name in parameter_names
+                val = getfield(row, parameter_name)
+                # Trivial interpolation for static parameters that can be transient
+                if parameter_name in interpolatables
+                    val = LinearInterpolation([val, val], trivial_timespan)
+                end
+                getfield(out, parameter_name)[node_idx] = val
+            end
+        elseif node_id in time_node_ids
+            time_first_idx = searchsortedfirst(time.node_id, node_id)
+            for parameter_name in parameter_names
+                if parameter_name in interpolatables
+                    val, is_valid = get_scalar_interpolation(
+                        config.starttime,
+                        t_end,
+                        time,
+                        node_id,
+                        parameter_name,
+                    )
+                else
+                    val = getfield(time[time_first_idx], parameter_name)
+                end
+                getfield(out, parameter_name)[node_idx] = val
+            end
+        else
+            @error "$nodetype node ID $node_id data not in any table."
+            errors = true
+        end
+    end
+    return out, errors
 end
 
 function Connectivity(db::DB)::Connectivity
