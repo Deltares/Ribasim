@@ -178,7 +178,7 @@ def discrete_control_of_pid_control_model():
 
     node_type = [
         "LevelBoundary",
-        "Pump",
+        "Outlet",
         "Basin",
         "TabulatedRatingCurve",
         "Terminal",
@@ -231,7 +231,7 @@ def discrete_control_of_pid_control_model():
 
     state = pd.DataFrame(
         data={
-            "node_id": [2],
+            "node_id": [3],
             "level": [6.0],
         }
     )
@@ -239,7 +239,7 @@ def discrete_control_of_pid_control_model():
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup pump:
-    pump = ribasim.Pump(
+    outlet = ribasim.Outlet(
         static=pd.DataFrame(
             data={
                 "node_id": [2],
@@ -289,10 +289,11 @@ def discrete_control_of_pid_control_model():
             data={
                 "node_id": [6, 6],
                 "control_state": ["target_high", "target_low"],
+                "listen_node_id": [3, 3],
                 "target": [6.0, 4.0],
-                "proportional": 2 * [1e-3],
-                "integral": 2 * [1e-7],
-                "derivative": 2 * [0.0],
+                "proportional": 2 * [1e-2],
+                "integral": 2 * [1e-8],
+                "derivative": 2 * [-1e-1],
             }
         )
     )
@@ -322,7 +323,7 @@ def discrete_control_of_pid_control_model():
         node=node,
         edge=edge,
         basin=basin,
-        pump=pump,
+        outlet=outlet,
         tabulated_rating_curve=rating_curve,
         level_boundary=level_boundary,
         terminal=terminal,

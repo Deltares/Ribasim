@@ -616,6 +616,18 @@ function PidControl(db::DB, config::Config)::PidControl
         push!(pid_params, itp)
     end
 
+    for (key, params) in parsed_parameters.control_mapping
+        (; proportional, integral, derivative) = params
+
+        times = params.proportional.t
+        K_p = proportional.u
+        K_i = integral.u
+        K_d = derivative.u
+        itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
+        parsed_parameters.control_mapping[key] =
+            (target = params.target, active = params.active, pid_params = itp)
+    end
+
     return PidControl(
         node_ids,
         parsed_parameters.active,
