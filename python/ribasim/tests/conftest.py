@@ -13,6 +13,7 @@ from ribasim_testmodels import (
     invalid_edge_types_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
+    level_boundary_condition_model,
     level_setpoint_with_minmax_model,
     linear_resistance_model,
     manning_resistance_model,
@@ -74,3 +75,4 @@ if __name__ == "__main__":
     pid_control_equation_model().write(datadir / "pid_control_equation")
     invalid_discrete_control_model().write(datadir / "invalid_discrete_control")
     invalid_edge_types_model().write(datadir / "invalid_edge_types")
+    level_boundary_condition_model().write(datadir / "level_boundary_condition")
