@@ -106,8 +106,8 @@ function formulate_jac!(
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
 
-        h_a = get_level(p, basin_a_id)
-        h_b = get_level(p, basin_b_id)
+        h_a = get_level(p, basin_a_id, t)
+        h_b = get_level(p, basin_b_id, t)
         bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
