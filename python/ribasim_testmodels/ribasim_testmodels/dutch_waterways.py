@@ -164,6 +164,7 @@ def dutch_waterways_model():
                 "listen_node_id": [12],
                 "target": [6.0],
                 "proportional": [-0.005],
+                "integral": [0.0],
                 "derivative": [-0.002],
             }
         )

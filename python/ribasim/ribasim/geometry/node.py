@@ -46,7 +46,10 @@ class Node(TableModel):
 
     @staticmethod
     def get_node_ids_and_types(*nodes):
-        node_type = pd.DataFrame(columns=["node_id", "node_type"])
+        data_types = {"node_id": int, "node_type": str}
+        node_type = pd.DataFrame(
+            {col: pd.Series(dtype=dtype) for col, dtype in data_types.items()}
+        )
 
         for node in nodes:
             if not node:
