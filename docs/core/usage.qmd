@@ -519,7 +519,8 @@ listen_node_id | Int      | -        | -
 target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -
 integral       | Float64  | $s^{-2}$ | -
-derivative     | Floar64  | -        | -
+derivative     | Float64  | -        | -
+control_state  | String   | -        | -
 
 
 ### PidControl / time
