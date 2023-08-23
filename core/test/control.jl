@@ -57,6 +57,30 @@ end
     @test isapprox(flow_t_control_ahead, greater_than, rtol = 0.005)
 end
 
+@testset "Transient level boundary condition control" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/level_boundary_condition/level_boundary_condition.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; discrete_control, level_boundary) = p
+
+    Δt = discrete_control.look_ahead[1]
+
+    timesteps = Ribasim.timesteps(model)
+    t_control = discrete_control.record.time[2]
+    t_control_index = searchsortedfirst(timesteps, t_control)
+
+    greater_than = discrete_control.greater_than[1]
+    level_t_control = level_boundary.level[1](t_control)
+    level_t_control_ahead = level_boundary.level[1](t_control + Δt)
+
+    @test !isapprox(level_t_control, greater_than; rtol = 0.005)
+    @test isapprox(level_t_control_ahead, greater_than, rtol = 0.005)
+end
+
 @testset "PID control" begin
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
     @test ispath(toml_path)

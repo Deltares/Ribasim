@@ -140,6 +140,7 @@ name it must have in the GeoPackage if it is stored there.
   - `FractionalFlow / static`: fractions
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
   - `LevelBoundary / static`: levels
+  - `LevelBoundary / time`: dynamic levels
 - FlowBoundary: sets a precribed flow into the model
   - `FlowBoundary / static`: flow rate
   - `FlowBoundary / time`: dynamic flow rate
@@ -337,7 +338,24 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
-level         | Float64 | $m^3$        | non-negative
+level         | Float64 | $m^3$        | -
+
+
+### LevelBoundary / time
+
+This table is the transient form of the `LevelBoundary` table.
+The only difference is that a time column is added and activity is assumed to be true.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the levels can be updated over time. In between the given times the
+level is interpolated linearly, and outside the flow rate is constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column    | type     | unit         | restriction
+--------- | -------  | ------------ | -----------
+time      | DateTime | -            | sorted
+node_id   | Int      | -            | sorted per time
+level     | Float64  | $m^3 s^{-1}$ | -
 
 
 
@@ -501,7 +519,8 @@ listen_node_id | Int      | -        | -
 target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -
 integral       | Float64  | $s^{-2}$ | -
-derivative     | Floar64  | -        | -
+derivative     | Float64  | -        | -
+control_state  | String   | -        | -
 
 
 ### PidControl / time

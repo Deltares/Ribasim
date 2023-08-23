@@ -52,6 +52,9 @@
         "TabulatedRatingCurveStatic": {
             "$ref": "TabulatedRatingCurveStatic.schema.json"
         },
+        "LevelBoundaryTime": {
+            "$ref": "LevelBoundaryTime.schema.json"
+        },
         "BasinState": {
             "$ref": "BasinState.schema.json"
         },

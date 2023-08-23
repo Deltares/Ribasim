@@ -13,6 +13,7 @@
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
+@schema "ribasim.levelboundary.time" LevelBoundaryTime
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
@@ -162,6 +163,12 @@ end
 @version LevelBoundaryStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
+    level::Float64
+end
+
+@version LevelBoundaryTimeV1 begin
+    node_id::Int
+    time::DateTime
     level::Float64
 end
 

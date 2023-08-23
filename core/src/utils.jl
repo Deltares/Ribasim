@@ -245,10 +245,12 @@ function get_scalar_interpolation(
     t_end::Float64,
     time::AbstractVector,
     node_id::Int,
-    param::Symbol,
+    param::Symbol;
+    default_value::Float64 = 0.0,
 )::Tuple{LinearInterpolation, Bool}
     rows = searchsorted(time.node_id, node_id)
     parameter = getfield.(time, param)[rows]
+    parameter = coalesce(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
     # Add extra timestep at start for constant extrapolation
     if times[1] > 0
@@ -290,31 +292,6 @@ function scalar_interpolation_derivative(
     else
         return derivative(itp, t)
     end
-end
-
-"Linear interpolation of a vector with constant extrapolation."
-function get_vector_interpolation(
-    starttime::DateTime,
-    t_end::Float64,
-    time::AbstractVector,
-    node_id::Int,
-    params::Vector{Symbol},
-)::Tuple{LinearInterpolation, Bool}
-    rows = searchsorted(time.node_id, node_id)
-    parameters = [[getfield(row, param) for param in params] for row in time[rows]]
-    times = seconds_since.(time.time[rows], starttime)
-    # Add extra timestep at start for constant extrapolation
-    if times[1] > 0
-        pushfirst!(times, 0.0)
-        pushfirst!(parameters, parameters[1])
-    end
-    # Add extra timestep at end for constant extrapolation
-    if times[end] < t_end
-        push!(times, t_end)
-        push!(parameters, parameters[end])
-    end
-
-    return LinearInterpolation(parameters, times), allunique(times)
 end
 
 function qh_interpolation(
@@ -433,7 +410,7 @@ end
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 """
-function get_level(p::Parameters, node_id::Int)::Float64
+function get_level(p::Parameters, node_id::Int, t::Float64)::Float64
     (; basin, level_boundary) = p
     # since the node_id fields are already Indices, Dictionary creation is instant
     basin = Dictionary(basin.node_id, basin.current_level)
@@ -442,7 +419,7 @@ function get_level(p::Parameters, node_id::Int)::Float64
         gettokenvalue(basin, token)
     else
         boundary = Dictionary(level_boundary.node_id, level_boundary.level)
-        boundary[node_id]
+        boundary[node_id](t)
     end
 end
 
@@ -573,7 +550,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             node_type = p.lookup[feature_id]
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
-            if node_type ∉ [:flow_boundary]
+            if node_type ∉ [:flow_boundary, :level_boundary]
                 errors = true
                 @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node #$feature_id."
             else
