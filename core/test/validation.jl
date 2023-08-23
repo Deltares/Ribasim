@@ -160,10 +160,10 @@ if !Sys.islinux()
     end
 end
 
-@testset "DiscreteControl logic validation" begin
+@testset "IntervalControl logic validation" begin
     toml_path = normpath(
         @__DIR__,
-        "../../data/invalid_discrete_control/invalid_discrete_control.toml",
+        "../../data/invalid_interval_control/invalid_interval_control.toml",
     )
     @test ispath(toml_path)
 
@@ -174,16 +174,16 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p, cfg)
+        @test !Ribasim.valid_interval_control(p, cfg)
     end
 
     @test length(logger.logs) == 5
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "DiscreteControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
+          "IntervalControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "These control states from DiscreteControl node #5 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+          "These control states from IntervalControl node #5 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "Look ahead supplied for non-timeseries listen variable 'level' from listen node #1."

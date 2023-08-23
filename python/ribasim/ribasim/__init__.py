@@ -6,9 +6,9 @@ from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Logging, Model, Solver
 from ribasim.node_types.basin import Basin
-from ribasim.node_types.discrete_control import DiscreteControl
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
+from ribasim.node_types.interval_control import IntervalControl
 from ribasim.node_types.level_boundary import LevelBoundary
 from ribasim.node_types.linear_resistance import LinearResistance
 from ribasim.node_types.manning_resistance import ManningResistance
@@ -36,6 +36,6 @@ __all__ = [
     "Logging",
     "TabulatedRatingCurve",
     "Terminal",
-    "DiscreteControl",
+    "IntervalControl",
     "PidControl",
 ]

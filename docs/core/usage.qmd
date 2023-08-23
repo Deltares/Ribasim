@@ -154,7 +154,7 @@ name it must have in the GeoPackage if it is stored there.
   - `Pump / static`: flow rate
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
-- DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
+- IntervalControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
   - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 - PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [Wikipedia](https://en.wikipedia.org/wiki/PID_controller) and [PID controller in equations](equations.qmd#sec-PID).
@@ -440,11 +440,11 @@ The table is sorted by time, and per time the same edge_id order is used, though
 
 ### DisceteControl
 
-DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
+IntervalControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
-#### DiscreteControl / condition {#sec-condition}
+#### IntervalControl / condition {#sec-condition}
 
-The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen feature id is grater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+The condition schema defines conditions of the form 'the interval_control node with this node id listens to whether the given variable of the node with the given listen feature id is grater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
 
 column            | type     | unit    | restriction
 ----------------- | -------- | ------- | -----------
@@ -454,16 +454,16 @@ variable          | String   | -       | must be "level" or "flow_rate"
 greater_than      | Float64  | various | -
 look_ahead        | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0)
 
-#### DiscreteControl / logic
+#### IntervalControl / logic
 
-The logic schema defines which control states are triggered based on the truth of the conditions a discrete_control node listens to.
-DiscreteControl is applied in the Julia core as follows:
+The logic schema defines which control states are triggered based on the truth of the conditions a interval_control node listens to.
+IntervalControl is applied in the Julia core as follows:
 
 - During the simulation it is checked whether the truth of any of the conditions changes.
 - When a condition changes, the corresponding discrrete_control node id is retrieved (node_id in the condition schema above).
-- The truth value of all the conditions this discrete_control node lisens to are retrieved, in the order as they are specified in the condition schema. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
-- The table below determines for the given discrete_control node ID and truth state what the corresponding control state is.
-- For all the nodes this discrete_control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
+- The truth value of all the conditions this interval_control node lisens to are retrieved, in the order as they are specified in the condition schema. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
+- The table below determines for the given interval_control node ID and truth state what the corresponding control state is.
+- For all the nodes this interval_control node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
 
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
@@ -472,7 +472,7 @@ truth_state    | String   | -    | Consists of the characters "T" (true), "F" (f
 control_state  | String   | -    |
 
 
-#### DiscreteControl output
+#### IntervalControl output
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 

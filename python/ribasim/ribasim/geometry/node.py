@@ -112,7 +112,7 @@ class Node(TableModel):
             "Outlet": "h",
             "Terminal": "s",
             "FlowBoundary": "h",
-            "DiscreteControl": "*",
+            "IntervalControl": "*",
             "PidControl": "x",
             "": "o",
         }
@@ -128,7 +128,7 @@ class Node(TableModel):
             "Outlet": "y",
             "Terminal": "m",
             "FlowBoundary": "m",
-            "DiscreteControl": "k",
+            "IntervalControl": "k",
             "PidControl": "k",
             "": "k",
         }

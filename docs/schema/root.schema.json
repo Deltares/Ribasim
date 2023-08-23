@@ -1,9 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "DiscreteControlLogic": {
-            "$ref": "DiscreteControlLogic.schema.json"
-        },
         "Edge": {
             "$ref": "Edge.schema.json"
         },
@@ -13,17 +10,20 @@
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
+        "IntervalControlCondition": {
+            "$ref": "IntervalControlCondition.schema.json"
+        },
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
-        },
-        "DiscreteControlCondition": {
-            "$ref": "DiscreteControlCondition.schema.json"
         },
         "BasinForcing": {
             "$ref": "BasinForcing.schema.json"
         },
         "FractionalFlowStatic": {
             "$ref": "FractionalFlowStatic.schema.json"
+        },
+        "IntervalControlLogic": {
+            "$ref": "IntervalControlLogic.schema.json"
         },
         "LinearResistanceStatic": {
             "$ref": "LinearResistanceStatic.schema.json"

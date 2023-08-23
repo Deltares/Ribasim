@@ -41,8 +41,8 @@
         "variable",
         "greater_than"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlCondition.schema.json",
-    "title": "DiscreteControlCondition",
-    "description": "A DiscreteControlCondition object based on Ribasim.DiscreteControlConditionV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/IntervalControlCondition.schema.json",
+    "title": "IntervalControlCondition",
+    "description": "A IntervalControlCondition object based on Ribasim.IntervalControlConditionV1",
     "type": "object"
 }

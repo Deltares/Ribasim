@@ -575,7 +575,7 @@ function formulate_jac!(
         node,
         Union{
             Basin,
-            DiscreteControl,
+            IntervalControl,
             FlowBoundary,
             FractionalFlow,
             LevelBoundary,

@@ -1,13 +1,13 @@
 import Ribasim
 using Dates: Date
 
-@testset "Pump discrete control" begin
+@testset "Pump interval control" begin
     toml_path =
-        normpath(@__DIR__, "../../data/pump_discrete_control/pump_discrete_control.toml")
+        normpath(@__DIR__, "../../data/pump_interval_control/pump_interval_control.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control) = p
+    (; interval_control) = p
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
@@ -17,23 +17,23 @@ using Dates: Date
     logic_mapping::Dict{Tuple{Int, String}, String} =
         Dict((5, "TT") => "on", (5, "TF") => "off", (5, "FF") => "on", (5, "FT") => "off")
 
-    @test discrete_control.logic_mapping == logic_mapping
+    @test interval_control.logic_mapping == logic_mapping
 
     # Control result
-    @test discrete_control.record.truth_state == ["TF", "FF", "FT"]
-    @test discrete_control.record.control_state == ["off", "on", "off"]
+    @test interval_control.record.truth_state == ["TF", "FF", "FT"]
+    @test interval_control.record.control_state == ["off", "on", "off"]
 
     level = Ribasim.get_storages_and_levels(model).level
     timesteps = Ribasim.timesteps(model)
 
     # Control times
-    t_1 = discrete_control.record.time[2]
+    t_1 = interval_control.record.time[2]
     t_1_index = findfirst(timesteps .≈ t_1)
-    @test level[1, t_1_index] ≈ discrete_control.greater_than[1]
+    @test level[1, t_1_index] ≈ interval_control.greater_than[1]
 
-    t_2 = discrete_control.record.time[3]
+    t_2 = interval_control.record.time[3]
     t_2_index = findfirst(timesteps .≈ t_2)
-    @test level[2, t_2_index] ≈ discrete_control.greater_than[2]
+    @test level[2, t_2_index] ≈ interval_control.greater_than[2]
 end
 
 @testset "Flow condition control" begin
@@ -41,15 +41,15 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control, flow_boundary) = p
+    (; interval_control, flow_boundary) = p
 
-    Δt = discrete_control.look_ahead[1]
+    Δt = interval_control.look_ahead[1]
 
     timesteps = Ribasim.timesteps(model)
-    t_control = discrete_control.record.time[2]
+    t_control = interval_control.record.time[2]
     t_control_index = searchsortedfirst(timesteps, t_control)
 
-    greater_than = discrete_control.greater_than[1]
+    greater_than = interval_control.greater_than[1]
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -104,12 +104,12 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control) = p
+    (; interval_control) = p
     # it takes some months to fill the Basin above 0.5 m
     # with the initial "high" control_state
-    @test discrete_control.record.control_state == ["high", "low"]
-    @test discrete_control.record.time[1] == 0.0
-    t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
+    @test interval_control.record.control_state == ["high", "low"]
+    @test interval_control.record.time[1] == 0.0
+    t = Ribasim.datetime_since(interval_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-15")
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
@@ -123,14 +123,14 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control) = p
-    (; record, greater_than) = discrete_control
+    (; interval_control) = p
+    (; record, greater_than) = interval_control
     level = Ribasim.get_storages_and_levels(model).level[1, :]
     timesteps = Ribasim.timesteps(model)
 
-    t_none_1 = discrete_control.record.time[2]
-    t_in = discrete_control.record.time[3]
-    t_none_2 = discrete_control.record.time[4]
+    t_none_1 = interval_control.record.time[2]
+    t_in = interval_control.record.time[3]
+    t_none_2 = interval_control.record.time[4]
 
     level_min = greater_than[1]
     setpoint = greater_than[2]

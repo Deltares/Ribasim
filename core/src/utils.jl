@@ -500,33 +500,33 @@ end
 
 """
 Check:
-- whether control states are defined for discrete controlled nodes;
+- whether control states are defined for interval controlled nodes;
 - Whether the supplied truth states have the proper length;
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
-function valid_discrete_control(p::Parameters, config::Config)::Bool
-    (; discrete_control, connectivity, lookup) = p
+function valid_interval_control(p::Parameters, config::Config)::Bool
+    (; interval_control, connectivity, lookup) = p
     (; graph_control) = connectivity
-    (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
+    (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = interval_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
 
     for id in unique(node_id)
-        # The control states of this DiscreteControl node
-        control_states_discrete_control = Set{String}()
+        # The control states of this IntervalControl node
+        control_states_interval_control = Set{String}()
 
-        # The truth states of this DiscreteControl node with the wrong length
+        # The truth states of this IntervalControl node with the wrong length
         truth_states_wrong_length = String[]
 
-        # The number of conditions of this DiscreteControl node
+        # The number of conditions of this IntervalControl node
         n_conditions = length(searchsorted(node_id, id))
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key
 
             if id_ == id
-                push!(control_states_discrete_control, control_state)
+                push!(control_states_interval_control, control_state)
             end
 
             if length(truth_state) != n_conditions
@@ -536,7 +536,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "DiscreteControl node #$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "IntervalControl node #$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the
@@ -558,12 +558,12 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             end
 
             undefined_control_states =
-                setdiff(control_states_discrete_control, control_states_controlled)
+                setdiff(control_states_interval_control, control_states_controlled)
 
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node)
-                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                @error "These control states from IntervalControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
                 errors = true
             end
         end
@@ -638,7 +638,7 @@ function expand_logic_mapping(
 
                 if haskey(logic_mapping_expanded, new_key)
                     control_state_existing = logic_mapping_expanded[new_key]
-                    msg = "Multiple control states found for DiscreteControl node #$node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
+                    msg = "Multiple control states found for IntervalControl node #$node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
                     @assert control_state_existing == control_state msg
                 else
                     logic_mapping_expanded[new_key] = control_state
@@ -733,7 +733,7 @@ function update_jac_prototype!(
         node,
         Union{
             Basin,
-            DiscreteControl,
+            IntervalControl,
             FlowBoundary,
             FractionalFlow,
             LevelBoundary,

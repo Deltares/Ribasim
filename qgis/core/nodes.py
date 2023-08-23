@@ -180,7 +180,7 @@ class Node(Input):
             "Outlet": (QColor("yellow"), "Outlet", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
-            "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
+            "IntervalControl": (QColor("black"), "IntervalControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "": (
                 QColor("white"),
@@ -448,8 +448,8 @@ class FlowBoundaryTime(Input):
     ]
 
 
-class DiscreteControlCondition(Input):
-    input_type = "DiscreteControl / condition"
+class IntervalControlCondition(Input):
+    input_type = "IntervalControl / condition"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -459,8 +459,8 @@ class DiscreteControlCondition(Input):
     ]
 
 
-class DiscreteControlLogic(Input):
-    input_type = "DiscreteControl / logic"
+class IntervalControlLogic(Input):
+    input_type = "IntervalControl / logic"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),

@@ -2,8 +2,8 @@
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
-@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
-@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
+@schema "ribasim.intervalcontrol.condition" IntervalControlCondition
+@schema "ribasim.intervalcontrol.logic" IntervalControlLogic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.forcing" BasinForcing
 @schema "ribasim.basin.profile" BasinProfile
@@ -55,7 +55,7 @@ neighbortypes(::Val{:LevelBoundary}) =
     Set((:LinearResistance, :ManningResistance, :Pump, :Outlet))
 neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
 neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:DiscreteControl}) = Set((
+neighbortypes(::Val{:IntervalControl}) = Set((
     :Pump,
     :Outlet,
     :TabulatedRatingCurve,
@@ -90,7 +90,7 @@ n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
-n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds(::Val{:IntervalControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
@@ -213,7 +213,7 @@ end
     node_id::Int
 end
 
-@version DiscreteControlConditionV1 begin
+@version IntervalControlConditionV1 begin
     node_id::Int
     listen_feature_id::Int
     variable::String
@@ -221,7 +221,7 @@ end
     look_ahead::Union{Missing, Float64}
 end
 
-@version DiscreteControlLogicV1 begin
+@version IntervalControlLogicV1 begin
     node_id::Int
     truth_state::String
     control_state::String
@@ -380,7 +380,7 @@ function valid_profiles(
 end
 
 """
-Test whether static or discrete controlled flow rates are indeed non-negative.
+Test whether static or interval controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{Int},
@@ -390,7 +390,7 @@ function valid_flow_rates(
 )::Bool
     errors = false
 
-    # Collect ids of discrete controlled nodes so that they do not give another error
+    # Collect ids of interval controlled nodes so that they do not give another error
     # if their initial value is also invalid.
     ids_controlled = Int[]
 

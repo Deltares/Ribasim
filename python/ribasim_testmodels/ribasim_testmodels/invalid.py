@@ -201,19 +201,19 @@ def invalid_fractional_flow_model():
     return model
 
 
-def invalid_discrete_control_model():
+def invalid_interval_control_model():
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
             (1.0, 0.0),  # 2: Pump
             (2.0, 0.0),  # 3: Basin
             (3.0, 0.0),  # 4: FlowBoundary
-            (1.0, 1.0),  # 5: DiscreteControl
+            (1.0, 1.0),  # 5: IntervalControl
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["Basin", "Pump", "Basin", "FlowBoundary", "DiscreteControl"]
+    node_type = ["Basin", "Pump", "Basin", "FlowBoundary", "IntervalControl"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -266,10 +266,10 @@ def invalid_discrete_control_model():
     # Setup pump:
     pump = ribasim.Pump(
         static=pd.DataFrame(
-            # Invalid: DiscreteControl node #4 with control state 'foo'
+            # Invalid: IntervalControl node #4 with control state 'foo'
             # points to this pump but this control state is not defined for
             # this pump. The pump having a control state that is not defined
-            # for DiscreteControl node #4 is fine.
+            # for IntervalControl node #4 is fine.
             data={
                 "control_state": ["bar"],
                 "node_id": [2],
@@ -289,7 +289,7 @@ def invalid_discrete_control_model():
         )
     )
 
-    # Setup the discrete control:
+    # Setup the interval control:
     condition = pd.DataFrame(
         data={
             "node_id": 3 * [5],
@@ -306,23 +306,23 @@ def invalid_discrete_control_model():
     logic = pd.DataFrame(
         data={
             "node_id": [5],
-            # Invalid: DiscreteControl node #4 has 2 conditions so
+            # Invalid: IntervalControl node #4 has 2 conditions so
             # truth states have to be of length 2
             "truth_state": ["FFFF"],
             "control_state": ["foo"],
         }
     )
 
-    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+    interval_control = ribasim.IntervalControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        modelname="invalid_discrete_control",
+        modelname="invalid_interval_control",
         node=node,
         edge=edge,
         basin=basin,
         pump=pump,
         flow_boundary=flow_boundary,
-        discrete_control=discrete_control,
+        interval_control=interval_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

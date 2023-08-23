@@ -347,17 +347,17 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node; these are not unique but repeated
-    by the amount of conditions of this DiscreteControl node
+node_id: node ID of the IntervalControl node; these are not unique but repeated
+    by the amount of conditions of this IntervalControl node
 listen_feature_id: the ID of the node/edge being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
-record: Namedtuple with discrete control information for output
+record: Namedtuple with interval control information for output
 """
-struct DiscreteControl <: AbstractParameterNode
+struct IntervalControl <: AbstractParameterNode
     node_id::Vector{Int}
     listen_feature_id::Vector{Int}
     variable::Vector{String}
@@ -406,7 +406,7 @@ struct Parameters
     pump::Pump
     outlet::Outlet
     terminal::Terminal
-    discrete_control::DiscreteControl
+    interval_control::IntervalControl
     pid_control::PidControl
     lookup::Dict{Int, Symbol}
 end
@@ -428,7 +428,7 @@ function valid_n_neighbors(p::Parameters)::Bool
         pump,
         terminal,
         pid_control,
-        discrete_control,
+        interval_control,
     ) = p
 
     (; graph_flow, graph_control) = connectivity
@@ -445,7 +445,7 @@ function valid_n_neighbors(p::Parameters)::Bool
     append!(errors, valid_n_neighbors(graph_flow, pump))
     append!(errors, valid_n_neighbors(graph_flow, terminal))
     append!(errors, valid_n_neighbors(graph_control, pid_control))
-    append!(errors, valid_n_neighbors(graph_control, discrete_control))
+    append!(errors, valid_n_neighbors(graph_control, interval_control))
 
     if isempty(errors)
         return true

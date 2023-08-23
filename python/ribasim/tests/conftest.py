@@ -9,9 +9,9 @@ from ribasim_testmodels import (
     bucket_model,
     flow_boundary_time_model,
     flow_condition_model,
-    invalid_discrete_control_model,
     invalid_edge_types_model,
     invalid_fractional_flow_model,
+    invalid_interval_control_model,
     invalid_qh_model,
     level_setpoint_with_minmax_model,
     linear_resistance_model,
@@ -19,7 +19,7 @@ from ribasim_testmodels import (
     misc_nodes_model,
     pid_control_equation_model,
     pid_control_model,
-    pump_discrete_control_model,
+    pump_interval_control_model,
     rating_curve_model,
     tabulated_rating_curve_control_model,
     tabulated_rating_curve_model,
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     tabulated_rating_curve_control_model().write(
         datadir / "tabulated_rating_curve_control"
     )
-    pump_discrete_control_model().write(datadir / "pump_discrete_control")
+    pump_interval_control_model().write(datadir / "pump_interval_control")
     flow_condition_model().write(datadir / "flow_condition")
     backwater_model().write(datadir / "backwater")
     linear_resistance_model().write(datadir / "linear_resistance")
@@ -72,5 +72,5 @@ if __name__ == "__main__":
     flow_boundary_time_model().write(datadir / "flow_boundary_time")
     level_setpoint_with_minmax_model().write(datadir / "level_setpoint_with_minmax")
     pid_control_equation_model().write(datadir / "pid_control_equation")
-    invalid_discrete_control_model().write(datadir / "invalid_discrete_control")
+    invalid_interval_control_model().write(datadir / "invalid_interval_control")
     invalid_edge_types_model().write(datadir / "invalid_edge_types")

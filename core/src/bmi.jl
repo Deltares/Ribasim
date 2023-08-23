@@ -26,8 +26,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid number of connections for certain node types.")
         end
 
-        if !valid_discrete_control(parameters, config)
-            error("Invalid discrete control state definition(s).")
+        if !valid_interval_control(parameters, config)
+            error("Invalid interval control state definition(s).")
         end
 
         (; pid_control, connectivity, basin, pump, outlet, fractional_flow) = parameters
@@ -135,7 +135,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         @show Ribasim.to
     end
 
-    set_initial_discrete_controlled_parameters!(integrator, storage)
+    set_initial_interval_control_parameters!(integrator, storage)
 
     return Model(integrator, config, saved_flow)
 end
@@ -144,28 +144,28 @@ function BMI.finalize(model::Model)::Model
     compress = get_compressor(model.config)
     write_basin_output(model, compress)
     write_flow_output(model, compress)
-    write_discrete_control_output(model, compress)
+    write_interval_control_output(model, compress)
     @debug "Wrote output."
     return model
 end
 
-function set_initial_discrete_controlled_parameters!(
+function set_initial_interval_control_parameters!(
     integrator,
     storage0::Vector{Float64},
 )::Nothing
     (; p) = integrator
-    (; basin, discrete_control) = p
+    (; basin, interval_control) = p
 
-    n_conditions = length(discrete_control.condition_value)
+    n_conditions = length(interval_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
-    discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
-    discrete_control.condition_value .= (condition_diffs .> 0.0)
+    interval_control_condition(condition_diffs, storage0, integrator.t, integrator)
+    interval_control.condition_value .= (condition_diffs .> 0.0)
 
-    # For every discrete_control node find a condition_idx it listens to
-    for discrete_control_node_id in unique(discrete_control.node_id)
+    for interval_control_node_id in unique(interval_control.node_id)
+        # For every interval_control node find a condition_idx it listens to
         condition_idx =
-            searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
-        discrete_control_affect!(integrator, condition_idx, missing)
+            searchsortedfirst(interval_control.node_id, interval_control_node_id)
+        interval_control_affect!(integrator, condition_idx, missing)
     end
 end
 
@@ -179,7 +179,7 @@ function create_callbacks(
     parameters;
     saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
-    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    (; starttime, basin, tabulated_rating_curve, interval_control) = parameters
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
@@ -195,19 +195,19 @@ function create_callbacks(
 
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
 
-    n_conditions = length(discrete_control.node_id)
+    n_conditions = length(interval_control.node_id)
     if n_conditions > 0
-        discrete_control_cb = VectorContinuousCallback(
-            discrete_control_condition,
-            discrete_control_affect_upcrossing!,
-            discrete_control_affect_downcrossing!,
+        interval_control_cb = VectorContinuousCallback(
+            interval_control_condition,
+            interval_control_affect_upcrossing!,
+            interval_control_affect_downcrossing!,
             n_conditions,
         )
         callback = CallbackSet(
             save_flow_cb,
             basin_cb,
             tabulated_rating_curve_cb,
-            discrete_control_cb,
+            interval_control_cb,
         )
     else
         callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
@@ -219,16 +219,16 @@ end
 """
 Listens for changes in condition truths.
 """
-function discrete_control_condition(out, u, t, integrator)
+function interval_control_condition(out, u, t, integrator)
     (; p) = integrator
-    (; discrete_control) = p
+    (; interval_control) = p
 
     for (i, (listen_feature_id, variable, greater_than, look_ahead)) in enumerate(
         zip(
-            discrete_control.listen_feature_id,
-            discrete_control.variable,
-            discrete_control.greater_than,
-            discrete_control.look_ahead,
+            interval_control.listen_feature_id,
+            interval_control.variable,
+            interval_control.greater_than,
+            interval_control.look_ahead,
         ),
     )
         value = get_value(p, listen_feature_id, variable, look_ahead, u, t)
@@ -277,14 +277,14 @@ end
 """
 An upcrossing means that a condition (always greater than) becomes true.
 """
-function discrete_control_affect_upcrossing!(integrator, condition_idx)
+function interval_control_affect_upcrossing!(integrator, condition_idx)
     (; p, u, t) = integrator
-    (; discrete_control, basin) = p
-    (; variable, condition_value, listen_feature_id) = discrete_control
+    (; interval_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = interval_control
 
     condition_value[condition_idx] = true
 
-    control_state_change = discrete_control_affect!(integrator, condition_idx, true)
+    control_state_change = interval_control_affect!(integrator, condition_idx, true)
 
     # Check whether the control state change changed the direction of the crossing
     # NOTE: This works for level conditions, but not for flow conditions on an
@@ -301,7 +301,7 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
 
         if du[condition_basin_idx] < 0.0
             condition_value[condition_idx] = false
-            discrete_control_affect!(integrator, condition_idx, false)
+            interval_control_affect!(integrator, condition_idx, false)
         end
     end
 end
@@ -309,14 +309,14 @@ end
 """
 An downcrossing means that a condition (always greater than) becomes false.
 """
-function discrete_control_affect_downcrossing!(integrator, condition_idx)
+function interval_control_affect_downcrossing!(integrator, condition_idx)
     (; p, u, t) = integrator
-    (; discrete_control, basin) = p
-    (; variable, condition_value, listen_feature_id) = discrete_control
+    (; interval_control, basin) = p
+    (; variable, condition_value, listen_feature_id) = interval_control
 
     condition_value[condition_idx] = false
 
-    control_state_change = discrete_control_affect!(integrator, condition_idx, false)
+    control_state_change = interval_control_affect!(integrator, condition_idx, false)
 
     # Check whether the control state change changed the direction of the crossing
     # NOTE: This works for level conditions, but not for flow conditions on an
@@ -333,7 +333,7 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
 
         if du[condition_basin_idx] > 0.0
             condition_value[condition_idx] = true
-            discrete_control_affect!(integrator, condition_idx, true)
+            interval_control_affect!(integrator, condition_idx, true)
         end
     end
 end
@@ -341,22 +341,22 @@ end
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(
+function interval_control_affect!(
     integrator,
     condition_idx::Int,
     upcrossing::Union{Bool, Missing},
 )::Bool
     p = integrator.p
-    (; discrete_control, connectivity) = p
+    (; interval_control, connectivity) = p
 
-    # Get the discrete_control node that listens to this condition
-    discrete_control_node_id = discrete_control.node_id[condition_idx]
+    # Get the interval_control node that listens to this condition
+    interval_control_node_id = interval_control.node_id[condition_idx]
 
     # Get the indices of all conditions that this control node listens to
-    condition_ids = discrete_control.node_id .== discrete_control_node_id
+    condition_ids = interval_control.node_id .== interval_control_node_id
 
-    # Get the truth state for this discrete_control node
-    condition_value_local = discrete_control.condition_value[condition_ids]
+    # Get the truth state for this interval_control node
+    condition_value_local = interval_control.condition_value[condition_ids]
     truth_values = [ifelse(b, "T", "F") for b in condition_value_local]
     truth_state = join(truth_values, "")
 
@@ -369,30 +369,30 @@ function discrete_control_affect!(
     # What the local control state should be
     control_state_new =
         if haskey(
-            discrete_control.logic_mapping,
-            (discrete_control_node_id, truth_state_crossing_specific),
+            interval_control.logic_mapping,
+            (interval_control_node_id, truth_state_crossing_specific),
         )
             truth_state_used = truth_state_crossing_specific
-            discrete_control.logic_mapping[(
-                discrete_control_node_id,
+            interval_control.logic_mapping[(
+                interval_control_node_id,
                 truth_state_crossing_specific,
             )]
         elseif haskey(
-            discrete_control.logic_mapping,
-            (discrete_control_node_id, truth_state),
+            interval_control.logic_mapping,
+            (interval_control_node_id, truth_state),
         )
             truth_state_used = truth_state
-            discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
+            interval_control.logic_mapping[(interval_control_node_id, truth_state)]
         else
             error(
-                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node #$discrete_control_node_id.",
+                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for IntervalControl node #$interval_control_node_id.",
             )
         end
 
     # What the local control state is
     # TODO: Check time elapsed since control change
     control_state_now, control_state_start =
-        discrete_control.control_state[discrete_control_node_id]
+        interval_control.control_state[interval_control_node_id]
 
     control_state_change = false
 
@@ -400,20 +400,20 @@ function discrete_control_affect!(
         control_state_change = true
 
         # Store control action in record
-        record = discrete_control.record
+        record = interval_control.record
 
         push!(record.time, integrator.t)
-        push!(record.control_node_id, discrete_control_node_id)
+        push!(record.control_node_id, interval_control_node_id)
         push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
         for target_node_id in
-            outneighbors(connectivity.graph_control, discrete_control_node_id)
+            outneighbors(connectivity.graph_control, interval_control_node_id)
             set_control_params!(p, target_node_id, control_state_new)
         end
 
-        discrete_control.control_state[discrete_control_node_id] =
+        interval_control.control_state[interval_control_node_id] =
             (control_state_new, integrator.t)
     end
     return control_state_change

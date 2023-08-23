@@ -201,9 +201,9 @@ function write_flow_output(model::Model, compress)
     Arrow.write(path, table; compress)
 end
 
-function write_discrete_control_output(model::Model, compress)
+function write_interval_control_output(model::Model, compress)
     config = model.config
-    record = model.integrator.p.discrete_control.record
+    record = model.integrator.p.interval_control.record
 
     time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
 

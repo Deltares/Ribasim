@@ -5,24 +5,24 @@ from pandera.typing import DataFrame
 from ribasim import models
 from ribasim.input_base import TableModel
 
-__all__ = ("DiscreteControl",)
+__all__ = ("IntervalControl",)
 
 
 class ConditionSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.DiscreteControlCondition)
+        dtype = PydanticModel(models.IntervalControlCondition)
 
 
 class LogicSchema(pa.SchemaModel):
     class Config:
         """Config with dataframe-level data type."""
 
-        dtype = PydanticModel(models.DiscreteControlLogic)
+        dtype = PydanticModel(models.IntervalControlLogic)
 
 
-class DiscreteControl(TableModel):
+class IntervalControl(TableModel):
     """
     Defines the control logic.
 

@@ -19,9 +19,9 @@ from ribasim.geometry.node import Node
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
 from ribasim.node_types.basin import Basin
-from ribasim.node_types.discrete_control import DiscreteControl
 from ribasim.node_types.flow_boundary import FlowBoundary
 from ribasim.node_types.fractional_flow import FractionalFlow
+from ribasim.node_types.interval_control import IntervalControl
 from ribasim.node_types.level_boundary import LevelBoundary
 from ribasim.node_types.linear_resistance import LinearResistance
 from ribasim.node_types.manning_resistance import ManningResistance
@@ -93,8 +93,8 @@ class Model(BaseModel):
         Prescribed flow rate from one basin to the other.
     terminal : Optional[Terminal]
         Water sink without state or properties.
-    discrete_control : Optional[DiscreteControl]
-        Discrete control logic.
+    interval_control : Optional[IntervalControl]
+        Interval control logic.
     pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
     starttime : Union[str, datetime.datetime]
@@ -120,7 +120,7 @@ class Model(BaseModel):
     pump: Optional[Pump]
     outlet: Optional[Outlet]
     terminal: Optional[Terminal]
-    discrete_control: Optional[DiscreteControl]
+    interval_control: Optional[IntervalControl]
     pid_control: Optional[PidControl]
     starttime: datetime.datetime
     endtime: datetime.datetime
@@ -354,8 +354,8 @@ class Model(BaseModel):
         x_start, x_end = [], []
         y_start, y_end = [], []
 
-        if self.discrete_control:
-            condition = self.discrete_control.condition
+        if self.interval_control:
+            condition = self.interval_control.condition
 
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
@@ -439,14 +439,14 @@ class Model(BaseModel):
             if isinstance(input_entry, TableModel):
                 input_entry.sort()
 
-    def print_discrete_control_record(self, path: FilePath) -> None:
+    def print_interval_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
         node_types, node_clss = Model.get_node_types()
 
         truth_dict = {"T": ">", "F": "<"}
 
-        if not self.discrete_control:
+        if not self.interval_control:
             raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
@@ -458,8 +458,8 @@ class Model(BaseModel):
 
             out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
 
-            conditions = self.discrete_control.condition[
-                self.discrete_control.condition.node_id == control_node_id
+            conditions = self.interval_control.condition[
+                self.interval_control.condition.node_id == control_node_id
             ]
 
             for truth_value, (index, condition) in zip(

@@ -7,12 +7,6 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model
-from ribasim_testmodels.discrete_control import (
-    flow_condition_model,
-    level_setpoint_with_minmax_model,
-    pump_discrete_control_model,
-    tabulated_rating_curve_control_model,
-)
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -20,10 +14,16 @@ from ribasim_testmodels.equations import (
     pid_control_equation_model,
     rating_curve_model,
 )
+from ribasim_testmodels.interval_control import (
+    flow_condition_model,
+    level_setpoint_with_minmax_model,
+    pump_interval_control_model,
+    tabulated_rating_curve_control_model,
+)
 from ribasim_testmodels.invalid import (
-    invalid_discrete_control_model,
     invalid_edge_types_model,
     invalid_fractional_flow_model,
+    invalid_interval_control_model,
     invalid_qh_model,
 )
 from ribasim_testmodels.pid_control import pid_control_model
@@ -37,7 +37,7 @@ __all__ = [
     "basic_model",
     "basic_transient_model",
     "bucket_model",
-    "pump_discrete_control_model",
+    "pump_interval_control_model",
     "flow_condition_model",
     "tabulated_rating_curve_model",
     "trivial_model",
@@ -51,7 +51,7 @@ __all__ = [
     "flow_boundary_time_model",
     "pid_control_equation_model",
     "invalid_fractional_flow_model",
-    "invalid_discrete_control_model",
+    "invalid_interval_control_model",
     "level_setpoint_with_minmax_model",
     "invalid_edge_types_model",
 ]

@@ -156,7 +156,7 @@ end
     new_key = (1, "TTF")
     logic_mapping[new_key] = "bar"
 
-    @test_throws "Multiple control states found for DiscreteControl node #1 for truth state `TTF`: foo, bar." Ribasim.expand_logic_mapping(
+    @test_throws "Multiple control states found for IntervalControl node #1 for truth state `TTF`: foo, bar." Ribasim.expand_logic_mapping(
         logic_mapping,
     )
 end

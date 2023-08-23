@@ -4,7 +4,7 @@ import pandas as pd
 import ribasim
 
 
-def pump_discrete_control_model() -> ribasim.Model:
+def pump_interval_control_model() -> ribasim.Model:
     """Set up a basic model with a pump controlled based on basin levels"""
 
     # Set up the nodes:
@@ -25,7 +25,7 @@ def pump_discrete_control_model() -> ribasim.Model:
         "LinearResistance",
         "Basin",
         "Pump",
-        "DiscreteControl",
+        "IntervalControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -77,7 +77,7 @@ def pump_discrete_control_model() -> ribasim.Model:
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
-    # Setup the discrete control:
+    # Setup the interval control:
     condition = pd.DataFrame(
         data={
             "node_id": [5, 5],
@@ -102,7 +102,7 @@ def pump_discrete_control_model() -> ribasim.Model:
         }
     )
 
-    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+    interval_control = ribasim.IntervalControl(condition=condition, logic=logic)
 
     # Setup the pump:
     pump = ribasim.Pump(
@@ -127,13 +127,13 @@ def pump_discrete_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pump_discrete_control",
+        modelname="pump_interval_control",
         node=node,
         edge=edge,
         basin=basin,
         linear_resistance=linear_resistance,
         pump=pump,
-        discrete_control=discrete_control,
+        interval_control=interval_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
@@ -142,7 +142,7 @@ def pump_discrete_control_model() -> ribasim.Model:
 
 
 def flow_condition_model():
-    """Set up a basic model that involves discrete control based on a flow condition"""
+    """Set up a basic model that involves interval control based on a flow condition"""
 
     # Set up the nodes:
     xy = np.array(
@@ -151,7 +151,7 @@ def flow_condition_model():
             (1.0, 0.0),  # 2: Basin
             (2.0, 0.0),  # 3: Pump
             (3.0, 0.0),  # 4: Terminal
-            (1.0, 1.0),  # 5: DiscreteControl
+            (1.0, 1.0),  # 5: IntervalControl
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -161,7 +161,7 @@ def flow_condition_model():
         "Basin",
         "Pump",
         "Terminal",
-        "DiscreteControl",
+        "IntervalControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -225,7 +225,7 @@ def flow_condition_model():
         )
     )
 
-    discrete_control = ribasim.DiscreteControl(
+    interval_control = ribasim.IntervalControl(
         condition=pd.DataFrame(
             data={
                 "node_id": [5],
@@ -273,7 +273,7 @@ def flow_condition_model():
         pump=pump,
         flow_boundary=flow_boundary,
         terminal=terminal,
-        discrete_control=discrete_control,
+        interval_control=interval_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
@@ -282,7 +282,7 @@ def flow_condition_model():
 
 
 def tabulated_rating_curve_control_model() -> ribasim.Model:
-    """Discrete control on a TabulatedRatingCurve.
+    """Interval control on a TabulatedRatingCurve.
 
     The Basin drains over a TabulatedRatingCurve into a Terminal. The Control
     node will effectively increase the crest level to prevent further drainage
@@ -304,7 +304,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
         "Basin",
         "TabulatedRatingCurve",
         "Terminal",
-        "DiscreteControl",
+        "IntervalControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -377,7 +377,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [3]}))
 
-    # Setup the discrete control:
+    # Setup the interval control:
     condition = pd.DataFrame(
         data={
             "node_id": [4],
@@ -395,7 +395,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
         }
     )
 
-    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+    interval_control = ribasim.IntervalControl(condition=condition, logic=logic)
 
     # Setup a model:
     model = ribasim.Model(
@@ -405,7 +405,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
         basin=basin,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
-        discrete_control=discrete_control,
+        interval_control=interval_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
@@ -428,7 +428,7 @@ def level_setpoint_with_minmax_model():
             (2.0, 0.0),  # 4: LevelBoundary
             (-1.0, 0.0),  # 5: TabulatedRatingCurve
             (-2.0, 0.0),  # 6: Terminal
-            (0.0, 1.5),  # 7: DiscreteControl
+            (0.0, 1.5),  # 7: IntervalControl
         ]
     )
 
@@ -440,7 +440,7 @@ def level_setpoint_with_minmax_model():
         "LevelBoundary",
         "TabulatedRatingCurve",
         "Terminal",
-        "DiscreteControl",
+        "IntervalControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -519,7 +519,7 @@ def level_setpoint_with_minmax_model():
     # Setup the terminal
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [6]}))
 
-    # Setup discrete control
+    # Setup interval control
     condition = pd.DataFrame(
         data={
             "node_id": 3 * [7],
@@ -537,7 +537,7 @@ def level_setpoint_with_minmax_model():
         }
     )
 
-    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+    interval_control = ribasim.IntervalControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
         modelname="level_setpoint_with_minmax",
@@ -548,7 +548,7 @@ def level_setpoint_with_minmax_model():
         level_boundary=level_boundary,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
-        discrete_control=discrete_control,
+        interval_control=interval_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

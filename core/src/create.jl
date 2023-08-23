@@ -379,8 +379,8 @@ function Basin(db::DB, config::Config)::Basin
     )
 end
 
-function DiscreteControl(db::DB, config::Config)::DiscreteControl
-    condition = load_structvector(db, config, DiscreteControlConditionV1)
+function IntervalControl(db::DB, config::Config)::IntervalControl
+    condition = load_structvector(db, config, IntervalControlConditionV1)
 
     condition_value = fill(false, length(condition.node_id))
     control_state::Dict{Int, Tuple{String, Float64}} = Dict()
@@ -392,7 +392,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         end
     end
 
-    logic = load_structvector(db, config, DiscreteControlLogicV1)
+    logic = load_structvector(db, config, IntervalControlLogicV1)
 
     logic_mapping = Dict{Tuple{Int, String}, String}()
 
@@ -411,7 +411,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = Vector{String}(),
     )
 
-    return DiscreteControl(
+    return IntervalControl(
         condition.node_id, # Not unique
         condition.listen_feature_id,
         condition.variable,
@@ -502,7 +502,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config)
     outlet = Outlet(db, config)
     terminal = Terminal(db, config)
-    discrete_control = DiscreteControl(db, config)
+    interval_control = IntervalControl(db, config)
     pid_control = PidControl(db, config)
 
     basin = Basin(db, config)
@@ -520,7 +520,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump,
         outlet,
         terminal,
-        discrete_control,
+        interval_control,
         pid_control,
         Dict{Int, Symbol}(),
     )
