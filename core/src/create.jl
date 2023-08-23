@@ -1,12 +1,12 @@
 function parse_static_and_time(
-    static::StructVector,
+    static::Union{StructVector, Missing},
     time::Union{StructVector, Missing},
     db::DB,
     config::Config,
     nodetype::String,
     defaults::NamedTuple,
-    interpolatables::Vector{Symbol, Bool},
-)::NamedTuple
+    time_interpolatables::Vector{Symbol},
+)::Tuple{NamedTuple, Bool}
     # E.g. `PumpStatic`
     static_type = eltype(static)
     columnnames_static = collect(fieldnames(static_type))
@@ -27,16 +27,18 @@ function parse_static_and_time(
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
-    for i in eachindex(parameter_types)
+    for (parameter_name, parameter_type) in zip(parameter_names, parameter_types)
         # If the type is a union, then the associated parameter is optional and
         # the type is of the form Union{Missing,ActualType}
-        if isa(parameter_types[i], Union)
-            columntype = nonmissingtype(parameter_types[i])
+        parameter_type = if parameter_name in time_interpolatables
+            LinearInterpolation
+        elseif isa(parameter_type, Union)
+            nonmissingtype(parameter_type)
         else
-            columntype = parameter_types[i]
+            parameter_type
         end
 
-        push!(vals_out, zeros(columntype, n_nodes))
+        push!(vals_out, Vector{parameter_type}(undef, n_nodes))
     end
 
     # The keys of the output NamedTuple
@@ -56,22 +58,22 @@ function parse_static_and_time(
     push!(vals_out, control_mapping)
 
     # The output namedtuple
-    out = NamedTuple{Tuple(keys_out)}(Tuple(vals))
+    out = NamedTuple{Tuple(keys_out)}(Tuple(vals_out))
 
     if n_nodes == 0
-        return out
+        return out, true
     end
 
     # Get node IDs of static nodes if the static table exists
-    time_node_ids = if ismissing(static)
-        Int[]
+    static_node_ids = if ismissing(static)
+        Set{Int}()
     else
         Set(static.node_id)
     end
 
     # Get node IDs of transient nodes if the time table exists
     time_node_ids = if ismissing(time)
-        Int[]
+        Set{Int}()
     else
         Set(time.node_id)
     end
@@ -80,32 +82,72 @@ function parse_static_and_time(
     t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
 
-    for (node_idx, node_id) in zip(node_ids)
+    for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
-            # TODO: Handle control states
-            static_idx = searchsortedfirst(static.node_id, node_id)
-            row = static[static_idx]
-            for parameter_name in parameter_names
-                val = getfield(row, parameter_name)
-                # Trivial interpolation for static parameters that can be transient
-                if parameter_name in interpolatables
-                    val = LinearInterpolation([val, val], trivial_timespan)
+            # The interval of rows of the static table that have the current node_id
+            rows = searchsorted(static.node_id, node_id)
+            # The rows of the static table that have the current node_id
+            static_id = view(static, rows)
+            # Here it is assumed that the parameters of a node are given by a single
+            # row in the static table, which is not true for TabulatedRatingCurve
+            for row in static_id
+                control_state =
+                    hasproperty(row, :control_state) ? row.control_state : missing
+                # Get the parameter values, and turn them into trivial interpolation objects
+                # if this parameter can be transient
+                parameter_values = Any[]
+                for parameter_name in parameter_names
+                    val = getfield(row, parameter_name)
+                    # Set default parameter value if no value was given
+                    if ismissing(val)
+                        val = defaults[parameter_name]
+                    end
+                    if parameter_name in time_interpolatables
+                        val = LinearInterpolation([val, val], trivial_timespan)
+                    end
+                    # If this row defines a control state, collect the parameter values in
+                    # the parameter_values vector
+                    if !ismissing(control_state)
+                        push!(parameter_values, val)
+                    end
+                    # The initial parameter value is overwritten here each time until the last row,
+                    # but in the case of control the proper initial parameter values are set later on
+                    # in the code
+                    getfield(out, parameter_name)[node_idx] = val
                 end
-                getfield(out, parameter_name)[node_idx] = val
+                # If a control state is associated with this row, add the parameter values to the
+                # control mapping
+                if !ismissing(control_state)
+                    control_mapping[(node_id, control_state)] =
+                        NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
+                end
             end
         elseif node_id in time_node_ids
             time_first_idx = searchsortedfirst(time.node_id, node_id)
             for parameter_name in parameter_names
-                if parameter_name in interpolatables
+                # If the parameter is interpolatable, create an interpolation object
+                if parameter_name in time_interpolatables
                     val, is_valid = get_scalar_interpolation(
                         config.starttime,
                         t_end,
                         time,
                         node_id,
-                        parameter_name,
+                        parameter_name;
+                        default_value = hasproperty(defaults, parameter_name) ?
+                                        defaults[parameter_name] : NaN,
                     )
+                    if !is_valid
+                        errors = true
+                        @error "A $parameter_name time series for $nodetype node #$node_id has repeated times, this can not be interpolated."
+                    end
                 else
-                    val = getfield(time[time_first_idx], parameter_name)
+                    # Activity of transient nodes is assumed to be true
+                    if parameter_name == :active
+                        val = true
+                    else
+                        # If the parameter is not interpolatable, get the instance in the first row
+                        val = getfield(time[time_first_idx], parameter_name)
+                    end
                 end
                 getfield(out, parameter_name)[node_idx] = val
             end
@@ -114,7 +156,7 @@ function parse_static_and_time(
             errors = true
         end
     end
-    return out, errors
+    return out, !errors
 end
 
 function static_and_time_node_ids(
@@ -168,12 +210,22 @@ end
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; active = true)
-    static_parsed = parse_static(static, db, "LinearResistance", defaults)
+    time_interpolatables = Symbol[]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        missing,
+        db,
+        config,
+        "LinearResistance",
+        defaults,
+        time_interpolatables,
+    )
+
     return LinearResistance(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.resistance,
-        static_parsed.control_mapping,
+        parsed_parameters.node_id,
+        parsed_parameters.active,
+        parsed_parameters.resistance,
+        parsed_parameters.control_mapping,
     )
 end
 
@@ -243,34 +295,85 @@ end
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     defaults = (; active = true)
-    static_parsed = parse_static(static, db, "ManningResistance", defaults)
+    time_interpolatables = Symbol[]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        missing,
+        db,
+        config,
+        "ManningResistance",
+        defaults,
+        time_interpolatables,
+    )
+
+    if !valid
+        error("Errors occurred when parsing ManningResistance data.")
+    end
+
     return ManningResistance(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.length,
-        static_parsed.manning_n,
-        static_parsed.profile_width,
-        static_parsed.profile_slope,
-        static_parsed.control_mapping,
+        parsed_parameters.node_id,
+        parsed_parameters.active,
+        parsed_parameters.length,
+        parsed_parameters.manning_n,
+        parsed_parameters.profile_width,
+        parsed_parameters.profile_slope,
+        parsed_parameters.control_mapping,
     )
 end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
     defaults = (; active = true)
-    static_parsed = parse_static(static, db, "FractionalFlow", defaults)
+    time_interpolatables = Symbol[]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        missing,
+        db,
+        config,
+        "FractionalFlow",
+        defaults,
+        time_interpolatables,
+    )
+
+    if !valid
+        error("Errors occurred when parsing FractionalFlow data.")
+    end
+
     return FractionalFlow(
-        static_parsed.node_id,
-        static_parsed.fraction,
-        static_parsed.control_mapping,
+        parsed_parameters.node_id,
+        parsed_parameters.fraction,
+        parsed_parameters.control_mapping,
     )
 end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
+    time = load_structvector(db, config, LevelBoundaryTimeV1)
+
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "LevelBoundary")
+
+    if !valid
+        error("Problems encountered when parsing LevelBoundary static and time node IDs.")
+    end
+
     defaults = (; active = true)
-    static_parsed = parse_static(static, db, "LevelBoundary", defaults)
-    return LevelBoundary(static_parsed.node_id, static_parsed.active, static_parsed.level)
+    time_interpolatables = [:level]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        time,
+        db,
+        config,
+        "LevelBoundary",
+        defaults,
+        time_interpolatables,
+    )
+
+    if !valid
+        error("Errors occurred when parsing LevelBoundary data.")
+    end
+
+    return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
@@ -284,68 +387,60 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
     end
 
-    t_end = seconds_since(config.endtime, config.starttime)
-    active = BitVector()
-    flow_rate = ScalarInterpolation[]
-    errors = false
+    defaults = (; active = true)
+    time_interpolatables = [:flow_rate]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        time,
+        db,
+        config,
+        "FlowBoundary",
+        defaults,
+        time_interpolatables,
+    )
 
-    for node_id in node_ids
-        if node_id in static_node_ids
-            static_idx = searchsortedfirst(static.node_id, node_id)
-            row = static[static_idx]
-            if row.flow_rate <= 0
-                errors = true
-                @error(
-                    "Currently negative flow boundary flow rates are not supported, got static $(row.flow_rate) for #$node_id."
-                )
-            end
-            # Trivial interpolation for static flow rate
-            interpolation = LinearInterpolation(
-                [row.flow_rate, row.flow_rate],
-                [nextfloat(-Inf), prevfloat(Inf)],
+    for itp in parsed_parameters.flow_rate
+        if any(itp.u .< 0.0)
+            @error(
+                "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
             )
-            push!(flow_rate, interpolation)
-            push!(active, coalesce(row.active, true))
-        elseif node_id in time_node_ids
-            interpolation, is_valid =
-                get_scalar_interpolation(config.starttime, t_end, time, node_id, :flow_rate)
-            if !is_valid
-                @error "A FlowRate time series for FlowBoundary node #$node_id has repeated times, this can not be interpolated."
-                errors = true
-            end
-            if any(interpolation.u .< 0)
-                @error(
-                    "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
-                )
-                errors = true
-            end
-            push!(flow_rate, interpolation)
-            push!(active, true)
-        else
-            error("FlowBoundary node #$node_id data not in any table.")
+            valid = false
         end
     end
 
-    if errors
+    if !valid
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(node_ids, active, flow_rate)
+    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
 end
 
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
-    static_parsed = parse_static(static, db, "Pump", defaults)
-    is_pid_controlled = falses(length(static_parsed.node_id))
+    time_interpolatables = Symbol[]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        missing,
+        db,
+        config,
+        "Pump",
+        defaults,
+        time_interpolatables,
+    )
+    is_pid_controlled = falses(length(parsed_parameters.node_id))
+
+    if !valid
+        error("Errors occurred when parsing Pump data.")
+    end
 
     return Pump(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.flow_rate,
-        static_parsed.min_flow_rate,
-        static_parsed.max_flow_rate,
-        static_parsed.control_mapping,
+        parsed_parameters.node_id,
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+        parsed_parameters.min_flow_rate,
+        parsed_parameters.max_flow_rate,
+        parsed_parameters.control_mapping,
         is_pid_controlled,
     )
 end
@@ -353,16 +448,29 @@ end
 function Outlet(db::DB, config::Config)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
-    static_parsed = parse_static(static, db, "Outlet", defaults)
-    is_pid_controlled = falses(length(static_parsed.node_id))
+    time_interpolatables = Symbol[]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        missing,
+        db,
+        config,
+        "Outlet",
+        defaults,
+        time_interpolatables,
+    )
+    is_pid_controlled = falses(length(parsed_parameters.node_id))
+
+    if !valid
+        error("Errors occurred when parsing Outlet data.")
+    end
 
     return Outlet(
-        static_parsed.node_id,
-        static_parsed.active,
-        static_parsed.flow_rate,
-        static_parsed.min_flow_rate,
-        static_parsed.max_flow_rate,
-        static_parsed.control_mapping,
+        parsed_parameters.node_id,
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+        parsed_parameters.min_flow_rate,
+        parsed_parameters.max_flow_rate,
+        parsed_parameters.control_mapping,
         is_pid_controlled,
     )
 end
@@ -467,59 +575,47 @@ function PidControl(db::DB, config::Config)::PidControl
         error("Problems encountered when parsing PidControl static and time node IDs.")
     end
 
-    active = BitVector()
-    pid_params = VectorInterpolation[]
-    target = ScalarInterpolation[]
-    listen_node_id = Int[]
-    errors = false
+    defaults = (; active = true)
+    time_interpolatables = [:target, :proportional, :integral, :derivative]
+    parsed_parameters, valid = parse_static_and_time(
+        static,
+        time,
+        db,
+        config,
+        "PidControl",
+        defaults,
+        time_interpolatables,
+    )
 
-    t_end = seconds_since(config.endtime, config.starttime)
-
-    for node_id in node_ids
-        if node_id in static_node_ids
-            static_idx = searchsortedfirst(static.node_id, node_id)
-            row = static[static_idx]
-            push!(listen_node_id, row.listen_node_id)
-            # Trivial interpolations for static PID control parameters
-            timespan = [nextfloat(-Inf), prevfloat(Inf)]
-            params = [row.proportional, row.integral, row.derivative]
-            interpolation_pid_params = LinearInterpolation([params, params], timespan)
-            interpolation_target = LinearInterpolation([row.target, row.target], timespan)
-            push!(pid_params, interpolation_pid_params)
-            push!(target, interpolation_target)
-            push!(active, coalesce(row.active, true))
-        elseif node_id in time_node_ids
-            interpolation_pid_params, is_valid_params = get_vector_interpolation(
-                config.starttime,
-                t_end,
-                time,
-                node_id,
-                [:proportional, :integral, :derivative],
-            )
-            interpolation_target, is_valid_target =
-                get_scalar_interpolation(config.starttime, t_end, time, node_id, :target)
-            if !(is_valid_params && is_valid_target)
-                @error "A time series for PidControl node #$node_id has repeated times, this can not be interpolated."
-                errors = true
-            end
-            time_first_idx = searchsortedfirst(time.node_id, node_id)
-            push!(listen_node_id, time[time_first_idx].listen_node_id)
-            push!(pid_params, interpolation_pid_params)
-            push!(target, interpolation_target)
-            push!(active, true)
-        else
-            error("FlowBoundary node #$node_id data not in any table.")
-            errors = true
-        end
-    end
-
-    if errors
+    if !valid
         error("Errors occurred when parsing PidControl data.")
     end
 
-    pid_error = zero(node_ids)
+    pid_error = zeros(length(node_ids))
 
-    return PidControl(node_ids, active, listen_node_id, target, pid_params, pid_error)
+    # Combine PID parameters into one vector interpolation object
+    pid_params = VectorInterpolation[]
+    (; proportional, integral, derivative) = parsed_parameters
+
+    for i in eachindex(node_ids)
+        times = proportional[i].t
+        K_p = proportional[i].u
+        K_i = integral[i].u
+        K_d = derivative[i].u
+
+        itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
+        push!(pid_params, itp)
+    end
+
+    return PidControl(
+        node_ids,
+        parsed_parameters.active,
+        parsed_parameters.listen_node_id,
+        parsed_parameters.target,
+        pid_params,
+        pid_error,
+        parsed_parameters.control_mapping,
+    )
 end
 
 function Parameters(db::DB, config::Config)::Parameters
