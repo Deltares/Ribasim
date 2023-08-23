@@ -7,6 +7,7 @@ from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
     bucket_model,
+    discrete_control_of_pid_control_model,
     flow_boundary_time_model,
     flow_condition_model,
     invalid_discrete_control_model,
@@ -74,3 +75,6 @@ if __name__ == "__main__":
     pid_control_equation_model().write(datadir / "pid_control_equation")
     invalid_discrete_control_model().write(datadir / "invalid_discrete_control")
     invalid_edge_types_model().write(datadir / "invalid_edge_types")
+    discrete_control_of_pid_control_model().write(
+        datadir / "discrete_control_of_pid_control"
+    )

@@ -26,7 +26,10 @@ from ribasim_testmodels.invalid import (
     invalid_fractional_flow_model,
     invalid_qh_model,
 )
-from ribasim_testmodels.pid_control import pid_control_model
+from ribasim_testmodels.pid_control import (
+    discrete_control_of_pid_control_model,
+    pid_control_model,
+)
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
 )
@@ -54,4 +57,5 @@ __all__ = [
     "invalid_discrete_control_model",
     "level_setpoint_with_minmax_model",
     "invalid_edge_types_model",
+    "discrete_control_of_pid_control_model",
 ]
