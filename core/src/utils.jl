@@ -239,27 +239,82 @@ function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     return idx_block_begin:idx_block_end
 end
 
-function flow_rate_interpolation(
+"Linear interpolation of a scalar with constant extrapolation."
+function get_scalar_interpolation(
     starttime::DateTime,
     t_end::Float64,
     time::AbstractVector,
     node_id::Int,
+    param::Symbol,
 )::Tuple{LinearInterpolation, Bool}
     rows = searchsorted(time.node_id, node_id)
-    flow_rates = time.flow_rate[rows]
+    parameter = getfield.(time, param)[rows]
     times = seconds_since.(time.time[rows], starttime)
     # Add extra timestep at start for constant extrapolation
     if times[1] > 0
         pushfirst!(times, 0.0)
-        pushfirst!(flow_rates, flow_rates[1])
+        pushfirst!(parameter, parameter[1])
     end
     # Add extra timestep at end for constant extrapolation
     if times[end] < t_end
         push!(times, t_end)
-        push!(flow_rates, flow_rates[end])
+        push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(flow_rates, times), allunique(times)
+    return LinearInterpolation(parameter, times), allunique(times)
+end
+
+"Derivative of scalar interpolation."
+function scalar_interpolation_derivative(
+    itp::ScalarInterpolation,
+    t::Float64;
+    extrapolate_down_constant::Bool = true,
+    extrapolate_up_constant::Bool = true,
+)::Float64
+    # The function 'derivative' doesn't handle extrapolation well (DataInterpolations v4.0.1)
+    t_smaller_index = searchsortedlast(itp.t, t)
+    if t_smaller_index == 0
+        if extrapolate_down_constant
+            return 0.0
+        else
+            # Get derivative in middle of last interval
+            return derivative(itp, (itp.t[end] - itp.t[end - 1]) / 2)
+        end
+    elseif t_smaller_index == length(itp.t)
+        if extrapolate_up_constant
+            return 0.0
+        else
+            # Get derivative in middle of first interval
+            return derivative(itp, (itp.t[2] - itp.t[1]) / 2)
+        end
+    else
+        return derivative(itp, t)
+    end
+end
+
+"Linear interpolation of a vector with constant extrapolation."
+function get_vector_interpolation(
+    starttime::DateTime,
+    t_end::Float64,
+    time::AbstractVector,
+    node_id::Int,
+    params::Vector{Symbol},
+)::Tuple{LinearInterpolation, Bool}
+    rows = searchsorted(time.node_id, node_id)
+    parameters = [[getfield(row, param) for param in params] for row in time[rows]]
+    times = seconds_since.(time.time[rows], starttime)
+    # Add extra timestep at start for constant extrapolation
+    if times[1] > 0
+        pushfirst!(times, 0.0)
+        pushfirst!(parameters, parameters[1])
+    end
+    # Add extra timestep at end for constant extrapolation
+    if times[end] < t_end
+        push!(times, t_end)
+        push!(parameters, parameters[end])
+    end
+
+    return LinearInterpolation(parameters, times), allunique(times)
 end
 
 function qh_interpolation(
@@ -833,4 +888,35 @@ function get_fractional_flow_connected_basins(
         end
     end
     return fractional_flow_idxs, basin_idxs
+end
+
+"""
+    struct FlatVector{T} <: AbstractVector{T}
+
+A FlatVector is an AbstractVector that iterates the T of a `Vector{Vector{T}}`.
+
+Each inner vector is assumed to be of equal length.
+
+It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
+interface, which needs `length` and `getindex` support.
+"""
+struct FlatVector{T} <: AbstractVector{T}
+    v::Vector{Vector{T}}
+end
+
+function Base.length(fv::FlatVector)
+    return if isempty(fv.v)
+        0
+    else
+        length(fv.v) * length(first(fv.v))
+    end
+end
+
+Base.size(fv::FlatVector) = (length(fv),)
+
+function Base.getindex(fv::FlatVector, i::Int)
+    veclen = length(first(fv.v))
+    d, r = divrem(i - 1, veclen)
+    v = fv.v[d + 1]
+    return v[r + 1]
 end

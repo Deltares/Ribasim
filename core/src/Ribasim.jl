@@ -6,7 +6,7 @@ import BasicModelInterface as BMI
 using Arrow: Arrow, Table
 using Configurations: from_toml
 using ComponentArrays: ComponentVector
-using DataInterpolations: LinearInterpolation
+using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary

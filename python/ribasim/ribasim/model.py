@@ -356,7 +356,6 @@ class Model(BaseModel):
 
         if self.discrete_control:
             condition = self.discrete_control.condition
-            static_node = self.node.static
 
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
@@ -371,24 +370,25 @@ class Model(BaseModel):
                     y_end.append(point_end.y)
 
         if self.pid_control:
-            static_control = self.pid_control.static
-            static_node = self.node.static
+            static = self.pid_control.static
+            time = self.pid_control.time
+            node_static = self.node.static
 
-            for node_id in static_control.node_id.unique():
-                for listen_node_id in static_control.loc[
-                    static_control.node_id == node_id, "listen_node_id"
-                ]:
-                    point_start = static_node[
-                        static_node.index == node_id
-                    ].geometry.iloc[0]
-                    x_start.append(point_start.x)
-                    y_start.append(point_start.y)
+            for table in [static, time]:
+                if table is None:
+                    continue
 
-                    point_end = static_node[
-                        static_node.index == listen_node_id
-                    ].geometry.iloc[0]
-                    x_end.append(point_end.x)
-                    y_end.append(point_end.y)
+                for node_id in table.node_id.unique():
+                    for listen_node_id in table.loc[
+                        table.node_id == node_id, "listen_node_id"
+                    ].unique():
+                        point_start = node_static.iloc[listen_node_id - 1].geometry
+                        x_start.append(point_start.x)
+                        y_start.append(point_start.y)
+
+                        point_end = node_static.iloc[node_id - 1].geometry
+                        x_end.append(point_end.x)
+                        y_end.append(point_end.y)
 
         if len(x_start) == 0:
             return
