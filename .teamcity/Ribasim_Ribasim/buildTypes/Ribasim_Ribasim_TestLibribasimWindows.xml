@@ -6,6 +6,9 @@
     <options>
       <option name="artifactRules" value="python\ribasim_api\tests\temp =&gt; test_output.zip" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RQ_436" />
+    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
@@ -82,3 +85,4 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
     <cleanup />
   </settings>
 </build-type>
+

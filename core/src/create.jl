@@ -1,3 +1,12 @@
+"""
+Process the data in the static and time tables for a given node type.
+The 'defaults' named tuple dictates how missing data is filled in.
+'time_interpolatables' is a vector of Symbols of parameter names
+for which a time interpolation (linear) object must be constructed.
+The control mapping for DiscreteControl is also constructed in this function.
+This function currently does not support node states that are defined by more
+than one row in a table, as is the case for TabulatedRatingCurve.
+"""
 function parse_static_and_time(
     static::Union{StructVector, Missing},
     time::Union{StructVector, Missing},

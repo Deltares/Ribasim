@@ -866,3 +866,34 @@ function get_fractional_flow_connected_basins(
     end
     return fractional_flow_idxs, basin_idxs
 end
+
+"""
+    struct FlatVector{T} <: AbstractVector{T}
+
+A FlatVector is an AbstractVector that iterates the T of a `Vector{Vector{T}}`.
+
+Each inner vector is assumed to be of equal length.
+
+It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
+interface, which needs `length` and `getindex` support.
+"""
+struct FlatVector{T} <: AbstractVector{T}
+    v::Vector{Vector{T}}
+end
+
+function Base.length(fv::FlatVector)
+    return if isempty(fv.v)
+        0
+    else
+        length(fv.v) * length(first(fv.v))
+    end
+end
+
+Base.size(fv::FlatVector) = (length(fv),)
+
+function Base.getindex(fv::FlatVector, i::Int)
+    veclen = length(first(fv.v))
+    d, r = divrem(i - 1, veclen)
+    v = fv.v[d + 1]
+    return v[r + 1]
+end
