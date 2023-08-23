@@ -239,7 +239,7 @@ level: the fixed level of this 'infinitely big basin'
 struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    level::Vector{Float64}
+    level::Vector{ScalarInterpolation}
 end
 
 """
@@ -390,6 +390,7 @@ struct PidControl <: AbstractParameterNode
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
     error::Vector{Float64}
+    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
 # TODO Automatically add all nodetypes here
@@ -689,7 +690,7 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
+function formulate!(linear_resistance::LinearResistance, p::Parameters, t::Float64)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
@@ -698,7 +699,7 @@ function formulate!(linear_resistance::LinearResistance, p::Parameters)::Nothing
         basin_b_id = only(outneighbors(graph_flow, id))
 
         if active[i]
-            q = (get_level(p, basin_a_id) - get_level(p, basin_b_id)) / resistance[i]
+            q = (get_level(p, basin_a_id, t) - get_level(p, basin_b_id, t)) / resistance[i]
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
         else
@@ -712,7 +713,11 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)::Nothing
+function formulate!(
+    tabulated_rating_curve::TabulatedRatingCurve,
+    p::Parameters,
+    t::Float64,
+)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
@@ -721,7 +726,7 @@ function formulate!(tabulated_rating_curve::TabulatedRatingCurve, p::Parameters)
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id))
+            q = tables[i](get_level(p, upstream_basin_id, t))
         else
             q = 0.0
         end
@@ -773,7 +778,11 @@ The average of the upstream and downstream water depth is used to compute cross-
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
-function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothing
+function formulate!(
+    manning_resistance::ManningResistance,
+    p::Parameters,
+    t::Float64,
+)::Nothing
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
@@ -788,8 +797,8 @@ function formulate!(manning_resistance::ManningResistance, p::Parameters)::Nothi
             continue
         end
 
-        h_a = get_level(p, basin_a_id)
-        h_b = get_level(p, basin_b_id)
+        h_a = get_level(p, basin_a_id, t)
+        h_b = get_level(p, basin_b_id, t)
         bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
@@ -933,9 +942,9 @@ function formulate_flows!(
         outlet,
     ) = p
 
-    formulate!(linear_resistance, p)
-    formulate!(manning_resistance, p)
-    formulate!(tabulated_rating_curve, p)
+    formulate!(linear_resistance, p, t)
+    formulate!(manning_resistance, p, t)
+    formulate!(tabulated_rating_curve, p, t)
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)

@@ -240,14 +240,22 @@ function get_value(
     u::AbstractVector{Float64},
     t::Float64,
 )
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, level_boundary) = p
 
     if variable == "level"
-        hasindex, basin_idx = id_index(basin.node_id, feature_id)
-        if !hasindex
-            error("Level listen feature_id '$feature_id' is not a basin node id.")
+        hasindex_basin, basin_idx = id_index(basin.node_id, feature_id)
+        level_boundary_idx = findsorted(level_boundary.node_id, feature_id)
+
+        if hasindex_basin
+            _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
+        elseif !isnothing(level_boundary_idx)
+            level = level_boundary.level[level_boundary_idx](t + Δt)
+        else
+            error(
+                "Level condition node '$feature_id' is neither a basin nor a level boundary.",
+            )
         end
-        _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
+
         value = level
 
     elseif variable == "flow_rate"
@@ -283,7 +291,9 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    if variable[condition_idx] == "level" && control_state_change
+    if variable[condition_idx] == "level" &&
+       control_state_change &&
+       id_index(basin.node_id, condition_idx)[1]
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
