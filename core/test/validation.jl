@@ -55,6 +55,9 @@ end
     add_edge!(graph_flow, 3, 1)
     add_edge!(graph_flow, 6, 2)
 
+    graph_control = DiGraph(6)
+    add_edge!(graph_control, 5, 6)
+
     pump = Ribasim.Pump(
         [1, 6],
         [true, true],
@@ -65,15 +68,21 @@ end
         falses(2),
     )
 
-    errors = Ribasim.valid_n_neighbors(graph_flow, pump)
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_n_neighbors(pump, graph_flow, graph_control)
+    end
 
-    @test "Nodes of type Ribasim.Pump can have at most 1 inneighbor(s) (got 2 for node #1)." in
-          errors
-    @test "Nodes of type Ribasim.Pump must have at least 1 outneighbor(s) (got 0 for node #1)." in
-          errors
-    @test "Nodes of type Ribasim.Pump must have at least 1 inneighbor(s) (got 0 for node #6)." in
-          errors
-    @test length(errors) == 3
+    @test length(logger.logs) == 3
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Nodes of type Ribasim.Pump can have at most 1 flow inneighbor(s) (got 2 for node #1)."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Nodes of type Ribasim.Pump must have at least 1 flow outneighbor(s) (got 0 for node #1)."
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "Nodes of type Ribasim.Pump must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
     add_edge!(graph_flow, 2, 5)
     add_edge!(graph_flow, 5, 3)
@@ -82,9 +91,18 @@ end
     fractional_flow =
         Ribasim.FractionalFlow([5], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
-    errors = Ribasim.valid_n_neighbors(graph_flow, fractional_flow)
-    @test only(errors) ==
-          "Nodes of type Ribasim.FractionalFlow can have at most 1 outneighbor(s) (got 2 for node #5)."
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_n_neighbors(fractional_flow, graph_flow, graph_control)
+    end
+
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Nodes of type Ribasim.FractionalFlow can have at most 1 flow outneighbor(s) (got 2 for node #5)."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Nodes of type Ribasim.FractionalFlow can have at most 0 control outneighbor(s) (got 1 for node #5)."
 end
 
 @testset "PidControl connectivity validation" begin
