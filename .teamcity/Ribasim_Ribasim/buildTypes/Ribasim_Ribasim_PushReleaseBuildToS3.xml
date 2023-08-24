@@ -40,6 +40,17 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
           <param name="awsSessionDuration" value="60" />
         </parameters>
       </extension>
+      <extension id="KEEP_RULE_10" type="keepRules">
+        <parameters>
+          <param name="filters.1.status" value="successful" />
+          <param name="filters.1.type" value="buildStatus" />
+          <param name="keepData.1.type" value="everything" />
+          <param name="limit.type" value="all" />
+          <param name="partitions.1.type" value="perBranch" />
+          <param name="preserveArtifacts" value="true" />
+          <param name="ruleDisabled" value="false" />
+        </parameters>
+      </extension>
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_606" sourceBuildTypeId="Ribasim_Ribasim_BuildPythonWheels" cleanDestination="false">
