@@ -413,7 +413,7 @@ end
 
 """
 Test for each node given its node type whether it has an allowed
-number of flow/conrol inneighbors and outneighbors
+number of flow/control inneighbors and outneighbors
 """
 function valid_n_neighbors(p::Parameters)::Bool
     (; connectivity) = p
