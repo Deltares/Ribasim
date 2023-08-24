@@ -225,6 +225,7 @@ def flow_condition_model():
         )
     )
 
+    # Setup discrete control:
     discrete_control = ribasim.DiscreteControl(
         condition=pd.DataFrame(
             data={
@@ -272,6 +273,155 @@ def flow_condition_model():
         basin=basin,
         pump=pump,
         flow_boundary=flow_boundary,
+        terminal=terminal,
+        discrete_control=discrete_control,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def level_boundary_condition_model():
+    """Set up a small model with a condition on a level boundary."""
+
+    # Set up the nodes
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: LevelBoundary
+            (1.0, 0.0),  # 2: LinearResistance
+            (2.0, 0.0),  # 3: Basin
+            (3.0, 0.0),  # 4: Outlet
+            (4.0, 0.0),  # 5: Terminal
+            (1.5, 1.0),  # 6: DiscreteControl
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "LevelBoundary",
+        "LinearResistance",
+        "Basin",
+        "Outlet",
+        "Terminal",
+        "DiscreteControl",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2, 3, 4, 6], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 5, 4], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": (len(from_id) - 1) * ["flow"] + ["control"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [3, 3],
+            "area": [100.0, 100.0],
+            "level": [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [3],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [0.0],
+            "urban_runoff": [0.0],
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [3], "level": [2.5]})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup level boundary:
+    level_boundary = ribasim.LevelBoundary(
+        time=pd.DataFrame(
+            data={
+                "node_id": [1, 1],
+                "time": ["2020-01-01 00:00:00", "2022-01-01 00:00:00"],
+                "level": [5.0, 10.0],
+            }
+        )
+    )
+
+    # Setup linear resistance:
+    linear_resistance = ribasim.LinearResistance(
+        static=pd.DataFrame(data={"node_id": [2], "resistance": [5e3]})
+    )
+
+    # Setup outlet:
+    outlet = ribasim.Outlet(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4, 4],
+                "active": [True, False],
+                "flow_rate": 2 * [0.5 / 3600],
+                "control_state": ["on", "off"],
+            }
+        )
+    )
+
+    # Setup terminal:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [5],
+            }
+        )
+    )
+
+    # Setup discrete control:
+    discrete_control = ribasim.DiscreteControl(
+        condition=pd.DataFrame(
+            data={
+                "node_id": [6],
+                "listen_feature_id": [1],
+                "variable": ["level"],
+                "greater_than": [6.0],
+                "look_ahead": [60 * 24 * 60 * 60],
+            }
+        ),
+        logic=pd.DataFrame(
+            data={
+                "node_id": [6, 6],
+                "truth_state": ["T", "F"],
+                "control_state": ["on", "off"],
+            }
+        ),
+    )
+
+    model = ribasim.Model(
+        modelname="level_boundary_condition",
+        node=node,
+        edge=edge,
+        basin=basin,
+        outlet=outlet,
+        level_boundary=level_boundary,
+        linear_resistance=linear_resistance,
         terminal=terminal,
         discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",

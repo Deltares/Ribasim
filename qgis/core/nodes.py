@@ -396,6 +396,16 @@ class LevelBoundaryStatic(Input):
     ]
 
 
+class LevelBoundaryTime(Input):
+    input_type = "LevelBoundary / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("time", QVariant.DateTime),
+        QgsField("level", QVariant.Double),
+    ]
+
+
 class PumpStatic(Input):
     input_type = "Pump / static"
     geometry_type = "No Geometry"

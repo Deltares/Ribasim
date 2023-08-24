@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
@@ -15,6 +17,13 @@ class StaticSchema(pa.SchemaModel):
         dtype = PydanticModel(models.LevelBoundaryStatic)
 
 
+class TimeSchema(pa.SchemaModel):
+    class Config:
+        """Config with dataframe-level data type."""
+
+        dtype = PydanticModel(models.LevelBoundaryTime)
+
+
 class LevelBoundary(TableModel):
     """
     Stores water at a given level unaffected by flow, like an infinitely large basin.
@@ -25,4 +34,5 @@ class LevelBoundary(TableModel):
         Table with the constant water levels.
     """
 
-    static: DataFrame[StaticSchema]
+    static: Optional[DataFrame[StaticSchema]] = None
+    time: Optional[DataFrame[TimeSchema]] = None

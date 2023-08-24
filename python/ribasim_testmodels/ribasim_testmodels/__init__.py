@@ -9,6 +9,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model
 from ribasim_testmodels.discrete_control import (
     flow_condition_model,
+    level_boundary_condition_model,
     level_setpoint_with_minmax_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
@@ -56,4 +57,5 @@ __all__ = [
     "invalid_discrete_control_model",
     "level_setpoint_with_minmax_model",
     "invalid_edge_types_model",
+    "level_boundary_condition_model",
 ]
