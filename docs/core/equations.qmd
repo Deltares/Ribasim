@@ -467,7 +467,7 @@ where the clipping is again done last. Note that to compute this, $\hat{f}_\text
 
 ## Jacobian contributions
 
-For convenience here we denote a time derivative of a variable as a dot over te symbol.
+For convenience here we denote a time derivative of a variable as a dot over the symbol.
 
 For the integral state we simply get the contribution
 $$
