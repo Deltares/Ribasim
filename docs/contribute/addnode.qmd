@@ -194,16 +194,19 @@ neighbortypes(::Val{:Pump}) = Set((:Basin, :NewNodeType))
 The minimum and maximum allowed number of inneighbors and outneighbors for `NewNodeType` are specified as follows:
 
 ```julia
-# Allowed number of inneighbors and outneighbors per node type
-struct neighbor_amounts_bounds
+# Allowed number of flow/control inneighbors and outneighbors per node type
+struct n_neighbor_bounds
     in_min::Int
     in_max::Int
     out_min::Int
     out_max::Int
 end
 
-neighbors_amounts_bounds(::Val{:NewNodeType}) =
-    neighbor_amounts_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:NewNodeType}) =
+    n_neighbor_bounds(0, 0, 1, typemax(Int))
+
+n_neighbor_bounds_control(::Val{:NewNodeType}) =
+    n_neighbor_bounds(0, 1, 0, 0)
 ```
 
 Here `typemax(Int)` effectively means unbounded.

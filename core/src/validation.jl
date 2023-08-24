@@ -76,21 +76,36 @@ struct n_neighbor_bounds
     out_max::Int
 end
 
-n_neighbor_bounds(nodetype::Symbol) = n_neighbor_bounds(Val(nodetype))
-n_neighbor_bounds(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
-n_neighbor_bounds(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
-n_neighbor_bounds(::Val{:LevelBoundary}) =
+n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
+n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) =
+    n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds_flow(::Val{:LevelBoundary}) =
     n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
-n_neighbor_bounds(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
-neighbourtypes(::Any) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
-n_neighbor_bounds(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 1, 1)
-n_neighbor_bounds(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
+
+n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
+n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, typemax(Int))
+n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
+n_neighbor_bounds_control(::Val{:FractionalFlow}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:LevelBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
+n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
+n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
+n_neighbor_bounds_control(::Val{:DiscreteControl}) =
+    n_neighbor_bounds(0, 0, 1, typemax(Int))
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
