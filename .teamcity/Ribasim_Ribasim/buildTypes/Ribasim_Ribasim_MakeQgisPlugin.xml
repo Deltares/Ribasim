@@ -45,3 +45,4 @@ zip ribasim_qgis.zip -r ribasim_qgis]]></param>
     <cleanup />
   </settings>
 </build-type>
+
