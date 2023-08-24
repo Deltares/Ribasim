@@ -28,7 +28,7 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
       <build-trigger id="TRIGGER_492" type="buildDependencyTrigger">
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
-          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="branchFilter" value="+:v*" />
           <param name="dependsOn" value="BuildRibasimCliWindows" />
         </parameters>
       </build-trigger>
