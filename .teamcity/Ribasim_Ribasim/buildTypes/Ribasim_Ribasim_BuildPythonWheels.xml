@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim-0.2.0-py3-none-any.whl" />
+      <option name="artifactRules" value="ribasim-*.whl" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
