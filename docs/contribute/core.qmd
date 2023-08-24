@@ -88,11 +88,11 @@ If you are in a different environment that depends on Ribasim, you can test Riba
 pkg> test Ribasim
 ```
 
-In order to debug tests it is very useful to run them in a REPL.
+In order to debug tests, it is very useful to run them in a REPL.
 However, here, you don't have the dependencies available in the `[extras]` section of your `Project.toml`.
 [`TestEnv.jl`](https://github.com/JuliaTesting/TestEnv.jl) that we installed earlier solves that problem.
 
-When you then debug your tests inside the REPL, you can include the `[extras]` dependencies as follow:
+When you then debug your tests inside the REPL, you can include the `[extras]` dependencies as follows:
 
 ```julia
 using TestEnv
