@@ -1,6 +1,6 @@
 module ribasim_cli
 
-using Logging: global_logger
+using Logging: global_logger, with_logger
 using TerminalLoggers: TerminalLogger
 using SciMLBase: successful_retcode
 using Ribasim
@@ -30,8 +30,8 @@ function julia_main()::Cint
 
     try
         # show progress bar in terminal
-        with_logger(TerminalLogger()) do
-            model = Ribasim.run(arg)
+        model = with_logger(TerminalLogger()) do
+            Ribasim.run(arg)
         end
         println(model.integrator.sol.retcode)
         return if successful_retcode(model)
