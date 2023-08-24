@@ -55,6 +55,26 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
         <artifact sourcePath="ribasim_qgis.zip" />
       </dependency>
     </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Ribasim_BuildPythonWheels">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="BuildRibasimCliWindows">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Ribasim_MakeQgisPlugin">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
     <cleanup />
   </settings>
 </build-type>
