@@ -13,6 +13,7 @@ from ribasim_testmodels.discrete_control import (
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
+from ribasim_testmodels.dutch_waterways import dutch_waterways_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -47,6 +48,7 @@ __all__ = [
     "pid_control_model",
     "misc_nodes_model",
     "tabulated_rating_curve_control_model",
+    "dutch_waterways_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
     "pid_control_equation_model",

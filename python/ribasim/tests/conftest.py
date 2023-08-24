@@ -7,6 +7,7 @@ from ribasim_testmodels import (
     basic_model,
     basic_transient_model,
     bucket_model,
+    dutch_waterways_model,
     flow_boundary_time_model,
     flow_condition_model,
     invalid_discrete_control_model,
@@ -51,26 +52,37 @@ def backwater() -> ribasim.Model:
 # write models to disk for Julia tests to use
 if __name__ == "__main__":
     datadir = Path("data")
-    trivial_model().write(datadir / "trivial")
-    bucket_model().write(datadir / "bucket")
-    basic_model().write(datadir / "basic")
-    basic_transient_model(basic_model()).write(datadir / "basic_transient")
-    tabulated_rating_curve_model().write(datadir / "tabulated_rating_curve")
-    tabulated_rating_curve_control_model().write(
-        datadir / "tabulated_rating_curve_control"
-    )
-    pump_discrete_control_model().write(datadir / "pump_discrete_control")
-    flow_condition_model().write(datadir / "flow_condition")
-    backwater_model().write(datadir / "backwater")
-    linear_resistance_model().write(datadir / "linear_resistance")
-    rating_curve_model().write(datadir / "rating_curve")
-    manning_resistance_model().write(datadir / "manning_resistance")
-    pid_control_model().write(datadir / "pid_control")
-    misc_nodes_model().write(datadir / "misc_nodes")
-    invalid_qh_model().write(datadir / "invalid_qh")
-    invalid_fractional_flow_model().write(datadir / "invalid_fractional_flow")
-    flow_boundary_time_model().write(datadir / "flow_boundary_time")
-    level_setpoint_with_minmax_model().write(datadir / "level_setpoint_with_minmax")
-    pid_control_equation_model().write(datadir / "pid_control_equation")
-    invalid_discrete_control_model().write(datadir / "invalid_discrete_control")
-    invalid_edge_types_model().write(datadir / "invalid_edge_types")
+
+    models = [
+        model_generator()
+        for model_generator in (
+            backwater_model,
+            basic_model,
+            bucket_model,
+            dutch_waterways_model,
+            flow_boundary_time_model,
+            flow_condition_model,
+            invalid_discrete_control_model,
+            invalid_edge_types_model,
+            invalid_fractional_flow_model,
+            invalid_qh_model,
+            level_setpoint_with_minmax_model,
+            linear_resistance_model,
+            manning_resistance_model,
+            misc_nodes_model,
+            pid_control_equation_model,
+            pid_control_model,
+            pump_discrete_control_model,
+            rating_curve_model,
+            tabulated_rating_curve_control_model,
+            tabulated_rating_curve_model,
+            trivial_model,
+        )
+    ]
+
+    for model in models:
+        model.write(datadir / model.modelname)
+
+        if model.modelname == "basic":
+            model = basic_transient_model(model)
+            model.write(datadir / model.modelname)

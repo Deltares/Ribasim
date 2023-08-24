@@ -183,7 +183,7 @@ end
           "DiscreteControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "These control states from DiscreteControl node #5 are not defined for controlled Ribasim.Pump #2: [\"foo\"]."
+          "These control states from DiscreteControl node #5 are not defined for controlled Pump #2: [\"foo\"]."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "Look ahead supplied for non-timeseries listen variable 'level' from listen node #1."
