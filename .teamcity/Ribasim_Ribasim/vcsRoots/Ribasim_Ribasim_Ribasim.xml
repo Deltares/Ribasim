@@ -6,12 +6,15 @@
   <param name="authMethod" value="PASSWORD" />
   <param name="branch" value="main" />
   <param name="ignoreKnownHosts" value="true" />
+  <param name="reportTagRevisions" value="true" />
   <param name="secure:password" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
   <param name="submoduleCheckout" value="CHECKOUT" />
   <param name="teamcity:branchSpec"><![CDATA[+:refs/heads/*
++:refs/tags/*
 -:refs/heads/gh-pages]]></param>
   <param name="url" value="https://github.com/Deltares/Ribasim.git" />
   <param name="useAlternates" value="AUTO" />
   <param name="username" value="teamcity-deltares" />
   <param name="usernameStyle" value="USERID" />
 </vcs-root>
+

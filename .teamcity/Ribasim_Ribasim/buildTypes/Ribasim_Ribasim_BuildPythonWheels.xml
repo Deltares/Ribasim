@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim-0.2.0-py3-none-any.whl" />
+      <option name="artifactRules" value="ribasim-*.whl" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
@@ -36,7 +36,8 @@ rm -rf %conda_env_path%mm]]></param>
     <build-triggers>
       <build-trigger id="TRIGGER_557" type="vcsTrigger">
         <parameters>
-          <param name="branchFilter" value="+:main" />
+          <param name="branchFilter"><![CDATA[+:<default>
++:v*]]></param>
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
