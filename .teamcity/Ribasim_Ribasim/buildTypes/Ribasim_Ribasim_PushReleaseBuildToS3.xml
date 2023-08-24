@@ -43,7 +43,7 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_606" sourceBuildTypeId="Ribasim_Ribasim_BuildPythonWheels" cleanDestination="false">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim*.whl" />
       </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
