@@ -5,7 +5,7 @@
   <settings>
     <parameters />
     <build-runners>
-      <runner id="RUNNER_537" name="Push to nightly S3" type="simpleRunner">
+      <runner id="RUNNER_537" name="Push release to S3" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
