@@ -19,12 +19,12 @@ end
     @test ispath(toml_path)
     empty!(ARGS)
     push!(ARGS, toml_path)
-    nt = capture(ribasim_cli.julia_main)
-    @test nt.value == 0
-    if nt.value != 0
-        with_logger(ConsoleLogger()) do
-            @info "ribasim_cli failure" nt...
-        end
+    (; value, output, error, backtrace) = capture(ribasim_cli.julia_main)
+    @test value == 0
+    if value != 0
+        @show output
+        @show error
+        @show backtrace
     end
 end
 

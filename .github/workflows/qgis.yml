@@ -13,6 +13,7 @@ on:
         - ".github/qgis.yml"
         - "python/ribasim/ribasim/models.py"
         - "qgis/**"
+    merge_group:
 jobs:
     test-qgis:
         name: "Test"

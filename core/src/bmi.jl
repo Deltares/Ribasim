@@ -105,14 +105,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    # expand scalar saveat for SavingCallback
-    saveat = if config.solver.saveat isa Number
-        range(timespan...; step = config.solver.saveat)
-    else
-        config.solver.saveat
-    end
-
-    callback, saved_flow = create_callbacks(parameters; saveat)
+    callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
     @debug "Created callbacks."
 
     @timeit_debug to "Setup integrator" integrator = init(
