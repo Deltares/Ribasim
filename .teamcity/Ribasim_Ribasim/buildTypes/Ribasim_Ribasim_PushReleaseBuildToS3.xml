@@ -75,7 +75,11 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
         </options>
       </depend-on>
     </dependencies>
-    <cleanup />
+    <cleanup>
+      <options>
+        <option name="disableCleanupPolicies" value="true" />
+      </options>
+    </cleanup>
   </settings>
 </build-type>
 
