@@ -526,7 +526,9 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
-    (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)
+    (log._module == @__MODULE__) ||
+        (parentmodule(log._module) == @__MODULE__) ||
+        log._module == OrdinaryDiffEq  # for the progress bar
 end
 
 function run(config::Config)::Model
@@ -534,7 +536,7 @@ function run(config::Config)::Model
 
     # Reconfigure the logger if necessary with the correct loglevel
     # but make sure to only log from Ribasim
-    if min_enabled_level(logger) != config.logging.verbosity
+    if min_enabled_level(logger) + 1 != config.logging.verbosity
         logger = EarlyFilteredLogger(
             is_current_module,
             LevelOverrideLogger(config.logging.verbosity, logger),
