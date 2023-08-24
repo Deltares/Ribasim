@@ -17,7 +17,8 @@
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
 . /usr/share/Modules/init/bash
-module load anaconda3
+ls /opt/apps/modules/anaconda3
+module load anaconda3/miniconda
 pip wheel python/ribasim --no-deps]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
