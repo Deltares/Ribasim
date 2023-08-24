@@ -30,8 +30,9 @@ function julia_main()::Cint
 
     try
         # show progress bar in terminal
-        global_logger(TerminalLogger())
-        model = Ribasim.run(arg)
+        with_logger(TerminalLogger()) do
+            model = Ribasim.run(arg)
+        end
         println(model.integrator.sol.retcode)
         return if successful_retcode(model)
             0
