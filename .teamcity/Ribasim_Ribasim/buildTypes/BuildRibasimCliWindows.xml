@@ -72,7 +72,8 @@ call python python/ribasim/tests/conftest.py]]></param>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
         <parameters>
-          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="branchFilter"><![CDATA[+:<default>
++:v*]]></param>
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
