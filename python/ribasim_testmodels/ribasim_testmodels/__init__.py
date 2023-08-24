@@ -47,6 +47,7 @@ __all__ = [
     "pid_control_model",
     "misc_nodes_model",
     "tabulated_rating_curve_control_model",
+    "dutch_waterways_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
     "pid_control_equation_model",

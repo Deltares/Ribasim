@@ -179,7 +179,8 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 is_active = coalesce(first(group).active, true)
                 interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
                 if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] = (; tables = interpolation)
+                    control_mapping[(node_id, control_state)] =
+                        (; tables = interpolation, active = is_active)
                 end
             end
             push!(interpolations, interpolation)

@@ -19,8 +19,13 @@ end
     @test ispath(toml_path)
     empty!(ARGS)
     push!(ARGS, toml_path)
-    (; value) = capture(ribasim_cli.julia_main)
-    @test value == 0
+    nt = capture(ribasim_cli.julia_main)
+    @test nt.value == 0
+    if nt.value != 0
+        with_logger(ConsoleLogger()) do
+            @info "ribasim_cli failure" nt...
+        end
+    end
 end
 
 # the global logger is modified by ribasim_cli; set it back to the default

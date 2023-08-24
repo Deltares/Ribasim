@@ -5,13 +5,13 @@ on:
     tags: ["*"]
     paths:
       - ".github/**"
-      - "build/libribasim/src/**"
+      - "build/**"
       - "core/**"
       - "python/**"
   pull_request:
     paths:
       - ".github/**"
-      - "build/libribasim/src/**"
+      - "build/**"
       - "core/**"
       - "python/**"
 concurrency:
