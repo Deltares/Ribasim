@@ -6,6 +6,7 @@ on:
     paths: [".github/**", "python/ribasim/**"]
   pull_request:
     paths: [".github/**", "python/ribasim/**"]
+  merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
