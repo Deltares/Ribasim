@@ -33,7 +33,7 @@ function julia_main()::Cint
         global_logger(TerminalLogger())
         model = Ribasim.run(arg)
         println(model.integrator.sol.retcode)
-        return successful_retcode(model)
+        return !successful_retcode(model)
     catch
         Base.invokelatest(Base.display_error, current_exceptions())
         return 1
