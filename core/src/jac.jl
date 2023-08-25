@@ -388,6 +388,19 @@ function formulate_jac!(
         controlled_node_id = only(outneighbors(graph_control, id))
         controls_pump = insorted(controlled_node_id, pump.node_id)
 
+        # No flow of outlet if source level is lower than target level
+        if !controls_pump
+            src_id = only(inneighbors(graph_flow, controlled_node_id))
+            dst_id = only(outneighbors(graph_flow, controlled_node_id))
+
+            src_level = get_level(p, src_id, t)
+            dst_level = get_level(p, dst_id, t)
+
+            if (src_level < dst_level)
+                continue
+            end
+        end
+
         if !controls_pump
             if !insorted(controlled_node_id, outlet.node_id)
                 error(

@@ -557,7 +557,7 @@ function continuous_control!(
         if !active[i]
             du.integral[i] = 0.0
             u.integral[i] = 0.0
-            return
+            continue
         end
 
         du.integral[i] = error[i]
@@ -567,6 +567,19 @@ function continuous_control!(
 
         controlled_node_id = only(outneighbors(graph_control, id))
         controls_pump = (controlled_node_id in pump.node_id)
+
+        # No flow of outlet if source level is lower than target level
+        if !controls_pump
+            src_id = only(inneighbors(graph_flow, controlled_node_id))
+            dst_id = only(outneighbors(graph_flow, controlled_node_id))
+
+            src_level = get_level(p, src_id, t)
+            dst_level = get_level(p, dst_id, t)
+
+            if (src_level < dst_level)
+                continue
+            end
+        end
 
         if controls_pump
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
@@ -858,22 +871,33 @@ function formulate!(
     node::Union{Pump, Outlet},
     p::Parameters,
     storage::AbstractVector{Float64},
+    t::Float64,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = node
+    is_outlet = nameof(typeof(node)) == :Outlet
+
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
-        if !isactive
-            flow[src_id, id] = 0.0
-            flow[id, dst_id] = 0.0
-            continue
+        # No flow of outlet if source level is lower than target level
+        non_flowing_outlet = false
+        if is_outlet
+            src_level = get_level(p, src_id, t)
+            dst_level = get_level(p, dst_id, t)
+
+            if (src_level < dst_level)
+                non_flowing_outlet = true
+            end
         end
 
-        if pid_controlled
+        # No flow of outlet if source level is lower than target level
+        if !isactive || pid_controlled || non_flowing_outlet
+            flow[src_id, id] = 0.0
+            flow[id, dst_id] = 0.0
             continue
         end
 
@@ -935,8 +959,8 @@ function formulate_flows!(
     formulate!(tabulated_rating_curve, p, t)
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
-    formulate!(pump, p, storage)
-    formulate!(outlet, p, storage)
+    formulate!(pump, p, storage, t)
+    formulate!(outlet, p, storage, t)
 
     return nothing
 end
