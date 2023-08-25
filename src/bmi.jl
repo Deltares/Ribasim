@@ -256,9 +256,17 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
         eqs = vcat(connect_eqs, output_eqs)
         @named sys = ODESystem(eqs, t, [], []; systems)
 
-        # TODO use input_idxs rather than parse_paramsyms
-        @timeit_debug to "Structural simplify" sim, input_idxs =
-            structural_simplify(sys, (; inputs, outputs = []))
+        @timeit_debug to "Structural simplify" begin
+            if true
+                # use JuliaSimCompiler
+                sys_ir = IRSystem(sys)
+                sim, input_idxs = structural_simplify(sys_ir, (; inputs, outputs = []))
+            else
+
+                # TODO use input_idxs rather than parse_paramsyms
+                sim, input_idxs = structural_simplify(sys, (; inputs, outputs = []))
+            end
+        end
 
         @timeit_debug to "Setup ODAEProblem" prob =
             ODAEProblem(sim, [], tspan; sparse = true)

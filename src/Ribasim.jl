@@ -22,6 +22,7 @@ using OrdinaryDiffEq
 using SciMLBase
 using Serialization: serialize, deserialize
 using TimerOutputs
+using JuliaSimCompiler
 
 export interpolator, Register, ForwardFill
 
