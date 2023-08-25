@@ -15,7 +15,7 @@ edge_connection_type_flow, edge_connection_types_control: get (src_node_type, ds
 struct Connectivity
     graph_flow::DiGraph{Int}
     graph_control::DiGraph{Int}
-    flow::SparseMatrixCSC{Float64, Int}
+    flow::SparseMatrixCSC{Number, Int}
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
     edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
@@ -79,15 +79,15 @@ struct Basin{C} <: AbstractParameterNode
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
-    current_level::Vector{Float64}
-    current_area::Vector{Float64}
+    current_level::Vector{Number}
+    current_area::Vector{Number}
     # The derivative of the area with respect to the level
     # used for the analytical Jacobian
-    current_darea::Vector{Float64}
+    current_darea::Vector{Number}
     # Discrete values for interpolation
-    area::Vector{Vector{Float64}}
-    level::Vector{Vector{Float64}}
-    storage::Vector{Vector{Float64}}
+    area::Vector{Vector{Number}}
+    level::Vector{Vector{Number}}
+    storage::Vector{Vector{Number}}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
 
@@ -479,7 +479,7 @@ end
 
 function set_current_basin_properties!(
     basin::Basin,
-    storage::AbstractVector{Float64},
+    storage::AbstractVector,
     t::Real,
 )::Nothing
     for i in eachindex(storage)
@@ -496,9 +496,9 @@ Linearize the evaporation flux when at small water depths
 Currently at less than 0.1 m.
 """
 function formulate!(
-    du::AbstractVector{Float64},
+    du::AbstractVector,
     basin::Basin,
-    storage::AbstractVector{Float64},
+    storage::AbstractVector,
     t::Real,
 )::Nothing
     for i in eachindex(storage)
@@ -536,11 +536,11 @@ function get_error!(pid_control::PidControl, p::Parameters, t::Float64)
 end
 
 function continuous_control!(
-    u::ComponentVector{Float64},
-    du::ComponentVector{Float64},
+    u::ComponentVector,
+    du::ComponentVector,
     pid_control::PidControl,
     p::Parameters,
-    integral_value::SubArray{Float64},
+    integral_value::SubArray,
     t::Float64,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
@@ -857,7 +857,7 @@ end
 function formulate!(
     node::Union{Pump, Outlet},
     p::Parameters,
-    storage::AbstractVector{Float64},
+    storage::AbstractVector,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -895,11 +895,7 @@ function formulate!(
     return nothing
 end
 
-function formulate!(
-    du::ComponentVector{Float64},
-    connectivity::Connectivity,
-    basin::Basin,
-)::Nothing
+function formulate!(du::ComponentVector, connectivity::Connectivity, basin::Basin)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -915,11 +911,7 @@ function formulate!(
     return nothing
 end
 
-function formulate_flows!(
-    p::Parameters,
-    storage::AbstractVector{Float64},
-    t::Float64,
-)::Nothing
+function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -945,8 +937,8 @@ end
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 function water_balance!(
-    du::ComponentVector{Float64},
-    u::ComponentVector{Float64},
+    du::ComponentVector,
+    u::ComponentVector,
     p::Parameters,
     t::Float64,
 )::Nothing

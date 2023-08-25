@@ -201,7 +201,7 @@ function Connectivity(db::DB)::Connectivity
 
     edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
 
-    flow = adjacency_matrix(graph_flow, Float64)
+    flow = adjacency_matrix(graph_flow, Number)
     nonzeros(flow) .= 0.0
 
     return Connectivity(

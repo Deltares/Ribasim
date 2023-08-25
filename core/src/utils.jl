@@ -127,8 +127,8 @@ Also returns darea/dlevel as it is needed for the Jacobian.
 function get_area_and_level(
     basin::Basin,
     state_idx::Int,
-    storage::Float64,
-)::Tuple{Float64, Float64, Float64}
+    storage::Number,
+)::Tuple{Number, Number, Number}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -137,11 +137,11 @@ function get_area_and_level(
 end
 
 function get_area_and_level(
-    storage_discrete::Vector{Float64},
-    area_discrete::Vector{Float64},
-    level_discrete::Vector{Float64},
-    storage::Float64,
-)::Tuple{Float64, Float64, Float64}
+    storage_discrete::Vector{Number},
+    area_discrete::Vector{Number},
+    level_discrete::Vector{Number},
+    storage::Number,
+)::Tuple{Number, Number, Number}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -410,7 +410,7 @@ end
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 """
-function get_level(p::Parameters, node_id::Int, t::Float64)::Float64
+function get_level(p::Parameters, node_id::Int, t::Float64)::Number
     (; basin, level_boundary) = p
     # since the node_id fields are already Indices, Dictionary creation is instant
     basin = Dictionary(basin.node_id, basin.current_level)
