@@ -571,9 +571,9 @@ function PidControl(db::DB, config::Config)::PidControl
         K_p = proportional.u
         K_i = integral.u
         K_d = derivative.u
-        itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
+        pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
         parsed_parameters.control_mapping[key] =
-            (target = params.target, active = params.active, pid_params = itp)
+            (; params.target, params.active, pid_params)
     end
 
     return PidControl(
