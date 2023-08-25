@@ -33,7 +33,9 @@ function julia_main()::Cint
         model = with_logger(TerminalLogger()) do
             Ribasim.run(arg)
         end
-        println(model.integrator.sol.retcode)
+        t = Ribasim.datetime_since(model.integrator.t, model.config.starttime)
+        println("Model time:  ", t)
+        println("Return code: ", model.integrator.sol.retcode)
         return if successful_retcode(model)
             0
         else
