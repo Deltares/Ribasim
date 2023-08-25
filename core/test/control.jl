@@ -168,3 +168,26 @@ end
     @test level[t_in_index] ≈ level_min
     @test level[t_2_none_index] ≈ setpoint
 end
+
+@testset "Set PID target with DiscreteControl" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../data/discrete_control_of_pid_control/discrete_control_of_pid_control.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; discrete_control, pid_control) = p
+
+    timesteps = Ribasim.timesteps(model)
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
+
+    target_high = pid_control.control_mapping[(6, "target_high")].target.u[1]
+    target_low = pid_control.control_mapping[(6, "target_low")].target.u[1]
+
+    t_target_jump = discrete_control.record.time[2]
+    t_idx_target_jump = searchsortedlast(timesteps, t_target_jump)
+
+    @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-4)
+    @test isapprox(level[end], target_low, atol = 1e-2)
+end
