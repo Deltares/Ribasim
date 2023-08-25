@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths-ignore: [".teamcity/**"]
   pull_request:
+  merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -72,7 +73,7 @@ jobs:
         run: "quarto render docs --to html --execute"
 
       - name: Publish Quarto Project
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main'
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           path: docs

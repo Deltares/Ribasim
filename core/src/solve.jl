@@ -414,90 +414,67 @@ end
 
 """
 Test for each node given its node type whether it has an allowed
-number of flow inneighbors and flow outneighbors
+number of flow/control inneighbors and outneighbors
 """
 function valid_n_neighbors(p::Parameters)::Bool
-    (;
-        connectivity,
-        basin,
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        fractional_flow,
-        level_boundary,
-        flow_boundary,
-        pump,
-        terminal,
-        pid_control,
-        discrete_control,
-    ) = p
-
+    (; connectivity) = p
     (; graph_flow, graph_control) = connectivity
 
-    errors = String[]
+    errors = false
 
-    append!(errors, valid_n_neighbors(graph_flow, basin))
-    append!(errors, valid_n_neighbors(graph_flow, linear_resistance))
-    append!(errors, valid_n_neighbors(graph_flow, manning_resistance))
-    append!(errors, valid_n_neighbors(graph_flow, tabulated_rating_curve))
-    append!(errors, valid_n_neighbors(graph_flow, fractional_flow))
-    append!(errors, valid_n_neighbors(graph_flow, level_boundary))
-    append!(errors, valid_n_neighbors(graph_flow, flow_boundary))
-    append!(errors, valid_n_neighbors(graph_flow, pump))
-    append!(errors, valid_n_neighbors(graph_flow, terminal))
-    append!(errors, valid_n_neighbors(graph_control, pid_control))
-    append!(errors, valid_n_neighbors(graph_control, discrete_control))
-
-    if isempty(errors)
-        return true
-    else
-        foreach(x -> @error(x), errors)
-        return false
+    for nodefield in nodefields(p)
+        errors |= !valid_n_neighbors(getfield(p, nodefield), graph_flow, graph_control)
     end
+
+    return !errors
 end
 
-function valid_n_neighbors(graph::DiGraph{Int}, node::AbstractParameterNode)::Vector{String}
+function valid_n_neighbors(
+    node::AbstractParameterNode,
+    graph_flow::DiGraph{Int},
+    graph_control::DiGraph{Int},
+)::Bool
     node_id = node.node_id
     node_type = typeof(node)
+    node_name = nameof(node_type)
 
-    bounds = n_neighbor_bounds(nameof(node_type))
+    bounds_flow = n_neighbor_bounds_flow(node_name)
+    bounds_control = n_neighbor_bounds_control(node_name)
 
-    errors = String[]
+    errors = false
 
     for id in node_id
-        n_inneighbors = length(inneighbors(graph, id))
-        n_outneighbors = length(outneighbors(graph, id))
+        for (graph, bounds, edge_type) in zip(
+            (graph_flow, graph_control),
+            (bounds_flow, bounds_control),
+            (:flow, :control),
+        )
+            n_inneighbors = length(inneighbors(graph, id))
+            n_outneighbors = length(outneighbors(graph, id))
 
-        if n_inneighbors < bounds.in_min
-            push!(
-                errors,
-                "Nodes of type $node_type must have at least $(bounds.in_min) inneighbor(s) (got $n_inneighbors for node #$id).",
-            )
-        end
+            if n_inneighbors < bounds.in_min
+                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                errors = true
+            end
 
-        if n_inneighbors > bounds.in_max
-            push!(
-                errors,
-                "Nodes of type $node_type can have at most $(bounds.in_max) inneighbor(s) (got $n_inneighbors for node #$id).",
-            )
-        end
+            if n_inneighbors > bounds.in_max
+                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                errors = true
+            end
 
-        if n_outneighbors < bounds.out_min
-            push!(
-                errors,
-                "Nodes of type $node_type must have at least $(bounds.out_min) outneighbor(s) (got $n_outneighbors for node #$id).",
-            )
-        end
+            if n_outneighbors < bounds.out_min
+                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                errors = true
+            end
 
-        if n_outneighbors > bounds.out_max
-            push!(
-                errors,
-                "Nodes of type $node_type can have at most $(bounds.out_max) outneighbor(s) (got $n_outneighbors for node #$id).",
-            )
+            if n_outneighbors > bounds.out_max
+                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                errors = true
+            end
         end
     end
 
-    return errors
+    return !errors
 end
 
 function set_current_basin_properties!(

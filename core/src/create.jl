@@ -8,13 +8,13 @@ This function currently does not support node states that are defined by more
 than one row in a table, as is the case for TabulatedRatingCurve.
 """
 function parse_static_and_time(
-    static::Union{StructVector, Missing},
-    time::Union{StructVector, Missing},
     db::DB,
     config::Config,
-    nodetype::String,
-    defaults::NamedTuple,
-    time_interpolatables::Vector{Symbol},
+    nodetype::String;
+    static::Union{StructVector, Nothing} = nothing,
+    time::Union{StructVector, Nothing} = nothing,
+    defaults::NamedTuple = (; active = true),
+    time_interpolatables::Vector{Symbol} = Symbol[],
 )::Tuple{NamedTuple, Bool}
     # E.g. `PumpStatic`
     static_type = eltype(static)
@@ -74,14 +74,14 @@ function parse_static_and_time(
     end
 
     # Get node IDs of static nodes if the static table exists
-    static_node_ids = if ismissing(static)
+    static_node_ids = if isnothing(static)
         Set{Int}()
     else
         Set(static.node_id)
     end
 
     # Get node IDs of transient nodes if the time table exists
-    time_node_ids = if ismissing(time)
+    time_node_ids = if isnothing(time)
         Set{Int}()
     else
         Set(time.node_id)
@@ -161,7 +161,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node ID $node_id data not in any table."
+            @error "$nodetype node #$node_id data not in any table."
             errors = true
         end
     end
@@ -218,17 +218,13 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    defaults = (; active = true)
-    time_interpolatables = Symbol[]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        missing,
-        db,
-        config,
-        "LinearResistance",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid = parse_static_and_time(db, config, "LinearResistance"; static)
+
+    if !valid
+        error(
+            "Problems encountered when parsing LinearResistance static and time node IDs.",
+        )
+    end
 
     return LinearResistance(
         parsed_parameters.node_id,
@@ -304,17 +300,8 @@ end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    defaults = (; active = true)
-    time_interpolatables = Symbol[]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        missing,
-        db,
-        config,
-        "ManningResistance",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, "ManningResistance"; static)
 
     if !valid
         error("Errors occurred when parsing ManningResistance data.")
@@ -333,17 +320,7 @@ end
 
 function FractionalFlow(db::DB, config::Config)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    defaults = (; active = true)
-    time_interpolatables = Symbol[]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        missing,
-        db,
-        config,
-        "FractionalFlow",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid = parse_static_and_time(db, config, "FractionalFlow"; static)
 
     if !valid
         error("Errors occurred when parsing FractionalFlow data.")
@@ -367,15 +344,13 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         error("Problems encountered when parsing LevelBoundary static and time node IDs.")
     end
 
-    defaults = (; active = true)
     time_interpolatables = [:level]
     parsed_parameters, valid = parse_static_and_time(
-        static,
-        time,
         db,
         config,
-        "LevelBoundary",
-        defaults,
+        "LevelBoundary";
+        static,
+        time,
         time_interpolatables,
     )
 
@@ -397,15 +372,13 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
     end
 
-    defaults = (; active = true)
     time_interpolatables = [:flow_rate]
     parsed_parameters, valid = parse_static_and_time(
-        static,
-        time,
         db,
         config,
-        "FlowBoundary",
-        defaults,
+        "FlowBoundary";
+        static,
+        time,
         time_interpolatables,
     )
 
@@ -428,16 +401,7 @@ end
 function Pump(db::DB, config::Config)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
-    time_interpolatables = Symbol[]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        missing,
-        db,
-        config,
-        "Pump",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
     is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
@@ -458,16 +422,7 @@ end
 function Outlet(db::DB, config::Config)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
-    time_interpolatables = Symbol[]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        missing,
-        db,
-        config,
-        "Outlet",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
     is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
@@ -585,17 +540,9 @@ function PidControl(db::DB, config::Config)::PidControl
         error("Problems encountered when parsing PidControl static and time node IDs.")
     end
 
-    defaults = (; active = true)
     time_interpolatables = [:target, :proportional, :integral, :derivative]
-    parsed_parameters, valid = parse_static_and_time(
-        static,
-        time,
-        db,
-        config,
-        "PidControl",
-        defaults,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, "PidControl"; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing PidControl data.")

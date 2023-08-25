@@ -105,14 +105,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    # expand scalar saveat for SavingCallback
-    saveat = if config.solver.saveat isa Number
-        range(timespan...; step = config.solver.saveat)
-    else
-        config.solver.saveat
-    end
-
-    callback, saved_flow = create_callbacks(parameters; saveat)
+    callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
     @debug "Created callbacks."
 
     @timeit_debug to "Setup integrator" integrator = init(
@@ -300,9 +293,11 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    if variable[condition_idx] == "level" &&
-       control_state_change &&
-       id_index(basin.node_id, condition_idx)[1]
+    is_basin = id_index(basin.node_id, discrete_control.listen_feature_id[condition_idx])[1]
+    # NOTE: The above no longer works when listen feature ids can be something other than node ids
+    # I think the more durable option is to give all possible condition types a different variable string,
+    # e.g. basin.level and level_boundary.level
+    if variable[condition_idx] == "level" && control_state_change && is_basin
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
@@ -532,7 +527,9 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
-    (log._module == @__MODULE__) || (parentmodule(log._module) == @__MODULE__)
+    (log._module == @__MODULE__) ||
+        (parentmodule(log._module) == @__MODULE__) ||
+        log._module == OrdinaryDiffEq  # for the progress bar
 end
 
 function run(config::Config)::Model
@@ -540,7 +537,7 @@ function run(config::Config)::Model
 
     # Reconfigure the logger if necessary with the correct loglevel
     # but make sure to only log from Ribasim
-    if min_enabled_level(logger) != config.logging.verbosity
+    if min_enabled_level(logger) + 1 != config.logging.verbosity
         logger = EarlyFilteredLogger(
             is_current_module,
             LevelOverrideLogger(config.logging.verbosity, logger),
