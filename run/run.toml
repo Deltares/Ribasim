@@ -17,17 +17,17 @@ saveat = 86400.0
 # ids = [200164]
 # ids = [200164, 200165]
 # 151358 with downstream LSW
-ids = [14908, 14909, 14910, 14784]
-# ids = [1, 2, 3]  # one P
+# ids = [14908, 14909, 14910, 14784]
+ids = [1, 2, 3]  # one P
 
-forcing = "../data/lhm/forcing.arrow"
-state = "../data/lhm/state.arrow"
-static = "../data/lhm/static.arrow"
-profile = "../data/lhm/profile.arrow"
-node = "../data/lhm/node.arrow"
-edge = "../data/lhm/edge.arrow"
+forcing = "../data/other/input/7/forcing.arrow"
+state = "../data/other/input/7/state.arrow"
+static = "../data/other/input/7/static.arrow"
+profile = "../data/other/input/7/profile.arrow"
+node = "../data/other/input/7/node.arrow"
+edge = "../data/other/input/7/edge.arrow"
 
-waterbalance = "../data/lhm/waterbalance.arrow"
+waterbalance = "../data/other/input/7/waterbalance.arrow"
 
 # entire district around Hupsel
 # lsw_ids = [

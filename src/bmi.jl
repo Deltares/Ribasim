@@ -403,7 +403,7 @@ function BMI.initialize(T::Type{Register}, config::AbstractDict)
     saveat = get(config, "saveat", [])
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
-        QNDF(autodiff=false);
+        QNDF(; autodiff = false);
         progress = true,
         progress_name = "Simulating",
         callback,
