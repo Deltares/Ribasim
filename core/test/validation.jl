@@ -103,6 +103,13 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Nodes of type Ribasim.FractionalFlow can have at most 0 control outneighbor(s) (got 1 for node #5)."
+
+    @test_throws "'n_neighbor_bounds_flow' not defined for Val{:foo}()." Ribasim.n_neighbor_bounds_flow(
+        :foo,
+    )
+    @test_throws "'n_neighbor_bounds_control' not defined for Val{:bar}()." Ribasim.n_neighbor_bounds_control(
+        :bar,
+    )
 end
 
 @testset "PidControl connectivity validation" begin
