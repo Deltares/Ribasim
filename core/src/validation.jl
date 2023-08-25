@@ -63,6 +63,7 @@ neighbortypes(::Val{:DiscreteControl}) = Set((
     :LinearResistance,
     :ManningResistance,
     :FractionalFlow,
+    :PidControl,
 ))
 neighbortypes(::Val{:PidControl}) = Set((:Pump, :Outlet))
 neighbortypes(::Val{:TabulatedRatingCurve}) =
@@ -92,6 +93,8 @@ n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(nodetype) =
+    error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
 n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
 n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, typemax(Int))
@@ -107,6 +110,8 @@ n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(nodetype) =
+    error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin

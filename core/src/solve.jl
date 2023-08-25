@@ -544,7 +544,10 @@ function continuous_control!(
     t::Float64,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
-    (; min_flow_rate, max_flow_rate) = pump
+    min_flow_rate_pump = pump.min_flow_rate
+    max_flow_rate_pump = pump.max_flow_rate
+    min_flow_rate_outlet = outlet.min_flow_rate
+    max_flow_rate_outlet = outlet.max_flow_rate
     (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
 
@@ -614,6 +617,14 @@ function continuous_control!(
         end
 
         # Clip values outside pump flow rate bounds
+        if controls_pump
+            min_flow_rate = min_flow_rate_pump
+            max_flow_rate = max_flow_rate_pump
+        else
+            min_flow_rate = min_flow_rate_outlet
+            max_flow_rate = max_flow_rate_outlet
+        end
+
         flow_rate = clamp(
             flow_rate,
             min_flow_rate[controlled_node_idx],

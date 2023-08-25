@@ -551,7 +551,7 @@ function PidControl(db::DB, config::Config)::PidControl
     pid_error = zeros(length(node_ids))
 
     # Combine PID parameters into one vector interpolation object
-    pid_params = VectorInterpolation[]
+    pid_parameters = VectorInterpolation[]
     (; proportional, integral, derivative) = parsed_parameters
 
     for i in eachindex(node_ids)
@@ -561,7 +561,19 @@ function PidControl(db::DB, config::Config)::PidControl
         K_d = derivative[i].u
 
         itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        push!(pid_params, itp)
+        push!(pid_parameters, itp)
+    end
+
+    for (key, params) in parsed_parameters.control_mapping
+        (; proportional, integral, derivative) = params
+
+        times = params.proportional.t
+        K_p = proportional.u
+        K_i = integral.u
+        K_d = derivative.u
+        pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
+        parsed_parameters.control_mapping[key] =
+            (; params.target, params.active, pid_params)
     end
 
     return PidControl(
@@ -569,7 +581,7 @@ function PidControl(db::DB, config::Config)::PidControl
         parsed_parameters.active,
         parsed_parameters.listen_node_id,
         parsed_parameters.target,
-        pid_params,
+        pid_parameters,
         pid_error,
         parsed_parameters.control_mapping,
     )

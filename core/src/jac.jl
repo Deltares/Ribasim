@@ -358,7 +358,10 @@ function formulate_jac!(
 )::Nothing
     (; basin, connectivity, pump, outlet) = p
     (; node_id, active, listen_node_id, pid_params, target, error) = pid_control
-    (; min_flow_rate, max_flow_rate) = pump
+    min_flow_rate_pump = pump.min_flow_rate
+    max_flow_rate_pump = pump.max_flow_rate
+    min_flow_rate_outlet = outlet.min_flow_rate
+    max_flow_rate_outlet = outlet.max_flow_rate
     (; graph_flow, graph_control) = connectivity
 
     pid_params_interpolated = [params(t) for params in pid_params]
@@ -446,6 +449,14 @@ function formulate_jac!(
         end
 
         # Clip values outside pump flow rate bounds
+        if controls_pump
+            min_flow_rate = min_flow_rate_pump
+            max_flow_rate = max_flow_rate_pump
+        else
+            min_flow_rate = min_flow_rate_outlet
+            max_flow_rate = max_flow_rate_outlet
+        end
+
         flow_rate = reduction_factor * E / D
         was_clipped = false
 

@@ -334,9 +334,10 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
-        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+        has_index, condition_basin_idx =
+            id_index(basin.node_id, listen_feature_id[condition_idx])
 
-        if du[condition_basin_idx] > 0.0
+        if has_index && du[condition_basin_idx] > 0.0
             condition_value[condition_idx] = true
             discrete_control_affect!(integrator, condition_idx, true)
         end
