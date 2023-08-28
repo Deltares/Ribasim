@@ -812,8 +812,10 @@ function formulate!(
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
         k = 1000.0
+        # This epsilon makes sure the AD derivative at Δh = 0 does not give NaN
+        eps = 1e-200
 
-        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh))
+        q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
         flow[basin_a_id, id] = q
         flow[id, basin_b_id] = q
