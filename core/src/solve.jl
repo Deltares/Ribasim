@@ -11,10 +11,10 @@ flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
-struct Connectivity
+struct Connectivity{T}
     graph_flow::DiGraph{Int}
     graph_control::DiGraph{Int}
-    flow::SparseMatrixCSC{Number, Int}
+    flow::SparseMatrixCSC{T, Int}
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
     edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
@@ -23,13 +23,13 @@ struct Connectivity
     function Connectivity(
         graph_flow,
         graph_control,
-        flow,
+        flow::SparseMatrixCSC{T, Int},
         edge_ids_flow,
         edge_ids_flow_inv,
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
-    )
+    ) where {T}
         invalid_networks = Vector{String}()
 
         if !valid_edges(edge_ids_flow, edge_connection_types_flow)
@@ -41,7 +41,7 @@ struct Connectivity
         end
 
         if isempty(invalid_networks)
-            new(
+            new{T}(
                 graph_flow,
                 graph_control,
                 flow,
@@ -71,22 +71,22 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
-struct Basin{C} <: AbstractParameterNode
+struct Basin{T, C} <: AbstractParameterNode
     node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
-    current_level::Vector{Number}
-    current_area::Vector{Number}
+    current_level::Vector{T}
+    current_area::Vector{T}
     # The derivative of the area with respect to the level
     # used for the analytical Jacobian
-    current_darea::Vector{Number}
+    current_darea::Vector{T}
     # Discrete values for interpolation
-    area::Vector{Vector{Number}}
-    level::Vector{Vector{Number}}
-    storage::Vector{Vector{Number}}
+    area::Vector{Vector{Float64}}
+    level::Vector{Vector{Float64}}
+    storage::Vector{Vector{Float64}}
     # data source for parameter updates
     time::StructVector{BasinForcingV1, C, Int}
 
@@ -96,17 +96,17 @@ struct Basin{C} <: AbstractParameterNode
         potential_evaporation,
         drainage,
         infiltration,
-        current_level,
-        current_area,
-        current_darea,
+        current_level::Vector{T},
+        current_area::Vector{T},
+        current_darea::Vector{T},
         area,
         level,
         storage,
         time::StructVector{BasinForcingV1, C, Int},
-    ) where {C}
+    ) where {T, C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)
-            return new{C}(
+            return new{T, C}(
                 node_id,
                 precipitation,
                 potential_evaporation,
