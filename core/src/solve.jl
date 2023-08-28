@@ -1,8 +1,7 @@
 ## types and functions
-const ScalarInterpolation =
-    LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
-const VectorInterpolation =
-    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
+const ScalarInterpolation{T} = LinearInterpolation{Vector{T}, Vector{T}, true, T} where {T}
+const VectorInterpolation{T} =
+    LinearInterpolation{Vector{Vector{T}}, Vector{T}, true, Vector{T}} where {T}
 
 """
 Store the connectivity information
@@ -383,13 +382,13 @@ pid_params: a vector interpolation for parameters changing over time.
     where the last three are the coefficients for the PID equation.
 error: the current error; basin_target - current_level
 """
-struct PidControl <: AbstractParameterNode
+struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
-    error::Vector{Float64}
+    error::Vector{T}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 

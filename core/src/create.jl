@@ -40,7 +40,7 @@ function parse_static_and_time(
         # If the type is a union, then the associated parameter is optional and
         # the type is of the form Union{Missing,ActualType}
         parameter_type = if parameter_name in time_interpolatables
-            LinearInterpolation
+            ScalarInterpolation
         elseif isa(parameter_type, Union)
             nonmissingtype(parameter_type)
         else
@@ -228,7 +228,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
 
     return LinearResistance(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.control_mapping,
     )
@@ -309,7 +309,7 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
 
     return ManningResistance(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
@@ -410,7 +410,7 @@ function Pump(db::DB, config::Config)::Pump
 
     return Pump(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -431,7 +431,7 @@ function Outlet(db::DB, config::Config)::Outlet
 
     return Outlet(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -578,7 +578,7 @@ function PidControl(db::DB, config::Config)::PidControl
 
     return PidControl(
         node_ids,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.listen_node_id,
         parsed_parameters.target,
         pid_parameters,

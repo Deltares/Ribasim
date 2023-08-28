@@ -137,9 +137,9 @@ function get_area_and_level(
 end
 
 function get_area_and_level(
-    storage_discrete::Vector{Number},
-    area_discrete::Vector{Number},
-    level_discrete::Vector{Number},
+    storage_discrete::Vector,
+    area_discrete::Vector,
+    level_discrete::Vector,
     storage::Number,
 )::Tuple{Number, Number, Number}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
