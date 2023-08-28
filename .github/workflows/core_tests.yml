@@ -2,18 +2,9 @@ name: Julia Tests
 on:
   push:
     branches: [main]
+    paths-ignore: [".teamcity/**"]
     tags: ["*"]
-    paths:
-      - ".github/**"
-      - "build/**"
-      - "core/**"
-      - "python/**"
   pull_request:
-    paths:
-      - ".github/**"
-      - "build/**"
-      - "core/**"
-      - "python/**"
   merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

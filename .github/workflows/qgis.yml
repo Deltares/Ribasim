@@ -3,16 +3,9 @@ name: QGIS
 on:
     push:
       branches: [main]
+      paths-ignore: [".teamcity/**"]
       tags: ["*"]
-      paths:
-        - ".github/qgis.yml"
-        - "python/ribasim/ribasim/models.py"
-        - "qgis/**"
     pull_request:
-      paths:
-        - ".github/qgis.yml"
-        - "python/ribasim/ribasim/models.py"
-        - "qgis/**"
     merge_group:
 jobs:
     test-qgis:
