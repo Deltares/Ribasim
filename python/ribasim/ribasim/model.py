@@ -42,7 +42,6 @@ class Solver(BaseModel):
     reltol: Optional[float]
     maxiters: Optional[int]
     sparse: Optional[bool]
-    jac: Optional[bool]
     autodiff: Optional[bool]
 
 

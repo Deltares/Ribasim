@@ -34,7 +34,7 @@ function create_graph(
 end
 
 "Calculate a profile storage by integrating the areas over the levels"
-function profile_storage(levels::Vector{Float64}, areas::Vector{Float64})::Vector{Float64}
+function profile_storage(levels::Vector, areas::Vector)::Vector{Float64}
     # profile starts at the bottom; first storage is 0
     storages = zero(areas)
     n = length(storages)
