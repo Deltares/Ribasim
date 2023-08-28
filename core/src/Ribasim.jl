@@ -2,8 +2,11 @@ module Ribasim
 
 import IterTools
 import BasicModelInterface as BMI
+import TranscodingStreams
 
 using Arrow: Arrow, Table
+using CodecLz4: LZ4FrameCompressor
+using CodecZstd: ZstdCompressor
 using Configurations: from_toml
 using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
@@ -31,7 +34,7 @@ include("validation.jl")
 include("solve.jl")
 include("jac.jl")
 include("config.jl")
-using .config: Config, Solver, algorithm, snake_case, zstd, lz4
+using .config
 include("utils.jl")
 include("lib.jl")
 include("io.jl")
