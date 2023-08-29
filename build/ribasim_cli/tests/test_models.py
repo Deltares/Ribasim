@@ -10,14 +10,13 @@ import ribasim_testmodels
     "model_constructor",
     map(ribasim_testmodels.__dict__.get, ribasim_testmodels.__all__),
 )
-def test_models(model_constructor, tmp_path):
+def test_ribasim_cli(model_constructor, tmp_path):
     model = model_constructor()
     assert isinstance(model, ribasim.Model)
     model.write(tmp_path)
 
     executable = (
-        Path(__file__).parents[3]
-        / "build"
+        Path(__file__).parents[2]
         / "create_binaries"
         / "ribasim_cli"
         / "bin"
