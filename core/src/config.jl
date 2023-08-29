@@ -8,6 +8,9 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
+export Config, Solver, Output, Logging
+export algorithm, snake_case, zstd, lz4
+
 const schemas =
     getfield.(
         Ref(Ribasim),

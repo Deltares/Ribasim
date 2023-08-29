@@ -3,6 +3,8 @@ using Ribasim
 using Dates
 using Configurations: UndefKeywordError
 using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+using CodecLz4: LZ4FrameCompressor
+using CodecZstd: ZstdCompressor
 
 @testset "config" begin
     @test_throws UndefKeywordError Ribasim.Config()
@@ -24,9 +26,18 @@ using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     end
 
     @testset "output" begin
-        o = Ribasim.config.Output()
-        @test o isa Ribasim.config.Output
-        @test_throws Exception Output(compression = "lz5")
+        o = Ribasim.Output()
+        @test o isa Ribasim.Output
+        @test o.compression === Ribasim.zstd
+        @test o.compression_level === 6
+        @test_throws ArgumentError Ribasim.Output(compression = "lz5")
+
+        @test Ribasim.get_compressor(
+            Ribasim.Output(; compression = "lz4", compression_level = 2),
+        ) isa LZ4FrameCompressor
+        @test Ribasim.get_compressor(
+            Ribasim.Output(; compression = "zstd", compression_level = 3),
+        ) isa ZstdCompressor
     end
 
     @testset "docs" begin

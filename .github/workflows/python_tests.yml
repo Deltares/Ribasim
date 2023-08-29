@@ -2,10 +2,9 @@ name: Ribasim Python Tests
 on:
   push:
     branches: [main]
+    paths-ignore: [".teamcity/**"]
     tags: ["*"]
-    paths: [".github/**", "python/ribasim/**"]
   pull_request:
-    paths: [".github/**", "python/ribasim/**"]
   merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

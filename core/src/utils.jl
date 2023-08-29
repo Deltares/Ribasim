@@ -460,17 +460,19 @@ function basin_bottoms(
     return bottom_a, bottom_b
 end
 
-"Get the compressor based on the Config"
-function get_compressor(config::Config)
-    compressor = config.output.compression
-    compressionlevel = config.output.compression_level
-    return if compressor == lz4
-        c = Arrow.LZ4FrameCompressor(; compressionlevel)
-        Arrow.CodecLz4.TranscodingStreams.initialize(c)
+"Get the compressor based on the Output"
+function get_compressor(output::Output)::TranscodingStreams.Codec
+    compressor = output.compression
+    level = output.compression_level
+    c = if compressor == lz4
+        LZ4FrameCompressor(; compressionlevel = level)
     elseif compressor == zstd
-        c = Arrow.ZstdCompressor(; level = compressionlevel)
-        Arrow.CodecZstd.TranscodingStreams.initialize(c)
+        ZstdCompressor(; level)
+    else
+        error("Unsupported compressor $compressor")
     end
+    TranscodingStreams.initialize(c)
+    return c
 end
 
 """
