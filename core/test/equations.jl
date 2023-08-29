@@ -203,6 +203,7 @@ end
     (; flow_boundary, fractional_flow, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
+    pump_flow_rate = Ribasim.preallocation_dispatch(pump.flow_rate, 0)
     q_pump = pump.flow_rate[1]
     frac = fractional_flow.fraction[1]
 

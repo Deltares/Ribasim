@@ -705,10 +705,11 @@ function formulate!(
     linear_resistance::LinearResistance,
     p::Parameters,
     current_level,
+    flow,
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
@@ -804,10 +805,11 @@ function formulate!(
     manning_resistance::ManningResistance,
     p::Parameters,
     current_level,
+    flow,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     for (i, id) in enumerate(node_id)
@@ -858,9 +860,9 @@ function formulate!(
     return nothing
 end
 
-function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
+function formulate!(fractional_flow::FractionalFlow, flow, p::Parameters)::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, fraction) = fractional_flow
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
@@ -870,9 +872,9 @@ function formulate!(fractional_flow::FractionalFlow, p::Parameters)::Nothing
     return nothing
 end
 
-function formulate!(flow_boundary::FlowBoundary, p::Parameters, t::Float64)::Nothing
+function formulate!(flow_boundary::FlowBoundary, p::Parameters, flow, t::Float64)::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
 
     for (i, id) in enumerate(node_id)
@@ -894,10 +896,11 @@ end
 function formulate!(
     node::Union{Pump, Outlet},
     p::Parameters,
+    flow,
     storage::AbstractVector,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = node
     flow_rate = preallocation_dispatch(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
@@ -971,13 +974,13 @@ function formulate_flows!(
         outlet,
     ) = p
 
-    formulate!(linear_resistance, p, current_level, t)
-    formulate!(manning_resistance, p, current_level, t)
+    formulate!(linear_resistance, p, current_level, flow, t)
+    formulate!(manning_resistance, p, current_level, flow, t)
     formulate!(tabulated_rating_curve, p, current_level, flow, t)
-    formulate!(flow_boundary, p, t)
-    formulate!(fractional_flow, p)
-    formulate!(pump, p, storage)
-    formulate!(outlet, p, storage)
+    formulate!(flow_boundary, p, flow, t)
+    formulate!(fractional_flow, flow, p)
+    formulate!(pump, p, flow, storage)
+    formulate!(outlet, p, flow, storage)
 
     return nothing
 end
