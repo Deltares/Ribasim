@@ -572,7 +572,7 @@ function continuous_control!(
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
 
             listened_basin_storage = u.storage[listened_node_idx]
-            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+            reduction_factor = clamp(listened_basin_storage, 0.0, 10.0) / 10.0
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
@@ -581,7 +581,7 @@ function continuous_control!(
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
-                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+                reduction_factor = clamp(upstream_basin_storage, 0.0, 10.0) / 10.0
             else
                 reduction_factor = 1.0
             end
@@ -704,9 +704,10 @@ Directed graph: outflow is positive!
 function formulate!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
+    storage::AbstractVector{Float64},
     t::Float64,
 )::Nothing
-    (; connectivity) = p
+    (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
@@ -714,7 +715,11 @@ function formulate!(
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id, t))
+            hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
+            @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
+            s = storage[basin_idx]
+            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
+            q = reduction_factor * tables[i](get_level(p, upstream_basin_id, t))
         else
             q = 0.0
         end
@@ -882,7 +887,7 @@ function formulate!(
         if hasindex
             # Pumping from basin
             s = storage[basin_idx]
-            reduction_factor = min(s, 10.0) / 10.0
+            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
             q = reduction_factor * rate
         else
             # Pumping from level boundary
@@ -932,7 +937,7 @@ function formulate_flows!(
 
     formulate!(linear_resistance, p, t)
     formulate!(manning_resistance, p, t)
-    formulate!(tabulated_rating_curve, p, t)
+    formulate!(tabulated_rating_curve, p, storage, t)
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)

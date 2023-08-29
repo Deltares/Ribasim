@@ -404,7 +404,7 @@ function formulate_jac!(
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
 
             listened_basin_storage = u.storage[listened_node_idx]
-            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+            reduction_factor = clamp(listened_basin_storage, 0.0, 10.0) / 10.0
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
@@ -414,7 +414,7 @@ function formulate_jac!(
                 id_index(basin.node_id, upstream_node_id)
             if has_upstream_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
-                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+                reduction_factor = clamp(upstream_basin_storage, 0.0, 10.0) / 10.0
             else
                 reduction_factor = 1.0
             end

@@ -47,7 +47,7 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[469.8923, 469.89038, 410.71472, 1427.4194] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[473.06985, 473.06796, 374.6535, 1428.3226] skip =
         Sys.isapple()
 end
 
@@ -80,7 +80,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[5.949285, 725.9446] skip = Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[8.418005, 725.491] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end
