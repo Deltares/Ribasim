@@ -47,6 +47,14 @@ function add_metadata(project_dir, license_file, output_dir, git_repo)
         commit = LibGit2.peel(LibGit2.GitCommit, branch)
         short_name = LibGit2.shortname(branch)
         short_commit = string(LibGit2.GitShortHash(LibGit2.GitHash(commit), 10))
+
+        # get the release from the current tag, like `git describe --tags`
+        # if it is a commit after a tag, it will be <tag>-g<short-commit>
+        options =
+            LibGit2.DescribeOptions(; describe_strategy = LibGit2.Consts.DESCRIBE_TAGS)
+        result = LibGit2.GitDescribeResult(repo; options)
+        tag = LibGit2.format(result)
+
         url = "https://github.com/Deltares/Ribasim/tree"
         version_info = """
 
@@ -55,10 +63,11 @@ function add_metadata(project_dir, license_file, output_dir, git_repo)
         This build uses the Ribasim version mentioned below.
 
         ```toml
-        version = "$version"
+        release = "$tag"
         commit = "$url/$short_commit"
         branch = "$url/$short_name"
         julia_version = "$julia_version"
+        core_version = "$version"
         ```"""
         println(io, version_info)
     end
