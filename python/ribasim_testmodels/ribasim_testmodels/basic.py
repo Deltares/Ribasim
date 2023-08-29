@@ -210,9 +210,10 @@ def basic_model() -> ribasim.Model:
     return model
 
 
-def basic_transient_model(model) -> ribasim.Model:
+def basic_transient_model() -> ribasim.Model:
     """Update the basic model with transient forcing"""
 
+    model = basic_model()
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
     seconds_per_day = 24 * 60 * 60
