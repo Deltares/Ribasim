@@ -110,12 +110,14 @@ end
 """Compute the storages of the basins based on the water level of the basins."""
 function get_storages_from_levels(
     basin::Basin,
-    levels::Vector{Float64},
+    levels::Vector,
 )::Tuple{Vector{Float64}, Bool}
-    storages = Float64[]
+    storage = get_storage_from_level(basin, 1, levels[1])
+    storages = [storage]
 
-    for (i, level) in enumerate(levels)
-        push!(storages, get_storage_from_level(basin, i, level))
+    for (i, level) in enumerate(levels[2:end])
+        storage = get_storage_from_level(basin, i + 1, level)
+        push!(storages, storage)
     end
     return storages, any(isnan.(storages))
 end
@@ -124,11 +126,7 @@ end
 Compute the area and level of a basin given its storage.
 Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(
-    basin::Basin,
-    state_idx::Int,
-    storage::Number,
-)::Tuple{Number, Number, Number}
+function get_area_and_level(basin::Basin, state_idx::Int, storage::Real)::Tuple{Real, Real}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -140,8 +138,8 @@ function get_area_and_level(
     storage_discrete::Vector,
     area_discrete::Vector,
     level_discrete::Vector,
-    storage::Number,
-)::Tuple{Number, Number, Number}
+    storage::Real,
+)::Tuple{Real, Real}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -194,7 +192,7 @@ function get_area_and_level(
         area_diff = area_higher - area_lower
         level_diff = level_higher - level_lower
 
-        if area_diff ≈ 0
+        if realpart(area_diff) ≈ 0
             # Constant area means linear interpolation of level
             darea = 0.0
             area = area_lower
@@ -209,7 +207,7 @@ function get_area_and_level(
         end
     end
 
-    return area, level, darea
+    return area, level
 end
 
 """
@@ -410,10 +408,10 @@ end
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 """
-function get_level(p::Parameters, node_id::Int, t::Float64)::Number
+function get_level(p::Parameters, node_id::Int, current_level, t::Float64)::Real
     (; basin, level_boundary) = p
     # since the node_id fields are already Indices, Dictionary creation is instant
-    basin = Dictionary(basin.node_id, basin.current_level)
+    basin = Dictionary(basin.node_id, current_level)
     hasindex, token = gettoken(basin, node_id)
     return if hasindex
         gettokenvalue(basin, token)

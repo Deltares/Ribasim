@@ -80,6 +80,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     else
         storages, errors =
             get_storages_from_levels(parameters.basin, state.level)
+        storages = real.(storages)
         if errors
             error(
                 "Encountered errors while parsing the initial levels of basins.",
@@ -437,7 +438,8 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 end
 
 "Copy the current flow to the SavedValues"
-save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
+save_flow(u, t, integrator) =
+    copy(nonzeros(preallocation_dispatch(integrator.p.connectivity.flow, u)))
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing

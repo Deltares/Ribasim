@@ -1,7 +1,8 @@
 ## types and functions
-const ScalarInterpolation{T} = LinearInterpolation{Vector{T}, Vector{T}, true, T} where {T}
-const VectorInterpolation{T} =
-    LinearInterpolation{Vector{Vector{T}}, Vector{T}, true, Vector{T}} where {T}
+const ScalarInterpolation =
+    LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
+const VectorInterpolation =
+    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
 """
 Store the connectivity information
@@ -11,10 +12,13 @@ flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 """
-struct Connectivity{T}
+struct Connectivity
     graph_flow::DiGraph{Int}
     graph_control::DiGraph{Int}
-    flow::SparseMatrixCSC{T, Int}
+    flow::Union{
+        SparseMatrixCSC{Float64, Int},
+        DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}},
+    }
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
     edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
@@ -23,13 +27,13 @@ struct Connectivity{T}
     function Connectivity(
         graph_flow,
         graph_control,
-        flow::SparseMatrixCSC{T, Int},
+        flow,
         edge_ids_flow,
         edge_ids_flow_inv,
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
-    ) where {T}
+    )
         invalid_networks = Vector{String}()
 
         if !valid_edges(edge_ids_flow, edge_connection_types_flow)
@@ -41,7 +45,7 @@ struct Connectivity{T}
         end
 
         if isempty(invalid_networks)
-            new{T}(
+            new(
                 graph_flow,
                 graph_control,
                 flow,
@@ -71,18 +75,15 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
 """
-struct Basin{T, C} <: AbstractParameterNode
+struct Basin{C} <: AbstractParameterNode
     node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
-    current_level::Vector{T}
-    current_area::Vector{T}
-    # The derivative of the area with respect to the level
-    # used for the analytical Jacobian
-    current_darea::Vector{T}
+    current_level::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
+    current_area::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -96,17 +97,16 @@ struct Basin{T, C} <: AbstractParameterNode
         potential_evaporation,
         drainage,
         infiltration,
-        current_level::Vector{T},
-        current_area::Vector{T},
-        current_darea::Vector{T},
+        current_level,
+        current_area,
         area,
         level,
         storage,
         time::StructVector{BasinForcingV1, C, Int},
-    ) where {T, C}
+    ) where {C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)
-            return new{T, C}(
+            return new{C}(
                 node_id,
                 precipitation,
                 potential_evaporation,
@@ -114,7 +114,6 @@ struct Basin{T, C} <: AbstractParameterNode
                 infiltration,
                 current_level,
                 current_area,
-                current_darea,
                 area,
                 level,
                 storage,
@@ -264,7 +263,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
 struct Pump <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Float64}
+    flow_rate::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
@@ -279,7 +278,12 @@ struct Pump <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     )
-        if valid_flow_rates(node_id, flow_rate, control_mapping, :Pump)
+        if valid_flow_rates(
+            node_id,
+            preallocation_dispatch(flow_rate, 0),
+            control_mapping,
+            :Pump,
+        )
             return new(
                 node_id,
                 active,
@@ -307,7 +311,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
 struct Outlet <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Vector{Float64}
+    flow_rate::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
@@ -322,7 +326,12 @@ struct Outlet <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     )
-        if valid_flow_rates(node_id, flow_rate, control_mapping, :Outlet)
+        if valid_flow_rates(
+            node_id,
+            preallocation_dispatch(flow_rate, 0),
+            control_mapping,
+            :Outlet,
+        )
             return new(
                 node_id,
                 active,
@@ -382,13 +391,13 @@ pid_params: a vector interpolation for parameters changing over time.
     where the last three are the coefficients for the PID equation.
 error: the current error; basin_target - current_level
 """
-struct PidControl{T} <: AbstractParameterNode
+struct PidControl <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
-    error::Vector{T}
+    error::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
@@ -478,15 +487,17 @@ end
 
 function set_current_basin_properties!(
     basin::Basin,
+    current_area,
+    current_level,
     storage::AbstractVector,
-    t::Real,
+    t::Float64,
 )::Nothing
     for i in eachindex(storage)
         s = storage[i]
-        area, level, darea = get_area_and_level(basin, i, s)
-        basin.current_level[i] = level
-        basin.current_area[i] = area
-        basin.current_darea[i] = darea
+        area, level = get_area_and_level(basin, i, s)
+
+        current_level[i] = level
+        current_area[i] = area
     end
 end
 
@@ -498,12 +509,14 @@ function formulate!(
     du::AbstractVector,
     basin::Basin,
     storage::AbstractVector,
-    t::Real,
+    current_area,
+    current_level,
+    t::Float64,
 )::Nothing
     for i in eachindex(storage)
         # add all precipitation that falls within the profile
-        level = basin.current_level[i]
-        area = basin.current_area[i]
+        level = current_level[i]
+        area = current_area[i]
 
         bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
@@ -520,26 +533,34 @@ function formulate!(
     return nothing
 end
 
-function get_error!(pid_control::PidControl, p::Parameters, t::Float64)
+function get_error!(
+    pid_control::PidControl,
+    p::Parameters,
+    current_level,
+    pid_error,
+    t::Float64,
+)
     (; basin) = p
     (; listen_node_id, target) = pid_control
-
-    pid_error = pid_control.error
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        pid_error[i] = target[i](t) - basin.current_level[listened_node_idx]
+        pid_error[i] = target[i](t) - current_level[listened_node_idx]
     end
 end
 
 function continuous_control!(
     u::ComponentVector,
     du::ComponentVector,
+    current_area,
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray,
+    current_level::AbstractVector,
+    flow::SparseMatrixCSC,
+    pid_error,
     t::Float64,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
@@ -547,10 +568,13 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; graph_control, graph_flow, flow) = connectivity
-    (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
+    (; graph_control, graph_flow) = connectivity
+    (; node_id, active, target, pid_params, listen_node_id) = pid_control
 
-    get_error!(pid_control, p, t)
+    outlet_flow_rate = preallocation_dispatch(outlet.flow_rate, u)
+    pump_flow_rate = preallocation_dispatch(pump.flow_rate, u)
+
+    get_error!(pid_control, p, current_level, pid_error, t)
 
     for (i, id) in enumerate(node_id)
         if !active[i]
@@ -559,7 +583,7 @@ function continuous_control!(
             return
         end
 
-        du.integral[i] = error[i]
+        du.integral[i] = pid_error[i]
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
@@ -592,14 +616,14 @@ function continuous_control!(
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
-            area = basin.current_area[listened_node_idx]
+            area = current_area[listened_node_idx]
             D = 1.0 - K_d * reduction_factor / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += reduction_factor * K_p * error[i] / D
+            flow_rate += reduction_factor * K_p * pid_error[i] / D
         end
 
         if !iszero(K_i)
@@ -634,10 +658,10 @@ function continuous_control!(
         # in formulate!(du, connectivity, basin), but in this function
         # flows are set so du has to be updated too.
         if controls_pump
-            pump.flow_rate[controlled_node_idx] = flow_rate
+            pump_flow_rate[controlled_node_idx] = flow_rate
             du.storage[listened_node_idx] -= flow_rate
         else
-            outlet.flow_rate[controlled_node_idx] = flow_rate
+            outlet_flow_rate[controlled_node_idx] = flow_rate
             du.storage[listened_node_idx] += flow_rate
         end
 
@@ -677,7 +701,12 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(linear_resistance::LinearResistance, p::Parameters, t::Float64)::Nothing
+function formulate!(
+    linear_resistance::LinearResistance,
+    p::Parameters,
+    current_level,
+    t::Float64,
+)::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
@@ -686,7 +715,11 @@ function formulate!(linear_resistance::LinearResistance, p::Parameters, t::Float
         basin_b_id = only(outneighbors(graph_flow, id))
 
         if active[i]
-            q = (get_level(p, basin_a_id, t) - get_level(p, basin_b_id, t)) / resistance[i]
+            q =
+                (
+                    get_level(p, basin_a_id, current_level, t) -
+                    get_level(p, basin_b_id, current_level, t)
+                ) / resistance[i]
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
         else
@@ -703,17 +736,19 @@ Directed graph: outflow is positive!
 function formulate!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
+    current_level,
+    flow::SparseMatrixCSC,
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id, t))
+            q = tables[i](get_level(p, upstream_basin_id, current_level, t))
         else
             q = 0.0
         end
@@ -768,6 +803,7 @@ dry.
 function formulate!(
     manning_resistance::ManningResistance,
     p::Parameters,
+    current_level,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
@@ -784,8 +820,8 @@ function formulate!(
             continue
         end
 
-        h_a = get_level(p, basin_a_id, t)
-        h_b = get_level(p, basin_b_id, t)
+        h_a = get_level(p, basin_a_id, current_level, t)
+        h_b = get_level(p, basin_b_id, current_level, t)
         bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
@@ -863,6 +899,7 @@ function formulate!(
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = node
+    flow_rate = preallocation_dispatch(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
@@ -896,11 +933,16 @@ function formulate!(
     return nothing
 end
 
-function formulate!(du::ComponentVector, connectivity::Connectivity, basin::Basin)::Nothing
+function formulate!(
+    du::ComponentVector,
+    connectivity::Connectivity,
+    flow::SparseMatrixCSC,
+    basin::Basin,
+)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
         for in_id in inneighbors(graph_flow, basin_id)
             du[i] += flow[in_id, basin_id]
@@ -912,7 +954,13 @@ function formulate!(du::ComponentVector, connectivity::Connectivity, basin::Basi
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector,
+    current_level,
+    flow::SparseMatrixCSC,
+    t::Float64,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -923,15 +971,19 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::N
         outlet,
     ) = p
 
-    formulate!(linear_resistance, p, t)
-    formulate!(manning_resistance, p, t)
-    formulate!(tabulated_rating_curve, p, t)
+    formulate!(linear_resistance, p, current_level, t)
+    formulate!(manning_resistance, p, current_level, t)
+    formulate!(tabulated_rating_curve, p, current_level, flow, t)
     formulate!(flow_boundary, p, t)
     formulate!(fractional_flow, p)
     formulate!(pump, p, storage)
     formulate!(outlet, p, storage)
 
     return nothing
+end
+
+function preallocation_dispatch(var, value)
+    return isa(var, DiffCache) ? get_tmp(var, value) : var
 end
 
 """
@@ -949,22 +1001,38 @@ function water_balance!(
     integral = u.integral
 
     du .= 0.0
-    nonzeros(connectivity.flow) .= 0.0
+    flow = preallocation_dispatch(connectivity.flow, u)
+    nonzeros(flow) .= 0.0
+
+    current_area = preallocation_dispatch(basin.current_area, u)
+    current_level = preallocation_dispatch(basin.current_level, u)
+    pid_error = preallocation_dispatch(pid_control.error, u)
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(basin, storage, t)
+    set_current_basin_properties!(basin, current_area, current_level, storage, t)
 
     # Basin forcings
-    formulate!(du, basin, storage, t)
+    formulate!(du, basin, storage, current_area, current_level, t)
 
     # First formulate intermediate flows
-    formulate_flows!(p, storage, t)
+    formulate_flows!(p, storage, current_level, flow, t)
 
     # Now formulate du
-    formulate!(du, connectivity, basin)
+    formulate!(du, connectivity, flow, basin)
 
     # PID control (changes the du of PID controlled basins)
-    continuous_control!(u, du, pid_control, p, integral, t)
+    continuous_control!(
+        u,
+        du,
+        current_area,
+        pid_control,
+        p,
+        integral,
+        current_level,
+        flow,
+        pid_error,
+        t,
+    )
 
     # Negative storage musn't decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain

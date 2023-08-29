@@ -16,6 +16,7 @@ using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
+using PreallocationTools
 using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id

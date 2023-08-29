@@ -96,8 +96,8 @@ end
     storage = range(0.0, 1000.0, n_interpolations)
 
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    A = Number[0.0, 100.0, 100.0]
-    h = Number[0.0, 10.0, 15.0]
+    A = [0.0, 100.0, 100.0]
+    h = [0.0, 10.0, 15.0]
     profile = (; A, h, S = Ribasim.profile_storage(h, A))
 
     # On profile points we reproduce the profile

@@ -190,7 +190,7 @@ function static_and_time_node_ids(
     return static_node_ids, time_node_ids, node_ids, !errors
 end
 
-function Connectivity(db::DB)::Connectivity
+function Connectivity(db::DB, config::Config)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
     end
@@ -201,13 +201,19 @@ function Connectivity(db::DB)::Connectivity
 
     edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
 
-    flow = adjacency_matrix(graph_flow, Number)
+    flow = adjacency_matrix(graph_flow, Float64)
+
+    if config.solver.autodiff
+        flowd = DiffCache(flow, 2)
+        flow = get_tmp(flowd, flow)
+    end
+
     nonzeros(flow) .= 0.0
 
     return Connectivity(
         graph_flow,
         graph_control,
-        flow,
+        config.solver.autodiff ? flowd : flow,
         edge_ids_flow,
         edge_ids_flow_inv,
         edge_ids_control,
@@ -408,10 +414,17 @@ function Pump(db::DB, config::Config)::Pump
         error("Errors occurred when parsing Pump data.")
     end
 
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = if config.solver.autodiff
+        DiffCache(parsed_parameters.flow_rate, 2)
+    else
+        parsed_parameters.flow_rate
+    end
+
     return Pump(
         parsed_parameters.node_id,
         BitVector(parsed_parameters.active),
-        parsed_parameters.flow_rate,
+        flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -429,10 +442,17 @@ function Outlet(db::DB, config::Config)::Outlet
         error("Errors occurred when parsing Outlet data.")
     end
 
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = if config.solver.autodiff
+        DiffCache(parsed_parameters.flow_rate, 2)
+    else
+        parsed_parameters.flow_rate
+    end
+
     return Outlet(
         parsed_parameters.node_id,
         BitVector(parsed_parameters.active),
-        parsed_parameters.flow_rate,
+        flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -450,7 +470,11 @@ function Basin(db::DB, config::Config)::Basin
     n = length(node_id)
     current_level = zeros(n)
     current_area = zeros(n)
-    current_darea = zeros(n)
+
+    if config.solver.autodiff
+        current_level = DiffCache(current_level, 2)
+        current_area = DiffCache(current_area, 2)
+    end
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -476,7 +500,6 @@ function Basin(db::DB, config::Config)::Basin
         infiltration,
         current_level,
         current_area,
-        current_darea,
         area,
         level,
         storage,
@@ -550,6 +573,10 @@ function PidControl(db::DB, config::Config)::PidControl
 
     pid_error = zeros(length(node_ids))
 
+    if config.solver.autodiff
+        pid_error = DiffCache(pid_error, 2)
+    end
+
     # Combine PID parameters into one vector interpolation object
     pid_parameters = VectorInterpolation[]
     (; proportional, integral, derivative) = parsed_parameters
@@ -588,7 +615,7 @@ function PidControl(db::DB, config::Config)::PidControl
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    connectivity = Connectivity(db)
+    connectivity = Connectivity(db, config)
 
     linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
