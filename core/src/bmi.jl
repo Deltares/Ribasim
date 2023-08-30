@@ -249,7 +249,7 @@ function get_value(
         level_boundary_idx = findsorted(level_boundary.node_id, feature_id)
 
         if hasindex_basin
-            _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
+            _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
         elseif !isnothing(level_boundary_idx)
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
@@ -432,7 +432,8 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 
     for (field, value) in zip(keys(new_state), new_state)
         if !ismissing(value)
-            getfield(node, field)[idx] = value
+            vec = preallocation_dispatch(getfield(node, field), 0)
+            vec[idx] = value
         end
     end
 end

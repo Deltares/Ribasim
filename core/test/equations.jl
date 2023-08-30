@@ -204,7 +204,7 @@ end
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
     pump_flow_rate = Ribasim.preallocation_dispatch(pump.flow_rate, 0)
-    q_pump = pump.flow_rate[1]
+    q_pump = pump_flow_rate[1]
     frac = fractional_flow.fraction[1]
 
     storage_both = Ribasim.get_storages_and_levels(model).storage

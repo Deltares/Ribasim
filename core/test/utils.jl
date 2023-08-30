@@ -32,7 +32,6 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
-        [2.0, 3.0],
         darea,
         area,
         level,
@@ -83,7 +82,6 @@ end
     storage = Ribasim.profile_storage(level, area)
     basin = Ribasim.Basin(
         Indices([1]),
-        zeros(1),
         zeros(1),
         zeros(1),
         zeros(1),

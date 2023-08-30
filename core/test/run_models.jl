@@ -195,7 +195,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = p.basin.current_level
+    h_actual = Ribasim.preallocation_dispatch(p.basin.current_level, u)
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
