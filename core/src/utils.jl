@@ -762,7 +762,7 @@ function update_jac_prototype!(
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
-                    push!(idxs_out, idx_out)
+                    jac_prototype[idx_in, idx_out] = 1.0
                 end
             else
                 for idx_out in idxs_out
@@ -896,4 +896,8 @@ function Base.getindex(fv::FlatVector, i::Int)
     d, r = divrem(i - 1, veclen)
     v = fv.v[d + 1]
     return v[r + 1]
+end
+
+function preallocation_dispatch(var, value)
+    return isa(var, DiffCache) ? get_tmp(var, value) : var
 end

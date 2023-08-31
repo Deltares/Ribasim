@@ -204,7 +204,7 @@ function Connectivity(db::DB, config::Config)::Connectivity
     flow = adjacency_matrix(graph_flow, Float64)
 
     if config.solver.autodiff
-        flowd = DiffCache(flow, 2)
+        flowd = DiffCache(flow)
         flow = get_tmp(flowd, flow)
     end
 
@@ -416,7 +416,7 @@ function Pump(db::DB, config::Config)::Pump
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, 2)
+        DiffCache(parsed_parameters.flow_rate)
     else
         parsed_parameters.flow_rate
     end
@@ -444,7 +444,7 @@ function Outlet(db::DB, config::Config)::Outlet
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, 2)
+        DiffCache(parsed_parameters.flow_rate)
     else
         parsed_parameters.flow_rate
     end
@@ -472,8 +472,8 @@ function Basin(db::DB, config::Config)::Basin
     current_area = zeros(n)
 
     if config.solver.autodiff
-        current_level = DiffCache(current_level, 2)
-        current_area = DiffCache(current_area, 2)
+        current_level = DiffCache(current_level)
+        current_area = DiffCache(current_area)
     end
 
     precipitation = fill(NaN, length(node_id))
@@ -574,7 +574,7 @@ function PidControl(db::DB, config::Config)::PidControl
     pid_error = zeros(length(node_ids))
 
     if config.solver.autodiff
-        pid_error = DiffCache(pid_error, 2)
+        pid_error = DiffCache(pid_error)
     end
 
     # Combine PID parameters into one vector interpolation object

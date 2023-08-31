@@ -985,10 +985,6 @@ function formulate_flows!(
     return nothing
 end
 
-function preallocation_dispatch(var, value)
-    return isa(var, DiffCache) ? get_tmp(var, value) : var
-end
-
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
