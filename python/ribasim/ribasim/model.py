@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import shutil
 from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional, Type, Union, cast
@@ -174,16 +175,23 @@ class Model(BaseModel):
         return
 
     def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to GeoPackage and Arrow tables."""
-        # avoid adding tables to existing model
+        """Write the input to GeoPackage tables."""
+        # We write all tables to a temporary GeoPackage with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
         directory = Path(directory)
         gpkg_path = directory / f"{self.modelname}.gpkg"
-        gpkg_path.unlink(missing_ok=True)
+        tempname = "." + self.modelname
+        temp_path = gpkg_path.with_stem(tempname)
+        # avoid adding tables to existing model
+        temp_path.unlink(missing_ok=True)
 
         for name in self.fields():
             input_entry = getattr(self, name)
             if isinstance(input_entry, TableModel):
-                input_entry.write(directory, self.modelname)
+                input_entry.write(directory, tempname)
+
+        shutil.move(temp_path, gpkg_path)
         return
 
     @staticmethod
