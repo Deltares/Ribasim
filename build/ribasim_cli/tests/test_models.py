@@ -23,7 +23,7 @@ def test_ribasim_cli(model_constructor, tmp_path):
         / "ribasim.exe"
     )
     config_file = str(tmp_path / f"{model.modelname}.toml")
-    result = subprocess.run([executable, config_file], check=True)
+    result = subprocess.run([executable, config_file])
 
     if model.modelname.startswith("invalid"):
         assert result.returncode != 0
