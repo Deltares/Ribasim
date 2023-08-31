@@ -1,0 +1,93 @@
+---
+title: "Numerical considerations"
+---
+
+We want to solve the following initial value problem:
+$$
+\begin{cases}
+    \frac{\text{d}\mathbf{u}}{\text{d}t} = \mathbf{f}(\mathbf{u},t) \quad t_0 < t < t_\text{end} \\
+    \mathbf{u}(t_0) = \mathbf{u}_0
+\end{cases},
+$$ {#eq-prob}
+
+where $\mathbf{f}$ denotes `water_balance!` and $\mathbf{u_0}$ the initial storages (and the PID integrals which start out at $0$).
+
+In general $\mathbf{f}$ is a non-linear function in $\mathbf{u}$. These non-linearities are introduced by:
+
+- `ManningResistance` nodes;
+- `Basin` profiles;
+- `TabulatedRatingCurve` Q(h) relations.
+
+The problem @eq-prob can be solved by various numerical time-integration methods. To do this the time interval $[t_0,t_\text{end}]$ is discretized into a finite number of timesteps $t_0 < t_1 < \ldots < t_N = t_\text{end}$ for which approximate solutions $\mathbf{w}_n \approx u(t_n)$ are computed. In general we do not assume fixed timesteps.
+
+# Example numerical methods
+
+This section discusses 2 relatively simple numerical methods, mainly to demonstrate the difference between explicit and implicit methods.
+
+## Euler forward
+
+The simplest numerical method is Euler forward:
+$$
+\mathbf{w}_{n+1} = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_n, t_n).
+$$
+
+Here $\mathbf{w}_{n+1}$ is given as a simple explicit function of $\mathbf{w}_n$.
+
+## Eular backward
+
+Euler backward is formulated as follows:
+$$
+\mathbf{w}_{n+1} = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1},t_{n+1}).
+$$
+
+Note that this is an implicit equation for $\mathbf{w}_{n+1}$, which is non-linear because of the non-linearity of $\mathbf{f}$.
+
+Generally there are 2 iterative methods used for finding solutions to non-linear equations like this:
+
+- Picard iteration for fixed points. This method aims to approximate $\mathbf{w}_{n+1}$ as a fixed point of the function
+$$
+\mathbf{g}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1})
+$$
+by iterating $\mathbf{g}$ on an initial guess of $\mathbf{w}_{n+1}$;
+- Newton-Rhapson iterations: approximate $\mathbf{w}_{n+1}$ as a root of the function
+$$
+\mathbf{h}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1}) - \mathbf{x},
+$$
+by iteratively finding the root of its linearized form:
+$$
+\begin{align}
+\mathbf{0} =& \mathbf{h}(\mathbf{w}_{n+1}^k) + \mathbf{J}(\mathbf{h})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k) \\
+=& \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1}^k,t_{n+1}) - \mathbf{w}_{n+1}^k + (t_{n+1}-t_n)\mathbf{J}(\mathbf{f})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k).
+\end{align}
+$$
+Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and solving a linear system per iteration.
+
+# The advantage of implicit methods
+
+***Implicit methods are generally more stable, is there an intuition for this?***
+
+# Jacobian computations
+
+***Finite difference Jacobians probably don't work well together with `DiscreteCallback` control, because then the difference can be large because of a jump in parameters. Or does the solver take care of that, the same way it does so with `ContinuousCallback`?***
+
+# Continuity considerations
+
+The convergence of the Newton-Rhapson method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of $\mathbf{f}$ around the initial guess and root to find. An important aspect is the smoothness of $\mathbf{f}$. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below.
+
+Manning resistance is not mentioned here since it is given by an analytical expression.
+
+## Basin profiles
+
+The basin profiles affect $\mathbf{f}$ in many ways, anywhere where a basin level or area is required.
+
+***I think this part should be updated once [this issue](https://github.com/Deltares/Ribasim/issues/566) has been done.***
+
+## Q(h) relations
+
+`TabulatedRatingCurve` nodes contribute to $\mathbb{f}$ with terms of the following form:
+
+$$
+    Q(h(S))
+$$
+
+where the continuity of this term is given by the least continuous of $Q$ and $h$.

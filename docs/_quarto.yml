@@ -30,6 +30,7 @@ website:
         - core/index.qmd
         - core/usage.qmd
         - core/equations.qmd
+        - core/numerics.qmd
         - build/index.md
     - title: "Python tooling"
       contents:
