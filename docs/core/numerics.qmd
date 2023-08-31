@@ -57,7 +57,7 @@ by iteratively finding the root of its linearized form:
 $$
 \begin{align}
 \mathbf{0} =& \mathbf{h}(\mathbf{w}_{n+1}^k) + \mathbf{J}(\mathbf{h})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k) \\
-=& \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1}^k,t_{n+1}) - \mathbf{w}_{n+1}^k + (t_{n+1}-t_n)\mathbf{J}(\mathbf{f})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k).
+=& \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1}^k,t_{n+1}) - \mathbf{w}_{n+1}^k \\ +&\left[(t_{n+1}-t_n)\mathbf{J}(\mathbf{f})(\mathbf{w}_{n+1}^k)-\mathbf{I}\right](\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k).
 \end{align}
 $$
 Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and solving a linear system per iteration.
