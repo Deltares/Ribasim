@@ -78,16 +78,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
-        storages, errors =
-            get_storages_from_levels(parameters.basin, state.level)
-        storages = real.(storages)
+        storages, errors = get_storages_from_levels(parameters.basin, state.level)
         if errors
-            error(
-                "Encountered errors while parsing the initial levels of basins.",
-            )
+            error("Encountered errors while parsing the initial levels of basins.")
         end
         storages
-    end::Vector{Float64}
+    end
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
@@ -439,8 +435,9 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 end
 
 "Copy the current flow to the SavedValues"
-save_flow(u, t, integrator) =
+function save_flow(u, t, integrator)
     copy(nonzeros(preallocation_dispatch(integrator.p.connectivity.flow, u)))
+end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing

@@ -205,7 +205,6 @@ function Connectivity(db::DB, config::Config)::Connectivity
 
     if config.solver.autodiff
         flowd = DiffCache(flow)
-        flow = get_tmp(flowd, flow)
     end
 
     nonzeros(flow) .= 0.0
