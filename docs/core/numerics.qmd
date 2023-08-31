@@ -91,3 +91,5 @@ $$
 $$
 
 where the continuity of this term is given by the least continuous of $Q$ and $h$.
+
+## Reduction factors for soft landings
