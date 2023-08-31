@@ -11,14 +11,17 @@ graph_flow, graph_control: directed graph with vertices equal to ids
 flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
+
+if autodiff
+    T = DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}}
+else
+    T = SparseMatrixCSC{Float64, Int}
+end
 """
-struct Connectivity
+struct Connectivity{T}
     graph_flow::DiGraph{Int}
     graph_control::DiGraph{Int}
-    flow::Union{
-        SparseMatrixCSC{Float64, Int},
-        DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}},
-    }
+    flow::T
     edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
     edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
@@ -27,13 +30,13 @@ struct Connectivity
     function Connectivity(
         graph_flow,
         graph_control,
-        flow,
+        flow::T,
         edge_ids_flow,
         edge_ids_flow_inv,
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
-    )
+    ) where {T}
         invalid_networks = Vector{String}()
 
         if !valid_edges(edge_ids_flow, edge_connection_types_flow)
@@ -45,7 +48,7 @@ struct Connectivity
         end
 
         if isempty(invalid_networks)
-            new(
+            new{T}(
                 graph_flow,
                 graph_control,
                 flow,
@@ -74,16 +77,22 @@ Requirements:
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
 The node_id are Indices to support fast lookup of e.g. current_level using ID.
+
+if autodiff
+    T = DiffCache{Vector{Float64}}
+else
+    T = Vector{Float64}
+end
 """
-struct Basin{C} <: AbstractParameterNode
+struct Basin{T, C} <: AbstractParameterNode
     node_id::Indices{Int}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
     # cache this to avoid recomputation
-    current_level::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
-    current_area::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
+    current_level::T
+    current_area::T
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
@@ -97,16 +106,16 @@ struct Basin{C} <: AbstractParameterNode
         potential_evaporation,
         drainage,
         infiltration,
-        current_level,
-        current_area,
+        current_level::T,
+        current_area::T,
         area,
         level,
         storage,
         time::StructVector{BasinForcingV1, C, Int},
-    ) where {C}
+    ) where {T, C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)
-            return new{C}(
+            return new{T, C}(
                 node_id,
                 precipitation,
                 potential_evaporation,

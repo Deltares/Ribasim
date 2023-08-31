@@ -112,12 +112,10 @@ function get_storages_from_levels(
     basin::Basin,
     levels::Vector,
 )::Tuple{Vector{Float64}, Bool}
-    storage = get_storage_from_level(basin, 1, levels[1])
-    storages = [storage]
+    storages = Float64[]
 
-    for (i, level) in enumerate(levels[2:end])
-        storage = get_storage_from_level(basin, i + 1, level)
-        push!(storages, storage)
+    for (i, level) in enumerate(levels)
+        push!(storages, get_storage_from_level(basin, i, level))
     end
     return storages, any(isnan.(storages))
 end
@@ -898,6 +896,13 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-function preallocation_dispatch(var, value)
-    return isa(var, DiffCache) ? get_tmp(var, value) : var
+"""
+When using DiffCache for ForwardDiff.jl,
+"""
+function preallocation_dispatch(var::DiffCache, value)
+    return get_tmp(var, value)
+end
+
+function preallocation_dispatch(var::Any, value)
+    return var
 end
