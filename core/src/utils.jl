@@ -410,7 +410,7 @@ end
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 """
-function get_level(p::Parameters, node_id::Int, t::Float64)::Float64
+function get_level(p::Parameters, node_id::Int, t::Float64)::Union{Float64, Nothing}
     (; basin, level_boundary) = p
     # since the node_id fields are already Indices, Dictionary creation is instant
     basin = Dictionary(basin.node_id, basin.current_level)
@@ -419,7 +419,8 @@ function get_level(p::Parameters, node_id::Int, t::Float64)::Float64
         gettokenvalue(basin, token)
     else
         boundary = Dictionary(level_boundary.node_id, level_boundary.level)
-        boundary[node_id](t)
+        hasindex, token = gettoken(boundary, node_id, nothing)
+        return hasindex ? gettokenvalue(boundary, token)(t) : nothing
     end
 end
 
@@ -898,4 +899,20 @@ function Base.getindex(fv::FlatVector, i::Int)
     d, r = divrem(i - 1, veclen)
     v = fv.v[d + 1]
     return v[r + 1]
+end
+
+"""
+Function that goes smoothly from 0 to 1 in the interval [0,threshold],
+and is constant outside this interval.
+"""
+function reduction_factor(x::Float64, threshold::Float64)::Float64
+    return if x < 0
+        0.0
+    elseif x < threshold
+        x_scaled = x / threshold
+        x_scaled_sq = x_scaled^2
+        -2 * x_scaled_sq * x_scaled + 3 * x_scaled_sq
+    else
+        1.0
+    end
 end
