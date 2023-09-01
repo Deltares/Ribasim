@@ -290,7 +290,7 @@ def discrete_control_of_pid_control_model():
                 "node_id": [6, 6],
                 "control_state": ["target_high", "target_low"],
                 "listen_node_id": [3, 3],
-                "target": [6.0, 4.0],
+                "target": [5.0, 3.0],
                 "proportional": 2 * [1e-2],
                 "integral": 2 * [1e-8],
                 "derivative": 2 * [-1e-1],
