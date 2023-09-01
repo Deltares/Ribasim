@@ -269,10 +269,10 @@ max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
-struct Pump <: AbstractParameterNode
+struct Pump{T} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
+    flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
@@ -281,19 +281,19 @@ struct Pump <: AbstractParameterNode
     function Pump(
         node_id,
         active,
-        flow_rate,
+        flow_rate::T,
         min_flow_rate,
         max_flow_rate,
         control_mapping,
         is_pid_controlled,
-    )
+    ) where {T}
         if valid_flow_rates(
             node_id,
             preallocation_dispatch(flow_rate, 0),
             control_mapping,
             :Pump,
         )
-            return new(
+            return new{T}(
                 node_id,
                 active,
                 flow_rate,
@@ -317,10 +317,10 @@ max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
-struct Outlet <: AbstractParameterNode
+struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    flow_rate::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
+    flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
@@ -329,19 +329,19 @@ struct Outlet <: AbstractParameterNode
     function Outlet(
         node_id,
         active,
-        flow_rate,
+        flow_rate::T,
         min_flow_rate,
         max_flow_rate,
         control_mapping,
         is_pid_controlled,
-    )
+    ) where {T}
         if valid_flow_rates(
             node_id,
             preallocation_dispatch(flow_rate, 0),
             control_mapping,
             :Outlet,
         )
-            return new(
+            return new{T}(
                 node_id,
                 active,
                 flow_rate,
@@ -400,13 +400,13 @@ pid_params: a vector interpolation for parameters changing over time.
     where the last three are the coefficients for the PID equation.
 error: the current error; basin_target - current_level
 """
-struct PidControl <: AbstractParameterNode
+struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     listen_node_id::Vector{Int}
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
-    error::Union{Vector{Float64}, DiffCache{Vector{Float64}}}
+    error::T
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 

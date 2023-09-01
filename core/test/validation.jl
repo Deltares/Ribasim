@@ -76,13 +76,13 @@ end
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Nodes of type Ribasim.Pump can have at most 1 flow inneighbor(s) (got 2 for node #1)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} can have at most 1 flow inneighbor(s) (got 2 for node #1)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.Pump must have at least 1 flow outneighbor(s) (got 0 for node #1)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow outneighbor(s) (got 0 for node #1)."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Nodes of type Ribasim.Pump must have at least 1 flow inneighbor(s) (got 0 for node #6)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
     add_edge!(graph_flow, 2, 5)
     add_edge!(graph_flow, 5, 3)
