@@ -54,7 +54,7 @@ For instance, `saveat = 86400.0` will save output after every day that passed.
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
 There are several methods to do this.
-By default Ribasim uses a Jocobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/).
+By default Ribasim uses a Jacobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/).
 If this is not used by setting `autodiff = false`, the Jacobian is calculated with a finite difference method, which can be less accurate and more expensive.
 
 By default the Jacobian matrix is a sparse matrix (`sparse = true`).
