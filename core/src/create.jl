@@ -614,7 +614,7 @@ end
 
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
-    chunk_size = ForwardDiff.pickchunksize(n_states)
+    chunk_size = pickchunksize(n_states)
 
     connectivity = Connectivity(db, config, chunk_size)
 

@@ -13,7 +13,7 @@ using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
-using ForwardDiff
+using ForwardDiff: pickchunksize
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
