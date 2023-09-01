@@ -2,10 +2,9 @@ name: Python Lint
 on:
   push:
     branches: [main]
+    paths-ignore: [".teamcity/**"]
     tags: ["*"]
-    paths: [".github/**", "python/**"]
   pull_request:
-    paths: [".github/**", "python/**"]
   merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
