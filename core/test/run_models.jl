@@ -4,6 +4,7 @@ using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase: successful_retcode
 import Tables
+using PreallocationTools: get_tmp
 
 @testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
@@ -194,7 +195,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = Ribasim.preallocation_dispatch(p.basin.current_level, u)
+    h_actual = get_tmp(p.basin.current_level, u)
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 

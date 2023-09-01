@@ -287,12 +287,7 @@ struct Pump{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(
-            node_id,
-            preallocation_dispatch(flow_rate, 0),
-            control_mapping,
-            :Pump,
-        )
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Pump)
             return new{T}(
                 node_id,
                 active,
@@ -335,12 +330,7 @@ struct Outlet{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(
-            node_id,
-            preallocation_dispatch(flow_rate, 0),
-            control_mapping,
-            :Outlet,
-        )
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Outlet)
             return new{T}(
                 node_id,
                 active,
@@ -580,8 +570,8 @@ function continuous_control!(
     (; graph_control, graph_flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id) = pid_control
 
-    outlet_flow_rate = preallocation_dispatch(outlet.flow_rate, u)
-    pump_flow_rate = preallocation_dispatch(pump.flow_rate, u)
+    outlet_flow_rate = get_tmp(outlet.flow_rate, u)
+    pump_flow_rate = get_tmp(pump.flow_rate, u)
 
     get_error!(pid_control, p, current_level, pid_error, t)
 
@@ -911,7 +901,7 @@ function formulate!(
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = node
-    flow_rate = preallocation_dispatch(flow_rate, storage)
+    flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
@@ -1009,12 +999,12 @@ function water_balance!(
     integral = u.integral
 
     du .= 0.0
-    flow = preallocation_dispatch(connectivity.flow, u)
+    flow = get_tmp(connectivity.flow, u)
     nonzeros(flow) .= 0.0
 
-    current_area = preallocation_dispatch(basin.current_area, u)
-    current_level = preallocation_dispatch(basin.current_level, u)
-    pid_error = preallocation_dispatch(pid_control.error, u)
+    current_area = get_tmp(basin.current_area, u)
+    current_level = get_tmp(basin.current_level, u)
+    pid_error = get_tmp(pid_control.error, u)
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, current_area, current_level, storage, t)

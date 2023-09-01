@@ -112,6 +112,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         alg;
         progress = true,
         progress_name = "Simulating",
+        progress_steps = 100,
         callback,
         tstops,
         config.solver.saveat,
@@ -431,7 +432,7 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 
     for (field, value) in zip(keys(new_state), new_state)
         if !ismissing(value)
-            vec = preallocation_dispatch(getfield(node, field), 0)
+            vec = get_tmp(getfield(node, field), 0)
             vec[idx] = value
         end
     end
@@ -439,7 +440,7 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    copy(nonzeros(preallocation_dispatch(integrator.p.connectivity.flow, u)))
+    copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
 end
 
 "Load updates from 'Basin / time' into the parameters"

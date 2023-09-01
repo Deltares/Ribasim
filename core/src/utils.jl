@@ -895,14 +895,3 @@ function Base.getindex(fv::FlatVector, i::Int)
     v = fv.v[d + 1]
     return v[r + 1]
 end
-
-"""
-When using DiffCache for ForwardDiff.jl,
-"""
-function preallocation_dispatch(var::DiffCache, value)
-    return get_tmp(var, value)
-end
-
-function preallocation_dispatch(var::Any, value)
-    return var
-end
