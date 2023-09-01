@@ -70,7 +70,7 @@ end
         Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF", autodiff = false)),
     ) == AutoFiniteDiff()
     @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF"))) ==
-          AutoFiniteDiff()
+          AutoForwardDiff()
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     Ribasim.algorithm(Ribasim.Solver(; algorithm = "Euler", autodiff = true))
 end

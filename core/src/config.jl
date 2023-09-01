@@ -74,8 +74,7 @@ const nodetypes = collect(keys(nodekinds))
     reltol::Float64 = 1e-3
     maxiters::Int = 1e9
     sparse::Bool = true
-    jac::Bool = true
-    autodiff::Bool = false
+    autodiff::Bool = true
 end
 
 @enum Compression begin

@@ -4,6 +4,7 @@ using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase: successful_retcode
 import Tables
+using PreallocationTools: get_tmp
 
 @testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
@@ -51,26 +52,26 @@ end
         Sys.isapple()
 end
 
-@testset "sparse and jac solver options" begin
+@testset "sparse and AD/FDM jac solver options" begin
     toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
 
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = true)
-    sparse_jac = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = true)
-    dense_jac = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = false)
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
+    sparse_ad = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
+    dense_ad = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
     sparse_fdm = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = false)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
     dense_fdm = Ribasim.run(config)
 
-    @test successful_retcode(sparse_jac)
-    @test successful_retcode(dense_jac)
+    @test successful_retcode(sparse_ad)
+    @test successful_retcode(dense_ad)
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_jac.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end]
-    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
+    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
 end
 
 @testset "TabulatedRatingCurve model" begin
@@ -194,7 +195,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = p.basin.current_level
+    h_actual = get_tmp(p.basin.current_level, u)
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 

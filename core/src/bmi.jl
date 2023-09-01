@@ -78,15 +78,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
-        storages, errors =
-            get_storages_from_levels(parameters.basin, state.level)
+        storages, errors = get_storages_from_levels(parameters.basin, state.level)
         if errors
-            error(
-                "Encountered errors while parsing the initial levels of basins.",
-            )
+            error("Encountered errors while parsing the initial levels of basins.")
         end
         storages
-    end::Vector{Float64}
+    end
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
@@ -97,8 +94,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     timespan = (zero(t_end), t_end)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
-    jac = config.solver.jac ? water_balance_jac! : nothing
-    RHS = ODEFunction(water_balance!; jac_prototype, jac)
+    RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
@@ -113,6 +109,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         alg;
         progress = true,
         progress_name = "Simulating",
+        progress_steps = 100,
         callback,
         tstops,
         config.solver.saveat,
@@ -249,7 +246,7 @@ function get_value(
         level_boundary_idx = findsorted(level_boundary.node_id, feature_id)
 
         if hasindex_basin
-            _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
+            _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
         elseif !isnothing(level_boundary_idx)
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
@@ -432,13 +429,16 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 
     for (field, value) in zip(keys(new_state), new_state)
         if !ismissing(value)
-            getfield(node, field)[idx] = value
+            vec = get_tmp(getfield(node, field), 0)
+            vec[idx] = value
         end
     end
 end
 
 "Copy the current flow to the SavedValues"
-save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
+function save_flow(u, t, integrator)
+    copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
+end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
