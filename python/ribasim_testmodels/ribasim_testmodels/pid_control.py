@@ -113,7 +113,7 @@ def pid_control_model():
         static=pd.DataFrame(
             data={
                 "node_id": [4],
-                "level": [1.0],  # Not relevant
+                "level": [5.0],  # Not relevant
             }
         )
     )
