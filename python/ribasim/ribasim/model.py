@@ -1,8 +1,10 @@
 import datetime
 import inspect
 import shutil
+from contextlib import closing
 from enum import Enum
 from pathlib import Path
+from sqlite3 import connect
 from typing import Any, List, Optional, Type, Union, cast
 
 import matplotlib.pyplot as plt
@@ -186,10 +188,19 @@ class Model(BaseModel):
         # avoid adding tables to existing model
         temp_path.unlink(missing_ok=True)
 
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.write(directory, tempname)
+        # write to GeoPackage using geopandas
+        self.node.write_layer(temp_path)
+        self.edge.write_layer(temp_path)
+
+        # write to GeoPackage using sqlite3
+        with closing(connect(temp_path)) as connection:
+            for name in self.fields():
+                input_entry = getattr(self, name)
+                is_geometry = isinstance(input_entry, Node) or isinstance(
+                    input_entry, Edge
+                )
+                if isinstance(input_entry, TableModel) and not is_geometry:
+                    input_entry.write_table(connection)
 
         shutil.move(temp_path, gpkg_path)
         return

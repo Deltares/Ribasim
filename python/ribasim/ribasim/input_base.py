@@ -1,6 +1,6 @@
 import re
 import textwrap
-from pathlib import Path
+from contextlib import closing
 from sqlite3 import Connection, connect
 from typing import Any, Dict, Set, Union
 
@@ -22,11 +22,11 @@ def esc_id(identifier: str) -> str:
 
 def exists(connection: Connection, name: str) -> bool:
     """Check if a table exists in a SQLite database."""
-    cursor = connection.cursor()
-    cursor.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
-    )
-    result = cursor.fetchone()
+    with closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        )
+        result = cursor.fetchone()
     return result is not None
 
 
@@ -88,22 +88,16 @@ class TableModel(BaseModel):
     def _layername(cls, field) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def write(self, directory: FilePath, modelname: str) -> None:
+    def write_table(self, connection: Connection) -> None:
         """
         Write the contents of the input to a GeoPackage.
 
-        The Geopackage will be written in ``directory`` and will be be named
-        ``{modelname}.gpkg``.
-
         Parameters
         ----------
-        directory : FilePath
-            Path to the directory where to write the files.
-        modelname : str
-            Name of the model, used as a file name.
+        connection : Connection
+            SQLite connection to the GeoPackage.
         """
         self.sort()
-        directory = Path(directory)
         sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
         for field in self.fields():
             dataframe = getattr(self, field)
@@ -111,9 +105,9 @@ class TableModel(BaseModel):
                 continue
             name = self._layername(field)
 
-            with connect(directory / f"{modelname}.gpkg") as connection:
-                dataframe.to_sql(name, connection, index=False, if_exists="replace")
-                connection.execute(sql, (name, "attributes", name))
+            dataframe.to_sql(name, connection, index=False, if_exists="replace")
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(sql, (name, "attributes", name))
 
         return
 
