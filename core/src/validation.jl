@@ -411,7 +411,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{Int},
-    flow_rate::Vector{Float64},
+    flow_rate::Vector,
     control_mapping::Dict{Tuple{Int, String}, NamedTuple},
     node_type::Symbol,
 )::Bool

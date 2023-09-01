@@ -40,7 +40,7 @@ function parse_static_and_time(
         # If the type is a union, then the associated parameter is optional and
         # the type is of the form Union{Missing,ActualType}
         parameter_type = if parameter_name in time_interpolatables
-            LinearInterpolation
+            ScalarInterpolation
         elseif isa(parameter_type, Union)
             nonmissingtype(parameter_type)
         else
@@ -190,7 +190,7 @@ function static_and_time_node_ids(
     return static_node_ids, time_node_ids, node_ids, !errors
 end
 
-function Connectivity(db::DB)::Connectivity
+function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
     end
@@ -203,6 +203,10 @@ function Connectivity(db::DB)::Connectivity
 
     flow = adjacency_matrix(graph_flow, Float64)
     nonzeros(flow) .= 0.0
+
+    if config.solver.autodiff
+        flow = DiffCache(flow, chunk_size)
+    end
 
     return Connectivity(
         graph_flow,
@@ -228,7 +232,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
 
     return LinearResistance(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.control_mapping,
     )
@@ -309,7 +313,7 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
 
     return ManningResistance(
         parsed_parameters.node_id,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
@@ -398,7 +402,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
 end
 
-function Pump(db::DB, config::Config)::Pump
+function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
@@ -408,10 +412,17 @@ function Pump(db::DB, config::Config)::Pump
         error("Errors occurred when parsing Pump data.")
     end
 
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = if config.solver.autodiff
+        DiffCache(parsed_parameters.flow_rate, chunk_size)
+    else
+        parsed_parameters.flow_rate
+    end
+
     return Pump(
         parsed_parameters.node_id,
-        parsed_parameters.active,
-        parsed_parameters.flow_rate,
+        BitVector(parsed_parameters.active),
+        flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -419,7 +430,7 @@ function Pump(db::DB, config::Config)::Pump
     )
 end
 
-function Outlet(db::DB, config::Config)::Outlet
+function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
@@ -429,10 +440,17 @@ function Outlet(db::DB, config::Config)::Outlet
         error("Errors occurred when parsing Outlet data.")
     end
 
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = if config.solver.autodiff
+        DiffCache(parsed_parameters.flow_rate, chunk_size)
+    else
+        parsed_parameters.flow_rate
+    end
+
     return Outlet(
         parsed_parameters.node_id,
-        parsed_parameters.active,
-        parsed_parameters.flow_rate,
+        BitVector(parsed_parameters.active),
+        flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -445,12 +463,16 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(static.node_id)
 end
 
-function Basin(db::DB, config::Config)::Basin
+function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
     current_area = zeros(n)
-    current_darea = zeros(n)
+
+    if config.solver.autodiff
+        current_level = DiffCache(current_level, chunk_size)
+        current_area = DiffCache(current_area, chunk_size)
+    end
 
     precipitation = fill(NaN, length(node_id))
     potential_evaporation = fill(NaN, length(node_id))
@@ -476,7 +498,6 @@ function Basin(db::DB, config::Config)::Basin
         infiltration,
         current_level,
         current_area,
-        current_darea,
         area,
         level,
         storage,
@@ -529,7 +550,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 end
 
-function PidControl(db::DB, config::Config)::PidControl
+function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
@@ -549,6 +570,10 @@ function PidControl(db::DB, config::Config)::PidControl
     end
 
     pid_error = zeros(length(node_ids))
+
+    if config.solver.autodiff
+        pid_error = DiffCache(pid_error, chunk_size)
+    end
 
     # Combine PID parameters into one vector interpolation object
     pid_parameters = VectorInterpolation[]
@@ -578,7 +603,7 @@ function PidControl(db::DB, config::Config)::PidControl
 
     return PidControl(
         node_ids,
-        parsed_parameters.active,
+        BitVector(parsed_parameters.active),
         parsed_parameters.listen_node_id,
         parsed_parameters.target,
         pid_parameters,
@@ -588,7 +613,10 @@ function PidControl(db::DB, config::Config)::PidControl
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    connectivity = Connectivity(db)
+    n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
+    chunk_size = pickchunksize(n_states)
+
+    connectivity = Connectivity(db, config, chunk_size)
 
     linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
@@ -596,13 +624,13 @@ function Parameters(db::DB, config::Config)::Parameters
     fractional_flow = FractionalFlow(db, config)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
-    pump = Pump(db, config)
-    outlet = Outlet(db, config)
+    pump = Pump(db, config, chunk_size)
+    outlet = Outlet(db, config, chunk_size)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
-    pid_control = PidControl(db, config)
+    pid_control = PidControl(db, config, chunk_size)
 
-    basin = Basin(db, config)
+    basin = Basin(db, config, chunk_size)
 
     p = Parameters(
         config.starttime,

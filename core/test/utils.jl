@@ -32,7 +32,6 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
-        [2.0, 3.0],
         darea,
         area,
         level,
@@ -83,7 +82,6 @@ end
     storage = Ribasim.profile_storage(level, area)
     basin = Ribasim.Basin(
         Indices([1]),
-        zeros(1),
         zeros(1),
         zeros(1),
         zeros(1),
@@ -173,9 +171,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 7, 9]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 4]
-    @test jac_prototype.nzval == ones(8)
+    @test jac_prototype.colptr == [1, 3, 5, 7, 10]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
+    @test jac_prototype.nzval == ones(9)
 
     toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
 

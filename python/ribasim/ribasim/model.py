@@ -1,7 +1,10 @@
 import datetime
 import inspect
+import shutil
+from contextlib import closing
 from enum import Enum
 from pathlib import Path
+from sqlite3 import connect
 from typing import Any, List, Optional, Type, Union, cast
 
 import matplotlib.pyplot as plt
@@ -42,7 +45,6 @@ class Solver(BaseModel):
     reltol: Optional[float]
     maxiters: Optional[int]
     sparse: Optional[bool]
-    jac: Optional[bool]
     autodiff: Optional[bool]
 
 
@@ -174,16 +176,32 @@ class Model(BaseModel):
         return
 
     def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to GeoPackage and Arrow tables."""
-        # avoid adding tables to existing model
+        """Write the input to GeoPackage tables."""
+        # We write all tables to a temporary GeoPackage with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
         directory = Path(directory)
         gpkg_path = directory / f"{self.modelname}.gpkg"
-        gpkg_path.unlink(missing_ok=True)
+        tempname = "." + self.modelname
+        temp_path = gpkg_path.with_stem(tempname)
+        # avoid adding tables to existing model
+        temp_path.unlink(missing_ok=True)
 
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.write(directory, self.modelname)
+        # write to GeoPackage using geopandas
+        self.node.write_layer(temp_path)
+        self.edge.write_layer(temp_path)
+
+        # write to GeoPackage using sqlite3
+        with closing(connect(temp_path)) as connection:
+            for name in self.fields():
+                input_entry = getattr(self, name)
+                is_geometry = isinstance(input_entry, Node) or isinstance(
+                    input_entry, Edge
+                )
+                if isinstance(input_entry, TableModel) and not is_geometry:
+                    input_entry.write_table(connection)
+
+        shutil.move(temp_path, gpkg_path)
         return
 
     @staticmethod

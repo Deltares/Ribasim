@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Dict, Union
 
 import geopandas as gpd
@@ -75,31 +74,22 @@ class Node(TableModel):
 
         return node_id, node_type
 
-    def write(self, directory: FilePath, modelname: str) -> None:
+    def write_layer(self, path: FilePath) -> None:
         """
         Write the contents of the input to a GeoPackage.
 
-        The Geopackage will be written in ``directory`` and will be be named
-        ``{modelname}.gpkg``.
-
         Parameters
         ----------
-        directory : FilePath
-        modelname : str
+        path : FilePath
         """
         self.sort()
-        directory = Path(directory)
         dataframe = self.static
         name = self._layername(dataframe)
 
         gdf = gpd.GeoDataFrame(data=dataframe)
         gdf = gdf.set_geometry("geometry")
 
-        gdf.to_file(
-            directory / f"{modelname}.gpkg",
-            layer=name,
-            driver="GPKG",
-        )
+        gdf.to_file(path, layer=name, driver="GPKG")
 
         return
 
