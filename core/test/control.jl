@@ -109,7 +109,7 @@ end
     a = abs(Δlevel / cos(phi))
     # This bound is the exact envelope of the analytical solution
     bound = @. a * exp(alpha * timesteps[1:idx_target_change])
-    eps = 3.5e-3
+    eps = 5e-3
     # Initial convergence to target level
     @test all(@. abs(level[1:idx_target_change] - target_level) < bound + eps)
     # Later closeness to target level

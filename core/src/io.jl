@@ -179,7 +179,7 @@ function write_flow_output(model::Model, compress)
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
 
-    I, J, _ = findnz(connectivity.flow)
+    I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
     unique_edge_ids = [connectivity.edge_ids_flow[ij] for ij in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
