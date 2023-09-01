@@ -28,6 +28,6 @@ repos:
     hooks:
       - id: nbstripout
   - repo: https://github.com/crate-ci/typos
-    rev: v1.16.8
+    rev: typos-dict-v0.10.9
     hooks:
       - id: typos
