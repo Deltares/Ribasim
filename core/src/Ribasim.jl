@@ -13,6 +13,7 @@ using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
+using ForwardDiff
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
@@ -20,6 +21,7 @@ using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
 using PreallocationTools: DiffCache, get_tmp
+using Preferences: set_preferences!
 using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id

@@ -4,6 +4,9 @@ function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
 end
 
 function BMI.initialize(T::Type{Model}, config::Config)::Model
+    if config.solver.autodiff
+        set_preferences!(ForwardDiff, "nansafe_mode" => true)
+    end
     alg = algorithm(config.solver)
     gpkg_path = input_path(config, config.geopackage)
     if !isfile(gpkg_path)
