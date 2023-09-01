@@ -595,8 +595,8 @@ function continuous_control!(
             src_id = only(inneighbors(graph_flow, controlled_node_id))
             dst_id = only(outneighbors(graph_flow, controlled_node_id))
 
-            src_level = get_level(p, src_id, t)
-            dst_level = get_level(p, dst_id, t)
+            src_level = get_level(p, src_id, current_level, t)
+            dst_level = get_level(p, dst_id, current_level, t)
 
             if !isnothing(src_level) && !isnothing(dst_level)
                 Δlevel = src_level - dst_level
@@ -627,7 +627,7 @@ function continuous_control!(
             end
         end
 
-        reduction_factor = reduction_factor_basin * reduction_factor_outlet
+        reduction_factor_all = reduction_factor_basin * reduction_factor_outlet
         flow_rate = 0.0
 
         K_p, K_i, K_d = pid_params[i](t)
@@ -635,17 +635,17 @@ function continuous_control!(
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
             area = current_area[listened_node_idx]
-            D = 1.0 - K_d * reduction_factor / area
+            D = 1.0 - K_d * reduction_factor_all / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += reduction_factor * K_p * pid_error[i] / D
+            flow_rate += reduction_factor_all * K_p * pid_error[i] / D
         end
 
         if !iszero(K_i)
-            flow_rate += reduction_factor * K_i * integral_value[i] / D
+            flow_rate += reduction_factor_all * K_i * integral_value[i] / D
         end
 
         if !iszero(K_d)
@@ -914,7 +914,7 @@ end
 function formulate!(pump::Pump, p::Parameters, flow, storage::AbstractVector)::Nothing
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
-    (; node_id, active, flow_rate, is_pid_controlled) = node
+    (; node_id, active, flow_rate, is_pid_controlled) = pump
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
@@ -947,13 +947,15 @@ end
 function formulate!(
     outlet::Outlet,
     p::Parameters,
-    storage::AbstractVector{Float64},
+    flow,
+    current_level,
+    storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph_flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = outlet
-
+    flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
@@ -977,8 +979,8 @@ function formulate!(
         end
 
         # No flow of outlet if source level is lower than target level
-        src_level = get_level(p, src_id, t)
-        dst_level = get_level(p, dst_id, t)
+        src_level = get_level(p, src_id, current_level, t)
+        dst_level = get_level(p, dst_id, current_level, t)
 
         if !isnothing(src_level) && !isnothing(dst_level)
             Δlevel = src_level - dst_level
@@ -1036,7 +1038,7 @@ function formulate_flows!(
     formulate!(flow_boundary, p, flow, t)
     formulate!(fractional_flow, flow, p)
     formulate!(pump, p, flow, storage)
-    formulate!(outlet, p, flow, storage)
+    formulate!(outlet, p, flow, current_level, storage, t)
 
     return nothing
 end
