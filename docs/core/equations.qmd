@@ -90,6 +90,25 @@ The presence of division by the basin area means that areas of size zero are not
 :::
 
 # Natural water balance terms
+
+## The reduction factor {#sec-reduction_factor}
+At several points in the equations below a *reduction factor* is used. This is a term that makes certain transitions more smooth, for instance when a pump stops providing water when its source basin dries up. The reduction factor is given by
+
+$$
+    \phi(x; p) =
+    \begin{align}
+        \begin{cases}
+        0 &\text{if}\quad x < 0 \\
+            -2 \left(\frac{x}{p}\right)^3 + 3\left(\frac{x}{p}\right)^2 &\text{if}\quad 0 \le x \le p \\
+            1 &\text{if}\quad x > p
+        \end{cases}
+    \end{align},
+$$
+
+where $p > 0$ is the threshold value which determines the interval $[0,p]$ of the smooth transition between $0$ and $1$, see the plot below.
+
+<!-- Add reduction factor plot here-->
+
 ## Precipitation
 
 The precipitation term is given by
@@ -107,14 +126,10 @@ surface may change as well, depending on the slopes of the surface waters.
 The evaporation term is given by
 
 $$
-    Q_E = E_\text{pot} \cdot A(S) \cdot r.
+    Q_E = E_\text{pot} \cdot A(S) \cdot \phi(d;0.1).
 $$ {#eq-evap}
 
-Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $r$ is the reduction factor which depends on the depth $d$ and is given by
-$$
-    r = \frac{\min\{d,0.1\}}{0.1} \le 1.
-$$ {#eq-reduc}
-It provides a smooth gradient as $S \rightarrow 0$ (but not at $d=0.1$).
+Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $\phi$ is the [reduction factor](equations.qmd#sec-reduction_factor) which depends on the depth $d$. It provides a smooth gradient as $S \rightarrow 0$.
 
 A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(S),
 0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}(S=0)$ is then not well-defined.
@@ -183,26 +198,24 @@ basins (external nodes) in a network.
 2. `LevelBoundary`
 3. `FlowBoundary`
 
-### Pump and outlet
+### Pump {#sec-pump}
 
-The behaviour of pumps and outlets is very straight forward if these nodes are not PID controlled. Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
+The behaviour of pumps is very straight forward if these nodes are not PID controlled. Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
 $$
-Q_\text{pump/outlet} = \phi(u)q
+Q_\text{pump} = \phi(u; 10.0)q
 $$
 
-Here $u$ is the storage of the upstream basin. The reduction factor
+Here $u$ is the storage of the upstream basin. The [reduction factor](equations.qmd#sec-reduction_factor) $\phi$ makes sure that the flow of the pump goes smootly to $0$ as the upstream basin dries out.
 
+### Outlet {#sec-outlet}
+
+The outlet is very similar to the pump, but it has a few extra [reduction factors](equations.qmd#sec-reduction_factor) for physical constraints:
 $$
-\phi(u) =
-\begin{align}
-    \begin{cases}
-        \frac{u}{10} &\text{if}& 0 \leq u \le 10 \\
-        1 &\text{if}& u \geq 10
-    \end{cases}
-\end{align}
-$$ {#eq-pumpreductionfactor}
+Q_\text{outlet} = \phi(u_a; 10.0)\phi(\Delta h; 0.1) \phi(h_a-h_\text{min};0.1)q.
+$$
+The subscript $a$ denotes the upstream node and $b$ the downstream node. The first reduction factor is equivalent to the one for the pump. The second one makes sure that the outlet flow goes to zero as the head difference $\Delta h = h_a - h_b$ goes to zero. The last one makes sure that the outlet only produces flow when the upstream level is above the minimum chrest level $h_\text{min}$.
 
-makes sure that the flow of the pump goes to $0$ as the upstream basin dries out.
+Not all node types upstream or downstream of the outlet have a defined level. If this is the case, and therefore the reduction factor cannot be computed, it is defined to be $1.0$.
 
 ### TabulatedRatingCurve
 
@@ -415,19 +428,19 @@ $$ {#eq-PIDflow}
 
 for given constant parameters $K_p,K_i,K_d$. The pump or outlet can have associated minimum and maximum flow rates $Q_\min, Q_\max$, and so
 $$
-Q_\text{pump/outlet} = \text{clip}(\phi(u_\text{us})Q_\text{PID}; Q_\min, Q_\max).
+Q_\text{pump/outlet} = \text{clip}(\Phi Q_\text{PID}; Q_\min, Q_\max).
 $$
 
-Here $u_\text{us}$ is the storage of the basin upstream of the pump or outlet, $\phi$ is the reduction factor (see @eq-pumpreductionfactor) and
+Here $u_\text{us}$ is the storage of the basin upstream of the pump or outlet, $\Phi$ is the product of [reduction factors](equations.qmd#sec-reduction_factor) associated with the [pump](equations.qmd#sec-pump) or [outlet](equations.qmd#sec-outlet) and
 
 $$
 \text{clip}(Q; Q_\min, Q_\max) =
 \begin{align}
     \begin{cases}
-        Q_\min & \text{if} & Q < Q_\min, \\
-        Q & \text{if} & Q_\min \leq Q \leq Q_\max, \\
-        Q_\max & \text{if} & Q > Q_\max.
-    \end{cases}
+        Q_\min & \text{if} & Q < Q_\min \\
+        Q & \text{if} & Q_\min \leq Q \leq Q_\max \\
+        Q_\max & \text{if} & Q > Q_\max
+    \end{cases}.
 \end{align}
 $$
 
