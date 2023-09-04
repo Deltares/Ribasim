@@ -328,6 +328,7 @@ struct Outlet{T} <: AbstractParameterNode
         flow_rate::T,
         min_flow_rate,
         max_flow_rate,
+        min_crest_level,
         control_mapping,
         is_pid_controlled,
     ) where {T}
@@ -338,6 +339,7 @@ struct Outlet{T} <: AbstractParameterNode
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
+                min_crest_level,
                 control_mapping,
                 is_pid_controlled,
             )
@@ -969,7 +971,7 @@ function formulate!(
 
         hasindex, basin_idx = id_index(basin.node_id, src_id)
 
-        q = rate
+        q = flow_rate[i]
 
         if hasindex
             # Flowing from basin
