@@ -151,6 +151,8 @@ name it must have in the GeoPackage if it is stored there.
   - `TabulatedRatingCurve / time`: dynamic rating curve
 - Pump: pump water from a source node to a destination node
   - `Pump / static`: flow rate
+- Outlet: let water flow with a prescribed flux under the conditions of positive head difference and the upstream level being higher than the minimum crest level
+  - `Outlet / static`: flow rate, minimum crest level
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
@@ -311,10 +313,26 @@ discharge | Float64  | $m^3 s^{-1}$ | non-negative
 
 ### Pump and outlet
 
-Pump/conduct water from a source node to a destination node.
+Pump water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.
 The intake must be either a Basin or LevelBoundary.
+When PID controlled, the pump must point away from the controlled basin in terms of edges.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int     | -            | sorted
+active                | Bool    | -            | (optional, default true)
+flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
+min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
+max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
+min_crest_level       | Float64 | $m$          | (optional)
+control_state         | String  | -            | (optional)
+
+### Outlet
+
+The outlet is very similar to the pump. The outlet has two additional physical constraints: water only flows trough the outlet when the head difference is positive (i.e. water flows down by gravity) and the upstream level must be above the minimum crest level, if the upstream level is defined.
+When PID controlled, the outlet must point towards the controlled basin in terms of edges.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------

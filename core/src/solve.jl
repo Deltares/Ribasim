@@ -318,6 +318,7 @@ struct Outlet{T} <: AbstractParameterNode
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
+    min_crest_level::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
 
@@ -501,7 +502,7 @@ function set_current_basin_properties!(
 end
 
 """
-Linearize the evaporation flux when at small water depths
+Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
 function formulate!(
@@ -954,14 +955,13 @@ function formulate!(
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
-    (; node_id, active, flow_rate, is_pid_controlled) = outlet
+    (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
     flow_rate = get_tmp(flow_rate, storage)
-    for (id, isactive, rate, pid_controlled) in
-        zip(node_id, active, flow_rate, is_pid_controlled)
+    for (i, id) in enumerate(node_id)
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
-        if !isactive || pid_controlled
+        if !active[i] || is_pid_controlled[i]
             flow[src_id, id] = 0.0
             flow[id, dst_id] = 0.0
             continue
@@ -986,6 +986,13 @@ function formulate!(
             Δlevel = src_level - dst_level
             reduction_factor_outlet = reduction_factor(Δlevel, 0.1)
             q *= reduction_factor_outlet
+        end
+
+        # No flow out outlet if source level is lower than minimum crest level
+        if !isnothing(src_level) && !isnan(min_crest_level[i])
+            reduction_factor_min_crest_level =
+                reduction_factor(src_level - min_crest_level[i], 0.1)
+            q *= reduction_factor_min_crest_level
         end
 
         flow[src_id, id] = q
@@ -1091,7 +1098,7 @@ function water_balance!(
         t,
     )
 
-    # Negative storage musn't decrease, based on Shampine's et. al. advice
+    # Negative storage must not decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
     for i in eachindex(u.storage)
         if u.storage[i] < 0
