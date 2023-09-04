@@ -4,6 +4,7 @@ from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
     basic_transient_model,
+    outlet_model,
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model
@@ -62,4 +63,5 @@ __all__ = [
     "invalid_edge_types_model",
     "discrete_control_of_pid_control_model",
     "level_boundary_condition_model",
+    "outlet_model",
 ]
