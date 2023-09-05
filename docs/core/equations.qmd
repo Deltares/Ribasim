@@ -107,7 +107,44 @@ $$
 
 where $p > 0$ is the threshold value which determines the interval $[0,p]$ of the smooth transition between $0$ and $1$, see the plot below.
 
-<!-- Add reduction factor plot here-->
+```{python}
+# | code-fold: true
+import numpy as np
+import matplotlib.pyplot as plt
+
+def f(x, p = 3):
+    x_scaled = x / p
+    phi = (-2 * x_scaled + 3) * x_scaled**2
+    phi = np.where(x < 0, 0, phi)
+    phi = np.where(x > p, 1, phi)
+
+    return phi
+
+fontsize = 15
+p = 3
+N = 100
+x_min = -1
+x_max = 4
+x = np.linspace(x_min,x_max,N)
+phi = f(x,p)
+
+fig,ax = plt.subplots(dpi=80)
+ax.plot(x,phi)
+
+y_lim = ax.get_ylim()
+
+ax.set_xticks([0,p], [0,"$p$"], fontsize=fontsize)
+ax.set_yticks([0,1], [0,1], fontsize=fontsize)
+ax.hlines([0,1],x_min,x_max, color = "k", ls = ":", zorder=-1)
+ax.vlines([0,p], *y_lim, color = "k", ls = ":")
+ax.set_xlim(x_min,x_max)
+ax.set_xlabel("$x$", fontsize=fontsize)
+ax.set_ylabel("$\phi(x;p)$", fontsize=fontsize)
+ax.set_ylim(y_lim)
+
+fig.tight_layout()
+plt.show()
+```
 
 ## Precipitation
 
