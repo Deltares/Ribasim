@@ -182,6 +182,7 @@ class Node(Input):
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
+            "User": (QColor("green"), "User", shape.Square),
             "": (
                 QColor("white"),
                 "",
@@ -506,6 +507,30 @@ class PidControlTime(Input):
         QgsField("proportional", QVariant.Double),
         QgsField("integral", QVariant.Double),
         QgsField("derivative", QVariant.Double),
+    ]
+
+
+class UserStatic(Input):
+    input_type = "User / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
+        QgsField("demand", QVariant.Double),
+        QgsField("return_factor", QVariant.Double),
+        QgsField("priority", QVariant.Int),
+    ]
+
+
+class UserTime(Input):
+    input_type = "User / time"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("time", QVariant.DateTime),
+        QgsField("demand", QVariant.Double),
+        QgsField("return_factor", QVariant.Double),
+        QgsField("priority", QVariant.Int),
     ]
 
 

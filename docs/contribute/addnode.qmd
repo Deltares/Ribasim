@@ -47,15 +47,19 @@ Now we define the function that is called in the second bullet above, in `create
 ```julia
 function NewNodeType(db::DB, config::Config)::NewNodeType
     static = load_structvector(db, config, NewNodeTypeStaticV1)
-    defaults = (; active = true)
+    defaults = (; foo = 1, bar = false)
     # Process potential control states in the static data
-    static_parsed = parse_static(static, db, "Outlet", defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+
+    if !valid
+        error("Errors occurred when parsing NewNodeType data.")
+    end
 
     # Unpack the fields of static as inputs for the NewNodeType constructor
     return NewNodeType(
-        static_parsed.node_id,
-        static_parsed.some_property,
-        static_parsed.control_mapping)
+        parsed_parameters.node_id,
+        parsed_parameters.some_property,
+        parsed_parameters.control_mapping)
 end
 ```
 
@@ -93,7 +97,7 @@ The current dependency groups are:
 - Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
 - The `PidControl` node is a special case which is discussed in [equations](../core/equations.qmd#sec-PID).
 
-In the methods `formulate_jac!` in `jac.jl` the analytical expressions for the partial derivatives $\frac{\partial Q_{i',j'}}{\partial u_i}$ (and the ones related to PID integral states) are hardcoded. For `NewNodeType` either a new method of `formulate_jac!` has to be introduced, or it has to be added to the list of node types that do not contribute to the Jacobian in the method of `formulate_jac!` whose signature contains `node::AbstractParameterNode`.
+Using `jac_prototype` the Jacobian of `water_balance!` is computed automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/). These computations make use of `DiffCache` and dual numbers.
 
 # Python I/O
 
@@ -102,7 +106,8 @@ In the methods `formulate_jac!` in `jac.jl` the analytical expressions for the p
 Create a new file `python/ribasim/ribasim/node_types/new_node_type.py` which is structured as follows:
 
 ```python
-import pandas as pd
+from typing import Optional
+
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame

@@ -18,6 +18,7 @@ from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
+from ribasim.node_types.user import User
 
 __all__ = [
     "models",
@@ -40,4 +41,5 @@ __all__ = [
     "Terminal",
     "DiscreteControl",
     "PidControl",
+    "User",
 ]

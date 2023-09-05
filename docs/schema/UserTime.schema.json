@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
+        "priority": {
+            "format": "default",
+            "description": "priority",
+            "type": "integer"
+        },
+        "time": {
+            "format": "date-time",
+            "description": "time",
+            "type": "string"
+        },
+        "demand": {
+            "format": "double",
+            "description": "demand",
+            "type": "number"
+        },
+        "return_factor": {
+            "format": "default",
+            "description": "return_factor",
+            "type": "list"
+        },
+        "node_id": {
+            "format": "default",
+            "description": "node_id",
+            "type": "integer"
+        },
+        "allocated": {
+            "format": "double",
+            "description": "allocated",
+            "type": "number"
+        }
+    },
+    "required": [
+        "node_id",
+        "time",
+        "demand",
+        "allocated",
+        "return_factor",
+        "priority"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/UserTime.schema.json",
+    "title": "UserTime",
+    "description": "A UserTime object based on Ribasim.UserTimeV1",
+    "type": "object"
+}

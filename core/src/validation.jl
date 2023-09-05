@@ -22,6 +22,8 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.user.static" UserStatic
+@schema "ribasim.user.time" UserTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
@@ -46,8 +48,15 @@ end
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Outlet}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Basin}) =
-    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump, :Outlet))
+neighbortypes(::Val{:User}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:Basin}) = Set((
+    :LinearResistance,
+    :TabulatedRatingCurve,
+    :ManningResistance,
+    :Pump,
+    :Outlet,
+    :User,
+))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
@@ -93,6 +102,7 @@ n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:User}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -110,7 +120,8 @@ n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
-n_neighbor_bounds_control(nodetype) =
+n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neghbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
 # TODO NodeV1 and EdgeV1 are not yet used
@@ -275,6 +286,24 @@ end
     integral::Float64
     derivative::Float64
     control_state::Union{Missing, String}
+end
+
+@version UserStaticV1 begin
+    node_id::Int
+    active::Union{Missing, String}
+    demand::Float64
+    return_factor::Float64
+    min_level::Float64
+    priority::Int
+end
+
+@version UserTimeV1 begin
+    node_id::Int
+    time::DateTime
+    demand::Float64
+    return_factor::Float64
+    min_level::Float64
+    priority::Int
 end
 
 function variable_names(s::Any)

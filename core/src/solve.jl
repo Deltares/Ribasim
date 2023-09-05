@@ -403,6 +403,22 @@ struct PidControl{T} <: AbstractParameterNode
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
+"""
+demand: water flux demand of user over time
+allocated: water flux currently allocated to user
+return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
+min_level: The level of the source basin below which the user does not abstract
+priority: integer > 0, the lower the number the higher the priority of the users demand
+"""
+struct User
+    node_id::Vector{Int}
+    demand::Vector{ScalarInterpolation}
+    allocated::Vector{Float64}
+    return_factor::Vector{Float64}
+    min_level::Vector{Float64}
+    priority::Vector{Int}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, TSparse, C1, C2}
     starttime::DateTime
@@ -419,6 +435,7 @@ struct Parameters{T, TSparse, C1, C2}
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
+    user::User
     lookup::Dict{Int, Symbol}
 end
 
@@ -717,6 +734,58 @@ function continuous_control!(
         end
     end
     return nothing
+end
+
+function formulate!(
+    user::User,
+    p::Parameters,
+    current_level,
+    storage,
+    flow,
+    t::Float64,
+)::Nothing
+    (; connectivity, basin) = p
+    (; graph_flow) = connectivity
+    (; node_id, allocated, demand, active, return_factor, min_level) = user
+
+    for (i, id) in enumerate(node_id)
+        src_id = only(inneighbors(graph_flow, id))
+        dst_id = only(outneighbors(graph_flow, id))
+
+        if !active[i]
+            flow[src_id, id] = 0.0
+            flow[id, dst_id] = 0.0
+            continue
+        end
+
+        # For now allocated = demand
+        allocated[i] = demand[i](t)
+
+        q = allocated[i]
+
+        # TODO: change to smooth reduction factor
+        # Smoothly let abstraction go to 0 as the source basin
+        # dries out
+        _, basin_idx = id_index(basin.node_id, src_id)
+        source_storage = storage[basin_idx]
+        reduction_factor_basin_empty = min(source_storage, 10.0) / 10.0
+        q *= reduction_factor_basin_empty
+
+        # TODO: change to smooth reduction factor
+        # Smoothly let abstraction go to 0 as the source basin
+        # level reaches its minimum level
+        source_level = get_level(p, src_id, current_level, t)
+        Δsource_level = source_level - min_level[i]
+        reduction_factor_min_level = min(Δsource_level, 0.1) / 0.1
+        q *= reduction_factor_min_level
+
+        flow[src_id, id] = q
+
+        # Return flow is immediate
+        flow[id, dst_id] = q * return_factor[i]
+
+        return nothing
+    end
 end
 
 """

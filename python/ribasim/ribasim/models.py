@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -31,6 +31,16 @@ class FlowBoundaryTime(BaseModel):
     node_id: int
 
 
+class UserStatic(BaseModel):
+    remarks: Optional[str] = Field("", description="a hack for pandera")
+    priority: int = Field(..., description="priority")
+    active: Optional[str] = Field(None, description="active")
+    demand: float = Field(..., description="demand")
+    return_factor: Any = Field(..., description="return_factor")
+    node_id: int = Field(..., description="node_id")
+    allocated: float = Field(..., description="allocated")
+
+
 class PumpStatic(BaseModel):
     max_flow_rate: Optional[float] = None
     remarks: str = Field("", description="a hack for pandera")
@@ -46,6 +56,16 @@ class LevelBoundaryStatic(BaseModel):
     active: Optional[bool] = None
     node_id: int
     level: float
+
+
+class UserTime(BaseModel):
+    remarks: Optional[str] = Field("", description="a hack for pandera")
+    priority: int = Field(..., description="priority")
+    time: datetime = Field(..., description="time")
+    demand: float = Field(..., description="demand")
+    return_factor: Any = Field(..., description="return_factor")
+    node_id: int = Field(..., description="node_id")
+    allocated: float = Field(..., description="allocated")
 
 
 class DiscreteControlCondition(BaseModel):
@@ -217,3 +237,5 @@ class Root(BaseModel):
     BasinProfile: Optional[BasinProfile] = None
     TerminalStatic: Optional[TerminalStatic] = None
     BasinStatic: Optional[BasinStatic] = None
+    UserStatic: Optional[UserStatic] = None
+    UserTime: Optional[UserTime] = None

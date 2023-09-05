@@ -621,6 +621,27 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     )
 end
 
+function User(db::DB, config::Config)::User
+    static = load_structvector(db, config, UserStaticV1)
+    time = load_structvector(db, config, UserTimeV1)
+    parsed_parameters, valid = parse_static_and_time(db, config, "User"; static, time)
+
+    if !valid
+        error("Errors occurred when parsing User (node type) data.")
+    end
+
+    allocated = zeros(length(parsed_parameters.return_factor))
+
+    return User(
+        parsed_parameters.node_id,
+        parsed_parameters.demand,
+        allocated,
+        parsed_parameters.return_factor,
+        parsed_parameters.min_level,
+        parsed_parameters.priority,
+    )
+end
+
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_size = pickchunksize(n_states)
@@ -638,6 +659,7 @@ function Parameters(db::DB, config::Config)::Parameters
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_size)
+    user = User(db, config)
 
     basin = Basin(db, config, chunk_size)
 
@@ -656,6 +678,7 @@ function Parameters(db::DB, config::Config)::Parameters
         terminal,
         discrete_control,
         pid_control,
+        user,
         Dict{Int, Symbol}(),
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
