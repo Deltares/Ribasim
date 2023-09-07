@@ -1,5 +1,6 @@
 module libribasim
 
+using Base: RefValue
 import BasicModelInterface as BMI
 using Ribasim
 
@@ -100,31 +101,31 @@ Base.@ccallable function update_until(time::Cdouble)::Cint
     end
 end
 
-Base.@ccallable function get_current_time(time::Ptr{Cdouble})::Cint
+Base.@ccallable function get_current_time(time::Base.RefValue{Cdouble})::Cint
     @try_c begin
         t = BMI.get_current_time(model)
-        unsafe_store!(time, t)
+        time[] = t
     end
 end
 
-Base.@ccallable function get_start_time(time::Ptr{Cdouble})::Cint
+Base.@ccallable function get_start_time(time::RefValue{Cdouble})::Cint
     @try_c begin
         t = BMI.get_start_time(model)
-        unsafe_store!(time, t)
+        time[] = t
     end
 end
 
-Base.@ccallable function get_end_time(time::Ptr{Cdouble})::Cint
+Base.@ccallable function get_end_time(time::RefValue{Cdouble})::Cint
     @try_c begin
         t = BMI.get_end_time(model)
-        unsafe_store!(time, t)
+        time[] = t
     end
 end
 
-Base.@ccallable function get_time_step(time_step::Ptr{Cdouble})::Cint
+Base.@ccallable function get_time_step(time_step::RefValue{Cdouble})::Cint
     @try_c begin
         t = BMI.get_time_step(model)
-        unsafe_store!(time_step, t)
+        time_step[] = t
     end
 end
 
@@ -136,23 +137,25 @@ Base.@ccallable function get_var_type(name::Cstring, var_type::Cstring)::Cint
     end
 end
 
-Base.@ccallable function get_var_rank(name::Cstring, rank::Ptr{Cint})::Cint
+Base.@ccallable function get_var_rank(name::Cstring, rank::RefValue{Cint})::Cint
     @try_c begin
         value = BMI.get_value_ptr(model, unsafe_string(name))
         n = ndims(value)
-        unsafe_store!(rank, n)
+        rank[] = n
     end
 end
 
-Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::Ptr{Ptr{Cvoid}})::Cint
+Base.@ccallable function get_value_ptr(name::Cstring, value_ptr::RefValue{Ptr{Cvoid}})::Cint
     @try_c begin
         # the type of `value` depends on the variable name
         value = BMI.get_value_ptr(model, unsafe_string(name))
-        unsafe_store!(value_ptr, pointer(value), 1)
+        value_ptr[] = pointer(value)
     end
 end
 
-Base.@ccallable function get_var_shape(name::Cstring, shape_ptr::Ptr{Cint})::Cint
+Base.@ccallable function get_var_shape(name::Cstring, shape_ptr::RefValue{Cint})::Cint
+    # TODO can we use RefValue{Cint} here as well?
+    # or RefValue{Ptr{Cvoid}} like above?
     @try_c begin
         # the type of `value` depends on the variable name
         value = BMI.get_value_ptr(model, unsafe_string(name))
@@ -182,7 +185,7 @@ end
 
 Base.@ccallable function get_value_ptr_double(
     name::Cstring,
-    value_ptr::Ptr{Ptr{Cvoid}},
+    value_ptr::RefValue{Ptr{Cvoid}},
 )::Cint
     get_value_ptr(name, value_ptr)
 end
