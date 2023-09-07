@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "time": {
+            "format": "default",
+            "default": null,
+            "description": "time",
+            "type": [
+                "string"
+            ]
+        },
+        "static": {
+            "format": "default",
+            "default": null,
+            "description": "static",
+            "type": [
+                "string"
+            ]
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/flow_boundary.schema.json",
+    "title": "flow_boundary",
+    "description": "A flow_boundary object based on Ribasim.config.flow_boundary",
+    "type": "object"
+}

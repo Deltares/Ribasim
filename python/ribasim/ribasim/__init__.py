@@ -2,6 +2,7 @@ __version__ = "0.3.0"
 
 
 from ribasim import models, utils
+from ribasim.config import Config
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Logging, Model, Solver
@@ -21,6 +22,7 @@ from ribasim.node_types.terminal import Terminal
 __all__ = [
     "models",
     "utils",
+    "Config",
     "Basin",
     "Edge",
     "FractionalFlow",

@@ -1,0 +1,69 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "reltol": {
+            "format": "double",
+            "default": 0.001,
+            "description": "reltol",
+            "type": "number"
+        },
+        "saveat": {
+            "format": "default",
+            "default": [
+            ],
+            "description": "saveat",
+            "type": [
+                "number",
+                "list"
+            ]
+        },
+        "maxiters": {
+            "format": "default",
+            "default": 1000000000,
+            "description": "maxiters",
+            "type": "integer"
+        },
+        "autodiff": {
+            "format": "default",
+            "default": true,
+            "description": "autodiff",
+            "type": "boolean"
+        },
+        "adaptive": {
+            "format": "default",
+            "default": true,
+            "description": "adaptive",
+            "type": "boolean"
+        },
+        "algorithm": {
+            "format": "default",
+            "default": "QNDF",
+            "description": "algorithm",
+            "type": "string"
+        },
+        "abstol": {
+            "format": "double",
+            "default": 1.0e-6,
+            "description": "abstol",
+            "type": "number"
+        },
+        "dt": {
+            "format": "double",
+            "default": 0,
+            "description": "dt",
+            "type": "number"
+        },
+        "sparse": {
+            "format": "default",
+            "default": true,
+            "description": "sparse",
+            "type": "boolean"
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/Solver.schema.json",
+    "title": "Solver",
+    "description": "A Solver object based on Ribasim.config.Solver",
+    "type": "object"
+}

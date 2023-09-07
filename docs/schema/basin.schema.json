@@ -1,0 +1,43 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "profile": {
+            "format": "default",
+            "default": null,
+            "description": "profile",
+            "type": [
+                "string"
+            ]
+        },
+        "static": {
+            "format": "default",
+            "default": null,
+            "description": "static",
+            "type": [
+                "string"
+            ]
+        },
+        "forcing": {
+            "format": "default",
+            "default": null,
+            "description": "forcing",
+            "type": [
+                "string"
+            ]
+        },
+        "state": {
+            "format": "default",
+            "default": null,
+            "description": "state",
+            "type": [
+                "string"
+            ]
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
+    "title": "basin",
+    "description": "A basin object based on Ribasim.config.basin",
+    "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "time": {
+            "format": "default",
+            "default": null,
+            "description": "time",
+            "type": [
+                "string"
+            ]
+        },
+        "static": {
+            "format": "default",
+            "default": null,
+            "description": "static",
+            "type": [
+                "string"
+            ]
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/pid_control.schema.json",
+    "title": "pid_control",
+    "description": "A pid_control object based on Ribasim.config.pid_control",
+    "type": "object"
+}

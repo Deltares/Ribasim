@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "compression": {
+            "format": "default",
+            "default": "zstd",
+            "description": "compression",
+            "type": "object"
+        },
+        "basin": {
+            "format": "default",
+            "default": "output/basin.arrow",
+            "description": "basin",
+            "type": "string"
+        },
+        "flow": {
+            "format": "default",
+            "default": "output/flow.arrow",
+            "description": "flow",
+            "type": "string"
+        },
+        "control": {
+            "format": "default",
+            "default": "output/control.arrow",
+            "description": "control",
+            "type": "string"
+        },
+        "outstate": {
+            "format": "default",
+            "default": null,
+            "description": "outstate",
+            "type": [
+                "string"
+            ]
+        },
+        "compression_level": {
+            "format": "default",
+            "default": 6,
+            "description": "compression_level",
+            "type": "integer"
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/Output.schema.json",
+    "title": "Output",
+    "description": "A Output object based on Ribasim.config.Output",
+    "type": "object"
+}

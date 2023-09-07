@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "logic": {
+            "format": "default",
+            "default": null,
+            "description": "logic",
+            "type": [
+                "string"
+            ]
+        },
+        "condition": {
+            "format": "default",
+            "default": null,
+            "description": "condition",
+            "type": [
+                "string"
+            ]
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/discrete_control.schema.json",
+    "title": "discrete_control",
+    "description": "A discrete_control object based on Ribasim.config.discrete_control",
+    "type": "object"
+}

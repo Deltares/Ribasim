@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "timing": {
+            "format": "default",
+            "default": false,
+            "description": "timing",
+            "type": "boolean"
+        },
+        "verbosity": {
+            "format": "default",
+            "default": "info",
+            "description": "verbosity",
+            "type": "string"
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/Logging.schema.json",
+    "title": "Logging",
+    "description": "A Logging object based on Ribasim.config.Logging",
+    "type": "object"
+}
