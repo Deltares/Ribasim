@@ -202,10 +202,11 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
 
     flow = adjacency_matrix(graph_flow, Float64)
-    nonzeros(flow) .= 0.0
+    flow .= 0.0
 
     if config.solver.autodiff
-        flow = DiffCache(flow, chunk_size)
+        # FixedSizeDiffCache performs better for sparse matrix
+        flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
     return Connectivity(
