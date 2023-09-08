@@ -12,7 +12,7 @@ using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
-using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
+using Dictionaries: Indices, Dictionary, gettoken, dictionary
 using ForwardDiff: pickchunksize
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
