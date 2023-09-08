@@ -32,6 +32,11 @@ end
     end
 
     @test model isa Ribasim.Model
+    p = model.integrator.p
+    @test p isa Ribasim.Parameter
+    @test isconcretetype(typeof(p))
+    @test all(isconcretetype, fieldtypes(typeof(p)))
+
     @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
