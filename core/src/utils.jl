@@ -417,7 +417,7 @@ function get_level(
     return if hasindex
         current_level[i]
     else
-        hasindex, i = id_index(level_boundary.node_id, node_id)
+        i = findsorted(level_boundary.node_id, node_id)::Int
         level_boundary.level[i](t)
     end
 end
