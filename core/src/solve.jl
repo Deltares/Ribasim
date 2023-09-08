@@ -968,7 +968,7 @@ end
 function formulate_flows!(
     p::Parameters,
     storage::AbstractVector,
-    current_level,
+    current_level::AbstractVector,
     flow::AbstractMatrix,
     t::Float64,
 )::Nothing
