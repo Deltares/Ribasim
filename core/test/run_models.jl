@@ -33,7 +33,7 @@ end
 
     @test model isa Ribasim.Model
     p = model.integrator.p
-    @test p isa Ribasim.Parameter
+    @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
