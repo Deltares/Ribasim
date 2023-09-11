@@ -1,29 +1,14 @@
 from typing import Optional
 
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import (
+    TabulatedRatingCurveStaticSchema,
+    TabulatedRatingCurveTimeSchema,
+)
 
 __all__ = ("TabulatedRatingCurve",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.TabulatedRatingCurveStatic)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
-
-
-class TimeSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.TabulatedRatingCurveTime)
-        coerce = True  # this is required, otherwise a SchemaInitError is raised
 
 
 class TabulatedRatingCurve(TableModel):
@@ -38,8 +23,8 @@ class TabulatedRatingCurve(TableModel):
         Table with time-varying rating curves.
     """
 
-    static: Optional[DataFrame[StaticSchema]] = None
-    time: Optional[DataFrame[TimeSchema]] = None
+    static: Optional[DataFrame[TabulatedRatingCurveStaticSchema]] = None
+    time: Optional[DataFrame[TabulatedRatingCurveTimeSchema]] = None
 
     def sort(self):
         self.static = self.static.sort_values(["node_id", "level"], ignore_index=True)

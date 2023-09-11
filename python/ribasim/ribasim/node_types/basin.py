@@ -1,41 +1,16 @@
 from typing import Optional
 
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import (
+    BasinForcingSchema,
+    BasinProfileSchema,
+    BasinStateSchema,
+    BasinStaticSchema,
+)
 
 __all__ = ("Basin",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.BasinStatic)
-
-
-class ForcingSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.BasinForcing)
-
-
-class ProfileSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.BasinProfile)
-
-
-class StateSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.BasinState)
 
 
 class Basin(TableModel):
@@ -54,10 +29,10 @@ class Basin(TableModel):
         Table describing the initial condition.
     """
 
-    profile: DataFrame[ProfileSchema]
-    static: Optional[DataFrame[StaticSchema]] = None
-    forcing: Optional[DataFrame[ForcingSchema]] = None
-    state: Optional[DataFrame[StateSchema]] = None
+    profile: DataFrame[BasinProfileSchema]
+    static: Optional[DataFrame[BasinStaticSchema]] = None
+    forcing: Optional[DataFrame[BasinForcingSchema]] = None
+    state: Optional[DataFrame[BasinStateSchema]] = None
 
     def sort(self):
         self.profile = self.profile.sort_values(["node_id", "level"], ignore_index=True)
