@@ -520,7 +520,7 @@ function formulate!(
         bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
-        reduction_factor = min(depth, 0.1) / 0.1
+        reduction_factor = clamp(depth, 0.0, 0.1) / 0.1
 
         precipitation = fixed_area * basin.precipitation[i]
         evaporation = area * reduction_factor * basin.potential_evaporation[i]
@@ -594,7 +594,7 @@ function continuous_control!(
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
 
             listened_basin_storage = u.storage[listened_node_idx]
-            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+            reduction_factor = clamp(listened_basin_storage, 0.0, 10.0) / 10.0
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
@@ -603,7 +603,7 @@ function continuous_control!(
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
-                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+                reduction_factor = clamp(upstream_basin_storage, 0.0, 10.0) / 10.0
             else
                 reduction_factor = 1.0
             end
@@ -931,7 +931,7 @@ function formulate_flow!(
         if hasindex
             # Pumping from basin
             s = storage[basin_idx]
-            reduction_factor = min(s, 10.0) / 10.0
+            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
             q = reduction_factor * rate
         else
             # Pumping from level boundary
