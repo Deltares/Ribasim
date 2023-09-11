@@ -736,11 +736,12 @@ Directed graph: outflow is positive!
 function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
+    storage::AbstractVector,
     current_level::AbstractVector,
     flow::AbstractMatrix,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
+    (; basin, connectivity) = p
     (; graph_flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
@@ -990,7 +991,7 @@ function formulate_flows!(
 
     formulate_flow!(linear_resistance, p, current_level, flow, t)
     formulate_flow!(manning_resistance, p, current_level, flow, t)
-    formulate_flow!(tabulated_rating_curve, p, current_level, flow, t)
+    formulate_flow!(tabulated_rating_curve, p, storage, current_level, flow, t)
     formulate_flow!(flow_boundary, p, flow, t)
     formulate_flow!(fractional_flow, flow, p)
     formulate_flow!(pump, p, flow, storage)
