@@ -748,7 +748,13 @@ function formulate_flow!(
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id, current_level, t))
+            hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
+            @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
+            s = storage[basin_idx]
+            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
+            q =
+                reduction_factor *
+                tables[i](get_level(p, upstream_basin_id, current_level, t))
         else
             q = 0.0
         end
