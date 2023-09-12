@@ -930,7 +930,12 @@ function formulate_flow!(
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, flow::AbstractMatrix, storage::AbstractVector)::Nothing
+function formulate_flow!(
+    pump::Pump,
+    p::Parameters,
+    flow::AbstractMatrix,
+    storage::AbstractVector,
+)::Nothing
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
@@ -963,7 +968,7 @@ function formulate!(pump::Pump, p::Parameters, flow::AbstractMatrix, storage::Ab
     return nothing
 end
 
-function formulate!(
+function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     flow::AbstractMatrix,
