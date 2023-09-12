@@ -48,6 +48,7 @@ def test_basic_transient(basic_transient, tmp_path):
     assert_equal(model_orig.edge.static, model_loaded.edge.static)
 
     forcing = model_loaded.basin.forcing
+    assert model_orig.basin.forcing.time[0] == forcing.time[0]
     assert_equal(model_orig.basin.forcing, forcing)
     assert forcing.shape == (1468, 8)
 
