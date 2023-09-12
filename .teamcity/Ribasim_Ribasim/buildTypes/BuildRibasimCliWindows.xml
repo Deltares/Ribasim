@@ -9,7 +9,7 @@
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_ribasim_cli" />
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>

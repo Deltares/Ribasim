@@ -32,6 +32,11 @@ end
     end
 
     @test model isa Ribasim.Model
+    p = model.integrator.p
+    @test p isa Ribasim.Parameters
+    @test isconcretetype(typeof(p))
+    @test all(isconcretetype, fieldtypes(typeof(p)))
+
     @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
@@ -81,7 +86,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[5.951445, 727.9898] skip = Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[8.41143, 725.5068] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end

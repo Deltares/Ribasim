@@ -404,21 +404,21 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters
+struct Parameters{T, TSparse, C1, C2}
     starttime::DateTime
-    connectivity::Connectivity
-    basin::Basin
+    connectivity::Connectivity{TSparse}
+    basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve
+    tabulated_rating_curve::TabulatedRatingCurve{C2}
     fractional_flow::FractionalFlow
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
-    pump::Pump
-    outlet::Outlet
+    pump::Pump{T}
+    outlet::Outlet{T}
     terminal::Terminal
     discrete_control::DiscreteControl
-    pid_control::PidControl
+    pid_control::PidControl{T}
     lookup::Dict{Int, Symbol}
 end
 
@@ -511,8 +511,8 @@ function formulate!(
     du::AbstractVector,
     basin::Basin,
     storage::AbstractVector,
-    current_area,
-    current_level,
+    current_area::AbstractVector,
+    current_level::AbstractVector,
     t::Float64,
 )::Nothing
     for i in eachindex(storage)
@@ -556,13 +556,13 @@ end
 function continuous_control!(
     u::ComponentVector,
     du::ComponentVector,
-    current_area,
+    current_area::AbstractVector,
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray,
     current_level::AbstractVector,
-    flow::SparseMatrixCSC,
-    pid_error,
+    flow::AbstractMatrix,
+    pid_error::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
@@ -722,11 +722,11 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(
+function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
-    current_level,
-    flow,
+    current_level::AbstractVector,
+    flow::AbstractMatrix,
     t::Float64,
 )::Nothing
     (; connectivity) = p
@@ -755,14 +755,15 @@ end
 """
 Directed graph: outflow is positive!
 """
-function formulate!(
+function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
-    current_level,
-    flow::SparseMatrixCSC,
+    storage::AbstractVector,
+    current_level::AbstractVector,
+    flow::AbstractMatrix,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
+    (; basin, connectivity) = p
     (; graph_flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
@@ -770,7 +771,13 @@ function formulate!(
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id, current_level, t))
+            hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
+            @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
+            s = storage[basin_idx]
+            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
+            q =
+                reduction_factor *
+                tables[i](get_level(p, upstream_basin_id, current_level, t))
         else
             q = 0.0
         end
@@ -822,11 +829,11 @@ The average of the upstream and downstream water depth is used to compute cross-
 hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
-function formulate!(
+function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
-    current_level,
-    flow,
+    current_level::AbstractVector,
+    flow::AbstractMatrix,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
@@ -881,7 +888,11 @@ function formulate!(
     return nothing
 end
 
-function formulate!(fractional_flow::FractionalFlow, flow, p::Parameters)::Nothing
+function formulate_flow!(
+    fractional_flow::FractionalFlow,
+    flow::AbstractMatrix,
+    p::Parameters,
+)::Nothing
     (; connectivity) = p
     (; graph_flow) = connectivity
     (; node_id, fraction) = fractional_flow
@@ -893,7 +904,12 @@ function formulate!(fractional_flow::FractionalFlow, flow, p::Parameters)::Nothi
     return nothing
 end
 
-function formulate!(flow_boundary::FlowBoundary, p::Parameters, flow, t::Float64)::Nothing
+function formulate_flow!(
+    flow_boundary::FlowBoundary,
+    p::Parameters,
+    flow::AbstractMatrix,
+    t::Float64,
+)::Nothing
     (; connectivity) = p
     (; graph_flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
@@ -914,7 +930,7 @@ function formulate!(flow_boundary::FlowBoundary, p::Parameters, flow, t::Float64
     end
 end
 
-function formulate!(pump::Pump, p::Parameters, flow, storage::AbstractVector)::Nothing
+function formulate!(pump::Pump, p::Parameters, flow::AbstractMatrix, storage::AbstractVector)::Nothing
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
@@ -950,8 +966,8 @@ end
 function formulate!(
     outlet::Outlet,
     p::Parameters,
-    flow,
-    current_level,
+    flow::AbstractMatrix,
+    current_level::AbstractVector,
     storage::AbstractVector,
     t::Float64,
 )::Nothing
@@ -1006,7 +1022,7 @@ end
 function formulate!(
     du::ComponentVector,
     connectivity::Connectivity,
-    flow::SparseMatrixCSC,
+    flow::AbstractMatrix,
     basin::Basin,
 )::Nothing
     # loop over basins
@@ -1027,8 +1043,8 @@ end
 function formulate_flows!(
     p::Parameters,
     storage::AbstractVector,
-    current_level,
-    flow::SparseMatrixCSC,
+    current_level::AbstractVector,
+    flow::AbstractMatrix,
     t::Float64,
 )::Nothing
     (;
@@ -1041,13 +1057,13 @@ function formulate_flows!(
         outlet,
     ) = p
 
-    formulate!(linear_resistance, p, current_level, flow, t)
-    formulate!(manning_resistance, p, current_level, flow, t)
-    formulate!(tabulated_rating_curve, p, current_level, flow, t)
-    formulate!(flow_boundary, p, flow, t)
-    formulate!(fractional_flow, flow, p)
-    formulate!(pump, p, flow, storage)
-    formulate!(outlet, p, flow, current_level, storage, t)
+    formulate_flow!(linear_resistance, p, current_level, flow, t)
+    formulate_flow!(manning_resistance, p, current_level, flow, t)
+    formulate_flow!(tabulated_rating_curve, p, storage, current_level, flow, t)
+    formulate_flow!(flow_boundary, p, flow, t)
+    formulate_flow!(fractional_flow, flow, p)
+    formulate_flow!(pump, p, flow, storage)
+    formulate_flow!(outlet, p, flow, current_level, storage, t)
 
     return nothing
 end
@@ -1068,7 +1084,8 @@ function water_balance!(
 
     du .= 0.0
     flow = get_tmp(connectivity.flow, u)
-    nonzeros(flow) .= 0.0
+    # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
+    parent(flow) .= 0.0
 
     current_area = get_tmp(basin.current_area, u)
     current_level = get_tmp(basin.current_level, u)

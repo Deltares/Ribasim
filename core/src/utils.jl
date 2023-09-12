@@ -409,37 +409,37 @@ The ID can belong to either a Basin or a LevelBoundary.
 function get_level(
     p::Parameters,
     node_id::Int,
-    current_level,
+    current_level::AbstractVector,
     t::Float64,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-    # since the node_id fields are already Indices, Dictionary creation is instant
-    basin = Dictionary(basin.node_id, current_level)
-    hasindex, token = gettoken(basin, node_id)
+    hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
-        gettokenvalue(basin, token)
+        current_level[i]
     else
-        boundary = Dictionary(level_boundary.node_id, level_boundary.level)
-        hasindex, token = gettoken(boundary, node_id)
-        return hasindex ? gettokenvalue(boundary, token)(t) : nothing
+        i = findsorted(level_boundary.node_id, node_id)
+        if i === nothing
+            nothing
+        else
+            level_boundary.level[i](t)
+        end
     end
 end
 
 "Get the index of an ID in a set of indices."
-function id_index(ids::Indices{Int}, id::Int)
-    # There might be a better approach for this, this feels too internal
-    # the second return is the token, a Tuple{Int, Int}
-    hasindex, (_, idx) = gettoken(ids, id)
-    return hasindex, idx
+function id_index(ids::Indices{Int}, id::Int)::Tuple{Bool, Int}
+    # We avoid creating Dictionary here since it converts the values to a Vector,
+    # leading to allocations when used with PreallocationTools's ReinterpretArrays.
+    hasindex, (_, i) = gettoken(ids, id)
+    return hasindex, i
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
-    basin = Dictionary(basin.node_id, basin.level)
-    hasindex, token = gettoken(basin, node_id)
+    hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
-        level_discrete = gettokenvalue(basin, token)
+        level_discrete = basin.level[i]
         # and return the first level in this vector, representing the bottom
         first(level_discrete)
     else
