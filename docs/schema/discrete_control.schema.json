@@ -5,17 +5,13 @@
             "format": "default",
             "default": null,
             "description": "logic",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "condition": {
             "format": "default",
             "default": null,
             "description": "condition",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

@@ -5,9 +5,7 @@
             "format": "default",
             "default": null,
             "description": "static",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

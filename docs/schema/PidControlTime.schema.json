@@ -45,9 +45,7 @@
         "control_state": {
             "format": "default",
             "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

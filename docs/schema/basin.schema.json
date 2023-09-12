@@ -5,33 +5,25 @@
             "format": "default",
             "default": null,
             "description": "profile",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "static": {
             "format": "default",
             "default": null,
             "description": "static",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "forcing": {
             "format": "default",
             "default": null,
             "description": "forcing",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "state": {
             "format": "default",
             "default": null,
             "description": "state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

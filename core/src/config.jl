@@ -65,9 +65,13 @@ for (T, kinds) in pairs(nodekinds)
 end
 const nodetypes = collect(keys(nodekinds))
 
+# A [] in a TOML is parsed as Vector{Union{}}
+Base.convert(::Type{Union{Float64, Vector{Float64}}}, x::Vector{Union{}}) =
+    convert(Vector{Float64}, x)
+
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
-    saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
+    saveat::Union{Float64, Vector{Float64}} = Float64[]
     adaptive::Bool = true
     dt::Float64 = 0.0
     abstol::Float64 = 1e-6

@@ -30,9 +30,7 @@
         "look_ahead": {
             "format": "default",
             "description": "look_ahead",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         }
     },
     "required": [

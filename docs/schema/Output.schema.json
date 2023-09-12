@@ -5,7 +5,7 @@
             "format": "default",
             "default": "zstd",
             "description": "compression",
-            "type": "object"
+            "type": "string"
         },
         "basin": {
             "format": "default",
@@ -29,9 +29,7 @@
             "format": "default",
             "default": null,
             "description": "outstate",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "compression_level": {
             "format": "default",

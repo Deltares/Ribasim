@@ -12,6 +12,7 @@ using Legolas
 using InteractiveUtils
 using Dates
 using Configurations
+using Logging
 
 # set empty to have local file references for development
 const prefix = "https://deltares.github.io/Ribasim/schema/"
@@ -26,16 +27,31 @@ jsontype(::Type{<:AbstractFloat}) = "number"
 jsonformat(::Type{<:Float64}) = "double"
 jsonformat(::Type{<:Float32}) = "float"
 jsontype(::Type{<:Number}) = "number"
-jsontype(::Type{<:AbstractVector}) = "list"
+jsontype(::Type{<:AbstractVector}) = "array"
 jsontype(::Type{<:Bool}) = "boolean"
 jsontype(::Type{LogLevel}) = "string"
+jsontype(::Type{<:Enum}) = "string"
 jsontype(::Type{<:Missing}) = "null"
 jsontype(::Type{<:DateTime}) = "string"
 jsonformat(::Type{<:DateTime}) = "date-time"
 jsontype(::Type{<:Nothing}) = "null"
 jsontype(::Type{<:Any}) = "object"
 jsonformat(::Type{<:Any}) = "default"
-jsontype(T::Union) = unique(filter(!isequal("null"), jsontype.(Base.uniontypes(T))))
+function jsontype(T::Union)
+    t = Base.uniontypes(T)
+    td = Dict(zip(t, jsontype.(t)))
+    filter!(x -> !isequal(x.second, "null"), td)
+    length(td) == 1 && return first(values(td))
+    types = Dict[]
+    for (t, jt) in td
+        nt = Dict{String, Any}("type" => jt)
+        if t <: AbstractVector
+            nt["items"] = Dict("type" => jsontype(eltype(t)))
+        end
+        push!(types, nt)
+    end
+    return Dict("anyOf" => types)
+end
 
 function strip_prefix(T::DataType)
     n = string(T)
@@ -79,17 +95,21 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
         fieldname = string(fieldnames)
         required = true
         ref = false
-        @info fieldtype, fieldtype <: Ribasim.config.TableOption
         if fieldtype <: Ribasim.config.TableOption
             schema["properties"][fieldname] =
                 Dict("\$ref" => "$(prefix)$(strip_prefix(fieldtype)).schema.json")
             ref = true
         else
+            type = jsontype(fieldtype)
             schema["properties"][fieldname] = Dict{String, Any}(
                 "description" => "$fieldname",
-                "type" => jsontype(fieldtype),
                 "format" => jsonformat(fieldtype),
             )
+            if type isa AbstractString
+                schema["properties"][fieldname]["type"] = type
+            else
+                merge!(schema["properties"][fieldname], type)
+            end
         end
         if T <: Ribasim.config.TableOption
             d = field_default(T, fieldnames)

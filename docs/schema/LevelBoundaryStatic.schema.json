@@ -10,9 +10,7 @@
         "active": {
             "format": "default",
             "description": "active",
-            "type": [
-                "boolean"
-            ]
+            "type": "boolean"
         },
         "node_id": {
             "format": "default",

@@ -4,9 +4,7 @@
         "max_flow_rate": {
             "format": "default",
             "description": "max_flow_rate",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         },
         "remarks": {
             "format": "default",
@@ -17,9 +15,7 @@
         "active": {
             "format": "default",
             "description": "active",
-            "type": [
-                "boolean"
-            ]
+            "type": "boolean"
         },
         "flow_rate": {
             "format": "double",
@@ -34,16 +30,12 @@
         "control_state": {
             "format": "default",
             "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "min_flow_rate": {
             "format": "default",
             "description": "min_flow_rate",
-            "type": [
-                "number"
-            ]
+            "type": "number"
         }
     },
     "required": [

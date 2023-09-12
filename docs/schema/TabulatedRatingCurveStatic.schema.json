@@ -10,9 +10,7 @@
         "active": {
             "format": "default",
             "description": "active",
-            "type": [
-                "boolean"
-            ]
+            "type": "boolean"
         },
         "node_id": {
             "format": "default",
@@ -32,9 +30,7 @@
         "control_state": {
             "format": "default",
             "description": "control_state",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

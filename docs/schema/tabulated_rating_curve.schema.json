@@ -5,17 +5,13 @@
             "format": "default",
             "default": null,
             "description": "time",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         },
         "static": {
             "format": "default",
             "default": null,
             "description": "static",
-            "type": [
-                "string"
-            ]
+            "type": "string"
         }
     },
     "required": [

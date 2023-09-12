@@ -9,13 +9,20 @@
         },
         "saveat": {
             "format": "default",
+            "anyOf": [
+                {
+                    "items": {
+                        "type": "number"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "number"
+                }
+            ],
             "default": [
             ],
-            "description": "saveat",
-            "type": [
-                "number",
-                "list"
-            ]
+            "description": "saveat"
         },
         "maxiters": {
             "format": "default",
