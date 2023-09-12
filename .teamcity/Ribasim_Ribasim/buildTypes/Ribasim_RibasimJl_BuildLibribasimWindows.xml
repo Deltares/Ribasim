@@ -12,7 +12,7 @@
       <setting-ref ref="RQ_271" />
     </disabled-settings>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_libribasim" />
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
