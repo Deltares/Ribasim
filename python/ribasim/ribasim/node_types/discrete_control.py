@@ -1,7 +1,10 @@
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import DiscreteControlConditionSchema, DiscreteControlLogicSchema
+from ribasim.schemas import (  # type: ignore
+    DiscreteControlConditionSchema,
+    DiscreteControlLogicSchema,
+)
 
 __all__ = ("DiscreteControl",)
 

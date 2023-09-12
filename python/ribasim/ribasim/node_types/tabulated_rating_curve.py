@@ -3,7 +3,7 @@ from typing import Optional
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import (
+from ribasim.schemas import (  # type: ignore
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
 )

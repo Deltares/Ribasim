@@ -3,7 +3,7 @@ from typing import Optional
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import PidControlStaticSchema, PidControlTimeSchema
+from ribasim.schemas import PidControlStaticSchema, PidControlTimeSchema  # type: ignore
 
 __all__ = ("PidControl",)
 

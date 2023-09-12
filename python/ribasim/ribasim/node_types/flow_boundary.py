@@ -3,7 +3,10 @@ from typing import Optional
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import FlowBoundaryStaticSchema, FlowBoundaryTimeSchema
+from ribasim.schemas import (  # type: ignore
+    FlowBoundaryStaticSchema,
+    FlowBoundaryTimeSchema,
+)
 
 __all__ = ("FlowBoundary",)
 

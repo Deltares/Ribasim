@@ -1,7 +1,7 @@
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import LinearResistanceStaticSchema
+from ribasim.schemas import LinearResistanceStaticSchema  # type: ignore
 
 __all__ = ("LinearResistance",)
 

@@ -3,7 +3,10 @@ from typing import Optional
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import LevelBoundaryStaticSchema, LevelBoundaryTimeSchema
+from ribasim.schemas import (  # type: ignore
+    LevelBoundaryStaticSchema,
+    LevelBoundaryTimeSchema,
+)
 
 __all__ = ("LevelBoundary",)
 

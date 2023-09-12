@@ -1,7 +1,7 @@
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import TerminalStaticSchema
+from ribasim.schemas import TerminalStaticSchema  # type: ignore
 
 __all__ = ("Terminal",)
 

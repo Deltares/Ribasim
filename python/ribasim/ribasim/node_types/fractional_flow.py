@@ -1,7 +1,7 @@
 from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
-from ribasim.schemas import FractionalFlowStaticSchema
+from ribasim.schemas import FractionalFlowStaticSchema  # type: ignore
 
 __all__ = ("FractionalFlow",)
 
