@@ -39,7 +39,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.2.0
         with:
-          pixi-version: "0.3.0"
+          pixi-version: latest
           cache: true
       - name: Prepare pixi
         run: |
