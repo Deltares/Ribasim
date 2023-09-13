@@ -78,7 +78,7 @@ pip install --no-deps "python/ribasim_testmodels"]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
-        <artifact sourcePath="ribasim_cli.zip!** =&gt; build/create_binaries/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_cli.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
