@@ -523,12 +523,12 @@ function formulate!(
         bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
-        reduction_factor_basin = reduction_factor(depth, 0.1)
+        factor = reduction_factor(depth, 0.1)
 
         precipitation = fixed_area * basin.precipitation[i]
-        evaporation = area * reduction_factor_basin * basin.potential_evaporation[i]
+        evaporation = area * factor * basin.potential_evaporation[i]
         drainage = basin.drainage[i]
-        infiltration = reduction_factor_basin * basin.infiltration[i]
+        infiltration = factor * basin.infiltration[i]
 
         du.storage[i] += precipitation - evaporation + drainage - infiltration
     end
@@ -602,20 +602,20 @@ function continuous_control!(
             dst_level = get_level(p, dst_id, current_level, t)
 
             if src_level === nothing || dst_level === nothing
-                reduction_factor_outlet = 1.0
+                factor_outlet = 1.0
             else
                 Δlevel = src_level - dst_level
-                reduction_factor_outlet = reduction_factor(Δlevel, 0.1)
+                factor_outlet = reduction_factor(Δlevel, 0.1)
             end
         else
-            reduction_factor_outlet = 1.0
+            factor_outlet = 1.0
         end
 
         if controls_pump
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
 
             listened_basin_storage = u.storage[listened_node_idx]
-            reduction_factor_basin = reduction_factor(listened_basin_storage, 10.0)
+            factor_basin = reduction_factor(listened_basin_storage, 10.0)
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
@@ -624,13 +624,13 @@ function continuous_control!(
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
-                reduction_factor_basin = reduction_factor(upstream_basin_storage, 10.0)
+                factor_basin = reduction_factor(upstream_basin_storage, 10.0)
             else
-                reduction_factor_basin = 1.0
+                factor_basin = 1.0
             end
         end
 
-        reduction_factor_all = reduction_factor_basin * reduction_factor_outlet
+        factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
         K_p, K_i, K_d = pid_params[i](t)
@@ -638,17 +638,17 @@ function continuous_control!(
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
             area = current_area[listened_node_idx]
-            D = 1.0 - K_d * reduction_factor_all / area
+            D = 1.0 - K_d * factor / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += reduction_factor_all * K_p * pid_error[i] / D
+            flow_rate += factor * K_p * pid_error[i] / D
         end
 
         if !iszero(K_i)
-            flow_rate += reduction_factor_all * K_i * integral_value[i] / D
+            flow_rate += factor * K_i * integral_value[i] / D
         end
 
         if !iszero(K_d)
@@ -773,11 +773,8 @@ function formulate_flow!(
         if active[i]
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
             @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
-            s = storage[basin_idx]
-            reduction_factor = clamp(s, 0.0, 10.0) / 10.0
-            q =
-                reduction_factor *
-                tables[i](get_level(p, upstream_basin_id, current_level, t))
+            factor = reduction_factor(storage[basin_idx], 10.0)
+            q = factor * tables[i](get_level(p, upstream_basin_id, current_level, t))
         else
             q = 0.0
         end
@@ -957,9 +954,7 @@ function formulate_flow!(
 
         if hasindex
             # Pumping from basin
-            s = storage[basin_idx]
-            reduction_factor_basin = reduction_factor(s, 10.0)
-            q *= reduction_factor_basin
+            q *= reduction_factor(storage[basin_idx], 10.0)
         end
 
         flow[src_id, id] = q
@@ -996,9 +991,7 @@ function formulate_flow!(
 
         if hasindex
             # Flowing from basin
-            s = storage[basin_idx]
-            reduction_factor_basin = reduction_factor(s, 10.0)
-            q *= reduction_factor_basin
+            q *= reduction_factor(storage[basin_idx], 10.0)
         end
 
         # No flow of outlet if source level is lower than target level
@@ -1007,15 +1000,12 @@ function formulate_flow!(
 
         if src_level !== nothing && dst_level !== nothing
             Δlevel = src_level - dst_level
-            reduction_factor_outlet = reduction_factor(Δlevel, 0.1)
-            q *= reduction_factor_outlet
+            q *= reduction_factor(Δlevel, 0.1)
         end
 
         # No flow out outlet if source level is lower than minimum crest level
         if src_level !== nothing && !isnan(min_crest_level[i])
-            reduction_factor_min_crest_level =
-                reduction_factor(src_level - min_crest_level[i], 0.1)
-            q *= reduction_factor_min_crest_level
+            q *= reduction_factor(src_level - min_crest_level[i], 0.1)
         end
 
         flow[src_id, id] = q
