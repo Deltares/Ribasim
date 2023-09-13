@@ -1,8 +1,6 @@
 [project]
 name = "Ribasim"
 version = "0.1.0"
-description = "Add a short description here"
-authors = ["Hofer-Julian <julianhofer@gnome.org>"]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64"]
 
