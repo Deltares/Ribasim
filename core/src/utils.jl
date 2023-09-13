@@ -222,11 +222,11 @@ Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
 """
 function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_end = findlast(==(id), ids)
-    if isnothing(idx_block_end)
+    if idx_block_end === nothing
         return 1:0
     end
     idx_block_begin = findprev(!=(id), ids, idx_block_end)
-    idx_block_begin = if isnothing(idx_block_begin)
+    idx_block_begin = if idx_block_begin === nothing
         1
     else
         # can happen if that id is the only ID in ids
@@ -353,7 +353,7 @@ function set_static_value!(
 )::NamedTuple
     for (i, id) in enumerate(node_id)
         idx = findsorted(static.node_id, id)
-        isnothing(idx) && continue
+        idx === nothing && continue
         row = static[idx]
         set_table_row!(table, row, i)
     end
@@ -380,7 +380,7 @@ function set_current_value!(
                 row -> row.node_id == id && !isnan(getproperty(row, symbol)),
                 pre_table,
             )
-            if !isnothing(idx)
+            if idx !== nothing
                 vector[i] = getproperty(pre_table, symbol)[idx]
             end
         end
@@ -456,7 +456,7 @@ function basin_bottoms(
 )::Tuple{Float64, Float64}
     bottom_a = basin_bottom(basin, basin_a_id)
     bottom_b = basin_bottom(basin, basin_b_id)
-    if isnothing(bottom_a) && isnothing(bottom_b)
+    if bottom_a === bottom_b === nothing
         error(lazy"No bottom defined on either side of $id")
     end
     bottom_a = something(bottom_a, bottom_b)

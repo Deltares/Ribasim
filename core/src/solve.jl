@@ -601,11 +601,11 @@ function continuous_control!(
             src_level = get_level(p, src_id, current_level, t)
             dst_level = get_level(p, dst_id, current_level, t)
 
-            if !isnothing(src_level) && !isnothing(dst_level)
+            if src_level === nothing || dst_level === nothing
+                reduction_factor_outlet = 1.0
+            else
                 Δlevel = src_level - dst_level
                 reduction_factor_outlet = reduction_factor(Δlevel, 0.1)
-            else
-                reduction_factor_outlet = 1.0
             end
         else
             reduction_factor_outlet = 1.0
@@ -1005,14 +1005,14 @@ function formulate_flow!(
         src_level = get_level(p, src_id, current_level, t)
         dst_level = get_level(p, dst_id, current_level, t)
 
-        if !isnothing(src_level) && !isnothing(dst_level)
+        if src_level !== nothing && dst_level !== nothing
             Δlevel = src_level - dst_level
             reduction_factor_outlet = reduction_factor(Δlevel, 0.1)
             q *= reduction_factor_outlet
         end
 
         # No flow out outlet if source level is lower than minimum crest level
-        if !isnothing(src_level) && !isnan(min_crest_level[i])
+        if src_level !== nothing && !isnan(min_crest_level[i])
             reduction_factor_min_crest_level =
                 reduction_factor(src_level - min_crest_level[i], 0.1)
             q *= reduction_factor_min_crest_level

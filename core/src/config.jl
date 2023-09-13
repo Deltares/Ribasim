@@ -84,7 +84,7 @@ end
 
 function Base.convert(::Type{Compression}, str::AbstractString)
     i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
-    if isnothing(i)
+    if i === nothing
         throw(
             ArgumentError(
                 "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
@@ -149,7 +149,7 @@ function Base.show(io::IO, c::Config)
     println(io, "Ribasim Config")
     for field in fieldnames(typeof(c))
         f = getfield(c, field)
-        isnothing(f) || println(io, "\t$field\t= $f")
+        f === nothing || println(io, "\t$field\t= $f")
     end
 end
 
@@ -157,7 +157,7 @@ function Base.show(io::IO, c::TableOption)
     first = true
     for field in fieldnames(typeof(c))
         f = getfield(c, field)
-        if !isnothing(f)
+        if f !== nothing
             first && (first = false; println(io))
             println(io, "\t\t$field\t= $f")
         end
@@ -180,7 +180,7 @@ const algorithms = Dict{String, Type}(
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
-    if isnothing(algotype)
+    if algotype === nothing
         options = join(keys(algorithms), ", ")
         error("Given solver algorithm $(solver.algorithm) not supported.\n\
             Available options are: ($(options)).")

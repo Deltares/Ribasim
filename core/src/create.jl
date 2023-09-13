@@ -74,14 +74,14 @@ function parse_static_and_time(
     end
 
     # Get node IDs of static nodes if the static table exists
-    static_node_ids = if isnothing(static)
+    static_node_ids = if static === nothing
         Set{Int}()
     else
         Set(static.node_id)
     end
 
     # Get node IDs of transient nodes if the time table exists
-    time_node_ids = if isnothing(time)
+    time_node_ids = if time === nothing
         Set{Int}()
     else
         Set(time.node_id)

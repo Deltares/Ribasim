@@ -27,7 +27,7 @@ This expands to
 ```
 try
     global model
-    isnothing(model) && error("Model not initialized")
+    model === nothing && error("Model not initialized")
     BMI.update(model)
 catch
     Base.invokelatest(Base.display_error, current_exceptions())
@@ -40,7 +40,7 @@ macro try_c(ex)
     return quote
         try
             global model
-            isnothing(model) && error("Model not initialized")
+            model === nothing && error("Model not initialized")
             $(esc(ex))
         catch e
             global last_error_message
@@ -81,7 +81,7 @@ end
 
 Base.@ccallable function finalize()::Cint
     @try_c_uninitialized begin
-        if !isnothing(model)
+        if model !== nothing
             BMI.finalize(model)
         end
         model = nothing
