@@ -397,9 +397,10 @@ class LevelBoundaryStatic(Input):
 
 
 class LevelBoundaryTime(Input):
-    input_type = "LevelBoundary / static"
+    input_type = "LevelBoundary / time"
     geometry_type = "No Geometry"
     attributes = [
+        QgsField("time", QVariant.DateTime),
         QgsField("node_id", QVariant.Int),
         QgsField("time", QVariant.DateTime),
         QgsField("level", QVariant.Double),
