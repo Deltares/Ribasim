@@ -959,7 +959,7 @@ function formulate_flow!(
             # Pumping from basin
             s = storage[basin_idx]
             reduction_factor_basin = reduction_factor(s, 10.0)
-            q = reduction_factor_basin * rate
+            q *= reduction_factor_basin
         end
 
         flow[src_id, id] = q
