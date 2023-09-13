@@ -33,9 +33,8 @@ pip install --no-deps "python/ribasim_testmodels"]]></param>
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
-          <param name="teamcity.build.workingDir" value="build/ribasim_cli" />
+          <param name="script.content" value="pixi run test-ribasim-cli" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
