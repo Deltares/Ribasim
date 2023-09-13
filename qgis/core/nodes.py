@@ -177,7 +177,7 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
-            "Outlet": (QColor("yellow"), "Outlet", shape.Hexagon),
+            "Outlet": (QColor("green"), "Outlet", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
@@ -429,6 +429,7 @@ class OutletStatic(Input):
         QgsField("flow_rate", QVariant.Double),
         QgsField("min_flow_rate", QVariant.Double),
         QgsField("max_flow_rate", QVariant.Double),
+        QgsField("min_crest_level", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
 
