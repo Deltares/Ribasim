@@ -6,6 +6,9 @@
     <options>
       <option name="artifactRules" value="build\ribasim_cli\tests\temp =&gt; test_output.zip" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_1502" />
+    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
     </parameters>
