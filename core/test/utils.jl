@@ -206,3 +206,13 @@ end
     @test isempty(fv)
     @test length(fv) == 0
 end
+
+@testset "reduction_factor" begin
+    @test Ribasim.reduction_factor(-2.0, 2.0) === 0.0
+    @test Ribasim.reduction_factor(0.0f0, 2.0) === 0.0f0
+    @test Ribasim.reduction_factor(0.0, 2.0) === 0.0
+    @test Ribasim.reduction_factor(1.0f0, 2.0) === 0.5f0
+    @test Ribasim.reduction_factor(1.0, 2.0) === 0.5
+    @test Ribasim.reduction_factor(3.0f0, 2.0) === 1.0f0
+    @test Ribasim.reduction_factor(3.0, 2.0) === 1.0
+end

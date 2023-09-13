@@ -906,13 +906,13 @@ end
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
-function reduction_factor(x::Real, threshold::Real)::Real
+function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     return if x < 0
-        0.0
+        zero(T)
     elseif x < threshold
         x_scaled = x / threshold
         (-2 * x_scaled + 3) * x_scaled^2
     else
-        1.0
+        one(T)
     end
 end
