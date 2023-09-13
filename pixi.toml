@@ -38,6 +38,7 @@ lint = { depends_on = [
 test-ribasim-python = "pytest python/ribasim/tests"
 test-ribasim-python-cov = "pytest --cov=ribasim --cov-report=xml python/ribasim/tests"
 test-ribasim-api = "pytest python/ribasim_api/tests"
+test-ribasim-cli = "pytest build/ribasim_cli/tests --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml"
 generate-testmodels = "python utils/generate-testmodels.py"
 
 
