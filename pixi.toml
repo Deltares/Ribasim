@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add a short description here"
 authors = ["Hofer-Julian <julianhofer@gnome.org>"]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+platforms = ["win-64", "linux-64", "osx-64"]
 
 [tasks]
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
@@ -63,7 +63,7 @@ pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 python = ">=3.9"
-#quarto = "*"
+quarto = "*"
 ruff = "*"
 shapely = ">=2.0"
 tomli = "*"
