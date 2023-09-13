@@ -6,14 +6,18 @@
     <options>
       <option name="artifactRules" value="build\ribasim_cli\tests\temp =&gt; test_output.zip" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_1502" />
+    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1501" name="Set up virtual environment" type="simpleRunner">
+      <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[if exist "%conda_env_path%" rd /q /s "%conda_env_path%"
-call conda env create --file environment.yml -p "%conda_env_path%"]]></param>
+          <param name="script.content"><![CDATA[pixi install
+pixi run post-install]]></param>
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -29,16 +33,17 @@ pip install --no-deps "python/ribasim_testmodels"]]></param>
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
-          <param name="teamcity.build.workingDir" value="build/ribasim_cli" />
+          <param name="script.content" value="pixi run test-ribasim-cli" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim">
+        <checkout-rule rule=". =&gt; ribasim" />
+      </vcs-entry-ref>
     </vcs-settings>
     <requirements>
       <equals id="RQ_310" name="env.OS" value="Windows_NT" />
@@ -73,7 +78,7 @@ pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
-        <artifact sourcePath="ribasim_cli.zip!** =&gt; build/create_binaries/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_cli.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
