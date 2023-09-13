@@ -35,10 +35,10 @@ lint = { depends_on = [
     "mypy-ribasim-testmodels",
     "mypy-ribasim-api",
 ] }
-test-ribasim-python = "pytest python/ribasim/tests"
-test-ribasim-python-cov = "pytest --cov=ribasim --cov-report=xml python/ribasim/tests"
-test-ribasim-api = "pytest python/ribasim_api/tests"
-test-ribasim-cli = "pytest build/ribasim_cli/tests --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml"
+test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
+test-ribasim-python-cov = "pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests"
+test-ribasim-api = "pytest --numprocesses=auto python/ribasim_api/tests"
+test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
 generate-testmodels = "python utils/generate-testmodels.py"
 
 
@@ -61,6 +61,7 @@ pydantic = "~=1.0"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
+pytest-xdist = "*"
 python = ">=3.9"
 quarto = "*"
 ruff = "*"

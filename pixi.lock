@@ -4944,6 +4944,69 @@ package:
   noarch: python
   size: 19262
   timestamp: 1692026296517
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: linux-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: osx-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: win-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
 - name: executing
   version: 1.2.0
   manager: conda
@@ -19647,6 +19710,81 @@ package:
   noarch: python
   size: 25436
   timestamp: 1684965001294
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: osx-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: win-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
 - name: python
   version: 3.11.5
   manager: conda
