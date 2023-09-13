@@ -21,6 +21,13 @@
                 "boolean"
             ]
         },
+        "min_crest_level": {
+            "format": "default",
+            "description": "min_crest_level",
+            "type": [
+                "number"
+            ]
+        },
         "flow_rate": {
             "format": "double",
             "description": "flow_rate",

@@ -19,9 +19,9 @@ toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
         toml_path_ptr = Base.unsafe_convert(Cstring, toml_path)
 
         # safe to finalize uninitialized model
-        @test isnothing(libribasim.model)
+        @test libribasim.model === nothing
         @test libribasim.finalize() == 0
-        @test isnothing(libribasim.model)
+        @test libribasim.model === nothing
 
         # cannot get time of uninitialized model
         @test libribasim.last_error_message == ""
@@ -41,6 +41,6 @@ toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
         @test unsafe_string(type_ptr) == "double"
 
         @test libribasim.finalize() == 0
-        @test isnothing(libribasim.model)
+        @test libribasim.model === nothing
     end
 end

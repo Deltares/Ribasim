@@ -74,14 +74,14 @@ function parse_static_and_time(
     end
 
     # Get node IDs of static nodes if the static table exists
-    static_node_ids = if isnothing(static)
+    static_node_ids = if static === nothing
         Set{Int}()
     else
         Set(static.node_id)
     end
 
     # Get node IDs of transient nodes if the time table exists
-    time_node_ids = if isnothing(time)
+    time_node_ids = if time === nothing
         Set{Int}()
     else
         Set(time.node_id)
@@ -433,7 +433,8 @@ end
 
 function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
+    defaults =
+        (; min_flow_rate = 0.0, max_flow_rate = NaN, min_crest_level = NaN, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
     is_pid_controlled = falses(length(parsed_parameters.node_id))
 
@@ -454,6 +455,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
+        parsed_parameters.min_crest_level,
         parsed_parameters.control_mapping,
         is_pid_controlled,
     )

@@ -147,7 +147,7 @@ class Node(TableModel):
             "ManningResistance": "r",
             "TabulatedRatingCurve": "g",
             "Pump": "0.5",  # grayscale level
-            "Outlet": "y",
+            "Outlet": "g",
             "Terminal": "m",
             "FlowBoundary": "m",
             "DiscreteControl": "k",
