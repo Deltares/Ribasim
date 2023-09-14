@@ -197,5 +197,5 @@ class TableModel(BaseModel):
             if dataframe is None:
                 continue
             else:
-                dataframe = dataframe.sort_values("node_id", ignore_index=True)
+                dataframe.sort_values("node_id", ignore_index=True, inplace=True)
         return
