@@ -129,6 +129,7 @@ class OutletStatic(BaseModel):
     max_flow_rate: Optional[float] = None
     remarks: str = Field("", description="a hack for pandera")
     active: Optional[bool] = None
+    min_crest_level: Optional[float] = None
     flow_rate: float
     node_id: int
     control_state: Optional[str] = None
