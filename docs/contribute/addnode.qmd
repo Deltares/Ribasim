@@ -91,7 +91,7 @@ The current dependency groups are:
 
 - Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor (or the basin one node further if it is connected with a `FractionalFlow` in between) if that is also a basin;
 - Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
-- The `PidControl` node is a special case which is discussed in [equations](..\core\equations.qmd#sec-PID).
+- The `PidControl` node is a special case which is discussed in [equations](../core/equations.qmd#sec-PID).
 
 In the methods `formulate_jac!` in `jac.jl` the analytical expressions for the partial derivatives $\frac{\partial Q_{i',j'}}{\partial u_i}$ (and the ones related to PID integral states) are hardcoded. For `NewNodeType` either a new method of `formulate_jac!` has to be introduced, or it has to be added to the list of node types that do not contribute to the Jacobian in the method of `formulate_jac!` whose signature contains `node::AbstractParameterNode`.
 
