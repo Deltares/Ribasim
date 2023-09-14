@@ -120,7 +120,7 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
                 end
             end
         end
-        if !((fieldtype isa Union) && (fieldtype.a === Missing))
+        if !((fieldtype isa Union) && (fieldtype.a === Missing)) && required
             push!(schema["required"], fieldname)
         end
     end
