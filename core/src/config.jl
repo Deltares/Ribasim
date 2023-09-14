@@ -148,6 +148,11 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
     )
 end
 
+# [] in TOML is parsed as a Vector{Union{}}
+function Configurations.from_dict(::Type{Solver}, t::Type, saveat::Vector{Union{}})
+    return Float64[]
+end
+
 # TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
     println(io, "Ribasim Config")
