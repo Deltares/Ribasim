@@ -132,14 +132,20 @@ function parse_static_and_time(
                 end
             end
         elseif node_id in time_node_ids
-            time_first_idx = searchsortedfirst(time.node_id, node_id)
+            # TODO replace (time, node_id) order by (node_id, time)
+            # this fits our access pattern better, so we can use views
+            idx = findall(==(node_id), time.node_id)
+            time_subset = time[idx]
+
+            time_first_idx = searchsortedfirst(time_subset.node_id, node_id)
+
             for parameter_name in parameter_names
                 # If the parameter is interpolatable, create an interpolation object
                 if parameter_name in time_interpolatables
                     val, is_valid = get_scalar_interpolation(
                         config.starttime,
                         t_end,
-                        time,
+                        time_subset,
                         node_id,
                         parameter_name;
                         default_value = hasproperty(defaults, parameter_name) ?
@@ -155,7 +161,7 @@ function parse_static_and_time(
                         val = true
                     else
                         # If the parameter is not interpolatable, get the instance in the first row
-                        val = getfield(time[time_first_idx], parameter_name)
+                        val = getfield(time_subset[time_first_idx], parameter_name)
                     end
                 end
                 getfield(out, parameter_name)[node_idx] = val
