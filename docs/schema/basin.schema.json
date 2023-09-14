@@ -3,23 +3,51 @@
     "properties": {
         "profile": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         },
         "static": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         },
         "forcing": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         },
         "state": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         }
     },
     "required": [

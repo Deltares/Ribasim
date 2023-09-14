@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -14,22 +14,22 @@ class Output(BaseModel):
     basin: str = "output/basin.arrow"
     flow: str = "output/flow.arrow"
     control: str = "output/control.arrow"
-    outstate: str = None
+    outstate: Optional[str] = None
     compression_level: int = 6
 
 
 class LevelBoundary(BaseModel):
-    time: str = None
-    static: str = None
+    time: Optional[str] = None
+    static: Optional[str] = None
 
 
 class Pump(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class DiscreteControl(BaseModel):
-    logic: str = None
-    condition: str = None
+    logic: Optional[str] = None
+    condition: Optional[str] = None
 
 
 class Solver(BaseModel):
@@ -45,26 +45,26 @@ class Solver(BaseModel):
 
 
 class FlowBoundary(BaseModel):
-    time: str = None
-    static: str = None
+    time: Optional[str] = None
+    static: Optional[str] = None
 
 
 class PidControl(BaseModel):
-    time: str = None
-    static: str = None
+    time: Optional[str] = None
+    static: Optional[str] = None
 
 
 class FractionalFlow(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class ManningResistance(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class TabulatedRatingCurve(BaseModel):
-    time: str = None
-    static: str = None
+    time: Optional[str] = None
+    static: Optional[str] = None
 
 
 class Logging(BaseModel):
@@ -73,22 +73,22 @@ class Logging(BaseModel):
 
 
 class Outlet(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class Terminal(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class Basin(BaseModel):
-    profile: str = None
-    static: str = None
-    forcing: str = None
-    state: str = None
+    profile: Optional[str] = None
+    static: Optional[str] = None
+    forcing: Optional[str] = None
+    state: Optional[str] = None
 
 
 class LinearResistance(BaseModel):
-    static: str = None
+    static: Optional[str] = None
 
 
 class Config(BaseModel):

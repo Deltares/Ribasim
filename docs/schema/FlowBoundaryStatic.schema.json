@@ -9,7 +9,14 @@
         },
         "active": {
             "format": "default",
-            "type": "boolean"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
         },
         "flow_rate": {
             "format": "double",

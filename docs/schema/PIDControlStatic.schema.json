@@ -17,7 +17,14 @@
         },
         "active": {
             "format": "default",
-            "type": "boolean"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
         },
         "proportional": {
             "format": "double",
@@ -37,7 +44,14 @@
         },
         "control_state": {
             "format": "default",
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ]
         }
     },
     "required": [

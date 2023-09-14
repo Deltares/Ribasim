@@ -23,8 +23,15 @@
         },
         "outstate": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         },
         "compression_level": {
             "format": "default",

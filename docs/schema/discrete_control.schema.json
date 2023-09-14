@@ -3,13 +3,27 @@
     "properties": {
         "logic": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         },
         "condition": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         }
     },
     "required": [

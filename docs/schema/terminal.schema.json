@@ -3,8 +3,15 @@
     "properties": {
         "static": {
             "format": "default",
-            "default": null,
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         }
     },
     "required": [

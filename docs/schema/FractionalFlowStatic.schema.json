@@ -17,7 +17,14 @@
         },
         "control_state": {
             "format": "default",
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ]
         }
     },
     "required": [

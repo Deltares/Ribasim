@@ -25,7 +25,14 @@
         },
         "look_ahead": {
             "format": "default",
-            "type": "number"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         }
     },
     "required": [

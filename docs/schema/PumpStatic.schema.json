@@ -3,7 +3,14 @@
     "properties": {
         "max_flow_rate": {
             "format": "default",
-            "type": "number"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "remarks": {
             "format": "default",
@@ -13,7 +20,14 @@
         },
         "active": {
             "format": "default",
-            "type": "boolean"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
         },
         "flow_rate": {
             "format": "double",
@@ -25,11 +39,25 @@
         },
         "control_state": {
             "format": "default",
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ]
         },
         "min_flow_rate": {
             "format": "default",
-            "type": "number"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         }
     },
     "required": [

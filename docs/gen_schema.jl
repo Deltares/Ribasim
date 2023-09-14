@@ -40,7 +40,6 @@ jsonformat(::Type{<:Any}) = "default"
 function jsontype(T::Union)
     t = Base.uniontypes(T)
     td = Dict(zip(t, jsontype.(t)))
-    filter!(x -> !isequal(x.second, "null"), td)
     length(td) == 1 && return first(values(td))
     types = Dict[]
     for (t, jt) in td
