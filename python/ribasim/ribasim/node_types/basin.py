@@ -35,12 +35,12 @@ class Basin(TableModel):
     state: Optional[DataFrame[BasinStateSchema]] = None
 
     def sort(self):
-        self.profile = self.profile.sort_values(["node_id", "level"], ignore_index=True)
+        self.profile.sort_values(["node_id", "level"], ignore_index=True, inplace=True)
         if self.static is not None:
-            self.static = self.static.sort_values("node_id", ignore_index=True)
+            self.static.sort_values("node_id", ignore_index=True, inplace=True)
         if self.forcing is not None:
-            self.forcing = self.forcing.sort_values(
-                ["time", "node_id"], ignore_index=True
+            self.forcing.sort_values(
+                ["time", "node_id"], ignore_index=True, inplace=True
             )
         if self.state is not None:
-            self.state = self.state.sort_values("node_id", ignore_index=True)
+            self.state.sort_values("node_id", ignore_index=True, inplace=True)
