@@ -27,10 +27,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "null"
+                    "type": "number"
                 },
                 {
-                    "type": "number"
+                    "type": "null"
                 }
             ]
         }

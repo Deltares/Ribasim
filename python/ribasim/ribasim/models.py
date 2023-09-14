@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -32,13 +32,13 @@ class FlowBoundaryTime(BaseModel):
 
 
 class UserStatic(BaseModel):
-    remarks: Optional[str] = Field("", description="a hack for pandera")
-    priority: int = Field(..., description="priority")
-    active: Optional[str] = Field(None, description="active")
-    demand: float = Field(..., description="demand")
-    return_factor: Any = Field(..., description="return_factor")
-    node_id: int = Field(..., description="node_id")
-    allocated: float = Field(..., description="allocated")
+    remarks: str = Field("", description="a hack for pandera")
+    priority: int
+    active: Optional[str] = None
+    demand: float
+    return_factor: float
+    min_level: float
+    node_id: int
 
 
 class PumpStatic(BaseModel):
@@ -59,13 +59,13 @@ class LevelBoundaryStatic(BaseModel):
 
 
 class UserTime(BaseModel):
-    remarks: Optional[str] = Field("", description="a hack for pandera")
-    priority: int = Field(..., description="priority")
-    time: datetime = Field(..., description="time")
-    demand: float = Field(..., description="demand")
-    return_factor: Any = Field(..., description="return_factor")
-    node_id: int = Field(..., description="node_id")
-    allocated: float = Field(..., description="allocated")
+    remarks: str = Field("", description="a hack for pandera")
+    priority: int
+    time: datetime
+    demand: float
+    return_factor: float
+    min_level: float
+    node_id: int
 
 
 class DiscreteControlCondition(BaseModel):
@@ -218,8 +218,10 @@ class Root(BaseModel):
     DiscreteControlLogic: Optional[DiscreteControlLogic] = None
     Edge: Optional[Edge] = None
     FlowBoundaryTime: Optional[FlowBoundaryTime] = None
+    UserStatic: Optional[UserStatic] = None
     PumpStatic: Optional[PumpStatic] = None
     LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
+    UserTime: Optional[UserTime] = None
     DiscreteControlCondition: Optional[DiscreteControlCondition] = None
     BasinForcing: Optional[BasinForcing] = None
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
@@ -237,5 +239,3 @@ class Root(BaseModel):
     BasinProfile: Optional[BasinProfile] = None
     TerminalStatic: Optional[TerminalStatic] = None
     BasinStatic: Optional[BasinStatic] = None
-    UserStatic: Optional[UserStatic] = None
-    UserTime: Optional[UserTime] = None
