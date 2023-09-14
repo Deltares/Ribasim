@@ -4,17 +4,17 @@
         "time": {
             "format": "default",
             "default": null,
-            "description": "time",
             "type": "string"
         },
         "static": {
             "format": "default",
             "default": null,
-            "description": "static",
             "type": "string"
         }
     },
     "required": [
+        "static",
+        "time"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/tabulated_rating_curve.schema.json",
     "title": "tabulated_rating_curve",

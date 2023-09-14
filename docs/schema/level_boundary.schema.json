@@ -4,17 +4,17 @@
         "time": {
             "format": "default",
             "default": null,
-            "description": "time",
             "type": "string"
         },
         "static": {
             "format": "default",
             "default": null,
-            "description": "static",
             "type": "string"
         }
     },
     "required": [
+        "static",
+        "time"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/level_boundary.schema.json",
     "title": "level_boundary",

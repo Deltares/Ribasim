@@ -4,41 +4,41 @@
         "compression": {
             "format": "default",
             "default": "zstd",
-            "description": "compression",
             "type": "string"
         },
         "basin": {
             "format": "default",
             "default": "output/basin.arrow",
-            "description": "basin",
             "type": "string"
         },
         "flow": {
             "format": "default",
             "default": "output/flow.arrow",
-            "description": "flow",
             "type": "string"
         },
         "control": {
             "format": "default",
             "default": "output/control.arrow",
-            "description": "control",
             "type": "string"
         },
         "outstate": {
             "format": "default",
             "default": null,
-            "description": "outstate",
             "type": "string"
         },
         "compression_level": {
             "format": "default",
             "default": 6,
-            "description": "compression_level",
             "type": "integer"
         }
     },
     "required": [
+        "basin",
+        "flow",
+        "control",
+        "outstate",
+        "compression",
+        "compression_level"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/Output.schema.json",
     "title": "Output",

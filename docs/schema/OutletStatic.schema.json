@@ -3,7 +3,6 @@
     "properties": {
         "max_flow_rate": {
             "format": "default",
-            "description": "max_flow_rate",
             "type": "number"
         },
         "remarks": {
@@ -14,27 +13,22 @@
         },
         "active": {
             "format": "default",
-            "description": "active",
             "type": "boolean"
         },
         "flow_rate": {
             "format": "double",
-            "description": "flow_rate",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "control_state": {
             "format": "default",
-            "description": "control_state",
             "type": "string"
         },
         "min_flow_rate": {
             "format": "default",
-            "description": "min_flow_rate",
             "type": "number"
         }
     },

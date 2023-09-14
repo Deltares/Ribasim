@@ -4,17 +4,17 @@
         "timing": {
             "format": "default",
             "default": false,
-            "description": "timing",
             "type": "boolean"
         },
         "verbosity": {
             "format": "default",
             "default": "info",
-            "description": "verbosity",
             "type": "string"
         }
     },
     "required": [
+        "verbosity",
+        "timing"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/Logging.schema.json",
     "title": "Logging",

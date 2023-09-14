@@ -3,12 +3,10 @@
     "properties": {
         "length": {
             "format": "double",
-            "description": "length",
             "type": "number"
         },
         "manning_n": {
             "format": "double",
-            "description": "manning_n",
             "type": "number"
         },
         "remarks": {
@@ -19,27 +17,22 @@
         },
         "active": {
             "format": "default",
-            "description": "active",
             "type": "boolean"
         },
         "profile_width": {
             "format": "double",
-            "description": "profile_width",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "profile_slope": {
             "format": "double",
-            "description": "profile_slope",
             "type": "number"
         },
         "control_state": {
             "format": "default",
-            "description": "control_state",
             "type": "string"
         }
     },

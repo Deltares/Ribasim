@@ -9,27 +9,22 @@
         },
         "active": {
             "format": "default",
-            "description": "active",
             "type": "boolean"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "discharge": {
             "format": "double",
-            "description": "discharge",
             "type": "number"
         },
         "level": {
             "format": "double",
-            "description": "level",
             "type": "number"
         },
         "control_state": {
             "format": "default",
-            "description": "control_state",
             "type": "string"
         }
     },

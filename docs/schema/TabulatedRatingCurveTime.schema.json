@@ -9,22 +9,18 @@
         },
         "time": {
             "format": "date-time",
-            "description": "time",
             "type": "string"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "discharge": {
             "format": "double",
-            "description": "discharge",
             "type": "number"
         },
         "level": {
             "format": "double",
-            "description": "level",
             "type": "number"
         }
     },

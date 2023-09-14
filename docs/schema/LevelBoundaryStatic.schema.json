@@ -9,17 +9,14 @@
         },
         "active": {
             "format": "default",
-            "description": "active",
             "type": "boolean"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "level": {
             "format": "double",
-            "description": "level",
             "type": "number"
         }
     },

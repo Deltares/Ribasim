@@ -4,11 +4,11 @@
         "static": {
             "format": "default",
             "default": null,
-            "description": "static",
             "type": "string"
         }
     },
     "required": [
+        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/pump.schema.json",
     "title": "pump",

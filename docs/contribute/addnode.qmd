@@ -250,8 +250,8 @@ Run `julia --project=docs`, followed by running `instantiate` in the Pkg mode (p
 To generate the Python module `models.py` and `config.py` from the JSON Schemas, run:
 
 ```
-datamodel-codegen --use-title-as-name --use-double-quotes --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py
-`datamodel-codegen --use-title-as-name --use-double-quotes --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py`
+datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py
+datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py
 ```
 
 Run [Black](python.qmd#sec-black) to format the generated code.

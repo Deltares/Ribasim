@@ -9,17 +9,14 @@
         },
         "time": {
             "format": "date-time",
-            "description": "time",
             "type": "string"
         },
         "flow_rate": {
             "format": "double",
-            "description": "flow_rate",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         }
     },

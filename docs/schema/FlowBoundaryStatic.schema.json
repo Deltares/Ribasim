@@ -9,17 +9,14 @@
         },
         "active": {
             "format": "default",
-            "description": "active",
             "type": "boolean"
         },
         "flow_rate": {
             "format": "double",
-            "description": "flow_rate",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         }
     },

@@ -4,29 +4,29 @@
         "profile": {
             "format": "default",
             "default": null,
-            "description": "profile",
             "type": "string"
         },
         "static": {
             "format": "default",
             "default": null,
-            "description": "static",
             "type": "string"
         },
         "forcing": {
             "format": "default",
             "default": null,
-            "description": "forcing",
             "type": "string"
         },
         "state": {
             "format": "default",
             "default": null,
-            "description": "state",
             "type": "string"
         }
     },
     "required": [
+        "forcing",
+        "profile",
+        "state",
+        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
     "title": "basin",
