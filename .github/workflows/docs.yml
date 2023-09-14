@@ -44,7 +44,7 @@ jobs:
       - name: Prepare pixi
         run: |
           pixi install
-          pixi run post-install
+          pixi run post-install-without-pre-commit
 
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check

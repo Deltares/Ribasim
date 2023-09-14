@@ -23,7 +23,7 @@ jobs:
       - name: Prepare pixi
         run: |
           pixi install
-          pixi run post-install
+          pixi run post-install-without-pre-commit
       - name: Run mypy on python/ribasim
         run: |
           pixi run mypy-ribasim-python
