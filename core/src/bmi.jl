@@ -53,7 +53,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         for id in pid_control.node_id
             id_controlled = only(outneighbors(connectivity.graph_control, id))
             pump_idx = findsorted(pump.node_id, id_controlled)
-            if isnothing(pump_idx)
+            if pump_idx === nothing
                 outlet_idx = findsorted(outlet.node_id, id_controlled)
                 outlet.is_pid_controlled[outlet_idx] = true
             else
@@ -247,7 +247,7 @@ function get_value(
 
         if hasindex_basin
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif !isnothing(level_boundary_idx)
+        elseif level_boundary_idx !== nothing
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
@@ -260,7 +260,7 @@ function get_value(
     elseif variable == "flow_rate"
         flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
 
-        if isnothing(flow_boundary_idx)
+        if flow_boundary_idx === nothing
             error("Flow condition node #$feature_id is not a flow boundary.")
         end
 

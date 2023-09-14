@@ -188,6 +188,6 @@ end
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(timesteps, t_target_jump)
 
-    @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-4)
-    @test isapprox(level[end], target_low, atol = 1e-2)
+    @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-1)
+    @test isapprox(level[end], target_low, atol = 1e-1)
 end

@@ -5,7 +5,7 @@ import ribasim
 
 
 def basic_model() -> ribasim.Model:
-    """Set up a basic model with all node types and static forcing"""
+    """Set up a basic model with most node types and static forcing"""
 
     # Setup the basins:
     profile = pd.DataFrame(
@@ -374,6 +374,111 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         edge=edge,
         basin=basin,
         tabulated_rating_curve=rating_curve,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def outlet_model():
+    """Set up a basic model with an outlet that encounters various physical constraints."""
+
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: LevelBoundary
+            (1.0, 0.0),  # 2: Outlet
+            (2.0, 0.0),  # 3: Basin
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["LevelBoundary", "Outlet", "Basin"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2], dtype=np.int64)
+    to_id = np.array([2, 3], dtype=np.int64)
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": 3,
+            "area": 1000.0,
+            "level": [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [3],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [3], "level": 1e-3})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup the level boundary:
+    level_boundary = ribasim.LevelBoundary(
+        time=pd.DataFrame(
+            data={
+                "node_id": 1,
+                "time": [
+                    "2020-01-01 00:00:00",
+                    "2020-06-01 00:00:00",
+                    "2021-01-01 00:00:00",
+                ],
+                "level": [1.0, 3.0, 3.0],
+            }
+        )
+    )
+
+    # Setup the outlet
+    outlet = ribasim.Outlet(
+        static=pd.DataFrame(
+            data={
+                "node_id": [2],
+                "flow_rate": 1e-3,
+                "min_crest_level": 2.0,
+            }
+        )
+    )
+
+    model = ribasim.Model(
+        modelname="outlet",
+        node=node,
+        edge=edge,
+        basin=basin,
+        outlet=outlet,
+        level_boundary=level_boundary,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

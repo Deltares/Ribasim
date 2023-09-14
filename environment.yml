@@ -12,7 +12,7 @@ dependencies:
   - jupyterlab
   - matplotlib
   - mypy
-  - pandas
+  - pandas!=2.1.0
   - pandas-stubs
   - pandera
   - pip

@@ -254,8 +254,5 @@ datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --
 datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py
 ```
 
-Run [Black](python.qmd#sec-black) to format the generated code.
-To catch possible Python issues run [Ruff](python.qmd#sec-ruff).
-
 Since adding a node type touches both the Python and Julia code,
 it is a good idea to run both the [Python test suite](python.qmd#test) and [Julia test suite](core.qmd#test) locally before creating a pull request.

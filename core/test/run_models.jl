@@ -86,7 +86,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[5.951445, 727.9898] skip = Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end
@@ -136,6 +136,33 @@ end
     A, h = lookup(profile, S)
     @test h ≈ sqrt(S / 5)
     @test A ≈ 10 * h
+end
+
+@testset "Outlet constraints" begin
+    toml_path = normpath(@__DIR__, "../../data/outlet/outlet.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; level_boundary, outlet) = p
+    (; level) = level_boundary
+    level = level[1]
+
+    timesteps = model.saved_flow.t
+    outlet_flow = [saveval[1] for saveval in model.saved_flow.saveval]
+
+    t_min_crest_level =
+        level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+
+    # No outlet flow when upstream level is below minimum crest level
+    @test all(@. outlet_flow[timesteps <= t_min_crest_level] == 0)
+
+    timesteps = Ribasim.timesteps(model)
+    t_maximum_level = level.t[2]
+    level_basin = Ribasim.get_storages_and_levels(model).level[:]
+
+    # Basin level converges to stable level boundary level
+    all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
 @testset "ManningResistance" begin

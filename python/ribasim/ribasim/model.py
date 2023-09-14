@@ -176,6 +176,7 @@ class Model(BaseModel):
                 )
                 if isinstance(input_entry, TableModel) and not is_geometry:
                     input_entry.write_table(connection)
+            connection.commit()
 
         shutil.move(temp_path, gpkg_path)
         return

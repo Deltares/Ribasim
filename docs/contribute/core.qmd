@@ -24,11 +24,6 @@ pkg> add Revise TestEnv
 Revise.jl is a library that allows you to modify code and use the changes without restarting Julia.
 You can let it start automatically by following these [instructions](https://timholy.github.io/Revise.jl/stable/config/#Using-Revise-by-default-1).
 
-## Install Quarto
-
-Quarto is the publishing system that builds our documentation.
-The installation instructions can be found on their [web page](https://quarto.org/docs/get-started/).
-
 ## Clone Ribasim
 
 In order to have the Ribasim repository locally available, you can clone it with Git.
@@ -107,24 +102,10 @@ That way you don't have to type `activate core` every time you open the REPL.
 ## Render documentation
 
 Example models are created and simulated as part of the rendering of the documentation.
-Therefore you need to have both the `ribasim` Python package and the Julia `Ribasim` package
-installed. Furthermore you need these 3 Python packages installed: `jupyter quartodoc xarray`.
-
-The Python API reference is created using quartodoc by running this command from the `docs/`
-folder:
+The Julia API reference is created using Documenter.jl by running this command:
 
 ```bash
-quartodoc build
-```
-
-You typically only have to run this once, or if you want to check out how it looks after
-changing Python docstrings.
-
-The Julia API reference is created using Documenter.jl by running this command from the `docs/` folder:
-
-```bash
-julia --project -e "using Pkg; Pkg.instantiate()"  # needed once
-julia --project make.jl  # after changing the Julia docstrings
+pixi run build-julia-docs
 ```
 
 In order to preview documentation you can run the following command from the `docs/` folder.
@@ -132,7 +113,7 @@ Afterwards, a browser tab will open with the rendered documentation, updating it
 make changes.
 
 ```bash
-quarto preview
+pixi run quarto-preview
 ```
 
 The documentation also includes [Jupyter notebooks](https://jupyter.org/).

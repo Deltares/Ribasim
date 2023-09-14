@@ -1,0 +1,78 @@
+[project]
+name = "Ribasim"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64"]
+
+[tasks]
+install-ribasim-python = "pip install --no-deps --editable python/ribasim"
+install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
+install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
+install-quartodoc = "pip install quartodoc"
+pre-commit-install = "pre-commit install"
+post-install-without-pre-commit = { depends_on = [
+    "install-ribasim-python",
+    "install-ribasim-api",
+    "install-ribasim-testmodels",
+    "install-quartodoc",
+] }
+post-install = { depends_on = [
+    "post-install-without-pre-commit",
+    "pre-commit-install",
+] }
+instantiate-julia-docs = "cd docs && julia --project -e \"using Pkg; Pkg.instantiate()\""
+build-julia-docs = { cmd = "cd docs && julia --project make.jl", depends_on = [
+    "instantiate-julia-docs",
+] }
+quartodoc-build = "cd docs && quartodoc build && rm objects.json"
+quarto-preview = { cmd = "quarto preview docs", depends_on = [
+    "quartodoc-build",
+] }
+quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
+quarto-render = "quarto render docs --to html --execute"
+mypy-ribasim-python = "mypy --ignore-missing-imports python/ribasim/ribasim"
+mypy-ribasim-testmodels = "mypy --ignore-missing-imports python/ribasim_testmodels/ribasim_testmodels"
+mypy-ribasim-api = "mypy --ignore-missing-imports python/ribasim_api/ribasim_api"
+pre-commit = "pre-commit run --all-files"
+lint = { depends_on = [
+    "pre-commit",
+    "mypy-ribasim-python",
+    "mypy-ribasim-testmodels",
+    "mypy-ribasim-api",
+] }
+test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
+test-ribasim-python-cov = "pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests"
+test-ribasim-api = "pytest --numprocesses=auto python/ribasim_api/tests"
+test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
+generate-testmodels = "python utils/generate-testmodels.py"
+
+
+[dependencies]
+black = "*"
+black-jupyter = "*"
+build = "*"
+datamodel-code-generator = "*"
+geopandas = "*"
+jupyterlab = "*"
+matplotlib = "*"
+mypy = "*"
+pandas = "!=2.1.0"
+pandas-stubs = "*"
+pandera = "*"
+pip = "*"
+pre-commit = "*"
+pyarrow = "*"
+pydantic = "~=1.0"
+pyogrio = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+python = ">=3.9"
+quarto = "*"
+ruff = "*"
+shapely = ">=2.0"
+tomli = "*"
+tomli-w = "*"
+twine = "*"
+xarray = "*"
+xmipy = "*"

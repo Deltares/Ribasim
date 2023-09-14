@@ -318,6 +318,7 @@ struct Outlet{T} <: AbstractParameterNode
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
+    min_crest_level::Vector{Float64}
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
     is_pid_controlled::BitVector
 
@@ -327,6 +328,7 @@ struct Outlet{T} <: AbstractParameterNode
         flow_rate::T,
         min_flow_rate,
         max_flow_rate,
+        min_crest_level,
         control_mapping,
         is_pid_controlled,
     ) where {T}
@@ -337,6 +339,7 @@ struct Outlet{T} <: AbstractParameterNode
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
+                min_crest_level,
                 control_mapping,
                 is_pid_controlled,
             )
@@ -501,7 +504,7 @@ function set_current_basin_properties!(
 end
 
 """
-Linearize the evaporation flux when at small water depths
+Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
 function formulate!(
@@ -520,12 +523,12 @@ function formulate!(
         bottom = basin.level[i][1]
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
-        reduction_factor = min(depth, 0.1) / 0.1
+        factor = reduction_factor(depth, 0.1)
 
         precipitation = fixed_area * basin.precipitation[i]
-        evaporation = area * reduction_factor * basin.potential_evaporation[i]
+        evaporation = area * factor * basin.potential_evaporation[i]
         drainage = basin.drainage[i]
-        infiltration = reduction_factor * basin.infiltration[i]
+        infiltration = factor * basin.infiltration[i]
 
         du.storage[i] += precipitation - evaporation + drainage - infiltration
     end
@@ -579,7 +582,7 @@ function continuous_control!(
         if !active[i]
             du.integral[i] = 0.0
             u.integral[i] = 0.0
-            return
+            continue
         end
 
         du.integral[i] = pid_error[i]
@@ -590,11 +593,29 @@ function continuous_control!(
         controlled_node_id = only(outneighbors(graph_control, id))
         controls_pump = (controlled_node_id in pump.node_id)
 
+        # No flow of outlet if source level is lower than target level
+        if !controls_pump
+            src_id = only(inneighbors(graph_flow, controlled_node_id))
+            dst_id = only(outneighbors(graph_flow, controlled_node_id))
+
+            src_level = get_level(p, src_id, current_level, t)
+            dst_level = get_level(p, dst_id, current_level, t)
+
+            if src_level === nothing || dst_level === nothing
+                factor_outlet = 1.0
+            else
+                Δlevel = src_level - dst_level
+                factor_outlet = reduction_factor(Δlevel, 0.1)
+            end
+        else
+            factor_outlet = 1.0
+        end
+
         if controls_pump
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
 
             listened_basin_storage = u.storage[listened_node_idx]
-            reduction_factor = min(listened_basin_storage, 10.0) / 10.0
+            factor_basin = reduction_factor(listened_basin_storage, 10.0)
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
@@ -603,12 +624,13 @@ function continuous_control!(
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
-                reduction_factor = min(upstream_basin_storage, 10.0) / 10.0
+                factor_basin = reduction_factor(upstream_basin_storage, 10.0)
             else
-                reduction_factor = 1.0
+                factor_basin = 1.0
             end
         end
 
+        factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
         K_p, K_i, K_d = pid_params[i](t)
@@ -616,17 +638,17 @@ function continuous_control!(
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
             area = current_area[listened_node_idx]
-            D = 1.0 - K_d * reduction_factor / area
+            D = 1.0 - K_d * factor / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += reduction_factor * K_p * pid_error[i] / D
+            flow_rate += factor * K_p * pid_error[i] / D
         end
 
         if !iszero(K_i)
-            flow_rate += reduction_factor * K_i * integral_value[i] / D
+            flow_rate += factor * K_i * integral_value[i] / D
         end
 
         if !iszero(K_d)
@@ -736,11 +758,12 @@ Directed graph: outflow is positive!
 function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
+    storage::AbstractVector,
     current_level::AbstractVector,
     flow::AbstractMatrix,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
+    (; basin, connectivity) = p
     (; graph_flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     for (i, id) in enumerate(node_id)
@@ -748,7 +771,10 @@ function formulate_flow!(
         downstream_ids = outneighbors(graph_flow, id)
 
         if active[i]
-            q = tables[i](get_level(p, upstream_basin_id, current_level, t))
+            hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
+            @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
+            factor = reduction_factor(storage[basin_idx], 10.0)
+            q = factor * tables[i](get_level(p, upstream_basin_id, current_level, t))
         else
             q = 0.0
         end
@@ -902,40 +928,84 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    node::Union{Pump, Outlet},
+    pump::Pump,
     p::Parameters,
     flow::AbstractMatrix,
     storage::AbstractVector,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow) = connectivity
-    (; node_id, active, flow_rate, is_pid_controlled) = node
+    (; node_id, active, flow_rate, is_pid_controlled) = pump
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
 
-        if !isactive
+        if !isactive || pid_controlled
             flow[src_id, id] = 0.0
             flow[id, dst_id] = 0.0
             continue
         end
 
-        if pid_controlled
+        hasindex, basin_idx = id_index(basin.node_id, src_id)
+
+        q = rate
+
+        if hasindex
+            # Pumping from basin
+            q *= reduction_factor(storage[basin_idx], 10.0)
+        end
+
+        flow[src_id, id] = q
+        flow[id, dst_id] = q
+    end
+    return nothing
+end
+
+function formulate_flow!(
+    outlet::Outlet,
+    p::Parameters,
+    flow::AbstractMatrix,
+    current_level::AbstractVector,
+    storage::AbstractVector,
+    t::Float64,
+)::Nothing
+    (; connectivity, basin) = p
+    (; graph_flow) = connectivity
+    (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
+    flow_rate = get_tmp(flow_rate, storage)
+    for (i, id) in enumerate(node_id)
+        src_id = only(inneighbors(graph_flow, id))
+        dst_id = only(outneighbors(graph_flow, id))
+
+        if !active[i] || is_pid_controlled[i]
+            flow[src_id, id] = 0.0
+            flow[id, dst_id] = 0.0
             continue
         end
 
         hasindex, basin_idx = id_index(basin.node_id, src_id)
 
+        q = flow_rate[i]
+
         if hasindex
-            # Pumping from basin
-            s = storage[basin_idx]
-            reduction_factor = min(s, 10.0) / 10.0
-            q = reduction_factor * rate
-        else
-            # Pumping from level boundary
-            q = rate
+            # Flowing from basin
+            q *= reduction_factor(storage[basin_idx], 10.0)
+        end
+
+        # No flow of outlet if source level is lower than target level
+        src_level = get_level(p, src_id, current_level, t)
+        dst_level = get_level(p, dst_id, current_level, t)
+
+        if src_level !== nothing && dst_level !== nothing
+            Δlevel = src_level - dst_level
+            q *= reduction_factor(Δlevel, 0.1)
+        end
+
+        # No flow out outlet if source level is lower than minimum crest level
+        if src_level !== nothing && !isnan(min_crest_level[i])
+            q *= reduction_factor(src_level - min_crest_level[i], 0.1)
         end
 
         flow[src_id, id] = q
@@ -984,11 +1054,11 @@ function formulate_flows!(
 
     formulate_flow!(linear_resistance, p, current_level, flow, t)
     formulate_flow!(manning_resistance, p, current_level, flow, t)
-    formulate_flow!(tabulated_rating_curve, p, current_level, flow, t)
+    formulate_flow!(tabulated_rating_curve, p, storage, current_level, flow, t)
     formulate_flow!(flow_boundary, p, flow, t)
     formulate_flow!(fractional_flow, flow, p)
     formulate_flow!(pump, p, flow, storage)
-    formulate_flow!(outlet, p, flow, storage)
+    formulate_flow!(outlet, p, flow, current_level, storage, t)
 
     return nothing
 end
@@ -1042,7 +1112,7 @@ function water_balance!(
         t,
     )
 
-    # Negative storage musn't decrease, based on Shampine's et. al. advice
+    # Negative storage must not decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
     for i in eachindex(u.storage)
         if u.storage[i] < 0

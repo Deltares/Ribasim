@@ -13,9 +13,6 @@ jobs:
   test:
     name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -32,23 +29,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - uses: prefix-dev/setup-pixi@v0.2.0
         with:
-          cache-downloads: true
-          cache-environment: true
-          environment-file: ./environment.yml
-          create-args: >-
-            python=${{ matrix.python_version }}
-
-      - name: Install ribasim
-        run: pip install --editable python/ribasim
-
-      - name: Install ribasim_testmodels
-        run: pip install --editable python/ribasim_testmodels
+          pixi-version: latest
+          cache: true
+      - name: Prepare pixi
+        run: |
+          pixi install
+          pixi run post-install-without-pre-commit
 
       - name: Run tests
-        run: pytest --cov=ribasim --cov-report=xml python/ribasim/tests
+        run: pixi run test-ribasim-python-cov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

@@ -230,6 +230,7 @@ end
             [-1.0],
             [NaN],
             [NaN],
+            [NaN],
             Dict{Tuple{Int, String}, NamedTuple}(),
             [false],
         )
