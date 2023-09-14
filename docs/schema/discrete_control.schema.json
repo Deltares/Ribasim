@@ -13,8 +13,6 @@
         }
     },
     "required": [
-        "condition",
-        "logic"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/discrete_control.schema.json",
     "title": "discrete_control",

@@ -8,7 +8,6 @@
         }
     },
     "required": [
-        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/pump.schema.json",
     "title": "pump",

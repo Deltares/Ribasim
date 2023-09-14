@@ -4,95 +4,95 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Union
 
 from pydantic import BaseModel, Field
 
 
 class Output(BaseModel):
-    compression: Optional[str] = "zstd"
-    basin: Optional[str] = "output/basin.arrow"
-    flow: Optional[str] = "output/flow.arrow"
-    control: Optional[str] = "output/control.arrow"
-    outstate: Optional[str] = None
-    compression_level: Optional[int] = 6
+    compression: str = "zstd"
+    basin: str = "output/basin.arrow"
+    flow: str = "output/flow.arrow"
+    control: str = "output/control.arrow"
+    outstate: str = None
+    compression_level: int = 6
 
 
 class LevelBoundary(BaseModel):
-    time: Optional[str] = None
-    static: Optional[str] = None
+    time: str = None
+    static: str = None
 
 
 class Pump(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class DiscreteControl(BaseModel):
-    logic: Optional[str] = None
-    condition: Optional[str] = None
+    logic: str = None
+    condition: str = None
 
 
 class Solver(BaseModel):
-    reltol: Optional[float] = 0.001
-    saveat: Optional[Union[List[float], float]] = []
-    maxiters: Optional[int] = 1000000000
-    autodiff: Optional[bool] = True
-    adaptive: Optional[bool] = True
-    algorithm: Optional[str] = "QNDF"
-    abstol: Optional[float] = 1e-06
-    dt: Optional[float] = 0
-    sparse: Optional[bool] = True
+    reltol: float = 0.001
+    saveat: Union[List[float], float] = []
+    maxiters: int = 1000000000
+    autodiff: bool = True
+    adaptive: bool = True
+    algorithm: str = "QNDF"
+    abstol: float = 1e-06
+    dt: float = 0
+    sparse: bool = True
 
 
 class FlowBoundary(BaseModel):
-    time: Optional[str] = None
-    static: Optional[str] = None
+    time: str = None
+    static: str = None
 
 
 class PidControl(BaseModel):
-    time: Optional[str] = None
-    static: Optional[str] = None
+    time: str = None
+    static: str = None
 
 
 class FractionalFlow(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class ManningResistance(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class TabulatedRatingCurve(BaseModel):
-    time: Optional[str] = None
-    static: Optional[str] = None
+    time: str = None
+    static: str = None
 
 
 class Logging(BaseModel):
-    timing: Optional[bool] = False
-    verbosity: Optional[str] = "info"
+    timing: bool = False
+    verbosity: str = "info"
 
 
 class Outlet(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class Terminal(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class Basin(BaseModel):
-    profile: Optional[str] = None
-    static: Optional[str] = None
-    forcing: Optional[str] = None
-    state: Optional[str] = None
+    profile: str = None
+    static: str = None
+    forcing: str = None
+    state: str = None
 
 
 class LinearResistance(BaseModel):
-    static: Optional[str] = None
+    static: str = None
 
 
 class Config(BaseModel):
-    output: Optional[Output] = Field(
+    output: Output = Field(
         default_factory=lambda: Output.parse_obj(
             {
                 "basin": "output/basin.arrow",
@@ -105,21 +105,19 @@ class Config(BaseModel):
         )
     )
     starttime: datetime
-    update_timestep: Optional[float] = 86400
-    input_dir: Optional[str] = "."
-    output_dir: Optional[str] = "."
-    level_boundary: Optional[LevelBoundary] = Field(
+    update_timestep: float = 86400
+    input_dir: str = "."
+    output_dir: str = "."
+    level_boundary: LevelBoundary = Field(
         default_factory=lambda: LevelBoundary.parse_obj({"static": None, "time": None})
     )
-    pump: Optional[Pump] = Field(
-        default_factory=lambda: Pump.parse_obj({"static": None})
-    )
-    discrete_control: Optional[DiscreteControl] = Field(
+    pump: Pump = Field(default_factory=lambda: Pump.parse_obj({"static": None}))
+    discrete_control: DiscreteControl = Field(
         default_factory=lambda: DiscreteControl.parse_obj(
             {"condition": None, "logic": None}
         )
     )
-    solver: Optional[Solver] = Field(
+    solver: Solver = Field(
         default_factory=lambda: Solver.parse_obj(
             {
                 "algorithm": "QNDF",
@@ -134,42 +132,40 @@ class Config(BaseModel):
             }
         )
     )
-    flow_boundary: Optional[FlowBoundary] = Field(
+    flow_boundary: FlowBoundary = Field(
         default_factory=lambda: FlowBoundary.parse_obj({"static": None, "time": None})
     )
-    pid_control: Optional[PidControl] = Field(
+    pid_control: PidControl = Field(
         default_factory=lambda: PidControl.parse_obj({"static": None, "time": None})
     )
-    fractional_flow: Optional[FractionalFlow] = Field(
+    fractional_flow: FractionalFlow = Field(
         default_factory=lambda: FractionalFlow.parse_obj({"static": None})
     )
-    relative_dir: Optional[str] = "."
+    relative_dir: str = "."
     endtime: datetime
-    manning_resistance: Optional[ManningResistance] = Field(
+    manning_resistance: ManningResistance = Field(
         default_factory=lambda: ManningResistance.parse_obj({"static": None})
     )
-    tabulated_rating_curve: Optional[TabulatedRatingCurve] = Field(
+    tabulated_rating_curve: TabulatedRatingCurve = Field(
         default_factory=lambda: TabulatedRatingCurve.parse_obj(
             {"static": None, "time": None}
         )
     )
-    logging: Optional[Logging] = Field(
+    logging: Logging = Field(
         default_factory=lambda: Logging.parse_obj(
             {"verbosity": {"level": 0}, "timing": False}
         )
     )
-    outlet: Optional[Outlet] = Field(
-        default_factory=lambda: Outlet.parse_obj({"static": None})
-    )
+    outlet: Outlet = Field(default_factory=lambda: Outlet.parse_obj({"static": None}))
     geopackage: str
-    terminal: Optional[Terminal] = Field(
+    terminal: Terminal = Field(
         default_factory=lambda: Terminal.parse_obj({"static": None})
     )
-    basin: Optional[Basin] = Field(
+    basin: Basin = Field(
         default_factory=lambda: Basin.parse_obj(
             {"forcing": None, "profile": None, "state": None, "static": None}
         )
     )
-    linear_resistance: Optional[LinearResistance] = Field(
+    linear_resistance: LinearResistance = Field(
         default_factory=lambda: LinearResistance.parse_obj({"static": None})
     )

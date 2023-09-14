@@ -13,8 +13,6 @@
         }
     },
     "required": [
-        "static",
-        "time"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/flow_boundary.schema.json",
     "title": "flow_boundary",

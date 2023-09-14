@@ -36,7 +36,6 @@
         "basin",
         "flow",
         "control",
-        "outstate",
         "compression",
         "compression_level"
     ],

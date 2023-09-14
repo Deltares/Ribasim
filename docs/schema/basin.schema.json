@@ -23,10 +23,6 @@
         }
     },
     "required": [
-        "forcing",
-        "profile",
-        "state",
-        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
     "title": "basin",

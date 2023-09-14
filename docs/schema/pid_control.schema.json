@@ -13,8 +13,6 @@
         }
     },
     "required": [
-        "static",
-        "time"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/pid_control.schema.json",
     "title": "pid_control",

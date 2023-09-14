@@ -94,14 +94,12 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
     for (fieldnames, fieldtype) in zip(fieldnames(T), fieldtypes(T))
         fieldname = string(fieldnames)
         ref = false
-        required = true
         if fieldtype <: Ribasim.config.TableOption
             schema["properties"][fieldname] = Dict(
                 "\$ref" => "$(prefix)$(strip_prefix(fieldtype)).schema.json",
                 "default" => fieldtype(),
             )
             ref = true
-            required = false
         else
             type = jsontype(fieldtype)
             schema["properties"][fieldname] =
@@ -120,7 +118,10 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
                 end
             end
         end
-        if !((fieldtype isa Union) && (fieldtype.a === Missing)) && required
+        if !(
+            (fieldtype isa Union) &&
+            ((fieldtype.a === Missing) || (fieldtype.a === Nothing))
+        )
             push!(schema["required"], fieldname)
         end
     end

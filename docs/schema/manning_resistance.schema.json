@@ -8,7 +8,6 @@
         }
     },
     "required": [
-        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/manning_resistance.schema.json",
     "title": "manning_resistance",

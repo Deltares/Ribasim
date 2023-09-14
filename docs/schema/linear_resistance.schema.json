@@ -8,7 +8,6 @@
         }
     },
     "required": [
-        "static"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/linear_resistance.schema.json",
     "title": "linear_resistance",

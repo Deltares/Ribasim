@@ -13,8 +13,6 @@
         }
     },
     "required": [
-        "static",
-        "time"
     ],
     "$id": "https://deltares.github.io/Ribasim/schema/tabulated_rating_curve.schema.json",
     "title": "tabulated_rating_curve",
