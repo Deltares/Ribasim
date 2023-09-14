@@ -25,3 +25,9 @@ class FlowBoundary(TableModel):
 
     static: Optional[DataFrame[FlowBoundaryStaticSchema]] = None
     time: Optional[DataFrame[FlowBoundaryTimeSchema]] = None
+
+    def sort(self):
+        if self.static is not None:
+            self.static.sort_values("node_id", ignore_index=True, inplace=True)
+        if self.time is not None:
+            self.time.sort_values(["time", "node_id"], ignore_index=True, inplace=True)
