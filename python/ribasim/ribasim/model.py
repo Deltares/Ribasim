@@ -2,10 +2,9 @@ import datetime
 import inspect
 import shutil
 from contextlib import closing
-from enum import Enum
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, List, Optional, Type, Union, cast
+from typing import Any, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +14,7 @@ import tomli_w
 from pydantic import BaseModel
 
 from ribasim import geometry, node_types
+from ribasim.config import Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 
@@ -34,30 +34,6 @@ from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
 from ribasim.types import FilePath
-
-
-class Solver(BaseModel):
-    algorithm: Optional[str]
-    saveat: Optional[Union[float, List[float]]]
-    adaptive: Optional[bool]
-    dt: Optional[float]
-    abstol: Optional[float]
-    reltol: Optional[float]
-    maxiters: Optional[int]
-    sparse: Optional[bool]
-    autodiff: Optional[bool]
-
-
-class Verbosity(str, Enum):
-    debug = "debug"
-    info = "info"
-    warn = "warn"
-    error = "error"
-
-
-class Logging(BaseModel):
-    verbosity: Optional[Verbosity] = Verbosity.info
-    timing: Optional[bool] = False
 
 
 class Model(BaseModel):

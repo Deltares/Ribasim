@@ -33,9 +33,7 @@ from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
 )
-from ribasim_testmodels.time import (
-    flow_boundary_time_model,
-)
+from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [

@@ -1,0 +1,180 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "output": {
+            "default": {
+                "basin": "output/basin.arrow",
+                "flow": "output/flow.arrow",
+                "control": "output/control.arrow",
+                "outstate": null,
+                "compression": "zstd",
+                "compression_level": 6
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/Output.schema.json"
+        },
+        "starttime": {
+            "format": "date-time",
+            "type": "string"
+        },
+        "update_timestep": {
+            "format": "double",
+            "default": 86400,
+            "type": "number"
+        },
+        "input_dir": {
+            "format": "default",
+            "default": ".",
+            "type": "string"
+        },
+        "output_dir": {
+            "format": "default",
+            "default": ".",
+            "type": "string"
+        },
+        "level_boundary": {
+            "default": {
+                "static": null,
+                "time": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/level_boundary.schema.json"
+        },
+        "pump": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/pump.schema.json"
+        },
+        "discrete_control": {
+            "default": {
+                "condition": null,
+                "logic": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/discrete_control.schema.json"
+        },
+        "solver": {
+            "default": {
+                "algorithm": "QNDF",
+                "saveat": [
+                ],
+                "adaptive": true,
+                "dt": 0,
+                "abstol": 1.0e-6,
+                "reltol": 0.001,
+                "maxiters": 1000000000,
+                "sparse": true,
+                "autodiff": true
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/Solver.schema.json"
+        },
+        "flow_boundary": {
+            "default": {
+                "static": null,
+                "time": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/flow_boundary.schema.json"
+        },
+        "pid_control": {
+            "default": {
+                "static": null,
+                "time": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/pid_control.schema.json"
+        },
+        "fractional_flow": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json"
+        },
+        "relative_dir": {
+            "format": "default",
+            "default": ".",
+            "type": "string"
+        },
+        "endtime": {
+            "format": "date-time",
+            "type": "string"
+        },
+        "manning_resistance": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/manning_resistance.schema.json"
+        },
+        "tabulated_rating_curve": {
+            "default": {
+                "static": null,
+                "time": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/tabulated_rating_curve.schema.json"
+        },
+        "logging": {
+            "default": {
+                "verbosity": {
+                    "level": 0
+                },
+                "timing": false
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/Logging.schema.json"
+        },
+        "outlet": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/outlet.schema.json"
+        },
+        "geopackage": {
+            "format": "default",
+            "type": "string"
+        },
+        "terminal": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/terminal.schema.json"
+        },
+        "basin": {
+            "default": {
+                "forcing": null,
+                "profile": null,
+                "state": null,
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/basin.schema.json"
+        },
+        "linear_resistance": {
+            "default": {
+                "static": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/linear_resistance.schema.json"
+        }
+    },
+    "required": [
+        "starttime",
+        "endtime",
+        "update_timestep",
+        "relative_dir",
+        "input_dir",
+        "output_dir",
+        "geopackage",
+        "output",
+        "solver",
+        "logging",
+        "terminal",
+        "pid_control",
+        "level_boundary",
+        "pump",
+        "tabulated_rating_curve",
+        "flow_boundary",
+        "basin",
+        "manning_resistance",
+        "discrete_control",
+        "outlet",
+        "linear_resistance",
+        "fractional_flow"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/Config.schema.json",
+    "title": "Config",
+    "description": "A Config object based on Ribasim.config.Config",
+    "type": "object"
+}

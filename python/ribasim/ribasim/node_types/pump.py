@@ -1,18 +1,9 @@
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import PumpStaticSchema  # type: ignore
 
 __all__ = ("Pump",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.PumpStatic)
 
 
 class Pump(TableModel):
@@ -29,4 +20,4 @@ class Pump(TableModel):
         Table with constant flow rates.
     """
 
-    static: DataFrame[StaticSchema]
+    static: DataFrame[PumpStaticSchema]

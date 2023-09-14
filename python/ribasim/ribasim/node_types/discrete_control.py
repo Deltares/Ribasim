@@ -1,25 +1,12 @@
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import (  # type: ignore
+    DiscreteControlConditionSchema,
+    DiscreteControlLogicSchema,
+)
 
 __all__ = ("DiscreteControl",)
-
-
-class ConditionSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.DiscreteControlCondition)
-
-
-class LogicSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.DiscreteControlLogic)
 
 
 class DiscreteControl(TableModel):
@@ -34,5 +21,5 @@ class DiscreteControl(TableModel):
         Table with the information of truth state to control state mapping.
     """
 
-    condition: DataFrame[ConditionSchema]
-    logic: DataFrame[LogicSchema]
+    condition: DataFrame[DiscreteControlConditionSchema]
+    logic: DataFrame[DiscreteControlLogicSchema]

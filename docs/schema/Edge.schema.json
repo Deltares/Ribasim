@@ -9,22 +9,18 @@
         },
         "edge_type": {
             "format": "default",
-            "description": "edge_type",
             "type": "string"
         },
         "fid": {
             "format": "default",
-            "description": "fid",
             "type": "integer"
         },
         "to_node_id": {
             "format": "default",
-            "description": "to_node_id",
             "type": "integer"
         },
         "from_node_id": {
             "format": "default",
-            "description": "from_node_id",
             "type": "integer"
         }
     },

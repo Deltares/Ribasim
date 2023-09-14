@@ -1,43 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "max_flow_rate": {
-            "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "number"
-                }
-            ]
-        },
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
-        "active": {
-            "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "boolean"
-                }
-            ]
-        },
-        "flow_rate": {
-            "format": "double",
-            "type": "number"
-        },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
-        "control_state": {
+        "profile": {
             "format": "default",
             "anyOf": [
                 {
@@ -46,26 +10,50 @@
                 {
                     "type": "string"
                 }
-            ]
+            ],
+            "default": null
         },
-        "min_flow_rate": {
+        "static": {
             "format": "default",
             "anyOf": [
                 {
                     "type": "null"
                 },
                 {
-                    "type": "number"
+                    "type": "string"
                 }
-            ]
+            ],
+            "default": null
+        },
+        "forcing": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        },
+        "state": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
         }
     },
     "required": [
-        "node_id",
-        "flow_rate"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
-    "title": "PumpStatic",
-    "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
+    "title": "basin",
+    "description": "A basin object based on Ribasim.config.basin",
     "type": "object"
 }

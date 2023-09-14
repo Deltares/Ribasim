@@ -9,7 +9,6 @@
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         }
     },

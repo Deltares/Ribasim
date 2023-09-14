@@ -67,7 +67,7 @@ const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
-    saveat::Union{Float64, Vector{Float64}, Vector{Union{}}} = Float64[]
+    saveat::Union{Float64, Vector{Float64}} = Float64[]
     adaptive::Bool = true
     dt::Float64 = 0.0
     abstol::Float64 = 1e-6
@@ -109,7 +109,7 @@ end
     timing::Bool = false
 end
 
-@option @addnodetypes struct Config
+@option @addnodetypes struct Config <: TableOption
     starttime::DateTime
     endtime::DateTime
 
@@ -117,7 +117,7 @@ end
     update_timestep::Float64 = 60 * 60 * 24.0
 
     # optional, when Config is created from a TOML file, this is its directory
-    relative_dir::String = pwd()
+    relative_dir::String = "."  # ignored(!)
     input_dir::String = "."
     output_dir::String = "."
 
@@ -142,6 +142,11 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
             "verbosity $level not supported, choose one of: debug info warn error.",
         ),
     )
+end
+
+# [] in TOML is parsed as a Vector{Union{}}
+function Configurations.from_dict(::Type{Solver}, t::Type, saveat::Vector{Union{}})
+    return Float64[]
 end
 
 # TODO Use with proper alignment

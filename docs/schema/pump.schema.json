@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "static": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/pump.schema.json",
+    "title": "pump",
+    "description": "A pump object based on Ribasim.config.pump",
+    "type": "object"
+}

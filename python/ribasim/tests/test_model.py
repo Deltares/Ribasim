@@ -14,8 +14,8 @@ def test_repr(basic):
 
 def test_solver():
     solver = Solver()
-    assert solver.algorithm is None
-    assert solver.saveat is None
+    assert solver.algorithm == "QNDF"  # default
+    assert solver.saveat == []
 
     solver = Solver(saveat=3600.0)
     assert solver.saveat == 3600.0
@@ -28,10 +28,8 @@ def test_solver():
 
 
 def test_invalid_node_type(basic):
-    model = basic
-
     # Add entry with invalid node type
-    model.node.static = model.node.static._append(
+    basic.node.static = basic.node.static._append(
         {"type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
     )
 
@@ -39,7 +37,7 @@ def test_invalid_node_type(basic):
         TypeError,
         match=re.escape("Invalid node types detected: [InvalidNodeType].") + ".+",
     ):
-        model.validate_model_node_types()
+        basic.validate_model_node_types()
 
 
 def test_invalid_node_id(basic):

@@ -1,18 +1,9 @@
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import OutletStaticSchema  # type: ignore
 
 __all__ = ("Outlet",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.OutletStatic)
 
 
 class Outlet(TableModel):
@@ -29,4 +20,4 @@ class Outlet(TableModel):
         Table with constant flow rates.
     """
 
-    static: DataFrame[StaticSchema]
+    static: DataFrame[OutletStaticSchema]

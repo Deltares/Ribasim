@@ -3,7 +3,6 @@
     "properties": {
         "integral": {
             "format": "double",
-            "description": "integral",
             "type": "number"
         },
         "remarks": {
@@ -14,39 +13,37 @@
         },
         "listen_node_id": {
             "format": "default",
-            "description": "listen_node_id",
             "type": "integer"
         },
         "time": {
             "format": "date-time",
-            "description": "time",
             "type": "string"
         },
         "proportional": {
             "format": "double",
-            "description": "proportional",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "target": {
             "format": "double",
-            "description": "target",
             "type": "number"
         },
         "derivative": {
             "format": "double",
-            "description": "derivative",
             "type": "number"
         },
         "control_state": {
             "format": "default",
-            "description": "control_state",
-            "type": [
-                "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
             ]
         }
     },
