@@ -136,6 +136,7 @@ class Node(TableModel):
             "FlowBoundary": "h",
             "DiscreteControl": "*",
             "PidControl": "x",
+            "User": "s",
             "": "o",
         }
 
@@ -152,6 +153,7 @@ class Node(TableModel):
             "FlowBoundary": "m",
             "DiscreteControl": "k",
             "PidControl": "k",
+            "User": "g",
             "": "k",
         }
 

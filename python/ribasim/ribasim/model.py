@@ -33,6 +33,7 @@ from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
+from ribasim.node_types.user import User
 from ribasim.types import FilePath
 
 
@@ -75,6 +76,8 @@ class Model(BaseModel):
         Discrete control logic.
     pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
+    user : Optional[User]
+        User node type with demand and priority.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -100,6 +103,7 @@ class Model(BaseModel):
     terminal: Optional[Terminal]
     discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
+    user: Optional[User]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]

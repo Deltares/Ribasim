@@ -403,6 +403,24 @@ struct PidControl{T} <: AbstractParameterNode
     control_mapping::Dict{Tuple{Int, String}, NamedTuple}
 end
 
+"""
+demand: water flux demand of user over time
+active: whether this node is active and thus demands water
+allocated: water flux currently allocated to user
+return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
+min_level: The level of the source basin below which the user does not abstract
+priority: integer > 0, the lower the number the higher the priority of the users demand
+"""
+struct User
+    node_id::Vector{Int}
+    active::BitVector
+    demand::Vector{ScalarInterpolation}
+    allocated::Vector{Float64}
+    return_factor::Vector{Float64}
+    min_level::Vector{Float64}
+    priority::Vector{Int}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, TSparse, C1, C2}
     starttime::DateTime
@@ -419,6 +437,7 @@ struct Parameters{T, TSparse, C1, C2}
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
+    user::User
     lookup::Dict{Int, Symbol}
 end
 
@@ -719,6 +738,53 @@ function continuous_control!(
     return nothing
 end
 
+function formulate_flow!(
+    user::User,
+    p::Parameters,
+    flow::AbstractMatrix,
+    current_level::AbstractVector,
+    storage::AbstractVector,
+    t::Float64,
+)::Nothing
+    (; connectivity, basin) = p
+    (; graph_flow) = connectivity
+    (; node_id, allocated, demand, active, return_factor, min_level) = user
+
+    for (i, id) in enumerate(node_id)
+        src_id = only(inneighbors(graph_flow, id))
+        dst_id = only(outneighbors(graph_flow, id))
+
+        if !active[i]
+            flow[src_id, id] = 0.0
+            flow[id, dst_id] = 0.0
+            continue
+        end
+
+        # For now allocated = demand
+        allocated[i] = demand[i](t)
+
+        q = allocated[i]
+
+        # Smoothly let abstraction go to 0 as the source basin dries out
+        _, basin_idx = id_index(basin.node_id, src_id)
+        factor_basin = reduction_factor(storage[basin_idx], 10.0)
+        q *= factor_basin
+
+        # Smoothly let abstraction go to 0 as the source basin
+        # level reaches its minimum level
+        source_level = get_level(p, src_id, current_level, t)
+        Δsource_level = source_level - min_level[i]
+        factor_level = reduction_factor(Δsource_level, 0.1)
+        q *= factor_level
+
+        flow[src_id, id] = q
+
+        # Return flow is immediate
+        flow[id, dst_id] = q * return_factor[i]
+    end
+    return nothing
+end
+
 """
 Directed graph: outflow is positive!
 """
@@ -1004,7 +1070,7 @@ function formulate_flow!(
         end
 
         # No flow out outlet if source level is lower than minimum crest level
-        if src_level !== nothing && !isnan(min_crest_level[i])
+        if src_level !== nothing
             q *= reduction_factor(src_level - min_crest_level[i], 0.1)
         end
 
@@ -1050,6 +1116,7 @@ function formulate_flows!(
         flow_boundary,
         pump,
         outlet,
+        user,
     ) = p
 
     formulate_flow!(linear_resistance, p, current_level, flow, t)
@@ -1059,6 +1126,7 @@ function formulate_flows!(
     formulate_flow!(fractional_flow, flow, p)
     formulate_flow!(pump, p, flow, storage)
     formulate_flow!(outlet, p, flow, current_level, storage, t)
+    formulate_flow!(user, p, flow, current_level, storage, t)
 
     return nothing
 end

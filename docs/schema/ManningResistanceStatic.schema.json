@@ -19,10 +19,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "null"
+                    "type": "boolean"
                 },
                 {
-                    "type": "boolean"
+                    "type": "null"
                 }
             ]
         },

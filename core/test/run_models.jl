@@ -165,6 +165,19 @@ end
     all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
+@testset "User" begin
+    toml_path = normpath(@__DIR__, "../../data/user/user.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    day = 86400.0
+    @test only(model.integrator.sol(0day)) == 1000.0
+    # constant user withdraws to 0.9m/900m3
+    @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
+    # dynamic user withdraws to 0.5m/500m3
+    @test only(model.integrator.sol(180day)) ≈ 500 atol = 1
+end
+
 @testset "ManningResistance" begin
     """
     Apply the "standard step method" finite difference method to find a

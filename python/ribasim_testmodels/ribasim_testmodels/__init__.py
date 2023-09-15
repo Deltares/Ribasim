@@ -1,5 +1,6 @@
 __version__ = "0.1.1"
 
+from ribasim_testmodels.allocation import user_model
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
@@ -62,4 +63,5 @@ __all__ = [
     "discrete_control_of_pid_control_model",
     "level_boundary_condition_model",
     "outlet_model",
+    "user_model",
 ]

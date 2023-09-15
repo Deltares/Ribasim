@@ -23,6 +23,11 @@ class LevelBoundary(BaseModel):
     static: Optional[str] = None
 
 
+class User(BaseModel):
+    time: Optional[str] = None
+    static: Optional[str] = None
+
+
 class Pump(BaseModel):
     static: Optional[str] = None
 
@@ -110,6 +115,9 @@ class Config(BaseModel):
     output_dir: str = "."
     level_boundary: LevelBoundary = Field(
         default_factory=lambda: LevelBoundary.parse_obj({"static": None, "time": None})
+    )
+    user: User = Field(
+        default_factory=lambda: User.parse_obj({"static": None, "time": None})
     )
     pump: Pump = Field(default_factory=lambda: Pump.parse_obj({"static": None}))
     discrete_control: DiscreteControl = Field(

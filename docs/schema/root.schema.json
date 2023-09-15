@@ -10,11 +10,17 @@
         "FlowBoundaryTime": {
             "$ref": "FlowBoundaryTime.schema.json"
         },
+        "UserStatic": {
+            "$ref": "UserStatic.schema.json"
+        },
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
+        },
+        "UserTime": {
+            "$ref": "UserTime.schema.json"
         },
         "DiscreteControlCondition": {
             "$ref": "DiscreteControlCondition.schema.json"

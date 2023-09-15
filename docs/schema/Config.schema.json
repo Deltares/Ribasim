@@ -38,6 +38,13 @@
             },
             "$ref": "https://deltares.github.io/Ribasim/schema/level_boundary.schema.json"
         },
+        "user": {
+            "default": {
+                "static": null,
+                "time": null
+            },
+            "$ref": "https://deltares.github.io/Ribasim/schema/user.schema.json"
+        },
         "pump": {
             "default": {
                 "static": null
@@ -165,6 +172,7 @@
         "level_boundary",
         "pump",
         "tabulated_rating_curve",
+        "user",
         "flow_boundary",
         "basin",
         "manning_resistance",

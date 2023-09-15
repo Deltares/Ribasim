@@ -31,6 +31,16 @@ class FlowBoundaryTime(BaseModel):
     node_id: int
 
 
+class UserStatic(BaseModel):
+    remarks: str = Field("", description="a hack for pandera")
+    priority: int
+    active: Optional[bool] = None
+    demand: float
+    return_factor: float
+    min_level: float
+    node_id: int
+
+
 class PumpStatic(BaseModel):
     max_flow_rate: Optional[float] = None
     remarks: str = Field("", description="a hack for pandera")
@@ -46,6 +56,16 @@ class LevelBoundaryStatic(BaseModel):
     active: Optional[bool] = None
     node_id: int
     level: float
+
+
+class UserTime(BaseModel):
+    remarks: str = Field("", description="a hack for pandera")
+    priority: int
+    time: datetime
+    demand: float
+    return_factor: float
+    min_level: float
+    node_id: int
 
 
 class DiscreteControlCondition(BaseModel):
@@ -198,8 +218,10 @@ class Root(BaseModel):
     DiscreteControlLogic: Optional[DiscreteControlLogic] = None
     Edge: Optional[Edge] = None
     FlowBoundaryTime: Optional[FlowBoundaryTime] = None
+    UserStatic: Optional[UserStatic] = None
     PumpStatic: Optional[PumpStatic] = None
     LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
+    UserTime: Optional[UserTime] = None
     DiscreteControlCondition: Optional[DiscreteControlCondition] = None
     BasinForcing: Optional[BasinForcing] = None
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
