@@ -411,7 +411,7 @@ end
 
 function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = NaN, active = true)
+    defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
     is_pid_controlled = falses(length(parsed_parameters.node_id))
 
@@ -440,7 +440,7 @@ end
 function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
-        (; min_flow_rate = 0.0, max_flow_rate = NaN, min_crest_level = NaN, active = true)
+        (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
     is_pid_controlled = falses(length(parsed_parameters.node_id))
 
@@ -624,7 +624,17 @@ end
 function User(db::DB, config::Config)::User
     static = load_structvector(db, config, UserStaticV1)
     time = load_structvector(db, config, UserTimeV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, "User"; static, time)
+    defaults = (; min_level = -Inf, active = true)
+    time_interpolatables = [:demand]
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "User";
+        static,
+        time,
+        time_interpolatables,
+        defaults,
+    )
 
     if !valid
         error("Errors occurred when parsing User (node type) data.")

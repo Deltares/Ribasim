@@ -1071,7 +1071,7 @@ function formulate_flow!(
         end
 
         # No flow out outlet if source level is lower than minimum crest level
-        if src_level !== nothing && !isnan(min_crest_level[i])
+        if src_level !== nothing
             q *= reduction_factor(src_level - min_crest_level[i], 0.1)
         end
 
