@@ -781,9 +781,8 @@ function formulate_flow!(
 
         # Return flow is immediate
         flow[id, dst_id] = q * return_factor[i]
-
-        return nothing
     end
+    return nothing
 end
 
 """

@@ -61,9 +61,13 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             end
         end
 
-        # tstops for transient flow_boundary
+        # tell the solver to stop when new data comes in
+        # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
-        tstops = get_tstops(time_flow_boundary.time, config.starttime)
+        tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
+        time_user = load_structvector(db, config, UserTimeV1)
+        tstops_user = get_tstops(time_user.time, config.starttime)
+        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
