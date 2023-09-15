@@ -405,6 +405,7 @@ end
 
 """
 demand: water flux demand of user over time
+active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
@@ -412,6 +413,7 @@ priority: integer > 0, the lower the number the higher the priority of the users
 """
 struct User
     node_id::Vector{Int}
+    active::BitVector
     demand::Vector{ScalarInterpolation}
     allocated::Vector{Float64}
     return_factor::Vector{Float64}
@@ -736,12 +738,12 @@ function continuous_control!(
     return nothing
 end
 
-function formulate!(
+function formulate_flow!(
     user::User,
     p::Parameters,
-    current_level,
-    storage,
-    flow,
+    flow::AbstractMatrix,
+    current_level::AbstractVector,
+    storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
@@ -763,21 +765,17 @@ function formulate!(
 
         q = allocated[i]
 
-        # TODO: change to smooth reduction factor
-        # Smoothly let abstraction go to 0 as the source basin
-        # dries out
+        # Smoothly let abstraction go to 0 as the source basin dries out
         _, basin_idx = id_index(basin.node_id, src_id)
-        source_storage = storage[basin_idx]
-        reduction_factor_basin_empty = min(source_storage, 10.0) / 10.0
-        q *= reduction_factor_basin_empty
+        factor_basin = reduction_factor(storage[basin_idx], 10.0)
+        q *= factor_basin
 
-        # TODO: change to smooth reduction factor
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
         source_level = get_level(p, src_id, current_level, t)
         Δsource_level = source_level - min_level[i]
-        reduction_factor_min_level = min(Δsource_level, 0.1) / 0.1
-        q *= reduction_factor_min_level
+        factor_level = reduction_factor(Δsource_level, 0.1)
+        q *= factor_level
 
         flow[src_id, id] = q
 
@@ -1119,6 +1117,7 @@ function formulate_flows!(
         flow_boundary,
         pump,
         outlet,
+        user,
     ) = p
 
     formulate_flow!(linear_resistance, p, current_level, flow, t)
@@ -1128,6 +1127,7 @@ function formulate_flows!(
     formulate_flow!(fractional_flow, flow, p)
     formulate_flow!(pump, p, flow, storage)
     formulate_flow!(outlet, p, flow, current_level, storage, t)
+    formulate_flow!(user, p, flow, current_level, storage, t)
 
     return nothing
 end

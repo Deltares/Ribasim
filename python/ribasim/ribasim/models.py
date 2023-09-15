@@ -34,7 +34,7 @@ class FlowBoundaryTime(BaseModel):
 class UserStatic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
     priority: int
-    active: Optional[str] = None
+    active: Optional[bool] = None
     demand: float
     return_factor: float
     min_level: float

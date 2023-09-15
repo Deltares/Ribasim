@@ -15,10 +15,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "null"
+                    "type": "boolean"
                 },
                 {
-                    "type": "string"
+                    "type": "null"
                 }
             ]
         },

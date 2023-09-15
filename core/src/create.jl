@@ -634,6 +634,7 @@ function User(db::DB, config::Config)::User
 
     return User(
         parsed_parameters.node_id,
+        parsed_parameters.active,
         parsed_parameters.demand,
         allocated,
         parsed_parameters.return_factor,

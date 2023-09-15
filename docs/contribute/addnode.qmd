@@ -144,10 +144,8 @@ class NewNodeType(TableModel):
     class Config:
         validate_assignment = True
 
-
-
     def sort(self):
-        self.static = self.static.sort_values("node_id", ignore_index=True)
+        self.static.sort_values("node_id", ignore_index=True, inplace=True)
 
 ```
 The `sort` method should implement the same sorting as in `validation.jl`.

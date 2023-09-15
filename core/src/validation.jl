@@ -121,7 +121,7 @@ n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neghbor_bounds_control(nodetype) =
+n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
 # TODO NodeV1 and EdgeV1 are not yet used
@@ -290,7 +290,7 @@ end
 
 @version UserStaticV1 begin
     node_id::Int
-    active::Union{Missing, String}
+    active::Union{Missing, Bool}
     demand::Float64
     return_factor::Float64
     min_level::Float64
@@ -356,6 +356,7 @@ const TimeSchemas = Union{
     LevelBoundaryTimeV1,
     PidControlTimeV1,
     TabulatedRatingCurveTimeV1,
+    UserTimeV1,
 }
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
