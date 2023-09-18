@@ -1,5 +1,1 @@
-* text=auto
-
-**/Project.toml eol=lf
-**/Manifest.toml eol=lf
-**/*.json eol=lf
+* text=auto eol=lf
