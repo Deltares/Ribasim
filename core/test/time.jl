@@ -1,7 +1,10 @@
 using Ribasim
 
 @testset "Time dependent flow boundary" begin
-    toml_path = normpath(@__DIR__, "../../data/flow_boundary_time/flow_boundary_time.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_boundary_time/flow_boundary_time.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 

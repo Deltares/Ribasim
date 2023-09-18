@@ -15,7 +15,7 @@ docs/site/
 # environment.
 /core/Manifest.toml
 
-/data/
+/generated_testmodels
 build/create_binaries/ribasim_cli/
 build/create_binaries/libribasim/
 
@@ -157,3 +157,4 @@ dmypy.json
 /.luarc.json
 build/ribasim_cli/tests/temp/
 report.xml
+generated_testmodels

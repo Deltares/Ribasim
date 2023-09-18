@@ -7,7 +7,7 @@ import Tables
 using PreallocationTools: get_tmp
 
 @testset "trivial model" begin
-    toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/trivial.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -15,7 +15,7 @@ using PreallocationTools: get_tmp
 end
 
 @testset "bucket model" begin
-    toml_path = normpath(@__DIR__, "../../data/bucket/bucket.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/bucket.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -23,7 +23,7 @@ end
 end
 
 @testset "basic model" begin
-    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
     @test ispath(toml_path)
 
     logger = TestLogger()
@@ -47,7 +47,10 @@ end
 end
 
 @testset "basic transient model" begin
-    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_transient/basic_transient.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -58,7 +61,10 @@ end
 end
 
 @testset "sparse and AD/FDM jac solver options" begin
-    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_transient/basic_transient.toml",
+    )
 
     config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
     sparse_ad = Ribasim.run(config)
@@ -80,8 +86,10 @@ end
 end
 
 @testset "TabulatedRatingCurve model" begin
-    toml_path =
-        normpath(@__DIR__, "../../data/tabulated_rating_curve/tabulated_rating_curve.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/tabulated_rating_curve/tabulated_rating_curve.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -139,7 +147,7 @@ end
 end
 
 @testset "Outlet constraints" begin
-    toml_path = normpath(@__DIR__, "../../data/outlet/outlet.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/outlet.toml")
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
@@ -166,7 +174,7 @@ end
 end
 
 @testset "User" begin
-    toml_path = normpath(@__DIR__, "../../data/user/user.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/user.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
@@ -233,7 +241,7 @@ end
         return h
     end
 
-    toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/backwater.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
