@@ -21,9 +21,7 @@ jobs:
           pixi-version: "latest"
           cache: true
       - name: Prepare pixi
-        run: |
-          pixi install
-          pixi run post-install-without-pre-commit
+        run: pixi run post-install-without-pre-commit
       - name: Run mypy on python/ribasim
         run: |
           pixi run mypy-ribasim-python
