@@ -5,8 +5,8 @@ endtime = 2019-12-31
 update_timestep = 86400.0
 
 # optional, default is the path of the TOML
-input_dir = "../data/lhm"
-output_dir = "../data/lhm"
+input_dir = "../generated_testmodels/lhm"
+output_dir = "../generated_testmodels/lhm"
 
 geopackage = "model.gpkg"
 

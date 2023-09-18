@@ -1,3 +1,4 @@
+cd(@__DIR__)
 push!(LOAD_PATH, "../core/")
 using Documenter, Ribasim
 using DocumenterMarkdown

@@ -3,5 +3,5 @@
 
 using Ribasim, Dates, TOML
 
-toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
 Ribasim.run(toml_path)

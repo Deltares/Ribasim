@@ -26,7 +26,7 @@ using Logging
 end
 
 @testset "Q(h) validation" begin
-    toml_path = normpath(@__DIR__, "../../data/invalid_qh/invalid_qh.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/invalid_qh.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
@@ -153,7 +153,7 @@ if !Sys.islinux()
     @testset "FractionalFlow validation" begin
         toml_path = normpath(
             @__DIR__,
-            "../../data/invalid_fractional_flow/invalid_fractional_flow.toml",
+            "../../generated_testmodels/invalid_fractional_flow/invalid_fractional_flow.toml",
         )
         @test ispath(toml_path)
 
@@ -188,7 +188,7 @@ end
 @testset "DiscreteControl logic validation" begin
     toml_path = normpath(
         @__DIR__,
-        "../../data/invalid_discrete_control/invalid_discrete_control.toml",
+        "../../generated_testmodels/invalid_discrete_control/invalid_discrete_control.toml",
     )
     @test ispath(toml_path)
 
@@ -263,7 +263,10 @@ end
 end
 
 @testset "Edge type validation" begin
-    toml_path = normpath(@__DIR__, "../../data/invalid_edge_types/invalid_edge_types.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_edge_types/invalid_edge_types.toml",
+    )
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)

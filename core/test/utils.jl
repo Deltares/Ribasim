@@ -160,7 +160,7 @@ end
 end
 
 @testset "Jacobian sparsity" begin
-    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
 
     cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
@@ -175,7 +175,8 @@ end
     @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
     @test jac_prototype.nzval == ones(9)
 
-    toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pid_control/pid_control.toml")
 
     cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
