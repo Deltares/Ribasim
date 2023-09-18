@@ -31,9 +31,7 @@ jobs:
           pixi-version: latest
           cache: true
       - name: Prepare pixi
-        run: |
-          pixi install
-          pixi run post-install-without-pre-commit
+        run: pixi run post-install-without-pre-commit
       - name: Prepare model input
         run: |
           pixi run generate-testmodels
