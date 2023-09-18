@@ -55,11 +55,12 @@ test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests"
 test-ribasim-api = "pytest --numprocesses=auto python/ribasim_api/tests"
 test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
-test-ribasim-core = "julia --project=core --eval 'using Pkg; Pkg.instantiate(); Pkg.test()'"
+test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.instantiate(); Pkg.test()'", depends_on = [
+    "generate-testmodels",
+] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = [
     "lint",
-    "generate-testmodels",
     "test-ribasim-python",
     "test-ribasim-core",
 ] }
