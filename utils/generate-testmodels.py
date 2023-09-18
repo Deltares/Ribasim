@@ -1,9 +1,12 @@
+import shutil
 from pathlib import Path
 
 import ribasim_testmodels
 
 if __name__ == "__main__":
     datadir = Path("data")
+    if datadir.is_dir():
+        shutil.rmtree(datadir)
 
     models = [
         model_generator()

@@ -5,10 +5,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "number"
+                    "type": "null"
                 },
                 {
-                    "type": "null"
+                    "type": "number"
                 }
             ]
         },
@@ -22,10 +22,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "boolean"
+                    "type": "null"
                 },
                 {
-                    "type": "null"
+                    "type": "boolean"
                 }
             ]
         },
@@ -33,10 +33,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "number"
+                    "type": "null"
                 },
                 {
-                    "type": "null"
+                    "type": "number"
                 }
             ]
         },
@@ -63,10 +63,10 @@
             "format": "default",
             "anyOf": [
                 {
-                    "type": "number"
+                    "type": "null"
                 },
                 {
-                    "type": "null"
+                    "type": "number"
                 }
             ]
         }

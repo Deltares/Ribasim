@@ -4,11 +4,11 @@
 Build the app with:
 
 ```
-julia --project create_app.jl
+pixi run build-ribasim-cli
 ```
 
 Build the shared library with:
 
 ```
-julia --project create_lib.jl
+pixi run build-libribasim
 ```
