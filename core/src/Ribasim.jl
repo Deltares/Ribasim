@@ -1,3 +1,17 @@
+"""
+    module Ribasim
+
+Ribasim is a water resources model.
+The computational core is implemented in Julia in the Ribasim package.
+It is currently mainly designed to be used as an application.
+To run a simulation from Julia, use [`Ribasim.run`](@ref).
+
+For more granular access, see:
+- [`Config`](@ref)
+- [`Model`](@ref)
+- [`solve!`](@ref)
+- [`BMI.finalize`](@ref)
+"""
 module Ribasim
 
 import IterTools
