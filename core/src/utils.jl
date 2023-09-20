@@ -658,8 +658,12 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     jac_prototype = spzeros(n_states, n_states)
 
     for nodefield in nodefields(p)
+        if nodefield == :discrete_control
+            continue
+        end
         update_jac_prototype!(jac_prototype, p, getfield(p, nodefield))
     end
+    update_jac_prototype!(jac_prototype, p, p.discrete_control)
 
     return jac_prototype
 end
@@ -817,27 +821,40 @@ function update_jac_prototype!(
             id_pump_out = only(inneighbors(graph_flow, id_controlled))
 
             # The basin downstream of the pump
-            has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
+            has_index, idx_basin_connected = id_index(basin.node_id, id_pump_out)
 
             if has_index
                 # The basin downstream of the pump depends on PID control integral state
-                jac_prototype[pid_state_idx, idx_out_out] = 1.0
+                jac_prototype[pid_state_idx, idx_basin_connected] = 1.0
 
                 # The basin downstream of the pump also depends on the controlled basin
-                jac_prototype[listen_idx, idx_out_out] = 1.0
+                jac_prototype[listen_idx, idx_basin_connected] = 1.0
             end
         else
             id_outlet_in = only(outneighbors(graph_flow, id_controlled))
 
             # The basin upstream of the outlet
-            has_index, idx_out_in = id_index(basin.node_id, id_outlet_in)
+            has_index, idx_basin_connected = id_index(basin.node_id, id_outlet_in)
 
             if has_index
                 # The basin upstream of the outlet depends on the PID control integral state
-                jac_prototype[pid_state_idx, idx_out_in] = 1.0
+                jac_prototype[pid_state_idx, idx_basin_connected] = 1.0
 
                 # The basin upstream of the outlet also depends on the controlled basin
-                jac_prototype[listen_idx, idx_out_in] = 1.0
+                jac_prototype[listen_idx, idx_basin_connected] = 1.0
+            end
+        end
+
+        # Because of the derivative PID term, if the change in the PID controlled storage
+        # depends on say storage u_i, then the basin connected via the controlled
+        # pump/outlet also depends on u_i
+        # This is why the sparsity due to PID control must be determined last; it
+        # depends on sparsity due to other nodes
+        if has_index
+            for idx_ in 1:size(jac_prototype)[1]
+                if !iszero(jac_prototype[idx_, idx_basin_connected])
+                    jac_prototype[idx_, listen_idx] = 1.0
+                end
             end
         end
     end
