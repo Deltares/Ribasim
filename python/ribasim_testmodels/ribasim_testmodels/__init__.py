@@ -32,6 +32,7 @@ from ribasim_testmodels.invalid import (
 from ribasim_testmodels.nederrijn import nederrijn_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
+    pid_control_connected_model,
     pid_control_model,
 )
 from ribasim_testmodels.time import flow_boundary_time_model
@@ -64,4 +65,5 @@ __all__ = [
     "level_boundary_condition_model",
     "outlet_model",
     "user_model",
+    "pid_control_connected_model",
 ]
