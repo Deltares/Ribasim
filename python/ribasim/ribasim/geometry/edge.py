@@ -95,7 +95,7 @@ class Edge(TableModel):
         if color_flow is None:
             color_flow = "#3690c0"  # lightblue
             kwargs_flow["color"] = color_flow
-            kwargs_flow["label"] = "Flow Edge"
+            kwargs_flow["label"] = "Flow edge"
         else:
             color_flow = kwargs["color_flow"]
             del kwargs_flow["color_flow"], kwargs_control["color_flow"]
@@ -103,7 +103,7 @@ class Edge(TableModel):
         if color_control is None:
             color_control = "grey"
             kwargs_control["color"] = color_control
-            kwargs_control["label"] = "Affect Edge"
+            kwargs_control["label"] = "Control edge"
         else:
             color_control = kwargs["color_flow"]
             del kwargs_flow["color_control"], kwargs_control["color_control"]

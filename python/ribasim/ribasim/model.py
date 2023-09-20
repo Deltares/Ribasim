@@ -399,7 +399,7 @@ class Model(BaseModel):
                 [y, y_],
                 c="gray",
                 ls="--",
-                label="Listen Edge" if i == 0 else None,
+                label="Listen edge" if i == 0 else None,
             )
 
     def plot(self, ax=None) -> Any:
