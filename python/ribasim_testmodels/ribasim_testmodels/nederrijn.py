@@ -4,7 +4,7 @@ import pandas as pd
 import ribasim
 
 
-def dutch_waterways_model():
+def nederrijn_model():
     """Set up a model that is representative of the main Dutch rivers."""
 
     # Setup the basins
@@ -276,7 +276,7 @@ def dutch_waterways_model():
     )
 
     model = ribasim.Model(
-        modelname="dutch_waterways",
+        modelname="nederrijn",
         node=node,
         edge=edge,
         basin=basin,
@@ -292,16 +292,3 @@ def dutch_waterways_model():
     )
 
     return model
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    model = dutch_waterways_model()
-
-    model.plot()
-
-    df_flow = model.flow_boundary.time.pivot_table(index="time", values=["flow_rate"])
-    df_flow.plot()
-
-    plt.show()

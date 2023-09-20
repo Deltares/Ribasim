@@ -16,7 +16,6 @@ from ribasim_testmodels.discrete_control import (
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
-from ribasim_testmodels.dutch_waterways import dutch_waterways_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -30,6 +29,7 @@ from ribasim_testmodels.invalid import (
     invalid_fractional_flow_model,
     invalid_qh_model,
 )
+from ribasim_testmodels.nederrijn import nederrijn_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -52,7 +52,7 @@ __all__ = [
     "pid_control_model",
     "misc_nodes_model",
     "tabulated_rating_curve_control_model",
-    "dutch_waterways_model",
+    "nederrijn_model",
     "invalid_qh_model",
     "flow_boundary_time_model",
     "pid_control_equation_model",
