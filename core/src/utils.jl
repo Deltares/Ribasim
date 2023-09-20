@@ -801,6 +801,8 @@ function update_jac_prototype!(
         # ID of controlled pump/outlet
         id_controlled = only(outneighbors(graph_control, id))
 
+        # It is known that the listen_node_id belongs to a basin
+        # as this is validated earlier
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
         # Controlled basin affects itself
