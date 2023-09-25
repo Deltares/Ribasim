@@ -1,9 +1,16 @@
+"""
+    module config
+
+Ribasim.config is a submodule of [`Ribasim`](@ref) to handle the configuration of a Ribasim model.
+It is implemented using the [Configurations](https://configurations.rogerluo.dev/stable/) package.
+A full configuration is represented by [`Config`](@ref), which is the main API.
+Ribasim.config is a submodule mainly to avoid name clashes between the configuration sections and the rest of Ribasim.
+"""
 module config
 
 using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
-using Legolas: Legolas, record_type
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
@@ -169,7 +176,23 @@ function Base.show(io::IO, c::TableOption)
     end
 end
 
-"Map from config string to supported algorithm type"
+"""
+    const algorithms::Dict{String, Type}
+
+Map from config string to a supported algorithm type from [OrdinaryDiffEq](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
+
+Supported algorithms:
+
+- `QNDF`
+- `Rosenbrock23`
+- `TRBDF2`
+- `Rodas5`
+- `KenCarp4`
+- `Tsit5`
+- `RK4`
+- `ImplicitEuler`
+- `Euler`
+"""
 const algorithms = Dict{String, Type}(
     "QNDF" => QNDF,
     "Rosenbrock23" => Rosenbrock23,

@@ -1,8 +1,18 @@
+"""
+    BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
+
+Initialize a [`Model`](@ref) from the path to the TOML configuration file.
+"""
 function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
     config = Config(config_path)
     BMI.initialize(T, config)
 end
 
+"""
+    BMI.initialize(T::Type{Model}, config::Config)::Model
+
+Initialize a [`Model`](@ref) from a [`Config`](@ref).
+"""
 function BMI.initialize(T::Type{Model}, config::Config)::Model
     alg = algorithm(config.solver)
     gpkg_path = input_path(config, config.geopackage)
@@ -134,6 +144,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     return Model(integrator, config, saved_flow)
 end
 
+"""
+    BMI.finalize(model::Model)::Model
+
+Write all output to the configured output files.
+"""
 function BMI.finalize(model::Model)::Model
     compress = get_compressor(model.config.output)
     write_basin_output(model, compress)
@@ -528,6 +543,13 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
+"""
+    run(config_file::AbstractString)::Model
+    run(config::Config)::Model
+
+Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing output with [`BMI.finalize`](@ref).
+"""
 run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
@@ -549,8 +571,8 @@ function run(config::Config)::Model
     end
 
     with_logger(logger) do
-        model = BMI.initialize(Model, config)
-        solve!(model.integrator)
+        model = Model(config)
+        solve!(model)
         BMI.finalize(model)
         return model
     end
