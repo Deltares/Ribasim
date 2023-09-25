@@ -34,7 +34,8 @@ Before running the Julia tests or building binaries, example model input needs t
 This is done by running the following:
 
 ```
-pixi run generate-testmodels```
+pixi run generate-testmodels
+```
 
 This places example model input files under `./generated_testmodels/`.
 If the example models change, re-run this script.

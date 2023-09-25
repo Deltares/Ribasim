@@ -573,12 +573,12 @@ def level_setpoint_with_minmax_model():
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
-            (1.0, 0.5),  # 2: Pump
-            (1.0, -0.5),  # 3: Pump
+            (1.0, 1.0),  # 2: Pump
+            (1.0, -1.0),  # 3: Pump
             (2.0, 0.0),  # 4: LevelBoundary
             (-1.0, 0.0),  # 5: TabulatedRatingCurve
             (-2.0, 0.0),  # 6: Terminal
-            (0.0, 1.5),  # 7: DiscreteControl
+            (1.0, 0.0),  # 7: DiscreteControl
         ]
     )
 
