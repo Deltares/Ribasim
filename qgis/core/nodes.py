@@ -497,7 +497,7 @@ class PidControlStatic(Input):
 
 
 class PidControlTime(Input):
-    input_type = "PidControl / static"
+    input_type = "PidControl / time"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
