@@ -255,7 +255,7 @@ def basic_transient_model() -> ribasim.Model:
         }
     )
 
-    model.basin.forcing = forcing
+    model.basin.time = forcing
     model.basin.state = state
     model.logging = None
 

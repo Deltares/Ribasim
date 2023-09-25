@@ -4,10 +4,10 @@ from pandera.typing import DataFrame
 
 from ribasim.input_base import TableModel
 from ribasim.schemas import (  # type: ignore
-    BasinForcingSchema,
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
+    BasinTimeSchema,
 )
 
 __all__ = ("Basin",)
@@ -23,7 +23,7 @@ class Basin(TableModel):
         Table describing the geometry.
     static : pandas.DataFrame, optional
         Table describing the constant fluxes.
-    forcing : pandas.DataFrame, optional
+    time : pandas.DataFrame, optional
         Table describing the time-varying fluxes.
     state : pandas.DataFrame, optional
         Table describing the initial condition.
@@ -31,16 +31,14 @@ class Basin(TableModel):
 
     profile: DataFrame[BasinProfileSchema]
     static: Optional[DataFrame[BasinStaticSchema]] = None
-    forcing: Optional[DataFrame[BasinForcingSchema]] = None
+    time: Optional[DataFrame[BasinTimeSchema]] = None
     state: Optional[DataFrame[BasinStateSchema]] = None
 
     def sort(self):
         self.profile.sort_values(["node_id", "level"], ignore_index=True, inplace=True)
         if self.static is not None:
             self.static.sort_values("node_id", ignore_index=True, inplace=True)
-        if self.forcing is not None:
-            self.forcing.sort_values(
-                ["time", "node_id"], ignore_index=True, inplace=True
-            )
+        if self.time is not None:
+            self.time.sort_values(["time", "node_id"], ignore_index=True, inplace=True)
         if self.state is not None:
             self.state.sort_values("node_id", ignore_index=True, inplace=True)

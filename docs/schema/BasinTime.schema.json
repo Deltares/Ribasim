@@ -45,8 +45,8 @@
         "precipitation",
         "urban_runoff"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinForcing.schema.json",
-    "title": "BasinForcing",
-    "description": "A BasinForcing object based on Ribasim.BasinForcingV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinTime.schema.json",
+    "title": "BasinTime",
+    "description": "A BasinTime object based on Ribasim.BasinTimeV1",
     "type": "object"
 }

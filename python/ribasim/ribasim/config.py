@@ -87,8 +87,8 @@ class Terminal(BaseModel):
 
 class Basin(BaseModel):
     profile: Optional[str] = None
+    time: Optional[str] = None
     static: Optional[str] = None
-    forcing: Optional[str] = None
     state: Optional[str] = None
 
 
@@ -171,7 +171,7 @@ class Config(BaseModel):
     )
     basin: Basin = Field(
         default_factory=lambda: Basin.parse_obj(
-            {"forcing": None, "profile": None, "state": None, "static": None}
+            {"profile": None, "state": None, "static": None, "time": None}
         )
     )
     linear_resistance: LinearResistance = Field(
