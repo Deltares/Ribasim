@@ -5,7 +5,7 @@
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.basin.static" BasinStatic
-@schema "ribasim.basin.forcing" BasinForcing
+@schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.terminal.static" TerminalStatic
@@ -36,9 +36,9 @@ From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :s
 """
 function nodetype(sv::SchemaVersion{T, N})::Tuple{Symbol, Symbol} where {T, N}
     n, k = split(string(T), ".")[2:3]
-    # Names derived from a schema are in underscores (basinforcing),
-    # so we parse the related record Ribasim.BasinForcingV1
-    # to derive BasinForcing from it.
+    # Names derived from a schema are in underscores (basintime),
+    # so we parse the related record Ribasim.BasinTimeV1
+    # to derive BasinTime from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
     return Symbol(node[begin:length(n)]), Symbol(k)
@@ -165,7 +165,7 @@ end
     urban_runoff::Float64
 end
 
-@version BasinForcingV1 begin
+@version BasinTimeV1 begin
     node_id::Int
     time::DateTime
     drainage::Float64
@@ -314,7 +314,7 @@ function variable_nt(s::Any)
     NamedTuple{names}((getfield(s, x) for x in names))
 end
 
-function is_consistent(node, edge, state, static, profile, forcing)
+function is_consistent(node, edge, state, static, profile, time)
 
     # Check that node ids exist
     # TODO Do we need to check the reverse as well? All ids in use?
@@ -324,7 +324,7 @@ function is_consistent(node, edge, state, static, profile, forcing)
     @assert state.node_id ⊆ ids "State id not in node ids"
     @assert static.node_id ⊆ ids "Static id not in node ids"
     @assert profile.node_id ⊆ ids "Profile id not in node ids"
-    @assert forcing.node_id ⊆ ids "Forcing id not in node ids"
+    @assert time.node_id ⊆ ids "Time id not in node ids"
 
     # Check edges for uniqueness
     @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
@@ -351,7 +351,7 @@ sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 
 const TimeSchemas = Union{
-    BasinForcingV1,
+    BasinTimeV1,
     FlowBoundaryTimeV1,
     LevelBoundaryTimeV1,
     PidControlTimeV1,

@@ -36,7 +36,7 @@ end
         area,
         level,
         storage,
-        StructVector{Ribasim.BasinForcingV1}(undef, 0),
+        StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     @test basin.level[2][1] === 4.0
@@ -91,7 +91,7 @@ end
         [area],
         [level],
         [storage],
-        StructVector{Ribasim.BasinForcingV1}(undef, 0),
+        StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     logger = TestLogger()

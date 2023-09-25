@@ -33,7 +33,7 @@ def test_basic(basic, tmp_path):
     assert_array_equal(index_a, index_b)
     assert_equal(model_orig.node.static, model_loaded.node.static)
     assert_equal(model_orig.edge.static, model_loaded.edge.static)
-    assert model_loaded.basin.forcing is None
+    assert model_loaded.basin.time is None
 
 
 def test_basic_transient(basic_transient, tmp_path):
@@ -47,10 +47,10 @@ def test_basic_transient(basic_transient, tmp_path):
     assert_equal(model_orig.node.static, model_loaded.node.static)
     assert_equal(model_orig.edge.static, model_loaded.edge.static)
 
-    forcing = model_loaded.basin.forcing
-    assert model_orig.basin.forcing.time[0] == forcing.time[0]
-    assert_equal(model_orig.basin.forcing, forcing)
-    assert forcing.shape == (1468, 8)
+    time = model_loaded.basin.time
+    assert model_orig.basin.time.time[0] == time.time[0]
+    assert_equal(model_orig.basin.time, time)
+    assert time.shape == (1468, 8)
 
 
 def test_pydantic():

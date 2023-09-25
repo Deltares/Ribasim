@@ -9,6 +9,17 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class BasinTime(BaseModel):
+    remarks: str = Field("", description="a hack for pandera")
+    time: datetime
+    precipitation: float
+    infiltration: float
+    urban_runoff: float
+    node_id: int
+    potential_evaporation: float
+    drainage: float
+
+
 class DiscreteControlLogic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
     truth_state: str
@@ -77,29 +88,18 @@ class DiscreteControlCondition(BaseModel):
     look_ahead: Optional[float] = None
 
 
-class BasinForcing(BaseModel):
+class LinearResistanceStatic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
-    time: datetime
-    precipitation: float
-    infiltration: float
-    urban_runoff: float
+    active: Optional[bool] = None
     node_id: int
-    potential_evaporation: float
-    drainage: float
+    resistance: float
+    control_state: Optional[str] = None
 
 
 class FractionalFlowStatic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
     node_id: int
     fraction: float
-    control_state: Optional[str] = None
-
-
-class LinearResistanceStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    node_id: int
-    resistance: float
     control_state: Optional[str] = None
 
 
@@ -215,6 +215,7 @@ class BasinStatic(BaseModel):
 
 
 class Root(BaseModel):
+    BasinTime: Optional[BasinTime] = None
     DiscreteControlLogic: Optional[DiscreteControlLogic] = None
     Edge: Optional[Edge] = None
     FlowBoundaryTime: Optional[FlowBoundaryTime] = None
@@ -223,9 +224,8 @@ class Root(BaseModel):
     LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
     UserTime: Optional[UserTime] = None
     DiscreteControlCondition: Optional[DiscreteControlCondition] = None
-    BasinForcing: Optional[BasinForcing] = None
-    FractionalFlowStatic: Optional[FractionalFlowStatic] = None
     LinearResistanceStatic: Optional[LinearResistanceStatic] = None
+    FractionalFlowStatic: Optional[FractionalFlowStatic] = None
     PidControlStatic: Optional[PidControlStatic] = None
     PidControlTime: Optional[PidControlTime] = None
     ManningResistanceStatic: Optional[ManningResistanceStatic] = None

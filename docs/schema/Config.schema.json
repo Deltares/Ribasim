@@ -142,10 +142,10 @@
         },
         "basin": {
             "default": {
-                "forcing": null,
                 "profile": null,
                 "state": null,
-                "static": null
+                "static": null,
+                "time": null
             },
             "$ref": "https://deltares.github.io/Ribasim/schema/basin.schema.json"
         },

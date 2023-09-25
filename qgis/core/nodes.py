@@ -305,8 +305,8 @@ class BasinStatic(Input):
     ]
 
 
-class BasinForcing(Input):
-    input_type = "Basin / forcing"
+class BasinTime(Input):
+    input_type = "Basin / time"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("time", QVariant.DateTime),
