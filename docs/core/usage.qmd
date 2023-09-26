@@ -79,7 +79,7 @@ can be updated in place when working on a model.
 
 Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
 written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.juliadata.org/dev/). Output is written to Arrow, since for long
+[Arrow.jl](https://arrow.apache.org/julia/dev/). Output is written to Arrow, since for long
 runs output can producs tables with many rows. Arrow is well suited for large tabular
 datasets, and file size is kept small by using compression. The Arrow input files can be
 compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
