@@ -98,7 +98,7 @@ struct Basin{T, C} <: AbstractParameterNode
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
     # data source for parameter updates
-    time::StructVector{BasinForcingV1, C, Int}
+    time::StructVector{BasinTimeV1, C, Int}
 
     function Basin(
         node_id,
@@ -111,7 +111,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
-        time::StructVector{BasinForcingV1, C, Int},
+        time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         errors = valid_profiles(node_id, level, area)
         if isempty(errors)

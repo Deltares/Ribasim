@@ -79,7 +79,7 @@ can be updated in place when working on a model.
 
 Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
 written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.juliadata.org/dev/). Output is written to Arrow, since for long
+[Arrow.jl](https://arrow.apache.org/julia/dev/). Output is written to Arrow, since for long
 runs output can producs tables with many rows. Arrow is well suited for large tabular
 datasets, and file size is kept small by using compression. The Arrow input files can be
 compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
@@ -129,7 +129,7 @@ name it must have in the GeoPackage if it is stored there.
 - Basin: stores water
   - `Basin / static`: default forcing values, used if no dynamic data given in the forcing table
   - `Basin / profile`: geometries of the basins
-  - `Basin / forcing`: time series of the forcing values
+  - `Basin / time`: time series of the forcing values
   - `Basin / state`: used as initial condition of the basins
 - FractionalFlow: connect two of these from a Basin to get a fixed ratio bifurcation
   - `FractionalFlow / static`: fractions
@@ -196,10 +196,10 @@ nodes in QGIS. For instance, you can draw a line connecting the two node coordin
 
 # Basin
 
-The Basin table can be used to set the static value of variables. The forcing table has a
+The Basin table can be used to set the static value of variables. The time table has a
 similar schema, with the time column added. A static value for a variable is only used if
 there is no dynamic forcing data for that variable. Specifically, if there is either no
-forcing table, it is empty, or all timestamps of that variable are missing.
+time table, it is empty, or all timestamps of that variable are missing.
 
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
@@ -214,7 +214,7 @@ Note that if variables are not set in the static table, default values are used 
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
 to have a reasonable and safe default, a value must be provided in the static table.
 
-## Basin / forcing
+## Basin / time
 
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.

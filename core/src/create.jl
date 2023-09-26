@@ -491,9 +491,9 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
 
     area, level, storage = create_storage_tables(db, config)
 
-    # both static and forcing are optional, but we need fallback defaults
+    # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
-    time = load_structvector(db, config, BasinForcingV1)
+    time = load_structvector(db, config, BasinTimeV1)
 
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)

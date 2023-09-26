@@ -13,6 +13,6 @@ One can also use Ribasim Python to build entire models from base data, such that
 setup is fully reproducible.
 
 The package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
-be installed with `pip install ribasim`. The most recent (nightly) version can be downloaded here: [ribasim-0.2.0-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.2.0-py3-none-any.whl). It can be installed with `pip install ribasim-0.2.0-py3-none-any.whl`.
+be installed with `pip install ribasim`. The most recent (nightly) version can be downloaded here: [ribasim-0.4.0-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.4.0-py3-none-any.whl). It can be installed with `pip install ribasim-0.4.0-py3-none-any.whl`.
 
 For documentation please see the [examples](examples.ipynb) and [API reference](reference/).

@@ -305,8 +305,8 @@ class BasinStatic(Input):
     ]
 
 
-class BasinForcing(Input):
-    input_type = "Basin / forcing"
+class BasinTime(Input):
+    input_type = "Basin / time"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("time", QVariant.DateTime),
@@ -497,7 +497,7 @@ class PidControlStatic(Input):
 
 
 class PidControlTime(Input):
-    input_type = "PidControl / static"
+    input_type = "PidControl / time"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),

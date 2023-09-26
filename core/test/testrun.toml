@@ -11,7 +11,7 @@ output_dir = "../generated_testmodels/lhm"
 geopackage = "model.gpkg"
 
 [basin]
-forcing = "forcing.arrow"
+time = "basin/time.arrow"
 
 [solver]
 saveat = 86400

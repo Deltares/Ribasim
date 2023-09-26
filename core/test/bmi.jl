@@ -1,5 +1,4 @@
 using Test
-using Configurations: from_toml
 using Ribasim
 import BasicModelInterface as BMI
 
@@ -31,7 +30,7 @@ end
     )
     @test config.solver.algorithm == "ImplicitEuler"
     @test !config.solver.adaptive
-    model = BMI.initialize(Ribasim.Model, config)
+    model = Ribasim.Model(config)
 
     @test BMI.get_time_step(model) == dt
     BMI.update(model)

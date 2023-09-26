@@ -21,7 +21,7 @@ compression_level = 6            # optional, default 6
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
 [basin]
-forcing = "forcing.arrow"
+time = "basin/time.arrow"
 
 [solver]
 algorithm = "QNDF" # optional, default "QNDF"
