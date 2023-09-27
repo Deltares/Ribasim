@@ -411,7 +411,7 @@ return_factor: the factor in [0,1] of how much of the abstracted water is given 
 min_level: The level of the source basin below which the user does not abstract
 priority: integer > 0, the lower the number the higher the priority of the users demand
 """
-struct User
+struct User <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     demand::Vector{ScalarInterpolation}
@@ -527,7 +527,7 @@ Currently at less than 0.1 m.
 function formulate!(du::AbstractVector, basin::Basin, storage::AbstractVector)::Nothing
     (; current_level, current_area) = basin
     current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_level, storage)
+    current_area = get_tmp(current_area, storage)
 
     for i in eachindex(storage)
         # add all precipitation that falls within the profile
@@ -578,7 +578,9 @@ function continuous_control!(
     max_flow_rate_outlet = outlet.max_flow_rate
     (; graph_control, graph_flow, flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
+    (; current_area) = basin
 
+    current_area = get_tmp(current_area, u)
     storage = u.storage
     flow = get_tmp(flow, u)
     outlet_flow_rate = get_tmp(outlet.flow_rate, u)
@@ -1134,8 +1136,12 @@ function water_balance!(
 
     # First formulate intermediate flows
     for nodefield in nodefields(p)
+        if nodefield == :fractional_flow
+            continue
+        end
         formulate_flow!(getfield(p, nodefield), p, storage, t)
     end
+    formulate_flow!(p.fractional_flow, p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, flow, basin)
