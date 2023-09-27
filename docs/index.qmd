@@ -14,7 +14,7 @@ libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/s
 The latest builds can be downloaded here:
 
 - Ribasim executable: [ribasim_cli.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip).
-- Python package: [ribasim-0.2.0-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.2.0-py3-none-any.whl)
+- Python package: [ribasim-0.4.0-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.4.0-py3-none-any.whl)
 - QGIS plugin: [ribasim_qgis.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip).
 
 Currently only Windows builds for `ribasim_cli.zip` are available. See [Usage](core/usage.qmd) for more information.

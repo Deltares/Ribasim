@@ -1,27 +1,11 @@
 from typing import Optional
 
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import PidControlStaticSchema, PidControlTimeSchema  # type: ignore
 
 __all__ = ("PidControl",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.PidControlStatic)
-
-
-class TimeSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.PidControlTime)
 
 
 class PidControl(TableModel):
@@ -37,8 +21,14 @@ class PidControl(TableModel):
         Table with time-varying data for this node type.
     """
 
-    static: Optional[DataFrame[StaticSchema]] = None
-    time: Optional[DataFrame[TimeSchema]] = None
+    static: Optional[DataFrame[PidControlStaticSchema]] = None
+    time: Optional[DataFrame[PidControlTimeSchema]] = None
 
     class Config:
         validate_assignment = True
+
+    def sort(self):
+        if self.static is not None:
+            self.static.sort_values("node_id", ignore_index=True, inplace=True)
+        if self.time is not None:
+            self.time.sort_values(["time", "node_id"], ignore_index=True, inplace=True)

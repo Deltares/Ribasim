@@ -6,9 +6,6 @@
     <options>
       <option name="artifactRules" value="python\ribasim_api\tests\temp =&gt; test_output.zip" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RQ_436" />
-    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
@@ -16,8 +13,7 @@
       <runner id="RUNNER_1501" name="Set up virtual environment" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[if exist "%conda_env_path%" rd /q /s "%conda_env_path%"
-call conda create --prefix "%conda_env_path%" python=3.10]]></param>
-          <param name="teamcity.build.workingDir" value="imod_coupler" />
+call conda env create --file environment.yml -p "%conda_env_path%"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -25,9 +21,9 @@ call conda create --prefix "%conda_env_path%" python=3.10]]></param>
       <runner id="RUNNER_1502" name="Install Python packages" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pip install --editable "python/ribasim"
-call pip install --editable "python/ribasim_testmodels"
-call pip install --editable "python/ribasim_api[tests]"]]></param>
+pip install "python/ribasim"
+pip install "python/ribasim_testmodels"
+pip install "python/ribasim_api"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -35,7 +31,7 @@ call pip install --editable "python/ribasim_api[tests]"]]></param>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
+pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
           <param name="teamcity.build.workingDir" value="python/ribasim_api" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -46,8 +42,7 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
     <requirements>
-      <equals id="RQ_436" name="teamcity.agent.jvm.os.name" value="Windows 10" />
-      <does-not-equal id="RQ_96" name="system.agent.name" value="c-teamcity0358" />
+      <equals id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
@@ -78,7 +73,7 @@ call pytest tests --basetemp=tests/temp --junitxml="report.xml"]]></param>
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows" cleanDestination="true">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
         <artifact sourcePath="libribasim.zip!** =&gt; build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>

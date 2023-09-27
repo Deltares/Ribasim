@@ -32,12 +32,11 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
-        [2.0, 3.0],
         darea,
         area,
         level,
         storage,
-        StructVector{Ribasim.BasinForcingV1}(undef, 0),
+        StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     @test basin.level[2][1] === 4.0
@@ -89,11 +88,10 @@ end
         zeros(1),
         zeros(1),
         zeros(1),
-        zeros(1),
         [area],
         [level],
         [storage],
-        StructVector{Ribasim.BasinForcingV1}(undef, 0),
+        StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     logger = TestLogger()
@@ -162,7 +160,7 @@ end
 end
 
 @testset "Jacobian sparsity" begin
-    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
 
     cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
@@ -173,11 +171,12 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 7, 9]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 4]
-    @test jac_prototype.nzval == ones(8)
+    @test jac_prototype.colptr == [1, 3, 5, 7, 10]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
+    @test jac_prototype.nzval == ones(9)
 
-    toml_path = normpath(@__DIR__, "../../data/pid_control/pid_control.toml")
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pid_control/pid_control.toml")
 
     cfg = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
@@ -207,4 +206,14 @@ end
     fv = Ribasim.FlatVector(vv)
     @test isempty(fv)
     @test length(fv) == 0
+end
+
+@testset "reduction_factor" begin
+    @test Ribasim.reduction_factor(-2.0, 2.0) === 0.0
+    @test Ribasim.reduction_factor(0.0f0, 2.0) === 0.0f0
+    @test Ribasim.reduction_factor(0.0, 2.0) === 0.0
+    @test Ribasim.reduction_factor(1.0f0, 2.0) === 0.5f0
+    @test Ribasim.reduction_factor(1.0, 2.0) === 0.5
+    @test Ribasim.reduction_factor(3.0f0, 2.0) === 1.0f0
+    @test Ribasim.reduction_factor(3.0, 2.0) === 1.0
 end

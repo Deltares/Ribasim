@@ -1,6 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+        "BasinTime": {
+            "$ref": "BasinTime.schema.json"
+        },
         "DiscreteControlLogic": {
             "$ref": "DiscreteControlLogic.schema.json"
         },
@@ -10,23 +13,26 @@
         "FlowBoundaryTime": {
             "$ref": "FlowBoundaryTime.schema.json"
         },
+        "UserStatic": {
+            "$ref": "UserStatic.schema.json"
+        },
         "PumpStatic": {
             "$ref": "PumpStatic.schema.json"
         },
         "LevelBoundaryStatic": {
             "$ref": "LevelBoundaryStatic.schema.json"
         },
+        "UserTime": {
+            "$ref": "UserTime.schema.json"
+        },
         "DiscreteControlCondition": {
             "$ref": "DiscreteControlCondition.schema.json"
         },
-        "BasinForcing": {
-            "$ref": "BasinForcing.schema.json"
+        "LinearResistanceStatic": {
+            "$ref": "LinearResistanceStatic.schema.json"
         },
         "FractionalFlowStatic": {
             "$ref": "FractionalFlowStatic.schema.json"
-        },
-        "LinearResistanceStatic": {
-            "$ref": "LinearResistanceStatic.schema.json"
         },
         "PidControlStatic": {
             "$ref": "PidControlStatic.schema.json"

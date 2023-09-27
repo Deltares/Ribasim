@@ -1,9 +1,8 @@
 using Test
-using Configurations: from_toml
 using Ribasim
 import BasicModelInterface as BMI
 
-toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
 
 @testset "adaptive timestepping" begin
     model = BMI.initialize(Ribasim.Model, toml_path)
@@ -31,7 +30,7 @@ end
     )
     @test config.solver.algorithm == "ImplicitEuler"
     @test !config.solver.adaptive
-    model = BMI.initialize(Ribasim.Model, config)
+    model = Ribasim.Model(config)
 
     @test BMI.get_time_step(model) == dt
     BMI.update(model)

@@ -177,11 +177,12 @@ class Node(Input):
             "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
             "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
             "Pump": (QColor("gray"), "Pump", shape.Hexagon),
-            "Outlet": (QColor("yellow"), "Outlet", shape.Hexagon),
+            "Outlet": (QColor("green"), "Outlet", shape.Hexagon),
             "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
+            "User": (QColor("green"), "User", shape.Square),
             "": (
                 QColor("white"),
                 "",
@@ -304,8 +305,8 @@ class BasinStatic(Input):
     ]
 
 
-class BasinForcing(Input):
-    input_type = "Basin / forcing"
+class BasinTime(Input):
+    input_type = "Basin / time"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("time", QVariant.DateTime),
@@ -397,9 +398,10 @@ class LevelBoundaryStatic(Input):
 
 
 class LevelBoundaryTime(Input):
-    input_type = "LevelBoundary / static"
+    input_type = "LevelBoundary / time"
     geometry_type = "No Geometry"
     attributes = [
+        QgsField("time", QVariant.DateTime),
         QgsField("node_id", QVariant.Int),
         QgsField("time", QVariant.DateTime),
         QgsField("level", QVariant.Double),
@@ -428,6 +430,7 @@ class OutletStatic(Input):
         QgsField("flow_rate", QVariant.Double),
         QgsField("min_flow_rate", QVariant.Double),
         QgsField("max_flow_rate", QVariant.Double),
+        QgsField("min_crest_level", QVariant.Double),
         QgsField("control_state", QVariant.String),
     ]
 
@@ -494,7 +497,7 @@ class PidControlStatic(Input):
 
 
 class PidControlTime(Input):
-    input_type = "PidControl / static"
+    input_type = "PidControl / time"
     geometry_type = "LineString"
     attributes = [
         QgsField("node_id", QVariant.Int),
@@ -504,6 +507,30 @@ class PidControlTime(Input):
         QgsField("proportional", QVariant.Double),
         QgsField("integral", QVariant.Double),
         QgsField("derivative", QVariant.Double),
+    ]
+
+
+class UserStatic(Input):
+    input_type = "User / static"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("active", QVariant.Bool),
+        QgsField("demand", QVariant.Double),
+        QgsField("return_factor", QVariant.Double),
+        QgsField("priority", QVariant.Int),
+    ]
+
+
+class UserTime(Input):
+    input_type = "User / time"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("node_id", QVariant.Int),
+        QgsField("time", QVariant.DateTime),
+        QgsField("demand", QVariant.Double),
+        QgsField("return_factor", QVariant.Double),
+        QgsField("priority", QVariant.Int),
     ]
 
 

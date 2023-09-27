@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "static": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        }
+    },
+    "required": [
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/linear_resistance.schema.json",
+    "title": "linear_resistance",
+    "description": "A linear_resistance object based on Ribasim.config.linear_resistance",
+    "type": "object"
+}

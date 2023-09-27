@@ -9,7 +9,7 @@
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_ribasim_cli" />
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
@@ -33,7 +33,7 @@ call pip install --editable "python/ribasim_testmodels"]]></param>
       <runner id="RUNNER_1992" name="Prepare model input" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call python python/ribasim/tests/conftest.py]]></param>
+call python utils/generate-testmodels.py]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -113,4 +113,3 @@ call python python/ribasim/tests/conftest.py]]></param>
     <cleanup />
   </settings>
 </build-type>
-

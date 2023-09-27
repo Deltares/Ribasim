@@ -21,7 +21,7 @@ compression_level = 6            # optional, default 6
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
 [basin]
-forcing = "forcing.arrow"
+time = "basin/time.arrow"
 
 [solver]
 algorithm = "QNDF" # optional, default "QNDF"
@@ -32,8 +32,7 @@ abstol = 1e-6      # optional, default 1e-6
 reltol = 1e-3      # optional, default 1e-3
 maxiters = 1e9     # optional, default 1e9
 sparse = true      # optional, default true
-jac = true         # optional, default true
-autodiff = false   # optional, default false
+autodiff = true    # optional, default true
 
 [logging]
 # defines the logging level of Ribasim

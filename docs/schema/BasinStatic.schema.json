@@ -9,32 +9,26 @@
         },
         "precipitation": {
             "format": "double",
-            "description": "precipitation",
             "type": "number"
         },
         "infiltration": {
             "format": "double",
-            "description": "infiltration",
             "type": "number"
         },
         "urban_runoff": {
             "format": "double",
-            "description": "urban_runoff",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "potential_evaporation": {
             "format": "double",
-            "description": "potential_evaporation",
             "type": "number"
         },
         "drainage": {
             "format": "double",
-            "description": "drainage",
             "type": "number"
         }
     },

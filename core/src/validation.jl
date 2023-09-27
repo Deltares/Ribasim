@@ -5,7 +5,7 @@
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.basin.static" BasinStatic
-@schema "ribasim.basin.forcing" BasinForcing
+@schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.terminal.static" TerminalStatic
@@ -22,6 +22,8 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.user.static" UserStatic
+@schema "ribasim.user.time" UserTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
@@ -34,9 +36,9 @@ From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :s
 """
 function nodetype(sv::SchemaVersion{T, N})::Tuple{Symbol, Symbol} where {T, N}
     n, k = split(string(T), ".")[2:3]
-    # Names derived from a schema are in underscores (basinforcing),
-    # so we parse the related record Ribasim.BasinForcingV1
-    # to derive BasinForcing from it.
+    # Names derived from a schema are in underscores (basintime),
+    # so we parse the related record Ribasim.BasinTimeV1
+    # to derive BasinTime from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
     return Symbol(node[begin:length(n)]), Symbol(k)
@@ -46,8 +48,15 @@ end
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:Outlet}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Basin}) =
-    Set((:LinearResistance, :TabulatedRatingCurve, :ManningResistance, :Pump, :Outlet))
+neighbortypes(::Val{:User}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:Basin}) = Set((
+    :LinearResistance,
+    :TabulatedRatingCurve,
+    :ManningResistance,
+    :Pump,
+    :Outlet,
+    :User,
+))
 neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
 neighbortypes(::Val{:FlowBoundary}) =
@@ -93,6 +102,7 @@ n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:User}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -110,6 +120,7 @@ n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -141,6 +152,7 @@ end
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
+    min_crest_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -153,7 +165,7 @@ end
     urban_runoff::Float64
 end
 
-@version BasinForcingV1 begin
+@version BasinTimeV1 begin
     node_id::Int
     time::DateTime
     drainage::Float64
@@ -276,6 +288,24 @@ end
     control_state::Union{Missing, String}
 end
 
+@version UserStaticV1 begin
+    node_id::Int
+    active::Union{Missing, Bool}
+    demand::Float64
+    return_factor::Float64
+    min_level::Float64
+    priority::Int
+end
+
+@version UserTimeV1 begin
+    node_id::Int
+    time::DateTime
+    demand::Float64
+    return_factor::Float64
+    min_level::Float64
+    priority::Int
+end
+
 function variable_names(s::Any)
     filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
 end
@@ -284,7 +314,7 @@ function variable_nt(s::Any)
     NamedTuple{names}((getfield(s, x) for x in names))
 end
 
-function is_consistent(node, edge, state, static, profile, forcing)
+function is_consistent(node, edge, state, static, profile, time)
 
     # Check that node ids exist
     # TODO Do we need to check the reverse as well? All ids in use?
@@ -294,7 +324,7 @@ function is_consistent(node, edge, state, static, profile, forcing)
     @assert state.node_id ⊆ ids "State id not in node ids"
     @assert static.node_id ⊆ ids "Static id not in node ids"
     @assert profile.node_id ⊆ ids "Profile id not in node ids"
-    @assert forcing.node_id ⊆ ids "Forcing id not in node ids"
+    @assert time.node_id ⊆ ids "Time id not in node ids"
 
     # Check edges for uniqueness
     @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
@@ -320,7 +350,14 @@ sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 
-const TimeSchemas = Union{TabulatedRatingCurveTimeV1, FlowBoundaryTimeV1, BasinForcingV1}
+const TimeSchemas = Union{
+    BasinTimeV1,
+    FlowBoundaryTimeV1,
+    LevelBoundaryTimeV1,
+    PidControlTimeV1,
+    TabulatedRatingCurveTimeV1,
+    UserTimeV1,
+}
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
@@ -411,7 +448,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{Int},
-    flow_rate::Vector{Float64},
+    flow_rate::Vector,
     control_mapping::Dict{Tuple{Int, String}, NamedTuple},
     node_type::Symbol,
 )::Bool

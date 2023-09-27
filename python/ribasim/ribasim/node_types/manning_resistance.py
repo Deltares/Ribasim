@@ -1,18 +1,9 @@
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import ManningResistanceStaticSchema  # type: ignore
 
 __all__ = ("ManningResistance",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.ManningResistanceStatic)
 
 
 class ManningResistance(TableModel):
@@ -26,4 +17,4 @@ class ManningResistance(TableModel):
         Table with the constant Manning parameters.
     """
 
-    static: DataFrame[StaticSchema]
+    static: DataFrame[ManningResistanceStaticSchema]

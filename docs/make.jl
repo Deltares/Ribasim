@@ -1,3 +1,4 @@
+cd(@__DIR__)
 push!(LOAD_PATH, "../core/")
 using Documenter, Ribasim
 using DocumenterMarkdown
@@ -5,7 +6,7 @@ using DocumenterMarkdown
 DocMeta.setdocmeta!(Ribasim, :DocTestSetup, :(using Ribasim); recursive = true)
 
 makedocs(;
-    modules = [Ribasim],
+    modules = [Ribasim, Ribasim.config],
     format = Markdown(),
     repo = "https://github.com/Deltares/Ribasim.jl/blob/{commit}{path}#L{line}",
     sitename = "Ribasim.jl",

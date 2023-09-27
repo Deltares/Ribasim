@@ -34,7 +34,7 @@ function create_graph(
 end
 
 "Calculate a profile storage by integrating the areas over the levels"
-function profile_storage(levels::Vector{Float64}, areas::Vector{Float64})::Vector{Float64}
+function profile_storage(levels::Vector, areas::Vector)::Vector{Float64}
     # profile starts at the bottom; first storage is 0
     storages = zero(areas)
     n = length(storages)
@@ -110,7 +110,7 @@ end
 """Compute the storages of the basins based on the water level of the basins."""
 function get_storages_from_levels(
     basin::Basin,
-    levels::Vector{Float64},
+    levels::Vector,
 )::Tuple{Vector{Float64}, Bool}
     storages = Float64[]
 
@@ -124,11 +124,7 @@ end
 Compute the area and level of a basin given its storage.
 Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(
-    basin::Basin,
-    state_idx::Int,
-    storage::Float64,
-)::Tuple{Float64, Float64, Float64}
+function get_area_and_level(basin::Basin, state_idx::Int, storage::Real)::Tuple{Real, Real}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -137,11 +133,11 @@ function get_area_and_level(
 end
 
 function get_area_and_level(
-    storage_discrete::Vector{Float64},
-    area_discrete::Vector{Float64},
-    level_discrete::Vector{Float64},
-    storage::Float64,
-)::Tuple{Float64, Float64, Float64}
+    storage_discrete::Vector,
+    area_discrete::Vector,
+    level_discrete::Vector,
+    storage::Real,
+)::Tuple{Real, Real}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -209,7 +205,7 @@ function get_area_and_level(
         end
     end
 
-    return area, level, darea
+    return area, level
 end
 
 """
@@ -226,11 +222,11 @@ Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
 """
 function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
     idx_block_end = findlast(==(id), ids)
-    if isnothing(idx_block_end)
+    if idx_block_end === nothing
         return 1:0
     end
     idx_block_begin = findprev(!=(id), ids, idx_block_end)
-    idx_block_begin = if isnothing(idx_block_begin)
+    idx_block_begin = if idx_block_begin === nothing
         1
     else
         # can happen if that id is the only ID in ids
@@ -357,7 +353,7 @@ function set_static_value!(
 )::NamedTuple
     for (i, id) in enumerate(node_id)
         idx = findsorted(static.node_id, id)
-        isnothing(idx) && continue
+        idx === nothing && continue
         row = static[idx]
         set_table_row!(table, row, i)
     end
@@ -384,7 +380,7 @@ function set_current_value!(
                 row -> row.node_id == id && !isnan(getproperty(row, symbol)),
                 pre_table,
             )
-            if !isnothing(idx)
+            if idx !== nothing
                 vector[i] = getproperty(pre_table, symbol)[idx]
             end
         end
@@ -410,34 +406,40 @@ end
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 """
-function get_level(p::Parameters, node_id::Int, t::Float64)::Float64
+function get_level(
+    p::Parameters,
+    node_id::Int,
+    current_level::AbstractVector,
+    t::Float64,
+)::Union{Real, Nothing}
     (; basin, level_boundary) = p
-    # since the node_id fields are already Indices, Dictionary creation is instant
-    basin = Dictionary(basin.node_id, basin.current_level)
-    hasindex, token = gettoken(basin, node_id)
+    hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
-        gettokenvalue(basin, token)
+        current_level[i]
     else
-        boundary = Dictionary(level_boundary.node_id, level_boundary.level)
-        boundary[node_id](t)
+        i = findsorted(level_boundary.node_id, node_id)
+        if i === nothing
+            nothing
+        else
+            level_boundary.level[i](t)
+        end
     end
 end
 
 "Get the index of an ID in a set of indices."
-function id_index(ids::Indices{Int}, id::Int)
-    # There might be a better approach for this, this feels too internal
-    # the second return is the token, a Tuple{Int, Int}
-    hasindex, (_, idx) = gettoken(ids, id)
-    return hasindex, idx
+function id_index(ids::Indices{Int}, id::Int)::Tuple{Bool, Int}
+    # We avoid creating Dictionary here since it converts the values to a Vector,
+    # leading to allocations when used with PreallocationTools's ReinterpretArrays.
+    hasindex, (_, i) = gettoken(ids, id)
+    return hasindex, i
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
-    basin = Dictionary(basin.node_id, basin.level)
-    hasindex, token = gettoken(basin, node_id)
+    hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
-        level_discrete = gettokenvalue(basin, token)
+        level_discrete = basin.level[i]
         # and return the first level in this vector, representing the bottom
         first(level_discrete)
     else
@@ -454,7 +456,7 @@ function basin_bottoms(
 )::Tuple{Float64, Float64}
     bottom_a = basin_bottom(basin, basin_a_id)
     bottom_b = basin_bottom(basin, basin_b_id)
-    if isnothing(bottom_a) && isnothing(bottom_b)
+    if bottom_a === bottom_b === nothing
         error(lazy"No bottom defined on either side of $id")
     end
     bottom_a = something(bottom_a, bottom_b)
@@ -764,7 +766,7 @@ function update_jac_prototype!(
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
-                    push!(idxs_out, idx_out)
+                    jac_prototype[idx_in, idx_out] = 1.0
                 end
             else
                 for idx_out in idxs_out
@@ -898,4 +900,19 @@ function Base.getindex(fv::FlatVector, i::Int)
     d, r = divrem(i - 1, veclen)
     v = fv.v[d + 1]
     return v[r + 1]
+end
+
+"""
+Function that goes smoothly from 0 to 1 in the interval [0,threshold],
+and is constant outside this interval.
+"""
+function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
+    return if x < 0
+        zero(T)
+    elseif x < threshold
+        x_scaled = x / threshold
+        (-2 * x_scaled + 3) * x_scaled^2
+    else
+        one(T)
+    end
 end

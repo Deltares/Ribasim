@@ -13,9 +13,6 @@ jobs:
   test:
     name: Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -28,19 +25,16 @@ jobs:
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.2.1
         with:
-          cache-downloads: true
-          cache-environment: true
-          environment-file: ./environment.yml
-      - name: Install ribasim
-        run: pip install --editable python/ribasim
-      - name: Install ribasim_testmodels
-        run: pip install --editable python/ribasim_testmodels
+          pixi-version: "v0.3.0"
+          cache: true
+      - name: Prepare pixi
+        run: pixi run post-install-without-pre-commit
       - name: Prepare model input
-        run: python python/ribasim/tests/conftest.py
+        run: |
+          pixi run generate-testmodels
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia_version }}

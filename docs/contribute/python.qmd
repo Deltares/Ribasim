@@ -4,88 +4,25 @@ title: "Python tooling development"
 
 # Set up the developer environment
 
-## Setting up conda
+## Setting up pixi
 
-In order to develop on `ribasim` locally, please follow the following steps:
+First, set up pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
 
-- Download and install [miniconda](https://docs.conda.io/en/latest/miniconda.html).
-
-- Initialize `conda` by running the following in the `Miniconda prompt`:
+Then set up the environment by running the following commands:
 
 ```
-conda init
-```
-
-- Depending on your company settings, you might also have to run the following in a Powershell terminal as administrator:
-
-```
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned
-```
-
-## Creating (or updating) the environment
-
-- Create (or update) the environment by executing the following in your terminal:
-
-```
-conda env create --file=environment.yml --force
-```
-
-## Installing Python packages
-
-- Activate the environment
-
-```
-conda activate ribasim
-```
-
-In order to develop on `ribasim` locally, execute the following line inside your virtual environment with the repo root as your working directory:
-
-```bash
-pip install --editable python/ribasim
-pip install --editable python/ribasim_testmodels
-pip install --editable python/ribasim_api
-```
-
-## Install the pre-commit hook {#sec-precommit}
-
-If not already done, activate the environment:
-
-```
-conda activate ribasim
-```
-
-Pre-commit ensures that all linters are happy with your code before you commit your files.
-In order to install the pre-commit hook run:
-
-```bash
-pre-commit install
+pixi install
+pixi run post-install
 ```
 
 
 ## Running the tests {#sec-test}
 
-If not already done, activate the environment:
-
-```
-conda activate ribasim
-```
-
-To run the tests call `pytest` with the path to the Python package.
-Here the the root of the repository is the working directory:
+In order to run tests on Ribasim Python execute
 
 ```bash
-pytest python/ribasim
+pixi run test-ribasim-python
 ```
-
-## Building the documentation
-
-Run in the docs folder:
-
-```
-quartodoc build
-```
-
-This will generate the `.qmd` files in `docs/python/reference` for inspection.
 
 ## Updating example notebooks
 
@@ -94,13 +31,13 @@ Make sure to run `Clear All Outputs` on the notebook before committing.
 ## Prepare model input
 
 Before running the Julia tests or building binaries, example model input needs to created.
-This is done by running the following Python script:
+This is done by running the following:
 
 ```
-python python/ribasim/tests/conftest.py
+pixi run generate-testmodels
 ```
 
-This places example model input files under `./data/`.
+This places example model input files under `./generated_testmodels/`.
 If the example models change, re-run this script.
 
 ## Setup Visual Studio Code (optional) {#sec-vscode}
@@ -136,30 +73,12 @@ twine check dist/*
 twine upload dist/*
 ```
 
-## Automatic code formatting with Black {#sec-black}
+## Linting
 
-We use the [Black](https://black.readthedocs.io/en/stable/) code formatter.
-Code only passes the continuous integration checks if it is fully formatted according to the Black code style.
-When working in VS Code the settings suggested in @sec-vscode run Black automatically when saving Python files.
-
-If you want to run Black manually, you can run it from the command line.
-To run it on the entire repository, use the command below.
-Here the repository root is the working directory.
+To run our linting suite locally, execute:
 
 ```
-black .
-```
-
-## Code linting with Ruff {#sec-ruff}
-
-We use the [Ruff](https://github.com/charliermarsh/ruff) linter to help finding issues with Python code.
-Code only passes the continuous integration checks if Ruff does not find any issues.
-
-To run Ruff on the entire repository, use the command below.
-Here the repository root is the working directory.
-
-```
-ruff .
+pixi run lint
 ```
 
 # Code maintenance {#sec-codecov}
@@ -167,11 +86,13 @@ ruff .
 For new features new tests have to be added. To monitor how much of the code is covered by the tests we use [Codecov](https://about.codecov.io/).
 For a simple overview of the local code coverage run
 ```
+pixi shell
 pytest --cov=ribasim tests/
 ```
 from  `python/ribasim`. For an extensive overview in `html` format use
 ```
-ytest --cov=ribasim --cov-report=html tests/
+pixi shell
+pytest --cov=ribasim --cov-report=html tests/
 ```
 which creates a folder `htmlcov` in the working directory. To see te contents open `htmlcov/index.html` in a browser.
 

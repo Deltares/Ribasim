@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Dict, Union
 
 import geopandas as gpd
@@ -43,20 +42,15 @@ class Edge(TableModel):
     def _layername(cls, field) -> str:
         return cls.get_input_type()
 
-    def write(self, directory: FilePath, modelname: str) -> None:
+    def write_layer(self, path: FilePath) -> None:
         """
         Write the contents of the input to a GeoPackage.
 
-        The Geopackage will be written in ``directory`` and will be be named
-        ``{modelname}.gpkg``.
-
         Parameters
         ----------
-        directory : FilePath
-        modelname : str
+        path : FilePath
         """
         self.sort()
-        directory = Path(directory)
         dataframe = self.static
         name = self._layername(dataframe)
 
@@ -65,7 +59,7 @@ class Edge(TableModel):
             gdf = gdf.set_geometry("geometry")
         else:
             gdf["geometry"] = None
-        gdf.to_file(directory / f"{modelname}.gpkg", layer=name, driver="GPKG")
+        gdf.to_file(path, layer=name, driver="GPKG")
 
         return
 
@@ -101,7 +95,7 @@ class Edge(TableModel):
         if color_flow is None:
             color_flow = "#3690c0"  # lightblue
             kwargs_flow["color"] = color_flow
-            kwargs_flow["label"] = "Flow Edge"
+            kwargs_flow["label"] = "Flow edge"
         else:
             color_flow = kwargs["color_flow"]
             del kwargs_flow["color_flow"], kwargs_control["color_flow"]
@@ -109,7 +103,7 @@ class Edge(TableModel):
         if color_control is None:
             color_control = "grey"
             kwargs_control["color"] = color_control
-            kwargs_control["label"] = "Affect Edge"
+            kwargs_control["label"] = "Control edge"
         else:
             color_control = kwargs["color_flow"]
             del kwargs_flow["color_control"], kwargs_control["color_control"]

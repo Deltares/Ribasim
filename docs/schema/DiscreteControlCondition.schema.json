@@ -9,29 +9,29 @@
         },
         "greater_than": {
             "format": "double",
-            "description": "greater_than",
             "type": "number"
         },
         "listen_feature_id": {
             "format": "default",
-            "description": "listen_feature_id",
             "type": "integer"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "variable": {
             "format": "default",
-            "description": "variable",
             "type": "string"
         },
         "look_ahead": {
             "format": "default",
-            "description": "look_ahead",
-            "type": [
-                "number"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
             ]
         }
     },

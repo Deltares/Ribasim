@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "remarks": {
+            "format": "default",
+            "default": "",
+            "description": "a hack for pandera",
+            "type": "string"
+        },
+        "priority": {
+            "format": "default",
+            "type": "integer"
+        },
+        "active": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
+        },
+        "demand": {
+            "format": "double",
+            "type": "number"
+        },
+        "return_factor": {
+            "format": "double",
+            "type": "number"
+        },
+        "min_level": {
+            "format": "double",
+            "type": "number"
+        },
+        "node_id": {
+            "format": "default",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "node_id",
+        "demand",
+        "return_factor",
+        "min_level",
+        "priority"
+    ],
+    "$id": "https://deltares.github.io/Ribasim/schema/UserStatic.schema.json",
+    "title": "UserStatic",
+    "description": "A UserStatic object based on Ribasim.UserStaticV1",
+    "type": "object"
+}

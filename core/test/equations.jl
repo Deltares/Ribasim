@@ -5,10 +5,11 @@ using Arrow
 import BasicModelInterface as BMI
 using SciMLBase: successful_retcode
 using TimerOutputs
+using PreallocationTools: get_tmp
 
 include("../../utils/testdata.jl")
 
-datadir = normpath(@__DIR__, "../../data")
+datadir = normpath(@__DIR__, "../../generated_testmodels")
 
 TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
 
@@ -61,7 +62,10 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # Solution: storage(t) = limit_storage + (storage0 - limit_storage)*exp(-t/(basin_area*resistance))
 # Here limit_storage is the storage at which the level of the basin is equal to the level of the level boundary
 @testset "LinearResistance" begin
-    toml_path = normpath(@__DIR__, "../../data/linear_resistance/linear_resistance.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/linear_resistance/linear_resistance.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -85,7 +89,8 @@ end
 # Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
 # storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
 @testset "TabulatedRatingCurve" begin
-    toml_path = normpath(@__DIR__, "../../data/rating_curve/rating_curve.toml")
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/rating_curve/rating_curve.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -117,7 +122,10 @@ end
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
 @testset "ManningResistance" begin
-    toml_path = normpath(@__DIR__, "../../data/manning_resistance/manning_resistance.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/manning_resistance/manning_resistance.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -151,8 +159,10 @@ end
 # differentiating the equation for the storage of the controlled basin
 # once to time to get rid of the integral term.
 @testset "PID control" begin
-    toml_path =
-        normpath(@__DIR__, "../../data/pid_control_equation/pid_control_equation.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/pid_control_equation/pid_control_equation.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -195,7 +205,7 @@ end
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
 @testset "MiscellaneousNodes" begin
-    toml_path = normpath(@__DIR__, "../../data/misc_nodes/misc_nodes.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/misc_nodes.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -203,7 +213,8 @@ end
     (; flow_boundary, fractional_flow, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    q_pump = pump.flow_rate[1]
+    pump_flow_rate = get_tmp(pump.flow_rate, 0)
+    q_pump = pump_flow_rate[1]
     frac = fractional_flow.fraction[1]
 
     storage_both = Ribasim.get_storages_and_levels(model).storage

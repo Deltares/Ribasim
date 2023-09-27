@@ -1,27 +1,14 @@
 from typing import Optional
 
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import (  # type: ignore
+    LevelBoundaryStaticSchema,
+    LevelBoundaryTimeSchema,
+)
 
 __all__ = ("LevelBoundary",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.LevelBoundaryStatic)
-
-
-class TimeSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.LevelBoundaryTime)
 
 
 class LevelBoundary(TableModel):
@@ -34,5 +21,11 @@ class LevelBoundary(TableModel):
         Table with the constant water levels.
     """
 
-    static: Optional[DataFrame[StaticSchema]] = None
-    time: Optional[DataFrame[TimeSchema]] = None
+    static: Optional[DataFrame[LevelBoundaryStaticSchema]] = None
+    time: Optional[DataFrame[LevelBoundaryTimeSchema]] = None
+
+    def sort(self):
+        if self.static is not None:
+            self.static.sort_values("node_id", ignore_index=True, inplace=True)
+        if self.time is not None:
+            self.time.sort_values(["time", "node_id"], ignore_index=True, inplace=True)

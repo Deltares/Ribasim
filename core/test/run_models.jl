@@ -4,9 +4,10 @@ using Ribasim
 import BasicModelInterface as BMI
 using SciMLBase: successful_retcode
 import Tables
+using PreallocationTools: get_tmp
 
 @testset "trivial model" begin
-    toml_path = normpath(@__DIR__, "../../data/trivial/trivial.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/trivial.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -14,7 +15,7 @@ import Tables
 end
 
 @testset "bucket model" begin
-    toml_path = normpath(@__DIR__, "../../data/bucket/bucket.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/bucket.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -22,7 +23,7 @@ end
 end
 
 @testset "basic model" begin
-    toml_path = normpath(@__DIR__, "../../data/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
     @test ispath(toml_path)
 
     logger = TestLogger()
@@ -31,6 +32,11 @@ end
     end
 
     @test model isa Ribasim.Model
+    p = model.integrator.p
+    @test p isa Ribasim.Parameters
+    @test isconcretetype(typeof(p))
+    @test all(isconcretetype, fieldtypes(typeof(p)))
+
     @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
@@ -41,7 +47,10 @@ end
 end
 
 @testset "basic transient model" begin
-    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_transient/basic_transient.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -51,36 +60,41 @@ end
         Sys.isapple()
 end
 
-@testset "sparse and jac solver options" begin
-    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+@testset "sparse and AD/FDM jac solver options" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_transient/basic_transient.toml",
+    )
 
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = true)
-    sparse_jac = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = true)
-    dense_jac = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_jac = false)
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
+    sparse_ad = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
+    dense_ad = Ribasim.run(config)
+    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
     sparse_fdm = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_jac = false)
+    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
     dense_fdm = Ribasim.run(config)
 
-    @test successful_retcode(sparse_jac)
-    @test successful_retcode(dense_jac)
+    @test successful_retcode(sparse_ad)
+    @test successful_retcode(dense_ad)
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_jac.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end]
-    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_jac.integrator.sol.u[end] atol = 1e-3
+    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
 end
 
 @testset "TabulatedRatingCurve model" begin
-    toml_path =
-        normpath(@__DIR__, "../../data/tabulated_rating_curve/tabulated_rating_curve.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/tabulated_rating_curve/tabulated_rating_curve.toml",
+    )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[5.949285, 725.9446] skip = Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end
@@ -130,6 +144,46 @@ end
     A, h = lookup(profile, S)
     @test h ≈ sqrt(S / 5)
     @test A ≈ 10 * h
+end
+
+@testset "Outlet constraints" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/outlet.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    p = model.integrator.p
+    (; level_boundary, outlet) = p
+    (; level) = level_boundary
+    level = level[1]
+
+    timesteps = model.saved_flow.t
+    outlet_flow = [saveval[1] for saveval in model.saved_flow.saveval]
+
+    t_min_crest_level =
+        level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+
+    # No outlet flow when upstream level is below minimum crest level
+    @test all(@. outlet_flow[timesteps <= t_min_crest_level] == 0)
+
+    timesteps = Ribasim.timesteps(model)
+    t_maximum_level = level.t[2]
+    level_basin = Ribasim.get_storages_and_levels(model).level[:]
+
+    # Basin level converges to stable level boundary level
+    all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
+end
+
+@testset "User" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/user.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    day = 86400.0
+    @test only(model.integrator.sol(0day)) == 1000.0
+    # constant user withdraws to 0.9m/900m3
+    @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
+    # dynamic user withdraws to 0.5m/500m3
+    @test only(model.integrator.sol(180day)) ≈ 500 atol = 1
 end
 
 @testset "ManningResistance" begin
@@ -187,14 +241,14 @@ end
         return h
     end
 
-    toml_path = normpath(@__DIR__, "../../data/backwater/backwater.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/backwater.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = p.basin.current_level
+    h_actual = get_tmp(p.basin.current_level, u)
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 

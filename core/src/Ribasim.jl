@@ -1,3 +1,17 @@
+"""
+    module Ribasim
+
+Ribasim is a water resources model.
+The computational core is implemented in Julia in the Ribasim package.
+It is currently mainly designed to be used as an application.
+To run a simulation from Julia, use [`Ribasim.run`](@ref).
+
+For more granular access, see:
+- [`Config`](@ref)
+- [`Model`](@ref)
+- [`solve!`](@ref)
+- [`BMI.finalize`](@ref)
+"""
 module Ribasim
 
 import IterTools
@@ -12,13 +26,15 @@ using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
-using Dictionaries: Indices, Dictionary, gettoken, gettokenvalue, dictionary
+using Dictionaries: Indices, Dictionary, gettoken, dictionary
+using ForwardDiff: pickchunksize
 using DiffEqCallbacks
 using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
+using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
@@ -32,7 +48,6 @@ TimerOutputs.complement!()
 
 include("validation.jl")
 include("solve.jl")
-include("jac.jl")
 include("config.jl")
 using .config
 include("utils.jl")

@@ -9,12 +9,10 @@
         },
         "fid": {
             "format": "default",
-            "description": "fid",
             "type": "integer"
         },
         "type": {
             "format": "default",
-            "description": "type",
             "type": "string"
         }
     },

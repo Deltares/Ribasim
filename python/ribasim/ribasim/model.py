@@ -1,8 +1,10 @@
 import datetime
 import inspect
-from enum import Enum
+import shutil
+from contextlib import closing
 from pathlib import Path
-from typing import Any, List, Optional, Type, Union, cast
+from sqlite3 import connect
+from typing import Any, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +14,7 @@ import tomli_w
 from pydantic import BaseModel
 
 from ribasim import geometry, node_types
+from ribasim.config import Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 
@@ -30,32 +33,8 @@ from ribasim.node_types.pid_control import PidControl
 from ribasim.node_types.pump import Pump
 from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
 from ribasim.node_types.terminal import Terminal
+from ribasim.node_types.user import User
 from ribasim.types import FilePath
-
-
-class Solver(BaseModel):
-    algorithm: Optional[str]
-    saveat: Optional[Union[float, List[float]]]
-    adaptive: Optional[bool]
-    dt: Optional[float]
-    abstol: Optional[float]
-    reltol: Optional[float]
-    maxiters: Optional[int]
-    sparse: Optional[bool]
-    jac: Optional[bool]
-    autodiff: Optional[bool]
-
-
-class Verbosity(str, Enum):
-    debug = "debug"
-    info = "info"
-    warn = "warn"
-    error = "error"
-
-
-class Logging(BaseModel):
-    verbosity: Optional[Verbosity] = Verbosity.info
-    timing: Optional[bool] = False
 
 
 class Model(BaseModel):
@@ -97,6 +76,8 @@ class Model(BaseModel):
         Discrete control logic.
     pid_control : Optional[PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
+    user : Optional[User]
+        User node type with demand and priority.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
@@ -122,6 +103,7 @@ class Model(BaseModel):
     terminal: Optional[Terminal]
     discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
+    user: Optional[User]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]
@@ -174,16 +156,33 @@ class Model(BaseModel):
         return
 
     def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to GeoPackage and Arrow tables."""
-        # avoid adding tables to existing model
+        """Write the input to GeoPackage tables."""
+        # We write all tables to a temporary GeoPackage with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
         directory = Path(directory)
         gpkg_path = directory / f"{self.modelname}.gpkg"
-        gpkg_path.unlink(missing_ok=True)
+        tempname = "." + self.modelname
+        temp_path = gpkg_path.with_stem(tempname)
+        # avoid adding tables to existing model
+        temp_path.unlink(missing_ok=True)
 
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.write(directory, self.modelname)
+        # write to GeoPackage using geopandas
+        self.node.write_layer(temp_path)
+        self.edge.write_layer(temp_path)
+
+        # write to GeoPackage using sqlite3
+        with closing(connect(temp_path)) as connection:
+            for name in self.fields():
+                input_entry = getattr(self, name)
+                is_geometry = isinstance(input_entry, Node) or isinstance(
+                    input_entry, Edge
+                )
+                if isinstance(input_entry, TableModel) and not is_geometry:
+                    input_entry.write_table(connection)
+            connection.commit()
+
+        shutil.move(temp_path, gpkg_path)
         return
 
     @staticmethod
@@ -400,7 +399,7 @@ class Model(BaseModel):
                 [y, y_],
                 c="gray",
                 ls="--",
-                label="Listen Edge" if i == 0 else None,
+                label="Listen edge" if i == 0 else None,
             )
 
     def plot(self, ax=None) -> Any:

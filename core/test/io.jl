@@ -69,13 +69,16 @@ function to_arrow_table(
 end
 
 @testset "table sort" begin
-    toml_path = normpath(@__DIR__, "../../data/basic_transient/basic_transient.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_transient/basic_transient.toml",
+    )
     config = Ribasim.Config(toml_path)
     gpkg_path = Ribasim.input_path(config, config.geopackage)
     db = SQLite.DB(gpkg_path)
 
     # load a sorted table
-    table = Ribasim.load_structvector(db, config, Ribasim.BasinForcingV1)
+    table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
     by = Ribasim.sort_by_function(table)
     @test by == Ribasim.sort_by_time_id
     # reverse it so it needs sorting

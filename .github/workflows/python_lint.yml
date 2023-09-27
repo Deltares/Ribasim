@@ -14,28 +14,20 @@ jobs:
     name: Mypy
     runs-on: ubuntu-latest
     continue-on-error: true
-    defaults:
-      run:
-        shell: bash -l {0}
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.2.1
         with:
-          cache-downloads: true
-          cache-environment: true
-          environment-file: ./environment.yml
-      - name: Install python packages
-        run: |
-          pip install python/ribasim
-          pip install python/ribasim_testmodels
-          pip install python/ribasim_api
+          pixi-version: "latest"
+          cache: true
+      - name: Prepare pixi
+        run: pixi run post-install-without-pre-commit
       - name: Run mypy on python/ribasim
         run: |
-          mypy --ignore-missing-imports python/ribasim/ribasim
+          pixi run mypy-ribasim-python
       - name: Run mypy on python/ribasim_testmodels
         run: |
-          mypy --ignore-missing-imports python/ribasim_testmodels/ribasim_testmodels
+          pixi run mypy-ribasim-testmodels
       - name: Run mypy on python/ribasim_api
         run: |
-          mypy --ignore-missing-imports python/ribasim_api/ribasim_api
+          pixi run mypy-ribasim-api

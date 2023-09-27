@@ -26,7 +26,7 @@ using Logging
 end
 
 @testset "Q(h) validation" begin
-    toml_path = normpath(@__DIR__, "../../data/invalid_qh/invalid_qh.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/invalid_qh.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
@@ -76,13 +76,13 @@ end
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Nodes of type Ribasim.Pump can have at most 1 flow inneighbor(s) (got 2 for node #1)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} can have at most 1 flow inneighbor(s) (got 2 for node #1)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.Pump must have at least 1 flow outneighbor(s) (got 0 for node #1)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow outneighbor(s) (got 0 for node #1)."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Nodes of type Ribasim.Pump must have at least 1 flow inneighbor(s) (got 0 for node #6)."
+          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
     add_edge!(graph_flow, 2, 5)
     add_edge!(graph_flow, 5, 3)
@@ -153,7 +153,7 @@ if !Sys.islinux()
     @testset "FractionalFlow validation" begin
         toml_path = normpath(
             @__DIR__,
-            "../../data/invalid_fractional_flow/invalid_fractional_flow.toml",
+            "../../generated_testmodels/invalid_fractional_flow/invalid_fractional_flow.toml",
         )
         @test ispath(toml_path)
 
@@ -188,7 +188,7 @@ end
 @testset "DiscreteControl logic validation" begin
     toml_path = normpath(
         @__DIR__,
-        "../../data/invalid_discrete_control/invalid_discrete_control.toml",
+        "../../generated_testmodels/invalid_discrete_control/invalid_discrete_control.toml",
     )
     @test ispath(toml_path)
 
@@ -230,6 +230,7 @@ end
             [-1.0],
             [NaN],
             [NaN],
+            [NaN],
             Dict{Tuple{Int, String}, NamedTuple}(),
             [false],
         )
@@ -262,7 +263,10 @@ end
 end
 
 @testset "Edge type validation" begin
-    toml_path = normpath(@__DIR__, "../../data/invalid_edge_types/invalid_edge_types.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_edge_types/invalid_edge_types.toml",
+    )
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)

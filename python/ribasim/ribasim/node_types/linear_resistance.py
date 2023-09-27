@@ -1,18 +1,9 @@
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
 
-from ribasim import models
 from ribasim.input_base import TableModel
+from ribasim.schemas import LinearResistanceStaticSchema  # type: ignore
 
 __all__ = ("LinearResistance",)
-
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.LinearResistanceStatic)
 
 
 class LinearResistance(TableModel):
@@ -26,4 +17,4 @@ class LinearResistance(TableModel):
         Table with the constant resistances.
     """
 
-    static: DataFrame[StaticSchema]
+    static: DataFrame[LinearResistanceStaticSchema]

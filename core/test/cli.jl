@@ -14,7 +14,7 @@ include("../../build/ribasim_cli/src/ribasim_cli.jl")
 end
 
 @testset "toml_path" begin
-    model_path = normpath(@__DIR__, "../../data/basic/")
+    model_path = normpath(@__DIR__, "../../generated_testmodels/basic/")
     toml_path = normpath(model_path, "basic.toml")
     @test ispath(toml_path)
     empty!(ARGS)

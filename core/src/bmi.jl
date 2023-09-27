@@ -1,8 +1,18 @@
+"""
+    BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
+
+Initialize a [`Model`](@ref) from the path to the TOML configuration file.
+"""
 function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
     config = Config(config_path)
     BMI.initialize(T, config)
 end
 
+"""
+    BMI.initialize(T::Type{Model}, config::Config)::Model
+
+Initialize a [`Model`](@ref) from a [`Config`](@ref).
+"""
 function BMI.initialize(T::Type{Model}, config::Config)::Model
     alg = algorithm(config.solver)
     gpkg_path = input_path(config, config.geopackage)
@@ -53,7 +63,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         for id in pid_control.node_id
             id_controlled = only(outneighbors(connectivity.graph_control, id))
             pump_idx = findsorted(pump.node_id, id_controlled)
-            if isnothing(pump_idx)
+            if pump_idx === nothing
                 outlet_idx = findsorted(outlet.node_id, id_controlled)
                 outlet.is_pid_controlled[outlet_idx] = true
             else
@@ -61,9 +71,13 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             end
         end
 
-        # tstops for transient flow_boundary
+        # tell the solver to stop when new data comes in
+        # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
-        tstops = get_tstops(time_flow_boundary.time, config.starttime)
+        tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
+        time_user = load_structvector(db, config, UserTimeV1)
+        tstops_user = get_tstops(time_user.time, config.starttime)
+        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -78,15 +92,12 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # default to nearly empty basins, perhaps make required input
         fill(1.0, n)
     else
-        storages, errors =
-            get_storages_from_levels(parameters.basin, state.level)
+        storages, errors = get_storages_from_levels(parameters.basin, state.level)
         if errors
-            error(
-                "Encountered errors while parsing the initial levels of basins.",
-            )
+            error("Encountered errors while parsing the initial levels of basins.")
         end
         storages
-    end::Vector{Float64}
+    end
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
@@ -97,8 +108,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     timespan = (zero(t_end), t_end)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
-    jac = config.solver.jac ? water_balance_jac! : nothing
-    RHS = ODEFunction(water_balance!; jac_prototype, jac)
+    RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
@@ -113,6 +123,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         alg;
         progress = true,
         progress_name = "Simulating",
+        progress_steps = 100,
         callback,
         tstops,
         config.solver.saveat,
@@ -133,6 +144,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     return Model(integrator, config, saved_flow)
 end
 
+"""
+    BMI.finalize(model::Model)::Model
+
+Write all output to the configured output files.
+"""
 function BMI.finalize(model::Model)::Model
     compress = get_compressor(model.config.output)
     write_basin_output(model, compress)
@@ -249,8 +265,8 @@ function get_value(
         level_boundary_idx = findsorted(level_boundary.node_id, feature_id)
 
         if hasindex_basin
-            _, level, _ = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif !isnothing(level_boundary_idx)
+            _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
+        elseif level_boundary_idx !== nothing
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
@@ -263,7 +279,7 @@ function get_value(
     elseif variable == "flow_rate"
         flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
 
-        if isnothing(flow_boundary_idx)
+        if flow_boundary_idx === nothing
             error("Flow condition node #$feature_id is not a flow boundary.")
         end
 
@@ -432,13 +448,16 @@ function set_control_params!(p::Parameters, node_id::Int, control_state::String)
 
     for (field, value) in zip(keys(new_state), new_state)
         if !ismissing(value)
-            getfield(node, field)[idx] = value
+            vec = get_tmp(getfield(node, field), 0)
+            vec[idx] = value
         end
     end
 end
 
 "Copy the current flow to the SavedValues"
-save_flow(u, t, integrator) = copy(nonzeros(integrator.p.connectivity.flow))
+function save_flow(u, t, integrator)
+    copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
+end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
@@ -508,7 +527,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
         model.integrator.u.storage
     elseif name == "level"
-        model.integrator.p.basin.current_level
+        get_tmp(model.integrator.p.basin.current_level, 0)
     elseif name == "infiltration"
         model.integrator.p.basin.infiltration
     elseif name == "drainage"
@@ -524,6 +543,13 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
+"""
+    run(config_file::AbstractString)::Model
+    run(config::Config)::Model
+
+Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing output with [`BMI.finalize`](@ref).
+"""
 run(config_file::AbstractString)::Model = run(Config(config_file))
 
 function is_current_module(log)
@@ -545,8 +571,8 @@ function run(config::Config)::Model
     end
 
     with_logger(logger) do
-        model = BMI.initialize(Model, config)
-        solve!(model.integrator)
+        model = Model(config)
+        solve!(model)
         BMI.finalize(model)
         return model
     end

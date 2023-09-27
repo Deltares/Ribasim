@@ -1,9 +1,11 @@
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
+from ribasim_testmodels.allocation import user_model
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
     basic_transient_model,
+    outlet_model,
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model
@@ -32,9 +34,7 @@ from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
 )
-from ribasim_testmodels.time import (
-    flow_boundary_time_model,
-)
+from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
@@ -62,4 +62,6 @@ __all__ = [
     "invalid_edge_types_model",
     "discrete_control_of_pid_control_model",
     "level_boundary_condition_model",
+    "outlet_model",
+    "user_model",
 ]

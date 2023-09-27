@@ -19,6 +19,7 @@ set -euxo pipefail
 . /usr/share/Modules/init/bash
 ls /opt/apps/modules/anaconda3
 module load anaconda3/miniconda
+rm --force ribasim-*.whl
 pip wheel python/ribasim --no-deps]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />

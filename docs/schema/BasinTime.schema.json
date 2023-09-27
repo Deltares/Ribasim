@@ -9,37 +9,30 @@
         },
         "time": {
             "format": "date-time",
-            "description": "time",
             "type": "string"
         },
         "precipitation": {
             "format": "double",
-            "description": "precipitation",
             "type": "number"
         },
         "infiltration": {
             "format": "double",
-            "description": "infiltration",
             "type": "number"
         },
         "urban_runoff": {
             "format": "double",
-            "description": "urban_runoff",
             "type": "number"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "potential_evaporation": {
             "format": "double",
-            "description": "potential_evaporation",
             "type": "number"
         },
         "drainage": {
             "format": "double",
-            "description": "drainage",
             "type": "number"
         }
     },
@@ -52,8 +45,8 @@
         "precipitation",
         "urban_runoff"
     ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinForcing.schema.json",
-    "title": "BasinForcing",
-    "description": "A BasinForcing object based on Ribasim.BasinForcingV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinTime.schema.json",
+    "title": "BasinTime",
+    "description": "A BasinTime object based on Ribasim.BasinTimeV1",
     "type": "object"
 }

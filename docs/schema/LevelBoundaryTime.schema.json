@@ -9,17 +9,14 @@
         },
         "time": {
             "format": "date-time",
-            "description": "time",
             "type": "string"
         },
         "node_id": {
             "format": "default",
-            "description": "node_id",
             "type": "integer"
         },
         "level": {
             "format": "double",
-            "description": "level",
             "type": "number"
         }
     },

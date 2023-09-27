@@ -50,7 +50,7 @@ function load_data(
     path = getfield(getfield(config, snake_case(node)), kind)
     sqltable = tablename(schema)
 
-    table = if !isnothing(path)
+    table = if path !== nothing
         table_path = input_path(config, path)
         Table(read(table_path))
     elseif exists(db, sqltable)
@@ -76,7 +76,7 @@ function load_structvector(
 )::StructVector{T} where {T <: AbstractRow}
     table = load_data(db, config, T)
 
-    if isnothing(table)
+    if table === nothing
         return StructVector{T}(undef, 0)
     end
 
@@ -98,7 +98,7 @@ function load_structvector(
     table = StructVector{T}(nt)
     sv = Legolas._schema_version_from_record_type(T)
     tableschema = Tables.schema(table)
-    if declared(sv) && !isnothing(tableschema)
+    if declared(sv) && tableschema !== nothing
         validate(tableschema, sv)
         # R = Legolas.record_type(sv)
         # foreach(R, Tables.rows(table))  # construct each row
@@ -179,7 +179,7 @@ function write_flow_output(model::Model, compress)
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
 
-    I, J, _ = findnz(connectivity.flow)
+    I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
     unique_edge_ids = [connectivity.edge_ids_flow[ij] for ij in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
