@@ -405,15 +405,17 @@ end
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
+storage: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(
     p::Parameters,
     node_id::Int,
-    current_level::AbstractVector,
-    t::Float64,
+    t::Float64;
+    storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
     hasindex, i = id_index(basin.node_id, node_id)
+    current_level = get_tmp(basin.current_level, storage)
     return if hasindex
         current_level[i]
     else
