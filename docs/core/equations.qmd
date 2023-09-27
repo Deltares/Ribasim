@@ -58,7 +58,7 @@ In general a model has more nodes than states, so in the Julia core there is a d
 
 ## The Jacobian
 
-The Jacobian is a $n\times n$ matrix where $n$ is the number of states in the simulation. The computation of the Jacobian for the solver is hardcoded in the Julia core, which is faster and more accurate than using finite difference methods.
+The Jacobian is a $n\times n$ matrix where $n$ is the number of states in the simulation. The Jacobian is computed either using finite difference methods or automatic differentiation. For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](numerics.qmd).
 
 
 The entries of the Jacobian $J$ are given by
