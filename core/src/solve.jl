@@ -1075,19 +1075,6 @@ function formulate_flow!(
     return nothing
 end
 
-function formulate_flow!(
-    node::AbstractParameterNode,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Float64,
-)::Nothing
-    node_type = nameof(typeof(node))
-    if !isa(node, Union{Basin, LevelBoundary, DiscreteControl, PidControl, Terminal})
-        error("'formulate_flow!' not defined for nodes of type $node_type.")
-    end
-    return nothing
-end
-
 function formulate!(
     du::ComponentVector,
     connectivity::Connectivity,
@@ -1107,6 +1094,30 @@ function formulate!(
         end
     end
     return nothing
+end
+
+function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
+    (;
+        linear_resistance,
+        manning_resistance,
+        tabulated_rating_curve,
+        flow_boundary,
+        pump,
+        outlet,
+        user,
+        fractional_flow,
+    ) = p
+
+    formulate_flow!(linear_resistance, p, storage, t)
+    formulate_flow!(manning_resistance, p, storage, t)
+    formulate_flow!(tabulated_rating_curve, p, storage, t)
+    formulate_flow!(flow_boundary, p, storage, t)
+    formulate_flow!(pump, p, storage, t)
+    formulate_flow!(outlet, p, storage, t)
+    formulate_flow!(user, p, storage, t)
+
+    # FractionalFlow must be done last as it relies on formulated input flows
+    formulate_flow!(fractional_flow, p, storage, t)
 end
 
 """
@@ -1135,13 +1146,7 @@ function water_balance!(
     formulate!(du, basin, storage)
 
     # First formulate intermediate flows
-    for nodefield in nodefields(p)
-        if nodefield == :fractional_flow
-            continue
-        end
-        formulate_flow!(getfield(p, nodefield), p, storage, t)
-    end
-    formulate_flow!(p.fractional_flow, p, storage, t)
+    formulate_flows!(p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, flow, basin)
