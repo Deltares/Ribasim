@@ -411,7 +411,7 @@ return_factor: the factor in [0,1] of how much of the abstracted water is given 
 min_level: The level of the source basin below which the user does not abstract
 priority: integer > 0, the lower the number the higher the priority of the users demand
 """
-struct User
+struct User <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
     demand::Vector{ScalarInterpolation}
