@@ -506,13 +506,11 @@ function valid_n_neighbors(
     return !errors
 end
 
-function set_current_basin_properties!(
-    basin::Basin,
-    current_area,
-    current_level,
-    storage::AbstractVector,
-    t::Float64,
-)::Nothing
+function set_current_basin_properties!(basin::Basin, storage::AbstractVector)::Nothing
+    (; current_level, current_area) = basin
+    current_level = get_tmp(current_level, storage)
+    current_area = get_tmp(current_area, storage)
+
     for i in eachindex(storage)
         s = storage[i]
         area, level = get_area_and_level(basin, i, s)
@@ -526,14 +524,11 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate!(
-    du::AbstractVector,
-    basin::Basin,
-    storage::AbstractVector,
-    current_area::AbstractVector,
-    current_level::AbstractVector,
-    t::Float64,
-)::Nothing
+function formulate!(du::AbstractVector, basin::Basin, storage::AbstractVector)::Nothing
+    (; current_level, current_area) = basin
+    current_level = get_tmp(current_level, storage)
+    current_area = get_tmp(current_area, storage)
+
     for i in eachindex(storage)
         # add all precipitation that falls within the profile
         level = current_level[i]
@@ -554,34 +549,26 @@ function formulate!(
     return nothing
 end
 
-function get_error!(
-    pid_control::PidControl,
-    p::Parameters,
-    current_level,
-    pid_error,
-    t::Float64,
-)
+function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Float64)
     (; basin) = p
-    (; listen_node_id, target) = pid_control
+    (; listen_node_id, target, error) = pid_control
+    error = get_tmp(error, u)
+    current_level = get_tmp(basin.current_level, u)
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         has_index, listened_node_idx = id_index(basin.node_id, listened_node_id)
         @assert has_index "Listen node $listened_node_id is not a Basin."
-        pid_error[i] = target[i](t) - current_level[listened_node_idx]
+        error[i] = target[i](t) - current_level[listened_node_idx]
     end
 end
 
 function continuous_control!(
     u::ComponentVector,
     du::ComponentVector,
-    current_area::AbstractVector,
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray,
-    current_level::AbstractVector,
-    flow::AbstractMatrix,
-    pid_error::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
@@ -589,13 +576,18 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; graph_control, graph_flow) = connectivity
-    (; node_id, active, target, pid_params, listen_node_id) = pid_control
+    (; graph_control, graph_flow, flow) = connectivity
+    (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
+    (; current_area) = basin
 
+    current_area = get_tmp(current_area, u)
+    storage = u.storage
+    flow = get_tmp(flow, u)
     outlet_flow_rate = get_tmp(outlet.flow_rate, u)
     pump_flow_rate = get_tmp(pump.flow_rate, u)
+    error = get_tmp(error, u)
 
-    get_error!(pid_control, p, current_level, pid_error, t)
+    set_error!(pid_control, p, u, t)
 
     for (i, id) in enumerate(node_id)
         if !active[i]
@@ -604,7 +596,7 @@ function continuous_control!(
             continue
         end
 
-        du.integral[i] = pid_error[i]
+        du.integral[i] = error[i]
 
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
@@ -617,8 +609,8 @@ function continuous_control!(
             src_id = only(inneighbors(graph_flow, controlled_node_id))
             dst_id = only(outneighbors(graph_flow, controlled_node_id))
 
-            src_level = get_level(p, src_id, current_level, t)
-            dst_level = get_level(p, dst_id, current_level, t)
+            src_level = get_level(p, src_id, t; storage)
+            dst_level = get_level(p, dst_id, t; storage)
 
             if src_level === nothing || dst_level === nothing
                 factor_outlet = 1.0
@@ -663,7 +655,7 @@ function continuous_control!(
         end
 
         if !iszero(K_p)
-            flow_rate += factor * K_p * pid_error[i] / D
+            flow_rate += factor * K_p * error[i] / D
         end
 
         if !iszero(K_i)
@@ -741,14 +733,14 @@ end
 function formulate_flow!(
     user::User,
     p::Parameters,
-    flow::AbstractMatrix,
-    current_level::AbstractVector,
     storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, allocated, demand, active, return_factor, min_level) = user
+
+    flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         src_id = only(inneighbors(graph_flow, id))
@@ -772,7 +764,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        source_level = get_level(p, src_id, current_level, t)
+        source_level = get_level(p, src_id, t; storage)
         Δsource_level = source_level - min_level[i]
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -791,13 +783,13 @@ Directed graph: outflow is positive!
 function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
-    current_level::AbstractVector,
-    flow::AbstractMatrix,
+    storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
+    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -805,8 +797,8 @@ function formulate_flow!(
         if active[i]
             q =
                 (
-                    get_level(p, basin_a_id, current_level, t) -
-                    get_level(p, basin_b_id, current_level, t)
+                    get_level(p, basin_a_id, t; storage) -
+                    get_level(p, basin_b_id, t; storage)
                 ) / resistance[i]
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
@@ -825,13 +817,12 @@ function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     storage::AbstractVector,
-    current_level::AbstractVector,
-    flow::AbstractMatrix,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
+    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
         downstream_ids = outneighbors(graph_flow, id)
@@ -840,7 +831,7 @@ function formulate_flow!(
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
             @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
             factor = reduction_factor(storage[basin_idx], 10.0)
-            q = factor * tables[i](get_level(p, upstream_basin_id, current_level, t))
+            q = factor * tables[i](get_level(p, upstream_basin_id, t; storage))
         else
             q = 0.0
         end
@@ -895,14 +886,14 @@ dry.
 function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
-    current_level::AbstractVector,
-    flow::AbstractMatrix,
+    storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
+    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -913,8 +904,8 @@ function formulate_flow!(
             continue
         end
 
-        h_a = get_level(p, basin_a_id, current_level, t)
-        h_b = get_level(p, basin_b_id, current_level, t)
+        h_a = get_level(p, basin_a_id, t; storage)
+        h_b = get_level(p, basin_b_id, t; storage)
         bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
@@ -953,12 +944,15 @@ end
 
 function formulate_flow!(
     fractional_flow::FractionalFlow,
-    flow::AbstractMatrix,
     p::Parameters,
+    storage::AbstractVector,
+    t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, fraction) = fractional_flow
+    flow = get_tmp(flow, storage)
+
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
         upstream_id = only(inneighbors(graph_flow, id))
@@ -970,12 +964,13 @@ end
 function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
-    flow::AbstractMatrix,
+    storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
+    flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
@@ -996,12 +991,13 @@ end
 function formulate_flow!(
     pump::Pump,
     p::Parameters,
-    flow::AbstractMatrix,
     storage::AbstractVector,
+    t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
+    flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
@@ -1032,14 +1028,13 @@ end
 function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
-    flow::AbstractMatrix,
-    current_level::AbstractVector,
     storage::AbstractVector,
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow) = connectivity
+    (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
+    flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
         src_id = only(inneighbors(graph_flow, id))
@@ -1061,8 +1056,8 @@ function formulate_flow!(
         end
 
         # No flow of outlet if source level is lower than target level
-        src_level = get_level(p, src_id, current_level, t)
-        dst_level = get_level(p, dst_id, current_level, t)
+        src_level = get_level(p, src_id, t; storage)
+        dst_level = get_level(p, dst_id, t; storage)
 
         if src_level !== nothing && dst_level !== nothing
             Δlevel = src_level - dst_level
@@ -1101,34 +1096,28 @@ function formulate!(
     return nothing
 end
 
-function formulate_flows!(
-    p::Parameters,
-    storage::AbstractVector,
-    current_level::AbstractVector,
-    flow::AbstractMatrix,
-    t::Float64,
-)::Nothing
+function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
     (;
         linear_resistance,
         manning_resistance,
         tabulated_rating_curve,
-        fractional_flow,
         flow_boundary,
         pump,
         outlet,
         user,
+        fractional_flow,
     ) = p
 
-    formulate_flow!(linear_resistance, p, current_level, flow, t)
-    formulate_flow!(manning_resistance, p, current_level, flow, t)
-    formulate_flow!(tabulated_rating_curve, p, storage, current_level, flow, t)
-    formulate_flow!(flow_boundary, p, flow, t)
-    formulate_flow!(fractional_flow, flow, p)
-    formulate_flow!(pump, p, flow, storage)
-    formulate_flow!(outlet, p, flow, current_level, storage, t)
-    formulate_flow!(user, p, flow, current_level, storage, t)
+    formulate_flow!(linear_resistance, p, storage, t)
+    formulate_flow!(manning_resistance, p, storage, t)
+    formulate_flow!(tabulated_rating_curve, p, storage, t)
+    formulate_flow!(flow_boundary, p, storage, t)
+    formulate_flow!(pump, p, storage, t)
+    formulate_flow!(outlet, p, storage, t)
+    formulate_flow!(user, p, storage, t)
 
-    return nothing
+    # FractionalFlow must be done last as it relies on formulated input flows
+    formulate_flow!(fractional_flow, p, storage, t)
 end
 
 """
@@ -1150,35 +1139,20 @@ function water_balance!(
     # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
     parent(flow) .= 0.0
 
-    current_area = get_tmp(basin.current_area, u)
-    current_level = get_tmp(basin.current_level, u)
-    pid_error = get_tmp(pid_control.error, u)
-
     # Ensures current_* vectors are current
-    set_current_basin_properties!(basin, current_area, current_level, storage, t)
+    set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate!(du, basin, storage, current_area, current_level, t)
+    formulate!(du, basin, storage)
 
     # First formulate intermediate flows
-    formulate_flows!(p, storage, current_level, flow, t)
+    formulate_flows!(p, storage, t)
 
     # Now formulate du
     formulate!(du, connectivity, flow, basin)
 
     # PID control (changes the du of PID controlled basins)
-    continuous_control!(
-        u,
-        du,
-        current_area,
-        pid_control,
-        p,
-        integral,
-        current_level,
-        flow,
-        pid_error,
-        t,
-    )
+    continuous_control!(u, du, pid_control, p, integral, t)
 
     # Negative storage must not decrease, based on Shampine's et. al. advice
     # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
