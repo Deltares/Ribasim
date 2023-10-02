@@ -189,20 +189,20 @@ function create_callbacks(
     saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    callbacks = SciMLBase.DECallback[]
 
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
+    push!(callbacks, basin_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
+    push!(callbacks, tabulated_rating_curve_cb)
 
-    # add a single time step's contribution to the water balance step's totals
-    # trackwb_cb = FunctionCallingCallback(track_waterbalance!)
-    # flows: save the flows over time, as a Vector of the nonzeros(flow)
-
+    # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    push!(callbacks, save_flow_cb)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -212,15 +212,9 @@ function create_callbacks(
             discrete_control_affect_downcrossing!,
             n_conditions,
         )
-        callback = CallbackSet(
-            save_flow_cb,
-            basin_cb,
-            tabulated_rating_curve_cb,
-            discrete_control_cb,
-        )
-    else
-        callback = CallbackSet(save_flow_cb, basin_cb, tabulated_rating_curve_cb)
+        push!(callbacks, discrete_control_cb)
     end
+    callback = CallbackSet(callbacks...)
 
     return callback, saved_flow
 end
