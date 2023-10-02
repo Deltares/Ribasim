@@ -119,6 +119,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
     @debug "Created callbacks."
 
+    # Initialize the integrator, providing all solver options as described in
+    # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
+    # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
+    # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
@@ -129,9 +133,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         tstops,
         config.solver.saveat,
         config.solver.adaptive,
-        dt = something(config.solver.dt, zero(t0)),
+        dt = something(config.solver.dt, t0),
         config.solver.dtmin,
-        config.solver.dtmax,
+        dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
         config.solver.reltol,
