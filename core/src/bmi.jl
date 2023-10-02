@@ -105,7 +105,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
-    timespan = (zero(t_end), t_end)
+    t0 = zero(t_end)
+    timespan = (t0, t_end)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -128,7 +129,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         tstops,
         config.solver.saveat,
         config.solver.adaptive,
-        config.solver.dt,
+        dt = something(config.solver.dt, zero(t0)),
         config.solver.dtmin,
         config.solver.dtmax,
         config.solver.force_dtmin,

@@ -41,7 +41,7 @@ class Solver(BaseModel):
     autodiff: bool = True
     adaptive: bool = True
     force_dtmin: bool = False
-    dt: float = 0
+    dt: Optional[float] = None
     saveat: Union[List[float], float] = []
     maxiters: int = 1000000000
     dtmin: Optional[float] = None
@@ -134,7 +134,7 @@ class Config(BaseModel):
                 "algorithm": "QNDF",
                 "saveat": [],
                 "adaptive": True,
-                "dt": 0,
+                "dt": None,
                 "dtmin": None,
                 "dtmax": None,
                 "force_dtmin": False,

@@ -64,7 +64,7 @@
                 "saveat": [
                 ],
                 "adaptive": true,
-                "dt": 0,
+                "dt": null,
                 "dtmin": null,
                 "dtmax": null,
                 "force_dtmin": false,

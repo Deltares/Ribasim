@@ -17,9 +17,16 @@
             "type": "boolean"
         },
         "dt": {
-            "format": "double",
-            "default": 0,
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
         },
         "saveat": {
             "format": "default",
@@ -91,7 +98,6 @@
         "algorithm",
         "saveat",
         "adaptive",
-        "dt",
         "force_dtmin",
         "abstol",
         "reltol",
