@@ -1,9 +1,24 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "reltol": {
+        "autodiff": {
+            "format": "default",
+            "default": true,
+            "type": "boolean"
+        },
+        "adaptive": {
+            "format": "default",
+            "default": true,
+            "type": "boolean"
+        },
+        "force_dtmin": {
+            "format": "default",
+            "default": false,
+            "type": "boolean"
+        },
+        "dt": {
             "format": "double",
-            "default": 0.001,
+            "default": 0,
             "type": "number"
         },
         "saveat": {
@@ -27,12 +42,19 @@
             "default": 1000000000,
             "type": "integer"
         },
-        "autodiff": {
+        "dtmin": {
             "format": "default",
-            "default": true,
-            "type": "boolean"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
         },
-        "adaptive": {
+        "sparse": {
             "format": "default",
             "default": true,
             "type": "boolean"
@@ -47,15 +69,22 @@
             "default": 1.0e-6,
             "type": "number"
         },
-        "dt": {
+        "reltol": {
             "format": "double",
-            "default": 0,
+            "default": 0.001,
             "type": "number"
         },
-        "sparse": {
+        "dtmax": {
             "format": "default",
-            "default": true,
-            "type": "boolean"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
         }
     },
     "required": [
@@ -63,6 +92,7 @@
         "saveat",
         "adaptive",
         "dt",
+        "force_dtmin",
         "abstol",
         "reltol",
         "maxiters",
