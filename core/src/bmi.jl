@@ -126,6 +126,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
+        isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         config.solver.saveat,
         config.solver.adaptive,
         config.solver.dt,
