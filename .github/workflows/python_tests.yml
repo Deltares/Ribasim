@@ -34,7 +34,7 @@ jobs:
           pixi-version: "v0.3.0"
           cache: true
       - name: Prepare pixi
-        run: pixi run post-install-without-pre-commit
+        run: pixi run install-without-pre-commit
 
       - name: Run tests
         run: pixi run test-ribasim-python-cov
