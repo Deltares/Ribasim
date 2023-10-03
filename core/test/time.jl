@@ -8,7 +8,7 @@ using Ribasim
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    flow = [flows[1] for flows in model.saved_flow.saveval]
+    flow = [flows[2] for flows in model.saved_flow.saveval]
     i_start = searchsortedlast(flow, 1)
     i_end = searchsortedfirst(flow, 2)
 

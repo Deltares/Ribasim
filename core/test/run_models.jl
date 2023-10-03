@@ -157,7 +157,7 @@ end
     level = level[1]
 
     timesteps = model.saved_flow.t
-    outlet_flow = [saveval[1] for saveval in model.saved_flow.saveval]
+    outlet_flow = [saveval[2] for saveval in model.saved_flow.saveval]
 
     t_min_crest_level =
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
@@ -257,7 +257,7 @@ end
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
-    # Test for conservation of mass
-    @test all(isapprox.(model.saved_flow.saveval[end], 5.0, atol = 0.001)) skip =
-        Sys.isapple()
+    # Test for conservation of mass, flow at the beginning == flow at the end
+    @test model.saved_flow.saveval[end][2] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test model.saved_flow.saveval[end][end - 1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end

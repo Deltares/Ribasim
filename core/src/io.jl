@@ -1,3 +1,7 @@
+function get_nodetypes(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
+end
+
 function get_ids(db::DB)::Vector{Int}
     return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
 end
@@ -180,7 +184,8 @@ function write_flow_output(model::Model, compress)
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
-    unique_edge_ids = [connectivity.edge_ids_flow[ij] for ij in zip(I, J)]
+    # self-loops have no edge ID
+    unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
     nflow = length(I)
     ntsteps = length(t)
 

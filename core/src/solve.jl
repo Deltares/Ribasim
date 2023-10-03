@@ -524,12 +524,17 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate!(du::AbstractVector, basin::Basin, storage::AbstractVector)::Nothing
-    (; current_level, current_area) = basin
+function formulate_basins!(
+    du::AbstractVector,
+    basin::Basin,
+    flow::AbstractMatrix,
+    storage::AbstractVector,
+)::Nothing
+    (; node_id, current_level, current_area) = basin
     current_level = get_tmp(current_level, storage)
     current_area = get_tmp(current_area, storage)
 
-    for i in eachindex(storage)
+    for (i, id) in enumerate(node_id)
         # add all precipitation that falls within the profile
         level = current_level[i]
         area = current_area[i]
@@ -544,7 +549,9 @@ function formulate!(du::AbstractVector, basin::Basin, storage::AbstractVector)::
         drainage = basin.drainage[i]
         infiltration = factor * basin.infiltration[i]
 
-        du.storage[i] += precipitation - evaporation + drainage - infiltration
+        influx = precipitation - evaporation + drainage - infiltration
+        du.storage[i] += influx
+        flow[id, id] = influx
     end
     return nothing
 end
@@ -747,8 +754,6 @@ function formulate_flow!(
         dst_id = only(outneighbors(graph_flow, id))
 
         if !active[i]
-            flow[src_id, id] = 0.0
-            flow[id, dst_id] = 0.0
             continue
         end
 
@@ -773,6 +778,7 @@ function formulate_flow!(
 
         # Return flow is immediate
         flow[id, dst_id] = q * return_factor[i]
+        flow[id, id] = -q * (1 - return_factor[i])
     end
     return nothing
 end
@@ -802,9 +808,6 @@ function formulate_flow!(
                 ) / resistance[i]
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
-        else
-            flow[basin_a_id, id] = 0.0
-            flow[id, basin_b_id] = 0.0
         end
     end
     return nothing
@@ -899,8 +902,6 @@ function formulate_flow!(
         basin_b_id = only(outneighbors(graph_flow, id))
 
         if !active[i]
-            flow[basin_a_id, id] = 0.0
-            flow[id, basin_b_id] = 0.0
             continue
         end
 
@@ -962,6 +963,50 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
+    terminal::Terminal,
+    p::Parameters,
+    storage::AbstractVector,
+    t::Float64,
+)::Nothing
+    (; connectivity) = p
+    (; graph_flow, flow) = connectivity
+    (; node_id) = terminal
+    flow = get_tmp(flow, storage)
+
+    for id in node_id
+        for upstream_id in inneighbors(graph_flow, id)
+            q = flow[upstream_id, id]
+            flow[id, id] -= q
+        end
+    end
+    return nothing
+end
+
+function formulate_flow!(
+    level_boundary::LevelBoundary,
+    p::Parameters,
+    storage::AbstractVector,
+    t::Float64,
+)::Nothing
+    (; connectivity) = p
+    (; graph_flow, flow) = connectivity
+    (; node_id) = level_boundary
+    flow = get_tmp(flow, storage)
+
+    for id in node_id
+        for in_id in inneighbors(graph_flow, id)
+            q = flow[in_id, id]
+            flow[id, id] -= q
+        end
+        for out_id in outneighbors(graph_flow, id)
+            q = flow[id, out_id]
+            flow[id, id] += q
+        end
+    end
+    return nothing
+end
+
+function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -976,7 +1021,6 @@ function formulate_flow!(
         # Requirement: edge points away from the flow boundary
         for dst_id in outneighbors(graph_flow, id)
             if !active[i]
-                flow[id, dst_id] = 0.0
                 continue
             end
 
@@ -984,6 +1028,7 @@ function formulate_flow!(
 
             # Adding water is always possible
             flow[id, dst_id] = rate
+            flow[id, id] = rate
         end
     end
 end
@@ -1005,8 +1050,6 @@ function formulate_flow!(
         dst_id = only(outneighbors(graph_flow, id))
 
         if !isactive || pid_controlled
-            flow[src_id, id] = 0.0
-            flow[id, dst_id] = 0.0
             continue
         end
 
@@ -1041,8 +1084,6 @@ function formulate_flow!(
         dst_id = only(outneighbors(graph_flow, id))
 
         if !active[i] || is_pid_controlled[i]
-            flow[src_id, id] = 0.0
-            flow[id, dst_id] = 0.0
             continue
         end
 
@@ -1075,7 +1116,7 @@ function formulate_flow!(
     return nothing
 end
 
-function formulate!(
+function formulate_du!(
     du::ComponentVector,
     connectivity::Connectivity,
     flow::AbstractMatrix,
@@ -1102,10 +1143,12 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::N
         manning_resistance,
         tabulated_rating_curve,
         flow_boundary,
+        level_boundary,
         pump,
         outlet,
         user,
         fractional_flow,
+        terminal,
     ) = p
 
     formulate_flow!(linear_resistance, p, storage, t)
@@ -1116,8 +1159,10 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::N
     formulate_flow!(outlet, p, storage, t)
     formulate_flow!(user, p, storage, t)
 
-    # FractionalFlow must be done last as it relies on formulated input flows
+    # do these last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
+    formulate_flow!(level_boundary, p, storage, t)
+    formulate_flow!(terminal, p, storage, t)
 end
 
 """
@@ -1143,13 +1188,13 @@ function water_balance!(
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate!(du, basin, storage)
+    formulate_basins!(du, basin, flow, storage)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
 
     # Now formulate du
-    formulate!(du, connectivity, flow, basin)
+    formulate_du!(du, connectivity, flow, basin)
 
     # PID control (changes the du of PID controlled basins)
     continuous_control!(u, du, pid_control, p, integral, t)
