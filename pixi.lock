@@ -16389,7 +16389,7 @@ package:
   size: 49452
   timestamp: 1696202521121
 - name: pandas
-  version: 2.1.1
+  version: 2.0.3
   manager: conda
   platform: linux-64
   dependencies:
@@ -16401,10 +16401,10 @@ package:
     python-tzdata: '>=2022a'
     python_abi: 3.11.* *_cp311
     pytz: '>=2020.1'
-  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.1-py311h320fe9a_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.0.3-py311h320fe9a_1.conda
   hash:
-    md5: a4371a95a8ae703a22949af28467b93d
-    sha256: 682295201cf971550bf82fee17448dcab4cbfbea236e4282cfaac46315561dda
+    md5: 5f92f46bd33917832a99d1660b4075ac
+    sha256: 31cce492f9f67adf499809d83089a9362f5e25556970010a6db810310cb743e0
   optional: false
   category: main
   build: py311h320fe9a_1
@@ -16413,10 +16413,10 @@ package:
   build_number: 1
   license: BSD-3-Clause
   license_family: BSD
-  size: 14923754
-  timestamp: 1696030683270
+  size: 14711359
+  timestamp: 1688741174845
 - name: pandas
-  version: 2.1.1
+  version: 2.0.3
   manager: conda
   platform: osx-64
   dependencies:
@@ -16427,10 +16427,10 @@ package:
     python-tzdata: '>=2022a'
     python_abi: 3.11.* *_cp311
     pytz: '>=2020.1'
-  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.1-py311hab14417_1.conda
+  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.0.3-py311hab14417_1.conda
   hash:
-    md5: 01e55e765502b2597eca113ee23711c6
-    sha256: e7a949585f171b9ee3f8a2f8c2061ec713b93a04181ae5ea5e3810d86caa985e
+    md5: e5c7b1b1f55b11db3adb209089ab6eae
+    sha256: 7e4a13ab90308e47d0217222a072096291cbd7b625740057623a0e1ad1697b69
   optional: false
   category: main
   build: py311hab14417_1
@@ -16439,10 +16439,10 @@ package:
   build_number: 1
   license: BSD-3-Clause
   license_family: BSD
-  size: 14335754
-  timestamp: 1696030956823
+  size: 14138161
+  timestamp: 1688741719427
 - name: pandas
-  version: 2.1.1
+  version: 2.0.3
   manager: conda
   platform: win-64
   dependencies:
@@ -16455,10 +16455,10 @@ package:
     ucrt: '>=10.0.20348.0'
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.1-py311hf63dbb6_1.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.0.3-py311hf63dbb6_1.conda
   hash:
-    md5: 47f0674bbd53399ae4f9c4f0e35faa01
-    sha256: aa684af72a72453b74c2423f33013930d44be6db7415c202a6d77d602d9c73f1
+    md5: 45c4a4b94dd2321f5d8188567263190d
+    sha256: f8ee8eb9036e8eef21e1778dfa88503d1cdf93299070cbce1d9d32b538fdb54e
   optional: false
   category: main
   build: py311hf63dbb6_1
@@ -16467,8 +16467,8 @@ package:
   build_number: 1
   license: BSD-3-Clause
   license_family: BSD
-  size: 13789438
-  timestamp: 1696031094187
+  size: 13434139
+  timestamp: 1688741555419
 - name: pandas-stubs
   version: 2.1.1.230928
   manager: conda
