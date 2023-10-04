@@ -29,7 +29,7 @@ using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, dictionary
 using ForwardDiff: pickchunksize
 using DiffEqCallbacks
-using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors
+using Graphs: DiGraph, add_edge!, adjacency_matrix, inneighbors, outneighbors, all_neighbors
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
@@ -48,6 +48,7 @@ TimerOutputs.complement!()
 
 include("validation.jl")
 include("solve.jl")
+include("allocation.jl")
 include("config.jl")
 using .config
 include("utils.jl")

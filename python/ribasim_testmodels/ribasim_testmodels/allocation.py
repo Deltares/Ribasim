@@ -209,7 +209,7 @@ def subnetwork_model():
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [1e-3]})
+        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [4.5]})
     )
 
     state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 1.0})
@@ -235,13 +235,16 @@ def subnetwork_model():
             data={
                 "node_id": [5],
                 "flow_rate": [4.0],
+                "max_flow_rate": [4.0],
             }
         )
     )
 
     # Setup the outlets:
     outlet = ribasim.Outlet(
-        static=pd.DataFrame(data={"node_id": [3, 7, 13], "flow_rate": 3.0})
+        static=pd.DataFrame(
+            data={"node_id": [3, 7, 13], "flow_rate": 3.0, "max_flow_rate": 3.0}
+        )
     )
 
     # Setup the terminal:
