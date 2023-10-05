@@ -1154,14 +1154,6 @@ function water_balance!(
     # PID control (changes the du of PID controlled basins)
     continuous_control!(u, du, pid_control, p, integral, t)
 
-    # Negative storage must not decrease, based on Shampine's et. al. advice
-    # https://docs.sciml.ai/DiffEqCallbacks/stable/step_control/#DiffEqCallbacks.PositiveDomain
-    for i in eachindex(u.storage)
-        if u.storage[i] < 0
-            du.storage[i] = max(du.storage[i], 0.0)
-        end
-    end
-
     return nothing
 end
 
