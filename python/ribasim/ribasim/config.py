@@ -38,15 +38,18 @@ class DiscreteControl(BaseModel):
 
 
 class Solver(BaseModel):
-    reltol: float = 0.001
-    saveat: Union[List[float], float] = []
-    maxiters: int = 1000000000
     autodiff: bool = True
     adaptive: bool = True
+    force_dtmin: bool = False
+    dt: Optional[float] = None
+    saveat: Union[List[float], float] = []
+    maxiters: int = 1000000000
+    dtmin: Optional[float] = None
+    sparse: bool = True
     algorithm: str = "QNDF"
     abstol: float = 1e-06
-    dt: float = 0
-    sparse: bool = True
+    reltol: float = 0.001
+    dtmax: Optional[float] = None
 
 
 class FlowBoundary(BaseModel):
@@ -131,7 +134,10 @@ class Config(BaseModel):
                 "algorithm": "QNDF",
                 "saveat": [],
                 "adaptive": True,
-                "dt": 0,
+                "dt": None,
+                "dtmin": None,
+                "dtmax": None,
+                "force_dtmin": False,
                 "abstol": 1e-06,
                 "reltol": 0.001,
                 "maxiters": 1000000000,
