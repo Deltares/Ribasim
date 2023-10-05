@@ -28,7 +28,7 @@ format. It contains settings, as well as paths to other input and output files.
 ```{.toml include="../../core/test/docs.toml"}
 ```
 
-## Solver settings
+## Solver settings {#sec-solver-settings}
 
 The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
 Common reasons to modify the solver settings are to adjust the calculation or output stepsizes: `adaptive`, `dt`, and `saveat`.
