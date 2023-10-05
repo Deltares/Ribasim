@@ -1,17 +1,11 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
+    "title": "PidControlStatic",
+    "description": "A PidControlStatic object based on Ribasim.PidControlStaticV1",
+    "type": "object",
     "properties": {
-        "integral": {
-            "format": "double",
-            "type": "number"
-        },
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
-        "listen_node_id": {
+        "node_id": {
             "format": "default",
             "type": "integer"
         },
@@ -26,15 +20,19 @@
                 }
             ]
         },
-        "proportional": {
-            "format": "double",
-            "type": "number"
-        },
-        "node_id": {
+        "listen_node_id": {
             "format": "default",
             "type": "integer"
         },
         "target": {
+            "format": "double",
+            "type": "number"
+        },
+        "proportional": {
+            "format": "double",
+            "type": "number"
+        },
+        "integral": {
             "format": "double",
             "type": "number"
         },
@@ -52,6 +50,12 @@
                     "type": "string"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
@@ -61,9 +65,5 @@
         "proportional",
         "integral",
         "derivative"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PidControlStatic.schema.json",
-    "title": "PidControlStatic",
-    "description": "A PidControlStatic object based on Ribasim.PidControlStaticV1",
-    "type": "object"
+    ]
 }

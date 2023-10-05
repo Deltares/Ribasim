@@ -1,7 +1,11 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/discrete_control.schema.json",
+    "title": "discrete_control",
+    "description": "A discrete_control object based on Ribasim.config.discrete_control",
+    "type": "object",
     "properties": {
-        "logic": {
+        "condition": {
             "format": "default",
             "anyOf": [
                 {
@@ -13,7 +17,7 @@
             ],
             "default": null
         },
-        "condition": {
+        "logic": {
             "format": "default",
             "anyOf": [
                 {
@@ -27,9 +31,5 @@
         }
     },
     "required": [
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/discrete_control.schema.json",
-    "title": "discrete_control",
-    "description": "A discrete_control object based on Ribasim.config.discrete_control",
-    "type": "object"
+    ]
 }

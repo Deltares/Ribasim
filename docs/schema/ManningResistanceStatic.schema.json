@@ -1,19 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/ManningResistanceStatic.schema.json",
+    "title": "ManningResistanceStatic",
+    "description": "A ManningResistanceStatic object based on Ribasim.ManningResistanceStaticV1",
+    "type": "object",
     "properties": {
-        "length": {
-            "format": "double",
-            "type": "number"
-        },
-        "manning_n": {
-            "format": "double",
-            "type": "number"
-        },
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "active": {
             "format": "default",
@@ -26,13 +20,17 @@
                 }
             ]
         },
-        "profile_width": {
+        "length": {
             "format": "double",
             "type": "number"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
+        "manning_n": {
+            "format": "double",
+            "type": "number"
+        },
+        "profile_width": {
+            "format": "double",
+            "type": "number"
         },
         "profile_slope": {
             "format": "double",
@@ -48,6 +46,12 @@
                     "type": "string"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
@@ -56,9 +60,5 @@
         "manning_n",
         "profile_width",
         "profile_slope"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/ManningResistanceStatic.schema.json",
-    "title": "ManningResistanceStatic",
-    "description": "A ManningResistanceStatic object based on Ribasim.ManningResistanceStaticV1",
-    "type": "object"
+    ]
 }

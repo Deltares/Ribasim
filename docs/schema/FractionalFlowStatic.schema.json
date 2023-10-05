@@ -1,12 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/FractionalFlowStatic.schema.json",
+    "title": "FractionalFlowStatic",
+    "description": "A FractionalFlowStatic object based on Ribasim.FractionalFlowStaticV1",
+    "type": "object",
     "properties": {
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
         "node_id": {
             "format": "default",
             "type": "integer"
@@ -25,14 +23,16 @@
                     "type": "string"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "fraction"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/FractionalFlowStatic.schema.json",
-    "title": "FractionalFlowStatic",
-    "description": "A FractionalFlowStatic object based on Ribasim.FractionalFlowStaticV1",
-    "type": "object"
+    ]
 }

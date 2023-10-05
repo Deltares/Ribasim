@@ -1,15 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/PidControlTime.schema.json",
+    "title": "PidControlTime",
+    "description": "A PidControlTime object based on Ribasim.PidControlTimeV1",
+    "type": "object",
     "properties": {
-        "integral": {
-            "format": "double",
-            "type": "number"
-        },
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "listen_node_id": {
             "format": "default",
@@ -19,15 +17,15 @@
             "format": "date-time",
             "type": "string"
         },
+        "target": {
+            "format": "double",
+            "type": "number"
+        },
         "proportional": {
             "format": "double",
             "type": "number"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
-        "target": {
+        "integral": {
             "format": "double",
             "type": "number"
         },
@@ -45,6 +43,12 @@
                     "type": "string"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
@@ -55,9 +59,5 @@
         "proportional",
         "integral",
         "derivative"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PidControlTime.schema.json",
-    "title": "PidControlTime",
-    "description": "A PidControlTime object based on Ribasim.PidControlTimeV1",
-    "type": "object"
+    ]
 }

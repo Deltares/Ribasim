@@ -1,32 +1,32 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinProfile.schema.json",
+    "title": "BasinProfile",
+    "description": "A BasinProfile object based on Ribasim.BasinProfileV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "area": {
             "format": "double",
             "type": "number"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
         "level": {
             "format": "double",
             "type": "number"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "area",
         "level"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinProfile.schema.json",
-    "title": "BasinProfile",
-    "description": "A BasinProfile object based on Ribasim.BasinProfileV1",
-    "type": "object"
+    ]
 }

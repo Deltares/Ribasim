@@ -1,22 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
+    "title": "PumpStatic",
+    "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
+    "type": "object",
     "properties": {
-        "max_flow_rate": {
+        "node_id": {
             "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "number"
-                }
-            ]
-        },
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "active": {
             "format": "default",
@@ -33,9 +24,27 @@
             "format": "double",
             "type": "number"
         },
-        "node_id": {
+        "min_flow_rate": {
             "format": "default",
-            "type": "integer"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
+        },
+        "max_flow_rate": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "control_state": {
             "format": "default",
@@ -48,24 +57,15 @@
                 }
             ]
         },
-        "min_flow_rate": {
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
             "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "number"
-                }
-            ]
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "flow_rate"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/PumpStatic.schema.json",
-    "title": "PumpStatic",
-    "description": "A PumpStatic object based on Ribasim.PumpStaticV1",
-    "type": "object"
+    ]
 }

@@ -1,27 +1,25 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlCondition.schema.json",
+    "title": "DiscreteControlCondition",
+    "description": "A DiscreteControlCondition object based on Ribasim.DiscreteControlConditionV1",
+    "type": "object",
     "properties": {
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
-        "greater_than": {
-            "format": "double",
-            "type": "number"
-        },
-        "listen_feature_id": {
+        "node_id": {
             "format": "default",
             "type": "integer"
         },
-        "node_id": {
+        "listen_feature_id": {
             "format": "default",
             "type": "integer"
         },
         "variable": {
             "format": "default",
             "type": "string"
+        },
+        "greater_than": {
+            "format": "double",
+            "type": "number"
         },
         "look_ahead": {
             "format": "default",
@@ -33,6 +31,12 @@
                     "type": "number"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
@@ -40,9 +44,5 @@
         "listen_feature_id",
         "variable",
         "greater_than"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlCondition.schema.json",
-    "title": "DiscreteControlCondition",
-    "description": "A DiscreteControlCondition object based on Ribasim.DiscreteControlConditionV1",
-    "type": "object"
+    ]
 }

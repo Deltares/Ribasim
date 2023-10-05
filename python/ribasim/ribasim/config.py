@@ -10,55 +10,88 @@ from pydantic import BaseModel, Field
 
 
 class Output(BaseModel):
-    compression: str = "zstd"
     basin: str = "output/basin.arrow"
     flow: str = "output/flow.arrow"
     control: str = "output/control.arrow"
     outstate: Optional[str] = None
+    compression: str = "zstd"
     compression_level: int = 6
 
 
+class Solver(BaseModel):
+    algorithm: str = "QNDF"
+    saveat: Union[float, List[float]] = []
+    adaptive: bool = True
+    dt: Optional[float] = None
+    dtmin: Optional[float] = None
+    dtmax: Optional[float] = None
+    force_dtmin: bool = False
+    abstol: float = 1e-06
+    reltol: float = 0.001
+    maxiters: int = 1000000000
+    sparse: bool = True
+    autodiff: bool = True
+
+
+class Logging(BaseModel):
+    verbosity: str = "info"
+    timing: bool = False
+
+
+class Terminal(BaseModel):
+    static: Optional[str] = None
+
+
+class PidControl(BaseModel):
+    static: Optional[str] = None
+    time: Optional[str] = None
+
+
 class LevelBoundary(BaseModel):
-    time: Optional[str] = None
     static: Optional[str] = None
-
-
-class User(BaseModel):
     time: Optional[str] = None
-    static: Optional[str] = None
 
 
 class Pump(BaseModel):
     static: Optional[str] = None
 
 
-class DiscreteControl(BaseModel):
-    logic: Optional[str] = None
-    condition: Optional[str] = None
+class TabulatedRatingCurve(BaseModel):
+    static: Optional[str] = None
+    time: Optional[str] = None
 
 
-class Solver(BaseModel):
-    autodiff: bool = True
-    adaptive: bool = True
-    force_dtmin: bool = False
-    dt: Optional[float] = None
-    saveat: Union[List[float], float] = []
-    maxiters: int = 1000000000
-    dtmin: Optional[float] = None
-    sparse: bool = True
-    algorithm: str = "QNDF"
-    abstol: float = 1e-06
-    reltol: float = 0.001
-    dtmax: Optional[float] = None
+class User(BaseModel):
+    static: Optional[str] = None
+    time: Optional[str] = None
 
 
 class FlowBoundary(BaseModel):
+    static: Optional[str] = None
     time: Optional[str] = None
+
+
+class Basin(BaseModel):
+    profile: Optional[str] = None
+    state: Optional[str] = None
+    static: Optional[str] = None
+    time: Optional[str] = None
+
+
+class ManningResistance(BaseModel):
     static: Optional[str] = None
 
 
-class PidControl(BaseModel):
-    time: Optional[str] = None
+class DiscreteControl(BaseModel):
+    condition: Optional[str] = None
+    logic: Optional[str] = None
+
+
+class Outlet(BaseModel):
+    static: Optional[str] = None
+
+
+class LinearResistance(BaseModel):
     static: Optional[str] = None
 
 
@@ -66,40 +99,14 @@ class FractionalFlow(BaseModel):
     static: Optional[str] = None
 
 
-class ManningResistance(BaseModel):
-    static: Optional[str] = None
-
-
-class TabulatedRatingCurve(BaseModel):
-    time: Optional[str] = None
-    static: Optional[str] = None
-
-
-class Logging(BaseModel):
-    timing: bool = False
-    verbosity: str = "info"
-
-
-class Outlet(BaseModel):
-    static: Optional[str] = None
-
-
-class Terminal(BaseModel):
-    static: Optional[str] = None
-
-
-class Basin(BaseModel):
-    profile: Optional[str] = None
-    time: Optional[str] = None
-    static: Optional[str] = None
-    state: Optional[str] = None
-
-
-class LinearResistance(BaseModel):
-    static: Optional[str] = None
-
-
 class Config(BaseModel):
+    starttime: datetime
+    endtime: datetime
+    update_timestep: float = 86400
+    relative_dir: str = "."
+    input_dir: str = "."
+    output_dir: str = "."
+    geopackage: str
     output: Output = Field(
         default_factory=lambda: Output.parse_obj(
             {
@@ -110,22 +117,6 @@ class Config(BaseModel):
                 "compression": "zstd",
                 "compression_level": 6,
             }
-        )
-    )
-    starttime: datetime
-    update_timestep: float = 86400
-    input_dir: str = "."
-    output_dir: str = "."
-    level_boundary: LevelBoundary = Field(
-        default_factory=lambda: LevelBoundary.parse_obj({"static": None, "time": None})
-    )
-    user: User = Field(
-        default_factory=lambda: User.parse_obj({"static": None, "time": None})
-    )
-    pump: Pump = Field(default_factory=lambda: Pump.parse_obj({"static": None}))
-    discrete_control: DiscreteControl = Field(
-        default_factory=lambda: DiscreteControl.parse_obj(
-            {"condition": None, "logic": None}
         )
     )
     solver: Solver = Field(
@@ -146,40 +137,49 @@ class Config(BaseModel):
             }
         )
     )
-    flow_boundary: FlowBoundary = Field(
-        default_factory=lambda: FlowBoundary.parse_obj({"static": None, "time": None})
-    )
-    pid_control: PidControl = Field(
-        default_factory=lambda: PidControl.parse_obj({"static": None, "time": None})
-    )
-    fractional_flow: FractionalFlow = Field(
-        default_factory=lambda: FractionalFlow.parse_obj({"static": None})
-    )
-    relative_dir: str = "."
-    endtime: datetime
-    manning_resistance: ManningResistance = Field(
-        default_factory=lambda: ManningResistance.parse_obj({"static": None})
-    )
-    tabulated_rating_curve: TabulatedRatingCurve = Field(
-        default_factory=lambda: TabulatedRatingCurve.parse_obj(
-            {"static": None, "time": None}
-        )
-    )
     logging: Logging = Field(
         default_factory=lambda: Logging.parse_obj(
             {"verbosity": {"level": 0}, "timing": False}
         )
     )
-    outlet: Outlet = Field(default_factory=lambda: Outlet.parse_obj({"static": None}))
-    geopackage: str
     terminal: Terminal = Field(
         default_factory=lambda: Terminal.parse_obj({"static": None})
+    )
+    pid_control: PidControl = Field(
+        default_factory=lambda: PidControl.parse_obj({"static": None, "time": None})
+    )
+    level_boundary: LevelBoundary = Field(
+        default_factory=lambda: LevelBoundary.parse_obj({"static": None, "time": None})
+    )
+    pump: Pump = Field(default_factory=lambda: Pump.parse_obj({"static": None}))
+    tabulated_rating_curve: TabulatedRatingCurve = Field(
+        default_factory=lambda: TabulatedRatingCurve.parse_obj(
+            {"static": None, "time": None}
+        )
+    )
+    user: User = Field(
+        default_factory=lambda: User.parse_obj({"static": None, "time": None})
+    )
+    flow_boundary: FlowBoundary = Field(
+        default_factory=lambda: FlowBoundary.parse_obj({"static": None, "time": None})
     )
     basin: Basin = Field(
         default_factory=lambda: Basin.parse_obj(
             {"profile": None, "state": None, "static": None, "time": None}
         )
     )
+    manning_resistance: ManningResistance = Field(
+        default_factory=lambda: ManningResistance.parse_obj({"static": None})
+    )
+    discrete_control: DiscreteControl = Field(
+        default_factory=lambda: DiscreteControl.parse_obj(
+            {"condition": None, "logic": None}
+        )
+    )
+    outlet: Outlet = Field(default_factory=lambda: Outlet.parse_obj({"static": None}))
     linear_resistance: LinearResistance = Field(
         default_factory=lambda: LinearResistance.parse_obj({"static": None})
+    )
+    fractional_flow: FractionalFlow = Field(
+        default_factory=lambda: FractionalFlow.parse_obj({"static": None})
     )
