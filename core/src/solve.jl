@@ -5,6 +5,18 @@ const VectorInterpolation =
     LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
 """
+Store information for a subnetwork used for allocation.
+For more information see allocation.jl.
+"""
+struct Subnetwork
+    node_id::Vector{Int}
+    node_id_mapping::Dict{Int, Int}
+    graph_max_flow::DiGraph{Int}
+    capacity::SparseMatrixCSC{Float64, Int}
+    capacity_fixed::SparseMatrixCSC{Float64, Int}
+end
+
+"""
 Store the connectivity information
 
 graph_flow, graph_control: directed graph with vertices equal to ids
@@ -27,6 +39,7 @@ struct Connectivity{T}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
     edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
+    subnetwork::Vector{Subnetwork}
     function Connectivity(
         graph_flow,
         graph_control,
@@ -36,6 +49,7 @@ struct Connectivity{T}
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
+        subnetwork,
     ) where {T}
         invalid_networks = Vector{String}()
 
@@ -57,6 +71,7 @@ struct Connectivity{T}
                 edge_ids_control,
                 edge_connection_types_flow,
                 edge_connection_types_control,
+                subnetwork,
             )
         else
             invalid_networks = join(invalid_networks, ", ")

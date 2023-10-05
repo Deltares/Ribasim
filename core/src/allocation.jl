@@ -35,7 +35,7 @@ function get_graph_max_flow(
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
     source_node_id::Int,
-)::Tuple{DiGraph{Int}, SparseMatrixCSC{Float64, Int64}, Dict{Int, Int}}
+)::Subnetwork
     (; connectivity, user, lookup) = p
     (; graph_flow) = connectivity
 
@@ -209,7 +209,13 @@ function get_graph_max_flow(
         end
     end
 
-    return graph_max_flow, capacity, node_id_mapping
+    return Subnetwork(
+        subnetwork_node_ids,
+        node_id_mapping,
+        graph_max_flow,
+        capacity,
+        copy(capacity),
+    )
 end
 
 """
@@ -221,16 +227,14 @@ see the allocate_residual! methods.
 """
 function allocate!(
     user::Ribasim.User,
-    capacity::AbstractMatrix,
-    capacity_fixed::AbstractMatrix,
+    subnetwork::Subnetwork,
     source_capacity::Float64,
-    node_id_mapping::Dict{Int, Int},
-    graph_max_flow::DiGraph{Int},
     t::Float64;
     plot_folder::Union{String, Nothing} = nothing,
     gdf_node::Union{DataFrame, Nothing} = nothing,
     residual_allocation_type::Symbol = :proportional,
 )::Nothing
+    (; capacity, capacity_fixed, node_id_mapping, graph_max_flow) = subnetwork
     (; node_id, priority, demand, allocated) = user
 
     source_capacity_left = source_capacity
@@ -266,18 +270,10 @@ function allocate!(
         total_flow_p, flows_p = maximum_flow(graph_max_flow, 1, 2, capacity)
 
         if !isnothing(plot_folder)
-            fig, ax = plot_graph_max_flow(
-                graph_max_flow,
-                capacity;
-                node_id_mapping,
-                gdf_node,
-                max_capacity = demand_p_sum,
-            )
+            fig, ax = plot_graph_max_flow(subnetwork; gdf_node, max_capacity = demand_p_sum)
             save(normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p)_noflow.png"), fig)
             fig, ax = plot_graph_max_flow(
-                graph_max_flow,
-                capacity;
-                node_id_mapping,
+                subnetwork;
                 flow = flows_p,
                 gdf_node,
                 max_capacity = demand_p_sum,
@@ -291,11 +287,10 @@ function allocate!(
             # and end the allocation algorithm
             allocate_residual!(
                 user,
+                subnetwork,
                 source_capacity_left,
-                node_id_mapping,
                 total_flow_p,
                 p,
-                graph_max_flow,
                 flows_p,
                 Val{residual_allocation_type}(),
             )
@@ -331,14 +326,14 @@ allocation to them by the max flow algorithm.
 """
 function allocate_residual!(
     user::Ribasim.User,
+    subnetwork::Subnetwork,
     source_capacity_residual::Float64,
-    node_id_mapping::Dict{Int, Int},
     allocated_total_priority_last::Float64,
     priority_last::Int,
-    graph_max_flow::DiGraph{Int},
     flows::AbstractMatrix,
     type::Val{:proportional},
 )::Nothing
+    (; node_id_mapping, graph_max_flow) = subnetwork
     (; node_id, priority, allocated) = user
 
     # Invert the node id mapping to easily translate from MFG nodes to subgraph nodes
@@ -365,13 +360,12 @@ end
 Plot max flow graphs, with or without the max flow result.
 """
 function plot_graph_max_flow(
-    graph_max_flow::DiGraph{Int},
-    capacity::AbstractMatrix{Float64};
-    node_id_mapping::Union{Dict{Int, Int}, Nothing} = nothing,
+    subnetwork::Subnetwork;
     flow::Union{AbstractMatrix{Float64}, Nothing} = nothing,
     gdf_node::Union{DataFrame, Nothing} = nothing,
     max_capacity::Float64 = 5.0,
 )
+    (; graph_max_flow, capacity, node_id_mapping) = subnetwork
     node_ids = 1:nv(graph_max_flow)
     ilabels = string.(node_ids)
 
