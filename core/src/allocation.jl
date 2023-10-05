@@ -21,10 +21,7 @@ source_node_id: the model node ID of the source node (currently only flow bounda
 
 Outputs
 -------
-graph_max_flow: the MFG
-capacity: the sparse capacity matrix of the MFG
-node_id_mapping: Dictionary; model_node_id => MFG_node_id where such a correspondence exists
-    (all MFG node ids are in the values)
+A Subnetwork object, see solve.jl
 
 Notes
 -----
@@ -209,9 +206,13 @@ function get_graph_max_flow(
         end
     end
 
+    # Invert the node id mapping to easily translate from MFG nodes to subnetwork nodes
+    node_id_mapping_inverse = Dict(values(node_id_mapping) .=> keys(node_id_mapping))
+
     return Subnetwork(
         subnetwork_node_ids,
         node_id_mapping,
+        node_id_mapping_inverse,
         graph_max_flow,
         capacity,
         copy(capacity),
@@ -333,13 +334,8 @@ function allocate_residual!(
     flows::AbstractMatrix,
     type::Val{:proportional},
 )::Nothing
-    (; node_id_mapping, graph_max_flow) = subnetwork
+    (; node_id_mapping_inverse, graph_max_flow) = subnetwork
     (; node_id, priority, allocated) = user
-
-    # Invert the node id mapping to easily translate from MFG nodes to subgraph nodes
-    # TODO: It is more efficient to compute this only once and store it than to
-    # compute it each time it is needed
-    node_id_mapping_inverse = Dict(values(node_id_mapping) .=> keys(node_id_mapping))
 
     # The fraction each user gets of what was allocated to them by the max flow algorithm
     fraction = source_capacity_residual / allocated_total_priority_last

@@ -7,10 +7,18 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 For more information see allocation.jl.
+node_id: All the IDs of the nodes that are in this subnetwork
+node_id_mapping: Mapping Dictionary; model_node_id => MFG_node_id where such a correspondence exists
+    (all MFG node ids are in the values)
+node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; MFG_node_id => model_node_id
+graph_max_flow: The graph used for the max flow problems
+capacity: The capacity per edge of the max flow graph (adjusted per priority)
+capcity_fixed: The capacity per edge of the max flow graph, as constrained by nodes that have a max_flow_rate
 """
 struct Subnetwork
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Int}
+    node_id_mapping_inverse::Dict{Int, Int}
     graph_max_flow::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
     capacity_fixed::SparseMatrixCSC{Float64, Int}
@@ -766,9 +774,6 @@ function formulate_flow!(
             flow[id, dst_id] = 0.0
             continue
         end
-
-        # For now allocated = demand
-        allocated[i] = demand[i](t)
 
         q = allocated[i]
 
