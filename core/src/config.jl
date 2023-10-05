@@ -8,7 +8,7 @@ Ribasim.config is a submodule mainly to avoid name clashes between the configura
 """
 module config
 
-using Configurations: Configurations, Maybe, @option, from_toml, @type_alias
+using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates
 using Logging: LogLevel, Debug, Info, Warn, Error
@@ -41,11 +41,14 @@ end
 snake_case(sym::Symbol)::Symbol = Symbol(snake_case(String(sym)))
 
 """
-Add fieldnames with Maybe{String} type to struct expression. Requires @option use before it.
+Add fieldnames with Union{String, Nothing} type to struct expression. Requires @option use before it.
 """
 macro addfields(typ::Expr, fieldnames)
     for fieldname in fieldnames
-        push!(typ.args[3].args, Expr(:(=), Expr(:(::), fieldname, Maybe{String}), nothing))
+        push!(
+            typ.args[3].args,
+            Expr(:(=), Expr(:(::), fieldname, Union{String, Nothing}), nothing),
+        )
     end
     return esc(typ)
 end
@@ -76,9 +79,9 @@ const nodetypes = collect(keys(nodekinds))
     algorithm::String = "QNDF"
     saveat::Union{Float64, Vector{Float64}} = Float64[]
     adaptive::Bool = true
-    dt::Maybe{Float64} = nothing
-    dtmin::Maybe{Float64} = nothing
-    dtmax::Maybe{Float64} = nothing
+    dt::Union{Float64, Nothing} = nothing
+    dtmin::Union{Float64, Nothing} = nothing
+    dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-3
@@ -109,7 +112,7 @@ end
     basin::String = "output/basin.arrow"
     flow::String = "output/flow.arrow"
     control::String = "output/control.arrow"
-    outstate::Maybe{String}
+    outstate::Union{String, Nothing}
     compression::Compression = "zstd"
     compression_level::Int = 6
 end
