@@ -1,5 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
+    "title": "fractional_flow",
+    "description": "A fractional_flow object based on Ribasim.config.fractional_flow",
+    "type": "object",
     "properties": {
         "static": {
             "format": "default",
@@ -15,9 +19,5 @@
         }
     },
     "required": [
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
-    "title": "fractional_flow",
-    "description": "A fractional_flow object based on Ribasim.config.fractional_flow",
-    "type": "object"
+    ]
 }

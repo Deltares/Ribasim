@@ -1,7 +1,30 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/OutletStatic.schema.json",
+    "title": "OutletStatic",
+    "description": "A OutletStatic object based on Ribasim.OutletStaticV1",
+    "type": "object",
     "properties": {
-        "max_flow_rate": {
+        "node_id": {
+            "format": "default",
+            "type": "integer"
+        },
+        "active": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
+        },
+        "flow_rate": {
+            "format": "double",
+            "type": "number"
+        },
+        "min_flow_rate": {
             "format": "default",
             "anyOf": [
                 {
@@ -12,20 +35,14 @@
                 }
             ]
         },
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
-        "active": {
+        "max_flow_rate": {
             "format": "default",
             "anyOf": [
                 {
                     "type": "null"
                 },
                 {
-                    "type": "boolean"
+                    "type": "number"
                 }
             ]
         },
@@ -40,14 +57,6 @@
                 }
             ]
         },
-        "flow_rate": {
-            "format": "double",
-            "type": "number"
-        },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
         "control_state": {
             "format": "default",
             "anyOf": [
@@ -59,24 +68,15 @@
                 }
             ]
         },
-        "min_flow_rate": {
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
             "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "number"
-                }
-            ]
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "flow_rate"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/OutletStatic.schema.json",
-    "title": "OutletStatic",
-    "description": "A OutletStatic object based on Ribasim.OutletStaticV1",
-    "type": "object"
+    ]
 }

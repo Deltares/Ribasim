@@ -1,5 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
+    "title": "basin",
+    "description": "A basin object based on Ribasim.config.basin",
+    "type": "object",
     "properties": {
         "profile": {
             "format": "default",
@@ -13,7 +17,7 @@
             ],
             "default": null
         },
-        "time": {
+        "state": {
             "format": "default",
             "anyOf": [
                 {
@@ -37,7 +41,7 @@
             ],
             "default": null
         },
-        "state": {
+        "time": {
             "format": "default",
             "anyOf": [
                 {
@@ -51,9 +55,5 @@
         }
     },
     "required": [
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/basin.schema.json",
-    "title": "basin",
-    "description": "A basin object based on Ribasim.config.basin",
-    "type": "object"
+    ]
 }

@@ -1,11 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/FlowBoundaryStatic.schema.json",
+    "title": "FlowBoundaryStatic",
+    "description": "A FlowBoundaryStatic object based on Ribasim.FlowBoundaryStaticV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "active": {
             "format": "default",
@@ -22,17 +24,15 @@
             "format": "double",
             "type": "number"
         },
-        "node_id": {
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
             "format": "default",
-            "type": "integer"
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "flow_rate"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/FlowBoundaryStatic.schema.json",
-    "title": "FlowBoundaryStatic",
-    "description": "A FlowBoundaryStatic object based on Ribasim.FlowBoundaryStaticV1",
-    "type": "object"
+    ]
 }

@@ -1,5 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/manning_resistance.schema.json",
+    "title": "manning_resistance",
+    "description": "A manning_resistance object based on Ribasim.config.manning_resistance",
+    "type": "object",
     "properties": {
         "static": {
             "format": "default",
@@ -15,9 +19,5 @@
         }
     },
     "required": [
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/manning_resistance.schema.json",
-    "title": "manning_resistance",
-    "description": "A manning_resistance object based on Ribasim.config.manning_resistance",
-    "type": "object"
+    ]
 }

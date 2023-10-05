@@ -1,11 +1,13 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
+    "title": "LinearResistanceStatic",
+    "description": "A LinearResistanceStatic object based on Ribasim.LinearResistanceStaticV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "active": {
             "format": "default",
@@ -17,10 +19,6 @@
                     "type": "boolean"
                 }
             ]
-        },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
         },
         "resistance": {
             "format": "double",
@@ -36,14 +34,16 @@
                     "type": "string"
                 }
             ]
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "resistance"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/LinearResistanceStatic.schema.json",
-    "title": "LinearResistanceStatic",
-    "description": "A LinearResistanceStatic object based on Ribasim.LinearResistanceStaticV1",
-    "type": "object"
+    ]
 }
