@@ -207,14 +207,14 @@ def subnetwork_model():
         }
     )
 
+    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 1.0})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
         static=pd.DataFrame(data={"node_id": [1], "flow_rate": [4.5]})
     )
-
-    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 1.0})
-
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the users:
     user = ribasim.User(
@@ -266,6 +266,181 @@ def subnetwork_model():
         pump=pump,
         outlet=outlet,
         terminal=terminal,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def looped_subnetwork_model():
+    # Setup the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: User
+            (0.0, 1.0),  # 2: Basin
+            (-1.0, 1.0),  # 3: Outlet
+            (-2.0, 1.0),  # 4: Terminal
+            (2.0, 1.0),  # 5: FlowBoundary
+            (0.0, 2.0),  # 6: Pump
+            (-2.0, 3.0),  # 7: Basin
+            (-1.0, 3.0),  # 8: Outlet
+            (0.0, 3.0),  # 9: Basin
+            (1.0, 3.0),  # 10: Outlet
+            (2.0, 3.0),  # 11: User
+            (-2.0, 4.0),  # 12: User
+            (0.0, 4.0),  # 13: TabulatedRatingCurve
+            (2.0, 4.0),  # 14: TabulatedRatingCurve
+            (0.0, 5.0),  # 15: Basin
+            (1.0, 5.0),  # 16: Pump
+            (2.0, 5.0),  # 17: Basin
+            (-1.0, 6.0),  # 18: User
+            (0.0, 6.0),  # 19: TabulatedRatingCurve
+            (2.0, 6.0),  # 20: User
+            (0.0, 7.0),  # 21: Basin
+            (0.0, 8.0),  # 22: Outlet
+            (0.0, 9.0),  # 22: Terminal
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "User",
+        "Basin",
+        "Outlet",
+        "Terminal",
+        "FlowBoundary",
+        "Pump",
+        "Basin",
+        "Outlet",
+        "Basin",
+        "Outlet",
+        "User",
+        "User",
+        "TabulatedRatingCurve",
+        "TabulatedRatingCurve",
+        "Basin",
+        "Pump",
+        "Basin",
+        "User",
+        "TabulatedRatingCurve",
+        "User",
+        "Basin",
+        "Outlet",
+        "Terminal",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        static=gpd.GeoDataFrame(
+            data={"type": node_type},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array(
+        [
+            5,
+            2,
+            3,
+            2,
+            2,
+            6,
+            9,
+            8,
+            7,
+            9,
+            13,
+            15,
+            16,
+            17,
+            15,
+            19,
+            15,
+            18,
+            21,
+            22,
+            9,
+            10,
+            11,
+            14,
+        ],
+        dtype=np.int64,
+    )
+    to_id = np.array(
+        [
+            2,
+            3,
+            4,
+            1,
+            6,
+            9,
+            8,
+            7,
+            12,
+            13,
+            15,
+            16,
+            17,
+            20,
+            19,
+            21,
+            18,
+            21,
+            22,
+            23,
+            10,
+            11,
+            14,
+            17,
+        ],
+        dtype=np.int64,
+    )
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge(
+        static=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [2, 2, 7, 7, 9, 9, 15, 15, 17, 17, 21, 21],
+            "area": 1000.0,
+            "level": 6 * [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [2, 7, 9, 15, 17, 21],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [2, 7, 9, 15, 17, 21], "level": 1.0})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    model = ribasim.Model(
+        modelname="looped_subnetwork",
+        node=node,
+        edge=edge,
+        basin=basin,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
