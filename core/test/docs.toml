@@ -24,15 +24,18 @@ compression_level = 6            # optional, default 6
 time = "basin/time.arrow"
 
 [solver]
-algorithm = "QNDF" # optional, default "QNDF"
-saveat = []        # optional, default [], which saves every timestep
-adaptive = true    # optional, default true
-dt = 0.0           # optional, default 0.0
-abstol = 1e-6      # optional, default 1e-6
-reltol = 1e-3      # optional, default 1e-3
-maxiters = 1e9     # optional, default 1e9
-sparse = true      # optional, default true
-autodiff = true    # optional, default true
+algorithm = "QNDF"  # optional, default "QNDF"
+saveat = []         # optional, default [], which saves every timestep
+adaptive = true     # optional, default true
+dt = 0.0            # optional when adaptive = true, default automatically determined
+dtmin = 0.0         # optional, default automatically determined
+dtmax = 0.0         # optional, default length of simulation
+force_dtmin = false # optional, default false
+abstol = 1e-6       # optional, default 1e-6
+reltol = 1e-3       # optional, default 1e-3
+maxiters = 1e9      # optional, default 1e9
+sparse = true       # optional, default true
+autodiff = true     # optional, default true
 
 [logging]
 # defines the logging level of Ribasim

@@ -40,9 +40,13 @@ The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 The `dt` controls the stepsize.
-When `adaptive = true` this only applies to the initial stepsize, and the default of 0.0 means that it is automatically determined.
+When `adaptive = true`, `dt` only applies to the initial stepsize, and by default it is automatically determined.
 When `adaptive = false` a suitable `dt` must always be provided.
 The value is in seconds, so `dt = 3600.0` corresponds to an hourly timestep.
+When `adaptive = true`, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
+By default these depend on the problem and algorithm.
+If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
+`force_dtmin` is off by default to ensure an accurate solution.
 
 By default the calculation and output stepsize are the same, with `saveat = []`, which will save every timestep.
 `saveat` can be a number, which is the saving interval in seconds, or it can be a list of numbers, which are the times in seconds since start that are saved.
