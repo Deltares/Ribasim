@@ -7,6 +7,7 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 For more information see allocation.jl.
+
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => MFG_node_id where such a correspondence exists
     (all MFG node ids are in the values)

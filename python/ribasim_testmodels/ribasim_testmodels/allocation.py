@@ -287,7 +287,7 @@ def looped_subnetwork_model():
             (-1.0, 3.0),  # 8: Outlet
             (0.0, 3.0),  # 9: Basin
             (1.0, 3.0),  # 10: Outlet
-            (2.0, 3.0),  # 11: User
+            (2.0, 3.0),  # 11: Basin
             (-2.0, 4.0),  # 12: User
             (0.0, 4.0),  # 13: TabulatedRatingCurve
             (2.0, 4.0),  # 14: TabulatedRatingCurve
@@ -299,7 +299,8 @@ def looped_subnetwork_model():
             (2.0, 6.0),  # 20: User
             (0.0, 7.0),  # 21: Basin
             (0.0, 8.0),  # 22: Outlet
-            (0.0, 9.0),  # 22: Terminal
+            (0.0, 9.0),  # 23: Terminal
+            (3.0, 3.0),  # 24: User
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -315,7 +316,7 @@ def looped_subnetwork_model():
         "Outlet",
         "Basin",
         "Outlet",
-        "User",
+        "Basin",
         "User",
         "TabulatedRatingCurve",
         "TabulatedRatingCurve",
@@ -328,6 +329,7 @@ def looped_subnetwork_model():
         "Basin",
         "Outlet",
         "Terminal",
+        "User",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -367,6 +369,11 @@ def looped_subnetwork_model():
             10,
             11,
             14,
+            1,
+            12,
+            20,
+            11,
+            24,
         ],
         dtype=np.int64,
     )
@@ -396,6 +403,11 @@ def looped_subnetwork_model():
             11,
             14,
             17,
+            2,
+            7,
+            17,
+            24,
+            11,
         ],
         dtype=np.int64,
     )
@@ -415,15 +427,15 @@ def looped_subnetwork_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [2, 2, 7, 7, 9, 9, 15, 15, 17, 17, 21, 21],
+            "node_id": [2, 2, 7, 7, 9, 9, 11, 11, 15, 15, 17, 17, 21, 21],
             "area": 1000.0,
-            "level": 6 * [0.0, 1.0],
+            "level": 7 * [0.0, 1.0],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": [2, 7, 9, 15, 17, 21],
+            "node_id": [2, 7, 11, 9, 15, 17, 21],
             "drainage": 0.0,
             "potential_evaporation": 0.0,
             "infiltration": 0.0,
@@ -436,13 +448,83 @@ def looped_subnetwork_model():
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
+    # Setup the flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5]})
+    )
+
+    # Setup the users:
+    user = ribasim.User(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1, 12, 18, 20, 24],
+                "demand": 1.0,
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": [2, 1, 3, 3, 2],
+            }
+        )
+    )
+
+    # Setup the pumps:
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": [6, 16],
+                "flow_rate": 4.0,
+                "max_flow_rate": 4.0,
+            }
+        )
+    )
+
+    # Setup the outlets:
+    outlet = ribasim.Outlet(
+        static=pd.DataFrame(
+            data={"node_id": [3, 8, 10, 22], "flow_rate": 3.0, "max_flow_rate": 3.0}
+        )
+    )
+
+    # Setup the tabulated rating curves
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": [13, 13, 14, 14, 19, 19],
+                "level": 3 * [0.0, 1.0],
+                "discharge": 3 * [0.0, 2.0],
+            }
+        )
+    )
+
+    # Setup the terminals:
+    terminal = ribasim.Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4, 23],
+            }
+        )
+    )
+
     model = ribasim.Model(
         modelname="looped_subnetwork",
         node=node,
         edge=edge,
         basin=basin,
+        flow_boundary=flow_boundary,
+        user=user,
+        pump=pump,
+        outlet=outlet,
+        tabulated_rating_curve=rating_curve,
+        terminal=terminal,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
 
     return model
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    model = looped_subnetwork_model()
+    model.plot()
+    plt.show()

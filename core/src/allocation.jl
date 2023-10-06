@@ -48,7 +48,7 @@ function get_graph_max_flow(
     for subnetwork_node_id in subnetwork_node_ids
         node_type = lookup[subnetwork_node_id]
 
-        if node_type == :user
+        if node_type in [:user, :basin]
             # Each user in the subnetwork gets an MFG node
             n_MFG_nodes += 1
             node_id_mapping[subnetwork_node_id] = n_MFG_nodes
@@ -75,6 +75,8 @@ function get_graph_max_flow(
     #   with one or more non-junction nodes in between
     MFG_edges_composite = Vector{Int}[]
     for subnetwork_node_id in subnetwork_node_ids
+        subnetwork_inneighbor_ids = inneighbors(graph_flow, subnetwork_node_id)
+        subnetwork_outneighbor_ids = outneighbors(graph_flow, subnetwork_node_id)
         subnetwork_neighbor_ids = all_neighbors(graph_flow, subnetwork_node_id)
 
         if subnetwork_node_id in subnetwork_node_ids_represented
@@ -87,14 +89,28 @@ function get_graph_max_flow(
             else
                 # Direct connections in the subnetwork between nodes that
                 # have an equivaent MFG graph node
-                for subnetwork_neighbor_id in subnetwork_neighbor_ids
-                    if subnetwork_neighbor_id in subnetwork_node_ids_represented &&
-                       subnetwork_neighbor_id ≠ source_node_id
+                for subnetwork_inneighbor_id in subnetwork_inneighbor_ids
+                    if subnetwork_inneighbor_id in subnetwork_node_ids_represented
                         MFG_node_id_1 = node_id_mapping[subnetwork_node_id]
-                        MFG_node_id_2 = node_id_mapping[subnetwork_neighbor_id]
-                        add_edge!(graph_max_flow, MFG_node_id_1, MFG_node_id_2)
+                        MFG_node_id_2 = node_id_mapping[subnetwork_inneighbor_id]
+                        add_edge!(graph_max_flow, MFG_node_id_2, MFG_node_id_1)
                         # These direct connections cannot have capacity constraints
-                        capacity[MFG_node_id_1, MFG_node_id_2] = Inf
+                        capacity[MFG_node_id_2, MFG_node_id_1] = Inf
+                    end
+                end
+                for subnetwork_outneighbor_id in subnetwork_outneighbor_ids
+                    if subnetwork_outneighbor_id in subnetwork_node_ids_represented &&
+                       subnetwork_outneighbor_id ≠ source_node_id
+                        MFG_node_id_1 = node_id_mapping[subnetwork_node_id]
+                        MFG_node_id_2 = node_id_mapping[subnetwork_outneighbor_id]
+                        add_edge!(graph_max_flow, MFG_node_id_1, MFG_node_id_2)
+                        if subnetwork_outneighbor_id in user.node_id
+                            # Capacity depends on user demand at a given priority
+                            capacity[MFG_node_id_1, MFG_node_id_2] = 0.0
+                        else
+                            # These direct connections cannot have capacity constraints
+                            capacity[MFG_node_id_1, MFG_node_id_2] = Inf
+                        end
                     end
                 end
             end
@@ -227,7 +243,7 @@ source flow capacity is distributed according to the provided residual_allocatio
 see the allocate_residual! methods.
 """
 function allocate!(
-    user::Ribasim.User,
+    p::Parameters,
     subnetwork::Subnetwork,
     source_capacity::Float64,
     t::Float64;
@@ -235,6 +251,8 @@ function allocate!(
     gdf_node::Union{DataFrame, Nothing} = nothing,
     residual_allocation_type::Symbol = :proportional,
 )::Nothing
+    (; user, connectivity) = p
+    (; graph_flow) = connectivity
     (; capacity, capacity_fixed, node_id_mapping, graph_max_flow) = subnetwork
     (; node_id, priority, demand, allocated) = user
 
@@ -249,15 +267,22 @@ function allocate!(
         # Set user demands as capacities in the max flow graph
         # and collect the total demand for this priority
         demand_p_sum = 0.0
-        for (i, model_node_id) in enumerate(node_id)
+        for (i, subnetwork_node_id) in enumerate(node_id)
             if priority[i] == p
                 demand_p = demand[i](t)
             else
                 demand_p = 0.0
             end
 
-            MFP_id = node_id_mapping[model_node_id]
-            capacity[MFP_id, 2] = demand_p
+            MFP_node_id_user = node_id_mapping[subnetwork_node_id]
+
+            subnetwork_node_id_user_inneighbor =
+                only(inneighbors(graph_flow, subnetwork_node_id))
+            MFP_node_id_user_inneighbor =
+                node_id_mapping[subnetwork_node_id_user_inneighbor]
+
+            capacity[MFP_node_id_user, 2] = demand_p
+            capacity[MFP_node_id_user_inneighbor, MFP_node_id_user] = demand_p
             demand_p_sum += demand_p
         end
 
@@ -271,10 +296,12 @@ function allocate!(
         total_flow_p, flows_p = maximum_flow(graph_max_flow, 1, 2, capacity)
 
         if !isnothing(plot_folder)
-            fig, ax = plot_graph_max_flow(subnetwork; gdf_node, max_capacity = demand_p_sum)
+            fig, ax =
+                plot_graph_max_flow(subnetwork, user; gdf_node, max_capacity = demand_p_sum)
             save(normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p)_noflow.png"), fig)
             fig, ax = plot_graph_max_flow(
-                subnetwork;
+                subnetwork,
+                user;
                 flow = flows_p,
                 gdf_node,
                 max_capacity = demand_p_sum,
@@ -356,12 +383,13 @@ end
 Plot max flow graphs, with or without the max flow result.
 """
 function plot_graph_max_flow(
-    subnetwork::Subnetwork;
+    subnetwork::Subnetwork,
+    user::User;
     flow::Union{AbstractMatrix{Float64}, Nothing} = nothing,
     gdf_node::Union{DataFrame, Nothing} = nothing,
     max_capacity::Float64 = 5.0,
 )
-    (; graph_max_flow, capacity, node_id_mapping) = subnetwork
+    (; graph_max_flow, capacity, node_id_mapping, node_id_mapping_inverse) = subnetwork
     node_ids = 1:nv(graph_max_flow)
     ilabels = string.(node_ids)
 
@@ -377,20 +405,33 @@ function plot_graph_max_flow(
     node_color = fill(:gray80, nv(graph_max_flow))
     node_color[1] = :lightgreen
     node_color[2] = :tomato
+    node_size = fill(1000, nv(graph_max_flow))
+    node_marker = fill(:circle, nv(graph_max_flow))
+    for MFG_node_id in 3:nv(graph_max_flow)
+        if node_id_mapping_inverse[MFG_node_id] in user.node_id
+            node_color[MFG_node_id] = :green
+            node_marker[MFG_node_id] = :rect
+        end
+    end
 
     # Get node locations
     if all(.!isnothing.([node_id_mapping, gdf_node]))
         node_id_mapping_inverse = Dict(values(node_id_mapping) .=> keys(node_id_mapping))
         MFP_node_locations = Point[]
-        for id in 1:nv(graph_max_flow)
-            if id == 2
-                point = Point(5.0, 5.0)
+        for MFG_node_id in 1:nv(graph_max_flow)
+            if MFG_node_id == 2 # Sink node
+                continue
             else
-                point = gdf_node.geom[node_id_mapping_inverse[id]]
+                point = gdf_node.geom[node_id_mapping_inverse[MFG_node_id]]
                 point = Point(coordinates(point)...)
             end
             push!(MFP_node_locations, point)
         end
+
+        # Location of sink node
+        x_sink = 1.4 * maximum(point[1] for point in MFP_node_locations)
+        y_sink = 1.2 * maximum(point[2] for point in MFP_node_locations)
+        insert!(MFP_node_locations, 2, Point(x_sink, y_sink))
     else
         MFP_node_locations = Spring()
     end
@@ -405,22 +446,18 @@ function plot_graph_max_flow(
         [string(capacity[e.src, e.dst]) for e in edges(graph_max_flow)]
     end
 
-    fig = graphplot(
+    fig, ax, param = graphplot(
         graph_max_flow;
         layout = MFP_node_locations,
         ilabels,
         elabels,
         node_color,
+        node_marker,
         edge_color = :gray80,
         edge_width,
         arrow_size,
         arrow_shift = :end,
     )
-    ax = current_axis()
-    ax.aspect = AxisAspect(1)
-    hidedecorations!(ax)
-    hidespines!(ax)
-
     # PLot flows as blue edges
     if all(.!isnothing.([node_id_mapping, flow, gdf_node]))
         edge_flow = [flow[e.src, e.dst] for e in edges(graph_max_flow)]
@@ -432,9 +469,14 @@ function plot_graph_max_flow(
             ilabels,
             edge_width,
             node_color,
+            node_marker,
             edge_color = :blue,
             arrow_show = false,
         )
     end
-    return fig, ax
+    hidedecorations!(ax)
+    hidespines!(ax)
+    ax.aspect = AxisAspect(1.0)
+
+    return fig, ax, param
 end
