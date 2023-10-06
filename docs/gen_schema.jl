@@ -13,6 +13,7 @@ using InteractiveUtils
 using Dates
 using Configurations
 using Logging
+using OrderedCollections: OrderedDict
 
 # set empty to have local file references for development
 const prefix = "https://deltares.github.io/Ribasim/schema/"
@@ -39,17 +40,17 @@ jsontype(::Type{<:Any}) = "object"
 jsonformat(::Type{<:Any}) = "default"
 function jsontype(T::Union)
     t = Base.uniontypes(T)
-    td = Dict(zip(t, jsontype.(t)))
+    td = OrderedDict(zip(t, jsontype.(t)))
     length(td) == 1 && return first(values(td))
-    types = Dict[]
+    types = OrderedDict[]
     for (t, jt) in td
-        nt = Dict{String, Any}("type" => jt)
+        nt = OrderedDict{String, Any}("type" => jt)
         if t <: AbstractVector
-            nt["items"] = Dict("type" => jsontype(eltype(t)))
+            nt["items"] = OrderedDict("type" => jsontype(eltype(t)))
         end
         push!(types, nt)
     end
-    return Dict("anyOf" => types)
+    return OrderedDict("anyOf" => types)
 end
 
 function strip_prefix(T::DataType)
@@ -59,9 +60,9 @@ function strip_prefix(T::DataType)
 end
 
 function gen_root_schema(TT::Vector, prefix = prefix, name = "root")
-    schema = Dict(
+    schema = OrderedDict(
         "\$schema" => "https://json-schema.org/draft/2020-12/schema",
-        "properties" => Dict{String, Dict}(),
+        "properties" => OrderedDict{String, OrderedDict}(),
         "\$id" => "$(prefix)$name.schema.json",
         "title" => name,
         "description" => "All Ribasim Node types",
@@ -69,7 +70,7 @@ function gen_root_schema(TT::Vector, prefix = prefix, name = "root")
     )
     for T in TT
         tname = strip_prefix(T)
-        schema["properties"][tname] = Dict("\$ref" => "$tname.schema.json")
+        schema["properties"][tname] = OrderedDict("\$ref" => "$tname.schema.json")
     end
     open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io
         JSON3.pretty(io, schema)
@@ -81,20 +82,20 @@ os_line_separator() = Sys.iswindows() ? "\r\n" : "\n"
 
 function gen_schema(T::DataType, prefix = prefix; pandera = true)
     name = strip_prefix(T)
-    schema = Dict(
+    schema = OrderedDict(
         "\$schema" => "https://json-schema.org/draft/2020-12/schema",
         "\$id" => "$(prefix)$(name).schema.json",
         "title" => name,
         "description" => "A $(name) object based on $T",
         "type" => "object",
-        "properties" => Dict{String, Dict}(),
+        "properties" => OrderedDict{String, OrderedDict}(),
         "required" => String[],
     )
     for (fieldnames, fieldtype) in zip(fieldnames(T), fieldtypes(T))
         fieldname = string(fieldnames)
         ref = false
         if fieldtype <: Ribasim.config.TableOption
-            schema["properties"][fieldname] = Dict(
+            schema["properties"][fieldname] = OrderedDict(
                 "\$ref" => "$(prefix)$(strip_prefix(fieldtype)).schema.json",
                 "default" => fieldtype(),
             )
@@ -102,7 +103,7 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
         else
             type = jsontype(fieldtype)
             schema["properties"][fieldname] =
-                Dict{String, Any}("format" => jsonformat(fieldtype))
+                OrderedDict{String, Any}("format" => jsonformat(fieldtype))
             if type isa AbstractString
                 schema["properties"][fieldname]["type"] = type
             else
@@ -126,7 +127,7 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
     end
     if pandera
         # Temporary hack so pandera will keep the Pydantic record types
-        schema["properties"]["remarks"] = Dict(
+        schema["properties"]["remarks"] = OrderedDict(
             "description" => "a hack for pandera",
             "type" => "string",
             "format" => "default",

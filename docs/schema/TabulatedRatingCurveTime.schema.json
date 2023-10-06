@@ -1,27 +1,31 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveTime.schema.json",
+    "title": "TabulatedRatingCurveTime",
+    "description": "A TabulatedRatingCurveTime object based on Ribasim.TabulatedRatingCurveTimeV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "time": {
             "format": "date-time",
             "type": "string"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
+        "level": {
+            "format": "double",
+            "type": "number"
         },
         "discharge": {
             "format": "double",
             "type": "number"
         },
-        "level": {
-            "format": "double",
-            "type": "number"
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
@@ -29,9 +33,5 @@
         "time",
         "level",
         "discharge"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/TabulatedRatingCurveTime.schema.json",
-    "title": "TabulatedRatingCurveTime",
-    "description": "A TabulatedRatingCurveTime object based on Ribasim.TabulatedRatingCurveTimeV1",
-    "type": "object"
+    ]
 }

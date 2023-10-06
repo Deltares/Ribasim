@@ -1,12 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
+    "title": "BasinState",
+    "description": "A BasinState object based on Ribasim.BasinStateV1",
+    "type": "object",
     "properties": {
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
         "node_id": {
             "format": "default",
             "type": "integer"
@@ -14,14 +12,16 @@
         "level": {
             "format": "double",
             "type": "number"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "level"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinState.schema.json",
-    "title": "BasinState",
-    "description": "A BasinState object based on Ribasim.BasinStateV1",
-    "type": "object"
+    ]
 }

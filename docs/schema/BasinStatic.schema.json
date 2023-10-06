@@ -1,13 +1,19 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinStatic.schema.json",
+    "title": "BasinStatic",
+    "description": "A BasinStatic object based on Ribasim.BasinStaticV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
-        "precipitation": {
+        "drainage": {
+            "format": "double",
+            "type": "number"
+        },
+        "potential_evaporation": {
             "format": "double",
             "type": "number"
         },
@@ -15,21 +21,19 @@
             "format": "double",
             "type": "number"
         },
+        "precipitation": {
+            "format": "double",
+            "type": "number"
+        },
         "urban_runoff": {
             "format": "double",
             "type": "number"
         },
-        "node_id": {
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
             "format": "default",
-            "type": "integer"
-        },
-        "potential_evaporation": {
-            "format": "double",
-            "type": "number"
-        },
-        "drainage": {
-            "format": "double",
-            "type": "number"
+            "default": ""
         }
     },
     "required": [
@@ -39,9 +43,5 @@
         "infiltration",
         "precipitation",
         "urban_runoff"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinStatic.schema.json",
-    "title": "BasinStatic",
-    "description": "A BasinStatic object based on Ribasim.BasinStaticV1",
-    "type": "object"
+    ]
 }

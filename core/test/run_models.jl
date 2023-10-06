@@ -38,6 +38,7 @@ end
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
     @test successful_retcode(model)
+    @test allunique(model.integrator.sol.t)
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 

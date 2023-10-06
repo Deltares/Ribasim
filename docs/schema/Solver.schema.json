@@ -1,76 +1,112 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/Solver.schema.json",
+    "title": "Solver",
+    "description": "A Solver object based on Ribasim.config.Solver",
+    "type": "object",
     "properties": {
-        "reltol": {
-            "format": "double",
-            "default": 0.001,
-            "type": "number"
+        "algorithm": {
+            "format": "default",
+            "type": "string",
+            "default": "QNDF"
         },
         "saveat": {
             "format": "default",
             "anyOf": [
                 {
-                    "items": {
-                        "type": "number"
-                    },
-                    "type": "array"
+                    "type": "number"
                 },
                 {
-                    "type": "number"
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
                 }
             ],
             "default": [
             ]
         },
-        "maxiters": {
-            "format": "default",
-            "default": 1000000000,
-            "type": "integer"
-        },
-        "autodiff": {
-            "format": "default",
-            "default": true,
-            "type": "boolean"
-        },
         "adaptive": {
             "format": "default",
-            "default": true,
-            "type": "boolean"
+            "type": "boolean",
+            "default": true
         },
-        "algorithm": {
+        "dt": {
             "format": "default",
-            "default": "QNDF",
-            "type": "string"
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
+        },
+        "dtmin": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
+        },
+        "dtmax": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
+        },
+        "force_dtmin": {
+            "format": "default",
+            "type": "boolean",
+            "default": false
         },
         "abstol": {
             "format": "double",
-            "default": 1.0e-6,
-            "type": "number"
+            "type": "number",
+            "default": 1.0e-6
         },
-        "dt": {
+        "reltol": {
             "format": "double",
-            "default": 0,
-            "type": "number"
+            "type": "number",
+            "default": 0.001
+        },
+        "maxiters": {
+            "format": "default",
+            "type": "integer",
+            "default": 1000000000
         },
         "sparse": {
             "format": "default",
-            "default": true,
-            "type": "boolean"
+            "type": "boolean",
+            "default": true
+        },
+        "autodiff": {
+            "format": "default",
+            "type": "boolean",
+            "default": true
         }
     },
     "required": [
         "algorithm",
         "saveat",
         "adaptive",
-        "dt",
+        "force_dtmin",
         "abstol",
         "reltol",
         "maxiters",
         "sparse",
         "autodiff"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/Solver.schema.json",
-    "title": "Solver",
-    "description": "A Solver object based on Ribasim.config.Solver",
-    "type": "object"
+    ]
 }

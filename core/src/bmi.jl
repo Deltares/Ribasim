@@ -105,7 +105,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
-    timespan = (zero(t_end), t_end)
+    t0 = zero(t_end)
+    timespan = (t0, t_end)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -118,6 +119,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
     @debug "Created callbacks."
 
+    # Initialize the integrator, providing all solver options as described in
+    # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
+    # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
+    # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
     @timeit_debug to "Setup integrator" integrator = init(
         prob,
         alg;
@@ -126,9 +131,13 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
+        isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         config.solver.saveat,
         config.solver.adaptive,
-        config.solver.dt,
+        dt = something(config.solver.dt, t0),
+        config.solver.dtmin,
+        dtmax = something(config.solver.dtmax, t_end),
+        config.solver.force_dtmin,
         config.solver.abstol,
         config.solver.reltol,
         config.solver.maxiters,
