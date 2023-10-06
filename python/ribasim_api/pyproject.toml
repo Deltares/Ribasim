@@ -6,9 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ribasim_api"
 description = "Python bindings for libribasim"
 readme = "README.md"
-authors = [
-    { name = "Julian Hofer", email = "Julian.Hofer@deltares.nl" },
-]
+authors = [{ name = "Deltares and contributors", email = "ribasim.info@deltares.nl" }]
 license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
