@@ -56,7 +56,7 @@
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
-          <param name="xmlReportParsing.reportDirs" value="build/ribasim_cli/report.xml" />
+          <param name="xmlReportParsing.reportDirs" value="ribasim/report.xml" />
           <param name="xmlReportParsing.reportType" value="junit" />
           <param name="xmlReportParsing.verboseOutput" value="true" />
         </parameters>
