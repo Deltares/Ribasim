@@ -6,9 +6,6 @@
     <options>
       <option name="artifactRules" value="build\ribasim_cli\tests\temp =&gt; test_output.zip" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_1502" />
-    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
     </parameters>
@@ -17,15 +14,6 @@
         <parameters>
           <param name="script.content" value="pixi run install" />
           <param name="teamcity.build.workingDir" value="ribasim" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_1502" name="Install Python packages" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-pip install --no-deps "python/ribasim"
-pip install --no-deps "python/ribasim_testmodels"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
