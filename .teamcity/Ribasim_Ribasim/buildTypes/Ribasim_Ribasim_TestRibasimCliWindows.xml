@@ -1,31 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="d5e2515e-f7f0-4248-9df0-928bb0db1362" paused="true" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="d5e2515e-f7f0-4248-9df0-928bb0db1362" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Test ribasim_cli - Windows</name>
   <description />
   <settings>
     <options>
       <option name="artifactRules" value="build\ribasim_cli\tests\temp =&gt; test_output.zip" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_1502" />
-    </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[pixi run install]]></param>
+          <param name="script.content" value="pixi run install" />
           <param name="teamcity.build.workingDir" value="ribasim" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_1502" name="Install Python packages" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-pip install --no-deps "python/ribasim"
-pip install --no-deps "python/ribasim_testmodels"]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -68,7 +56,7 @@ pip install --no-deps "python/ribasim_testmodels"]]></param>
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
-          <param name="xmlReportParsing.reportDirs" value="build/ribasim_cli/report.xml" />
+          <param name="xmlReportParsing.reportDirs" value="ribasim/report.xml" />
           <param name="xmlReportParsing.reportType" value="junit" />
           <param name="xmlReportParsing.verboseOutput" value="true" />
         </parameters>
@@ -83,3 +71,4 @@ pip install --no-deps "python/ribasim_testmodels"]]></param>
     <cleanup />
   </settings>
 </build-type>
+

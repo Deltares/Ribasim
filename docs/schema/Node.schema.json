@@ -1,12 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/Node.schema.json",
+    "title": "Node",
+    "description": "A Node object based on Ribasim.NodeV1",
+    "type": "object",
     "properties": {
-        "remarks": {
-            "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
-        },
         "fid": {
             "format": "default",
             "type": "integer"
@@ -14,14 +12,16 @@
         "type": {
             "format": "default",
             "type": "string"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "fid",
         "type"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/Node.schema.json",
-    "title": "Node",
-    "description": "A Node object based on Ribasim.NodeV1",
-    "type": "object"
+    ]
 }

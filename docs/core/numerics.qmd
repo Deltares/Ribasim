@@ -1,0 +1,110 @@
+---
+title: "Numerical considerations"
+---
+
+We want to solve the following initial value problem:
+$$
+\begin{cases}
+    \frac{\text{d}\mathbf{u}}{\text{d}t} = \mathbf{f}(\mathbf{u},t) \quad t_0 < t < t_\text{end} \\
+    \mathbf{u}(t_0) = \mathbf{u}_0
+\end{cases},
+$$ {#eq-prob}
+
+where $\mathbf{f}$ denotes `water_balance!` and $\mathbf{u_0}$ the initial storages (and the PID integrals which start out at $0$).
+
+In general $\mathbf{f}$ is a non-linear function in $\mathbf{u}$. These non-linearities are introduced by:
+
+- `ManningResistance` nodes;
+- `Basin` profiles;
+- `TabulatedRatingCurve` Q(h) relations.
+
+The problem @eq-prob can be solved by various numerical time-integration methods. To do this the time interval $[t_0,t_\text{end}]$ is discretized into a finite number of time points $t_0 < t_1 < \ldots < t_N = t_\text{end}$ for which approximate solutions $\mathbf{w}_n \approx \mathbf{u}(t_n)$ are computed. In general we do not assume a fixed timestep (the interval between successive points in time). Rather, the solver attempts to make as large a step as possible while keeping error tolerances within requirements. The [solver settings](usage.qmd#sec-solver-settings) section details the available configuration options.
+
+# Example numerical methods
+
+This section discusses two relatively simple numerical methods, mainly to demonstrate the difference between explicit and implicit methods.
+
+## Euler forward
+
+The simplest numerical method is Euler forward:
+$$
+\mathbf{w}_{n+1} = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_n, t_n).
+$$ {#eq-eulerforward}
+
+Here $\mathbf{w}_{n+1}$ is given as a simple explicit function of $\mathbf{w}_n$.
+
+## Euler backward
+
+Euler backward is formulated as follows:
+$$
+\mathbf{w}_{n+1} = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1},t_{n+1}).
+$$ {#eq-eulerbackward}
+
+Note that this is an implicit equation for $\mathbf{w}_{n+1}$, which is non-linear because of the non-linearity of $\mathbf{f}$.
+
+Generally one of the following iterative methods is used for finding solutions to non-linear equations like this:
+
+- Picard iteration for fixed points. This method aims to approximate $\mathbf{w}_{n+1}$ as a fixed point of the function
+$$
+\mathbf{g}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1})
+$$
+by iterating $\mathbf{g}$ on an initial guess of $\mathbf{w}_{n+1}$;
+- Newton-Raphson iterations: approximate $\mathbf{w}_{n+1}$ as a root of the function
+$$
+\mathbf{h}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1}) - \mathbf{x},
+$$
+by iteratively finding the root of its linearized form:
+$$
+\begin{align}
+\mathbf{0} =& \mathbf{h}(\mathbf{w}_{n+1}^k) + \mathbf{J}(\mathbf{h})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k) \\
+=& \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1}^k,t_{n+1}) - \mathbf{w}_{n+1}^k \\ +&\left[(t_{n+1}-t_n)\mathbf{J}(\mathbf{f})(\mathbf{w}_{n+1}^k)-\mathbf{I}\right](\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k).
+\end{align}
+$$ {#eq-newtoniter}
+Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and solving a linear system per iteration.
+
+# The advantage of implicit methods
+
+The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly trough the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
+
+# Jacobian computations
+The iterations @eq-newtoniter require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](equations.qmd#the-jacobian).
+
+There are several ways to compute the Jacobian:
+
+- Using [finite difference methods](https://en.wikipedia.org/wiki/Numerical_differentiation#Finite_differences); however these are relatively expensive to compute and introduce truncation errors.
+- Hardcoding analytical expressions for the partial derivatives; these have the advantages over finite difference methods that they are cheaper to compute and don't introduce truncation errors. However, computing and coding these partial derivatives is complex and thus error prone, and requires maintenance for every adjustment of $\mathbf{f}$.
+- Using [automatic differentiation](https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/); this has the advantages of being fast to compute and not requiring much extra implementation other than implementing $\mathbf{f}$ in a way that is compatible with an automatic differentiation package, in the case of Ribasim that is `ForwardDiff.jl`. What remains is supplying the sparsity structure of the Jacobian of $\mathbf{f}$, to make the computation of the Jacobian efficient in terms of usage of memory and computation time.
+
+# Continuity considerations
+
+The convergence of the Newton-Raphson method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of $\mathbf{f}$ around the initial guess and root to find. An important aspect is the smoothness of $\mathbf{f}$. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below. the Manning resistance is not mentioned here since it is given by an analytical expression.
+
+Control mechanisms can change parameters of $\mathbf{f}$ discontinuously, leading to discontinuities of $\mathbf{f}$. This however does not yield problems for the time integration methods in `DifferentialEquations.jl`, since the [callback mechanisms](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) used to change these parameters make the solver take these discontinuities into account.
+
+## Basin profiles
+
+The basin profiles affect $\mathbf{f}$ in many ways, anywhere where a basin level or area is required.
+
+::: {.callout-note}
+This section needs to be updated and extended after once [this issue](https://github.com/Deltares/Ribasim/issues/566) is resolved.
+:::
+
+## Q(h) relations
+
+`TabulatedRatingCurve` nodes contribute to $\mathbf{f}$ with terms of the following form:
+
+$$
+    Q(h(S))
+$$
+
+where the continuity of this term is given by the least continuous of $Q$ and $h$.
+
+## Empty basins
+
+[Reduction factors](equations.qmd#the-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
+If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
+Rather, the basin gets a very small storage.
+The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.
+Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn't exist.
+Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
+This reject timesteps that lead to negative storage, instead retrying with a smaller timestep.

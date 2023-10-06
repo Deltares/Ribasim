@@ -1,32 +1,32 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlLogic.schema.json",
+    "title": "DiscreteControlLogic",
+    "description": "A DiscreteControlLogic object based on Ribasim.DiscreteControlLogicV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "truth_state": {
             "format": "default",
             "type": "string"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
         "control_state": {
             "format": "default",
             "type": "string"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "truth_state",
         "control_state"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/DiscreteControlLogic.schema.json",
-    "title": "DiscreteControlLogic",
-    "description": "A DiscreteControlLogic object based on Ribasim.DiscreteControlLogicV1",
-    "type": "object"
+    ]
 }

@@ -1,32 +1,32 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/LevelBoundaryTime.schema.json",
+    "title": "LevelBoundaryTime",
+    "description": "A LevelBoundaryTime object based on Ribasim.LevelBoundaryTimeV1",
+    "type": "object",
     "properties": {
-        "remarks": {
+        "node_id": {
             "format": "default",
-            "default": "",
-            "description": "a hack for pandera",
-            "type": "string"
+            "type": "integer"
         },
         "time": {
             "format": "date-time",
             "type": "string"
         },
-        "node_id": {
-            "format": "default",
-            "type": "integer"
-        },
         "level": {
             "format": "double",
             "type": "number"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
         }
     },
     "required": [
         "node_id",
         "time",
         "level"
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/LevelBoundaryTime.schema.json",
-    "title": "LevelBoundaryTime",
-    "description": "A LevelBoundaryTime object based on Ribasim.LevelBoundaryTimeV1",
-    "type": "object"
+    ]
 }

@@ -9,233 +9,233 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class BasinTime(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    time: datetime
-    precipitation: float
-    infiltration: float
-    urban_runoff: float
+class BasinProfile(BaseModel):
     node_id: int
-    potential_evaporation: float
-    drainage: float
-
-
-class DiscreteControlLogic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    truth_state: str
-    node_id: int
-    control_state: str
-
-
-class Edge(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    edge_type: str
-    fid: int
-    to_node_id: int
-    from_node_id: int
-
-
-class FlowBoundaryTime(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    time: datetime
-    flow_rate: float
-    node_id: int
-
-
-class UserStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    priority: int
-    active: Optional[bool] = None
-    demand: float
-    return_factor: float
-    min_level: float
-    node_id: int
-
-
-class PumpStatic(BaseModel):
-    max_flow_rate: Optional[float] = None
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    flow_rate: float
-    node_id: int
-    control_state: Optional[str] = None
-    min_flow_rate: Optional[float] = None
-
-
-class LevelBoundaryStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    node_id: int
+    area: float
     level: float
-
-
-class UserTime(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
-    priority: int
-    time: datetime
-    demand: float
-    return_factor: float
-    min_level: float
-    node_id: int
-
-
-class DiscreteControlCondition(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    greater_than: float
-    listen_feature_id: int
-    node_id: int
-    variable: str
-    look_ahead: Optional[float] = None
-
-
-class LinearResistanceStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    node_id: int
-    resistance: float
-    control_state: Optional[str] = None
-
-
-class FractionalFlowStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    node_id: int
-    fraction: float
-    control_state: Optional[str] = None
-
-
-class PidControlStatic(BaseModel):
-    integral: float
-    remarks: str = Field("", description="a hack for pandera")
-    listen_node_id: int
-    active: Optional[bool] = None
-    proportional: float
-    node_id: int
-    target: float
-    derivative: float
-    control_state: Optional[str] = None
-
-
-class PidControlTime(BaseModel):
-    integral: float
-    remarks: str = Field("", description="a hack for pandera")
-    listen_node_id: int
-    time: datetime
-    proportional: float
-    node_id: int
-    target: float
-    derivative: float
-    control_state: Optional[str] = None
-
-
-class ManningResistanceStatic(BaseModel):
-    length: float
-    manning_n: float
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    profile_width: float
-    node_id: int
-    profile_slope: float
-    control_state: Optional[str] = None
-
-
-class FlowBoundaryStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    flow_rate: float
-    node_id: int
-
-
-class OutletStatic(BaseModel):
-    max_flow_rate: Optional[float] = None
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    min_crest_level: Optional[float] = None
-    flow_rate: float
-    node_id: int
-    control_state: Optional[str] = None
-    min_flow_rate: Optional[float] = None
-
-
-class Node(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    fid: int
-    type: str
-
-
-class TabulatedRatingCurveTime(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    time: datetime
-    node_id: int
-    discharge: float
-    level: float
-
-
-class TabulatedRatingCurveStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    active: Optional[bool] = None
-    node_id: int
-    discharge: float
-    level: float
-    control_state: Optional[str] = None
-
-
-class LevelBoundaryTime(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    time: datetime
-    node_id: int
-    level: float
 
 
 class BasinState(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
     node_id: int
     level: float
-
-
-class BasinProfile(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
-    area: float
-    node_id: int
-    level: float
-
-
-class TerminalStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    node_id: int
 
 
 class BasinStatic(BaseModel):
-    remarks: str = Field("", description="a hack for pandera")
-    precipitation: float
-    infiltration: float
-    urban_runoff: float
     node_id: int
-    potential_evaporation: float
     drainage: float
+    potential_evaporation: float
+    infiltration: float
+    precipitation: float
+    urban_runoff: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class BasinTime(BaseModel):
+    node_id: int
+    time: datetime
+    drainage: float
+    potential_evaporation: float
+    infiltration: float
+    precipitation: float
+    urban_runoff: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class DiscreteControlCondition(BaseModel):
+    node_id: int
+    listen_feature_id: int
+    variable: str
+    greater_than: float
+    look_ahead: Optional[float] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class DiscreteControlLogic(BaseModel):
+    node_id: int
+    truth_state: str
+    control_state: str
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class Edge(BaseModel):
+    fid: int
+    from_node_id: int
+    to_node_id: int
+    edge_type: str
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class FlowBoundaryStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    flow_rate: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class FlowBoundaryTime(BaseModel):
+    node_id: int
+    time: datetime
+    flow_rate: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class FractionalFlowStatic(BaseModel):
+    node_id: int
+    fraction: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class LevelBoundaryStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    level: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class LevelBoundaryTime(BaseModel):
+    node_id: int
+    time: datetime
+    level: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class LinearResistanceStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    resistance: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class ManningResistanceStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    length: float
+    manning_n: float
+    profile_width: float
+    profile_slope: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class Node(BaseModel):
+    fid: int
+    type: str
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class OutletStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    flow_rate: float
+    min_flow_rate: Optional[float] = None
+    max_flow_rate: Optional[float] = None
+    min_crest_level: Optional[float] = None
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class PidControlStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    listen_node_id: int
+    target: float
+    proportional: float
+    integral: float
+    derivative: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class PidControlTime(BaseModel):
+    node_id: int
+    listen_node_id: int
+    time: datetime
+    target: float
+    proportional: float
+    integral: float
+    derivative: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class PumpStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    flow_rate: float
+    min_flow_rate: Optional[float] = None
+    max_flow_rate: Optional[float] = None
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class TabulatedRatingCurveStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    level: float
+    discharge: float
+    control_state: Optional[str] = None
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class TabulatedRatingCurveTime(BaseModel):
+    node_id: int
+    time: datetime
+    level: float
+    discharge: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class TerminalStatic(BaseModel):
+    node_id: int
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class UserStatic(BaseModel):
+    node_id: int
+    active: Optional[bool] = None
+    demand: float
+    return_factor: float
+    min_level: float
+    priority: int
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class UserTime(BaseModel):
+    node_id: int
+    time: datetime
+    demand: float
+    return_factor: float
+    min_level: float
+    priority: int
+    remarks: str = Field("", description="a hack for pandera")
 
 
 class Root(BaseModel):
+    BasinProfile: Optional[BasinProfile] = None
+    BasinState: Optional[BasinState] = None
+    BasinStatic: Optional[BasinStatic] = None
     BasinTime: Optional[BasinTime] = None
+    DiscreteControlCondition: Optional[DiscreteControlCondition] = None
     DiscreteControlLogic: Optional[DiscreteControlLogic] = None
     Edge: Optional[Edge] = None
+    FlowBoundaryStatic: Optional[FlowBoundaryStatic] = None
     FlowBoundaryTime: Optional[FlowBoundaryTime] = None
-    UserStatic: Optional[UserStatic] = None
-    PumpStatic: Optional[PumpStatic] = None
-    LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
-    UserTime: Optional[UserTime] = None
-    DiscreteControlCondition: Optional[DiscreteControlCondition] = None
-    LinearResistanceStatic: Optional[LinearResistanceStatic] = None
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
+    LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
+    LevelBoundaryTime: Optional[LevelBoundaryTime] = None
+    LinearResistanceStatic: Optional[LinearResistanceStatic] = None
+    ManningResistanceStatic: Optional[ManningResistanceStatic] = None
+    Node: Optional[Node] = None
+    OutletStatic: Optional[OutletStatic] = None
     PidControlStatic: Optional[PidControlStatic] = None
     PidControlTime: Optional[PidControlTime] = None
-    ManningResistanceStatic: Optional[ManningResistanceStatic] = None
-    FlowBoundaryStatic: Optional[FlowBoundaryStatic] = None
-    OutletStatic: Optional[OutletStatic] = None
-    Node: Optional[Node] = None
-    TabulatedRatingCurveTime: Optional[TabulatedRatingCurveTime] = None
+    PumpStatic: Optional[PumpStatic] = None
     TabulatedRatingCurveStatic: Optional[TabulatedRatingCurveStatic] = None
-    LevelBoundaryTime: Optional[LevelBoundaryTime] = None
-    BasinState: Optional[BasinState] = None
-    BasinProfile: Optional[BasinProfile] = None
+    TabulatedRatingCurveTime: Optional[TabulatedRatingCurveTime] = None
     TerminalStatic: Optional[TerminalStatic] = None
-    BasinStatic: Optional[BasinStatic] = None
+    UserStatic: Optional[UserStatic] = None
+    UserTime: Optional[UserTime] = None

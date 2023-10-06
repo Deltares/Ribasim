@@ -1,7 +1,11 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/level_boundary.schema.json",
+    "title": "level_boundary",
+    "description": "A level_boundary object based on Ribasim.config.level_boundary",
+    "type": "object",
     "properties": {
-        "time": {
+        "static": {
             "format": "default",
             "anyOf": [
                 {
@@ -13,7 +17,7 @@
             ],
             "default": null
         },
-        "static": {
+        "time": {
             "format": "default",
             "anyOf": [
                 {
@@ -27,9 +31,5 @@
         }
     },
     "required": [
-    ],
-    "$id": "https://deltares.github.io/Ribasim/schema/level_boundary.schema.json",
-    "title": "level_boundary",
-    "description": "A level_boundary object based on Ribasim.config.level_boundary",
-    "type": "object"
+    ]
 }
