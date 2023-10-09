@@ -307,7 +307,8 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            error("TabulatedRatingCurve node #$node_id data not in any table.")
+            @error "TabulatedRatingCurve node #$node_id data not in any table."
+            errors = true
         end
         if !is_valid
             @error "A Q(h) relationship for TabulatedRatingCurve #$node_id from the $source table has repeated levels, this can not be interpolated."
@@ -637,32 +638,104 @@ end
 function User(db::DB, config::Config)::User
     static = load_structvector(db, config, UserStaticV1)
     time = load_structvector(db, config, UserTimeV1)
-    defaults = (; min_level = -Inf, active = true)
-    time_interpolatables = [:demand]
-    parsed_parameters, valid = parse_static_and_time(
-        db,
-        config,
-        "User";
-        static,
-        time,
-        time_interpolatables,
-        defaults,
-    )
+
+    static_node_ids, time_node_ids, node_ids, valid =
+        static_and_time_node_ids(db, static, time, "User")
 
     if !valid
-        error("Errors occurred when parsing User (node type) data.")
+        error("Problems encountered when parsing User static and time node IDs.")
     end
 
-    allocated = zeros(length(parsed_parameters.return_factor))
+    # The highest priority number given, which corresponds to the least important demands
+    priorities = sort(unique(union(static.priority, time.priority)))
+
+    active = BitVector()
+    min_level = Float64[]
+    return_factor = Float64[]
+    interpolations = Vector{ScalarInterpolation}[]
+
+    errors = false
+    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    t_end = seconds_since(config.endtime, config.starttime)
+
+    # Create a dictionary priority => time data for that priority
+    time_priority_dict::Dict{Int, StructVector{UserTimeV1}} = Dict(
+        first(group).priority => StructVector(group) for
+        group in IterTools.groupby(row -> row.priority, time)
+    )
+
+    for node_id in node_ids
+        first_row = nothing
+        demand = Vector{ScalarInterpolation}()
+
+        if node_id in static_node_ids
+            rows = searchsorted(static.node_id, node_id)
+            static_id = view(static, rows)
+            for p in priorities
+                idx = findsorted(static_id.priority, p)
+                demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
+                demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
+                push!(demand, demand_p_itp)
+            end
+            push!(interpolations, demand)
+            first_row = first(static_id)
+            is_active = coalesce(first_row.active, true)
+
+        elseif node_id in time_node_ids
+            for p in priorities
+                if p in keys(time_priority_dict)
+                    demand_p_itp, is_valid = get_scalar_interpolation(
+                        config.starttime,
+                        t_end,
+                        time_priority_dict[p],
+                        node_id,
+                        :demand;
+                        default_value = 0.0,
+                    )
+                    if is_valid
+                        push!(demand, demand_p_itp)
+                    else
+                        @error "The demand(t) relationship for User #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+                        errors = true
+                    end
+                else
+                    demand_p_itp = LinearInterpolation([0.0, 0.0], trivial_timespan)
+                    push!(demand, demand_p_itp)
+                end
+            end
+            push!(interpolations, demand)
+
+            first_row_idx = searchsortedfirst(time.node_id, node_id)
+            first_row = time[first_row_idx]
+            is_active = true
+        else
+            @error "User node #$node_id data not in any table."
+            errors = true
+        end
+
+        if !isnothing(first_row)
+            min_level_ = coalesce(first_row.min_level, 0.0)
+            return_factor_ = first_row.return_factor
+            push!(active, is_active)
+            push!(min_level, min_level_)
+            push!(return_factor, return_factor_)
+        end
+    end
+
+    if errors
+        error("Errors occurred when parsing User data.")
+    end
+
+    allocated = [zeros(length(priorities)) for id in node_ids]
 
     return User(
-        parsed_parameters.node_id,
-        parsed_parameters.active,
-        parsed_parameters.demand,
+        node_ids,
+        active,
+        interpolations,
         allocated,
-        parsed_parameters.return_factor,
-        parsed_parameters.min_level,
-        parsed_parameters.priority,
+        return_factor,
+        min_level,
+        priorities,
     )
 end
 
