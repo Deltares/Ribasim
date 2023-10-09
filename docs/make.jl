@@ -10,7 +10,7 @@ makedocs(;
     format = Markdown(),
     repo = "https://github.com/Deltares/Ribasim.jl/blob/{commit}{path}#L{line}",
     sitename = "Ribasim.jl",
-    authors = "Deltares",
+    authors = "Deltares and contributors",
     doctest = false,  # we doctest as part of normal CI
 )
 
