@@ -34,7 +34,7 @@ jobs:
           pixi-version: "latest"
           cache: true
       - name: Prepare pixi
-        run: >
+        run: |
           pixi add python=${{ matrix.python_version }}
           pixi run install-without-pre-commit
 
