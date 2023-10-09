@@ -21,9 +21,9 @@ jobs:
           - macOS-latest
           - windows-latest
         python_version:
-          - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
         arch:
           - x86
     steps:
@@ -34,7 +34,9 @@ jobs:
           pixi-version: "latest"
           cache: true
       - name: Prepare pixi
-        run: pixi run install-without-pre-commit
+        run: >
+          pixi add python=${{ matrix.python_version }}
+          pixi run install-without-pre-commit
 
       - name: Run tests
         run: pixi run test-ribasim-python-cov
