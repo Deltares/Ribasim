@@ -404,21 +404,19 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of user over time
+demand: water flux demand of user per priority over time
 active: whether this node is active and thus demands water
-allocated: water flux currently allocated to user
+allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
-priority: integer > 0, the lower the number the higher the priority of the users demand
 """
 struct User <: AbstractParameterNode
     node_id::Vector{Int}
     active::BitVector
-    demand::Vector{ScalarInterpolation}
-    allocated::Vector{Float64}
+    demand::Vector{Vector{ScalarInterpolation}}
+    allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    priority::Vector{Int}
 end
 
 # TODO Automatically add all nodetypes here
@@ -753,9 +751,11 @@ function formulate_flow!(
         end
 
         # For now allocated = demand
-        allocated[i] = demand[i](t)
+        for priority in eachindex(allocated[i])
+            allocated[i][priority] = demand[i][priority](t)
+        end
 
-        q = allocated[i]
+        q = sum(allocated[i])
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         _, basin_idx = id_index(basin.node_id, src_id)
