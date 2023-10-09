@@ -343,12 +343,14 @@ sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
+sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
+sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
 
 const TimeSchemas = Union{
     BasinTimeV1,
