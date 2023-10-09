@@ -46,4 +46,6 @@ class User(TableModel):
         if self.static is not None:
             self.static.sort_values("node_id", ignore_index=True, inplace=True)
         if self.time is not None:
-            self.time.sort_values(["time", "node_id"], ignore_index=True, inplace=True)
+            self.time.sort_values(
+                ["node_id", "priority", "time"], ignore_index=True, inplace=True
+            )
