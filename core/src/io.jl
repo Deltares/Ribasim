@@ -7,6 +7,15 @@ function get_ids(db::DB, nodetype)::Vector{Int}
     return only(execute(columntable, db, sql))
 end
 
+function get_names(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT name FROM Node ORDER BY fid"))
+end
+
+function get_names(db::DB, nodetype)::Vector{String}
+    sql = "SELECT name FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
+    return only(execute(columntable, db, sql))
+end
+
 function exists(db::DB, tablename::String)
     query = execute(
         db,

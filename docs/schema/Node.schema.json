@@ -9,6 +9,10 @@
             "format": "default",
             "type": "integer"
         },
+        "name": {
+            "format": "default",
+            "type": "string"
+        },
         "type": {
             "format": "default",
             "type": "string"
@@ -22,6 +26,7 @@
     },
     "required": [
         "fid",
+        "name",
         "type"
     ]
 }

@@ -127,11 +127,13 @@ n_neighbor_bounds_control(nodetype) =
 # TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int
+    name::String = isnothing(s) ? "" : String(s)
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
 end
 
 @version EdgeV1 begin
     fid::Int
+    name::String = isnothing(s) ? "" : String(s)
     from_node_id::Int
     to_node_id::Int
     edge_type::String

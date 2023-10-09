@@ -33,6 +33,7 @@ function parse_static_and_time(
     vals_out = []
 
     node_ids = get_ids(db, nodetype)
+    node_names = get_names(db, nodetype)
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -91,7 +92,7 @@ function parse_static_and_time(
     t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
 
-    for (node_idx, node_id) in enumerate(node_ids)
+    for (node_idx, (node_id, node_name)) in enumerate(zip(node_ids, node_names))
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static.node_id, node_id)
@@ -153,7 +154,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node #$node_id has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $nodetype node $node_name (#$node_id) has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -167,7 +168,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node #$node_id data not in any table."
+            @error "$nodetype node  $node_name (#$node_id) data not in any table."
             errors = true
         end
     end

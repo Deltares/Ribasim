@@ -16,8 +16,12 @@ __all__ = ("Node",)
 
 
 class StaticSchema(pa.SchemaModel):
+    name: Series[str] = pa.Field(default="")
     type: Series[str]
     geometry: GeoSeries[Any]
+
+    class Config:
+        add_missing_columns = True
 
 
 class Node(TableModel):

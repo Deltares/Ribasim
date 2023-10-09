@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64", "osx-64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -17,7 +17,7 @@ repository = "https://github.com/Deltares/Ribasim"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
-install-quartodoc = "pip install quartodoc"
+install-quartodoc = ""
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
@@ -25,10 +25,7 @@ install-without-pre-commit = { depends_on = [
     "install-ribasim-testmodels",
     "install-quartodoc",
 ] }
-install = { depends_on = [
-    "install-without-pre-commit",
-    "install-pre-commit",
-] }
+install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Docs
 instantiate-julia-docs = "julia --project=docs -e \"using Pkg; Pkg.instantiate()\""
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
@@ -67,11 +64,7 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.instant
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
-tests = { depends_on = [
-    "lint",
-    "test-ribasim-python",
-    "test-ribasim-core",
-] }
+tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 generate-schema = "julia --project=docs docs/gen_schema.jl"
 generate-python = """\
@@ -100,7 +93,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.9"
-quarto = "*"
 ruff = "*"
 shapely = ">=2.0"
 tomli = "*"
