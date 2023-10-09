@@ -634,8 +634,7 @@ function User(db::DB, config::Config)::User
     end
 
     # The highest priority number given, which corresponds to the least important demands
-    maximum_priority =
-        max(reduce(max, static.priority; init = 0), reduce(max, time.priority; init = 0))
+    priorities = sort(unique(union(static.priority, time.priority)))
 
     active = BitVector()
     min_level = Float64[]
@@ -647,7 +646,7 @@ function User(db::DB, config::Config)::User
     t_end = seconds_since(config.endtime, config.starttime)
 
     # Create a dictionary priority => time data for that priority
-    time_priority_dict = Dict(
+    time_priority_dict::Dict{Int, StructVector{UserTimeV1}} = Dict(
         first(group).priority => StructVector(group) for
         group in IterTools.groupby(row -> row.priority, time)
     )
@@ -659,7 +658,7 @@ function User(db::DB, config::Config)::User
         if node_id in static_node_ids
             rows = searchsorted(static.node_id, node_id)
             static_id = view(static, rows)
-            for p in 1:maximum_priority
+            for p in priorities
                 idx = findsorted(static_id.priority, p)
                 demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
                 demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
@@ -670,7 +669,7 @@ function User(db::DB, config::Config)::User
             is_active = coalesce(first_row.active, true)
 
         elseif node_id in time_node_ids
-            for p in 1:maximum_priority
+            for p in priorities
                 if p in keys(time_priority_dict)
                     demand_p_itp, is_valid = get_scalar_interpolation(
                         config.starttime,
@@ -714,9 +713,17 @@ function User(db::DB, config::Config)::User
         error("Errors occurred when parsing User data.")
     end
 
-    allocated = [zeros(maximum_priority) for id in node_ids]
+    allocated = [zeros(length(priorities)) for id in node_ids]
 
-    return User(node_ids, active, interpolations, allocated, return_factor, min_level)
+    return User(
+        node_ids,
+        active,
+        interpolations,
+        allocated,
+        return_factor,
+        min_level,
+        priorities,
+    )
 end
 
 function Parameters(db::DB, config::Config)::Parameters

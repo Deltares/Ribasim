@@ -409,6 +409,8 @@ active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
+priorities: All used priority values. Each user has a demand for all these priorities,
+which is always 0.0 if it is not provided explicitly.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{Int}
@@ -417,6 +419,7 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
+    priorities::Vector{Int}
 end
 
 # TODO Automatically add all nodetypes here

@@ -394,7 +394,7 @@ active        | Bool    | -            | (optional, default true)
 demand        | Float64 | $m^3 s^{-1}$ | -
 return_factor | Float64 | -            | between [0 - 1]
 min_level     | Float64 | $m$          | (optional)
-priority      | Int     | -            | -
+priority      | Int     | -            | sorted per node id
 
 ## User / time
 
@@ -408,12 +408,12 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column        | type     | unit         | restriction
 ------------- | -------- | ------------ | -----------
-node_id       | Int      | -            | sorted per time
-time          | DateTime | -            | sorted
+node_id       | Int      | -            | sorted
+time          | DateTime | -            | sorted per priority per node id
 demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | (optional)
-priority      | Int      | -            | -
+priority      | Int      | -            | sorted per node id
 
 # LevelBoundary
 
