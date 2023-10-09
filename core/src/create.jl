@@ -154,7 +154,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node $node_name (#$node_id) has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) (#$node_id) has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -168,7 +168,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node  $node_name (#$node_id) data not in any table."
+            @error "$nodetype node  $(repr(node_name)) (#$node_id) data not in any table."
             errors = true
         end
     end
@@ -180,10 +180,11 @@ function static_and_time_node_ids(
     static::StructVector,
     time::StructVector,
     node_type::String,
-)::Tuple{Set{Int}, Set{Int}, Vector{Int}, Bool}
+)::Tuple{Set{Int}, Set{Int}, Vector{Int}, Vector{String}, Bool}
     static_node_ids = Set(static.node_id)
     time_node_ids = Set(time.node_id)
     node_ids = get_ids(db, node_type)
+    node_names = get_names(db, node_type)
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
     if !isempty(doubles)
@@ -194,7 +195,7 @@ function static_and_time_node_ids(
         errors = true
         @error "$node_type node IDs don't match."
     end
-    return static_node_ids, time_node_ids, node_ids, !errors
+    return static_node_ids, time_node_ids, node_ids, node_names, !errors
 end
 
 function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
@@ -250,7 +251,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
+    static_node_ids, time_node_ids, node_ids, node_names, valid =
         static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
 
     if !valid
@@ -264,7 +265,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     active = BitVector()
     errors = false
 
-    for node_id in node_ids
+    for (node_id, node_name) in zip(node_ids, node_names)
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -295,10 +296,12 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            error("TabulatedRatingCurve node #$node_id data not in any table.")
+            error(
+                "TabulatedRatingCurve node $(repr(node_name)) (#$node_id) data not in any table.",
+            )
         end
         if !is_valid
-            @error "A Q(h) relationship for TabulatedRatingCurve #$node_id from the $source table has repeated levels, this can not be interpolated."
+            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) (#$node_id) from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end
@@ -349,7 +352,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
+    static_node_ids, time_node_ids, node_ids, node_names, valid =
         static_and_time_node_ids(db, static, time, "LevelBoundary")
 
     if !valid
@@ -377,7 +380,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
+    static_node_ids, time_node_ids, node_ids, node_names, valid =
         static_and_time_node_ids(db, static, time, "FlowBoundary")
 
     if !valid
@@ -397,7 +400,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     for itp in parsed_parameters.flow_rate
         if any(itp.u .< 0.0)
             @error(
-                "Currently negative flow rates are not supported, found some for dynamic flow boundary #$node_id."
+                "Currently negative flow rates are not supported, found some in dynamic flow boundary."
             )
             valid = false
         end
@@ -564,7 +567,7 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
+    static_node_ids, time_node_ids, node_ids, node_names, valid =
         static_and_time_node_ids(db, static, time, "PidControl")
 
     if !valid
