@@ -154,7 +154,7 @@ name it must have in the GeoPackage if it is stored there.
   - `Pump / static`: flow rate
 - Outlet: let water flow with a prescribed flux under the conditions of positive head difference and the upstream level being higher than the minimum crest level
   - `Outlet / static`: flow rate, minimum crest level
-- User: sets water usage demands at a certain priority
+- User: sets water usage demands at certain priorities
   - `User / static`: demands
   - `User / time`: dynamic demands
 - Terminal: Water sink without state or properties
@@ -376,7 +376,8 @@ control_state         | String  | -            | (optional)
 
 # User
 
-A user can demand a certain flow from the basin that supplies it.
+A user can demand a certain flow from the basin that supplies it,
+distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
 Currently the user attempts to extract the complete demand from the Basin.
 Only if the Basin is almost empty or reaches the minimum level at which the user can extract
 water (`min_level`), will it take less than the demand.
