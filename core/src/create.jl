@@ -628,7 +628,7 @@ function User(db::DB, config::Config)::User
     static = load_structvector(db, config, UserStaticV1)
     time = load_structvector(db, config, UserTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
+    static_node_ids, time_node_ids, node_ids, node_names, valid =
         static_and_time_node_ids(db, static, time, "User")
 
     if !valid
