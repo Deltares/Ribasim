@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    name: Python ${{ matrix.python_version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Python ${{ matrix.python-version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,8 +20,7 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-        python_version:
-          - "3.9"
+        python-version:
           - "3.10"
           - "3.11"
         arch:
@@ -29,15 +28,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
-          pixi-version: "latest"
-          cache: true
-      - name: Prepare pixi
-        run: pixi run install-without-pre-commit
+          python-version: "${{ matrix.python-version }}"
+
+      - name: Install test dependencies
+        run: |
+          pip install --editable "python/ribasim_testmodels"
+          pip install --editable "python/ribasim[tests]"
 
       - name: Run tests
-        run: pixi run test-ribasim-python-cov
+        run: pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

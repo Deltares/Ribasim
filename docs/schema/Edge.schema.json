@@ -9,6 +9,10 @@
             "format": "default",
             "type": "integer"
         },
+        "name": {
+            "format": "default",
+            "type": "string"
+        },
         "from_node_id": {
             "format": "default",
             "type": "integer"
@@ -30,6 +34,7 @@
     },
     "required": [
         "fid",
+        "name",
         "from_node_id",
         "to_node_id",
         "edge_type"
