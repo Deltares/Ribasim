@@ -220,13 +220,28 @@ def subnetwork_model():
     user = ribasim.User(
         static=pd.DataFrame(
             data={
-                "node_id": [10, 11, 12],
-                "demand": [1.0, 2.0, 4.0],
+                "node_id": [10, 12],
+                "demand": [1.0, 4.0],
                 "return_factor": 0.9,
                 "min_level": 0.9,
-                "priority": [2, 2, 1],
+                "priority": [2, 1],
             }
-        )
+        ),
+        time=pd.DataFrame(
+            data={
+                "node_id": 11,
+                "time": [
+                    "2020-01-01 00:00:00",
+                    "2021-01-01 00:00:00",
+                    "2020-01-01 00:00:00",
+                    "2021-01-01 00:00:00",
+                ],
+                "demand": [2.0, 2.0, 0.0, 3.0],
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": [2, 2, 3, 3],
+            }
+        ),
     )
 
     # Setup the pump:
