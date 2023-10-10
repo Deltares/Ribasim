@@ -29,7 +29,13 @@ function Model(config::Config)::Model
     return BMI.initialize(Model, config::Config)
 end
 
-timesteps(model::Model) = model.integrator.sol.t
+"Get all saved times in seconds since start"
+timesteps(model::Model)::Vector{Float64} = model.integrator.sol.t
+
+"Get all saved times as a Vector{DateTime}"
+function datetimes(model::Model)::Vector{DateTime}
+    return datetime_since.(timesteps(model), model.config.starttime)
+end
 
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model

@@ -1,3 +1,4 @@
+using Dates
 using Logging: Debug, with_logger
 using Test
 using Ribasim
@@ -5,6 +6,7 @@ import BasicModelInterface as BMI
 using SciMLBase: successful_retcode
 import Tables
 using PreallocationTools: get_tmp
+using DataFrames: DataFrame
 
 @testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/trivial.toml")
@@ -38,13 +40,21 @@ end
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
     @test successful_retcode(model)
-    @test allunique(model.integrator.sol.t)
+    @test allunique(Ribasim.timesteps(model))
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) == 7
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
+
+    table = Ribasim.flow_table(model)
+    @test Tables.schema(table) == Tables.Schema(
+        (:time, :edge_id, :from_node_id, :to_node_id, :flow),
+        (DateTime, Union{Int, Missing}, Int, Int, Float64),
+    )
+    # flows are recorded at the end of each period, and are undefined at the start
+    @test unique(table.time) == Ribasim.datetimes(model)[2:end]
 end
 
 @testset "basic transient model" begin
@@ -158,13 +168,15 @@ end
     level = level[1]
 
     timesteps = model.saved_flow.t
-    outlet_flow = [saveval[2] for saveval in model.saved_flow.saveval]
+    flow = DataFrame(Ribasim.flow_table(model))
+    outlet_flow =
+        filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)
 
     t_min_crest_level =
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow[timesteps <= t_min_crest_level] == 0)
+    @test all(@. outlet_flow.flow[timesteps <= t_min_crest_level] == 0)
 
     timesteps = Ribasim.timesteps(model)
     t_maximum_level = level.t[2]
