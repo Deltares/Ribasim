@@ -28,6 +28,7 @@ from PyQt5.QtGui import QColor
 from ribasim_qgis.core import geopackage
 
 from qgis.core import (
+    Qgis,
     QgsCategorizedSymbolRenderer,
     QgsEditorWidgetSetup,
     QgsField,
@@ -128,7 +129,10 @@ class Input(abc.ABC):
 class Node(Input):
     input_type = "Node"
     geometry_type = "Point"
-    attributes = (QgsField("type", QVariant.String),)
+    attributes = (
+        QgsField("name", QVariant.String),
+        QgsField("type", QVariant.String),
+    )
 
     @classmethod
     def is_spatial(cls):
@@ -206,7 +210,8 @@ class Node(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = "fid"
+        pal_layer.fieldName = """concat("name", ' (#', "fid", ')')"""
+        pal_layer.isExpression = True
         pal_layer.enabled = True
         pal_layer.dist = 2.0
         labels = QgsVectorLayerSimpleLabeling(pal_layer)
@@ -217,6 +222,7 @@ class Edge(Input):
     input_type = "Edge"
     geometry_type = "Linestring"
     attributes = [
+        QgsField("name", QVariant.String),
         QgsField("from_node_id", QVariant.Int),
         QgsField("to_node_id", QVariant.Int),
         QgsField("edge_type", QVariant.String),
@@ -280,6 +286,15 @@ class Edge(Input):
             attrName="edge_type", categories=categories
         )
         return renderer
+
+    @property
+    def labels(self) -> Any:
+        pal_layer = QgsPalLayerSettings()
+        pal_layer.fieldName = "name"
+        pal_layer.enabled = True
+        pal_layer.placement = Qgis.LabelPlacement.Line
+        labels = QgsVectorLayerSimpleLabeling(pal_layer)
+        return labels
 
 
 class BasinProfile(Input):

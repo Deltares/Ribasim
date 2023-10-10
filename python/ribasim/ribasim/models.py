@@ -61,6 +61,7 @@ class DiscreteControlLogic(BaseModel):
 
 class Edge(BaseModel):
     fid: int
+    name: str
     from_node_id: int
     to_node_id: int
     edge_type: str
@@ -123,6 +124,7 @@ class ManningResistanceStatic(BaseModel):
 
 class Node(BaseModel):
     fid: int
+    name: str
     type: str
     remarks: str = Field("", description="a hack for pandera")
 
