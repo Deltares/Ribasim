@@ -159,10 +159,25 @@ end
 Write all output to the configured output files.
 """
 function BMI.finalize(model::Model)::Model
-    compress = get_compressor(model.config.output)
-    write_basin_output(model, compress)
-    write_flow_output(model, compress)
-    write_discrete_control_output(model, compress)
+    (; config) = model
+    (; output) = model.config
+    compress = get_compressor(output)
+
+    # basin
+    table = basin_table(model)
+    path = output_path(config, output.basin)
+    write_arrow(path, table, compress)
+
+    # flow
+    table = flow_table(model)
+    path = output_path(config, output.flow)
+    write_arrow(path, table, compress)
+
+    # discrete control
+    table = discrete_control_table(model)
+    path = output_path(config, output.control)
+    write_arrow(path, table, compress)
+
     @debug "Wrote output."
     return model
 end

@@ -161,24 +161,20 @@ function get_storages_and_levels(
     return (; time = tsteps, node_id, storage, level)
 end
 
-function write_basin_output(model::Model, compress)
-    (; config, integrator) = model
-    (; p) = integrator
-
+"Create the basin result table from the saved data"
+function basin_table(model::Model)::NamedTuple
     data = get_storages_and_levels(model)
     nbasin = length(data.node_id)
     ntsteps = length(data.time)
 
-    time = convert.(Arrow.DATETIME, repeat(data.time; inner = nbasin))
+    time = repeat(data.time; inner = nbasin)
     node_id = repeat(data.node_id; outer = ntsteps)
 
-    basin = (; time, node_id, storage = vec(data.storage), level = vec(data.level))
-    path = output_path(config, config.output.basin)
-    mkpath(dirname(path))
-    Arrow.write(path, basin; compress)
+    return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
 end
 
-function write_flow_output(model::Model, compress)
+"Create a flow result table from the saved data"
+function flow_table(model::Model)::NamedTuple
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
@@ -189,32 +185,33 @@ function write_flow_output(model::Model, compress)
     nflow = length(I)
     ntsteps = length(t)
 
-    time =
-        convert.(
-            Arrow.DATETIME,
-            repeat(datetime_since.(t, config.starttime); inner = nflow),
-        )
-
+    time = repeat(datetime_since.(t, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = FlatVector(saveval)
 
-    table = (; time, edge_id, from_node_id, to_node_id, flow)
-    path = output_path(config, config.output.flow)
-    mkpath(dirname(path))
-    Arrow.write(path, table; compress)
+    return (; time, edge_id, from_node_id, to_node_id, flow)
 end
 
-function write_discrete_control_output(model::Model, compress)
-    config = model.config
-    record = model.integrator.p.discrete_control.record
+"Create a discrete control result table from the saved data"
+function discrete_control_table(model::Model)::NamedTuple
+    (; config) = model
+    (; record) = model.integrator.p.discrete_control
 
-    time = convert.(Arrow.DATETIME, datetime_since.(record.time, config.starttime))
+    time = datetime_since.(record.time, config.starttime)
+    return (; time, record.control_node_id, record.truth_state, record.control_state)
+end
 
-    table = (; time, record.control_node_id, record.truth_state, record.control_state)
-
-    path = output_path(config, config.output.control)
+"Write a result table to disk as an Arrow file"
+function write_arrow(
+    path::AbstractString,
+    table::NamedTuple,
+    compress::TranscodingStreams.Codec,
+)
+    # ensure DateTime is encoded in a compatible manner
+    # https://github.com/apache/arrow-julia/issues/303
+    table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
     mkpath(dirname(path))
     Arrow.write(path, table; compress)
 end
