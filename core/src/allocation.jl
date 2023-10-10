@@ -254,7 +254,7 @@ function allocate!(
     (; user, connectivity) = p
     (; graph_flow) = connectivity
     (; capacity, capacity_fixed, node_id_mapping, graph_max_flow) = subnetwork
-    (; node_id, priority, demand, allocated) = user
+    (; node_id, priorities, demand, allocated) = user
 
     source_capacity_left = source_capacity
 
@@ -262,17 +262,13 @@ function allocate!(
     capacity .= capacity_fixed
 
     # Loop over available priorities
-    for p in 1:maximum(priority)
+    for p_idx in eachindex(priorities)
 
         # Set user demands as capacities in the max flow graph
         # and collect the total demand for this priority
         demand_p_sum = 0.0
         for (i, subnetwork_node_id) in enumerate(node_id)
-            if priority[i] == p
-                demand_p = demand[i](t)
-            else
-                demand_p = 0.0
-            end
+            demand_p = demand[i][p_idx](t)
 
             MFP_node_id_user = node_id_mapping[subnetwork_node_id]
 
@@ -298,7 +294,10 @@ function allocate!(
         if !isnothing(plot_folder)
             fig, ax =
                 plot_graph_max_flow(subnetwork, user; gdf_node, max_capacity = demand_p_sum)
-            save(normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p)_noflow.png"), fig)
+            save(
+                normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p_idx)_noflow.png"),
+                fig,
+            )
             fig, ax = plot_graph_max_flow(
                 subnetwork,
                 user;
@@ -306,7 +305,10 @@ function allocate!(
                 gdf_node,
                 max_capacity = demand_p_sum,
             )
-            save(normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p)_flow.png"), fig)
+            save(
+                normpath("$plot_folder/Ribasim_max_flow_solution_p_$(p_idx)_flow.png"),
+                fig,
+            )
         end
 
         if total_flow_p > source_capacity_left
@@ -318,19 +320,17 @@ function allocate!(
                 subnetwork,
                 source_capacity_left,
                 total_flow_p,
-                p,
+                p_idx,
                 flows_p,
                 Val{residual_allocation_type}(),
             )
             break
         else
             for (i, model_node_id) in enumerate(node_id)
-                if priority[i] == p
-                    # Set the allocation of the users as the flow between
-                    # the user node and the sink node in the MFG
-                    MFP_node_id = node_id_mapping[model_node_id]
-                    allocated[i] = flows_p[MFP_node_id, 2]
-                end
+                # Set the allocation of the users as the flow between
+                # the user node and the sink node in the MFG
+                MFP_node_id = node_id_mapping[model_node_id]
+                allocated[i][p_idx] = flows_p[MFP_node_id, 2]
             end
             # Subtract the source flow capacity used for this priority from the
             # total source capacity that is left
@@ -362,7 +362,7 @@ function allocate_residual!(
     type::Val{:proportional},
 )::Nothing
     (; node_id_mapping_inverse, graph_max_flow) = subnetwork
-    (; node_id, priority, allocated) = user
+    (; node_id, allocated) = user
 
     # The fraction each user gets of what was allocated to them by the max flow algorithm
     fraction = source_capacity_residual / allocated_total_priority_last
@@ -371,10 +371,8 @@ function allocate_residual!(
     for MFG_node_id in inneighbors(graph_max_flow, 2)
         subnetwork_node_id = node_id_mapping_inverse[MFG_node_id]
         subnetwork_node_idx = Ribasim.findsorted(node_id, subnetwork_node_id)
-        if priority[subnetwork_node_idx] == priority_last
-            allocated_originally = flows[MFG_node_id, 2]
-            allocated[subnetwork_node_idx] = fraction * allocated_originally
-        end
+        allocated_originally = flows[MFG_node_id, 2]
+        allocated[subnetwork_node_idx][priority_last] = fraction * allocated_originally
     end
     return nothing
 end

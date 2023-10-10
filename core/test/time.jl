@@ -33,7 +33,7 @@ end
 
     t_end = Ribasim.seconds_since(cfg.endtime, cfg.starttime)
 
-    # demand[user_idx][priority](t)
+    # demand[user_idx][priority_idx](t)
     @test demand[1][2](0.5 * t_end) ≈ 1.0
     @test demand[2][1](0.0) ≈ 0.0
     @test demand[2][1](t_end) ≈ 0.0
