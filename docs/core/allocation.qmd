@@ -1,0 +1,118 @@
+---
+title: "Allocation"
+---
+
+Allocation is the process of associating an allocated abstraction flow rate to user nodes in the model based on information about sources, user demands over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
+
+The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem which is solved using the `JuMP.jl` package.
+
+# The allocation problem
+
+The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
+
+## Allocation problem input
+
+### The subnetwork
+
+The allocation problem is solved per subgraph, where a subgraph is given by a subset $S \subset V$ of node ids. Different subgraphs are disjoint from eachother.
+
+### Source flows
+
+Sources are indicated by edges. That is, if $(i,j) \in E$ is indicated as a source, then $Q_{i,j}$ is treated as a source flow in the allocation problem.
+
+### User demands
+
+The subnetwork contains a subset of user nodes $U_S \subset S$, who all have time varying demands over various priorities $p$:
+$$
+    d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_\max.
+$$
+
+:::{.callout-note}
+On this page we assume that the priorities are given by all integers from $1$ to some $p_\max \in \mathbb{N}$. However, in the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
+:::
+
+### Vertical fluxes and local storage
+
+Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the sum of the horizontal fluxes (precipitation, evaporation, infiltration and drainage) for each basin
+$$
+    \phi_i(t), \quad \forall i \in B_S.
+$$
+
+Secondly, there is the available water in each basin above a minimum level $l_{\min,i}$
+$$
+    \max(u_i(t)-S(l_{\min,i}), 0.0), \quad \forall i \in B_S.
+$$
+
+### Flow magnitude and direction constraints
+
+Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like pumps, outlets and tabulated rating curves.
+
+### Fractional flows and user return flows
+
+Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $r_i, i \in U_S$.
+
+## The allocation optimization problem
+
+### The allocation graph
+
+A new graph is created from the subnetwork, which we call the allocation graph. To indicate the difference between subnetwork data and allocation graph data, the allocation graph data is denoted with a hat. The allocation graph consists of:
+
+- Nodes $\hat{V_S}$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node Ds to allocation graph node IDs.
+- Edges $\hat{E_S}$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
+
+### The allocation graph capacities
+
+The capacities of the edges in the allocation graph are determined in 3 different ways:
+
+- The capacity of the edge $\hat{e} \in \hat{E_S}$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite. The edge capacities are collected in the sparse capacity matrix $\hat{C}_S \in \overline{\mathbb{R}}_{\ge 0}^{\hat{n}\times\hat{n}}$ where $\hat{n}$ is the number of nodes in the allocation graph. The sparsity structure is given by $(\hat{C}_S)_{\hat{i},\hat{j}} = 0$ if $(\hat{i},\hat{j}) \in \hat{V}_s \times \hat{V}_S \setminus \hat{E}_S$ (i.e. if the edge does not exist);
+- If the edge is a source, the capacity of the edge is given by the flow rate of that source;
+- If an edge points towards a user, the capacity of that edge is given by the demands of that user up to some priority P. Therefore we define $p_\max$ different capacity matrices, where
+$$
+    \left(\hat{C}_S^P\right)_{\hat{i}\hat{k}} = \sum_{p=1}^P d_{m_S^{-1}(\hat{k})}(t), \quad \forall\hat{k} \in \hat{U}_S, (\hat{i},\hat{k}) \in \hat{E}_S.
+$$
+Here we use that each user node in the allocation graph has an unique in-edge.
+
+### The optimization objective
+
+The result of the optimization algorithm is a sparse flow matrix $F^P \in \mathbb{R}_{\ge 0}^{\hat{n}\times\hat{n}}$. We want to maximize the flow to the users. If we let $\hat{U}_S \subset \hat{V}_S$ be the set of users, then the optimization objective is given by
+$$
+\max\quad\sum_{(\hat{i},\hat{j})\in\hat{E} \;:\; \hat{j} \in \hat{U}} F^P_{\hat{i}\hat{j}}
+$$ {#eq-optimizationobjective}
+
+### Constraints
+
+- Flow conservation: For the set of basins in the allocation graph $\hat{B}_S \subset \hat{V}_S$ we have that
+$$
+    \sum_{\hat{j}=1}^{\hat{n}} F^P_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F^P_{\hat{i}\hat{k}} + \Phi_{\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
+$$  {#eq-flowconservationconstraint}
+Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
+$\Phi_{\hat{k}}$ is the local water supply of the basins:
+$$
+    \Phi_{m_S(i)} = \phi_i(t) + \frac{1}{\Delta t_\text{alloc}}\max(u_i(t)-S(l_{\min,i}), 0.0).
+$$
+Here the first term denotes the vertical fluxes and the second term the flow that can be supplied by the water in the basin above its minimum level, where $t_\text{alloc}$ is the time until the next allocation solve.
+
+- Capacity: the flows over the edges are positive and bounded by the edge capacity:
+$$
+    F^P_{\hat{i}\hat{j}} \le \left(\hat{C}_S^P\right)_{\hat{i}\hat{j}}, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
+$$ {#eq-capacityconstraint}
+- Users: The outflow of the user is dictated by the inflow and the return factor:
+$$
+    F^P_{\hat{i}\hat{k}} = r_{m_S^{-1}(\hat{k})} \cdot F^P_{\hat{k}\hat{j}}, \quad \forall\hat{k} \in \hat{U}_s, \;\; (\hat{i}, \hat{k}), (\hat{k}, \hat{j}) \in \hat{E}_S.
+$$ {#eq-returnflowconstraint}
+Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
+- Fractinal flow: Fractional flow nodes: $\hat{A}_S \subset \hat{V}_S$:
+$$
+    F^P_{\ldots} = f_{\ldots} F^P_{\ldots}
+$$
+
+Furthermore we require that the flows over the allocation graph are non negative:
+$$
+    F^P_{\hat{i}\hat{j}} \ge 0, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
+$$ {#eq-positiveflowconstraint}
+
+:::{.callout-note}
+Note that $\Phi_{\hat{k}}$ can become negative, in which case @eq-flowconservationconstraint becomes impossible to satisfy. What to do in this case?
+:::
+
+# Solving the allocation problem
