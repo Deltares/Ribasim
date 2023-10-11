@@ -215,8 +215,8 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
-    # TODO: Create subnetworks from input here
-    subnetwork = Subnetwork[]
+    # TODO: Create allocation models from input here
+    allocation_model = AllocationModel[]
 
     return Connectivity(
         graph_flow,
@@ -227,7 +227,7 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
-        subnetwork,
+        allocation_model,
     )
 end
 

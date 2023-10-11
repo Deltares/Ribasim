@@ -13,16 +13,19 @@ node_id_mapping: Mapping Dictionary; model_node_id => MFG_node_id where such a c
     (all MFG node ids are in the values)
 node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; MFG_node_id => model_node_id
 graph_max_flow: The graph used for the max flow problems
-capacity: The capacity per edge of the max flow graph (adjusted per priority)
-capcity_fixed: The capacity per edge of the max flow graph, as constrained by nodes that have a max_flow_rate
+capacity: The capacity per edge of the max flow graph, as constrained by nodes that have a max_flow_rate
+model: The JuMP.jl model for solving the allocation problem
 """
-struct Subnetwork
+struct AllocationModel
     node_id::Vector{Int}
-    node_id_mapping::Dict{Int, Int}
-    node_id_mapping_inverse::Dict{Int, Int}
+    node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
+    node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
     graph_max_flow::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
-    capacity_fixed::SparseMatrixCSC{Float64, Int}
+    model::JuMP.Model
+    MFG_edges::Vector{SimpleEdge{Int}}
+    MFG_edge_ids_user_demand::Vector{Int}
+    MFG_edge_ids_source::Vector{Int}
 end
 
 """
@@ -48,7 +51,7 @@ struct Connectivity{T}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
     edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
-    subnetwork::Vector{Subnetwork}
+    allocation_model::Vector{AllocationModel}
     function Connectivity(
         graph_flow,
         graph_control,

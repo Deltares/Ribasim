@@ -16,6 +16,7 @@ module Ribasim
 
 import IterTools
 import BasicModelInterface as BMI
+import HiGHS
 import TranscodingStreams
 
 using Arrow: Arrow, Table
@@ -29,20 +30,18 @@ using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, dictionary
 using ForwardDiff: pickchunksize
 using DiffEqCallbacks
-using GeoDataFrames: read, DataFrame # Used for allocation visualisation
-using GeoInterface: coordinates # Used for allocation visualisation
 using Graphs:
-    DiGraph,
     add_edge!,
     adjacency_matrix,
-    inneighbors,
-    outneighbors,
     all_neighbors,
+    DiGraph,
+    edges,
+    inneighbors,
     nv,
-    edges
-using GraphsFlows: maximum_flow
-using GLMakie: Point, current_axis, AxisAspect, hidedecorations!, hidespines! # Used for allocation visualisation
-using GraphMakie: Spring, graphplot, graphplot!, save # Used for allocation visualisation
+    outneighbors,
+    SimpleEdge
+
+using JuMP
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
