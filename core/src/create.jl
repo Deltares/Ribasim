@@ -198,6 +198,9 @@ function static_and_time_node_ids(
     return static_node_ids, time_node_ids, node_ids, node_names, !errors
 end
 
+const nonconservative_nodetypes =
+    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
+
 function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
@@ -210,6 +213,16 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
 
     flow = adjacency_matrix(graph_flow, Float64)
+    # Add a self-loop, i.e. an entry on the diagonal, for all non-conservative node types.
+    # This is used to store the gain (positive) or loss (negative) for the water balance.
+    # Note that this only affects the sparsity structure.
+    # We want to do it here to avoid changing that during the simulation and keeping it predictable,
+    # e.g. if we wouldn't do this, inactive nodes can appear if control turns them on during runtime.
+    for (i, nodetype) in enumerate(get_nodetypes(db))
+        if nodetype in nonconservative_nodetypes
+            flow[i, i] = 1.0
+        end
+    end
     flow .= 0.0
 
     if config.solver.autodiff
