@@ -577,7 +577,7 @@ function continuous_control!(
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity, pump, outlet, basin, fractional_flow) = p
     min_flow_rate_pump = pump.min_flow_rate
@@ -742,7 +742,7 @@ function formulate_flow!(
     user::User,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -793,7 +793,7 @@ function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -809,6 +809,7 @@ function formulate_flow!(
                     get_level(p, basin_a_id, t; storage) -
                     get_level(p, basin_b_id, t; storage)
                 ) / resistance[i]
+            println(q)
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
         end
@@ -823,7 +824,7 @@ function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -893,7 +894,7 @@ function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -950,7 +951,7 @@ function formulate_flow!(
     fractional_flow::FractionalFlow,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -969,7 +970,7 @@ function formulate_flow!(
     terminal::Terminal,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -989,7 +990,7 @@ function formulate_flow!(
     level_boundary::LevelBoundary,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -1013,7 +1014,7 @@ function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
@@ -1040,7 +1041,7 @@ function formulate_flow!(
     pump::Pump,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -1075,7 +1076,7 @@ function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
@@ -1140,7 +1141,7 @@ function formulate_du!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
+function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -1175,10 +1176,11 @@ function water_balance!(
     du::ComponentVector,
     u::ComponentVector,
     p::Parameters,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; connectivity, basin, pid_control) = p
 
+    t = get_tmp(t, t)
     storage = u.storage
     integral = u.integral
 

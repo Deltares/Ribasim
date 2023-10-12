@@ -410,9 +410,9 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 function get_level(
     p::Parameters,
     node_id::Int,
-    t::Float64;
+    t::Number;
     storage::Union{AbstractArray, Number} = 0,
-)::Union{Real, Nothing}
+)::Union{Number, Nothing}
     (; basin, level_boundary) = p
     hasindex, i = id_index(basin.node_id, node_id)
     current_level = get_tmp(basin.current_level, storage)
