@@ -28,8 +28,9 @@ function get_allocation_model(
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
+    Δt_allocation::Float64,
 )::AllocationModel
-    (; connectivity, user, lookup) = p
+    (; connectivity, user, lookup, basin) = p
     (; graph_flow, edge_ids_flow_inv) = connectivity
 
     errors = false
@@ -268,10 +269,53 @@ function get_allocation_model(
     model = JuMP.Model(HiGHS.Optimizer)
 
     # The flow variables
+    # The variable indices are the MFG edge IDs.
     n_flows = length(MFG_edges)
-    @variable(model, F[1:n_flows] >= 0.0)
+    model[:F] = @variable(model, F[1:n_flows] >= 0.0)
+
+    # The user allocation variables
+    # The variable name indices are the MFG user node IDs
+    # The variable indices are the priorities.
+    for MFG_edge_id_user_demand in MFG_edge_ids_user_demand
+        MFG_node_id_user = MFG_edges[MFG_edge_id_user_demand].dst
+        base_name = "A_user_$MFG_node_id_user"
+        model[Symbol(base_name)] =
+            @variable(model, [1:length(user.priorities)], base_name = base_name)
+    end
+
+    # The basin allocation variables
+    # The variable indices are the MFG basin node IDs
+    MFG_node_ids_basin = sort([
+        MFG_node_id for
+        (MFG_node_id, node_type) in values(node_id_mapping) if node_type == :basin
+    ])
+    @variable(model, A_basin[i = MFG_node_ids_basin] >= 0.0)
+
+    # The user allocation constraints
+    for MFG_edge_id_user_demand in MFG_edge_ids_user_demand
+        MFG_node_id_user = MFG_edges[MFG_edge_id_user_demand].dst
+        base_name = "A_user_$MFG_node_id_user"
+        A_user = model[Symbol(base_name)]
+        @constraint(
+            model,
+            sum(A_user) == F[MFG_edge_id_user_demand],
+            base_name = "allocation_sum[$MFG_node_id_user]"
+        )
+        @constraint(model, [p = 1:length(user.priorities)], A_user[p] >= 0)
+    end
+
+    # The basin allocation constraints (actual threshold values will be set before
+    # each allocation solve)
+    # The constraint indices are the MFG basin node IDs
+    model[:basin_allocation] = @constraint(
+        model,
+        [i = MFG_node_ids_basin],
+        A_basin[i] <= 1.0,
+        base_name = "basin_allocation"
+    )
 
     # The capacity constraints
+    # The constraint indices are the MFG edge IDs
     MFG_edge_ids_finite_capacity = Int[]
     for (i, MFG_edge) in enumerate(MFG_edges)
         if !isinf(capacity[MFG_edge.src, MFG_edge.dst])
@@ -287,69 +331,57 @@ function get_allocation_model(
 
     # The source constraints (actual threshold values will be set before
     # each allocation solve)
+    # The constraint indices are the MFG source edge IDs
     model[:source] =
         @constraint(model, [i = MFG_edge_ids_source], F[i] <= 1.0, base_name = "source")
 
     # The user return flow constraints
-    MFG_node_ids_user = sort([
-        MFG_node_id for (MFG_node_id, node_type) in values(node_id_mapping_inverse) if
-        node_type == :user
-    ])
-    n_users = length(MFG_node_ids_user)
-    MFG_edge_ids_to_user = Int[]
-    MFG_edge_ids_from_user = Int[]
-    return_factors = Float64[]
-    for (i, MFG_edge) in enumerate(MFG_edges)
-        subnetwork_node_id_src, node_type_src = node_id_mapping_inverse[MFG_edge.src]
-        if node_type_src == :user
-            user_idx = findsorted(user.node_id, subnetwork_node_id_src)
-            push!(return_factors, user.return_factor[user_idx])
-            push!(MFG_edge_ids_from_user, i)
-        else
-            node_type_dst = node_id_mapping_inverse[MFG_edge.dst][2]
-            if node_type_dst == :user
-                push!(MFG_edge_ids_to_user, i)
-            end
-        end
-    end
-    model[:return_flow] = @constraint(
-        model,
-        [i = 1:n_users],
-        F[MFG_edge_ids_from_user[i]] == return_factors[i] * F[MFG_edge_ids_to_user[i]],
-        base_name = "return_flow",
-    )
-
-    # The demand constraints (actual threshold values will be set before
-    # each allocation solve)
-    model[:demand] =
-        @constraint(model, [i = MFG_edge_ids_to_user], F[i] <= 1.0, base_name = "demand")
-
-    # The flow conservation constraints
+    # The constraint indices are MFG user node IDs
+    MFG_node_ids_user = [
+        MFG_node_id for
+        (MFG_node_id, node_type) in values(node_id_mapping) if node_type == :user
+    ]
     MFG_node_inedge_ids = Dict(i => Int[] for i in 1:n_MFG_nodes)
     MFG_node_outedge_ids = Dict(i => Int[] for i in 1:n_MFG_nodes)
     for (i, MFG_edge) in enumerate(MFG_edges)
         push!(MFG_node_inedge_ids[MFG_edge.dst], i)
         push!(MFG_node_outedge_ids[MFG_edge.src], i)
     end
+    model[:return_flow] = @constraint(
+        model,
+        [i = MFG_node_ids_user],
+        F[only(MFG_node_inedge_ids[i])] ==
+        user.return_factor[findsorted(user.node_id, node_id_mapping_inverse[i][1])] *
+        F[only(MFG_node_outedge_ids[i])],
+        base_name = "return_flow",
+    )
 
-    MFG_node_ids_conserving = Int[]
-    for MFG_node_id in 1:n_MFG_nodes
-        MFG_node_type = node_id_mapping_inverse[MFG_node_id][2]
-        if MFG_node_type in [:junction, :basin]
-            push!(MFG_node_ids_conserving, MFG_node_id)
-        end
-    end
+    # The flow conservation constraints
+    # The constraint indices are MFG user node IDs
+    println(MFG_node_inedge_ids)
+    println(MFG_node_outedge_ids)
     model[:flow_conservation] = @constraint(
         model,
-        [i = MFG_node_ids_conserving],
-        sum([F[id] for id in MFG_node_inedge_ids[i]]) >= sum([F[id] for id in MFG_node_outedge_ids[i]]),
+        [i = MFG_node_ids_basin],
+        sum([F[MFG_edge_id] for MFG_edge_id in MFG_node_outedge_ids[i]]) <= sum([F[MFG_edge_id] for MFG_edge_id in MFG_node_inedge_ids[i]]),
         base_name = "flow_conservation",
     )
 
-    # The fractional flow constraints
+    # TODO: The fractional flow constraints
 
     # The objective function
-    @objective(model, Max, sum([F[i] for i in MFG_edge_ids_to_user]))
+    allocation_user_weights = 1 ./ (2 .^ (1:length(user.priorities)))
+    allocation_user_variables = [
+        model[Symbol("A_user_$MFG_node_id_user")] for MFG_node_id_user in MFG_node_ids_user
+    ]
+    @objective(
+        model,
+        Max,
+        sum(A_basin) + sum([
+            sum(allocation_user_variable .* allocation_user_weights) for
+            allocation_user_variable in allocation_user_variables
+        ])
+    )
 
     return AllocationModel(
         subnetwork_node_ids,
@@ -358,9 +390,7 @@ function get_allocation_model(
         graph_max_flow,
         capacity,
         model,
-        MFG_edges,
-        MFG_edge_ids_user_demand,
-        MFG_edge_ids_source,
+        Δt_allocation,
     )
 end
 

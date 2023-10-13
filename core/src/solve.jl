@@ -15,6 +15,7 @@ node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; MFG_node_id
 graph_max_flow: The graph used for the max flow problems
 capacity: The capacity per edge of the max flow graph, as constrained by nodes that have a max_flow_rate
 model: The JuMP.jl model for solving the allocation problem
+Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
     node_id::Vector{Int}
@@ -23,9 +24,7 @@ struct AllocationModel
     graph_max_flow::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
     model::JuMP.Model
-    MFG_edges::Vector{SimpleEdge{Int}}
-    MFG_edge_ids_user_demand::Vector{Int}
-    MFG_edge_ids_source::Vector{Int}
+    Δt_allocation::Float64
 end
 
 """
