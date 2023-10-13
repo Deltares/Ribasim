@@ -31,7 +31,7 @@ The nightly builds contain the latest developments and can be found below. It is
 - Python package: [ribasim-0.4.0-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.4.0-py3-none-any.whl)
 - QGIS plugin: [ribasim_qgis.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip).
 
-Currently only Windows builds for `ribasim_cli.zip` are available. See [Usage](core/usage.qmd) for more information.
+Currently only Windows builds for `ribasim_cli.zip` are available.
 
 ![Timeseries of
 results](https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png)
