@@ -1,3 +1,5 @@
+import random
+import string
 from typing import Any, Sequence, Tuple
 
 import numpy as np
@@ -76,3 +78,8 @@ def connectivity_from_geometry(
     from_id = node_index[edge_node_id[:, 0]].to_numpy()
     to_id = node_index[edge_node_id[:, 1]].to_numpy()
     return from_id, to_id
+
+
+def random_string(length=3):
+    letters = string.ascii_lowercase
+    return "".join(random.choice(letters) for i in range(length))

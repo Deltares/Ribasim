@@ -18,9 +18,13 @@ __all__ = ("Edge",)
 
 
 class StaticSchema(pa.SchemaModel):
+    name: Series[str] = pa.Field(default="")
     from_node_id: Series[int] = pa.Field(coerce=True)
     to_node_id: Series[int] = pa.Field(coerce=True)
     geometry: GeoSeries[Any]
+
+    class Config:
+        add_missing_columns = True
 
 
 class Edge(TableModel):

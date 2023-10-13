@@ -286,15 +286,17 @@ The table is sorted by time, and per time it is sorted by `node_id`.
 The flow table contains outputs of the flow on every edge in the model, for each solver
 timestep.
 
-column        | type     | unit
-------------- | -------- | ----
-time          | DateTime | -
-edge_id       | Int      | -
-from_node_id  | Int      | -
-to_node_id    | Int      | -
-flow          | Float64  | $m^3 s^{-1}$
+column        | type                | unit
+------------- | ------------------- | ----
+time          | DateTime            | -
+edge_id       | Union{Int, Missing} | -
+from_node_id  | Int                 | -
+to_node_id    | Int                 | -
+flow          | Float64             | $m^3 s^{-1}$
 
-The table is sorted by time, and per time the same edge_id order is used, though not sorted.
+The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
+Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
+Flows out of the model always have a negative sign, and additions a positive sign.
 
 # FractionalFlow
 

@@ -83,6 +83,10 @@ function formulate_flow!(new_node_type::NewNodeType, p::Parameters)::Nothing
 end
 ```
 
+If the new node type is non-conservative, meaning it either adds or removes water from the model, these boundary flows also need to be recorded.
+This is done by storing it on the diagonal of the `flow[from, to]` matrix, e.g. `flow[id, id] = q`, where `q` is positive for water added to the model.
+Non-conservative node types need to be added to the `nonconservative_nodetypes` set such that this diagonal is set to a nonzero on creating the flow sparse matrix in the `Connectivity` constructor.
+
 ## The Jacobian
 
 See [Equations](../core/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
