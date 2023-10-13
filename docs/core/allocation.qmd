@@ -38,10 +38,11 @@ $$
     \phi_i(t), \quad \forall i \in B_S.
 $$
 
-Secondly, there is the available water in each basin above a minimum level $l_{\min,i}$
+Secondly, there is the available water in each basin above the minimum level $l_{\min,i}$
 $$
-    \max(u_i(t)-S(l_{\min,i}), 0.0), \quad \forall i \in B_S.
+    u_i(t)-S(l_{\min,i}), \quad \forall i \in B_S.
 $$
+Note that this value can be negative, which we interpret as a demand from the basin.
 
 ### Flow magnitude and direction constraints
 
@@ -60,56 +61,98 @@ A new graph is created from the subnetwork, which we call the allocation graph. 
 - Nodes $\hat{V_S}$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node Ds to allocation graph node IDs.
 - Edges $\hat{E_S}$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
 
+For notational convenience, we use the notation
+$$
+    \begin{align}
+        \hat{V}^{\text{out}}_S(\hat{i}) = \left\{\hat{j} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\} \\
+        \hat{V}^{\text{in}}_S(\hat{j}) = \left\{\hat{i} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\}
+    \end{align}
+$$
+for the set of in-neighbors and out-neighbors of a node in the allocation graph respectively.
+
 ### The allocation graph capacities
 
-The capacities of the edges in the allocation graph are determined in 3 different ways:
+The capacities of the edges of the allocation graph are collected in the sparse capacity matrix $\hat{C}_S \in \overline{\mathbb{R}}_{\ge 0}^{\hat{n}\times\hat{n}}$ where $\hat{n}$ is the number of nodes in the allocation graph. The capacities can be infinity.
 
-- The capacity of the edge $\hat{e} \in \hat{E_S}$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite. The edge capacities are collected in the sparse capacity matrix $\hat{C}_S \in \overline{\mathbb{R}}_{\ge 0}^{\hat{n}\times\hat{n}}$ where $\hat{n}$ is the number of nodes in the allocation graph. The sparsity structure is given by $(\hat{C}_S)_{\hat{i},\hat{j}} = 0$ if $(\hat{i},\hat{j}) \in \hat{V}_s \times \hat{V}_S \setminus \hat{E}_S$ (i.e. if the edge does not exist);
-- If the edge is a source, the capacity of the edge is given by the flow rate of that source;
-- If an edge points towards a user, the capacity of that edge is given by the demands of that user up to some priority P. Therefore we define $p_\max$ different capacity matrices, where
+The The capacities are determined in 3 different ways:
+
+- If an edge does not exist, i.e. $(\hat{i},\hat{j}) \notin \hat{E}$ for certain $1 \le \hat{i},\hat{j}\le \hat{n}$, then $(\hat{C}_S)_{\hat{i},\hat{j}} = 0$;
+- The capacity of the edge $\hat{e} \in \hat{E_S}$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite;
+- If the edge is a source, the capacity of the edge is given by the flow rate of that source.
+
+### The optimization variables
+
+There are several types of variables whose value has to be determined to solve the allocation problem:
+
+- The flows $F \in \mathbb{R}_{\ge 0}^{\hat{n}\times\hat{n}}$ over the edges in the allocation graph;
+- The allocations to the users
 $$
-    \left(\hat{C}_S^P\right)_{\hat{i}\hat{k}} = \sum_{p=1}^P d_{m_S^{-1}(\hat{k})}(t), \quad \forall\hat{k} \in \hat{U}_S, (\hat{i},\hat{k}) \in \hat{E}_S.
+    A^\text{user}_{\hat{i},p} \ge 0, \quad \forall \hat{i} \in \hat{U}_S, \forall p \in \{1,2,\ldots, p_\max\},
 $$
-Here we use that each user node in the allocation graph has an unique in-edge.
+where $\hat{U}_S = m_S(U_S) \subset \hat{V}_S$ is the set of user node ids in the allocation graph;
+
+- The allocations to the basins
+$$
+    A^\text{basin}_{\hat{i}} \ge 0, \quad \hat{B}_S,
+$$
+where $\hat{B} = m_S(B_S) \subset \hat{V}_S$ is the set of basin node ids in the allocation graph.
 
 ### The optimization objective
 
-The result of the optimization algorithm is a sparse flow matrix $F^P \in \mathbb{R}_{\ge 0}^{\hat{n}\times\hat{n}}$. We want to maximize the flow to the users. If we let $\hat{U}_S \subset \hat{V}_S$ be the set of users, then the optimization objective is given by
+The goal of allocation is to maximize the flow to the users. However, basins can also demand water if their level is below the minimum abstraction level, which we give a higher priority than user demands. Therefore, we use the following optimization objective:
 $$
-\max\quad\sum_{(\hat{i},\hat{j})\in\hat{E} \;:\; \hat{j} \in \hat{U}} F^P_{\hat{i}\hat{j}}
-$$ {#eq-optimizationobjective}
+    \max \sum_{\hat{i} \in \hat{B}_S} A^\text{basin}_{\hat{i}} + \sum_{\hat{i}\in \hat{U}_S} \sum_{p=1}^{p_\max} 2^{-p} A^\text{user}_{\hat{i},p}.
+$$ {#eq-objective}
+This is a linear combination of all allocations, where allocations to basins get a weight of $1$ and allocations to users get a weight of $2^{-p}$ where $p$ is the priority.
 
-### Constraints
+### The optimization variable constraints
 
-- Flow conservation: For the set of basins in the allocation graph $\hat{B}_S \subset \hat{V}_S$ we have that
+- Flow conservation: For the basins in the allocation graph we have that
 $$
-    \sum_{\hat{j}=1}^{\hat{n}} F^P_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F^P_{\hat{i}\hat{k}} + \Phi_{\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
+    \sum_{\hat{j}=1}^{\hat{n}} F_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F_{\hat{i}\hat{k}} + \Phi_{\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
 $$  {#eq-flowconservationconstraint}
 Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
 $\Phi_{\hat{k}}$ is the local water supply of the basins:
 $$
-    \Phi_{m_S(i)} = \phi_i(t) + \frac{1}{\Delta t_\text{alloc}}\max(u_i(t)-S(l_{\min,i}), 0.0).
-$$
-Here the first term denotes the vertical fluxes and the second term the flow that can be supplied by the water in the basin above its minimum level, where $t_\text{alloc}$ is the time until the next allocation solve.
+    \Phi_{\hat{k}} = \max\left(\phi_k(t) + \frac{u_k(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}, 0.0 \right), \quad m_S(k) = \hat{k}.
+$$ {#eq-basinsourceflow}
+Here the first term denotes the vertical fluxes and the second term the flow that can be supplied by the water in the basin above its minimum level, where $\Delta t_\text{alloc}$ is the allocation solve timestep.
 
 - Capacity: the flows over the edges are positive and bounded by the edge capacity:
 $$
-    F^P_{\hat{i}\hat{j}} \le \left(\hat{C}_S^P\right)_{\hat{i}\hat{j}}, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
+    F_{\hat{i}\hat{j}} \le \left(\hat{C}_S\right)_{\hat{i}\hat{j}}, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
 $$ {#eq-capacityconstraint}
-- Users: The outflow of the user is dictated by the inflow and the return factor:
+- User outflow: The outflow of the user is dictated by the inflow and the return factor:
 $$
-    F^P_{\hat{i}\hat{k}} = r_{m_S^{-1}(\hat{k})} \cdot F^P_{\hat{k}\hat{j}}, \quad \forall\hat{k} \in \hat{U}_s, \;\; (\hat{i}, \hat{k}), (\hat{k}, \hat{j}) \in \hat{E}_S.
+\begin{align}
+    F_{\hat{i}\hat{k}} = r_k \cdot F_{\hat{k}\hat{j}}\\
+    \quad \forall\hat{k} \in \hat{U}_s, \\
+    \hat{V}^{\text{in}}_S(\hat{k}) = \{\hat{i}\},\\
+     \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}, \\
+     m_S(k) = \hat{k}.
+\end{align}
 $$ {#eq-returnflowconstraint}
 Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
-- Fractinal flow: Fractional flow nodes: $\hat{A}_S \subset \hat{V}_S$:
+- User allocation: The flow over the edge to the user is equal to the sum of the allocations to the user:
 $$
-    F^P_{\ldots} = f_{\ldots} F^P_{\ldots}
+    F_{\hat{i}\hat{k}} = \sum_{p=1}^{p_\max} A^\text{user}_{\hat{k},p}, \quad \forall \hat{k} \in \hat{U_S}, \hat{V}^{\text{out}}_s(\hat{k}) = \{\hat{i}\}.
+$$ {#eq-userallocationconstraint}
+Here we use that each user has an unique out-edge.
+- Basin allocation: If the flow supplied by a basin (as determined in @eq-basinsourceflow) is negative, it is a demand:
 $$
+A^\text{basin}_{\hat{i}} = \max\left(-\left(\phi_i(t) + \frac{u_i(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}\right), 0.0 \right), \quad \forall \hat{i} \in \hat{B}_S, \;\; \hat{i} = m_S(i).
+$$ {#eq-basinallocationconstraint}
+- Fractinal flow: Let $\hat{L}_S \subset \hat{V}_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
+$$
+\begin{align}
+    F_{\hat{i}\hat{j}} = f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \\
+    \forall \hat{i} \in \hat{L}_S, \\
+    \hat{j} \in \hat{V}_S^\text{out}(\hat{i}), \\
+    \hat{j} = m_S(j).
+\end{align}
+$$ {#eq-fractionalflowconstraint}
 
-Furthermore we require that the flows over the allocation graph are non negative:
-$$
-    F^P_{\hat{i}\hat{j}} \ge 0, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
-$$ {#eq-positiveflowconstraint}
+- Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
 
 :::{.callout-note}
 Note that $\Phi_{\hat{k}}$ can become negative, in which case @eq-flowconservationconstraint becomes impossible to satisfy. What to do in this case?
