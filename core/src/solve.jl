@@ -9,11 +9,12 @@ Store information for a subnetwork used for allocation.
 For more information see allocation.jl.
 
 node_id: All the IDs of the nodes that are in this subnetwork
-node_id_mapping: Mapping Dictionary; model_node_id => MFG_node_id where such a correspondence exists
-    (all MFG node ids are in the values)
-node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; MFG_node_id => model_node_id
-graph_max_flow: The graph used for the max flow problems
-capacity: The capacity per edge of the max flow graph, as constrained by nodes that have a max_flow_rate
+node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
+    (all AG node ids are in the values)
+node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG_node_id => model_node_id
+Source edge mapping: AG source node ID => subnetwork source edge id
+graph_max_flow: The graph used for the allocation problems
+capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
 model: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
@@ -21,7 +22,8 @@ struct AllocationModel
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
-    graph_max_flow::DiGraph{Int}
+    source_edge_mapping::Dict{Int, Int}
+    graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
     model::JuMP.Model
     Δt_allocation::Float64

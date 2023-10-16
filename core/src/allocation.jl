@@ -11,13 +11,15 @@ Construct the JuMP.jl model for allocation.
 Definitions
 -----------
 - 'subnetwork' is used to refer to the original Ribasim subnetwork;
-- 'MFG' is used to refer to the max flow graph.
+- 'AG' is used to refer to the allocation graph.
 
 Inputs
 ------
 p: Ribasim model parameters
 subnetwork_node_ids: the model node IDs that are part of the allocation subnetwork
-source_node_id: the model node ID of the source node (currently only flow boundary supported)
+source_edge_ids:: The IDs of the edges in the subnetwork whose flow fill be taken as
+    a source in allocation
+Δt_allocation: The timestep between successive allocation solves
 
 Outputs
 -------
@@ -35,61 +37,65 @@ function get_allocation_model(
 
     errors = false
 
-    # Mapping node_id => (MFG_node_id, type) where such a correspondence exists;
-    # MFG_node_type in [:user, :junction, :basin, :source]
+    # Mapping node_id => (AG_node_id, type) where such a correspondence exists;
+    # AG_node_type in [:user, :junction, :basin, :source]
     node_id_mapping = Dict{Int, Tuple{Int, Symbol}}()
 
-    # Determine the number of nodes in the MFG
-    n_MFG_nodes = 0
+    # Determine the number of nodes in the AG
+    n_AG_nodes = 0
     for subnetwork_node_id in subnetwork_node_ids
-        add_MFG_node = false
+        add_AG_node = false
         node_type = lookup[subnetwork_node_id]
 
         if node_type in [:user, :basin]
-            add_MFG_node = true
+            add_AG_node = true
 
         elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
             # Each junction (that is, a node with more than 2 neighbors)
-            # in the subnetwork gets an MFG node
-            add_MFG_node = true
+            # in the subnetwork gets an AG node
+            add_AG_node = true
             node_type = :junction
         end
 
-        if add_MFG_node
-            n_MFG_nodes += 1
-            node_id_mapping[subnetwork_node_id] = (n_MFG_nodes, node_type)
+        if add_AG_node
+            n_AG_nodes += 1
+            node_id_mapping[subnetwork_node_id] = (n_AG_nodes, node_type)
         end
     end
 
-    # Add nodes in the MFG for nodes connected in the model to the source edges
+    # Add nodes in the AG for nodes connected in the model to the source edges
     # One of these nodes can be outside the subnetwork, as long as the edge
     # connects to the subnetwork
+    # Source edge mapping: AG source node ID => subnetwork source edge id
+    source_edge_mapping = Dict{Int, Int}()
     for source_edge_id in source_edge_ids
         subnetwork_node_id_1, subnetwork_node_id_2 = edge_ids_flow_inv[source_edge_id]
         if subnetwork_node_id_1 ∉ keys(node_id_mapping)
-            n_MFG_nodes += 1
-            node_id_mapping[subnetwork_node_id_1] = (n_MFG_nodes, :source)
+            n_AG_nodes += 1
+            node_id_mapping[subnetwork_node_id_1] = (n_AG_nodes, :source)
+            source_edge_mapping[n_AG_nodes] = source_edge_id
         else
             node_id_mapping[subnetwork_node_id_1][2] = :source
+            source_edge_mapping[n_AG_nodes] = source_edge_id
         end
         if subnetwork_node_id_2 ∉ keys(node_id_mapping)
-            n_MFG_nodes += 1
-            node_id_mapping[subnetwork_node_id_2] = (n_MFG_nodes, :junction)
+            n_AG_nodes += 1
+            node_id_mapping[subnetwork_node_id_2] = (n_AG_nodes, :junction)
         end
     end
 
-    # The MFG and its edge capacities
-    graph_max_flow = DiGraph(n_MFG_nodes)
-    capacity = spzeros(n_MFG_nodes, n_MFG_nodes)
+    # The AG and its edge capacities
+    graph_max_flow = DiGraph(n_AG_nodes)
+    capacity = spzeros(n_AG_nodes, n_AG_nodes)
 
-    # The ids of the subnetwork nodes that have an equivalent in the MFG
+    # The ids of the subnetwork nodes that have an equivalent in the AG
     subnetwork_node_ids_represented = keys(node_id_mapping)
 
-    # This loop finds MFG edges in several ways:
-    # - Between MFG nodes whose equivalent in the subnetwork are directly connected
-    # - Between MFG nodes whose equivalent in the subnetwork are connected
+    # This loop finds AG edges in several ways:
+    # - Between AG nodes whose equivalent in the subnetwork are directly connected
+    # - Between AG nodes whose equivalent in the subnetwork are connected
     #   with one or more non-junction nodes in between
-    MFG_edges_composite = Vector{Int}[]
+    AG_edges_composite = Vector{Int}[]
     for subnetwork_node_id in subnetwork_node_ids
         subnetwork_inneighbor_ids = inneighbors(graph_flow, subnetwork_node_id)
         subnetwork_outneighbor_ids = outneighbors(graph_flow, subnetwork_node_id)
@@ -98,102 +104,102 @@ function get_allocation_model(
         if subnetwork_node_id in subnetwork_node_ids_represented
             if subnetwork_node_id ∉ user.node_id
                 # Direct connections in the subnetwork between nodes that
-                # have an equivaent MFG graph node
+                # have an equivaent AG graph node
                 for subnetwork_inneighbor_id in subnetwork_inneighbor_ids
                     if subnetwork_inneighbor_id in subnetwork_node_ids_represented
-                        MFG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
-                        MFG_node_id_2 = node_id_mapping[subnetwork_inneighbor_id][1]
-                        add_edge!(graph_max_flow, MFG_node_id_2, MFG_node_id_1)
+                        AG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
+                        AG_node_id_2 = node_id_mapping[subnetwork_inneighbor_id][1]
+                        add_edge!(graph_max_flow, AG_node_id_2, AG_node_id_1)
                         # These direct connections cannot have capacity constraints
-                        capacity[MFG_node_id_2, MFG_node_id_1] = Inf
+                        capacity[AG_node_id_2, AG_node_id_1] = Inf
                     end
                 end
                 for subnetwork_outneighbor_id in subnetwork_outneighbor_ids
                     if subnetwork_outneighbor_id in subnetwork_node_ids_represented
-                        MFG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
-                        MFG_node_id_2 = node_id_mapping[subnetwork_outneighbor_id][1]
-                        add_edge!(graph_max_flow, MFG_node_id_1, MFG_node_id_2)
+                        AG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
+                        AG_node_id_2 = node_id_mapping[subnetwork_outneighbor_id][1]
+                        add_edge!(graph_max_flow, AG_node_id_1, AG_node_id_2)
                         if subnetwork_outneighbor_id in user.node_id
                             # Capacity depends on user demand at a given priority
-                            capacity[MFG_node_id_1, MFG_node_id_2] = Inf
+                            capacity[AG_node_id_1, AG_node_id_2] = Inf
                         else
                             # These direct connections cannot have capacity constraints
-                            capacity[MFG_node_id_1, MFG_node_id_2] = Inf
+                            capacity[AG_node_id_1, AG_node_id_2] = Inf
                         end
                     end
                 end
             end
         else
-            # Try to find an existing MFG composite edge to add the current subnetwork_node_id to
+            # Try to find an existing AG composite edge to add the current subnetwork_node_id to
             found_edge = false
-            for MFG_edge_composite in MFG_edges_composite
-                if MFG_edge_composite[1] in subnetwork_neighbor_ids
-                    pushfirst!(MFG_edge_composite, subnetwork_node_id)
+            for AG_edge_composite in AG_edges_composite
+                if AG_edge_composite[1] in subnetwork_neighbor_ids
+                    pushfirst!(AG_edge_composite, subnetwork_node_id)
                     found_edge = true
                     break
-                elseif MFG_edge_composite[end] in subnetwork_neighbor_ids
-                    push!(MFG_edge_composite, subnetwork_node_id)
+                elseif AG_edge_composite[end] in subnetwork_neighbor_ids
+                    push!(AG_edge_composite, subnetwork_node_id)
                     found_edge = true
                     break
                 end
             end
 
-            # Start a new MFG composite edge if no existing edge to append to was found
+            # Start a new AG composite edge if no existing edge to append to was found
             if !found_edge
-                push!(MFG_edges_composite, [subnetwork_node_id])
+                push!(AG_edges_composite, [subnetwork_node_id])
             end
         end
     end
 
-    # For the composite MFG edges:
-    # - Find out whether they are connected to MFG nodes on both ends
+    # For the composite AG edges:
+    # - Find out whether they are connected to AG nodes on both ends
     # - Compute their capacity
     # - Find out their allowed flow direction(s)
-    for MFG_edge_composite in MFG_edges_composite
-        # Find MFG node connected to this edge on the first end
-        MFG_node_id_1 = nothing
-        subnetwork_neighbors_side_1 = all_neighbors(graph_flow, MFG_edge_composite[1])
+    for AG_edge_composite in AG_edges_composite
+        # Find AG node connected to this edge on the first end
+        AG_node_id_1 = nothing
+        subnetwork_neighbors_side_1 = all_neighbors(graph_flow, AG_edge_composite[1])
         for subnetwork_neighbor_node_id in subnetwork_neighbors_side_1
             if subnetwork_neighbor_node_id in subnetwork_node_ids_represented
-                MFG_node_id_1 = node_id_mapping[subnetwork_neighbor_node_id][1]
-                pushfirst!(MFG_edge_composite, subnetwork_neighbor_node_id)
+                AG_node_id_1 = node_id_mapping[subnetwork_neighbor_node_id][1]
+                pushfirst!(AG_edge_composite, subnetwork_neighbor_node_id)
                 break
             end
         end
 
         # No connection to a max flow node found on this side, so edge is discarded
-        if isnothing(MFG_node_id_1)
+        if isnothing(AG_node_id_1)
             continue
         end
 
-        # Find MFG node connected to this edge on the second end
-        MFG_node_id_2 = nothing
-        subnetwork_neighbors_side_2 = all_neighbors(graph_flow, MFG_edge_composite[end])
+        # Find AG node connected to this edge on the second end
+        AG_node_id_2 = nothing
+        subnetwork_neighbors_side_2 = all_neighbors(graph_flow, AG_edge_composite[end])
         for subnetwork_neighbor_node_id in subnetwork_neighbors_side_2
             if subnetwork_neighbor_node_id in subnetwork_node_ids_represented
-                MFG_node_id_2 = node_id_mapping[subnetwork_neighbor_node_id][1]
-                # Make sure this MFG node is distinct from the other one
-                if MFG_node_id_2 ≠ MFG_node_id_1
-                    push!(MFG_edge_composite, subnetwork_neighbor_node_id)
+                AG_node_id_2 = node_id_mapping[subnetwork_neighbor_node_id][1]
+                # Make sure this AG node is distinct from the other one
+                if AG_node_id_2 ≠ AG_node_id_1
+                    push!(AG_edge_composite, subnetwork_neighbor_node_id)
                     break
                 end
             end
         end
 
-        # No connection to MFG node found on this side, so edge is discarded
-        if isnothing(MFG_node_id_2)
+        # No connection to AG node found on this side, so edge is discarded
+        if isnothing(AG_node_id_2)
             continue
         end
 
-        # Find capacity of this composite MFG edge
+        # Find capacity of this composite AG edge
         positive_flow = true
         negative_flow = true
-        MFG_edge_capacity = Inf
-        for (i, subnetwork_node_id) in enumerate(MFG_edge_composite)
-            # The start and end subnetwork nodes of the composite MFG
-            # edge are now nodes that have an equivalent in the MFG graph,
+        AG_edge_capacity = Inf
+        for (i, subnetwork_node_id) in enumerate(AG_edge_composite)
+            # The start and end subnetwork nodes of the composite AG
+            # edge are now nodes that have an equivalent in the AG graph,
             # these do not constrain the composite edge capacity
-            if i == 1 || i == length(MFG_edge_composite)
+            if i == 1 || i == length(AG_edge_composite)
                 continue
             end
             node_type = lookup[subnetwork_node_id]
@@ -202,8 +208,7 @@ function get_allocation_model(
             # Find flow constraints
             if is_flow_constraining(node)
                 model_node_idx = Ribasim.findsorted(node.node_id, subnetwork_node_id)
-                MFG_edge_capacity =
-                    min(MFG_edge_capacity, node.max_flow_rate[model_node_idx])
+                AG_edge_capacity = min(AG_edge_capacity, node.max_flow_rate[model_node_idx])
             end
 
             # Find flow direction constraints
@@ -211,32 +216,32 @@ function get_allocation_model(
                 subnetwork_inneighbor_node_id =
                     only(inneighbors(graph_flow, subnetwork_node_id))
 
-                if subnetwork_inneighbor_node_id == MFG_edge_composite[i - 1]
+                if subnetwork_inneighbor_node_id == AG_edge_composite[i - 1]
                     negative_flow = false
-                elseif subnetwork_inneighbor_node_id == MFG_edge_composite[i + 1]
+                elseif subnetwork_inneighbor_node_id == AG_edge_composite[i + 1]
                     positive_flow = false
                 end
             end
         end
 
-        # Add composite MFG edge(s)
+        # Add composite AG edge(s)
         if positive_flow
-            add_edge!(graph_max_flow, MFG_node_id_1, MFG_node_id_2)
-            capacity[MFG_node_id_1, MFG_node_id_2] = MFG_edge_capacity
+            add_edge!(graph_max_flow, AG_node_id_1, AG_node_id_2)
+            capacity[AG_node_id_1, AG_node_id_2] = AG_edge_capacity
         end
 
         if negative_flow
-            add_edge!(graph_max_flow, MFG_node_id_2, MFG_node_id_1)
-            capacity[MFG_node_id_2, MFG_node_id_1] = MFG_edge_capacity
+            add_edge!(graph_max_flow, AG_node_id_2, AG_node_id_1)
+            capacity[AG_node_id_2, AG_node_id_1] = AG_edge_capacity
         end
     end
 
     # The source nodes must only have one outneighbor
-    for (MFG_node_id, MFG_node_type) in values(node_id_mapping)
-        if MFG_node_type == :source
+    for (AG_node_id, AG_node_type) in values(node_id_mapping)
+        if AG_node_type == :source
             if !(
-                (length(inneighbors(graph_max_flow, MFG_node_id)) == 0) &&
-                (length(outneighbors(graph_max_flow, MFG_node_id)) == 1)
+                (length(inneighbors(graph_max_flow, AG_node_id)) == 0) &&
+                (length(outneighbors(graph_max_flow, AG_node_id)) == 1)
             )
                 @error "Sources nodes in the max flow graph must have no inneighbors and 1 outneighbor."
                 errors = true
@@ -244,24 +249,24 @@ function get_allocation_model(
         end
     end
 
-    # Invert the node id mapping to easily translate from MFG nodes to subnetwork nodes
+    # Invert the node id mapping to easily translate from AG nodes to subnetwork nodes
     node_id_mapping_inverse = Dict{Int, Tuple{Int, Symbol}}()
 
-    for (subnetwork_node_id, (MFG_node_id, node_type)) in node_id_mapping
-        node_id_mapping_inverse[MFG_node_id] = (subnetwork_node_id, node_type)
+    for (subnetwork_node_id, (AG_node_id, node_type)) in node_id_mapping
+        node_id_mapping_inverse[AG_node_id] = (subnetwork_node_id, node_type)
     end
 
     # Used for updating user demand and source flow constraints
-    MFG_edges = collect(edges(graph_max_flow))
-    MFG_edge_ids_user_demand = Int[]
-    MFG_edge_ids_source = Int[]
-    for (i, MFG_edge) in enumerate(MFG_edges)
-        MFG_node_type_dst = node_id_mapping_inverse[MFG_edge.dst][2]
-        MFG_node_type_src = node_id_mapping_inverse[MFG_edge.src][2]
-        if MFG_node_type_dst == :user
-            push!(MFG_edge_ids_user_demand, i)
-        elseif MFG_node_type_src == :source
-            push!(MFG_edge_ids_source, i)
+    AG_edges = collect(edges(graph_max_flow))
+    AG_edge_ids_user_demand = Int[]
+    AG_edge_ids_source = Int[]
+    for (i, AG_edge) in enumerate(AG_edges)
+        AG_node_type_dst = node_id_mapping_inverse[AG_edge.dst][2]
+        AG_node_type_src = node_id_mapping_inverse[AG_edge.src][2]
+        if AG_node_type_dst == :user
+            push!(AG_edge_ids_user_demand, i)
+        elseif AG_node_type_src == :source
+            push!(AG_edge_ids_source, i)
         end
     end
 
@@ -269,101 +274,113 @@ function get_allocation_model(
     model = JuMP.Model(HiGHS.Optimizer)
 
     # The flow variables
-    # The variable indices are the MFG edge IDs.
-    n_flows = length(MFG_edges)
+    # The variable indices are the AG edge IDs.
+    n_flows = length(AG_edges)
     model[:F] = @variable(model, F[1:n_flows] >= 0.0)
 
     # The user allocation variables
-    # The variable name indices are the MFG user node IDs
+    # The variable name indices are the AG user node IDs
     # The variable indices are the priorities.
-    for MFG_edge_id_user_demand in MFG_edge_ids_user_demand
-        MFG_node_id_user = MFG_edges[MFG_edge_id_user_demand].dst
-        base_name = "A_user_$MFG_node_id_user"
+    for AG_edge_id_user_demand in AG_edge_ids_user_demand
+        AG_node_id_user = AG_edges[AG_edge_id_user_demand].dst
+        base_name = "A_user_$AG_node_id_user"
         model[Symbol(base_name)] =
             @variable(model, [1:length(user.priorities)], base_name = base_name)
     end
 
     # The basin allocation variables
-    # The variable indices are the MFG basin node IDs
-    MFG_node_ids_basin = sort([
-        MFG_node_id for
-        (MFG_node_id, node_type) in values(node_id_mapping) if node_type == :basin
+    # The variable indices are the AG basin node IDs
+    AG_node_ids_basin = sort([
+        AG_node_id for
+        (AG_node_id, node_type) in values(node_id_mapping) if node_type == :basin
     ])
-    @variable(model, A_basin[i = MFG_node_ids_basin] >= 0.0)
+    @variable(model, A_basin[i = AG_node_ids_basin] >= 0.0)
 
     # The user allocation constraints
-    for MFG_edge_id_user_demand in MFG_edge_ids_user_demand
-        MFG_node_id_user = MFG_edges[MFG_edge_id_user_demand].dst
-        base_name = "A_user_$MFG_node_id_user"
+    for AG_edge_id_user_demand in AG_edge_ids_user_demand
+        AG_node_id_user = AG_edges[AG_edge_id_user_demand].dst
+        base_name = "A_user_$AG_node_id_user"
         A_user = model[Symbol(base_name)]
+        # Sum of allocations to user is total flow to user
         @constraint(
             model,
-            sum(A_user) == F[MFG_edge_id_user_demand],
-            base_name = "allocation_sum[$MFG_node_id_user]"
+            sum(A_user) == F[AG_edge_id_user_demand],
+            base_name = "allocation_sum[$AG_node_id_user]"
         )
+        # Allocation flows are non-negative
         @constraint(model, [p = 1:length(user.priorities)], A_user[p] >= 0)
+        # Allocation flows are bounded from above by demands
+        base_name = "demand_user_$AG_node_id_user"
+        model[Symbol(base_name)] = @constraint(
+            model,
+            [p = 1:length(user.priorities)],
+            A_user[p] <= 0,
+            base_name = base_name
+        )
     end
 
     # The basin allocation constraints (actual threshold values will be set before
     # each allocation solve)
-    # The constraint indices are the MFG basin node IDs
+    # The constraint indices are the AG basin node IDs
     model[:basin_allocation] = @constraint(
         model,
-        [i = MFG_node_ids_basin],
-        A_basin[i] <= 1.0,
+        [i = AG_node_ids_basin],
+        A_basin[i] <= 0.0,
         base_name = "basin_allocation"
     )
 
     # The capacity constraints
-    # The constraint indices are the MFG edge IDs
-    MFG_edge_ids_finite_capacity = Int[]
-    for (i, MFG_edge) in enumerate(MFG_edges)
-        if !isinf(capacity[MFG_edge.src, MFG_edge.dst])
-            push!(MFG_edge_ids_finite_capacity, i)
+    # The constraint indices are the AG edge IDs
+    AG_edge_ids_finite_capacity = Int[]
+    for (i, AG_edge) in enumerate(AG_edges)
+        if !isinf(capacity[AG_edge.src, AG_edge.dst])
+            push!(AG_edge_ids_finite_capacity, i)
         end
     end
     model[:capacity] = @constraint(
         model,
-        [i = MFG_edge_ids_finite_capacity],
-        F[i] <= capacity[MFG_edges[i].src, MFG_edges[i].dst],
+        [i = AG_edge_ids_finite_capacity],
+        F[i] <= capacity[AG_edges[i].src, AG_edges[i].dst],
         base_name = "capacity"
     )
 
     # The source constraints (actual threshold values will be set before
     # each allocation solve)
-    # The constraint indices are the MFG source edge IDs
-    model[:source] =
-        @constraint(model, [i = MFG_edge_ids_source], F[i] <= 1.0, base_name = "source")
+    # The constraint indices are the AG source node IDs
+    model[:source] = @constraint(
+        model,
+        [i = keys(source_edge_mapping)],
+        F[source_edge_mapping[i]] <= 0.0,
+        base_name = "source"
+    )
 
     # The user return flow constraints
-    # The constraint indices are MFG user node IDs
-    MFG_node_ids_user = [
-        MFG_node_id for
-        (MFG_node_id, node_type) in values(node_id_mapping) if node_type == :user
+    # The constraint indices are AG user node IDs
+    AG_node_ids_user = [
+        AG_node_id for
+        (AG_node_id, node_type) in values(node_id_mapping) if node_type == :user
     ]
-    MFG_node_inedge_ids = Dict(i => Int[] for i in 1:n_MFG_nodes)
-    MFG_node_outedge_ids = Dict(i => Int[] for i in 1:n_MFG_nodes)
-    for (i, MFG_edge) in enumerate(MFG_edges)
-        push!(MFG_node_inedge_ids[MFG_edge.dst], i)
-        push!(MFG_node_outedge_ids[MFG_edge.src], i)
+    AG_node_inedge_ids = Dict(i => Int[] for i in 1:n_AG_nodes)
+    AG_node_outedge_ids = Dict(i => Int[] for i in 1:n_AG_nodes)
+    for (i, AG_edge) in enumerate(AG_edges)
+        push!(AG_node_inedge_ids[AG_edge.dst], i)
+        push!(AG_node_outedge_ids[AG_edge.src], i)
     end
     model[:return_flow] = @constraint(
         model,
-        [i = MFG_node_ids_user],
-        F[only(MFG_node_inedge_ids[i])] ==
+        [i = AG_node_ids_user],
+        F[only(AG_node_outedge_ids[i])] ==
         user.return_factor[findsorted(user.node_id, node_id_mapping_inverse[i][1])] *
-        F[only(MFG_node_outedge_ids[i])],
+        F[only(AG_node_inedge_ids[i])],
         base_name = "return_flow",
     )
 
     # The flow conservation constraints
-    # The constraint indices are MFG user node IDs
-    println(MFG_node_inedge_ids)
-    println(MFG_node_outedge_ids)
+    # The constraint indices are AG user node IDs
     model[:flow_conservation] = @constraint(
         model,
-        [i = MFG_node_ids_basin],
-        sum([F[MFG_edge_id] for MFG_edge_id in MFG_node_outedge_ids[i]]) <= sum([F[MFG_edge_id] for MFG_edge_id in MFG_node_inedge_ids[i]]),
+        [i = AG_node_ids_basin],
+        sum([F[AG_edge_id] for AG_edge_id in AG_node_outedge_ids[i]]) <= sum([F[AG_edge_id] for AG_edge_id in AG_node_inedge_ids[i]]),
         base_name = "flow_conservation",
     )
 
@@ -371,9 +388,8 @@ function get_allocation_model(
 
     # The objective function
     allocation_user_weights = 1 ./ (2 .^ (1:length(user.priorities)))
-    allocation_user_variables = [
-        model[Symbol("A_user_$MFG_node_id_user")] for MFG_node_id_user in MFG_node_ids_user
-    ]
+    allocation_user_variables =
+        [model[Symbol("A_user_$AG_node_id_user")] for AG_node_id_user in AG_node_ids_user]
     @objective(
         model,
         Max,
@@ -387,6 +403,7 @@ function get_allocation_model(
         subnetwork_node_ids,
         node_id_mapping,
         node_id_mapping_inverse,
+        source_edge_mapping,
         graph_max_flow,
         capacity,
         model,
@@ -394,48 +411,60 @@ function get_allocation_model(
     )
 end
 
-function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
-    (;
-        MFG_edges,
-        MFG_edge_ids_user_demand,
-        MFG_edge_ids_source,
-        node_id_mapping_inverse,
-        model,
-    ) = allocation_model
+function allocate!(
+    p::Parameters,
+    allocation_model::AllocationModel,
+    t::Float64;
+    return_flows::Bool = false,
+)::Union{Nothing, Vector{Float64}}
+    (; node_id_mapping, source_edge_mapping, model) = allocation_model
     (; user, connectivity) = p
     (; priorities, demand) = user
-    (; flow) = connectivity
+    (; flow, edge_ids_flow_inv) = connectivity
 
+    # TODO: It is assumed here that the allocation procedure does not have to be differentiated.
+    # However, the allocation depends on the model state so that is not true. I have a suspicion
+    # that HiGHS will not work together with ForwardDiff.jl, so we might need an LP solver that
+    # is compatible with the AD package that we use.
     flow = get_tmp(flow, 0)
 
-    # Set the source capacities
-    source_capacity_sum = 0.0
-    for MFG_edge_id_source in MFG_edge_ids_source
-        MFG_edge_source = MFG_edges[MFG_edge_id_source]
-        subnetwork_node_id_source = node_id_mapping_inverse[MFG_edge_source.src][1]
-        subnetwork_node_id_dst = node_id_mapping_inverse[MFG_edge_source.dst][1]
-        source_capacity = flow[subnetwork_node_id_source, subnetwork_node_id_dst]
-        source_capacity_sum += source_capacity
-        constraint_source_capacity = model[:source][MFG_edge_id_source]
-        set_normalized_rhs(constraint_source_capacity, source_capacity)
-    end
-
-    for p_idx in eachindex(priorities)
-        # Set the demand capacities
-        demand_p_sum = 0.0
-        for MFG_edge_id_user_demand in MFG_edge_ids_user_demand
-            MFG_node_id_user = MFG_edges[MFG_edge_id_user_demand].dst
-            subnetwork_node_id_user = node_id_mapping_inverse[MFG_node_id_user][1]
-            user_idx = findsorted(user.node_id, subnetwork_node_id_user)
-            demand_p = demand[user_idx][p_idx](t)
-            demand_p_sum += demand_p
-            constraint_user_demand = model[:demand][MFG_edge_id_user_demand]
-            set_normalized_rhs(constraint_user_demand, demand_p)
+    for (subnetwork_node_id, (AG_node_id, AG_node_type)) in node_id_mapping
+        if AG_node_type == :user
+            # Set the user demands at the current time as the upper bound to
+            # the allocations to the users
+            node_idx = findsorted(user.node_id, subnetwork_node_id)
+            demand = user.demand[node_idx]
+            base_name = "demand_user_$AG_node_id"
+            constraints_demand = model[Symbol(base_name)]
+            for priority_idx in eachindex(priorities)
+                set_normalized_rhs(
+                    constraints_demand[priority_idx],
+                    demand[priority_idx](t),
+                )
+            end
+        elseif AG_node_type == :source
+            # Set the source flows as the source flow upper bounds in
+            # the allocation model
+            subnetwork_edge = source_edge_mapping[AG_node_id]
+            subnetwork_node_ids = edge_ids_flow_inv[subnetwork_edge]
+            constraint_source = model[:source][AG_node_id]
+            set_normalized_rhs(constraint_source, flow[subnetwork_node_ids])
+        elseif AG_node_type == :basin
+            # TODO: Compute basin flow from vertical fluxes and basin volume.
+            # Set as basin demand if the net flow is negative, set as source
+            # in the flow_conservation constraints if the net flow is positive.
+        elseif AG_node_type == :junction
+            nothing
+        else
+            error("Got unsupported allocation graph node type $AG_node_type.")
         end
-
-        optimize!(model)
-
-        # Set the vertical flux term
     end
-    return nothing
+
+    optimize!(model)
+
+    if return_flows
+        return value.(model[:F])
+    else
+        return nothing
+    end
 end

@@ -18,7 +18,11 @@ The allocation problem is solved per subgraph, where a subgraph is given by a su
 
 ### Source flows
 
-Sources are indicated by edges. That is, if $(i,j) \in E$ is indicated as a source, then $Q_{i,j}$ is treated as a source flow in the allocation problem.
+Sources are indicated a set of edges in the subnetwork
+$$
+E_S^\text{source} \subset \left(S \times S\right) \cap E.
+$$
+That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ is treated as a source flow in the allocation problem.
 
 ### User demands
 
@@ -58,7 +62,7 @@ Both fractional flow nodes and user nodes dictate proportional relationships bet
 
 A new graph is created from the subnetwork, which we call the allocation graph. To indicate the difference between subnetwork data and allocation graph data, the allocation graph data is denoted with a hat. The allocation graph consists of:
 
-- Nodes $\hat{V_S}$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node Ds to allocation graph node IDs.
+- Nodes $\hat{V_S}$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node Ds to allocation graph node IDs. Unless specified otherwise, we assume this relationship between index symbols that appear both with and without a hat.
 - Edges $\hat{E_S}$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
 
 For notational convenience, we use the notation
@@ -107,6 +111,11 @@ This is a linear combination of all allocations, where allocations to basins get
 
 ### The optimization variable constraints
 
+- Source flows: for the source edges we have that
+$$
+F_{\hat{i}\hat{j}} \le Q_{ij} \quad \forall (i,j) \in E_S^\text{source}.
+$$
+Note that we do not require equality here; not all source flow has to be used.
 - Flow conservation: For the basins in the allocation graph we have that
 $$
     \sum_{\hat{j}=1}^{\hat{n}} F_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F_{\hat{i}\hat{k}} + \Phi_{\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
@@ -114,7 +123,7 @@ $$  {#eq-flowconservationconstraint}
 Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
 $\Phi_{\hat{k}}$ is the local water supply of the basins:
 $$
-    \Phi_{\hat{k}} = \max\left(\phi_k(t) + \frac{u_k(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}, 0.0 \right), \quad m_S(k) = \hat{k}.
+    \Phi_{\hat{k}} = \max\left(\phi_k(t) + \frac{u_k(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}, 0.0 \right).
 $$ {#eq-basinsourceflow}
 Here the first term denotes the vertical fluxes and the second term the flow that can be supplied by the water in the basin above its minimum level, where $\Delta t_\text{alloc}$ is the allocation solve timestep.
 
@@ -128,27 +137,29 @@ $$
     F_{\hat{i}\hat{k}} = r_k \cdot F_{\hat{k}\hat{j}}\\
     \quad \forall\hat{k} \in \hat{U}_s, \\
     \hat{V}^{\text{in}}_S(\hat{k}) = \{\hat{i}\},\\
-     \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}, \\
-     m_S(k) = \hat{k}.
+     \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}.
 \end{align}
 $$ {#eq-returnflowconstraint}
 Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
 - User allocation: The flow over the edge to the user is equal to the sum of the allocations to the user:
 $$
-    F_{\hat{i}\hat{k}} = \sum_{p=1}^{p_\max} A^\text{user}_{\hat{k},p}, \quad \forall \hat{k} \in \hat{U_S}, \hat{V}^{\text{out}}_s(\hat{k}) = \{\hat{i}\}.
+    F_{\hat{i}\hat{k}} = \sum_{p=1}^{p_\max} A^\text{user}_{\hat{k},p}, \quad \forall \hat{k} \in \hat{U}_S, \hat{V}^{\text{out}}_s(\hat{k}) = \{\hat{i}\}.
 $$ {#eq-userallocationconstraint}
 Here we use that each user has an unique out-edge.
+- User demand: what is allocated to the user is bounded above by the user demand:
+$$
+    A_{\hat{i},p}^\text{user} \leq d_i^p(t) \quad \forall\hat{i} \in \hat{U}_S, \; p = 1,\ldots,p_\max.
+$$
 - Basin allocation: If the flow supplied by a basin (as determined in @eq-basinsourceflow) is negative, it is a demand:
 $$
-A^\text{basin}_{\hat{i}} = \max\left(-\left(\phi_i(t) + \frac{u_i(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}\right), 0.0 \right), \quad \forall \hat{i} \in \hat{B}_S, \;\; \hat{i} = m_S(i).
+A^\text{basin}_{\hat{i}} = \max\left(-\left(\phi_i(t) + \frac{u_i(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}\right), 0.0 \right), \quad \forall \hat{i} \in \hat{B}_S.
 $$ {#eq-basinallocationconstraint}
 - Fractinal flow: Let $\hat{L}_S \subset \hat{V}_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
 \begin{align}
     F_{\hat{i}\hat{j}} = f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \\
     \forall \hat{i} \in \hat{L}_S, \\
-    \hat{j} \in \hat{V}_S^\text{out}(\hat{i}), \\
-    \hat{j} = m_S(j).
+    \hat{j} \in \hat{V}_S^\text{out}(\hat{i}).
 \end{align}
 $$ {#eq-fractionalflowconstraint}
 
