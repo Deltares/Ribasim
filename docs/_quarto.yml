@@ -49,6 +49,7 @@ website:
         - contribute/core.qmd
         - contribute/python.qmd
         - contribute/addnode.qmd
+        - contribute/release.qmd
 
 format:
   html:
