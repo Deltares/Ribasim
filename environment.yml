@@ -20,7 +20,7 @@ dependencies:
     - quartodoc
   - pre-commit
   - pyarrow
-  - pydantic=1
+  - pydantic
   - pyogrio
   - pytest
   - pytest-cov

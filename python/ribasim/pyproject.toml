@@ -19,7 +19,7 @@ dependencies = [
     "pandas < 2.1",
     "pandera != 0.16.0",
     "pyarrow",
-    "pydantic ~= 1.0",
+    "pydantic",
     "pyogrio",
     "shapely >= 2.0",
     "tomli",
