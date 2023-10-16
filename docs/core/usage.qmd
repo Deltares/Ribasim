@@ -9,8 +9,7 @@ archive, that must be downloaded and unpacked. It can be placed anywhere, howeve
 important that the contents of the zip file are kept together in a directory. The Ribasim
 CLI executable is in the `bin` directory.
 
-The latest build can be downloaded here: [ribasim_cli.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip).
-Currently only Windows builds are available.
+To download `ribasim_cli.zip`, see the [download section](../index.qmd#sec-download).
 
 To check whether the installation was performed successfully, run `ribasim` with no
 arguments in the command line.
