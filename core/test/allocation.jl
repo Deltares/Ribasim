@@ -1,5 +1,6 @@
 import Ribasim
 using SQLite
+using JuMP: value
 
 @testset "Allocation solve" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/subnetwork.toml")
