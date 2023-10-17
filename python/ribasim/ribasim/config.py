@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Output(BaseModel):
@@ -107,79 +107,39 @@ class Config(BaseModel):
     input_dir: str = "."
     output_dir: str = "."
     geopackage: str
-    output: Output = Field(
-        default_factory=lambda: Output.parse_obj(
-            {
-                "basin": "output/basin.arrow",
-                "flow": "output/flow.arrow",
-                "control": "output/control.arrow",
-                "outstate": None,
-                "compression": "zstd",
-                "compression_level": 6,
-            }
-        )
-    )
-    solver: Solver = Field(
-        default_factory=lambda: Solver.parse_obj(
-            {
-                "algorithm": "QNDF",
-                "saveat": [],
-                "adaptive": True,
-                "dt": None,
-                "dtmin": None,
-                "dtmax": None,
-                "force_dtmin": False,
-                "abstol": 1e-06,
-                "reltol": 0.001,
-                "maxiters": 1000000000,
-                "sparse": True,
-                "autodiff": True,
-            }
-        )
-    )
-    logging: Logging = Field(
-        default_factory=lambda: Logging.parse_obj(
-            {"verbosity": {"level": 0}, "timing": False}
-        )
-    )
-    terminal: Terminal = Field(
-        default_factory=lambda: Terminal.parse_obj({"static": None})
-    )
-    pid_control: PidControl = Field(
-        default_factory=lambda: PidControl.parse_obj({"static": None, "time": None})
-    )
-    level_boundary: LevelBoundary = Field(
-        default_factory=lambda: LevelBoundary.parse_obj({"static": None, "time": None})
-    )
-    pump: Pump = Field(default_factory=lambda: Pump.parse_obj({"static": None}))
-    tabulated_rating_curve: TabulatedRatingCurve = Field(
-        default_factory=lambda: TabulatedRatingCurve.parse_obj(
-            {"static": None, "time": None}
-        )
-    )
-    user: User = Field(
-        default_factory=lambda: User.parse_obj({"static": None, "time": None})
-    )
-    flow_boundary: FlowBoundary = Field(
-        default_factory=lambda: FlowBoundary.parse_obj({"static": None, "time": None})
-    )
-    basin: Basin = Field(
-        default_factory=lambda: Basin.parse_obj(
-            {"profile": None, "state": None, "static": None, "time": None}
-        )
-    )
-    manning_resistance: ManningResistance = Field(
-        default_factory=lambda: ManningResistance.parse_obj({"static": None})
-    )
-    discrete_control: DiscreteControl = Field(
-        default_factory=lambda: DiscreteControl.parse_obj(
-            {"condition": None, "logic": None}
-        )
-    )
-    outlet: Outlet = Field(default_factory=lambda: Outlet.parse_obj({"static": None}))
-    linear_resistance: LinearResistance = Field(
-        default_factory=lambda: LinearResistance.parse_obj({"static": None})
-    )
-    fractional_flow: FractionalFlow = Field(
-        default_factory=lambda: FractionalFlow.parse_obj({"static": None})
-    )
+    output: Output = {
+        "basin": "output/basin.arrow",
+        "flow": "output/flow.arrow",
+        "control": "output/control.arrow",
+        "outstate": None,
+        "compression": "zstd",
+        "compression_level": 6,
+    }
+    solver: Solver = {
+        "algorithm": "QNDF",
+        "saveat": [],
+        "adaptive": True,
+        "dt": None,
+        "dtmin": None,
+        "dtmax": None,
+        "force_dtmin": False,
+        "abstol": 1e-06,
+        "reltol": 0.001,
+        "maxiters": 1000000000,
+        "sparse": True,
+        "autodiff": True,
+    }
+    logging: Logging = {"verbosity": {"level": 0}, "timing": False}
+    terminal: Terminal = {"static": None}
+    pid_control: PidControl = {"static": None, "time": None}
+    level_boundary: LevelBoundary = {"static": None, "time": None}
+    pump: Pump = {"static": None}
+    tabulated_rating_curve: TabulatedRatingCurve = {"static": None, "time": None}
+    user: User = {"static": None, "time": None}
+    flow_boundary: FlowBoundary = {"static": None, "time": None}
+    basin: Basin = {"profile": None, "state": None, "static": None, "time": None}
+    manning_resistance: ManningResistance = {"static": None}
+    discrete_control: DiscreteControl = {"condition": None, "logic": None}
+    outlet: Outlet = {"static": None}
+    linear_resistance: LinearResistance = {"static": None}
+    fractional_flow: FractionalFlow = {"static": None}

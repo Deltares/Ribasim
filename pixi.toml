@@ -71,8 +71,8 @@ tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 generate-schema = "julia --project=docs docs/gen_schema.jl"
 generate-python = """\
-    datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py && \
-    datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py"""
+    datamodel-codegen --use-title-as-name --target-python-version=3.9 --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output-model-type=pydantic_v2.BaseModel --output python/ribasim/ribasim/models.py && \
+    datamodel-codegen --use-title-as-name --target-python-version=3.9 --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/Config.schema.json --output-model-type=pydantic_v2.BaseModel --output python/ribasim/ribasim/config.py"""
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 
 [dependencies]
