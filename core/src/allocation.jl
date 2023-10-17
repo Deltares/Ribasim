@@ -447,12 +447,7 @@ function get_allocation_model(
     )
 end
 
-function allocate!(
-    p::Parameters,
-    allocation_model::AllocationModel,
-    t::Float64;
-    return_flows::Bool = false,
-)::Union{Nothing, Vector{Float64}}
+function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64;)::Nothing
     (; node_id_mapping, source_edge_mapping, model) = allocation_model
     (; user, connectivity) = p
     (; priorities, demand) = user
@@ -498,9 +493,11 @@ function allocate!(
 
     optimize!(model)
 
-    if return_flows
-        return value.(model[:F])
-    else
-        return nothing
+    for (subnetwork_node_id, (AG_node_id, AG_node_type)) in node_id_mapping
+        if AG_node_type == :user
+            user_idx = findsorted(user.node_id, subnetwork_node_id)
+            base_name = "A_user_$AG_node_id"
+            user.allocated[user_idx] .= value.(model[Symbol(base_name)])
+        end
     end
 end
