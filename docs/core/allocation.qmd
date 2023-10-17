@@ -28,11 +28,11 @@ That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ is treated as a source 
 
 The subnetwork contains a subset of user nodes $U_S \subset S$, who all have time varying demands over various priorities $p$:
 $$
-    d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_\max.
+    d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}.
 $$
 
 :::{.callout-note}
-On this page we assume that the priorities are given by all integers from $1$ to some $p_\max \in \mathbb{N}$. However, in the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
+On this page we assume that the priorities are given by all integers from $1$ to some $p_{\max} \in \mathbb{N}$. However, in the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
 :::
 
 ### Vertical fluxes and local storage
@@ -168,5 +168,11 @@ $$ {#eq-fractionalflowconstraint}
 :::{.callout-note}
 Note that $\Phi_{\hat{k}}$ can become negative, in which case @eq-flowconservationconstraint becomes impossible to satisfy. What to do in this case?
 :::
+
+## Final notes on the allocation problem
+
+### Users using their own return flow
+
+If not explicitly avoided, users can use their own return flow in this allocation problem formulation. Therefore, Return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation graph from the user outflow node back to the user.
 
 # Solving the allocation problem

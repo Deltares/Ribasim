@@ -5,6 +5,26 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
 
+"""Find out whether a path exists between a start node and end node in the given graph."""
+function path_exists(graph::DiGraph, start_node_id::Int, end_node_id::Int)::Bool
+    node_ids_visited = Set{Int}()
+    stack = [start_node_id]
+
+    while !isempty(stack)
+        current_node_id = pop!(stack)
+        if current_node_id == end_node_id
+            return true
+        end
+        if !(current_node_id in node_ids_visited)
+            push!(node_ids_visited, current_node_id)
+            for outneighbor_node_id in outneighbors(graph, current_node_id)
+                push!(stack, outneighbor_node_id)
+            end
+        end
+    end
+    return false
+end
+
 """
 Construct the JuMP.jl model for allocation.
 
@@ -85,7 +105,7 @@ function get_allocation_model(
     end
 
     # The AG and its edge capacities
-    graph_max_flow = DiGraph(n_AG_nodes)
+    graph_allocation = DiGraph(n_AG_nodes)
     capacity = spzeros(n_AG_nodes, n_AG_nodes)
 
     # The ids of the subnetwork nodes that have an equivalent in the AG
@@ -109,7 +129,7 @@ function get_allocation_model(
                     if subnetwork_inneighbor_id in subnetwork_node_ids_represented
                         AG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
                         AG_node_id_2 = node_id_mapping[subnetwork_inneighbor_id][1]
-                        add_edge!(graph_max_flow, AG_node_id_2, AG_node_id_1)
+                        add_edge!(graph_allocation, AG_node_id_2, AG_node_id_1)
                         # These direct connections cannot have capacity constraints
                         capacity[AG_node_id_2, AG_node_id_1] = Inf
                     end
@@ -118,7 +138,7 @@ function get_allocation_model(
                     if subnetwork_outneighbor_id in subnetwork_node_ids_represented
                         AG_node_id_1 = node_id_mapping[subnetwork_node_id][1]
                         AG_node_id_2 = node_id_mapping[subnetwork_outneighbor_id][1]
-                        add_edge!(graph_max_flow, AG_node_id_1, AG_node_id_2)
+                        add_edge!(graph_allocation, AG_node_id_1, AG_node_id_2)
                         if subnetwork_outneighbor_id in user.node_id
                             # Capacity depends on user demand at a given priority
                             capacity[AG_node_id_1, AG_node_id_2] = Inf
@@ -226,12 +246,12 @@ function get_allocation_model(
 
         # Add composite AG edge(s)
         if positive_flow
-            add_edge!(graph_max_flow, AG_node_id_1, AG_node_id_2)
+            add_edge!(graph_allocation, AG_node_id_1, AG_node_id_2)
             capacity[AG_node_id_1, AG_node_id_2] = AG_edge_capacity
         end
 
         if negative_flow
-            add_edge!(graph_max_flow, AG_node_id_2, AG_node_id_1)
+            add_edge!(graph_allocation, AG_node_id_2, AG_node_id_1)
             capacity[AG_node_id_2, AG_node_id_1] = AG_edge_capacity
         end
     end
@@ -240,8 +260,8 @@ function get_allocation_model(
     for (AG_node_id, AG_node_type) in values(node_id_mapping)
         if AG_node_type == :source
             if !(
-                (length(inneighbors(graph_max_flow, AG_node_id)) == 0) &&
-                (length(outneighbors(graph_max_flow, AG_node_id)) == 1)
+                (length(inneighbors(graph_allocation, AG_node_id)) == 0) &&
+                (length(outneighbors(graph_allocation, AG_node_id)) == 1)
             )
                 @error "Sources nodes in the max flow graph must have no inneighbors and 1 outneighbor."
                 errors = true
@@ -256,8 +276,25 @@ function get_allocation_model(
         node_id_mapping_inverse[AG_node_id] = (subnetwork_node_id, node_type)
     end
 
+    # Remove user return flow edges that are upstream of the user itself
+    AG_node_ids_user = [
+        AG_node_id for
+        (AG_node_id, node_type) in values(node_id_mapping) if node_type == :user
+    ]
+    AG_node_ids_user_with_returnflow = Int[]
+    for AG_node_id_user in AG_node_ids_user
+        AG_node_id_return_flow = only(outneighbors(graph_allocation, AG_node_id_user))
+        if path_exists(graph_allocation, AG_node_id_return_flow, AG_node_id_user)
+            rem_edge!(graph_allocation, AG_node_id_user, AG_node_id_return_flow)
+            # TODO: Add to logging?
+            @warn "The outflow of user #$(node_id_mapping_inverse[AG_node_id_user][1]) is upstream of this user itself and thus ignored."
+        else
+            push!(AG_node_ids_uer_with_returnflow, AG_node_id_user)
+        end
+    end
+
     # Used for updating user demand and source flow constraints
-    AG_edges = collect(edges(graph_max_flow))
+    AG_edges = collect(edges(graph_allocation))
     AG_edge_ids_user_demand = Int[]
     AG_edge_ids_source = Int[]
     for (i, AG_edge) in enumerate(AG_edges)
@@ -350,16 +387,15 @@ function get_allocation_model(
     model[:source] = @constraint(
         model,
         [i = keys(source_edge_mapping)],
-        F[source_edge_mapping[i]] <= 0.0,
+        F[findfirst(
+            ==(SimpleEdge(i, only(outneighbors(graph_allocation, i)))),
+            AG_edges,
+        )] <= 0.0,
         base_name = "source"
     )
 
     # The user return flow constraints
     # The constraint indices are AG user node IDs
-    AG_node_ids_user = [
-        AG_node_id for
-        (AG_node_id, node_type) in values(node_id_mapping) if node_type == :user
-    ]
     AG_node_inedge_ids = Dict(i => Int[] for i in 1:n_AG_nodes)
     AG_node_outedge_ids = Dict(i => Int[] for i in 1:n_AG_nodes)
     for (i, AG_edge) in enumerate(AG_edges)
@@ -368,7 +404,7 @@ function get_allocation_model(
     end
     model[:return_flow] = @constraint(
         model,
-        [i = AG_node_ids_user],
+        [i = AG_node_ids_user_with_returnflow],
         F[only(AG_node_outedge_ids[i])] ==
         user.return_factor[findsorted(user.node_id, node_id_mapping_inverse[i][1])] *
         F[only(AG_node_inedge_ids[i])],
@@ -404,7 +440,7 @@ function get_allocation_model(
         node_id_mapping,
         node_id_mapping_inverse,
         source_edge_mapping,
-        graph_max_flow,
+        graph_allocation,
         capacity,
         model,
         Δt_allocation,

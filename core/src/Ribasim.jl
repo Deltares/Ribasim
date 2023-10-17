@@ -32,6 +32,7 @@ using ForwardDiff: pickchunksize
 using DiffEqCallbacks
 using Graphs:
     add_edge!,
+    rem_edge!,
     adjacency_matrix,
     all_neighbors,
     DiGraph,
