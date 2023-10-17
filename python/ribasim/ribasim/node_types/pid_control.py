@@ -1,6 +1,7 @@
 from typing import Optional
 
 from pandera.typing import DataFrame
+from pydantic import ConfigDict
 
 from ribasim.input_base import TableModel
 from ribasim.schemas import PidControlStaticSchema, PidControlTimeSchema  # type: ignore
@@ -23,9 +24,7 @@ class PidControl(TableModel):
 
     static: Optional[DataFrame[PidControlStaticSchema]] = None
     time: Optional[DataFrame[PidControlTimeSchema]] = None
-
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     def sort(self):
         if self.static is not None:

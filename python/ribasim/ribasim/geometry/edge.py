@@ -10,6 +10,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import ConfigDict
 
 from ribasim.input_base import TableModel
 from ribasim.types import FilePath
@@ -22,9 +23,7 @@ class StaticSchema(pa.SchemaModel):
     from_node_id: Series[int] = pa.Field(coerce=True)
     to_node_id: Series[int] = pa.Field(coerce=True)
     geometry: GeoSeries[Any]
-
-    class Config:
-        add_missing_columns = True
+    model_config = ConfigDict(add_missing_columns=True)
 
 
 class Edge(TableModel):
@@ -38,9 +37,7 @@ class Edge(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def _layername(cls, field) -> str:

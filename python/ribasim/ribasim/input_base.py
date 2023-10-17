@@ -6,7 +6,7 @@ from typing import Any, Dict, Set, Union
 
 import pandas as pd
 from pandas import DataFrame
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ribasim.types import FilePath
 
@@ -31,8 +31,7 @@ def exists(connection: Connection, name: str) -> bool:
 
 
 class TableModel(BaseModel):
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def get_input_type(cls):

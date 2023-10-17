@@ -3,6 +3,7 @@ from typing import Optional
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
+from pydantic import ConfigDict
 
 from ribasim import models
 from ribasim.input_base import TableModel
@@ -11,17 +12,11 @@ __all__ = ("User",)
 
 
 class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.UserStatic)
+    model_config = ConfigDict(dtype=PydanticModel(models.UserStatic))
 
 
 class TimeSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.UserTime)
+    model_config = ConfigDict(dtype=PydanticModel(models.UserTime))
 
 
 class User(TableModel):
@@ -38,9 +33,7 @@ class User(TableModel):
 
     static: Optional[DataFrame[StaticSchema]] = None
     time: Optional[DataFrame[TimeSchema]] = None
-
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     def sort(self):
         if self.static is not None:

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ribasim import geometry, node_types
 from ribasim.config import Logging, Solver
@@ -108,9 +108,7 @@ class Model(BaseModel):
     endtime: datetime.datetime
     solver: Optional[Solver] = None
     logging: Optional[Logging] = None
-
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def fields(cls):

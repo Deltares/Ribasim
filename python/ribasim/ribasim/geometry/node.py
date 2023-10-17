@@ -8,6 +8,7 @@ import pandera as pa
 from geopandas import GeoDataFrame
 from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import ConfigDict
 
 from ribasim.input_base import TableModel
 from ribasim.types import FilePath
@@ -19,9 +20,7 @@ class StaticSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     type: Series[str]
     geometry: GeoSeries[Any]
-
-    class Config:
-        add_missing_columns = True
+    model_config = ConfigDict(add_missing_columns=True)
 
 
 class Node(TableModel):
@@ -35,9 +34,7 @@ class Node(TableModel):
     """
 
     static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def _layername(cls, field) -> str:
