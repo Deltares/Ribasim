@@ -53,7 +53,7 @@ class TableModel(BaseModel):
     @classmethod
     def fields(cls):
         """Return the input fields."""
-        return cls.__fields__.keys()
+        return cls.model_fields.keys()
 
     def __repr__(self) -> str:
         content = [f"<ribasim.{type(self).__name__}>"]
