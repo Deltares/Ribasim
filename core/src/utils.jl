@@ -294,7 +294,7 @@ function qh_interpolation(
     level::AbstractVector,
     discharge::AbstractVector,
 )::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(discharge, level), allunique(level)
+    return LinearInterpolation(discharge, level; extrapolate = true), allunique(level)
 end
 
 """

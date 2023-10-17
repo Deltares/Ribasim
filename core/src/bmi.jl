@@ -517,7 +517,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         discharge = [row.discharge for row in group]
         i = searchsortedfirst(node_id, id)
-        tables[i] = LinearInterpolation(discharge, level)
+        tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
     end
     return nothing
 end
