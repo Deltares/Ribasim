@@ -25,10 +25,7 @@ install-without-pre-commit = { depends_on = [
     "install-ribasim-testmodels",
     "install-quartodoc",
 ] }
-install = { depends_on = [
-    "install-without-pre-commit",
-    "install-pre-commit",
-] }
+install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Docs
 instantiate-julia-docs = "julia --project=docs -e \"using Pkg; Pkg.instantiate()\""
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
@@ -55,8 +52,12 @@ lint = { depends_on = [
     "mypy-ribasim-api",
 ] }
 # Build
-build-ribasim-cli = "cd build/create_binaries && julia --project create_app.jl"
-build-libribasim = "cd build/create_binaries && julia --project create_lib.jl"
+build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project create_app.jl", depends_on = [
+    "generate-testmodels",
+] }
+build-libribasim = { cmd = "cd build/create_binaries && julia --project create_lib.jl", depends_on = [
+    "generate-testmodels",
+] }
 build = { depends_on = ["build-ribasim-cli", "build-libribasim"] }
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
@@ -66,11 +67,7 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.instant
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
-tests = { depends_on = [
-    "lint",
-    "test-ribasim-python",
-    "test-ribasim-core",
-] }
+tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 generate-schema = "julia --project=docs docs/gen_schema.jl"
 generate-python = """\
