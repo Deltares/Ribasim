@@ -92,22 +92,22 @@ class Model(BaseModel):
     node: Node
     edge: Edge
     basin: Basin
-    fractional_flow: Optional[FractionalFlow]
-    level_boundary: Optional[LevelBoundary]
-    flow_boundary: Optional[FlowBoundary]
-    linear_resistance: Optional[LinearResistance]
-    manning_resistance: Optional[ManningResistance]
-    tabulated_rating_curve: Optional[TabulatedRatingCurve]
-    pump: Optional[Pump]
-    outlet: Optional[Outlet]
-    terminal: Optional[Terminal]
-    discrete_control: Optional[DiscreteControl]
-    pid_control: Optional[PidControl]
-    user: Optional[User]
+    fractional_flow: Optional[FractionalFlow] = None
+    level_boundary: Optional[LevelBoundary] = None
+    flow_boundary: Optional[FlowBoundary] = None
+    linear_resistance: Optional[LinearResistance] = None
+    manning_resistance: Optional[ManningResistance] = None
+    tabulated_rating_curve: Optional[TabulatedRatingCurve] = None
+    pump: Optional[Pump] = None
+    outlet: Optional[Outlet] = None
+    terminal: Optional[Terminal] = None
+    discrete_control: Optional[DiscreteControl] = None
+    pid_control: Optional[PidControl] = None
+    user: Optional[User] = None
     starttime: datetime.datetime
     endtime: datetime.datetime
-    solver: Optional[Solver]
-    logging: Optional[Logging]
+    solver: Optional[Solver] = None
+    logging: Optional[Logging] = None
 
     class Config:
         validate_assignment = True
