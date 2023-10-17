@@ -1,4 +1,4 @@
-name: QGIS
+name: QGIS Tests
 
 on:
     push:
