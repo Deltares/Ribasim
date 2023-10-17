@@ -5,6 +5,7 @@ from ribasim import models, utils
 from ribasim.config import Config, Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
+from ribasim.level_exporter import LevelExporter
 from ribasim.model import Model
 from ribasim.node_types.basin import Basin
 from ribasim.node_types.discrete_control import DiscreteControl
@@ -42,4 +43,5 @@ __all__ = [
     "DiscreteControl",
     "PidControl",
     "User",
+    "LevelExporter",
 ]

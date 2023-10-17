@@ -12,12 +12,14 @@ struct Model{T}
     integrator::T
     config::Config
     saved_flow::SavedValues{Float64, Vector{Float64}}
+    level_exporters::Dict{String, LevelExporter}
     function Model(
         integrator::T,
         config,
         saved_flow,
+        level_exporters,
     ) where {T <: SciMLBase.AbstractODEIntegrator}
-        new{T}(integrator, config, saved_flow)
+        new{T}(integrator, config, saved_flow, level_exporters)
     end
 end
 

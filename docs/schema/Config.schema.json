@@ -75,6 +75,12 @@
                 "timing": false
             }
         },
+        "fractional_flow": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
+            "default": {
+                "static": null
+            }
+        },
         "terminal": {
             "$ref": "https://deltares.github.io/Ribasim/schema/terminal.schema.json",
             "default": {
@@ -156,8 +162,8 @@
                 "static": null
             }
         },
-        "fractional_flow": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
+        "level_exporter": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/level_exporter.schema.json",
             "default": {
                 "static": null
             }
@@ -174,6 +180,7 @@
         "output",
         "solver",
         "logging",
+        "fractional_flow",
         "terminal",
         "pid_control",
         "level_boundary",
@@ -186,6 +193,6 @@
         "discrete_control",
         "outlet",
         "linear_resistance",
-        "fractional_flow"
+        "level_exporter"
     ]
 }

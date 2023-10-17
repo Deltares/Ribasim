@@ -21,6 +21,7 @@ from ribasim.geometry.node import Node
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
 from ribasim.input_base import TableModel
+from ribasim.level_exporter import LevelExporter
 from ribasim.node_types.basin import Basin
 from ribasim.node_types.discrete_control import DiscreteControl
 from ribasim.node_types.flow_boundary import FlowBoundary
@@ -104,6 +105,7 @@ class Model(BaseModel):
     discrete_control: Optional[DiscreteControl]
     pid_control: Optional[PidControl]
     user: Optional[User]
+    level_exporter: Optional[LevelExporter]
     starttime: datetime.datetime
     endtime: datetime.datetime
     solver: Optional[Solver]

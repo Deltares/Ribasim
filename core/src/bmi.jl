@@ -28,7 +28,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # All data from the GeoPackage that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(gpkg_path)
-    local parameters, state, n, tstops
+    local parameters, state, n, tstops, level_exporters
     try
         parameters = Parameters(db, config)
 
@@ -82,6 +82,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
+
+        level_exporters = create_level_exporters(db, config, basin)
     finally
         # always close the GeoPackage, also in case of an error
         close(db)
@@ -150,7 +152,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     set_initial_discrete_controlled_parameters!(integrator, storage)
 
-    return Model(integrator, config, saved_flow)
+    return Model(integrator, config, saved_flow, level_exporters)
 end
 
 """

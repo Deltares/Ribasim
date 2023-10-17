@@ -103,6 +103,15 @@ class LevelBoundaryTime(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
 
 
+class LevelExporterStatic(BaseModel):
+    name: str
+    element_id: int
+    node_id: int
+    basin_level: float
+    level: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
 class LinearResistanceStatic(BaseModel):
     node_id: int
     active: Optional[bool] = None
@@ -229,6 +238,7 @@ class Root(BaseModel):
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
     LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
     LevelBoundaryTime: Optional[LevelBoundaryTime] = None
+    LevelExporterStatic: Optional[LevelExporterStatic] = None
     LinearResistanceStatic: Optional[LinearResistanceStatic] = None
     ManningResistanceStatic: Optional[ManningResistanceStatic] = None
     Node: Optional[Node] = None

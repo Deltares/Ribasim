@@ -96,6 +96,24 @@ def trivial_model() -> ribasim.Model:
         )
     )
 
+    # Create a level exporter from one basin to three elements. Scale one to one, but:
+    #
+    # 1. start at -1.0
+    # 2. start at 0.0
+    # 3. start at 1.0
+    #
+    level_exporter = ribasim.LevelExporter(
+        static=pd.DataFrame(
+            data={
+                "name": "primary-system",
+                "element_id": [1, 1, 2, 2, 3, 3],
+                "node_id": [1, 1, 1, 1, 1, 1],
+                "basin_level": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+                "level": [-1.0, 0.0, 0.0, 1.0, 1.0, 2.0],
+            }
+        )
+    )
+
     model = ribasim.Model(
         modelname="trivial",
         node=node,
@@ -103,6 +121,7 @@ def trivial_model() -> ribasim.Model:
         basin=basin,
         terminal=terminal,
         tabulated_rating_curve=rating_curve,
+        level_exporter=level_exporter,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

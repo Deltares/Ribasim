@@ -38,6 +38,10 @@ class Logging(BaseModel):
     timing: bool = False
 
 
+class FractionalFlow(BaseModel):
+    static: Optional[str] = None
+
+
 class Terminal(BaseModel):
     static: Optional[str] = None
 
@@ -95,7 +99,7 @@ class LinearResistance(BaseModel):
     static: Optional[str] = None
 
 
-class FractionalFlow(BaseModel):
+class LevelExporter(BaseModel):
     static: Optional[str] = None
 
 
@@ -142,6 +146,9 @@ class Config(BaseModel):
             {"verbosity": {"level": 0}, "timing": False}
         )
     )
+    fractional_flow: FractionalFlow = Field(
+        default_factory=lambda: FractionalFlow.parse_obj({"static": None})
+    )
     terminal: Terminal = Field(
         default_factory=lambda: Terminal.parse_obj({"static": None})
     )
@@ -180,6 +187,6 @@ class Config(BaseModel):
     linear_resistance: LinearResistance = Field(
         default_factory=lambda: LinearResistance.parse_obj({"static": None})
     )
-    fractional_flow: FractionalFlow = Field(
-        default_factory=lambda: FractionalFlow.parse_obj({"static": None})
+    level_exporter: LevelExporter = Field(
+        default_factory=lambda: LevelExporter.parse_obj({"static": None})
     )

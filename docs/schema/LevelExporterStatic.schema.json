@@ -1,0 +1,42 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/LevelExporterStatic.schema.json",
+    "title": "LevelExporterStatic",
+    "description": "A LevelExporterStatic object based on Ribasim.LevelExporterStaticV1",
+    "type": "object",
+    "properties": {
+        "name": {
+            "format": "default",
+            "type": "string"
+        },
+        "element_id": {
+            "format": "default",
+            "type": "integer"
+        },
+        "node_id": {
+            "format": "default",
+            "type": "integer"
+        },
+        "basin_level": {
+            "format": "double",
+            "type": "number"
+        },
+        "level": {
+            "format": "double",
+            "type": "number"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
+        }
+    },
+    "required": [
+        "name",
+        "element_id",
+        "node_id",
+        "basin_level",
+        "level"
+    ]
+}
