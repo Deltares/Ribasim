@@ -157,4 +157,5 @@ dmypy.json
 
 /.luarc.json
 build/ribasim_cli/tests/temp/
+python/ribasim_api/tests/temp/
 report.xml
