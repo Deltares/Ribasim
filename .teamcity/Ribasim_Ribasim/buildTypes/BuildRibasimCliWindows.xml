@@ -13,14 +13,6 @@
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="%julia% --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_551" name="Build executable" type="simpleRunner">
         <parameters>
           <param name="script.content" value="%julia% --project create_app.jl" />
