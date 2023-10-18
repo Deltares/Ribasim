@@ -24,7 +24,7 @@ using JuMP: value
         Ribasim.AllocationModel(p, subgraph_node_ids, source_edge_ids, Δt_allocation)
     Ribasim.allocate!(p, allocation_model, t)
 
-    F = value.(allocation_model.model[:F])
+    F = value.(allocation_model.problem[:F])
     @test F ≈ [3.0, 3.0, 0.5, 3.5, 1.0, 4.5]
 
     allocated = p.user.allocated

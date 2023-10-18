@@ -918,3 +918,48 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
         one(T)
     end
 end
+
+"""Whether the given node node is flow constraining by having a maximum flow rate."""
+is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
+
+"""Whether the given node is flow direction constraining (only in direction of edges)."""
+is_flow_direction_constraining(node::AbstractParameterNode) =
+    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
+
+"""Find out whether a path exists between a start node and end node in the given graph."""
+function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::Int)::Bool
+    node_ids_visited = Set{Int}()
+    stack = [start_node_id]
+
+    while !isempty(stack)
+        current_node_id = pop!(stack)
+        if current_node_id == end_node_id
+            return true
+        end
+        if !(current_node_id in node_ids_visited)
+            push!(node_ids_visited, current_node_id)
+            for outneighbor_node_id in outneighbors(graph, current_node_id)
+                push!(stack, outneighbor_node_id)
+            end
+        end
+    end
+    return false
+end
+
+"""
+Get two dictionaries, where:
+- The first one gives the IDs of the inedges for each node ID in the graph
+- The second one gives the IDs of the outedges for each node ID in the graph
+"""
+function get_node_in_out_edges(
+    graph::DiGraph{Int},
+)::Tuple{Dict{Int, Vector{Int}}, Dict{Int, Vector{Int}}}
+    n_nodes = nv(graph)
+    node_inedge_ids = Dict(i => Int[] for i in 1:n_nodes)
+    node_outedge_ids = Dict(i => Int[] for i in 1:n_nodes)
+    for (i, edge) in enumerate(edges(graph))
+        push!(node_inedge_ids[edge.dst], i)
+        push!(node_outedge_ids[edge.src], i)
+    end
+    return node_inedge_ids, node_outedge_ids
+end
