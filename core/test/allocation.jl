@@ -21,7 +21,7 @@ using JuMP: value
     t = 0.0
 
     allocation_model =
-        Ribasim.get_allocation_model(p, subgraph_node_ids, source_edge_ids, Δt_allocation)
+        Ribasim.AllocationModel(p, subgraph_node_ids, source_edge_ids, Δt_allocation)
     Ribasim.allocate!(p, allocation_model, t)
 
     F = value.(allocation_model.model[:F])

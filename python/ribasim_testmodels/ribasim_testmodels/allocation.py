@@ -535,11 +535,3 @@ def looped_subnetwork_model():
     )
 
     return model
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    model = looped_subnetwork_model()
-    model.plot()
-    plt.show()

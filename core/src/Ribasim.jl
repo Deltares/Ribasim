@@ -17,6 +17,7 @@ module Ribasim
 import IterTools
 import BasicModelInterface as BMI
 import HiGHS
+import JuMP.Model as JuMPModel
 import TranscodingStreams
 
 using Arrow: Arrow, Table
@@ -32,17 +33,17 @@ using ForwardDiff: pickchunksize
 using DiffEqCallbacks
 using Graphs:
     add_edge!,
-    rem_edge!,
     adjacency_matrix,
     all_neighbors,
     DiGraph,
+    Edge,
     edges,
     inneighbors,
     nv,
     outneighbors,
-    SimpleEdge
+    rem_edge!
 
-using JuMP
+using JuMP: @variable, @constraint, @objective, set_normalized_rhs, optimize!, value
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger

@@ -6,14 +6,13 @@ const VectorInterpolation =
 
 """
 Store information for a subnetwork used for allocation.
-For more information see allocation.jl.
 
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
-node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG_node_id => model_node_id
-Source edge mapping: AG source node ID => subnetwork source edge id
-graph_max_flow: The graph used for the allocation problems
+node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG node ID => model node ID
+Source edge mapping: AG source node ID => subnetwork source edge ID
+graph_allocation: The graph used for the allocation problems
 capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
 model: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
@@ -25,7 +24,7 @@ struct AllocationModel
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
-    model::JuMP.Model
+    model::JuMPModel
     Δt_allocation::Float64
 end
 
@@ -52,7 +51,7 @@ struct Connectivity{T}
     edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
     edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
     edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
-    allocation_model::Vector{AllocationModel}
+    allocation_models::Vector{AllocationModel}
     function Connectivity(
         graph_flow,
         graph_control,
