@@ -26,7 +26,7 @@
       </runner>
       <runner id="RUNNER_2416" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run test-ribasim-cli" />
+          <param name="script.content" value="pixi run build-libribasim" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
