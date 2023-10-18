@@ -13,14 +13,6 @@
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1932" name="Get version from Ribasim" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="ribasim --version" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries/ribasim_cli" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
         <parameters>
           <param name="script.content" value="pixi run install" />
@@ -33,6 +25,14 @@
         <parameters>
           <param name="script.content" value="pixi run build-libribasim" />
           <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_1932" name="Get version from Ribasim" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="ribasim --version" />
+          <param name="teamcity.build.workingDir" value="build/create_binaries/ribasim_cli" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
