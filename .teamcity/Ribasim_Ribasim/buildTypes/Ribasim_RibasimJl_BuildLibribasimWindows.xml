@@ -26,7 +26,8 @@
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run build-libribasim" />
+          <param name="script.content"><![CDATA[echo %PATH%
+pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
