@@ -13,15 +13,6 @@
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1991" name="Install Python packages" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pip install --editable "python/ribasim"
-call pip install --editable "python/ribasim_testmodels"]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_1992" name="Prepare model input" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
