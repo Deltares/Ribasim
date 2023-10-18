@@ -15,16 +15,7 @@
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_libribasim" />
       <param name="julia" value="%env.JULIA_1_9%" />
     </parameters>
-    <build-runners>
-      <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="%julia% --project create_lib.jl" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-    </build-runners>
+    <build-runners />
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
     </vcs-settings>
