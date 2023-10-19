@@ -798,7 +798,10 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
-    flow = get_tmp(flow, storage)
+
+    diffvar = isa(t, Dual) ? t : storage
+
+    flow = get_tmp(flow, diffvar)
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -806,10 +809,10 @@ function formulate_flow!(
         if active[i]
             q =
                 (
-                    get_level(p, basin_a_id, t; storage) -
-                    get_level(p, basin_b_id, t; storage)
+                    get_level(p, basin_a_id, t; diffvar) -
+                    get_level(p, basin_b_id, t; diffvar)
                 ) / resistance[i]
-            println(q)
+            println(q isa Dual)
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
         end
@@ -829,7 +832,8 @@ function formulate_flow!(
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp(flow, diffvar)
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
         downstream_ids = outneighbors(graph_flow, id)
@@ -838,7 +842,7 @@ function formulate_flow!(
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
             @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
             factor = reduction_factor(storage[basin_idx], 10.0)
-            q = factor * tables[i](get_level(p, upstream_basin_id, t; storage))
+            q = factor * tables[i](get_level(p, upstream_basin_id, t; diffvar))
         else
             q = 0.0
         end
@@ -900,7 +904,8 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp(flow, diffvar)
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -909,8 +914,8 @@ function formulate_flow!(
             continue
         end
 
-        h_a = get_level(p, basin_a_id, t; storage)
-        h_b = get_level(p, basin_b_id, t; storage)
+        h_a = get_level(p, basin_a_id, t; diffvar)
+        h_b = get_level(p, basin_b_id, t; diffvar)
         bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
         slope = profile_slope[i]
         width = profile_width[i]
