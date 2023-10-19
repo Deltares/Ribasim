@@ -32,8 +32,7 @@ pixi run build-libribasim]]></param>
       </runner>
       <runner id="RUNNER_1932" name="Get version from Ribasim" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="ribasim --version" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries/ribasim_cli" />
+          <param name="script.content" value="build/create_binaries/ribasim_cli/bin/ribasim --version" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
