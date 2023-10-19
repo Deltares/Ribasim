@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "acdb5a19082f8635b39f23593d4b72c8c85cad8e"
+project_hash = "40e443b575cd5dffce730be3f39503b3b068d36a"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -907,12 +907,6 @@ deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
-
-[[deps.Ribasim]]
-deps = ["Arrow", "BasicModelInterface", "CodecLz4", "CodecZstd", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "Dictionaries", "DiffEqCallbacks", "FiniteDiff", "ForwardDiff", "Graphs", "IterTools", "Legolas", "Logging", "LoggingExtras", "OrdinaryDiffEq", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "StructArrays", "Tables", "TerminalLoggers", "TimerOutputs", "TranscodingStreams"]
-path = "../../core"
-uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
-version = "0.3.0"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "SHA", "Serialization"]
