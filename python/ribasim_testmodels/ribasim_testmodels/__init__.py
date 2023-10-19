@@ -1,6 +1,10 @@
 __version__ = "0.2.0"
 
-from ribasim_testmodels.allocation import subnetwork_model, user_model
+from ribasim_testmodels.allocation import (
+    looped_subnetwork_model,
+    subnetwork_model,
+    user_model,
+)
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
@@ -65,4 +69,5 @@ __all__ = [
     "outlet_model",
     "user_model",
     "subnetwork_model",
+    "looped_subnetwork_model",
 ]
