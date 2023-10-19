@@ -159,10 +159,7 @@ def basic_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={
-                "type": node_type,
-                "name": [ribasim.utils.random_string() for _ in range(len(node_id))],
-            },
+            data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -180,7 +177,6 @@ def basic_model() -> ribasim.Model:
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
             data={
-                "name": [ribasim.utils.random_string() for _ in range(len(from_id))],
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": len(from_id) * ["flow"],
