@@ -642,11 +642,17 @@ function AllocationModel(
 end
 
 """
-Update the allocation optimization problem for the given subnetwork with the problem state
-and flows, solve the allocation problem and assign the results to the users.
+Update the allocation problem with model data at the current:
+- Demands of the users
+- Flows of the source edges
+- Demands of the basins
 """
-function allocate!(p::Parameters, allocation_problem::AllocationModel, t::Float64;)::Nothing
-    (; node_id_mapping, source_edge_mapping, problem) = allocation_problem
+function set_model_state_in_allocation!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+)::Nothing
+    (; problem, node_id_mapping, source_edge_mapping) = allocation_model
     (; user, connectivity) = p
     (; priorities, demand) = user
     (; flow, edge_ids_flow_inv) = connectivity
@@ -656,21 +662,17 @@ function allocate!(p::Parameters, allocation_problem::AllocationModel, t::Float6
 
     for (subnetwork_node_id, (allocgraph_node_id, allocgraph_node_type)) in node_id_mapping
         if allocgraph_node_type == :user
-            # Set the user demands at the current time as the upper bound to
-            # the allocations to the users
             node_idx = findsorted(user.node_id, subnetwork_node_id)
-            demand = user.demand[node_idx]
+            demand_node = demand[node_idx]
             base_name = "demand_user_$allocgraph_node_id"
             constraints_demand = problem[Symbol(base_name)]
             for priority_idx in eachindex(priorities)
                 set_normalized_rhs(
                     constraints_demand[priority_idx],
-                    demand[priority_idx](t),
+                    demand_node[priority_idx](t),
                 )
             end
         elseif allocgraph_node_type == :source
-            # Set the source flows as the source flow upper bounds in
-            # the allocation problem
             subnetwork_edge = source_edge_mapping[allocgraph_node_id]
             subnetwork_node_ids = edge_ids_flow_inv[subnetwork_edge]
             constraint_source = problem[:source][allocgraph_node_id]
@@ -685,11 +687,14 @@ function allocate!(p::Parameters, allocation_problem::AllocationModel, t::Float6
             error("Got unsupported allocation graph node type $allocgraph_node_type.")
         end
     end
+    return nothing
+end
 
-    # Solve the allocation problem
-    optimize!(problem)
-
-    # Assign the allocations to the users
+"""
+Assign the allocations to the users as determined by the solution of the allocation problem.
+"""
+function assign_allocations!(allocation_model::AllocationModel, user::User)::Nothing
+    (; problem, node_id_mapping) = allocation_model
     for (subnetwork_node_id, (allocgraph_node_id, allocgraph_node_type)) in node_id_mapping
         if allocgraph_node_type == :user
             user_idx = findsorted(user.node_id, subnetwork_node_id)
@@ -697,4 +702,20 @@ function allocate!(p::Parameters, allocation_problem::AllocationModel, t::Float6
             user.allocated[user_idx] .= value.(problem[Symbol(base_name)])
         end
     end
+    return nothing
+end
+
+"""
+Update the allocation optimization problem for the given subnetwork with the problem state
+and flows, solve the allocation problem and assign the results to the users.
+"""
+function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
+    # Update allocation problem with data from main model
+    set_model_state_in_allocation!(allocation_model, p, t)
+
+    # Solve the allocation problem
+    optimize!(allocation_model.problem)
+
+    # Assign the allocations to the users
+    assign_allocations!(allocation_model, p.user)
 end
