@@ -1,4 +1,384 @@
 """
+Get:
+- The mapping from subnetwork node IDs to allocation graph node IDs
+- The mapping from allocation graph source node IDs to subnetwork source edge IDs
+"""
+function get_node_id_mapping(
+    p::Parameters,
+    subnetwork_node_ids::Vector{Int},
+    source_edge_ids::Vector{Int},
+)
+    (; lookup, connectivity) = p
+    (; graph_flow, edge_ids_flow_inv) = connectivity
+
+    # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
+    # allocgraph_node_type in [:user, :junction, :basin, :source]
+    node_id_mapping = Dict{Int, Tuple{Int, Symbol}}()
+
+    # Determine the number of nodes in the allocgraph
+    n_allocgraph_nodes = 0
+    for subnetwork_node_id in subnetwork_node_ids
+        add_allocgraph_node = false
+        node_type = lookup[subnetwork_node_id]
+
+        if node_type in [:user, :basin]
+            add_allocgraph_node = true
+
+        elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
+            # Each junction (that is, a node with more than 2 neighbors)
+            # in the subnetwork gets an allocgraph node
+            add_allocgraph_node = true
+            node_type = :junction
+        end
+
+        if add_allocgraph_node
+            n_allocgraph_nodes += 1
+            node_id_mapping[subnetwork_node_id] = (n_allocgraph_nodes, node_type)
+        end
+    end
+
+    # Add nodes in the allocation graph for nodes connected in the problem to the source edges
+    # One of these nodes can be outside the subnetwork, as long as the edge
+    # connects to the subnetwork
+    # Source edge mapping: allocation graph source node ID => subnetwork source edge ID
+    source_edge_mapping = Dict{Int, Int}()
+    for source_edge_id in source_edge_ids
+        subnetwork_node_id_1, subnetwork_node_id_2 = edge_ids_flow_inv[source_edge_id]
+        if subnetwork_node_id_1 ∉ keys(node_id_mapping)
+            n_allocgraph_nodes += 1
+            node_id_mapping[subnetwork_node_id_1] = (n_allocgraph_nodes, :source)
+            source_edge_mapping[n_allocgraph_nodes] = source_edge_id
+        else
+            node_id_mapping[subnetwork_node_id_1][2] = :source
+            source_edge_mapping[n_allocgraph_nodes] = source_edge_id
+        end
+        if subnetwork_node_id_2 ∉ keys(node_id_mapping)
+            n_allocgraph_nodes += 1
+            node_id_mapping[subnetwork_node_id_2] = (n_allocgraph_nodes, :junction)
+        end
+    end
+    return node_id_mapping, source_edge_mapping
+end
+
+"""
+This loop finds allocgraph edges in several ways:
+- Between allocgraph nodes whose equivalent in the subnetwork are directly connected
+- Between allocgraph nodes whose equivalent in the subnetwork are connected
+  with one or more non-junction nodes in between
+
+Here edges are added to the allocation graph that are given by a single edge in
+the subnetwork.
+"""
+function find_allocation_graph_edges!(
+    graph_allocation::DiGraph{Int},
+    node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
+    p::Parameters,
+    subnetwork_node_ids::Vector{Int},
+)::Tuple{Vector{Vector{Int}}, SparseMatrixCSC{Float64, Int}}
+    (; connectivity, user) = p
+    (; graph_flow) = connectivity
+
+    allocgraph_edges_composite = Vector{Int}[]
+    n_allocgraph_nodes = nv(graph_allocation)
+    capacity = spzeros(n_allocgraph_nodes, n_allocgraph_nodes)
+
+    for subnetwork_node_id in subnetwork_node_ids
+        subnetwork_inneighbor_ids = inneighbors(graph_flow, subnetwork_node_id)
+        subnetwork_outneighbor_ids = outneighbors(graph_flow, subnetwork_node_id)
+        subnetwork_neighbor_ids = all_neighbors(graph_flow, subnetwork_node_id)
+
+        if subnetwork_node_id in keys(node_id_mapping)
+            if subnetwork_node_id ∉ user.node_id
+                # Direct connections in the subnetwork between nodes that
+                # have an equivalent allocgraph graph node
+                for subnetwork_inneighbor_id in subnetwork_inneighbor_ids
+                    if subnetwork_inneighbor_id in keys(node_id_mapping)
+                        allocgraph_node_id_1 = node_id_mapping[subnetwork_node_id][1]
+                        allocgraph_node_id_2 = node_id_mapping[subnetwork_inneighbor_id][1]
+                        add_edge!(
+                            graph_allocation,
+                            allocgraph_node_id_2,
+                            allocgraph_node_id_1,
+                        )
+                        # These direct connections cannot have capacity constraints
+                        capacity[allocgraph_node_id_2, allocgraph_node_id_1] = Inf
+                    end
+                end
+                for subnetwork_outneighbor_id in subnetwork_outneighbor_ids
+                    if subnetwork_outneighbor_id in keys(node_id_mapping)
+                        allocgraph_node_id_1 = node_id_mapping[subnetwork_node_id][1]
+                        allocgraph_node_id_2 = node_id_mapping[subnetwork_outneighbor_id][1]
+                        add_edge!(
+                            graph_allocation,
+                            allocgraph_node_id_1,
+                            allocgraph_node_id_2,
+                        )
+                        if subnetwork_outneighbor_id in user.node_id
+                            # Capacity depends on user demand at a given priority
+                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
+                        else
+                            # These direct connections cannot have capacity constraints
+                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
+                        end
+                    end
+                end
+            end
+        else
+            # Try to find an existing allocgraph composite edge to add the current subnetwork_node_id to
+            found_edge = false
+            for allocgraph_edge_composite in allocgraph_edges_composite
+                if allocgraph_edge_composite[1] in subnetwork_neighbor_ids
+                    pushfirst!(allocgraph_edge_composite, subnetwork_node_id)
+                    found_edge = true
+                    break
+                elseif allocgraph_edge_composite[end] in subnetwork_neighbor_ids
+                    push!(allocgraph_edge_composite, subnetwork_node_id)
+                    found_edge = true
+                    break
+                end
+            end
+
+            # Start a new allocgraph composite edge if no existing edge to append to was found
+            if !found_edge
+                push!(allocgraph_edges_composite, [subnetwork_node_id])
+            end
+        end
+    end
+    return allocgraph_edges_composite, capacity
+end
+
+"""
+For the composite allocgraph edges:
+- Find out whether they are connected to allocgraph nodes on both ends
+- Compute their capacity
+- Find out their allowed flow direction(s)
+"""
+function process_allocation_graph_edges!(
+    graph_allocation::DiGraph{Int},
+    capacity::SparseMatrixCSC{Float64, Int},
+    allocgraph_edges_composite::Vector{Vector{Int}},
+    node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
+    p::Parameters,
+)::SparseMatrixCSC{Float64, Int}
+    (; connectivity, lookup) = p
+    (; graph_flow) = connectivity
+    n_allocgraph_nodes = nv(graph_allocation)
+
+    for allocgraph_edge_composite in allocgraph_edges_composite
+        # Find allocgraph node connected to this edge on the first end
+        allocgraph_node_id_1 = nothing
+        subnetwork_neighbors_side_1 =
+            all_neighbors(graph_flow, allocgraph_edge_composite[1])
+        for subnetwork_neighbor_node_id in subnetwork_neighbors_side_1
+            if subnetwork_neighbor_node_id in keys(node_id_mapping)
+                allocgraph_node_id_1 = node_id_mapping[subnetwork_neighbor_node_id][1]
+                pushfirst!(allocgraph_edge_composite, subnetwork_neighbor_node_id)
+                break
+            end
+        end
+
+        # No connection to a max flow node found on this side, so edge is discarded
+        if isnothing(allocgraph_node_id_1)
+            continue
+        end
+
+        # Find allocgraph node connected to this edge on the second end
+        allocgraph_node_id_2 = nothing
+        subnetwork_neighbors_side_2 =
+            all_neighbors(graph_flow, allocgraph_edge_composite[end])
+        for subnetwork_neighbor_node_id in subnetwork_neighbors_side_2
+            if subnetwork_neighbor_node_id in keys(node_id_mapping)
+                allocgraph_node_id_2 = node_id_mapping[subnetwork_neighbor_node_id][1]
+                # Make sure this allocgraph node is distinct from the other one
+                if allocgraph_node_id_2 ≠ allocgraph_node_id_1
+                    push!(allocgraph_edge_composite, subnetwork_neighbor_node_id)
+                    break
+                end
+            end
+        end
+
+        # No connection to allocgraph node found on this side, so edge is discarded
+        if isnothing(allocgraph_node_id_2)
+            continue
+        end
+
+        # Find capacity of this composite allocgraph edge
+        positive_flow = true
+        negative_flow = true
+        allocgraph_edge_capacity = Inf
+        for (i, subnetwork_node_id) in enumerate(allocgraph_edge_composite)
+            # The start and end subnetwork nodes of the composite allocgraph
+            # edge are now nodes that have an equivalent in the allocgraph graph,
+            # these do not constrain the composite edge capacity
+            if i == 1 || i == length(allocgraph_edge_composite)
+                continue
+            end
+            node_type = lookup[subnetwork_node_id]
+            node = getfield(p, node_type)
+
+            # Find flow constraints
+            if is_flow_constraining(node)
+                problem_node_idx = Ribasim.findsorted(node.node_id, subnetwork_node_id)
+                allocgraph_edge_capacity =
+                    min(allocgraph_edge_capacity, node.max_flow_rate[problem_node_idx])
+            end
+
+            # Find flow direction constraints
+            if is_flow_direction_constraining(node)
+                subnetwork_inneighbor_node_id =
+                    only(inneighbors(graph_flow, subnetwork_node_id))
+
+                if subnetwork_inneighbor_node_id == allocgraph_edge_composite[i - 1]
+                    negative_flow = false
+                elseif subnetwork_inneighbor_node_id == allocgraph_edge_composite[i + 1]
+                    positive_flow = false
+                end
+            end
+        end
+
+        # Add composite allocgraph edge(s)
+        if positive_flow
+            add_edge!(graph_allocation, allocgraph_node_id_1, allocgraph_node_id_2)
+            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = allocgraph_edge_capacity
+        end
+
+        if negative_flow
+            add_edge!(graph_allocation, allocgraph_node_id_2, allocgraph_node_id_1)
+            capacity[allocgraph_node_id_2, allocgraph_node_id_1] = allocgraph_edge_capacity
+        end
+    end
+    return capacity
+end
+
+"""
+The source nodes must only have one outneighbor.
+"""
+function valid_sources(
+    graph_allocation::DiGraph{Int},
+    node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
+)::Bool
+    errors = false
+
+    for (allocgraph_node_id, allocgraph_node_type) in values(node_id_mapping)
+        if allocgraph_node_type == :source
+            if !(
+                (length(inneighbors(graph_allocation, allocgraph_node_id)) == 0) &&
+                (length(outneighbors(graph_allocation, allocgraph_node_id)) == 1)
+            )
+                @error "Sources nodes in the max flow graph must have no inneighbors and 1 outneighbor."
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+"""
+Remove user return flow edges that are upstream of the user itself, and collect the IDs
+of the allocation graph node IDs of the users that do not have this problem.
+"""
+function avoid_using_own_returnflow!(
+    graph_allocation::DiGraph{Int},
+    allocgraph_node_ids_user::Vector{Int},
+    node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}},
+)::Vector{Int}
+    allocgraph_node_ids_user_with_returnflow = Int[]
+    for allocgraph_node_id_user in allocgraph_node_ids_user
+        allocgraph_node_id_return_flow =
+            only(outneighbors(graph_allocation, allocgraph_node_id_user))
+        if path_exists_in_graph(
+            graph_allocation,
+            allocgraph_node_id_return_flow,
+            allocgraph_node_id_user,
+        )
+            rem_edge!(
+                graph_allocation,
+                allocgraph_node_id_user,
+                allocgraph_node_id_return_flow,
+            )
+            @debug "The outflow of user #$(node_id_mapping_inverse[allocgraph_node_id_user][1]) is upstream of the user itself and thus ignored in allocation solves."
+        else
+            push!(allocgraph_node_ids_uer_with_returnflow, allocgraph_node_id_user)
+        end
+    end
+    return allocgraph_node_ids_user_with_returnflow
+end
+
+"""
+Build the graph used for the allocation problem.
+"""
+function allocation_graph(
+    p::Parameters,
+    subnetwork_node_ids::Vector{Int},
+    source_edge_ids::Vector{Int},
+)
+    # Get the subnetwork and allocation node correspondence
+    node_id_mapping, source_edge_mapping =
+        get_node_id_mapping(p, subnetwork_node_ids, source_edge_ids)
+
+    # Invert the node id mapping to easily translate from allocgraph nodes to subnetwork nodes
+    node_id_mapping_inverse = Dict{Int, Tuple{Int, Symbol}}()
+    for (subnetwork_node_id, (allocgraph_node_id, node_type)) in node_id_mapping
+        node_id_mapping_inverse[allocgraph_node_id] = (subnetwork_node_id, node_type)
+    end
+
+    # Initialize the allocation graph
+    graph_allocation = DiGraph(length(node_id_mapping))
+
+    # Find the edges in the allocation graph
+    allocgraph_edges_composite, capacity = find_allocation_graph_edges!(
+        graph_allocation,
+        node_id_mapping,
+        p,
+        subnetwork_node_ids,
+    )
+
+    # Process the edges in the allocation graph
+    process_allocation_graph_edges!(
+        graph_allocation,
+        capacity,
+        allocgraph_edges_composite,
+        node_id_mapping,
+        p,
+    )
+
+    if !valid_sources(graph_allocation, node_id_mapping)
+        error("Errors in sources in allocation graph.")
+    end
+
+    allocgraph_node_ids_user = [
+        allocgraph_node_id for
+        (allocgraph_node_id, node_type) in values(node_id_mapping) if node_type == :user
+    ]
+
+    allocgraph_node_ids_user_with_returnflow = avoid_using_own_returnflow!(
+        graph_allocation,
+        allocgraph_node_ids_user,
+        node_id_mapping_inverse,
+    )
+
+    # Used for updating user demand and source flow constraints
+    allocgraph_edges = collect(edges(graph_allocation))
+    allocgraph_edge_ids_user_demand = Int[]
+    for (i, allocgraph_edge) in enumerate(allocgraph_edges)
+        allocgraph_node_type_dst = node_id_mapping_inverse[allocgraph_edge.dst][2]
+        if allocgraph_node_type_dst == :user
+            push!(allocgraph_edge_ids_user_demand, i)
+        end
+    end
+
+    return graph_allocation,
+    capacity,
+    node_id_mapping,
+    node_id_mapping_inverse,
+    source_edge_mapping,
+    allocgraph_node_ids_user,
+    allocgraph_node_ids_user_with_returnflow,
+    allocgraph_edges,
+    allocgraph_edge_ids_user_demand
+end
+
+"""
 Add the flow variables F to the allocation problem.
 The variable indices are the allocation graph edge IDs.
 Non-negativivity constraints are also immediately added to the flow variables.
@@ -342,279 +722,16 @@ function AllocationModel(
     source_edge_ids::Vector{Int},
     Δt_allocation::Float64,
 )::AllocationModel
-    (; connectivity, user, lookup) = p
-    (; graph_flow, edge_ids_flow_inv) = connectivity
-
-    errors = false
-
-    # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
-    # allocgraph_node_type in [:user, :junction, :basin, :source]
-    node_id_mapping = Dict{Int, Tuple{Int, Symbol}}()
-
-    # Determine the number of nodes in the allocgraph
-    n_allocgraph_nodes = 0
-    for subnetwork_node_id in subnetwork_node_ids
-        add_allocgraph_node = false
-        node_type = lookup[subnetwork_node_id]
-
-        if node_type in [:user, :basin]
-            add_allocgraph_node = true
-
-        elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
-            # Each junction (that is, a node with more than 2 neighbors)
-            # in the subnetwork gets an allocgraph node
-            add_allocgraph_node = true
-            node_type = :junction
-        end
-
-        if add_allocgraph_node
-            n_allocgraph_nodes += 1
-            node_id_mapping[subnetwork_node_id] = (n_allocgraph_nodes, node_type)
-        end
-    end
-
-    # Add nodes in the allocgraph for nodes connected in the problem to the source edges
-    # One of these nodes can be outside the subnetwork, as long as the edge
-    # connects to the subnetwork
-    # Source edge mapping: allocgraph source node ID => subnetwork source edge id
-    source_edge_mapping = Dict{Int, Int}()
-    for source_edge_id in source_edge_ids
-        subnetwork_node_id_1, subnetwork_node_id_2 = edge_ids_flow_inv[source_edge_id]
-        if subnetwork_node_id_1 ∉ keys(node_id_mapping)
-            n_allocgraph_nodes += 1
-            node_id_mapping[subnetwork_node_id_1] = (n_allocgraph_nodes, :source)
-            source_edge_mapping[n_allocgraph_nodes] = source_edge_id
-        else
-            node_id_mapping[subnetwork_node_id_1][2] = :source
-            source_edge_mapping[n_allocgraph_nodes] = source_edge_id
-        end
-        if subnetwork_node_id_2 ∉ keys(node_id_mapping)
-            n_allocgraph_nodes += 1
-            node_id_mapping[subnetwork_node_id_2] = (n_allocgraph_nodes, :junction)
-        end
-    end
-
-    # The allocgraph and its edge capacities
-    graph_allocation = DiGraph(n_allocgraph_nodes)
-    capacity = spzeros(n_allocgraph_nodes, n_allocgraph_nodes)
-
-    # The ids of the subnetwork nodes that have an equivalent in the allocgraph
-    subnetwork_node_ids_represented = keys(node_id_mapping)
-
-    # This loop finds allocgraph edges in several ways:
-    # - Between allocgraph nodes whose equivalent in the subnetwork are directly connected
-    # - Between allocgraph nodes whose equivalent in the subnetwork are connected
-    #   with one or more non-junction nodes in between
-    allocgraph_edges_composite = Vector{Int}[]
-    for subnetwork_node_id in subnetwork_node_ids
-        subnetwork_inneighbor_ids = inneighbors(graph_flow, subnetwork_node_id)
-        subnetwork_outneighbor_ids = outneighbors(graph_flow, subnetwork_node_id)
-        subnetwork_neighbor_ids = all_neighbors(graph_flow, subnetwork_node_id)
-
-        if subnetwork_node_id in subnetwork_node_ids_represented
-            if subnetwork_node_id ∉ user.node_id
-                # Direct connections in the subnetwork between nodes that
-                # have an equivaent allocgraph graph node
-                for subnetwork_inneighbor_id in subnetwork_inneighbor_ids
-                    if subnetwork_inneighbor_id in subnetwork_node_ids_represented
-                        allocgraph_node_id_1 = node_id_mapping[subnetwork_node_id][1]
-                        allocgraph_node_id_2 = node_id_mapping[subnetwork_inneighbor_id][1]
-                        add_edge!(
-                            graph_allocation,
-                            allocgraph_node_id_2,
-                            allocgraph_node_id_1,
-                        )
-                        # These direct connections cannot have capacity constraints
-                        capacity[allocgraph_node_id_2, allocgraph_node_id_1] = Inf
-                    end
-                end
-                for subnetwork_outneighbor_id in subnetwork_outneighbor_ids
-                    if subnetwork_outneighbor_id in subnetwork_node_ids_represented
-                        allocgraph_node_id_1 = node_id_mapping[subnetwork_node_id][1]
-                        allocgraph_node_id_2 = node_id_mapping[subnetwork_outneighbor_id][1]
-                        add_edge!(
-                            graph_allocation,
-                            allocgraph_node_id_1,
-                            allocgraph_node_id_2,
-                        )
-                        if subnetwork_outneighbor_id in user.node_id
-                            # Capacity depends on user demand at a given priority
-                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
-                        else
-                            # These direct connections cannot have capacity constraints
-                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
-                        end
-                    end
-                end
-            end
-        else
-            # Try to find an existing allocgraph composite edge to add the current subnetwork_node_id to
-            found_edge = false
-            for allocgraph_edge_composite in allocgraph_edges_composite
-                if allocgraph_edge_composite[1] in subnetwork_neighbor_ids
-                    pushfirst!(allocgraph_edge_composite, subnetwork_node_id)
-                    found_edge = true
-                    break
-                elseif allocgraph_edge_composite[end] in subnetwork_neighbor_ids
-                    push!(allocgraph_edge_composite, subnetwork_node_id)
-                    found_edge = true
-                    break
-                end
-            end
-
-            # Start a new allocgraph composite edge if no existing edge to append to was found
-            if !found_edge
-                push!(allocgraph_edges_composite, [subnetwork_node_id])
-            end
-        end
-    end
-
-    # For the composite allocgraph edges:
-    # - Find out whether they are connected to allocgraph nodes on both ends
-    # - Compute their capacity
-    # - Find out their allowed flow direction(s)
-    for allocgraph_edge_composite in allocgraph_edges_composite
-        # Find allocgraph node connected to this edge on the first end
-        allocgraph_node_id_1 = nothing
-        subnetwork_neighbors_side_1 =
-            all_neighbors(graph_flow, allocgraph_edge_composite[1])
-        for subnetwork_neighbor_node_id in subnetwork_neighbors_side_1
-            if subnetwork_neighbor_node_id in subnetwork_node_ids_represented
-                allocgraph_node_id_1 = node_id_mapping[subnetwork_neighbor_node_id][1]
-                pushfirst!(allocgraph_edge_composite, subnetwork_neighbor_node_id)
-                break
-            end
-        end
-
-        # No connection to a max flow node found on this side, so edge is discarded
-        if isnothing(allocgraph_node_id_1)
-            continue
-        end
-
-        # Find allocgraph node connected to this edge on the second end
-        allocgraph_node_id_2 = nothing
-        subnetwork_neighbors_side_2 =
-            all_neighbors(graph_flow, allocgraph_edge_composite[end])
-        for subnetwork_neighbor_node_id in subnetwork_neighbors_side_2
-            if subnetwork_neighbor_node_id in subnetwork_node_ids_represented
-                allocgraph_node_id_2 = node_id_mapping[subnetwork_neighbor_node_id][1]
-                # Make sure this allocgraph node is distinct from the other one
-                if allocgraph_node_id_2 ≠ allocgraph_node_id_1
-                    push!(allocgraph_edge_composite, subnetwork_neighbor_node_id)
-                    break
-                end
-            end
-        end
-
-        # No connection to allocgraph node found on this side, so edge is discarded
-        if isnothing(allocgraph_node_id_2)
-            continue
-        end
-
-        # Find capacity of this composite allocgraph edge
-        positive_flow = true
-        negative_flow = true
-        allocgraph_edge_capacity = Inf
-        for (i, subnetwork_node_id) in enumerate(allocgraph_edge_composite)
-            # The start and end subnetwork nodes of the composite allocgraph
-            # edge are now nodes that have an equivalent in the allocgraph graph,
-            # these do not constrain the composite edge capacity
-            if i == 1 || i == length(allocgraph_edge_composite)
-                continue
-            end
-            node_type = lookup[subnetwork_node_id]
-            node = getfield(p, node_type)
-
-            # Find flow constraints
-            if is_flow_constraining(node)
-                problem_node_idx = Ribasim.findsorted(node.node_id, subnetwork_node_id)
-                allocgraph_edge_capacity =
-                    min(allocgraph_edge_capacity, node.max_flow_rate[problem_node_idx])
-            end
-
-            # Find flow direction constraints
-            if is_flow_direction_constraining(node)
-                subnetwork_inneighbor_node_id =
-                    only(inneighbors(graph_flow, subnetwork_node_id))
-
-                if subnetwork_inneighbor_node_id == allocgraph_edge_composite[i - 1]
-                    negative_flow = false
-                elseif subnetwork_inneighbor_node_id == allocgraph_edge_composite[i + 1]
-                    positive_flow = false
-                end
-            end
-        end
-
-        # Add composite allocgraph edge(s)
-        if positive_flow
-            add_edge!(graph_allocation, allocgraph_node_id_1, allocgraph_node_id_2)
-            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = allocgraph_edge_capacity
-        end
-
-        if negative_flow
-            add_edge!(graph_allocation, allocgraph_node_id_2, allocgraph_node_id_1)
-            capacity[allocgraph_node_id_2, allocgraph_node_id_1] = allocgraph_edge_capacity
-        end
-    end
-
-    # The source nodes must only have one outneighbor
-    for (allocgraph_node_id, allocgraph_node_type) in values(node_id_mapping)
-        if allocgraph_node_type == :source
-            if !(
-                (length(inneighbors(graph_allocation, allocgraph_node_id)) == 0) &&
-                (length(outneighbors(graph_allocation, allocgraph_node_id)) == 1)
-            )
-                @error "Sources nodes in the max flow graph must have no inneighbors and 1 outneighbor."
-                errors = true
-            end
-        end
-    end
-
-    # Invert the node id mapping to easily translate from allocgraph nodes to subnetwork nodes
-    node_id_mapping_inverse = Dict{Int, Tuple{Int, Symbol}}()
-
-    for (subnetwork_node_id, (allocgraph_node_id, node_type)) in node_id_mapping
-        node_id_mapping_inverse[allocgraph_node_id] = (subnetwork_node_id, node_type)
-    end
-
-    # Remove user return flow edges that are upstream of the user itself
-    allocgraph_node_ids_user = [
-        allocgraph_node_id for
-        (allocgraph_node_id, node_type) in values(node_id_mapping) if node_type == :user
-    ]
-    allocgraph_node_ids_user_with_returnflow = Int[]
-    for allocgraph_node_id_user in allocgraph_node_ids_user
-        allocgraph_node_id_return_flow =
-            only(outneighbors(graph_allocation, allocgraph_node_id_user))
-        if path_exists_in_graph(
-            graph_allocation,
-            allocgraph_node_id_return_flow,
-            allocgraph_node_id_user,
-        )
-            rem_edge!(
-                graph_allocation,
-                allocgraph_node_id_user,
-                allocgraph_node_id_return_flow,
-            )
-            @debug "The outflow of user #$(node_id_mapping_inverse[allocgraph_node_id_user][1]) is upstream of the user itself and thus ignored in allocation solves."
-        else
-            push!(allocgraph_node_ids_uer_with_returnflow, allocgraph_node_id_user)
-        end
-    end
-
-    # Used for updating user demand and source flow constraints
-    allocgraph_edges = collect(edges(graph_allocation))
-    allocgraph_edge_ids_user_demand = Int[]
-    allocgraph_edge_ids_source = Int[]
-    for (i, allocgraph_edge) in enumerate(allocgraph_edges)
-        allocgraph_node_type_dst = node_id_mapping_inverse[allocgraph_edge.dst][2]
-        allocgraph_node_type_src = node_id_mapping_inverse[allocgraph_edge.src][2]
-        if allocgraph_node_type_dst == :user
-            push!(allocgraph_edge_ids_user_demand, i)
-        elseif allocgraph_node_type_src == :source
-            push!(allocgraph_edge_ids_source, i)
-        end
-    end
+    graph_allocation,
+    capacity,
+    node_id_mapping,
+    node_id_mapping_inverse,
+    source_edge_mapping,
+    allocgraph_node_ids_user,
+    allocgraph_node_ids_user_with_returnflow,
+    allocgraph_edges,
+    allocgraph_edge_ids_user_demand =
+        allocation_graph(p, subnetwork_node_ids, source_edge_ids)
 
     # The JuMP.jl allocation problem
     problem = allocation_problem(
