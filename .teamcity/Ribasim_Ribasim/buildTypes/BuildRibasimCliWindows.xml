@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
+      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
