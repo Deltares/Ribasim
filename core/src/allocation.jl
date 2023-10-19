@@ -113,13 +113,9 @@ function find_allocation_graph_edges!(
                             allocgraph_node_id_1,
                             allocgraph_node_id_2,
                         )
-                        if subnetwork_outneighbor_id in user.node_id
-                            # Capacity depends on user demand at a given priority
-                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
-                        else
-                            # These direct connections cannot have capacity constraints
-                            capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
-                        end
+                        # if subnetwork_outneighbor_id in user.node_id: Capacity depends on user demand at a given priority
+                        # else: These direct connections cannot have capacity constraints
+                        capacity[allocgraph_node_id_1, allocgraph_node_id_2] = Inf
                     end
                 end
             end
@@ -206,19 +202,18 @@ function process_allocation_graph_edges!(
         positive_flow = true
         negative_flow = true
         allocgraph_edge_capacity = Inf
-        for (i, subnetwork_node_id) in enumerate(allocgraph_edge_composite)
-            # The start and end subnetwork nodes of the composite allocgraph
-            # edge are now nodes that have an equivalent in the allocgraph graph,
-            # these do not constrain the composite edge capacity
-            if i == 1 || i == length(allocgraph_edge_composite)
-                continue
-            end
-            node_type = lookup[subnetwork_node_id]
+        # The start and end subnetwork nodes of the composite allocgraph
+        # edge are now nodes that have an equivalent in the allocgraph graph,
+        # these do not constrain the composite edge capacity
+        for allocgraph_edge_composite_triplet in
+            IterTools.partition(allocgraph_edge_composite, 3, 1)
+            node_type = lookup[allocgraph_edge_composite_triplet[2]]
             node = getfield(p, node_type)
 
             # Find flow constraints
             if is_flow_constraining(node)
-                problem_node_idx = Ribasim.findsorted(node.node_id, subnetwork_node_id)
+                problem_node_idx =
+                    Ribasim.findsorted(node.node_id, allocgraph_edge_composite_triplet[2])
                 allocgraph_edge_capacity =
                     min(allocgraph_edge_capacity, node.max_flow_rate[problem_node_idx])
             end
@@ -226,11 +221,11 @@ function process_allocation_graph_edges!(
             # Find flow direction constraints
             if is_flow_direction_constraining(node)
                 subnetwork_inneighbor_node_id =
-                    only(inneighbors(graph_flow, subnetwork_node_id))
+                    only(inneighbors(graph_flow, allocgraph_edge_composite_triplet[2]))
 
-                if subnetwork_inneighbor_node_id == allocgraph_edge_composite[i - 1]
+                if subnetwork_inneighbor_node_id == allocgraph_edge_composite_triplet[1]
                     negative_flow = false
-                elseif subnetwork_inneighbor_node_id == allocgraph_edge_composite[i + 1]
+                elseif subnetwork_inneighbor_node_id == allocgraph_edge_composite_triplet[3]
                     positive_flow = false
                 end
             end
