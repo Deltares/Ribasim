@@ -292,16 +292,3 @@ def dutch_waterways_model():
     )
 
     return model
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    model = dutch_waterways_model()
-
-    model.plot()
-
-    df_flow = model.flow_boundary.time.pivot_table(index="time", values=["flow_rate"])
-    df_flow.plot()
-
-    plt.show()

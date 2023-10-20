@@ -230,6 +230,9 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
+    # TODO: Create allocation models from input here
+    allocation_models = AllocationModel[]
+
     return Connectivity(
         graph_flow,
         graph_control,
@@ -239,6 +242,7 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
+        allocation_models,
     )
 end
 
