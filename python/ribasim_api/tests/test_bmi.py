@@ -115,6 +115,7 @@ def test_get_component_name(libribasim):
     assert libribasim.get_component_name() == "Ribasim"
 
 
+@pytest.mark.skip("https://github.com/Deltares/Ribasim/issues/364")
 def test_get_version(libribasim):
     toml_path = Path(__file__).parents[3] / "core" / "Project.toml"
     with open(toml_path, mode="rb") as fp:
