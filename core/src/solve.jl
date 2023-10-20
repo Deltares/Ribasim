@@ -4,6 +4,40 @@ const ScalarInterpolation =
 const VectorInterpolation =
     LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
+struct SparseMatrixCSC_DiffCache{Ti <: Integer, D <: DiffCache}
+    m::Int                  # Number of rows
+    n::Int                  # Number of columns
+    colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
+    rowval::Vector{Ti}      # Row indices of stored values
+    nzval::D                # Stored values, typically nonzeros
+end
+
+struct SparseMatrixCSC_cache{Ti <: Integer, D} <:
+       SparseArrays.AbstractSparseMatrixCSC{eltype(D), Ti}
+    m::Int                  # Number of rows
+    n::Int                  # Number of columns
+    colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
+    rowval::Vector{Ti}      # Row indices of stored values
+    nzval::D                # Stored values, typically nonzeros
+end
+
+const SparseCache = Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC_cache}
+
+SparseArrays.size(matrix::SparseCache) = (matrix.m, matrix.n)
+SparseArrays.getcolptr(matrix::SparseCache) = matrix.colptr
+SparseArrays.rowvals(matrix::SparseCache) = matrix.rowval
+SparseArrays.nonzeros(matrix::SparseCache) = matrix.nzval
+
+function get_tmp_sparse(matrix::SparseMatrixCSC_DiffCache, u)::SparseMatrixCSC_cache
+    return SparseMatrixCSC_cache(
+        matrix.m,
+        matrix.n,
+        matrix.colptr,
+        matrix.rowval,
+        get_tmp(matrix.nzval, u),
+    )
+end
+
 """
 Store information for a subnetwork used for allocation.
 
@@ -557,10 +591,12 @@ function formulate_basins!(
     basin::Basin,
     flow::AbstractMatrix,
     storage::AbstractVector,
+    t::Number,
 )::Nothing
     (; node_id, current_level, current_area) = basin
-    current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_area, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    current_level = get_tmp(current_level, diffvar)
+    current_area = get_tmp(current_area, diffvar)
 
     for (i, id) in enumerate(node_id)
         # add all precipitation that falls within the profile
@@ -584,11 +620,12 @@ function formulate_basins!(
     return nothing
 end
 
-function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Float64)
+function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
-    error = get_tmp(error, u)
-    current_level = get_tmp(basin.current_level, u)
+    diffvar = isa(t, Dual) ? t : u
+    error = get_tmp(error, diffvar)
+    current_level = get_tmp(basin.current_level, diffvar)
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
@@ -827,8 +864,8 @@ function formulate_flow!(
     (; node_id, active, resistance) = linear_resistance
 
     diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
 
-    flow = get_tmp(flow, diffvar)
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -839,7 +876,6 @@ function formulate_flow!(
                     get_level(p, basin_a_id, t; diffvar) -
                     get_level(p, basin_b_id, t; diffvar)
                 ) / resistance[i]
-            println(q isa Dual)
             flow[basin_a_id, id] = q
             flow[id, basin_b_id] = q
         end
@@ -860,7 +896,8 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     diffvar = isa(t, Dual) ? t : storage
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
+
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
         downstream_ids = outneighbors(graph_flow, id)
@@ -932,7 +969,8 @@ function formulate_flow!(
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     diffvar = isa(t, Dual) ? t : storage
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
+
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
         basin_b_id = only(outneighbors(graph_flow, id))
@@ -988,7 +1026,8 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, fraction) = fractional_flow
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
@@ -1007,7 +1046,8 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id) = terminal
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
         for upstream_id in inneighbors(graph_flow, id)
@@ -1027,7 +1067,8 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id) = level_boundary
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
         for in_id in inneighbors(graph_flow, id)
@@ -1051,7 +1092,8 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
-    flow = get_tmp(flow, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
@@ -1078,8 +1120,9 @@ function formulate_flow!(
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
-    flow = get_tmp(flow, storage)
-    flow_rate = get_tmp(flow_rate, storage)
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(flow, diffvar)
+    flow_rate = get_tmp(flow_rate, diffvar)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
         src_id = only(inneighbors(graph_flow, id))
@@ -1212,20 +1255,20 @@ function water_balance!(
 )::Nothing
     (; connectivity, basin, pid_control) = p
 
-    t = get_tmp(t, t)
     storage = u.storage
     integral = u.integral
 
     du .= 0.0
-    flow = get_tmp(connectivity.flow, u)
-    # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
-    parent(flow) .= 0.0
+
+    diffvar = isa(t, Dual) ? t : storage
+    flow = get_tmp_sparse(connectivity.flow, diffvar)
+    flow.nzval .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate_basins!(du, basin, flow, storage)
+    formulate_basins!(du, basin, flow, storage, t)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)

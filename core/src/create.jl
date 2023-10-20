@@ -201,6 +201,17 @@ end
 const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
+function get_chunk_sizes(config::Config, chunk_size::Int)::Vector{Int}
+    chunk_sizes = Int[]
+    if config.solver.autodiff
+        push!(chunk_sizes, chunk_size)
+    end
+    if config.solver.algorithm in ["Rodas5"]
+        push!(chunk_sizes, 1)
+    end
+    return chunk_sizes
+end
+
 function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     if !valid_edge_types(db)
         error("Invalid edge types found.")
@@ -225,9 +236,10 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     end
     flow .= 0.0
 
-    if config.solver.autodiff
-        # FixedSizeDiffCache performs better for sparse matrix
-        flow = FixedSizeDiffCache(flow, chunk_size)
+    chunk_sizes = get_chunk_sizes(config, chunk_size)
+    if !isempty(chunk_sizes)
+        flowd = DiffCache(flow.nzval, chunk_sizes)
+        flow = SparseMatrixCSC_DiffCache(flow.m, flow.n, flow.colptr, flow.rowval, flowd)
     end
 
     # TODO: Create allocation models from input here
@@ -498,9 +510,10 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     current_level = zeros(n)
     current_area = zeros(n)
 
-    if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_size)
-        current_area = DiffCache(current_area, chunk_size)
+    chunk_sizes = get_chunk_sizes(config, chunk_size)
+    if !isempty(chunk_sizes)
+        current_level = DiffCache(current_level, chunk_sizes)
+        current_area = DiffCache(current_area, chunk_sizes)
     end
 
     precipitation = fill(NaN, length(node_id))
