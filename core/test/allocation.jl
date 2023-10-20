@@ -3,11 +3,11 @@ using SQLite
 using JuMP: value
 
 @testset "Allocation solve" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/subnetwork.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
     close(db)

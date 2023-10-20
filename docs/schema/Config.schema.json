@@ -33,7 +33,7 @@
             "type": "string",
             "default": "."
         },
-        "geopackage": {
+        "database": {
             "format": "default",
             "type": "string"
         },
@@ -170,7 +170,7 @@
         "relative_dir",
         "input_dir",
         "results_dir",
-        "geopackage",
+        "database",
         "results",
         "solver",
         "logging",

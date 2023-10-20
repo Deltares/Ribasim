@@ -135,7 +135,7 @@ end
     results_dir::String = "."
 
     # input, required
-    geopackage::String
+    database::String
 
     # results, required
     results::Results = Results()

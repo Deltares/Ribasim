@@ -106,7 +106,7 @@ class Config(BaseModel):
     relative_dir: str = "."
     input_dir: str = "."
     results_dir: str = "."
-    geopackage: str
+    database: str
     results: Results = Field(
         default_factory=lambda: Results.parse_obj(
             {

@@ -11,7 +11,7 @@ using CodecZstd: ZstdCompressor
     @test_throws UndefKeywordError Ribasim.Config(
         startime = now(),
         endtime = now(),
-        geopackage = "",
+        database = "",
         foo = "bar",
     )
 

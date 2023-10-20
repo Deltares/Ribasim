@@ -7,7 +7,7 @@ endtime = 2021-01-01   # required
 update_timestep = 86400.0 # optional, default 1 day
 
 # input files
-geopackage = "model.gpkg" # required
+database = "database.gpkg" # required
 
 [results]
 # These results files are always written
@@ -17,9 +17,9 @@ control = "results/control.arrow" # optional, default "results/control.arrow"
 compression = "zstd"             # optional, default "zstd", also supports "lz4"
 compression_level = 6            # optional, default 6
 
-# Specific tables can also go into Arrow files rather than the GeoPackage.
+# Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
-# This is optional, tables are retrieved from the GeoPackage if not specified in the TOML.
+# This is optional, tables are retrieved from the database if not specified in the TOML.
 [basin]
 time = "basin/time.arrow"
 

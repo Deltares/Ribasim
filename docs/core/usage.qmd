@@ -16,7 +16,7 @@ arguments in the command line.
 This will give the following message:
 
 ```
-Usage: ribasim 'path/to/config.toml'
+Usage: ribasim 'path/to/model/ribasim.toml'
 ```
 
 # Configuration file
@@ -66,12 +66,12 @@ The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is
 
 The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
 
-# GeoPackage and Arrow tables
+# GeoPackage database and Arrow tables
 
 The input and output tables described below all share that they are tabular files. The Node
-and Edge tables always have to be in the [GeoPackage](https://www.geopackage.org/) file, and
+and Edge tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
 results are always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
-known as Feather files. All other tables can either be in the GeoPackage or in separate
+known as Feather files. All other tables can either be in the database or in separate
 Arrow files that are listed in the TOML as described above.
 
 For visualization, the Node and Edge tables typically have associated geometries. GeoPackage
@@ -127,7 +127,7 @@ geometry  | geoarrow | (optional)
 
 The available node types as of this writing are listed as the top level bullets below. The
 sub-bullets indicate which tables are associated to the node type. The table name is the
-name it must have in the GeoPackage if it is stored there.
+name it must have in the database if it is stored there.
 
 - Basin: stores water
   - `Basin / static`: default forcing values, used if no dynamic data given in the forcing table

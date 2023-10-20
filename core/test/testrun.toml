@@ -8,7 +8,7 @@ update_timestep = 86400.0
 input_dir = "../generated_testmodels/lhm"
 results_dir = "../generated_testmodels/lhm"
 
-geopackage = "model.gpkg"
+database = "database.gpkg"
 
 [basin]
 time = "basin/time.arrow"

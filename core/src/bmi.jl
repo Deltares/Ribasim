@@ -15,9 +15,9 @@ Initialize a [`Model`](@ref) from a [`Config`](@ref).
 """
 function BMI.initialize(T::Type{Model}, config::Config)::Model
     alg = algorithm(config.solver)
-    gpkg_path = input_path(config, config.geopackage)
-    if !isfile(gpkg_path)
-        throw(SystemError("GeoPackage file not found: $gpkg_path"))
+    db_path = input_path(config, config.database)
+    if !isfile(db_path)
+        throw(SystemError("Database file not found: $db_path"))
     end
 
     # Setup timing logging
@@ -25,9 +25,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
-    # All data from the GeoPackage that we need during runtime is copied into memory,
+    # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
-    db = SQLite.DB(gpkg_path)
+    db = SQLite.DB(db_path)
     local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
@@ -83,7 +83,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
     finally
-        # always close the GeoPackage, also in case of an error
+        # always close the database, also in case of an error
         close(db)
     end
     @debug "Read database into memory."

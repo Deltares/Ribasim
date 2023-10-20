@@ -90,12 +90,12 @@ class TableModel(BaseModel):
 
     def write_table(self, connection: Connection) -> None:
         """
-        Write the contents of the input to a GeoPackage.
+        Write the contents of the input to a database.
 
         Parameters
         ----------
         connection : Connection
-            SQLite connection to the GeoPackage.
+            SQLite connection to the database.
         """
         self.sort()
         sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
@@ -112,9 +112,7 @@ class TableModel(BaseModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(
-        cls, path: FilePath
-    ) -> Dict[str, Union[DataFrame, None]]:
+    def _kwargs_from_database(cls, path: FilePath) -> Dict[str, Union[DataFrame, None]]:
         kwargs = {}
         with connect(path) as connection:
             for key in cls.fields():
@@ -135,22 +133,22 @@ class TableModel(BaseModel):
         return {key: pd.read_feather(path) for key, path in config.items()}
 
     @classmethod
-    def from_geopackage(cls, path: FilePath):
+    def from_database(cls, path: FilePath):
         """
-        Initialize input from a GeoPackage.
+        Initialize input from a database.
 
-        The GeoPackage tables are searched for the relevant table names.
+        The database tables are searched for the relevant table names.
 
         Parameters
         ----------
         path : Path
-            Path to the GeoPackage.
+            Path to the database.
 
         Returns
         -------
         ribasim_input
         """
-        kwargs = cls._kwargs_from_geopackage(path)
+        kwargs = cls._kwargs_from_database(path)
         return cls(**kwargs)
 
     @classmethod
@@ -158,9 +156,9 @@ class TableModel(BaseModel):
         """
         Initialize input from a TOML configuration file.
 
-        The GeoPackage tables are searched for the relevant table names. Arrow
+        The database tables are searched for the relevant table names. Arrow
         tables will also be read if specified. If a table is present in both
-        the GeoPackage and as an Arrow table, the data of the Arrow table is
+        the database and as an Arrow table, the data of the Arrow table is
         used.
 
         Parameters
@@ -171,8 +169,8 @@ class TableModel(BaseModel):
         -------
         ribasim_input
         """
-        geopackage = config["geopackage"]
-        kwargs = cls._kwargs_from_geopackage(geopackage)
+        database = config["database"]
+        kwargs = cls._kwargs_from_database(database)
         input_content = config.get(cls.get_input_type(), None)
         if input_content:
             kwargs.update(**cls._kwargs_from_toml(config))

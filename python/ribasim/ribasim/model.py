@@ -46,8 +46,6 @@ class Model(BaseModel):
 
     Parameters
     ----------
-    modelname : str
-        Model name, used in TOML and GeoPackage file name.
     node : Node
         The ID, type and geometry of each node.
     edge : Edge
@@ -88,7 +86,6 @@ class Model(BaseModel):
         Logging settings.
     """
 
-    modelname: str
     node: Node
     edge: Edge
     basin: Basin
@@ -138,7 +135,7 @@ class Model(BaseModel):
         content = {
             "starttime": self.starttime,
             "endtime": self.endtime,
-            "geopackage": f"{self.modelname}.gpkg",
+            "database": "database.gpkg",
         }
         if self.solver is not None:
             section = {k: v for k, v in self.solver.dict().items() if v is not None}
@@ -151,27 +148,26 @@ class Model(BaseModel):
             section = {k: v for k, v in self.logging.dict().items() if v is not None}
             content["logging"] = section
 
-        with open(directory / f"{self.modelname}.toml", "wb") as f:
+        with open(directory / "ribasim.toml", "wb") as f:
             tomli_w.dump(content, f)
         return
 
     def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to GeoPackage tables."""
-        # We write all tables to a temporary GeoPackage with a dot prefix,
+        """Write the input to database tables."""
+        # We write all tables to a temporary database with a dot prefix,
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
         directory = Path(directory)
-        gpkg_path = directory / f"{self.modelname}.gpkg"
-        tempname = "." + self.modelname
-        temp_path = gpkg_path.with_stem(tempname)
+        db_path = directory / "database.gpkg"
+        temp_path = db_path.with_stem(".database.gpkg")
         # avoid adding tables to existing model
         temp_path.unlink(missing_ok=True)
 
-        # write to GeoPackage using geopandas
+        # write to database using geopandas
         self.node.write_layer(temp_path)
         self.edge.write_layer(temp_path)
 
-        # write to GeoPackage using sqlite3
+        # write to database using sqlite3
         with closing(connect(temp_path)) as connection:
             for name in self.fields():
                 input_entry = getattr(self, name)
@@ -182,7 +178,7 @@ class Model(BaseModel):
                     input_entry.write_table(connection)
             connection.commit()
 
-        shutil.move(temp_path, gpkg_path)
+        shutil.move(temp_path, db_path)
         return
 
     @staticmethod
@@ -298,11 +294,9 @@ class Model(BaseModel):
 
     def write(self, directory: FilePath) -> None:
         """
-        Write the contents of the model to a GeoPackage and a TOML configuration file.
+        Write the contents of the model to a database and a TOML configuration file.
 
         If ``directory`` does not exist, it is created before writing.
-        The GeoPackage and TOML file will be called ``{modelname}.gpkg`` and
-        ``{modelname}.toml`` respectively.
 
         Parameters
         ----------
@@ -336,7 +330,7 @@ class Model(BaseModel):
             config = tomli.load(f)
 
         kwargs: dict[str, Any] = {"modelname": path.stem}
-        config["geopackage"] = path.parent / config["geopackage"]
+        config["database"] = path.parent / config["database"]
 
         for module in [geometry, node_types]:
             for _, node_type_cls in inspect.getmembers(module, inspect.isclass):

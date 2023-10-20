@@ -48,7 +48,7 @@ class Edge(TableModel):
 
     def write_layer(self, path: FilePath) -> None:
         """
-        Write the contents of the input to a GeoPackage.
+        Write the contents of the input to a database.
 
         Parameters
         ----------
@@ -68,7 +68,7 @@ class Edge(TableModel):
         return
 
     @classmethod
-    def _kwargs_from_geopackage(
+    def _kwargs_from_database(
         cls, path: FilePath
     ) -> Dict[str, Union[DataFrame[Any], GeoDataFrame, None]]:
         kwargs = {}
