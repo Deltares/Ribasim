@@ -206,7 +206,7 @@ function get_chunk_sizes(config::Config, chunk_size::Int)::Vector{Int}
     if config.solver.autodiff
         push!(chunk_sizes, chunk_size)
     end
-    if config.solver.algorithm in ["Rodas5"]
+    if config.solver.algorithm in ["Rodas5", "Rosenbrock23"]
         push!(chunk_sizes, 1)
     end
     return chunk_sizes
