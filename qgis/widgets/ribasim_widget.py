@@ -11,7 +11,7 @@ from typing import Any
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
-from ribasim_qgis.widgets.output_widget import OutputWidget
+from ribasim_qgis.widgets.results_widget import ResultsWidget
 
 from qgis.core import QgsEditFormConfig, QgsMapLayer, QgsProject
 
@@ -27,7 +27,7 @@ class RibasimWidget(QWidget):
 
         self.dataset_widget = DatasetWidget(self)
         self.nodes_widget = NodesWidget(self)
-        self.output_widget = OutputWidget(self)
+        self.results_widget = ResultsWidget(self)
 
         # Layout
         self.layout = QVBoxLayout()
@@ -35,7 +35,7 @@ class RibasimWidget(QWidget):
         self.layout.addWidget(self.tabwidget)
         self.tabwidget.addTab(self.dataset_widget, "GeoPackage")
         self.tabwidget.addTab(self.nodes_widget, "Nodes")
-        self.tabwidget.addTab(self.output_widget, "Output")
+        self.tabwidget.addTab(self.results_widget, "Results")
         self.setLayout(self.layout)
 
         # QGIS Layers Panel groups

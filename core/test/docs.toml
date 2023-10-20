@@ -9,11 +9,11 @@ update_timestep = 86400.0 # optional, default 1 day
 # input files
 geopackage = "model.gpkg" # required
 
-[output]
-# These output files are always written
-flow = "output/flow.arrow"       # optional, default "output/flow.arrow"
-basin = "output/basin.arrow"     # optional, default "output/basin.arrow"
-control = "output/control.arrow" # optional, default "output/control.arrow"
+[results]
+# These results files are always written
+flow = "results/flow.arrow"       # optional, default "results/flow.arrow"
+basin = "results/basin.arrow"     # optional, default "results/basin.arrow"
+control = "results/control.arrow" # optional, default "results/control.arrow"
 compression = "zstd"             # optional, default "zstd", also supports "lz4"
 compression_level = 6            # optional, default 6
 

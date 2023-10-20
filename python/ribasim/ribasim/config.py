@@ -9,10 +9,10 @@ from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
 
-class Output(BaseModel):
-    basin: str = "output/basin.arrow"
-    flow: str = "output/flow.arrow"
-    control: str = "output/control.arrow"
+class Results(BaseModel):
+    basin: str = "results/basin.arrow"
+    flow: str = "results/flow.arrow"
+    control: str = "results/control.arrow"
     outstate: Optional[str] = None
     compression: str = "zstd"
     compression_level: int = 6
@@ -105,14 +105,14 @@ class Config(BaseModel):
     update_timestep: float = 86400
     relative_dir: str = "."
     input_dir: str = "."
-    output_dir: str = "."
+    results_dir: str = "."
     geopackage: str
-    output: Output = Field(
-        default_factory=lambda: Output.parse_obj(
+    results: Results = Field(
+        default_factory=lambda: Results.parse_obj(
             {
-                "basin": "output/basin.arrow",
-                "flow": "output/flow.arrow",
-                "control": "output/control.arrow",
+                "basin": "results/basin.arrow",
+                "flow": "results/flow.arrow",
+                "control": "results/control.arrow",
                 "outstate": None,
                 "compression": "zstd",
                 "compression_level": 6,

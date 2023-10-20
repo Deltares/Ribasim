@@ -28,7 +28,7 @@
             "type": "string",
             "default": "."
         },
-        "output_dir": {
+        "results_dir": {
             "format": "default",
             "type": "string",
             "default": "."
@@ -37,12 +37,12 @@
             "format": "default",
             "type": "string"
         },
-        "output": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/Output.schema.json",
+        "results": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
             "default": {
-                "basin": "output/basin.arrow",
-                "flow": "output/flow.arrow",
-                "control": "output/control.arrow",
+                "basin": "results/basin.arrow",
+                "flow": "results/flow.arrow",
+                "control": "results/control.arrow",
                 "outstate": null,
                 "compression": "zstd",
                 "compression_level": 6
@@ -169,9 +169,9 @@
         "update_timestep",
         "relative_dir",
         "input_dir",
-        "output_dir",
+        "results_dir",
         "geopackage",
-        "output",
+        "results",
         "solver",
         "logging",
         "terminal",

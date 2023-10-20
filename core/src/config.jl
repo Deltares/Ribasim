@@ -15,7 +15,7 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
-export Config, Solver, Output, Logging
+export Config, Solver, Results, Logging
 export algorithm, snake_case, zstd, lz4
 
 const schemas =
@@ -108,10 +108,10 @@ function Base.convert(::Type{Compression}, str::AbstractString)
 end
 
 # Separate struct, as basin clashes with nodetype
-@option struct Output <: TableOption
-    basin::String = "output/basin.arrow"
-    flow::String = "output/flow.arrow"
-    control::String = "output/control.arrow"
+@option struct Results <: TableOption
+    basin::String = "results/basin.arrow"
+    flow::String = "results/flow.arrow"
+    control::String = "results/control.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
@@ -132,13 +132,13 @@ end
     # optional, when Config is created from a TOML file, this is its directory
     relative_dir::String = "."  # ignored(!)
     input_dir::String = "."
-    output_dir::String = "."
+    results_dir::String = "."
 
     # input, required
     geopackage::String
 
-    # output, required
-    output::Output = Output()
+    # results, required
+    results::Results = Results()
 
     solver::Solver = Solver()
 

@@ -127,9 +127,9 @@ function input_path(config::Config, path::String)
     return normpath(config.relative_dir, config.input_dir, path)
 end
 
-"Construct a path relative to both the TOML directory and the optional `output_dir`"
-function output_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.output_dir, path)
+"Construct a path relative to both the TOML directory and the optional `results_dir`"
+function results_path(config::Config, path::String)
+    return normpath(config.relative_dir, config.results_dir, path)
 end
 
 """

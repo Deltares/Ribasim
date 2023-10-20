@@ -156,29 +156,29 @@ end
 """
     BMI.finalize(model::Model)::Model
 
-Write all output to the configured output files.
+Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Model
     (; config) = model
-    (; output) = model.config
-    compress = get_compressor(output)
+    (; results) = model.config
+    compress = get_compressor(results)
 
     # basin
     table = basin_table(model)
-    path = output_path(config, output.basin)
+    path = results_path(config, results.basin)
     write_arrow(path, table, compress)
 
     # flow
     table = flow_table(model)
-    path = output_path(config, output.flow)
+    path = results_path(config, results.flow)
     write_arrow(path, table, compress)
 
     # discrete control
     table = discrete_control_table(model)
-    path = output_path(config, output.control)
+    path = results_path(config, results.control)
     write_arrow(path, table, compress)
 
-    @debug "Wrote output."
+    @debug "Wrote results."
     return model
 end
 
@@ -203,7 +203,7 @@ function set_initial_discrete_controlled_parameters!(
 end
 
 """
-Create the different callbacks that are used to store output
+Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
@@ -566,7 +566,7 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
     run(config::Config)::Model
 
 Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
-Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing output with [`BMI.finalize`](@ref).
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing results with [`BMI.finalize`](@ref).
 """
 run(config_file::AbstractString)::Model = run(Config(config_file))
 

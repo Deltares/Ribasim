@@ -131,22 +131,22 @@ geopackage = "basic.gpkg"
 - Open your terminal and go to the directory where your TOML is stored. Now run
   `path/to/ribasim_cli/ribasim basic.toml`. Adjust the path to the `ribasim_cli` folder to
   where you placed it. This runs the model.
-- In your model directory there is now an `output/` folder with `basin.arrow` and
+- In your model directory there is now a `results/` folder with `basin.arrow` and
   `flow.arrow` output files.
 
 ## Inspect results {#sec-results}
 
-### Associate output to iMOD time series window
+### Associate results to iMOD time series window
 
 In QGIS select the model group.
 
 ![](https://user-images.githubusercontent.com/4471859/224939378-a026aec7-419d-4e6e-8b20-df80aa415659.png){fig-align="left"}
 
-In the Ribasim plugin widget, select the Output tab and click "Associate Output".
+In the Ribasim plugin widget, select the Results tab and click "Associate Results".
 
 ![](https://user-images.githubusercontent.com/4471859/224939389-17add58d-6701-49c5-a23a-ce367572d9cd.png){fig-align="left"}
 
-Select `output/basin.arrow`.
+Select `results/basin.arrow`.
 
 ![](https://user-images.githubusercontent.com/4471859/224939408-5c291840-90a4-4efa-a2f0-4fb5986b8779.png){fig-align="left"}
 
