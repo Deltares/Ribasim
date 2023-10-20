@@ -85,7 +85,6 @@ def invalid_qh_model():
     )
 
     model = ribasim.Model(
-        modelname="invalid_qh",
         edge=edge,
         node=node,
         basin=basin,
@@ -187,7 +186,6 @@ def invalid_fractional_flow_model():
     )
 
     model = ribasim.Model(
-        modelname="invalid_fractional_flow",
         node=node,
         edge=edge,
         basin=basin,
@@ -316,7 +314,6 @@ def invalid_discrete_control_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        modelname="invalid_discrete_control",
         node=node,
         edge=edge,
         basin=basin,
@@ -405,7 +402,6 @@ def invalid_edge_types_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="invalid_edge_types",
         node=node,
         edge=edge,
         basin=basin,

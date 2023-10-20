@@ -329,7 +329,7 @@ class Model(BaseModel):
         with open(path, "rb") as f:
             config = tomli.load(f)
 
-        kwargs: dict[str, Any] = {"modelname": path.stem}
+        kwargs: dict[str, Any] = {}
         config["database"] = path.parent / config["database"]
 
         for module in [geometry, node_types]:

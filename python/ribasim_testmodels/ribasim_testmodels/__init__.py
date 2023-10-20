@@ -1,5 +1,10 @@
 __version__ = "0.2.0"
 
+from typing import Callable, Dict
+
+import ribasim
+
+import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     looped_subnetwork_model,
     subnetwork_model,
@@ -71,3 +76,10 @@ __all__ = [
     "subnetwork_model",
     "looped_subnetwork_model",
 ]
+
+# provide a mapping from model name to its constructor, so we can iterate over all models
+constructors: Dict[str, Callable[[], ribasim.Model]] = {}
+for model_name_model in __all__:
+    model_name = model_name_model.removesuffix("_model")
+    model_constructor = getattr(ribasim_testmodels, model_name_model)
+    constructors[model_name] = model_constructor

@@ -110,7 +110,6 @@ def user_model():
     solver = ribasim.Solver(algorithm="Tsit5")
 
     model = ribasim.Model(
-        modelname="user",
         node=node,
         edge=edge,
         basin=basin,
@@ -272,7 +271,6 @@ def subnetwork_model():
     )
 
     model = ribasim.Model(
-        modelname="subnetwork",
         node=node,
         edge=edge,
         basin=basin,
@@ -520,7 +518,6 @@ def looped_subnetwork_model():
     )
 
     model = ribasim.Model(
-        modelname="looped_subnetwork",
         node=node,
         edge=edge,
         basin=basin,
