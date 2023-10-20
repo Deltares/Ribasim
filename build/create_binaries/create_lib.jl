@@ -2,6 +2,8 @@ using PackageCompiler
 using TOML
 using LibGit2
 
+include("strip_cldr.jl")
+
 cd(@__DIR__)
 
 project_dir = "../libribasim"
