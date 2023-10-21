@@ -22,7 +22,7 @@ In [3]: argument = create_string_buffer(0)
    ...: c_dll.init_julia(c_int(0), byref(argument))
 Out[3]: 1
 
-In [4]: config_path = "run.toml"
+In [4]: config_path = "ribasim.toml"
 
 In [5]: c_dll.initialize(c_char_p(config_path.encode()))
 Out[5]: 0

@@ -127,7 +127,6 @@ def pump_discrete_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pump_discrete_control",
         node=node,
         edge=edge,
         basin=basin,
@@ -267,7 +266,6 @@ def flow_condition_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="flow_condition",
         node=node,
         edge=edge,
         basin=basin,
@@ -415,7 +413,6 @@ def level_boundary_condition_model():
     )
 
     model = ribasim.Model(
-        modelname="level_boundary_condition",
         node=node,
         edge=edge,
         basin=basin,
@@ -549,7 +546,6 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="tabulated_rating_curve_control",
         node=node,
         edge=edge,
         basin=basin,
@@ -690,7 +686,6 @@ def level_setpoint_with_minmax_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        modelname="level_setpoint_with_minmax",
         node=node,
         edge=edge,
         basin=basin,

@@ -15,9 +15,9 @@ Initialize a [`Model`](@ref) from a [`Config`](@ref).
 """
 function BMI.initialize(T::Type{Model}, config::Config)::Model
     alg = algorithm(config.solver)
-    gpkg_path = input_path(config, config.geopackage)
-    if !isfile(gpkg_path)
-        throw(SystemError("GeoPackage file not found: $gpkg_path"))
+    db_path = input_path(config, config.database)
+    if !isfile(db_path)
+        throw(SystemError("Database file not found: $db_path"))
     end
 
     # Setup timing logging
@@ -25,9 +25,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
-    # All data from the GeoPackage that we need during runtime is copied into memory,
+    # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
-    db = SQLite.DB(gpkg_path)
+    db = SQLite.DB(db_path)
     local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
@@ -83,7 +83,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
     finally
-        # always close the GeoPackage, also in case of an error
+        # always close the database, also in case of an error
         close(db)
     end
     @debug "Read database into memory."
@@ -156,29 +156,29 @@ end
 """
     BMI.finalize(model::Model)::Model
 
-Write all output to the configured output files.
+Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Model
     (; config) = model
-    (; output) = model.config
-    compress = get_compressor(output)
+    (; results) = model.config
+    compress = get_compressor(results)
 
     # basin
     table = basin_table(model)
-    path = output_path(config, output.basin)
+    path = results_path(config, results.basin)
     write_arrow(path, table, compress)
 
     # flow
     table = flow_table(model)
-    path = output_path(config, output.flow)
+    path = results_path(config, results.flow)
     write_arrow(path, table, compress)
 
     # discrete control
     table = discrete_control_table(model)
-    path = output_path(config, output.control)
+    path = results_path(config, results.control)
     write_arrow(path, table, compress)
 
-    @debug "Wrote output."
+    @debug "Wrote results."
     return model
 end
 
@@ -203,7 +203,7 @@ function set_initial_discrete_controlled_parameters!(
 end
 
 """
-Create the different callbacks that are used to store output
+Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
@@ -566,7 +566,7 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
     run(config::Config)::Model
 
 Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
-Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing output with [`BMI.finalize`](@ref).
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing results with [`BMI.finalize`](@ref).
 """
 run(config_file::AbstractString)::Model = run(Config(config_file))
 

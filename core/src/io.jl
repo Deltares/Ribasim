@@ -47,7 +47,7 @@ datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * 
 """
     load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
 
-Load data from Arrow files if available, otherwise the GeoPackage.
+Load data from Arrow files if available, otherwise the database.
 Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
 """
 function load_data(
@@ -78,7 +78,7 @@ end
 """
     load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
 
-Load data from Arrow files if available, otherwise the GeoPackage.
+Load data from Arrow files if available, otherwise the database.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found. This function validates the schema, and enforces the required sort order.
 """
@@ -95,7 +95,7 @@ function load_structvector(
 
     nt = Tables.columntable(table)
     if table isa Query && haskey(nt, :time)
-        # time has type timestamp and is stored as a String in the GeoPackage
+        # time has type timestamp and is stored as a String in the database
         # currently SQLite.jl does not automatically convert it to DateTime
         nt = merge(
             nt,
@@ -127,9 +127,9 @@ function input_path(config::Config, path::String)
     return normpath(config.relative_dir, config.input_dir, path)
 end
 
-"Construct a path relative to both the TOML directory and the optional `output_dir`"
-function output_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.output_dir, path)
+"Construct a path relative to both the TOML directory and the optional `results_dir`"
+function results_path(config::Config, path::String)
+    return normpath(config.relative_dir, config.results_dir, path)
 end
 
 """

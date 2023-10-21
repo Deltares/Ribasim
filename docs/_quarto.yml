@@ -71,7 +71,7 @@ quartodoc:
       contents:
         - Model
     - title: Network
-      desc: The Node and Edge GeoPackage layers define the network layout.
+      desc: The Node and Edge database layers define the network layout.
       contents:
         - Node
         - Edge

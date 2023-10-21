@@ -138,7 +138,7 @@ pkg> instantiate
 Press backspace to go back to the Julia REPL.
 There you can run a model with:
 ```julia
-julia> Ribasim.run("path/to/model.toml")
+julia> Ribasim.run("path/to/model/ribasim.toml")
 ```
 
 :::{.callout-tip}

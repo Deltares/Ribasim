@@ -17,7 +17,7 @@ recordproperty("name", "Input/Output")  # TODO To check in TeamCity
         starttime = now(),
         endtime = now(),
         relative_dir = "model",
-        geopackage = "path/to/file",
+        database = "path/to/file",
     )
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "path", "to", "file")
@@ -28,14 +28,14 @@ recordproperty("name", "Input/Output")  # TODO To check in TeamCity
         endtime = now(),
         relative_dir = "model",
         input_dir = "input",
-        geopackage = "path/to/file",
+        database = "path/to/file",
     )
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "input", "path", "to", "file")
 
     # absolute path
     config =
-        Ribasim.Config(; starttime = now(), endtime = now(), geopackage = "/path/to/file")
+        Ribasim.Config(; starttime = now(), endtime = now(), database = "/path/to/file")
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
 end
 
@@ -69,13 +69,11 @@ function to_arrow_table(
 end
 
 @testset "table sort" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/basic_transient/basic_transient.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(config, config.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(config, config.database)
+    db = SQLite.DB(db_path)
 
     # load a sorted table
     table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)

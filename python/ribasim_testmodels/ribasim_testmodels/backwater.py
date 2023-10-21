@@ -93,7 +93,6 @@ def backwater_model():
     )
 
     model = ribasim.Model(
-        modelname="backwater",
         node=node,
         edge=edge,
         basin=basin,

@@ -92,7 +92,6 @@ def flow_boundary_time_model():
     )
 
     model = ribasim.Model(
-        modelname="flow_boundary_time",
         node=node,
         edge=edge,
         basin=basin,

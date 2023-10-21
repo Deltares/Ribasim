@@ -2,7 +2,7 @@ using Test
 using Ribasim
 import BasicModelInterface as BMI
 
-toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
+toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
 @testset "adaptive timestepping" begin
     model = BMI.initialize(Ribasim.Model, toml_path)

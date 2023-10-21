@@ -25,9 +25,8 @@ def assert_equal(a, b):
 def test_basic(basic, tmp_path):
     model_orig = basic
     model_orig.write(tmp_path / "basic")
-    model_loaded = ribasim.Model.from_toml(tmp_path / "basic/basic.toml")
+    model_loaded = ribasim.Model.from_toml(tmp_path / "basic/ribasim.toml")
 
-    assert model_orig.modelname == model_loaded.modelname
     index_a = model_orig.node.static.index.to_numpy(int)
     index_b = model_loaded.node.static.index.to_numpy(int)
     assert_array_equal(index_a, index_b)
@@ -39,11 +38,8 @@ def test_basic(basic, tmp_path):
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient")
-    model_loaded = ribasim.Model.from_toml(
-        tmp_path / "basic_transient/basic_transient.toml"
-    )
+    model_loaded = ribasim.Model.from_toml(tmp_path / "basic_transient/ribasim.toml")
 
-    assert model_orig.modelname == model_loaded.modelname
     assert_equal(model_orig.node.static, model_loaded.node.static)
     assert_equal(model_orig.edge.static, model_loaded.edge.static)
 

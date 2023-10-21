@@ -15,7 +15,7 @@ end
 
 @testset "toml_path" begin
     model_path = normpath(@__DIR__, "../../generated_testmodels/basic/")
-    toml_path = normpath(model_path, "basic.toml")
+    toml_path = normpath(model_path, "ribasim.toml")
     @test ispath(toml_path)
     empty!(ARGS)
     push!(ARGS, toml_path)

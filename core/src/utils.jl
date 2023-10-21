@@ -466,10 +466,10 @@ function basin_bottoms(
     return bottom_a, bottom_b
 end
 
-"Get the compressor based on the Output"
-function get_compressor(output::Output)::TranscodingStreams.Codec
-    compressor = output.compression
-    level = output.compression_level
+"Get the compressor based on the Results section"
+function get_compressor(results::Results)::TranscodingStreams.Codec
+    compressor = results.compression
+    level = results.compression_level
     c = if compressor == lz4
         LZ4FrameCompressor(; compressionlevel = level)
     elseif compressor == zstd

@@ -62,10 +62,8 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # Solution: storage(t) = limit_storage + (storage0 - limit_storage)*exp(-t/(basin_area*resistance))
 # Here limit_storage is the storage at which the level of the basin is equal to the level of the level boundary
 @testset "LinearResistance" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/linear_resistance/linear_resistance.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -89,8 +87,7 @@ end
 # Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
 # storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
 @testset "TabulatedRatingCurve" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/rating_curve/rating_curve.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/rating_curve/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -122,10 +119,8 @@ end
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
 @testset "ManningResistance" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/manning_resistance/manning_resistance.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -159,10 +154,8 @@ end
 # differentiating the equation for the storage of the controlled basin
 # once to time to get rid of the integral term.
 @testset "PID control" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/pid_control_equation/pid_control_equation.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pid_control_equation/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
@@ -205,7 +198,7 @@ end
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
 @testset "MiscellaneousNodes" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/misc_nodes.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)

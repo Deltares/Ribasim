@@ -144,7 +144,6 @@ def pid_control_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pid_control",
         node=node,
         edge=edge,
         basin=basin,
@@ -319,7 +318,6 @@ def discrete_control_of_pid_control_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="discrete_control_of_pid_control",
         node=node,
         edge=edge,
         basin=basin,
