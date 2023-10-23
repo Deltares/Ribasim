@@ -25,13 +25,13 @@ whose cache (accessed via get_tmp_sparse) supports sparse indexing.
 Previously FixedSizeDiffCache was used for the sparse matrix Connectivity.flow, but FixedSizeDiffCache
 does not support multi-level Duals.
 """
-struct SparseMatrixCSC_cache{Ti <: Integer, D <: Union{Vector, Base.ReinterpretArray}} <:
-       SparseArrays.AbstractSparseMatrixCSC{eltype(D), Ti}
+struct SparseMatrixCSC_cache{Ti <: Integer, C <: Union{Vector, Base.ReinterpretArray}} <:
+       SparseArrays.AbstractSparseMatrixCSC{eltype(C), Ti}
     m::Int                  # Number of rows
     n::Int                  # Number of columns
     colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
     rowval::Vector{Ti}      # Row indices of stored values
-    nzval::D                # cache
+    nzval::C                # cache
 end
 
 const SparseCache = Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC_cache}
@@ -1290,7 +1290,7 @@ function water_balance!(
     diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(connectivity.flow, diffvar)
     # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
-    flow.nzval .= 0.0
+    nonzeros(flow) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage, t)
