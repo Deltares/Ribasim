@@ -7,7 +7,6 @@ import ribasim
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     # looped_subnetwork_model,
-    # subnetwork_model,
     user_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -75,7 +74,6 @@ __all__ = [
     "user_model",
     # Disable until this issue is resolved:
     # https://github.com/Deltares/Ribasim/issues/692
-    # "subnetwork_model",
     # "looped_subnetwork_model",
 ]
 
