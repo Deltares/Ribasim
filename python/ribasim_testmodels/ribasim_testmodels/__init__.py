@@ -73,7 +73,8 @@ __all__ = [
     "level_boundary_condition_model",
     "outlet_model",
     "user_model",
-    # Disable these testmodels for now
+    # Disable until this issue is resolved:
+    # https://github.com/Deltares/Ribasim/issues/692
     # "subnetwork_model",
     # "looped_subnetwork_model",
 ]
