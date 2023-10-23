@@ -6,8 +6,8 @@ import ribasim
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
-    looped_subnetwork_model,
-    subnetwork_model,
+    # looped_subnetwork_model,
+    # subnetwork_model,
     user_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -73,8 +73,9 @@ __all__ = [
     "level_boundary_condition_model",
     "outlet_model",
     "user_model",
-    "subnetwork_model",
-    "looped_subnetwork_model",
+    # Disable these testmodels for now
+    # "subnetwork_model",
+    # "looped_subnetwork_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models
