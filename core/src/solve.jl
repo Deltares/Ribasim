@@ -93,7 +93,7 @@ edge_connection_type_flow, edge_connection_types_control: get (src_node_type, ds
 if autodiff
     T = DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}}
 else
-    T = SparseMatrixCSC{Float64, Int}
+    T = SparseMatrixCSC_DiffCache (Custom type within Ribasim)
 end
 """
 struct Connectivity{T}
@@ -588,10 +588,15 @@ function valid_n_neighbors(
     return !errors
 end
 
-function set_current_basin_properties!(basin::Basin, storage::AbstractVector)::Nothing
+function set_current_basin_properties!(
+    basin::Basin,
+    storage::AbstractVector,
+    t::Number,
+)::Nothing
     (; current_level, current_area) = basin
-    current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_area, storage)
+    diffvar = get_diffvar((t, storage))
+    current_level = get_tmp(current_level, diffvar)
+    current_area = get_tmp(current_area, diffvar)
 
     for i in eachindex(storage)
         s = storage[i]
@@ -672,12 +677,12 @@ function continuous_control!(
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
     (; current_area) = basin
 
-    current_area = get_tmp(current_area, u)
-    storage = u.storage
-    flow = get_tmp(flow, u)
-    outlet_flow_rate = get_tmp(outlet.flow_rate, u)
-    pump_flow_rate = get_tmp(pump.flow_rate, u)
-    error = get_tmp(error, u)
+    diffvar = get_diffvar((t, u))
+    current_area = get_tmp(current_area, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
+    outlet_flow_rate = get_tmp(outlet.flow_rate, diffvar)
+    pump_flow_rate = get_tmp(pump.flow_rate, diffvar)
+    error = get_tmp(error, diffvar)
 
     set_error!(pid_control, p, u, t)
 
@@ -701,8 +706,8 @@ function continuous_control!(
             src_id = only(inneighbors(graph_flow, controlled_node_id))
             dst_id = only(outneighbors(graph_flow, controlled_node_id))
 
-            src_level = get_level(p, src_id, t; storage)
-            dst_level = get_level(p, dst_id, t; storage)
+            src_level = get_level(p, src_id, t; diffvar)
+            dst_level = get_level(p, dst_id, t; diffvar)
 
             if src_level === nothing || dst_level === nothing
                 factor_outlet = 1.0
@@ -832,7 +837,8 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, allocated, demand, active, return_factor, min_level) = user
 
-    flow = get_tmp(flow, storage)
+    diffvar = get_diffvar((t, storage))
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         src_id = only(inneighbors(graph_flow, id))
@@ -856,7 +862,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        source_level = get_level(p, src_id, t; storage)
+        source_level = get_level(p, src_id, t; diffvar)
         Δsource_level = source_level - min_level[i]
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -988,7 +994,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
-    diffvar = get_diffvar((storage, t))
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -1176,8 +1182,9 @@ function formulate_flow!(
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
-    flow = get_tmp(flow, storage)
-    flow_rate = get_tmp(flow_rate, storage)
+    diffvar = get_diffvar((t, storage))
+    flow = get_tmp_sparse(flow, diffvar)
+    flow_rate = get_tmp(flow_rate, diffvar)
     for (i, id) in enumerate(node_id)
         src_id = only(inneighbors(graph_flow, id))
         dst_id = only(outneighbors(graph_flow, id))
@@ -1196,8 +1203,8 @@ function formulate_flow!(
         end
 
         # No flow of outlet if source level is lower than target level
-        src_level = get_level(p, src_id, t; storage)
-        dst_level = get_level(p, dst_id, t; storage)
+        src_level = get_level(p, src_id, t; diffvar)
+        dst_level = get_level(p, dst_id, t; diffvar)
 
         if src_level !== nothing && dst_level !== nothing
             Δlevel = src_level - dst_level
@@ -1285,7 +1292,7 @@ function water_balance!(
     parent(flow.nzval) .= 0.0
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(basin, storage)
+    set_current_basin_properties!(basin, storage, t)
 
     # Basin forcings
     formulate_basins!(du, basin, flow, storage, t)

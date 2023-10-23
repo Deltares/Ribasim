@@ -15,7 +15,7 @@ using JuMP: value
     # Inputs specific for this test model
     subgraph_node_ids = unique(keys(p.lookup))
     source_edge_ids = [p.connectivity.edge_ids_flow[(1, 2)]]
-    flow = Ribasim.get_tmp(p.connectivity.flow, 0)
+    flow = Ribasim.get_tmp_sparse(p.connectivity.flow, 0)
     flow[1, 2] = 4.5 # Source flow
     Δt_allocation = 24.0 * 60^2
     t = 0.0

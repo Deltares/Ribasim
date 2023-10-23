@@ -468,7 +468,8 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_size)
+        chunk_sizes = get_chunk_sizes(config, chunk_size)
+        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
     else
         parsed_parameters.flow_rate
     end
@@ -497,7 +498,8 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_size)
+        chunk_sizes = get_chunk_sizes(config, chunk_size)
+        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
     else
         parsed_parameters.flow_rate
     end
@@ -629,7 +631,8 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     pid_error = zeros(length(node_ids))
 
     if config.solver.autodiff
-        pid_error = DiffCache(pid_error, chunk_size)
+        chunk_sizes = get_chunk_sizes(config, chunk_size)
+        pid_error = DiffCache(pid_error, chunk_sizes)
     end
 
     # Combine PID parameters into one vector interpolation object

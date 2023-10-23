@@ -769,7 +769,7 @@ function set_model_state_in_allocation!(
     (; flow, edge_ids_flow_inv) = connectivity
 
     # It is assumed that the allocation procedure does not have to be differentiated.
-    flow = get_tmp(flow, 0)
+    flow = get_tmp_sparse(flow, 0)
 
     for (subnetwork_node_id, (allocgraph_node_id, allocgraph_node_type)) in node_id_mapping
         if allocgraph_node_type == :user
