@@ -7,14 +7,13 @@ import ribasim_testmodels
 
 
 @pytest.mark.parametrize(
-    "model_name,model_constructor",
-    ribasim_testmodels.constructors.items(),
+    "model_constructor",
+    ribasim_testmodels.constructors.values(),
 )
-def test_ribasim_cli(model_name, model_constructor, tmp_path):
+def test_ribasim_cli(model_constructor, tmp_path):
     model = model_constructor()
     assert isinstance(model, ribasim.Model)
-    model_path = tmp_path / model_name
-    model.write(model_path)
+    model.write(tmp_path)
 
     executable = (
         Path(__file__).parents[2]
@@ -23,9 +22,9 @@ def test_ribasim_cli(model_name, model_constructor, tmp_path):
         / "bin"
         / "ribasim.exe"
     )
-    result = subprocess.run([executable, model_path / "ribasim.toml"])
+    result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
-    if model_name.startswith("invalid_"):
+    if model_constructor.__name__.startswith("invalid_"):
         assert result.returncode != 0
     else:
         assert result.returncode == 0
