@@ -280,7 +280,7 @@ def subnetwork_model():
         outlet=outlet,
         terminal=terminal,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-01-01 00:00:00",
     )
 
     return model
@@ -528,7 +528,7 @@ def looped_subnetwork_model():
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-01-01 00:00:00",
     )
 
     return model
