@@ -188,7 +188,7 @@ function flow_table(model::Model)::NamedTuple
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
+    I, J, _ = findnz(get_tmp_sparse(connectivity.flow, 0))
     # self-loops have no edge ID
     unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
     nflow = length(I)

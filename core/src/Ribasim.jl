@@ -49,7 +49,7 @@ using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
 using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
-using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
+using PreallocationTools: DiffCache, get_tmp
 using SciMLBase
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id

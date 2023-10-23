@@ -474,7 +474,7 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    copy(nonzeros(get_tmp(integrator.p.connectivity.flow, 0)))
+    copy(nonzeros(get_tmp_sparse(integrator.p.connectivity.flow, 0)))
 end
 
 "Load updates from 'Basin / time' into the parameters"

@@ -202,6 +202,19 @@ const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
 """
+Get the chunk sizes for DiffCache; differentiation w.r.t. u
+and t (the latter only if a Rosenbrock algorithm is used).
+"""
+function get_chunk_sizes(config::Config, chunk_size::Int)::Vector{Int}
+    chunk_sizes = [chunk_size]
+    if Ribasim.config.algorithms[config.solver.algorithm] <:
+       OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
+        push!(chunk_sizes, 1)
+    end
+    return chunk_sizes
+end
+
+"""
 If the tuple of variables contains a Dual variable, return the first one.
 Otherwise return the last variable.
 """
@@ -239,8 +252,9 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     flow .= 0.0
 
     if config.solver.autodiff
-        # FixedSizeDiffCache performs better for sparse matrix
-        flow = FixedSizeDiffCache(flow, chunk_size)
+        chunk_sizes = get_chunk_sizes(config, chunk_size)
+        flowd = DiffCache(flow.nzval, chunk_sizes)
+        flow = SparseMatrixCSC_DiffCache(flow.m, flow.n, flow.colptr, flow.rowval, flowd)
     end
 
     # TODO: Create allocation models from input here
@@ -514,8 +528,9 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     current_area = zeros(n)
 
     if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_size)
-        current_area = DiffCache(current_area, chunk_size)
+        chunk_sizes = get_chunk_sizes(config, chunk_size)
+        current_level = DiffCache(current_level, chunk_sizes)
+        current_area = DiffCache(current_area, chunk_sizes)
     end
 
     precipitation = fill(NaN, length(node_id))

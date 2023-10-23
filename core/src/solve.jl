@@ -5,6 +5,60 @@ const VectorInterpolation =
     LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
 """
+This struct is analogous to SparseArrays.SparseMatrixCSC, with the only
+difference that nzval is a DiffCache instead of a vector.
+"""
+struct SparseMatrixCSC_DiffCache{Ti <: Integer, D <: DiffCache}
+    m::Int                  # Number of rows
+    n::Int                  # Number of columns
+    colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
+    rowval::Vector{Ti}      # Row indices of stored values
+    nzval::D                # DiffCache
+end
+
+"""
+This struct is analogous to SparseArrays.SparseMatrixCSC, with the only
+difference that nzval is either a vector or a ReinterpretArray (of Dual numbers).
+
+SparseMatrixCSC_DiffCache and SparseMatrixCSC_cache are used to have a multi-level DiffCache of a sparse matrix
+whose cache (accessed via get_tmp_sparse) supports sparse indexing.
+Previously FixedSizeDiffCache was used for the sparse matrix Connectivity.flow, but FixedSizeDiffCache
+does not support multi-level Duals.
+"""
+struct SparseMatrixCSC_cache{Ti <: Integer, D <: Union{Vector, Base.ReinterpretArray}} <:
+       SparseArrays.AbstractSparseMatrixCSC{eltype(D), Ti}
+    m::Int                  # Number of rows
+    n::Int                  # Number of columns
+    colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
+    rowval::Vector{Ti}      # Row indices of stored values
+    nzval::D                # cache
+end
+
+const SparseCache = Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC_cache}
+
+SparseArrays.size(matrix::SparseCache) = (matrix.m, matrix.n)
+SparseArrays.getcolptr(matrix::SparseCache) = matrix.colptr
+SparseArrays.rowvals(matrix::SparseCache) = matrix.rowval
+SparseArrays.nonzeros(matrix::SparseCache) = matrix.nzval
+
+"""
+Access the cache of the SparseMatrixCSC_DiffCache, and return it in a SparseMatrixCSC_cache
+so that it can be accessed with sparse indexing.
+"""
+function get_tmp_sparse(
+    matrix::Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC},
+    u,
+)::SparseMatrixCSC_cache
+    return SparseMatrixCSC_cache(
+        matrix.m,
+        matrix.n,
+        matrix.colptr,
+        matrix.rowval,
+        get_tmp(matrix.nzval, u),
+    )
+end
+
+"""
 Store information for a subnetwork used for allocation.
 
 node_id: All the IDs of the nodes that are in this subnetwork
@@ -836,7 +890,7 @@ function formulate_flow!(
     (; node_id, active, resistance) = linear_resistance
 
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         basin_a_id = only(inneighbors(graph_flow, id))
@@ -868,7 +922,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         upstream_basin_id = only(inneighbors(graph_flow, id))
@@ -999,7 +1053,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
@@ -1019,7 +1073,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id) = terminal
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
         for upstream_id in inneighbors(graph_flow, id)
@@ -1040,7 +1094,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id) = level_boundary
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
         for in_id in inneighbors(graph_flow, id)
@@ -1065,7 +1119,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
@@ -1093,7 +1147,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(flow, diffvar)
+    flow = get_tmp_sparse(flow, diffvar)
     flow_rate = get_tmp(flow_rate, diffvar)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
@@ -1234,9 +1288,9 @@ function water_balance!(
     du .= 0.0
 
     diffvar = get_diffvar((t, storage))
-    flow = get_tmp(connectivity.flow, diffvar)
+    flow = get_tmp_sparse(connectivity.flow, diffvar)
     # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
-    parent(flow) .= 0.0
+    flow.nzval .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage, t)
