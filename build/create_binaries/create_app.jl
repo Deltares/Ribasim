@@ -2,6 +2,8 @@ using PackageCompiler
 using TOML
 using LibGit2
 
+include("strip_cldr.jl")
+
 # change directory to this script's location
 cd(@__DIR__)
 
@@ -16,7 +18,7 @@ create_app(
     # map from binary name to julia function name
     executables = ["ribasim" => "julia_main"],
     precompile_execution_file = "precompile.jl",
-    filter_stdlibs = false,
+    include_lazy_artifacts = true,
     force = true,
 )
 

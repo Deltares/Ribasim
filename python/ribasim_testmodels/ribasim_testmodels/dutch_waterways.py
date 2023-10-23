@@ -276,7 +276,6 @@ def dutch_waterways_model():
     )
 
     model = ribasim.Model(
-        modelname="dutch_waterways",
         node=node,
         edge=edge,
         basin=basin,

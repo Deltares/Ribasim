@@ -2,6 +2,8 @@ using PackageCompiler
 using TOML
 using LibGit2
 
+include("strip_cldr.jl")
+
 cd(@__DIR__)
 
 project_dir = "../libribasim"
@@ -14,7 +16,7 @@ create_library(
     output_dir;
     lib_name = "libribasim",
     precompile_execution_file = "precompile.jl",
-    include_lazy_artifacts = false,
+    include_lazy_artifacts = true,
     force = true,
 )
 

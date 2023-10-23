@@ -70,7 +70,6 @@ def bucket_model() -> ribasim.Model:
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     model = ribasim.Model(
-        modelname="bucket",
         node=node,
         edge=edge,
         basin=basin,

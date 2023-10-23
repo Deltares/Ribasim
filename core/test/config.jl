@@ -11,7 +11,7 @@ using CodecZstd: ZstdCompressor
     @test_throws UndefKeywordError Ribasim.Config(
         startime = now(),
         endtime = now(),
-        geopackage = "",
+        database = "",
         foo = "bar",
     )
 
@@ -21,22 +21,22 @@ using CodecZstd: ZstdCompressor
         @test config.update_timestep == 86400.0
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
-        @test config.output.compression == Ribasim.zstd
-        @test config.output.compression_level == 6
+        @test config.results.compression == Ribasim.zstd
+        @test config.results.compression_level == 6
     end
 
-    @testset "output" begin
-        o = Ribasim.Output()
-        @test o isa Ribasim.Output
+    @testset "results" begin
+        o = Ribasim.Results()
+        @test o isa Ribasim.Results
         @test o.compression === Ribasim.zstd
         @test o.compression_level === 6
-        @test_throws ArgumentError Ribasim.Output(compression = "lz5")
+        @test_throws ArgumentError Ribasim.Results(compression = "lz5")
 
         @test Ribasim.get_compressor(
-            Ribasim.Output(; compression = "lz4", compression_level = 2),
+            Ribasim.Results(; compression = "lz4", compression_level = 2),
         ) isa LZ4FrameCompressor
         @test Ribasim.get_compressor(
-            Ribasim.Output(; compression = "zstd", compression_level = 3),
+            Ribasim.Results(; compression = "zstd", compression_level = 3),
         ) isa ZstdCompressor
     end
 

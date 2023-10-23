@@ -26,12 +26,12 @@ using Logging
 end
 
 @testset "Q(h) validation" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/invalid_qh.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(config, config.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(config, config.database)
+    db = SQLite.DB(db_path)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -153,13 +153,13 @@ if !Sys.islinux()
     @testset "FractionalFlow validation" begin
         toml_path = normpath(
             @__DIR__,
-            "../../generated_testmodels/invalid_fractional_flow/invalid_fractional_flow.toml",
+            "../../generated_testmodels/invalid_fractional_flow/ribasim.toml",
         )
         @test ispath(toml_path)
 
         config = Ribasim.Config(toml_path)
-        gpkg_path = Ribasim.input_path(config, config.geopackage)
-        db = SQLite.DB(gpkg_path)
+        db_path = Ribasim.input_path(config, config.database)
+        db = SQLite.DB(db_path)
         p = Ribasim.Parameters(db, config)
         (; connectivity, fractional_flow) = p
 
@@ -188,13 +188,13 @@ end
 @testset "DiscreteControl logic validation" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/invalid_discrete_control/invalid_discrete_control.toml",
+        "../../generated_testmodels/invalid_discrete_control/ribasim.toml",
     )
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
 
     logger = TestLogger()
@@ -263,15 +263,13 @@ end
 end
 
 @testset "Edge type validation" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/invalid_edge_types/invalid_edge_types.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/ribasim.toml")
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do
         @test !Ribasim.valid_edge_types(db)

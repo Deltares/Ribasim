@@ -446,7 +446,7 @@ greater_than: The threshold value in the condition
 condition_value: The current value of each condition
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
-record: Namedtuple with discrete control information for output
+record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{Int}

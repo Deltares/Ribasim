@@ -372,7 +372,7 @@ end
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
 
-Tables loaded from GeoPackage into memory can be sorted.
+Tables loaded from the database into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
 function sorted_table!(

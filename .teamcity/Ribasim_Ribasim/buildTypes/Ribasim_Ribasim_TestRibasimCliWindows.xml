@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="build\ribasim_cli\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\build\ribasim_cli\tests\temp =&gt; test_output.zip" />
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />

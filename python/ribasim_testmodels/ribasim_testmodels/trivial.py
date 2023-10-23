@@ -97,7 +97,6 @@ def trivial_model() -> ribasim.Model:
     )
 
     model = ribasim.Model(
-        modelname="trivial",
         node=node,
         edge=edge,
         basin=basin,
