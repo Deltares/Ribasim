@@ -48,6 +48,7 @@ using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using OrdinaryDiffEq
+using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase
 using SparseArrays

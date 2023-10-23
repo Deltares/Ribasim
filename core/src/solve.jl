@@ -4,21 +4,34 @@ const ScalarInterpolation =
 const VectorInterpolation =
     LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
 
+"""
+This struct is analogous to SparseArrays.SparseMatrixCSC, with the only
+difference that nzval is a DiffCache instead of a vector.
+"""
 struct SparseMatrixCSC_DiffCache{Ti <: Integer, D <: DiffCache}
     m::Int                  # Number of rows
     n::Int                  # Number of columns
     colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
     rowval::Vector{Ti}      # Row indices of stored values
-    nzval::D                # Stored values, typically nonzeros
+    nzval::D                # DiffCache
 end
 
-struct SparseMatrixCSC_cache{Ti <: Integer, D} <:
+"""
+This struct is analogous to SparseArrays.SparseMatrixCSC, with the only
+difference that nzval is either a vector or a ReinterpretArray (of Dual numbers).
+
+SparseMatrixCSC_DiffCache and SparseMatrixCSC_cache are used to have a multi-level DiffCache of a sparse matrix
+whose cache (accessed via get_tmp_sparse) supports sparse indexing.
+Previously FixedSizeDiffCache was used for the sparse matrix Connectivity.flow, but FixedSizeDiffCache
+does not support multi-level Duals.
+"""
+struct SparseMatrixCSC_cache{Ti <: Integer, D <: Union{Vector, Base.ReinterpretArray}} <:
        SparseArrays.AbstractSparseMatrixCSC{eltype(D), Ti}
     m::Int                  # Number of rows
     n::Int                  # Number of columns
     colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
     rowval::Vector{Ti}      # Row indices of stored values
-    nzval::D                # Stored values, typically nonzeros
+    nzval::D                # cache
 end
 
 const SparseCache = Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC_cache}
@@ -28,7 +41,14 @@ SparseArrays.getcolptr(matrix::SparseCache) = matrix.colptr
 SparseArrays.rowvals(matrix::SparseCache) = matrix.rowval
 SparseArrays.nonzeros(matrix::SparseCache) = matrix.nzval
 
-function get_tmp_sparse(matrix::SparseMatrixCSC_DiffCache, u)::SparseMatrixCSC_cache
+"""
+Access the cache of the SparseMatrixCSC_DiffCache, and return it in a SparseMatrixCSC_cache
+so that it can be accessed with sparse indexing.
+"""
+function get_tmp_sparse(
+    matrix::Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC},
+    u,
+)::SparseMatrixCSC_cache
     return SparseMatrixCSC_cache(
         matrix.m,
         matrix.n,
@@ -594,7 +614,7 @@ function formulate_basins!(
     t::Number,
 )::Nothing
     (; node_id, current_level, current_area) = basin
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     current_level = get_tmp(current_level, diffvar)
     current_area = get_tmp(current_area, diffvar)
 
@@ -623,7 +643,7 @@ end
 function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
-    diffvar = isa(t, Dual) ? t : u
+    diffvar = get_diffvar((t, u))
     error = get_tmp(error, diffvar)
     current_level = get_tmp(basin.current_level, diffvar)
 
@@ -863,7 +883,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
 
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -895,7 +915,7 @@ function formulate_flow!(
     (; basin, connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -968,7 +988,7 @@ function formulate_flow!(
     (; graph_flow, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((storage, t))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -1026,7 +1046,7 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, fraction) = fractional_flow
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -1046,7 +1066,7 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id) = terminal
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
@@ -1067,7 +1087,7 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id) = level_boundary
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for id in node_id
@@ -1092,7 +1112,7 @@ function formulate_flow!(
     (; connectivity) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
 
     for (i, id) in enumerate(node_id)
@@ -1120,7 +1140,7 @@ function formulate_flow!(
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(flow, diffvar)
     flow_rate = get_tmp(flow_rate, diffvar)
     for (id, isactive, rate, pid_controlled) in
@@ -1260,9 +1280,9 @@ function water_balance!(
 
     du .= 0.0
 
-    diffvar = isa(t, Dual) ? t : storage
+    diffvar = get_diffvar((t, storage))
     flow = get_tmp_sparse(connectivity.flow, diffvar)
-    flow.nzval .= 0.0
+    parent(flow.nzval) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)

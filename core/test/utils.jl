@@ -5,6 +5,8 @@ using DataInterpolations: LinearInterpolation
 using StructArrays: StructVector
 using SQLite
 using Logging
+using SparseArrays
+using ForwardDiff: Dual
 
 @testset "id_index" begin
     ids = Indices([2, 4, 6])
@@ -216,4 +218,11 @@ end
     @test Ribasim.reduction_factor(1.0, 2.0) === 0.5
     @test Ribasim.reduction_factor(3.0f0, 2.0) === 1.0f0
     @test Ribasim.reduction_factor(3.0, 2.0) === 1.0
+end
+
+@testset "Cache of sparse matrices" begin
+    M = spzeros(Dual, 5, 5)
+    M[3, 2] = 1.0
+    M[3, 4] = 1.0
+    M = Ribasim.SparseMatrixCSC_cache
 end
