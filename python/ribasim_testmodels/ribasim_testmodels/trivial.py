@@ -10,9 +10,9 @@ def trivial_model() -> ribasim.Model:
     # Set up the nodes:
     xy = np.array(
         [
-            (400.0, 200.0),  # 1: Basin
-            (450.0, 200.0),  # 2: TabulatedRatingCurve
-            (500.0, 200.0),  # 3: Terminal
+            (400.0, 200.0),  # 2: Basin
+            (450.0, 200.0),  # 4: TabulatedRatingCurve
+            (500.0, 200.0),  # 6: Terminal
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -25,15 +25,15 @@ def trivial_model() -> ribasim.Model:
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
             data={"type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            index=pd.Index([2, 4, 6], name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
+    from_id = np.array([2, 4], dtype=np.int64)
+    to_id = np.array([4, 6], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -50,7 +50,7 @@ def trivial_model() -> ribasim.Model:
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1],
+            "node_id": [2, 2],
             "area": [0.01, 1000.0],
             "level": [0.0, 1.0],
         }
@@ -64,7 +64,7 @@ def trivial_model() -> ribasim.Model:
 
     static = pd.DataFrame(
         data={
-            "node_id": [1],
+            "node_id": [2],
             "drainage": [0.0],
             "potential_evaporation": [evaporation],
             "infiltration": [0.0],
@@ -81,7 +81,7 @@ def trivial_model() -> ribasim.Model:
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
-                "node_id": [2, 2],
+                "node_id": [4, 4],
                 "level": [0.0, 1.0],
                 "discharge": [0.0, q1000],
             }
@@ -91,7 +91,7 @@ def trivial_model() -> ribasim.Model:
     terminal = ribasim.Terminal(
         static=pd.DataFrame(
             data={
-                "node_id": [3],
+                "node_id": [6],
             }
         )
     )
