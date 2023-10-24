@@ -218,7 +218,7 @@ end
 If the tuple of variables contains a Dual variable, return the first one.
 Otherwise return the last variable.
 """
-function get_diffvar(variables::Tuple)
+function get_diffvar(variables...)
     for var in variables
         if isa(var, Dual)
             return var
