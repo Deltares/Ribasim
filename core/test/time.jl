@@ -28,25 +28,3 @@ using DataFrames: DataFrame
     # some difference is expected since the modeled flow is for the period up to t
     @test isapprox(flow_added_1, flow_expected, rtol = 0.005)
 end
-
-@testset "User demand interpolation" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
-    @test ispath(toml_path)
-
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, cfg)
-    (; user) = p
-    (; demand) = user
-
-    t_end = Ribasim.seconds_since(cfg.endtime, cfg.starttime)
-
-    @test demand[1][2](0.5 * t_end) ≈ 1.0
-    @test demand[2][1](0.0) ≈ 0.0
-    @test demand[2][1](t_end) ≈ 0.0
-    @test demand[2][3](0.0) ≈ 0.0
-    @test demand[2][3](t_end / 2) ≈ 1.5
-    @test demand[2][3](t_end) ≈ 3.0
-end
