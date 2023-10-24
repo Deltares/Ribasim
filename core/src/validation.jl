@@ -34,14 +34,26 @@ nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 """
 From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :static)
 """
-function nodetype(sv::SchemaVersion{T, N})::Tuple{Symbol, Symbol} where {T, N}
-    n, k = split(string(T), ".")[2:3]
+function nodetype(
+    sv::SchemaVersion{T, N},
+)::Tuple{Symbol, Union{Nothing, Symbol}} where {T, N}
     # Names derived from a schema are in underscores (basintime),
     # so we parse the related record Ribasim.BasinTimeV1
     # to derive BasinTime from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
-    return Symbol(node[begin:length(n)]), Symbol(k)
+    elements = split(string(T), ".")
+
+    if length(elements) == 3
+        # Ribasim.Node.kind schema
+        kind = Symbol(elements[3])
+    else
+        # Or Just a Ribasim.Node/Edge schema
+        kind = nothing
+    end
+
+    # Strip V1 from the end
+    return Symbol(node[begin:(end - 2)]), kind
 end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node

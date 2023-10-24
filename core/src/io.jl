@@ -60,7 +60,7 @@ function load_data(
     schema = Legolas._schema_version_from_record_type(record)
 
     node, kind = nodetype(schema)
-    path = getfield(getfield(config, snake_case(node)), kind)
+    path = isnothing(kind) ? nothing : getfield(getfield(config, snake_case(node)), kind)
     sqltable = tablename(schema)
 
     table = if path !== nothing
@@ -113,10 +113,8 @@ function load_structvector(
     tableschema = Tables.schema(table)
     if declared(sv) && tableschema !== nothing
         validate(tableschema, sv)
-        # R = Legolas.record_type(sv)
-        # foreach(R, Tables.rows(table))  # construct each row
     else
-        @warn "No (validation) schema declared for $nodetype $kind"
+        @warn "No (validation) schema declared for $T"
     end
 
     return sorted_table!(table)
