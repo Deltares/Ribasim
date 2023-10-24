@@ -82,6 +82,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
+
+        # Allocation data structures
+        generate_allocation_models!(parameters, db, config)
     finally
         # always close the database, also in case of an error
         close(db)

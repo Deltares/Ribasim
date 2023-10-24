@@ -165,7 +165,7 @@ def subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -348,7 +348,7 @@ def looped_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",

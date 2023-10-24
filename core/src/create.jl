@@ -230,7 +230,6 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
-    # TODO: Create allocation models from input here
     allocation_models = AllocationModel[]
 
     return Connectivity(
@@ -244,6 +243,36 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         edge_connection_types_control,
         allocation_models,
     )
+end
+
+function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Nothing
+    (; connectivity) = p
+    node = load_structvector(db, config, NodeV1)
+    edge = load_structvector(db, config, EdgeV1)
+
+    allocation_groups_node = IterTools.groupby(row -> row.allocation_network_id, node)
+    allocation_groups_edge = IterTools.groupby(row -> row.allocation_network_id, edge)
+
+    allocation_groups_node_dict = Dict{Int, StructVector}()
+    allocation_groups_edge_dict = Dict{Int, StructVector}()
+
+    for allocation_group_node in allocation_groups_node
+        allocation_network_id = first(allocation_group_node.allocation_network_id)
+        allocation_groups_node_dict[allocation_network_id] = allocation_group_node
+    end
+    for allocation_group_edge in allocation_groups_edge
+        allocation_network_id = first(allocation_group_edge.allocation_network_id)
+        allocation_groups_edge_dict[allocation_network_id] = allocation_group_edge
+    end
+
+    for (allocation_network_id, allocation_group_node) in allocation_groups_node_dict
+        source_edge_ids = get(allocation_groups_edge_dict, allocation_network_id, [])
+        push!(
+            connectivity.allocation_models,
+            AllocationModel(p, allocation_group_node.fid, source_edge_ids, 0.0),
+        )
+    end
+    return nothing
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance

@@ -124,11 +124,11 @@ n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
-# TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int
     name::String = isnothing(s) ? "" : String(s)
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
+    allocation_network_id::Union{Missing, Int}
 end
 
 @version EdgeV1 begin
@@ -137,6 +137,7 @@ end
     from_node_id::Int
     to_node_id::Int
     edge_type::String
+    allocation_network_id::Union{Missing, Int}
 end
 
 @version PumpStaticV1 begin
