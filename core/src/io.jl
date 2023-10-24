@@ -63,7 +63,7 @@ function load_data(
     path = isnothing(kind) ? nothing : getfield(getfield(config, snake_case(node)), kind)
     sqltable = tablename(schema)
 
-    table = if path !== nothing
+    table = if !isnothing(path)
         table_path = input_path(config, path)
         Table(read(table_path))
     elseif exists(db, sqltable)

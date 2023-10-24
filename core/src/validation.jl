@@ -26,9 +26,11 @@
 @schema "ribasim.user.time" UserTime
 
 const delimiter = " / "
-tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
-tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
-isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
+tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
+tablename(sv::SchemaVersion{T, N}) where {T, N} =
+    join(filter(!isnothing, nodetype(sv)), delimiter)
+isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = isnode(sv())
+isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), ".")) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 
 """
@@ -42,18 +44,17 @@ function nodetype(
     # to derive BasinTime from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
-    elements = split(string(T), ".")
 
-    if length(elements) == 3
-        # Ribasim.Node.kind schema
-        kind = Symbol(elements[3])
+    elements = split(string(T), ".")
+    if isnode(sv)
+        n = elements[2]
+        k = Symbol(elements[3])
     else
-        # Or Just a Ribasim.Node/Edge schema
-        kind = nothing
+        n = last(elements)
+        k = nothing
     end
 
-    # Strip V1 from the end
-    return Symbol(node[begin:(end - 2)]), kind
+    return Symbol(node[begin:length(n)]), k
 end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
@@ -353,6 +354,7 @@ function is_consistent(node, edge, state, static, profile, time)
 end
 
 # functions used by sort(x; by)
+sort_by_fid(row) = row.fid
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
@@ -362,7 +364,8 @@ sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-
+sort_by_function(table::StructVector{NodeV1}) = sort_by_fid
+sort_by_function(table::StructVector{EdgeV1}) = sort_by_fid
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
@@ -391,7 +394,7 @@ function sorted_table!(
     table::StructVector{<:Legolas.AbstractRecord},
 )::StructVector{<:Legolas.AbstractRecord}
     by = sort_by_function(table)
-    if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
+    if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
         if !issorted(table; by)
             error("Arrow table for $et not sorted as required.")
