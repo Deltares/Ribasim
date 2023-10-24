@@ -18,20 +18,20 @@ end
 
 """
 This struct is analogous to SparseArrays.SparseMatrixCSC, with the only
-difference that nzval is either a vector or a ReinterpretArray (of Dual numbers).
+difference that nzval is a ReinterpretArray (of Dual numbers).
 
 SparseMatrixCSC_DiffCache and SparseMatrixCSC_cache are used to have a multi-level DiffCache of a sparse matrix
 whose cache (accessed via get_tmp_sparse) supports sparse indexing.
 Previously FixedSizeDiffCache was used for the sparse matrix Connectivity.flow, but FixedSizeDiffCache
 does not support multi-level Duals.
 """
-struct SparseMatrixCSC_cache{Ti <: Integer, C <: Union{Vector, Base.ReinterpretArray}} <:
-       SparseArrays.AbstractSparseMatrixCSC{eltype(C), Ti}
+struct SparseMatrixCSC_cache{T <: Number, Ti <: Integer} <:
+       SparseArrays.AbstractSparseMatrixCSC{T, Ti}
     m::Int                  # Number of rows
     n::Int                  # Number of columns
     colptr::Vector{Ti}      # Column j is in colptr[j]:(colptr[j+1]-1)
     rowval::Vector{Ti}      # Row indices of stored values
-    nzval::C                # cache
+    nzval::Base.ReinterpretArray{T} # cache
 end
 
 const SparseCache = Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC_cache}
@@ -48,8 +48,11 @@ so that it can be accessed with sparse indexing.
 function get_tmp_sparse(
     matrix::Union{SparseMatrixCSC_DiffCache, SparseMatrixCSC},
     u,
-)::SparseMatrixCSC_cache
-    return SparseMatrixCSC_cache(
+)::Union{SparseMatrixCSC_cache, SparseMatrixCSC}
+    tmp = get_tmp(matrix.nzval, u)
+    return_type = tmp isa Vector ? SparseMatrixCSC : SparseMatrixCSC_cache
+
+    return return_type(
         matrix.m,
         matrix.n,
         matrix.colptr,

@@ -8,6 +8,7 @@ using Logging
 using SparseArrays
 using ForwardDiff: Dual
 using PreallocationTools: DiffCache
+using SparseArrays
 
 @testset "id_index" begin
     ids = Indices([2, 4, 6])
@@ -223,10 +224,19 @@ end
 @testset "Cache of sparse matrices" begin
     M = spzeros(5, 5)
     M[3, 2] = 1.0
-    M_dcache =
-        Ribasim.SparseMatrixCSC_DiffCache(M.m, M.n, M.colptr, M.rowval, DiffCache(M.nzval))
-    M_cache = Ribasim.get_tmp_sparse(M_dcache, 0)
-    @test M_cache[3, 2] == 1.0
-    @test nonzeros(M_cache) == [1.0]
+    M_dcache = Ribasim.SparseMatrixCSC_DiffCache(
+        M.m,
+        M.n,
+        M.colptr,
+        M.rowval,
+        DiffCache(M.nzval, 2),
+    )
+    M_float = Ribasim.get_tmp_sparse(M_dcache, 0)
+    M_dual = Ribasim.get_tmp_sparse(M_dcache, Dual(0.0, 0.0, 0.0))
+    @test M_float[3, 2] == 1.0
+    @test M_float isa SparseArrays.SparseMatrixCSC
+    @test nonzeros(M_float) == [1.0]
     @test SparseArrays.size(M_cache) == (5, 5)
+    @test M_dual isa Ribasim.SparseMatrixCSC_cache
+    @test M_dual[1, 1] == Dual(0.0, 0.0, 0.0)
 end
