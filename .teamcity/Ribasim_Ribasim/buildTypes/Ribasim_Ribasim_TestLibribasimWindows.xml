@@ -18,16 +18,6 @@
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1502" name="Install Python packages" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-pip install "python/ribasim"
-pip install "python/ribasim_testmodels"
-pip install "python/ribasim_api"]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
