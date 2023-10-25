@@ -10,10 +10,10 @@
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1501" name="Set up virtual environment" type="simpleRunner">
+      <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[if exist "%conda_env_path%" rd /q /s "%conda_env_path%"
-call conda env create --file environment.yml -p "%conda_env_path%"]]></param>
+          <param name="script.content" value="pixi run install" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
