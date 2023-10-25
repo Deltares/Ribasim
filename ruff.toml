@@ -1,6 +1,6 @@
-select = ["D", "E", "F", "NPY", "PD", "C4", "I"]
+# See https://docs.astral.sh/ruff/rules/
+select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD"]
 ignore = [
-    "D1",
     "D202",
     "D205",
     "D206",
