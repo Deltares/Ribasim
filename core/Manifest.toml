@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "c63b237aec6a6bf6314284b2b07a94b93a9f0a36"
+project_hash = "734d92f362e5faf41ff9058fcbfa26406306498c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -1257,8 +1257,10 @@ uuid = "8290d209-cae3-49c0-8002-c8c24d57dab5"
 version = "0.5.2"
 
 [[deps.TimeZones]]
-deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "LazyArtifacts", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
-git-tree-sha1 = "89e64d61ef3cd9e80f7fc12b7d13db2d75a23c03"
+deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
+git-tree-sha1 = "6f2a9362603a79a916c54a10fc7c9a4ff2ca0848"
+repo-rev = "cldr"
+repo-url = "https://github.com/visr/TimeZones.jl"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 version = "1.13.0"
 weakdeps = ["RecipesBase"]
