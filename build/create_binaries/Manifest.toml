@@ -113,9 +113,9 @@ version = "1.2.0"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs"]
-git-tree-sha1 = "d24f0920777c64c0265e9725eb4a3ec450bc36dd"
+git-tree-sha1 = "2838fa7697780395ef328861b7716925ac7dd48a"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.1.10"
+version = "2.1.11"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
