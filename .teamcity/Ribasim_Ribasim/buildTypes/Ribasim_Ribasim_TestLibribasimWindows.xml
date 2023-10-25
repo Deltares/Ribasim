@@ -5,6 +5,7 @@
   <settings>
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
+      <option name="cleanBuild" value="true" />
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
