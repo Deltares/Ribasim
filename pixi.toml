@@ -79,8 +79,6 @@ generate-python = """\
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 
 [dependencies]
-black = "*"
-black-jupyter = "*"
 build = "*"
 datamodel-code-generator = "*"
 geopandas = "*"
