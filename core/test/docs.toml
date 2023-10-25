@@ -13,7 +13,7 @@ database = "database.gpkg" # required
 time = "basin/time.arrow"
 
 [allocation]
-# timestep = 86400
+timestep = 86400
 use_allocation = true
 
 [solver]

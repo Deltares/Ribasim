@@ -121,7 +121,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
+    callback, saved_flow = create_callbacks(parameters, config; config.solver.saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -214,7 +214,8 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    parameters;
+    parameters,
+    config;
     saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -227,6 +228,13 @@ function create_callbacks(
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
     push!(callbacks, tabulated_rating_curve_cb)
+
+    if config.allocation.use_allocation
+        t_end = seconds_since(config.endtime, config.starttime)
+        tstops = 1:(config.allocation.interval):t_end
+        allocation_cb = PresettimeCallback(tstop, update_allocation!)
+        push!(callbacks, allocation_cb)
+    end
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
@@ -505,6 +513,14 @@ function update_basin(integrator)::Nothing
     end
 
     return nothing
+end
+
+"Solve the allocation problem for all users and assign allocated abstractions to user nodes."
+function update_allocation!(integrator)::Nothing
+    (; p, t) = integrator
+    for allocation_model in integrator.p.connectivity.allocation_models
+        allocate!(p, allocation_model, t)
+    end
 end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
