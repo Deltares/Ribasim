@@ -233,12 +233,35 @@ def dutch_waterways_model():
         ]
     )
 
+    node_name = [
+        "",  # 1: LevelBoundary
+        "IJsselkop",  # 2: Basin
+        "",  # 3: LinearResistance
+        "",  # 4: LinearResistance
+        "IJssel Westervoort",  # 5: Basin
+        "Nederrijn Arnhem",  # 6: Basin
+        "",  # 7: LevelBoundary
+        "Driel open",  # 8: TabulatedRatingCurve
+        "Driel gecontroleerd",  # 9: Pump
+        "",  # 10: Basin
+        "",  # 11: LinearResistance
+        "",  # 12: Basin
+        "Amerongen open",  # 13: TabulatedRatingCurve
+        "Amerongen gecontroleerd",  # 14: Pump
+        "",  # 15: Basin
+        "Kruising ARK",  # 16: LevelBoundary
+        "Controller Driel",  # 17: DiscreteControl
+        "",  # 18: LinearResistance
+        "",  # 19: LinearResistance
+        "Controller Amerongen",  # 20: PidControl
+    ]
+
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=405 - xy[:, 1])
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"type": node_type, "name": node_name},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -261,6 +284,33 @@ def dutch_waterways_model():
     from_id = np.concatenate([from_id_flow, from_id_control])
     to_id = np.concatenate([to_id_flow, to_id_control])
 
+    edge_name = [
+        # flow
+        "Pannerdensch Kanaal",  #  1 -> 2
+        "Start IJssel",  #  2 -> 3
+        "",  #  3 -> 5
+        "Start Nederrijn",  #  2 -> 4
+        "",  #  4 -> 6
+        "",  #  6 -> 9
+        "",  #  9 -> 10
+        "",  # 10 -> 11
+        "",  # 11 -> 12
+        "",  # 12 -> 14
+        "",  # 14 -> 15
+        "",  #  6 -> 8
+        "",  #  8 -> 10
+        "",  # 12 -> 13
+        "",  # 13 -> 15
+        "",  #  5 -> 18
+        "",  # 18 -> 7
+        "",  # 15 -> 19
+        "",  # 19 -> 16
+        # control
+        "",  # 20 -> 14
+        "",  # 17 -> 8
+        "",  # 17 -> 9
+    ]
+
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -269,6 +319,7 @@ def dutch_waterways_model():
                 "to_node_id": to_id,
                 "edge_type": len(from_id_flow) * ["flow"]
                 + len(from_id_control) * ["control"],
+                "name": edge_name,
             },
             geometry=lines,
             crs="EPSG:28992",
