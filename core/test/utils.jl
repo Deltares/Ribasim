@@ -236,7 +236,7 @@ end
     @test M_float[3, 2] == 1.0
     @test M_float isa SparseArrays.SparseMatrixCSC
     @test nonzeros(M_float) == [1.0]
-    @test SparseArrays.size(M_cache) == (5, 5)
+    @test SparseArrays.size(M_dual) == (5, 5)
     @test M_dual isa Ribasim.SparseMatrixCSC_cache
     @test M_dual[1, 1] == Dual(0.0, 0.0, 0.0)
 end
