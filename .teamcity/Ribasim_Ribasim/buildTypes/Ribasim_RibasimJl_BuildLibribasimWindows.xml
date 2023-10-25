@@ -18,7 +18,7 @@
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install" />
+          <param name="script.content" value="pixi run install-without-pre-commit" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -81,4 +81,3 @@ pixi run build-libribasim]]></param>
     <cleanup />
   </settings>
 </build-type>
-
