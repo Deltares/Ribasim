@@ -5,6 +5,7 @@
   <settings>
     <options>
       <option name="artifactRules" value="ribasim\build\create_binaries\libribasim =&gt; libribasim.zip" />
+      <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
@@ -81,3 +82,4 @@ pixi run build-libribasim]]></param>
     <cleanup />
   </settings>
 </build-type>
+

@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "71b2262fd2a2bd6f9c0ade48d4062e051c3f39eb"
+project_hash = "d99377ff8fe51b02cfd3a3aaf109a7ed1b45b3d2"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -113,9 +113,9 @@ version = "1.2.0"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs"]
-git-tree-sha1 = "d24f0920777c64c0265e9725eb4a3ec450bc36dd"
+git-tree-sha1 = "2838fa7697780395ef328861b7716925ac7dd48a"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.1.10"
+version = "2.1.11"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
@@ -191,8 +191,10 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 version = "1.10.0"
 
 [[deps.TimeZones]]
-deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "LazyArtifacts", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
-git-tree-sha1 = "89e64d61ef3cd9e80f7fc12b7d13db2d75a23c03"
+deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
+git-tree-sha1 = "6f2a9362603a79a916c54a10fc7c9a4ff2ca0848"
+repo-rev = "cldr"
+repo-url = "https://github.com/visr/TimeZones.jl"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 version = "1.13.0"
 
