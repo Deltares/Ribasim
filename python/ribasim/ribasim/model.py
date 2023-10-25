@@ -14,7 +14,7 @@ import tomli_w
 from pydantic import BaseModel
 
 from ribasim import geometry, node_types
-from ribasim.config import Logging, Solver
+from ribasim.config import Allocation, Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 
@@ -80,6 +80,8 @@ class Model(BaseModel):
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
         End time of the simulation.
+    allocation : Optional[Allocation]
+        Allocation settings.
     solver : Optional[Solver]
         Solver settings.
     logging : Optional[logging]
@@ -103,6 +105,7 @@ class Model(BaseModel):
     user: Optional[User]
     starttime: datetime.datetime
     endtime: datetime.datetime
+    allocation: Optional[Allocation]
     solver: Optional[Solver]
     logging: Optional[Logging]
 
@@ -140,6 +143,10 @@ class Model(BaseModel):
         if self.solver is not None:
             section = {k: v for k, v in self.solver.dict().items() if v is not None}
             content["solver"] = section
+
+        if self.allocation is not None:
+            section = {k: v for k, v in self.allocation.dict().items() if v is not None}
+            content["allocation"] = section
 
         # TODO This should be rewritten as self.dict(exclude_unset=True, exclude_defaults=True)
         # after we make sure that we have a (sub)model that's only the config, instead

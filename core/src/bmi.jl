@@ -84,7 +84,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         n = length(get_ids(db, "Basin"))
 
         # Allocation data structures
-        generate_allocation_models!(parameters, db, config)
+        if config.allocation.use_allocation
+            generate_allocation_models!(parameters, db, config)
+        end
     finally
         # always close the database, also in case of an error
         close(db)
