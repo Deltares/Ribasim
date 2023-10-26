@@ -2,6 +2,8 @@ using PackageCompiler
 using TOML
 using LibGit2
 
+include("strip_cldr.jl")
+
 # change directory to this script's location
 cd(@__DIR__)
 
