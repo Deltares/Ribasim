@@ -231,8 +231,8 @@ function create_callbacks(
 
     if config.allocation.use_allocation
         t_end = seconds_since(config.endtime, config.starttime)
-        tstops = 1:(config.allocation.interval):t_end
-        allocation_cb = PresettimeCallback(tstop, update_allocation!)
+        tstops = 1:(config.allocation.timestep):t_end
+        allocation_cb = PresetTimeCallback(tstops, update_allocation!)
         push!(callbacks, allocation_cb)
     end
 

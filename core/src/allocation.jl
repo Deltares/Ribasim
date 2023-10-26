@@ -647,7 +647,8 @@ function allocation_problem(
     allocgraph_node_inedge_ids, allocgraph_node_outedge_ids =
         get_node_in_out_edges(graph_allocation)
 
-    problem = JuMPModel(HiGHS.Optimizer)
+    optimizer = optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
+    problem = JuMPModel(optimizer)
 
     # Add variables to problem
     add_variables_flow!(problem, allocgraph_edges)
@@ -821,11 +822,17 @@ Update the allocation optimization problem for the given subnetwork with the pro
 and flows, solve the allocation problem and assign the results to the users.
 """
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
+    (; problem) = allocation_model
+
     # Update allocation problem with data from main model
     set_model_state_in_allocation!(allocation_model, p, t)
 
     # Solve the allocation problem
-    optimize!(allocation_model.problem)
+    optimize!(problem)
+    @debug solution_summary(problem)
+    if termination_status(problem) !== OPTIMAL
+        error("Allocation coudn't find optimal solution.")
+    end
 
     # Assign the allocations to the users
     assign_allocations!(allocation_model, p.user)

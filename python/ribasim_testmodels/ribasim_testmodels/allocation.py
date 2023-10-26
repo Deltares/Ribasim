@@ -195,7 +195,7 @@ def subnetwork_model():
 
     # Setup the basins:
     profile = pd.DataFrame(
-        data={"node_id": [2, 2, 6, 6, 8, 8], "area": 1000.0, "level": 3 * [0.0, 1.0]}
+        data={"node_id": [2, 2, 6, 6, 8, 8], "area": 100000.0, "level": 3 * [0.0, 1.0]}
     )
 
     static = pd.DataFrame(
@@ -209,39 +209,30 @@ def subnetwork_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 1.0})
+    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 10.0})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [4.5]})
+        time=pd.DataFrame(
+            data={
+                "node_id": 1,
+                "flow_rate": np.arange(10, 0, -1),
+                "time": [f"2020-{i}-1 00:00:00" for i in range(1, 11)],
+            }
+        )
     )
 
     # Setup the users:
     user = ribasim.User(
         static=pd.DataFrame(
             data={
-                "node_id": [10, 12],
-                "demand": [1.0, 4.0],
+                "node_id": [10, 11, 12],
+                "demand": [4.0, 5.0, 3.0],
                 "return_factor": 0.9,
                 "min_level": 0.9,
-                "priority": [2, 1],
-            }
-        ),
-        time=pd.DataFrame(
-            data={
-                "node_id": 11,
-                "time": [
-                    "2020-01-01 00:00:00",
-                    "2021-01-01 00:00:00",
-                    "2020-01-01 00:00:00",
-                    "2021-01-01 00:00:00",
-                ],
-                "demand": [2.0, 2.0, 0.0, 3.0],
-                "return_factor": 0.9,
-                "min_level": 0.9,
-                "priority": [2, 2, 3, 3],
+                "priority": [2, 1, 2],
             }
         ),
     )
@@ -287,7 +278,7 @@ def subnetwork_model():
         terminal=terminal,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-04-01 00:00:00",
     )
 
     return model

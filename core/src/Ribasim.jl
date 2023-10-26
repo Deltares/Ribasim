@@ -43,7 +43,17 @@ using Graphs:
     outneighbors,
     rem_edge!
 
-using JuMP: @variable, @constraint, @objective, set_normalized_rhs, optimize!, value
+using JuMP:
+    @variable,
+    @constraint,
+    @objective,
+    set_normalized_rhs,
+    optimize!,
+    value,
+    OPTIMAL,
+    optimizer_with_attributes,
+    solution_summary,
+    termination_status
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
