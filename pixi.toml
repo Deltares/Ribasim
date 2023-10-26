@@ -97,7 +97,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.9"
-quarto = "*"
 ruff = "*"
 shapely = ">=2.0"
 tomli = "*"
@@ -105,3 +104,13 @@ tomli-w = "*"
 twine = "*"
 xarray = "*"
 xmipy = "*"
+typing-extensions = ">=4.6"
+
+[target.win-64.dependencies]
+quarto = "*"
+
+[target.linux-64.dependencies]
+quarto = "*"
+
+[target.osx-64.dependencies]
+quarto = "*"
