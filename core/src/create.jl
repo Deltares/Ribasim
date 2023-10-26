@@ -154,7 +154,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) (#$node_id) has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) #$node_id has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -168,7 +168,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node  $(repr(node_name)) (#$node_id) data not in any table."
+            @error "$nodetype node  $(repr(node_name)) #$node_id data not in any table."
             errors = true
         end
     end
@@ -230,6 +230,9 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
+    # TODO: Create allocation models from input here
+    allocation_models = AllocationModel[]
+
     return Connectivity(
         graph_flow,
         graph_control,
@@ -239,6 +242,7 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
+        allocation_models,
     )
 end
 
@@ -309,11 +313,11 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            @error "TabulatedRatingCurve node $(repr(node_name)) (#$node_id) data not in any table."
+            @error "TabulatedRatingCurve node $(repr(node_name)) #$node_id data not in any table."
             errors = true
         end
         if !is_valid
-            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) (#$node_id) from the $source table has repeated levels, this can not be interpolated."
+            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) #$node_id from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end

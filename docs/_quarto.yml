@@ -30,6 +30,7 @@ website:
         - core/index.qmd
         - core/usage.qmd
         - core/equations.qmd
+        - core/allocation.qmd
         - core/numerics.qmd
         - build/index.md
     - title: "Python tooling"
@@ -70,7 +71,7 @@ quartodoc:
       contents:
         - Model
     - title: Network
-      desc: The Node and Edge GeoPackage layers define the network layout.
+      desc: The Node and Edge database layers define the network layout.
       contents:
         - Node
         - Edge

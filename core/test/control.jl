@@ -2,10 +2,8 @@ import Ribasim
 using Dates: Date
 
 @testset "Pump discrete control" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/pump_discrete_control/pump_discrete_control.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
@@ -39,8 +37,7 @@ using Dates: Date
 end
 
 @testset "Flow condition control" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/flow_condition/flow_condition.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_condition/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
@@ -63,7 +60,7 @@ end
 @testset "Transient level boundary condition control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/level_boundary_condition/level_boundary_condition.toml",
+        "../../generated_testmodels/level_boundary_condition/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -85,8 +82,7 @@ end
 end
 
 @testset "PID control" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/pid_control/pid_control.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
@@ -127,7 +123,7 @@ end
 @testset "TabulatedRatingCurve control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/tabulated_rating_curve_control/tabulated_rating_curve_control.toml",
+        "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -146,7 +142,7 @@ end
 @testset "Setpoint with bounds control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/level_setpoint_with_minmax/level_setpoint_with_minmax.toml",
+        "../../generated_testmodels/level_setpoint_with_minmax/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -176,7 +172,7 @@ end
 @testset "Set PID target with DiscreteControl" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/discrete_control_of_pid_control/discrete_control_of_pid_control.toml",
+        "../../generated_testmodels/discrete_control_of_pid_control/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)

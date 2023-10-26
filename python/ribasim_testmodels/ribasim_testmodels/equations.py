@@ -91,7 +91,6 @@ def linear_resistance_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="linear_resistance",
         node=node,
         edge=edge,
         basin=basin,
@@ -200,7 +199,6 @@ def rating_curve_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="rating_curve",
         node=node,
         edge=edge,
         basin=basin,
@@ -298,7 +296,6 @@ def manning_resistance_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="manning_resistance",
         node=node,
         edge=edge,
         basin=basin,
@@ -439,7 +436,6 @@ def misc_nodes_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="misc_nodes",
         node=node,
         edge=edge,
         basin=basin,
@@ -559,7 +555,6 @@ def pid_control_equation_model():
     )
 
     model = ribasim.Model(
-        modelname="pid_control_equation",
         node=node,
         edge=edge,
         basin=basin,

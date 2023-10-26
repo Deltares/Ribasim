@@ -159,10 +159,7 @@ def basic_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={
-                "type": node_type,
-                "name": [ribasim.utils.random_string() for _ in range(len(node_id))],
-            },
+            data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -180,7 +177,6 @@ def basic_model() -> ribasim.Model:
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
             data={
-                "name": [ribasim.utils.random_string() for _ in range(len(from_id))],
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": len(from_id) * ["flow"],
@@ -194,7 +190,6 @@ def basic_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="basic",
         node=node,
         edge=edge,
         basin=basin,
@@ -263,7 +258,6 @@ def basic_transient_model() -> ribasim.Model:
     model.basin.state = state
     model.logging = None
 
-    model.modelname = "basic_transient"
     return model
 
 
@@ -373,7 +367,6 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="tabulated_rating_curve",
         node=node,
         edge=edge,
         basin=basin,
@@ -477,7 +470,6 @@ def outlet_model():
     )
 
     model = ribasim.Model(
-        modelname="outlet",
         node=node,
         edge=edge,
         basin=basin,

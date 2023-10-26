@@ -4,7 +4,7 @@
 
 Initialize a Model.
 
-The Model struct is an initialized model, combined with the [`Config`](@ref) used to create it and saved outputs.
+The Model struct is an initialized model, combined with the [`Config`](@ref) used to create it and saved results.
 The Basic Model Interface ([BMI](https://github.com/Deltares/BasicModelInterface.jl)) is implemented on the Model.
 A Model can be created from the path to a TOML configuration file, or a Config object.
 """
