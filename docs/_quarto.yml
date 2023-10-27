@@ -80,11 +80,17 @@ quartodoc:
       contents:
         - Basin
         - FractionalFlow
+        - TabulatedRatingCurve
+        - Pump
+        - Outlet
+        - User
         - LevelBoundary
+        - FlowBoundary
         - LinearResistance
         - ManningResistance
-        - Pump
-        - TabulatedRatingCurve
+        - Terminal
+        - DiscreteControl
+        - PidControl
     - title: Utility functions
       desc: Collection of utility functions.
       contents:
