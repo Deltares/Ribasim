@@ -812,6 +812,18 @@ function Parameters(db::DB, config::Config)::Parameters
 
     basin = Basin(db, config, chunk_size)
 
+    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+    for id in pid_control.node_id
+        id_controlled = only(outneighbors(connectivity.graph_control, id))
+        pump_idx = findsorted(pump.node_id, id_controlled)
+        if pump_idx === nothing
+            outlet_idx = findsorted(outlet.node_id, id_controlled)
+            outlet.is_pid_controlled[outlet_idx] = true
+        else
+            pump.is_pid_controlled[pump_idx] = true
+        end
+    end
+
     p = Parameters(
         config.starttime,
         connectivity,
@@ -836,6 +848,10 @@ function Parameters(db::DB, config::Config)::Parameters
                 p.lookup[node_id] = fieldname
             end
         end
+    end
+    # Allocation data structures
+    if config.allocation.use_allocation
+        generate_allocation_models!(p, db, config)
     end
     return p
 end

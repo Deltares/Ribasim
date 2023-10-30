@@ -60,17 +60,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid fractional flow node combinations found.")
         end
 
-        for id in pid_control.node_id
-            id_controlled = only(outneighbors(connectivity.graph_control, id))
-            pump_idx = findsorted(pump.node_id, id_controlled)
-            if pump_idx === nothing
-                outlet_idx = findsorted(outlet.node_id, id_controlled)
-                outlet.is_pid_controlled[outlet_idx] = true
-            else
-                pump.is_pid_controlled[pump_idx] = true
-            end
-        end
-
         # tell the solver to stop when new data comes in
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
@@ -82,11 +71,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
-
-        # Allocation data structures
-        if config.allocation.use_allocation
-            generate_allocation_models!(parameters, db, config)
-        end
     finally
         # always close the database, also in case of an error
         close(db)
