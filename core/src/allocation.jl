@@ -382,7 +382,7 @@ function add_variables_flow!(
     allocgraph_edges::Vector{Edge{Int}},
 )::Nothing
     n_flows = length(allocgraph_edges)
-    problem[:F] = @variable(problem, F[1:n_flows] >= 0.0)
+    problem[:F] = JuMP.@variable(problem, F[1:n_flows] >= 0.0)
     return nothing
 end
 
@@ -401,7 +401,7 @@ function add_variables_allocation_user!(
         allocgraph_node_id_user = allocgraph_edges[allocgraph_edge_id_user_demand].dst
         base_name = "A_user_$allocgraph_node_id_user"
         problem[Symbol(base_name)] =
-            @variable(problem, [1:length(user.priorities)], base_name = base_name)
+            JuMP.@variable(problem, [1:length(user.priorities)], base_name = base_name)
     end
     return nothing
 end
@@ -416,7 +416,7 @@ function add_variables_allocation_basin!(
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
     allocgraph_node_ids_basin::Vector{Int},
 )::Nothing
-    @variable(problem, A_basin[i = allocgraph_node_ids_basin] >= 0.0)
+    JuMP.@variable(problem, A_basin[i = allocgraph_node_ids_basin] >= 0.0)
     return nothing
 end
 
@@ -447,16 +447,16 @@ function add_constraints_user_allocation!(
         base_name = "A_user_$allocgraph_node_id_user"
         A_user = problem[Symbol(base_name)]
         # Sum of allocations to user is total flow to user
-        @constraint(
+        JuMP.@constraint(
             problem,
             sum(A_user) == F[allocgraph_edge_id_user_demand],
             base_name = "allocation_sum[$allocgraph_node_id_user]"
         )
         # Allocation flows are non-negative
-        @constraint(problem, [p = 1:length(user.priorities)], A_user[p] >= 0)
+        JuMP.@constraint(problem, [p = 1:length(user.priorities)], A_user[p] >= 0)
         # Allocation flows are bounded from above by demands
         base_name = "demand_user_$allocgraph_node_id_user"
-        problem[Symbol(base_name)] = @constraint(
+        problem[Symbol(base_name)] = JuMP.@constraint(
             problem,
             [p = 1:length(user.priorities)],
             A_user[p] <= 0,
@@ -480,7 +480,7 @@ function add_constraints_basin_allocation!(
     allocgraph_node_ids_basin::Vector{Int},
 )::Nothing
     A_basin = problem[:A_basin]
-    problem[:basin_allocation] = @constraint(
+    problem[:basin_allocation] = JuMP.@constraint(
         problem,
         [i = allocgraph_node_ids_basin],
         A_basin[i] <= 0.0,
@@ -509,7 +509,7 @@ function add_constraints_capacity!(
             push!(allocgraph_edge_ids_finite_capacity, i)
         end
     end
-    problem[:capacity] = @constraint(
+    problem[:capacity] = JuMP.@constraint(
         problem,
         [i = allocgraph_edge_ids_finite_capacity],
         F[i] <= capacity[allocgraph_edges[i].src, allocgraph_edges[i].dst],
@@ -533,7 +533,7 @@ function add_constraints_source!(
     graph_allocation::DiGraph{Int},
 )::Nothing
     F = problem[:F]
-    problem[:source] = @constraint(
+    problem[:source] = JuMP.@constraint(
         problem,
         [i = keys(source_edge_mapping)],
         F[findfirst(
@@ -559,7 +559,7 @@ function add_constraints_flow_conservation!(
     allocgraph_node_outedge_ids::Dict{Int, Vector{Int}},
 )::Nothing
     F = problem[:F]
-    problem[:flow_conservation] = @constraint(
+    problem[:flow_conservation] = JuMP.@constraint(
         problem,
         [i = allocgraph_node_ids_basin],
         sum([
@@ -585,7 +585,7 @@ function add_constraints_user_returnflow!(
 )::Nothing
     F = problem[:F]
 
-    problem[:return_flow] = @constraint(
+    problem[:return_flow] = JuMP.@constraint(
         problem,
         [i = allocgraph_node_ids_user_with_returnflow],
         F[only(allocgraph_node_outedge_ids[i])] ==
@@ -612,7 +612,7 @@ function add_objective_function!(
         problem[Symbol("A_user_$allocgraph_node_id_user")] for
         allocgraph_node_id_user in allocgraph_node_ids_user
     ]
-    @objective(
+    JuMP.@objective(
         problem,
         Max,
         sum(A_basin) + sum([
@@ -647,7 +647,7 @@ function allocation_problem(
     allocgraph_node_inedge_ids, allocgraph_node_outedge_ids =
         get_node_in_out_edges(graph_allocation)
 
-    optimizer = optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
+    optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
     problem = JuMPModel(optimizer)
 
     # Add variables to problem
@@ -779,7 +779,7 @@ function set_model_state_in_allocation!(
             base_name = "demand_user_$allocgraph_node_id"
             constraints_demand = problem[Symbol(base_name)]
             for priority_idx in eachindex(priorities)
-                set_normalized_rhs(
+                JuMP.set_normalized_rhs(
                     constraints_demand[priority_idx],
                     demand_node[priority_idx](t),
                 )
@@ -788,7 +788,7 @@ function set_model_state_in_allocation!(
             subnetwork_edge = source_edge_mapping[allocgraph_node_id]
             subnetwork_node_ids = edge_ids_flow_inv[subnetwork_edge]
             constraint_source = problem[:source][allocgraph_node_id]
-            set_normalized_rhs(constraint_source, flow[subnetwork_node_ids])
+            JuMP.set_normalized_rhs(constraint_source, flow[subnetwork_node_ids])
         elseif allocgraph_node_type == :basin
             # TODO: Compute basin flow from vertical fluxes and basin volume.
             # Set as basin demand if the net flow is negative, set as source
@@ -811,7 +811,7 @@ function assign_allocations!(allocation_model::AllocationModel, user::User)::Not
         if allocgraph_node_type == :user
             user_idx = findsorted(user.node_id, subnetwork_node_id)
             base_name = "A_user_$allocgraph_node_id"
-            user.allocated[user_idx] .= value.(problem[Symbol(base_name)])
+            user.allocated[user_idx] .= JuMP.value.(problem[Symbol(base_name)])
         end
     end
     return nothing
@@ -828,9 +828,9 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
     set_model_state_in_allocation!(allocation_model, p, t)
 
     # Solve the allocation problem
-    optimize!(problem)
-    @debug solution_summary(problem)
-    if termination_status(problem) !== OPTIMAL
+    JuMP.optimize!(problem)
+    @debug JuMP.solution_summary(problem)
+    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
         error("Allocation coudn't find optimal solution.")
     end
 

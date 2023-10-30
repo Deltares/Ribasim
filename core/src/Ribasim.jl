@@ -44,6 +44,7 @@ using Graphs:
     rem_edge!
 
 using JuMP:
+    JuMP,
     @variable,
     @constraint,
     @objective,

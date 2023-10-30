@@ -214,8 +214,8 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    parameters,
-    config;
+    parameters::Parameters,
+    config::Config;
     saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -230,9 +230,11 @@ function create_callbacks(
     push!(callbacks, tabulated_rating_curve_cb)
 
     if config.allocation.use_allocation
-        t_end = seconds_since(config.endtime, config.starttime)
-        tstops = 1:(config.allocation.timestep):t_end
-        allocation_cb = PresetTimeCallback(tstops, update_allocation!)
+        allocation_cb = PeriodicCallback(
+            update_allocation!,
+            config.allocation.timestep;
+            initial_affect = true,
+        )
         push!(callbacks, allocation_cb)
     end
 
