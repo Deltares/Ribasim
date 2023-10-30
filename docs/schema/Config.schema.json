@@ -13,11 +13,6 @@
             "format": "date-time",
             "type": "string"
         },
-        "update_timestep": {
-            "format": "double",
-            "type": "number",
-            "default": 86400
-        },
         "relative_dir": {
             "format": "default",
             "type": "string",
@@ -37,15 +32,11 @@
             "format": "default",
             "type": "string"
         },
-        "results": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
+        "allocation": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/Allocation.schema.json",
             "default": {
-                "basin": "results/basin.arrow",
-                "flow": "results/flow.arrow",
-                "control": "results/control.arrow",
-                "outstate": null,
-                "compression": "zstd",
-                "compression_level": 6
+                "timestep": null,
+                "use_allocation": false
             }
         },
         "solver": {
@@ -73,6 +64,17 @@
                     "level": 0
                 },
                 "timing": false
+            }
+        },
+        "results": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
+            "default": {
+                "basin": "results/basin.arrow",
+                "flow": "results/flow.arrow",
+                "control": "results/control.arrow",
+                "outstate": null,
+                "compression": "zstd",
+                "compression_level": 6
             }
         },
         "terminal": {
@@ -166,14 +168,14 @@
     "required": [
         "starttime",
         "endtime",
-        "update_timestep",
         "relative_dir",
         "input_dir",
         "results_dir",
         "database",
-        "results",
+        "allocation",
         "solver",
         "logging",
+        "results",
         "terminal",
         "pid_control",
         "level_boundary",

@@ -9,13 +9,9 @@ from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
 
-class Results(BaseModel):
-    basin: str = "results/basin.arrow"
-    flow: str = "results/flow.arrow"
-    control: str = "results/control.arrow"
-    outstate: Optional[str] = None
-    compression: str = "zstd"
-    compression_level: int = 6
+class Allocation(BaseModel):
+    timestep: Optional[float] = None
+    use_allocation: bool = False
 
 
 class Solver(BaseModel):
@@ -36,6 +32,15 @@ class Solver(BaseModel):
 class Logging(BaseModel):
     verbosity: str = "info"
     timing: bool = False
+
+
+class Results(BaseModel):
+    basin: str = "results/basin.arrow"
+    flow: str = "results/flow.arrow"
+    control: str = "results/control.arrow"
+    outstate: Optional[str] = None
+    compression: str = "zstd"
+    compression_level: int = 6
 
 
 class Terminal(BaseModel):
@@ -102,21 +107,13 @@ class FractionalFlow(BaseModel):
 class Config(BaseModel):
     starttime: datetime
     endtime: datetime
-    update_timestep: float = 86400
     relative_dir: str = "."
     input_dir: str = "."
     results_dir: str = "."
     database: str
-    results: Results = Field(
-        default_factory=lambda: Results.parse_obj(
-            {
-                "basin": "results/basin.arrow",
-                "flow": "results/flow.arrow",
-                "control": "results/control.arrow",
-                "outstate": None,
-                "compression": "zstd",
-                "compression_level": 6,
-            }
+    allocation: Allocation = Field(
+        default_factory=lambda: Allocation.parse_obj(
+            {"timestep": None, "use_allocation": False}
         )
     )
     solver: Solver = Field(
@@ -140,6 +137,18 @@ class Config(BaseModel):
     logging: Logging = Field(
         default_factory=lambda: Logging.parse_obj(
             {"verbosity": {"level": 0}, "timing": False}
+        )
+    )
+    results: Results = Field(
+        default_factory=lambda: Results.parse_obj(
+            {
+                "basin": "results/basin.arrow",
+                "flow": "results/flow.arrow",
+                "control": "results/control.arrow",
+                "outstate": None,
+                "compression": "zstd",
+                "compression_level": 6,
+            }
         )
     )
     terminal: Terminal = Field(

@@ -18,7 +18,6 @@ using CodecZstd: ZstdCompressor
     @testset "testrun" begin
         config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
         @test config isa Ribasim.Config
-        @test config.update_timestep == 86400.0
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
         @test config.results.compression == Ribasim.zstd
