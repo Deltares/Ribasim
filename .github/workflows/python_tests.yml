@@ -35,8 +35,8 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install --editable "python/ribasim_testmodels"
-          pip install --editable "python/ribasim[tests]"
+          pip install --no-deps --editable "python/ribasim_testmodels"
+          pip install --no-deps --editable "python/ribasim[tests]"
 
       - name: Run tests
         run: pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests
