@@ -16,7 +16,7 @@ requires-python = ">=3.9"
 dependencies = [
     "geopandas",
     "matplotlib",
-    "pandas < 2.1",
+    "pandas",
     "pandera != 0.16.0",
     "pyarrow",
     "pydantic ~= 1.0",
