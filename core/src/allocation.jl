@@ -353,11 +353,12 @@ function allocation_graph(
 
     # Used for updating user demand and source flow constraints
     allocgraph_edges = collect(edges(graph_allocation))
-    allocgraph_edge_ids_user_demand = Int[]
+    allocgraph_edge_ids_user_demand = Dict{Int, Int}()
     for (i, allocgraph_edge) in enumerate(allocgraph_edges)
-        allocgraph_node_type_dst = node_id_mapping_inverse[allocgraph_edge.dst][2]
+        allocgraph_node_id_dst = allocgraph_edge.dst
+        allocgraph_node_type_dst = node_id_mapping_inverse[allocgraph_node_id_dst][2]
         if allocgraph_node_type_dst == :user
-            push!(allocgraph_edge_ids_user_demand, i)
+            allocgraph_edge_ids_user_demand[allocgraph_node_id_dst] = i
         end
     end
 
@@ -366,7 +367,6 @@ function allocation_graph(
     node_id_mapping,
     node_id_mapping_inverse,
     source_edge_mapping,
-    allocgraph_node_ids_user,
     allocgraph_node_ids_user_with_returnflow,
     allocgraph_edges,
     allocgraph_edge_ids_user_demand
@@ -387,26 +387,6 @@ function add_variables_flow!(
 end
 
 """
-Add the user allocation variables A_user_{i} to the allocation problem.
-The variable name indices i are the allocation graph user node IDs,
-The variable indices are the priorities.
-"""
-function add_variables_allocation_user!(
-    problem::JuMPModel,
-    user::User,
-    allocgraph_edges::Vector{Edge{Int}},
-    allocgraph_edge_ids_user_demand::Vector{Int},
-)::Nothing
-    for allocgraph_edge_id_user_demand in allocgraph_edge_ids_user_demand
-        allocgraph_node_id_user = allocgraph_edges[allocgraph_edge_id_user_demand].dst
-        base_name = "A_user_$allocgraph_node_id_user"
-        problem[Symbol(base_name)] =
-            JuMP.@variable(problem, [1:length(user.priorities)], base_name = base_name)
-    end
-    return nothing
-end
-
-"""
 Add the basin allocation variables A_basin to the allocation problem.
 The variable indices are the allocation graph basin node IDs.
 Non-negativivity constraints are also immediately added to the basin allocation variables.
@@ -422,47 +402,19 @@ end
 
 """
 Add the user allocation constraints to the allocation problem:
-- The sum of the allocations to a user is equal to the flow to that user;
-- The allocations to the users are non-negative;
-- The allocations to the users are bounded from above by the user demands
-  (these are set before each allocation solve).
-
-The demand constrains have name demand_user_{i} where the i are the allocation graph
-user node IDs and the constraint indices are the priorities.
-
-Constraints:
-sum(allocations to user of all priorities) = flow to user
-allocation to user at priority >= 0
-allocation to user at priority <= demand from user at priority
+The flow to a user us bounded from above by the demand of the user.
 """
 function add_constraints_user_allocation!(
     problem::JuMPModel,
-    user::User,
-    allocgraph_edges::Vector{Edge{Int}},
-    allocgraph_edge_ids_user_demand::Vector{Int},
+    allocgraph_edge_ids_user_demand::Dict{Int, Int},
 )::Nothing
     F = problem[:F]
-    for allocgraph_edge_id_user_demand in allocgraph_edge_ids_user_demand
-        allocgraph_node_id_user = allocgraph_edges[allocgraph_edge_id_user_demand].dst
-        base_name = "A_user_$allocgraph_node_id_user"
-        A_user = problem[Symbol(base_name)]
-        # Sum of allocations to user is total flow to user
-        JuMP.@constraint(
-            problem,
-            sum(A_user) == F[allocgraph_edge_id_user_demand],
-            base_name = "allocation_sum[$allocgraph_node_id_user]"
-        )
-        # Allocation flows are non-negative
-        JuMP.@constraint(problem, [p = 1:length(user.priorities)], A_user[p] >= 0)
-        # Allocation flows are bounded from above by demands
-        base_name = "demand_user_$allocgraph_node_id_user"
-        problem[Symbol(base_name)] = JuMP.@constraint(
-            problem,
-            [p = 1:length(user.priorities)],
-            A_user[p] <= 0,
-            base_name = base_name
-        )
-    end
+    # Allocation flows are bounded from above by demands
+    problem[:demand_user] = JuMP.@constraint(
+        problem,
+        [i = values(allocgraph_edge_ids_user_demand)],
+        F[i] <= 0.0
+    )
     return nothing
 end
 
@@ -598,27 +550,18 @@ end
 
 """
 Add the objective function to the allocation problem.
-Objective function: linear combination of allocations to the basins and users, where
-    basin allocations get a weight of 1.0 and user allocations get a weight of 2^(-priority index).
+Objective function: Sum of flows to the users.
 """
 function add_objective_function!(
     problem::JuMPModel,
-    user::User,
-    allocgraph_node_ids_user::Vector{Int},
+    allocgraph_edge_ids_user_demand::Dict{Int, Int},
 )::Nothing
+    F = problem[:F]
     A_basin = problem[:A_basin]
-    allocation_user_weights = 1 ./ (2 .^ (1:length(user.priorities)))
-    allocation_user_variables = [
-        problem[Symbol("A_user_$allocgraph_node_id_user")] for
-        allocgraph_node_id_user in allocgraph_node_ids_user
-    ]
     JuMP.@objective(
         problem,
         Max,
-        sum(A_basin) + sum([
-            sum(allocation_user_variable .* allocation_user_weights) for
-            allocation_user_variable in allocation_user_variables
-        ])
+        sum(A_basin) + sum([F[i] for i in values(allocgraph_edge_ids_user_demand)])
     )
     return nothing
 end
@@ -627,18 +570,14 @@ end
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
-    p::Parameters,
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
-    allocgraph_node_ids_user::Vector{Int},
     allocgraph_node_ids_user_with_returnflow::Vector{Int},
     allocgraph_edges::Vector{Edge{Int}},
-    allocgraph_edge_ids_user_demand::Vector{Int},
+    allocgraph_edge_ids_user_demand::Dict{Int, Int},
     source_edge_mapping::Dict{Int, Int},
     graph_allocation::DiGraph{Int},
     capacity::SparseMatrixCSC{Float64, Int},
 )::JuMPModel
-    (; user) = p
-
     allocgraph_node_ids_basin = sort([
         allocgraph_node_id for
         (allocgraph_node_id, node_type) in values(node_id_mapping) if node_type == :basin
@@ -648,25 +587,14 @@ function allocation_problem(
         get_node_in_out_edges(graph_allocation)
 
     optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
-    problem = JuMPModel(optimizer)
+    problem = JuMP.direct_model(optimizer)
 
     # Add variables to problem
     add_variables_flow!(problem, allocgraph_edges)
-    add_variables_allocation_user!(
-        problem,
-        user,
-        allocgraph_edges,
-        allocgraph_edge_ids_user_demand,
-    )
     add_variables_allocation_basin!(problem, node_id_mapping, allocgraph_node_ids_basin)
 
     # Add constraints to problem
-    add_constraints_user_allocation!(
-        problem,
-        user,
-        allocgraph_edges,
-        allocgraph_edge_ids_user_demand,
-    )
+    add_constraints_user_allocation!(problem, allocgraph_edge_ids_user_demand)
     add_constraints_basin_allocation!(problem, allocgraph_node_ids_basin)
     add_constraints_capacity!(problem, capacity, allocgraph_edges)
     add_constraints_source!(
@@ -685,7 +613,7 @@ function allocation_problem(
     # TODO: The fractional flow constraints
 
     # Add objective to problem
-    add_objective_function!(problem, user, allocgraph_node_ids_user)
+    add_objective_function!(problem, allocgraph_edge_ids_user_demand)
 
     return problem
 end
@@ -722,7 +650,6 @@ function AllocationModel(
     node_id_mapping,
     node_id_mapping_inverse,
     source_edge_mapping,
-    allocgraph_node_ids_user,
     allocgraph_node_ids_user_with_returnflow,
     allocgraph_edges,
     allocgraph_edge_ids_user_demand =
@@ -730,9 +657,7 @@ function AllocationModel(
 
     # The JuMP.jl allocation problem
     problem = allocation_problem(
-        p,
         node_id_mapping,
-        allocgraph_node_ids_user,
         allocgraph_node_ids_user_with_returnflow,
         allocgraph_edges,
         allocgraph_edge_ids_user_demand,
@@ -745,6 +670,7 @@ function AllocationModel(
         subnetwork_node_ids,
         node_id_mapping,
         node_id_mapping_inverse,
+        allocgraph_edge_ids_user_demand,
         source_edge_mapping,
         graph_allocation,
         capacity,
@@ -753,51 +679,23 @@ function AllocationModel(
     )
 end
 
-"""
-Update the allocation problem with model data at the current:
-- Demands of the users
-- Flows of the source edges
-- Demands of the basins
-"""
-function set_model_state_in_allocation!(
+function set_demands_priority!(
     allocation_model::AllocationModel,
-    p::Parameters,
+    user::User,
+    priority_idx::Int,
     t::Float64,
 )::Nothing
-    (; problem, node_id_mapping, source_edge_mapping) = allocation_model
-    (; user, connectivity) = p
-    (; priorities, demand) = user
-    (; flow, edge_ids_flow_inv) = connectivity
+    (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+    (; demand, node_id) = user
+    constraints_demand = problem[:demand_user]
 
-    # It is assumed that the allocation procedure does not have to be differentiated.
-    flow = get_tmp(flow, 0)
-
-    for (subnetwork_node_id, (allocgraph_node_id, allocgraph_node_type)) in node_id_mapping
-        if allocgraph_node_type == :user
-            node_idx = findsorted(user.node_id, subnetwork_node_id)
-            demand_node = demand[node_idx]
-            base_name = "demand_user_$allocgraph_node_id"
-            constraints_demand = problem[Symbol(base_name)]
-            for priority_idx in eachindex(priorities)
-                JuMP.set_normalized_rhs(
-                    constraints_demand[priority_idx],
-                    demand_node[priority_idx](t),
-                )
-            end
-        elseif allocgraph_node_type == :source
-            subnetwork_edge = source_edge_mapping[allocgraph_node_id]
-            subnetwork_node_ids = edge_ids_flow_inv[subnetwork_edge]
-            constraint_source = problem[:source][allocgraph_node_id]
-            JuMP.set_normalized_rhs(constraint_source, flow[subnetwork_node_ids])
-        elseif allocgraph_node_type == :basin
-            # TODO: Compute basin flow from vertical fluxes and basin volume.
-            # Set as basin demand if the net flow is negative, set as source
-            # in the flow_conservation constraints if the net flow is positive.
-        elseif allocgraph_node_type == :junction
-            nothing
-        else
-            error("Got unsupported allocation graph node type $allocgraph_node_type.")
-        end
+    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+        model_user_id = node_id_mapping_inverse[allocgraph_node_id][1]
+        user_idx = findsorted(node_id, model_user_id)
+        JuMP.set_normalized_rhs(
+            constraints_demand[allocgraph_edge_id],
+            demand[user_idx][priority_idx](t),
+        )
     end
     return nothing
 end
@@ -806,15 +704,68 @@ end
 Assign the allocations to the users as determined by the solution of the allocation problem.
 """
 function assign_allocations!(allocation_model::AllocationModel, user::User)::Nothing
-    (; problem, node_id_mapping) = allocation_model
-    for (subnetwork_node_id, (allocgraph_node_id, allocgraph_node_type)) in node_id_mapping
-        if allocgraph_node_type == :user
-            user_idx = findsorted(user.node_id, subnetwork_node_id)
-            base_name = "A_user_$allocgraph_node_id"
-            user.allocated[user_idx] .= JuMP.value.(problem[Symbol(base_name)])
-        end
+    (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+    F = problem[:F]
+    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+        model_node_id = node_id_mapping_inverse[allocgraph_node_id][1]
+        user_idx = findsorted(user.node_id, model_node_id)
+        user.allocated[user_idx] .= JuMP.value.(F[allocgraph_edge_id])
     end
     return nothing
+end
+
+"""
+Set the source flows as capacities on edges in the AG.
+"""
+function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
+    (; problem, source_edge_mapping) = allocation_model
+
+    # It is assumed that the allocation procedure does not have to be differentiated.
+    flow = get_tmp(p.connectivity.flow, 0)
+
+    for (allocgraph_source_node_id, subnetwork_source_edge_id) in source_edge_mapping
+        JuMP.set_normalized_rhs(
+            problem[:source][allocgraph_source_node_id],
+            flow[subnetwork_source_edge_id],
+        )
+    end
+    return nothing
+end
+
+"""
+Set the values of the edge capacities. 2 cases:
+- Before the first allocation solve, set the edge capacities to their full capacity;
+- Before an allocation solve, subtract the flow used by allocation for the previous priority
+  from the edge capacities.
+"""
+function adjust_edge_capacities!(
+    allocation_model::AllocationModel,
+    priority_idx::Int,
+)::Nothing
+    (; problem, capacity, graph_allocation) = allocation_model
+    constraints_capacity = problem[:capacity]
+    F = problem[:F]
+
+    for (i, e) in enumerate(edges(graph_allocation))
+        c = capacity[e.src, e.dst]
+
+        # Edges with infinite capacity have no capacity constraints
+        if isinf(c)
+            continue
+        end
+
+        if priority_idx == 1
+            # Before the first allocation solve, set the edge capacities to their full capacity
+            JuMP.set_normalized_rhs(constraints_capacity[i], c)
+        else
+            # Before an allocation solve, subtract the flow used by allocation for the previous priority
+            # from the edge capacities
+            JuMP.set_normalized_rhs(
+                constraints_capacity[i],
+                JuMP.normalized_rhs(constraints_capacity[i]) - JuMP.value(F[i]),
+            )
+        end
+    end
 end
 
 """
@@ -822,18 +773,31 @@ Update the allocation optimization problem for the given subnetwork with the pro
 and flows, solve the allocation problem and assign the results to the users.
 """
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
+    (; user) = p
     (; problem) = allocation_model
 
-    # Update allocation problem with data from main model
-    set_model_state_in_allocation!(allocation_model, p, t)
+    set_source_flows!(allocation_model, p)
 
-    # Solve the allocation problem
-    JuMP.optimize!(problem)
-    @debug JuMP.solution_summary(problem)
-    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-        error("Allocation coudn't find optimal solution.")
+    # TODO: Compute basin flow from vertical fluxes and basin volume.
+    # Set as basin demand if the net flow is negative, set as source
+    # in the flow_conservation constraints if the net flow is positive.
+    # Solve this as a separate problem before the priorities below
+
+    for priority_idx in eachindex(user.priorities)
+        # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
+        # or set edge capacities if priority_idx = 1
+        adjust_edge_capacities!(allocation_model, priority_idx)
+
+        set_demands_priority!(allocation_model, user, priority_idx, t)
+
+        # Solve the allocation problem for this priority
+        JuMP.optimize!(problem)
+        @debug JuMP.solution_summary(problem)
+        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+            error("Allocation coudn't find optimal solution.")
+        end
+
+        # Assign the allocations to the users for this priority
+        assign_allocations!(allocation_model, p.user)
     end
-
-    # Assign the allocations to the users
-    assign_allocations!(allocation_model, p.user)
 end
