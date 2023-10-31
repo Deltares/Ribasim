@@ -26,8 +26,16 @@ install-without-pre-commit = { depends_on = [
     "install-quartodoc",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
+# Instantiate
+instantiate-julia-core = "julia --project=core --eval='using Pkg; Pkg.instantiate()'"
+instantiate-julia-docs = "julia --project=docs --eval='using Pkg; Pkg.instantiate()'"
+instantiate-julia-build = "julia --project=build/create_binaries --eval='using Pkg; Pkg.instantiate()'"
+instantiate-julia = { depends_on = [
+    "instantiate-julia-core",
+    "instantiate-julia-docs",
+    "instantiate-julia-build",
+] }
 # Docs
-instantiate-julia-docs = "julia --project=docs -e \"using Pkg; Pkg.instantiate()\""
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia-docs",
 ] }
@@ -52,21 +60,21 @@ lint = { depends_on = [
     "mypy-ribasim-api",
 ] }
 # Build
-instantiate-build-environment = "cd build/create_binaries && julia --project --eval \"using Pkg; Pkg.instantiate()\""
 build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project create_app.jl", depends_on = [
     "generate-testmodels",
-    "instantiate-build-environment",
+    "instantiate-julia-build",
 ] }
 build-libribasim = { cmd = "cd build/create_binaries && julia --project create_lib.jl", depends_on = [
     "generate-testmodels",
-    "instantiate-build-environment",
+    "instantiate-julia-build",
 ] }
 build = { depends_on = ["build-ribasim-cli", "build-libribasim"] }
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
-test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.instantiate(); Pkg.test()'", depends_on = [
+test-ribasim-core = { cmd = "julia --project=core --eval 'Pkg.test()'", depends_on = [
+    "instantiate-julia-core",
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
