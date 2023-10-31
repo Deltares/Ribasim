@@ -27,9 +27,9 @@ install-without-pre-commit = { depends_on = [
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-instantiate-julia-core = "julia --project core --eval 'using Pkg; Pkg.instantiate(); Pkg.test()'"
-instantiate-julia-docs = "julia --project docs --eval 'using Pkg; Pkg.instantiate()'"
-instantiate-julia-build = "julia --project build/create_binaries --eval 'using Pkg; Pkg.instantiate()'"
+instantiate-julia-core = "julia --project=core --eval='using Pkg; Pkg.instantiate(); Pkg.test()'"
+instantiate-julia-docs = "julia --project=docs --eval='using Pkg; Pkg.instantiate()'"
+instantiate-julia-build = "julia --project=build/create_binaries --eval='using Pkg; Pkg.instantiate()'"
 instantiate-julia = { depends_on = [
     "instantiate-julia-core",
     "instantiate-julia-docs",
