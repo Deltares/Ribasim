@@ -26,7 +26,7 @@ struct AllocationModel
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
-    problem::JuMPModel
+    problem::JuMP.Model
     Δt_allocation::Float64
 end
 

@@ -378,7 +378,7 @@ The variable indices are the allocation graph edge IDs.
 Non-negativivity constraints are also immediately added to the flow variables.
 """
 function add_variables_flow!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_edges::Vector{Edge{Int}},
 )::Nothing
     n_flows = length(allocgraph_edges)
@@ -392,7 +392,7 @@ The variable indices are the allocation graph basin node IDs.
 Non-negativivity constraints are also immediately added to the basin allocation variables.
 """
 function add_variables_allocation_basin!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
     allocgraph_node_ids_basin::Vector{Int},
 )::Nothing
@@ -405,7 +405,7 @@ Add the user allocation constraints to the allocation problem:
 The flow to a user us bounded from above by the demand of the user.
 """
 function add_constraints_user_allocation!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
 )::Nothing
     F = problem[:F]
@@ -428,7 +428,7 @@ Constraint:
 allocation to basin <= basin demand
 """
 function add_constraints_basin_allocation!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_node_ids_basin::Vector{Int},
 )::Nothing
     A_basin = problem[:A_basin]
@@ -450,7 +450,7 @@ Constraint:
 flow over edge <= edge capacity
 """
 function add_constraints_capacity!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     capacity::SparseMatrixCSC{Float64, Int},
     allocgraph_edges::Vector{Edge{Int}},
 )::Nothing
@@ -479,7 +479,7 @@ Constraint:
 flow over source edge <= source flow in subnetwork
 """
 function add_constraints_source!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     source_edge_mapping::Dict{Int, Int},
     allocgraph_edges::Vector{Edge{Int}},
     graph_allocation::DiGraph{Int},
@@ -505,7 +505,7 @@ Constraint:
 sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
 """
 function add_constraints_flow_conservation!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_node_ids_basin::Vector{Int},
     allocgraph_node_inedge_ids::Dict{Int, Vector{Int}},
     allocgraph_node_outedge_ids::Dict{Int, Vector{Int}},
@@ -532,7 +532,7 @@ Constraint:
 outflow from user = return factor * inflow to user
 """
 function add_constraints_user_returnflow!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_node_ids_user_with_returnflow::Vector{Int},
 )::Nothing
     F = problem[:F]
@@ -553,7 +553,7 @@ Add the objective function to the allocation problem.
 Objective function: Sum of flows to the users.
 """
 function add_objective_function!(
-    problem::JuMPModel,
+    problem::JuMP.Model,
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
 )::Nothing
     F = problem[:F]
@@ -577,7 +577,7 @@ function allocation_problem(
     source_edge_mapping::Dict{Int, Int},
     graph_allocation::DiGraph{Int},
     capacity::SparseMatrixCSC{Float64, Int},
-)::JuMPModel
+)::JuMP.Model
     allocgraph_node_ids_basin = sort([
         allocgraph_node_id for
         (allocgraph_node_id, node_type) in values(node_id_mapping) if node_type == :basin
@@ -709,7 +709,7 @@ function assign_allocations!(allocation_model::AllocationModel, user::User)::Not
     for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
         model_node_id = node_id_mapping_inverse[allocgraph_node_id][1]
         user_idx = findsorted(user.node_id, model_node_id)
-        user.allocated[user_idx] .= JuMP.value.(F[allocgraph_edge_id])
+        user.allocated[user_idx] .= JuMP.value(F[allocgraph_edge_id])
     end
     return nothing
 end
@@ -719,15 +719,14 @@ Set the source flows as capacities on edges in the AG.
 """
 function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
     (; problem, source_edge_mapping) = allocation_model
+    edge_ids_flow_inv = p.connectivity.edge_ids_flow_inv
 
     # It is assumed that the allocation procedure does not have to be differentiated.
     flow = get_tmp(p.connectivity.flow, 0)
 
     for (allocgraph_source_node_id, subnetwork_source_edge_id) in source_edge_mapping
-        JuMP.set_normalized_rhs(
-            problem[:source][allocgraph_source_node_id],
-            flow[subnetwork_source_edge_id],
-        )
+        edge_ids = edge_ids_flow_inv[subnetwork_source_edge_id]
+        JuMP.set_normalized_rhs(problem[:source][allocgraph_source_node_id], flow[edge_ids])
     end
     return nothing
 end
