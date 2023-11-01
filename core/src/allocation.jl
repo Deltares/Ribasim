@@ -679,6 +679,10 @@ function AllocationModel(
     )
 end
 
+"""
+Set the demands of the users of the current time and priority
+in the allocation problem.
+"""
 function set_demands_priority!(
     allocation_model::AllocationModel,
     user::User,
