@@ -140,12 +140,12 @@ $$
      \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}.
 \end{align}
 $$ {#eq-returnflowconstraint}
-Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
+Here we use that each user node in the allocation graph has a unique in-edge and out-edge.
 - User allocation: The flow over the edge to the user is equal to the sum of the allocations to the user:
 $$
     F_{\hat{i}\hat{k}} = \sum_{p=1}^{p_\max} A^\text{user}_{\hat{k},p}, \quad \forall \hat{k} \in \hat{U}_S, \hat{V}^{\text{out}}_s(\hat{k}) = \{\hat{i}\}.
 $$ {#eq-userallocationconstraint}
-Here we use that each user has an unique out-edge.
+Here we use that each user has a unique out-edge.
 - User demand: what is allocated to the user is bounded above by the user demand:
 $$
     A_{\hat{i},p}^\text{user} \leq d_i^p(t) \quad \forall\hat{i} \in \hat{U}_S, \; p = 1,\ldots,p_\max.
