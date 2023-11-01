@@ -4,7 +4,7 @@ title: "Allocation"
 
 Allocation is the process of assigning an allocated abstraction flow rate to user nodes in the model based on information about sources, user demands over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
-The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). See also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+The allocation problem is solved per subnetwork of the Ribasim model, from which a new graph is created called the allocation graph. The allocation graph is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
 # The allocation problem
 
@@ -14,7 +14,7 @@ The following data of the parameters and state of a Ribasim model are relevant f
 
 ### The subnetwork
 
-The allocation problem is solved per subgraph, where a subgraph is given by a subset $S \subset V$ of node ids. Different subgraphs are disjoint from eachother.
+The allocation problem is solved per allocation graph, which is derived from a subnetwork given by a subset $S \subset V$ of node ids. Different subnetworks are disjoint from eachother.
 
 ### Source flows
 
@@ -22,7 +22,7 @@ Sources are indicated by a set of edges in the subnetwork
 $$
 E_S^\text{source} \subset \left(S \times S\right) \cap E.
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ is treated as a source flow in the allocation problem.
+That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model description](equations.qmd#formal-model-description)) is treated as a source flow in the allocation problem.
 
 ### User demands
 
@@ -42,9 +42,9 @@ $$
     \phi_i(t), \quad \forall i \in B_S.
 $$
 
-Secondly, there is the available water in each basin above the minimum level $l_{\min,i}$
+Secondly, there is the available water in each basin above the minimum level $l_{\min,i}$ corresponding to a minimum storage $s_{\min,i}$:
 $$
-    u_i(t)-S(l_{\min,i}), \quad \forall i \in B_S.
+    u_i(t)-s_{\min,i}, \quad \forall i \in B_S.
 $$
 Note that this value can be negative, which we interpret as a demand from the basin.
 
@@ -54,7 +54,7 @@ Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, 
 
 ### Fractional flows and user return flows
 
-Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $r_i, i \in U_S$.
+Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $0 \le r_i \le 1, i \in U_S$.
 
 ## The allocation optimization problem
 
@@ -78,59 +78,54 @@ for the set of in-neighbors and out-neighbors of a node in the allocation graph 
 
 The capacities of the edges of the allocation graph are collected in the sparse capacity matrix $\hat{C}_S \in \overline{\mathbb{R}}_{\ge 0}^{\hat{n}\times\hat{n}}$ where $\hat{n}$ is the number of nodes in the allocation graph. The capacities can be infinite.
 
-The capacities are determined in 3 different ways:
+The capacities are determined in 4 different ways:
 
 - If an edge does not exist, i.e. $(\hat{i},\hat{j}) \notin \hat{E}$ for certain $1 \le \hat{i},\hat{j}\le \hat{n}$, then $(\hat{C}_S)_{\hat{i},\hat{j}} = 0$;
 - The capacity of the edge $\hat{e} \in \hat{E_S}$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite;
 - If the edge is a source, the capacity of the edge is given by the flow rate of that source.
+- If the edge ends in a user node, the edge capacity is given by the demand of that user, see also [the next section](allocation.qmd#sec-solving-allocation).
 
 ### The optimization variables
 
-There are several types of variables whose value has to be determined to solve the allocation problem:
+There are 2 types of variables whose value has to be determined to solve the allocation problem:
 
 - The flows $F \in \mathbb{R}_{\ge 0}^{\hat{n}\times\hat{n}}$ over the edges in the allocation graph;
-- The allocations to the users
-$$
-    A^\text{user}_{\hat{i},p} \ge 0, \quad \forall \hat{i} \in \hat{U}_S, \forall p \in \{1,2,\ldots, p_\max\},
-$$
-where $\hat{U}_S = m_S(U_S) \subset \hat{V}_S$ is the set of user node ids in the allocation graph;
-
 - The allocations to the basins
 $$
     A^\text{basin}_{\hat{i}} \ge 0, \quad \hat{B}_S,
 $$
 where $\hat{B} = m_S(B_S) \subset \hat{V}_S$ is the set of basin node ids in the allocation graph.
 
+:::{.callout-note}
+Currently the basin allocations are not taken into account in the implementation.
+:::
+
 ### The optimization objective
 
-The goal of allocation is to maximize the flow to the users. However, basins can also demand water if their level is below the minimum abstraction level, which we give a higher priority than user demands. Therefore, we use the following optimization objective:
+The goal of allocation is to maximize the flow to the users. Therefore, we use the following optimization objective:
 $$
-    \max \sum_{\hat{i} \in \hat{B}_S} A^\text{basin}_{\hat{i}} + \sum_{\hat{i}\in \hat{U}_S} \sum_{p=1}^{p_\max} 2^{-p} A^\text{user}_{\hat{i},p}.
+    \max \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} F_{\hat{i}\hat{j}}
 $$ {#eq-objective}
-This is a linear combination of all allocations, where allocations to basins get a weight of $1$ and allocations to users get a weight of $2^{-p}$ where $p$ is the priority.
+This is a linear combination of the allocations to the users, where all allocations currently get a weight of $1$.
+
+:::{.callout-note}
+This optimization objective will probably be modified in the future, to take things into account like:
+
+- Fair distribution in the case of water scarcity;
+- An allocation graph-wide preference ordering over sources.
+:::
 
 ### The optimization variable constraints
-
-- Source flows: for the source edges we have that
-$$
-F_{\hat{i}\hat{j}} \le Q_{ij} \quad \forall (i,j) \in E_S^\text{source}.
-$$
-Note that we do not require equality here; not all source flow has to be used.
 - Flow conservation: For the basins in the allocation graph we have that
 $$
-    \sum_{\hat{j}=1}^{\hat{n}} F_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F_{\hat{i}\hat{k}} + \Phi_{\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
+    \sum_{\hat{j}=1}^{\hat{n}} F_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F_{\hat{i}\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
 $$  {#eq-flowconservationconstraint}
 Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
-$\Phi_{\hat{k}}$ is the local water supply of the basins:
-$$
-    \Phi_{\hat{k}} = \max\left(\phi_k(t) + \frac{u_k(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}, 0.0 \right).
-$$ {#eq-basinsourceflow}
-Here the first term denotes the vertical fluxes and the second term the flow that can be supplied by the water in the basin above its minimum level, where $\Delta t_\text{alloc}$ is the allocation solve timestep.
-
 - Capacity: the flows over the edges are positive and bounded by the edge capacity:
 $$
     F_{\hat{i}\hat{j}} \le \left(\hat{C}_S\right)_{\hat{i}\hat{j}}, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
 $$ {#eq-capacityconstraint}
+By the definition of $\hat{C}_S$ this also includes the source flows.
 - User outflow: The outflow of the user is dictated by the inflow and the return factor:
 $$
 \begin{align}
@@ -141,29 +136,21 @@ $$
 \end{align}
 $$ {#eq-returnflowconstraint}
 Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
-- User allocation: The flow over the edge to the user is equal to the sum of the allocations to the user:
-$$
-    F_{\hat{i}\hat{k}} = \sum_{p=1}^{p_\max} A^\text{user}_{\hat{k},p}, \quad \forall \hat{k} \in \hat{U}_S, \hat{V}^{\text{out}}_s(\hat{k}) = \{\hat{i}\}.
-$$ {#eq-userallocationconstraint}
-Here we use that each user has an unique out-edge.
-- User demand: what is allocated to the user is bounded above by the user demand:
-$$
-    A_{\hat{i},p}^\text{user} \leq d_i^p(t) \quad \forall\hat{i} \in \hat{U}_S, \; p = 1,\ldots,p_\max.
-$$
-- Basin allocation: If the flow supplied by a basin (as determined in @eq-basinsourceflow) is negative, it is a demand:
-$$
-A^\text{basin}_{\hat{i}} = \max\left(-\left(\phi_i(t) + \frac{u_i(t)-S(l_{\min,k})}{\Delta t_\text{alloc}}\right), 0.0 \right), \quad \forall \hat{i} \in \hat{B}_S.
-$$ {#eq-basinallocationconstraint}
+- User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractinal flow: Let $\hat{L}_S \subset \hat{V}_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
 \begin{align}
-    F_{\hat{i}\hat{j}} = f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \\
+    F_{\hat{i}\hat{j}} \le f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \\
     \forall \hat{i} \in \hat{L}_S, \\
     \hat{j} \in \hat{V}_S^\text{out}(\hat{i}).
 \end{align}
 $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
+
+:::{.callout-note}
+Currently the fractional flow constraints are not taken into account in the implementation.
+:::
 
 ## Final notes on the allocation problem
 
@@ -172,52 +159,33 @@ $$ {#eq-fractionalflowconstraint}
 If not explicitly avoided, users can use their own return flow in this allocation problem formulation.
 Therefore, return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation graph from the user outflow node back to the user.
 
-# Solving the allocation problem
+# Solving the allocation problem {#sec-solving-allocation}
 
-The text below shows a representation generated by `JuMP.jl` of an optimization as described in the previous section.
+The allocation problem for an allocation graph at time $t$ is solved per priority, as follows:
 
-```
-Max A_basin[2] + A_basin[3] + A_basin[5] + 0.5 A_user_4[1] + 0.25 A_user_4[2] + 0.125 A_user_4[3] + 0.5 A_user_6[1] + 0.25 A_user_6[2] + 0.125 A_user_6[3] + 0.5 A_user_1[1] + 0.25 A_user_1[2] + 0.125 A_user_1[3]
-Subject to
- allocation_sum[1] : -F[1] + A_user_1[1] + A_user_1[2] + A_user_1[3] == 0
- allocation_sum[4] : -F[3] + A_user_4[1] + A_user_4[2] + A_user_4[3] == 0
- allocation_sum[6] : -F[5] + A_user_6[1] + A_user_6[2] + A_user_6[3] == 0
- A_user_1[1] >= 0
- A_user_1[2] >= 0
- A_user_1[3] >= 0
- A_user_4[1] >= 0
- A_user_4[2] >= 0
- A_user_4[3] >= 0
- A_user_6[1] >= 0
- A_user_6[2] >= 0
- A_user_6[3] >= 0
- demand_user_1[1] : A_user_1[1] <= 4
- demand_user_1[2] : A_user_1[2] <= 0
- demand_user_1[3] : A_user_1[3] <= 0
- demand_user_4[1] : A_user_4[1] <= 0
- demand_user_4[2] : A_user_4[2] <= 2
- demand_user_4[3] : A_user_4[3] <= 0
- demand_user_6[1] : A_user_6[1] <= 0
- demand_user_6[2] : A_user_6[2] <= 1
- demand_user_6[3] : A_user_6[3] <= 0
- basin_allocation[2] : A_basin[2] <= 0
- basin_allocation[3] : A_basin[3] <= 0
- basin_allocation[5] : A_basin[5] <= 0
- capacity[2] : F[2] <= 3
- capacity[4] : F[4] <= 4
- source[7] : F[6] <= 4.5
- flow_conservation[2] : F[1] - F[2] <= 0
- flow_conservation[3] : F[2] + F[3] - F[4] <= 0
- flow_conservation[5] : F[4] + F[5] - F[6] <= 0
- F[1] >= 0
- F[2] >= 0
- F[3] >= 0
- F[4] >= 0
- F[5] >= 0
- F[6] >= 0
- A_basin[2] >= 0
- A_basin[3] >= 0
- A_basin[5] >= 0
-```
+1. Define a capacity matrix with capacities as described above, that will be updated for each priority:
+$$
+\begin{align}
+    \hat{C}_S^p \leftarrow \hat{C}_S;
+\end{align}
+$$
+2. Set the capacities of the edges that end in an user to their priority 1 demands:
+$$
+(\hat{C}_S^p)_{\hat{i},\hat{j}} \leftarrow d_j^1(t) \quad\text{ for all } (\hat{i},\hat{j}) \in \hat{U}_S;
+$$
+3. Maximize the objective function given the constraints;
+4. Subtract the used flows from the edge capacities:
+$$
+    \hat{C}_S^p \leftarrow \hat{C}_S^p - F;
+$$
+5. Repeat steps 2-4 for the remaining priorities up to $p_\max$.
 
-A more detailed explanation of this will follow in the future.
+:::{.callout-note}
+In the future there will be another solve before the priority 1 solve, taking the demand/supply from basins into account.
+:::
+
+## Example
+
+:::{.callout-note}
+An example with figures and data will be added here after addition of [allocation output files](https://github.com/Deltares/Ribasim/issues/659).
+:::
