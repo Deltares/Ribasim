@@ -53,14 +53,11 @@ jobs:
       - name: Render Quarto Project
         run: pixi run quarto-render
 
-      - name: Set up Quarto for publish
-        uses: quarto-dev/quarto-actions/setup@v2
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        uses: quarto-dev/quarto-actions/publish@v2
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          path: docs
-          render: false
-          target: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
