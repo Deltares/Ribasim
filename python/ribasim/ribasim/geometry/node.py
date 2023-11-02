@@ -1,48 +1,28 @@
-from typing import Any, Dict, Union
+from typing import Any, Generic
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
-from geopandas import GeoDataFrame
-from pandera.typing import DataFrame, Series
+from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from pydantic import ConfigDict
 
-from ribasim.input_base import TableModel
-from ribasim.types import FilePath
+from ribasim.input_base import SpatialTableModel, TableT
 
 __all__ = ("Node",)
 
 
-class StaticSchema(pa.SchemaModel):
+class NodeStaticSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
-    type: Series[str]
-    geometry: GeoSeries[Any]
-    model_config = ConfigDict(add_missing_columns=True)
+    type: Series[str] = pa.Field(default="")
+    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+
+    class Config:
+        add_missing_columns = True
 
 
-class Node(TableModel):
-    """
-    The Ribasim nodes as Point geometries.
-
-    Parameters
-    ----------
-    static : geopandas.GeoDataFrame
-        Table with node ID, type and geometry.
-    """
-
-    static: DataFrame[StaticSchema]
-    model_config = ConfigDict(validate_assignment=True)
-
-    @classmethod
-    def _layername(cls, field) -> str:
-        return cls.get_input_type()
-
-    @classmethod
-    def hasfid(cls):
-        return True
+class Node(SpatialTableModel[TableT], Generic[TableT]):
+    """The Ribasim nodes as Point geometries."""
 
     @staticmethod
     def get_node_ids_and_types(*nodes):
@@ -74,38 +54,6 @@ class Node(TableModel):
         node_type = node_type.node_type.tolist()
 
         return node_id, node_type
-
-    def write_layer(self, path: FilePath) -> None:
-        """
-        Write the contents of the input to a database.
-
-        Parameters
-        ----------
-        path : FilePath
-        """
-        self.sort()
-        dataframe = self.static
-        name = self._layername(dataframe)
-
-        gdf = gpd.GeoDataFrame(data=dataframe)
-        gdf = gdf.set_geometry("geometry")
-
-        gdf.to_file(path, layer=name, driver="GPKG")
-
-        return
-
-    @classmethod
-    def _kwargs_from_database(
-        cls, path: FilePath
-    ) -> Dict[str, Union[GeoDataFrame, DataFrame[Any], None]]:
-        kwargs = {}
-
-        field = "static"
-        layername = cls._layername(field)
-        df = gpd.read_file(path, layer=layername, engine="pyogrio", fid_as_index=True)
-        kwargs[field] = df
-
-        return kwargs
 
     def plot(self, ax=None, zorder=None) -> Any:
         """
@@ -178,6 +126,3 @@ class Node(TableModel):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax
-
-    def sort(self):
-        self.static = self.static.sort_index()

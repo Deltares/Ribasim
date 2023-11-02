@@ -2,7 +2,7 @@ __version__ = "0.4.0"
 
 
 from ribasim import models, utils
-from ribasim.config import Config, Logging, Solver
+from ribasim.config import Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Model

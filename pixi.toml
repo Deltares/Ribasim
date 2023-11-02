@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64", "osx-64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -91,13 +91,12 @@ pandera = "*"
 pip = "*"
 pre-commit = "*"
 pyarrow = "*"
-pydantic = "~=1.0"
+pydantic = ">=2"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.9"
-quarto = "*"
 ruff = "*"
 shapely = ">=2.0"
 tomli = "*"
@@ -105,3 +104,13 @@ tomli-w = "*"
 twine = "*"
 xarray = "*"
 xmipy = "*"
+typing-extensions = ">=4.6"
+
+[target.win-64.dependencies]
+quarto = "*"
+
+[target.linux-64.dependencies]
+quarto = "*"
+
+[target.osx-64.dependencies]
+quarto = "*"

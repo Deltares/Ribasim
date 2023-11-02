@@ -3,10 +3,35 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel
+
+from ribasim.input_base import NodeModel, TableModel
+from ribasim.schemas import (
+    BasinProfileSchema,
+    BasinStateSchema,
+    BasinStaticSchema,
+    BasinTimeSchema,
+    DiscreteControlConditionSchema,
+    DiscreteControlLogicSchema,
+    FlowBoundaryStaticSchema,
+    FlowBoundaryTimeSchema,
+    FractionalFlowStaticSchema,
+    LevelBoundaryStaticSchema,
+    LevelBoundaryTimeSchema,
+    LinearResistanceStaticSchema,
+    ManningResistanceStaticSchema,
+    OutletStaticSchema,
+    PidControlStaticSchema,
+    PidControlTimeSchema,
+    PumpStaticSchema,
+    TabulatedRatingCurveStaticSchema,
+    TabulatedRatingCurveTimeSchema,
+    TerminalStaticSchema,
+    UserStaticSchema,
+    UserTimeSchema,
+)
 
 
 class Results(BaseModel):
@@ -38,108 +63,62 @@ class Logging(BaseModel):
     timing: bool = False
 
 
-class Terminal(BaseModel):
-    static: Optional[str] = None
+class Terminal(NodeModel):
+    static: TableModel[TerminalStaticSchema]
 
 
-class PidControl(BaseModel):
-    static: Optional[str] = None
-    time: Optional[str] = None
+class PidControl(NodeModel):
+    static: TableModel[PidControlStaticSchema]
+    time: TableModel[PidControlTimeSchema]
 
 
-class LevelBoundary(BaseModel):
-    static: Optional[str] = None
-    time: Optional[str] = None
+class LevelBoundary(NodeModel):
+    static: TableModel[LevelBoundaryStaticSchema]
+    time: TableModel[LevelBoundaryTimeSchema]
 
 
-class Pump(BaseModel):
-    static: Optional[str] = None
+class Pump(NodeModel):
+    static: TableModel[PumpStaticSchema]
 
 
-class TabulatedRatingCurve(BaseModel):
-    static: Optional[str] = None
-    time: Optional[str] = None
+class TabulatedRatingCurve(NodeModel):
+    static: TableModel[TabulatedRatingCurveStaticSchema]
+    time: TableModel[TabulatedRatingCurveTimeSchema]
 
 
-class User(BaseModel):
-    static: Optional[str] = None
-    time: Optional[str] = None
+class User(NodeModel):
+    static: TableModel[UserStaticSchema]
+    time: TableModel[UserTimeSchema]
 
 
-class FlowBoundary(BaseModel):
-    static: Optional[str] = None
-    time: Optional[str] = None
+class FlowBoundary(NodeModel):
+    static: TableModel[FlowBoundaryStaticSchema]
+    time: TableModel[FlowBoundaryTimeSchema]
 
 
-class Basin(BaseModel):
-    profile: Optional[str] = None
-    state: Optional[str] = None
-    static: Optional[str] = None
-    time: Optional[str] = None
+class Basin(NodeModel):
+    profile: TableModel[BasinProfileSchema]
+    state: TableModel[BasinStateSchema]
+    static: TableModel[BasinStaticSchema]
+    time: TableModel[BasinTimeSchema]
 
 
-class ManningResistance(BaseModel):
-    static: Optional[str] = None
+class ManningResistance(NodeModel):
+    static: TableModel[ManningResistanceStaticSchema]
 
 
-class DiscreteControl(BaseModel):
-    condition: Optional[str] = None
-    logic: Optional[str] = None
+class DiscreteControl(NodeModel):
+    condition: TableModel[DiscreteControlConditionSchema]
+    logic: TableModel[DiscreteControlLogicSchema]
 
 
-class Outlet(BaseModel):
-    static: Optional[str] = None
+class Outlet(NodeModel):
+    static: TableModel[OutletStaticSchema]
 
 
-class LinearResistance(BaseModel):
-    static: Optional[str] = None
+class LinearResistance(NodeModel):
+    static: TableModel[LinearResistanceStaticSchema]
 
 
-class FractionalFlow(BaseModel):
-    static: Optional[str] = None
-
-
-class Config(BaseModel):
-    starttime: datetime
-    endtime: datetime
-    update_timestep: float = 86400
-    relative_dir: str = "."
-    input_dir: str = "."
-    output_dir: str = "."
-    geopackage: str
-    results: Results = {
-        "basin": "output/basin.arrow",
-        "flow": "output/flow.arrow",
-        "control": "output/control.arrow",
-        "outstate": None,
-        "compression": "zstd",
-        "compression_level": 6,
-    }
-    solver: Solver = {
-        "algorithm": "QNDF",
-        "saveat": [],
-        "adaptive": True,
-        "dt": None,
-        "dtmin": None,
-        "dtmax": None,
-        "force_dtmin": False,
-        "abstol": 1e-06,
-        "reltol": 0.001,
-        "maxiters": 1000000000,
-        "sparse": True,
-        "autodiff": True,
-    }
-    logging: Logging = {"verbosity": {"level": 0}, "timing": False}
-    terminal: Terminal = {"static": None}
-    pid_control: PidControl = {"static": None, "time": None}
-    level_boundary: LevelBoundary = {"static": None, "time": None}
-    pump: Pump = {"static": None}
-    tabulated_rating_curve: TabulatedRatingCurve = {"static": None, "time": None}
-    user: User = {"static": None, "time": None}
-    flow_boundary: FlowBoundary = {"static": None, "time": None}
-    basin: Basin = {"profile": None, "state": None, "static": None, "time": None}
-    manning_resistance: ManningResistance = {"static": None}
-    discrete_control: DiscreteControl = {"condition": None, "logic": None}
-    outlet: Outlet = {"static": None}
-    linear_resistance: LinearResistance = {"static": None}
-    fractional_flow: FractionalFlow = {"static": None}
+class FractionalFlow(NodeModel):
+    static: TableModel[FractionalFlowStaticSchema]

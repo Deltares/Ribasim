@@ -1,43 +1,83 @@
 import datetime
 import inspect
 import shutil
-from contextlib import closing
 from pathlib import Path
-from sqlite3 import connect
-from typing import Any, Optional, Type, cast
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
-from pydantic import BaseModel, ConfigDict
+from pydantic import DirectoryPath, model_serializer, model_validator
 
-from ribasim import geometry, node_types
-from ribasim.config import Logging, Solver
-from ribasim.geometry.edge import Edge
-from ribasim.geometry.node import Node
+from ribasim import node_types
+from ribasim.config import (
+    Basin,
+    DiscreteControl,
+    FlowBoundary,
+    FractionalFlow,
+    LevelBoundary,
+    LinearResistance,
+    Logging,
+    ManningResistance,
+    Outlet,
+    PidControl,
+    Pump,
+    Results,
+    Solver,
+    TabulatedRatingCurve,
+    Terminal,
+    User,
+)
+from ribasim.geometry.edge import Edge, EdgeStaticSchema
+from ribasim.geometry.node import Node, NodeStaticSchema
 
 # Do not import from ribasim namespace: will create import errors.
 # E.g. not: from ribasim import Basin
-from ribasim.input_base import TableModel
-from ribasim.node_types.basin import Basin
-from ribasim.node_types.discrete_control import DiscreteControl
-from ribasim.node_types.flow_boundary import FlowBoundary
-from ribasim.node_types.fractional_flow import FractionalFlow
-from ribasim.node_types.level_boundary import LevelBoundary
-from ribasim.node_types.linear_resistance import LinearResistance
-from ribasim.node_types.manning_resistance import ManningResistance
-from ribasim.node_types.outlet import Outlet
-from ribasim.node_types.pid_control import PidControl
-from ribasim.node_types.pump import Pump
-from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
-from ribasim.node_types.terminal import Terminal
-from ribasim.node_types.user import User
+from ribasim.input_base import (
+    FileModel,
+    NodeModel,
+    TableModel,
+    context_file_loading,
+)
 from ribasim.types import FilePath
 
 
-class Model(BaseModel):
+class Database(NodeModel, FileModel):
+    node: Node[NodeStaticSchema] = Node[NodeStaticSchema]()
+    edge: Edge[EdgeStaticSchema] = Edge[EdgeStaticSchema]()
+
+    @classmethod
+    def _load(cls, filepath: Path) -> Dict[str, Any]:
+        context_file_loading.get()["database"] = filepath
+        return {"node": {"filepath": "Node"}, "edge": {"filepath": "Edge"}}
+
+    def _save(self, directory):
+        # We write all tables to a temporary database with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
+        directory = Path(directory)
+        db_path = directory / "database.gpkg"
+        db_path = db_path.resolve()
+        temp_path = db_path.with_stem(".database")
+
+        # avoid adding tables to existing model
+        temp_path.unlink(missing_ok=True)
+        context_file_loading.get()["database"] = temp_path
+
+        self.node._save(directory)
+        self.edge._save(directory)
+
+        shutil.move(temp_path, db_path)
+        context_file_loading.get()["database"] = db_path
+
+    @model_serializer
+    def set_model(self) -> str:
+        return "database.gpkg"
+
+
+class Model(FileModel):
     """
     A full Ribasim model schematisation with all input.
 
@@ -86,31 +126,32 @@ class Model(BaseModel):
         Logging settings.
     """
 
-    node: Node
-    edge: Edge
-    basin: Basin
-    fractional_flow: Optional[FractionalFlow] = None
-    level_boundary: Optional[LevelBoundary] = None
-    flow_boundary: Optional[FlowBoundary] = None
-    linear_resistance: Optional[LinearResistance] = None
-    manning_resistance: Optional[ManningResistance] = None
-    tabulated_rating_curve: Optional[TabulatedRatingCurve] = None
-    pump: Optional[Pump] = None
-    outlet: Optional[Outlet] = None
-    terminal: Optional[Terminal] = None
-    discrete_control: Optional[DiscreteControl] = None
-    pid_control: Optional[PidControl] = None
-    user: Optional[User] = None
     starttime: datetime.datetime
     endtime: datetime.datetime
-    solver: Optional[Solver] = None
-    logging: Optional[Logging] = None
-    model_config = ConfigDict(validate_assignment=True)
 
-    @classmethod
-    def fields(cls):
-        """Return the names of the fields contained in the Model."""
-        return cls.__fields__.keys()
+    update_timestep: float = 86400
+    relative_dir: str = "."
+    input_dir: str = "."
+    results_dir: str = "."
+
+    database: Database = Database()
+    results: Optional[Results] = Results()
+    solver: Optional[Solver] = Solver()
+    logging: Optional[Logging] = Logging()
+
+    basin: Basin = Basin()
+    fractional_flow: FractionalFlow = FractionalFlow()
+    level_boundary: LevelBoundary = LevelBoundary()
+    flow_boundary: FlowBoundary = FlowBoundary()
+    linear_resistance: LinearResistance = LinearResistance()
+    manning_resistance: ManningResistance = ManningResistance()
+    tabulated_rating_curve: TabulatedRatingCurve = TabulatedRatingCurve()
+    pump: Pump = Pump()
+    outlet: Outlet = Outlet()
+    terminal: Terminal = Terminal()
+    discrete_control: DiscreteControl = DiscreteControl()
+    pid_control: PidControl = PidControl()
+    user: User = User()
 
     def __repr__(self) -> str:
         first = []
@@ -130,54 +171,23 @@ class Model(BaseModel):
 
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
-        content = {
-            "starttime": self.starttime,
-            "endtime": self.endtime,
-            "database": "database.gpkg",
-        }
-        if self.solver is not None:
-            section = {k: v for k, v in self.solver.dict().items() if v is not None}
-            content["solver"] = section
 
-        # TODO This should be rewritten as self.dict(exclude_unset=True, exclude_defaults=True)
-        # after we make sure that we have a (sub)model that's only the config, instead
-        # the mix of models and config it is now.
-        if self.logging is not None:
-            section = {k: v for k, v in self.logging.dict().items() if v is not None}
-            content["logging"] = section
-
-        with open(directory / "ribasim.toml", "wb") as f:
+        content = self.dict(exclude_unset=True, exclude_defaults=True)
+        fn = directory / "ribasim.toml"
+        with open(fn, "wb") as f:
             tomli_w.dump(content, f)
-        return
+        return fn
 
-    def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to database tables."""
-        # We write all tables to a temporary database with a dot prefix,
-        # and at the end move this over the target file.
-        # This does not throw a PermissionError if the file is open in QGIS.
-        directory = Path(directory)
-        db_path = directory / "database.gpkg"
-        temp_path = db_path.with_stem(".database.gpkg")
-        # avoid adding tables to existing model
-        temp_path.unlink(missing_ok=True)
+    def _save(self, directory: DirectoryPath):
+        for sub in self.nodes().values():
+            sub._save(directory)
 
-        # write to database using geopandas
-        self.node.write_layer(temp_path)
-        self.edge.write_layer(temp_path)
-
-        # write to database using sqlite3
-        with closing(connect(temp_path)) as connection:
-            for name in self.fields():
-                input_entry = getattr(self, name)
-                is_geometry = isinstance(input_entry, Node) or isinstance(
-                    input_entry, Edge
-                )
-                if isinstance(input_entry, TableModel) and not is_geometry:
-                    input_entry.write_table(connection)
-            connection.commit()
-
-        shutil.move(temp_path, db_path)
-        return
+    def nodes(self):
+        return {
+            k: getattr(self, k)
+            for k in self.model_fields.keys()
+            if isinstance(getattr(self, k), (NodeModel,))
+        }
 
     @staticmethod
     def get_node_types():
@@ -300,16 +310,35 @@ class Model(BaseModel):
         ----------
         directory: FilePath
         """
-        self.validate_model()
-
+        # self.validate_model()
+        context_file_loading.set({})
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        self._write_toml(directory)
-        self._write_tables(directory)
-        return
+        self._save(directory)
+        fn = self._write_toml(directory)
 
-    @staticmethod
-    def from_toml(path: FilePath) -> "Model":
+        context_file_loading.set({})
+        return fn
+
+    @classmethod
+    def _load(cls, filepath: FilePath) -> Dict[str, Any]:
+        context_file_loading.set({})
+
+        path = Path(filepath)
+        with open(path, "rb") as f:
+            config = tomli.load(f)
+
+        config["database"] = path.parent / config["database"]
+        return config
+
+    @model_validator(mode="after")
+    def reset_contextvar(self) -> "Model":
+        # Drop database info
+        context_file_loading.set({})
+        return self
+
+    @classmethod
+    def from_toml(cls, path: FilePath) -> "Model":
         """
         Initialize a model from the TOML configuration file.
 
@@ -322,24 +351,8 @@ class Model(BaseModel):
         -------
         model : Model
         """
-
-        path = Path(path)
-        with open(path, "rb") as f:
-            config = tomli.load(f)
-
-        kwargs: dict[str, Any] = {}
-        config["database"] = path.parent / config["database"]
-
-        for module in [geometry, node_types]:
-            for _, node_type_cls in inspect.getmembers(module, inspect.isclass):
-                cls_casted = cast(Type[TableModel], node_type_cls)
-                kwargs[node_type_cls.get_toml_key()] = cls_casted.from_config(config)
-
-        kwargs["starttime"] = config["starttime"]
-        kwargs["endtime"] = config["endtime"]
-        kwargs["solver"] = config.get("solver")
-
-        return Model(**kwargs)
+        kwargs = cls._load(path)
+        return cls(**kwargs)
 
     def plot_control_listen(self, ax):
         x_start, x_end = [], []

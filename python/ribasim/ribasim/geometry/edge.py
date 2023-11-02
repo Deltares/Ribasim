@@ -1,32 +1,30 @@
-from typing import Any, Dict, Union
+from typing import Any, Generic
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandera as pa
 import shapely
-from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import DataFrame, Series
+from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from pydantic import ConfigDict
 
-from ribasim.input_base import TableModel
-from ribasim.types import FilePath
+from ribasim.input_base import SpatialTableModel, TableT
 
 __all__ = ("Edge",)
 
 
-class StaticSchema(pa.SchemaModel):
+class EdgeStaticSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
-    from_node_id: Series[int] = pa.Field(coerce=True)
-    to_node_id: Series[int] = pa.Field(coerce=True)
-    geometry: GeoSeries[Any]
-    model_config = ConfigDict(add_missing_columns=True)
+    from_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    to_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+
+    class Config:
+        add_missing_columns = True
 
 
-class Edge(TableModel):
+class Edge(SpatialTableModel[TableT], Generic[TableT]):
     """
     Defines the connections between nodes.
 
@@ -35,47 +33,6 @@ class Edge(TableModel):
     static : pandas.DataFrame
         Table describing the flow connections.
     """
-
-    static: DataFrame[StaticSchema]
-    model_config = ConfigDict(validate_assignment=True)
-
-    @classmethod
-    def _layername(cls, field) -> str:
-        return cls.get_input_type()
-
-    def write_layer(self, path: FilePath) -> None:
-        """
-        Write the contents of the input to a database.
-
-        Parameters
-        ----------
-        path : FilePath
-        """
-        self.sort()
-        dataframe = self.static
-        name = self._layername(dataframe)
-
-        gdf = gpd.GeoDataFrame(data=dataframe)
-        if "geometry" in gdf.columns:
-            gdf = gdf.set_geometry("geometry")
-        else:
-            gdf["geometry"] = None
-        gdf.to_file(path, layer=name, driver="GPKG")
-
-        return
-
-    @classmethod
-    def _kwargs_from_database(
-        cls, path: FilePath
-    ) -> Dict[str, Union[DataFrame[Any], GeoDataFrame, None]]:
-        kwargs = {}
-
-        field = "static"
-        layername = cls._layername(field)
-        df = gpd.read_file(path, layer=layername, engine="pyogrio", fid_as_index=True)
-        kwargs[field] = df
-
-        return kwargs
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         return (self.static.edge_type == edge_type).to_numpy()
@@ -146,6 +103,3 @@ class Edge(TableModel):
             )
 
         return ax
-
-    def sort(self):
-        self.static = self.static.sort_index()
