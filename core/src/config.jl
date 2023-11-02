@@ -122,12 +122,14 @@ end
     timing::Bool = false
 end
 
+@option struct Allocation <: TableOption
+    timestep::Union{Float64, Nothing} = nothing
+    use_allocation::Bool = false
+end
+
 @option @addnodetypes struct Config <: TableOption
     starttime::DateTime
     endtime::DateTime
-
-    # [s] Δt for periodic update frequency, including user horizons
-    update_timestep::Float64 = 60 * 60 * 24.0
 
     # optional, when Config is created from a TOML file, this is its directory
     relative_dir::String = "."  # ignored(!)
@@ -137,12 +139,12 @@ end
     # input, required
     database::String
 
+    allocation::Allocation = Allocation()
+    solver::Solver = Solver()
+    logging::Logging = Logging()
+
     # results, required
     results::Results = Results()
-
-    solver::Solver = Solver()
-
-    logging::Logging = Logging()
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)

@@ -17,6 +17,17 @@
             "format": "default",
             "type": "string"
         },
+        "allocation_network_id": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "integer"
+                }
+            ]
+        },
         "remarks": {
             "description": "a hack for pandera",
             "type": "string",

@@ -165,7 +165,7 @@ def subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -177,6 +177,8 @@ def subnetwork_model():
         [1, 2, 3, 2, 2, 5, 6, 7, 6, 8, 6, 13, 10, 11, 12], dtype=np.int64
     )
     to_id = np.array([2, 3, 4, 10, 5, 6, 7, 8, 11, 12, 13, 9, 2, 6, 8], dtype=np.int64)
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
         static=gpd.GeoDataFrame(
@@ -184,6 +186,7 @@ def subnetwork_model():
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -192,7 +195,7 @@ def subnetwork_model():
 
     # Setup the basins:
     profile = pd.DataFrame(
-        data={"node_id": [2, 2, 6, 6, 8, 8], "area": 1000.0, "level": 3 * [0.0, 1.0]}
+        data={"node_id": [2, 2, 6, 6, 8, 8], "area": 100000.0, "level": 3 * [0.0, 1.0]}
     )
 
     static = pd.DataFrame(
@@ -206,39 +209,30 @@ def subnetwork_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 1.0})
+    state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 10.0})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [4.5]})
+        time=pd.DataFrame(
+            data={
+                "node_id": 1,
+                "flow_rate": np.arange(10, 0, -1),
+                "time": [f"2020-{i}-1 00:00:00" for i in range(1, 11)],
+            }
+        )
     )
 
     # Setup the users:
     user = ribasim.User(
         static=pd.DataFrame(
             data={
-                "node_id": [10, 12],
-                "demand": [1.0, 4.0],
+                "node_id": [10, 11, 12],
+                "demand": [4.0, 5.0, 3.0],
                 "return_factor": 0.9,
                 "min_level": 0.9,
-                "priority": [2, 1],
-            }
-        ),
-        time=pd.DataFrame(
-            data={
-                "node_id": 11,
-                "time": [
-                    "2020-01-01 00:00:00",
-                    "2021-01-01 00:00:00",
-                    "2020-01-01 00:00:00",
-                    "2021-01-01 00:00:00",
-                ],
-                "demand": [2.0, 2.0, 0.0, 3.0],
-                "return_factor": 0.9,
-                "min_level": 0.9,
-                "priority": [2, 2, 3, 3],
+                "priority": [2, 1, 2],
             }
         ),
     )
@@ -270,6 +264,9 @@ def subnetwork_model():
         )
     )
 
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
     model = ribasim.Model(
         node=node,
         edge=edge,
@@ -279,8 +276,9 @@ def subnetwork_model():
         pump=pump,
         outlet=outlet,
         terminal=terminal,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-01 00:00:00",
+        endtime="2020-04-01 00:00:00",
     )
 
     return model
@@ -348,7 +346,7 @@ def looped_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         static=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -528,7 +526,7 @@ def looped_subnetwork_model():
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
     )
 
     return model

@@ -3,25 +3,18 @@
 starttime = 2019-01-01 # required
 endtime = 2021-01-01   # required
 
-# all timesteps are in seconds
-update_timestep = 86400.0 # optional, default 1 day
-
 # input files
 database = "database.gpkg" # required
-
-[results]
-# These results files are always written
-flow = "results/flow.arrow"       # optional, default "results/flow.arrow"
-basin = "results/basin.arrow"     # optional, default "results/basin.arrow"
-control = "results/control.arrow" # optional, default "results/control.arrow"
-compression = "zstd"             # optional, default "zstd", also supports "lz4"
-compression_level = 6            # optional, default 6
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the database if not specified in the TOML.
 [basin]
 time = "basin/time.arrow"
+
+[allocation]
+timestep = 86400
+use_allocation = true
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
@@ -41,3 +34,11 @@ autodiff = true     # optional, default true
 # defines the logging level of Ribasim
 verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" or "error"
 timing = false     # optional, whether to log debug timing statements
+
+[results]
+# These results files are always written
+flow = "results/flow.arrow"       # optional, default "results/flow.arrow"
+basin = "results/basin.arrow"     # optional, default "results/basin.arrow"
+control = "results/control.arrow" # optional, default "results/control.arrow"
+compression = "zstd"             # optional, default "zstd", also supports "lz4"
+compression_level = 6            # optional, default 6

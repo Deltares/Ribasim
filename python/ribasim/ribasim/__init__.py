@@ -1,8 +1,8 @@
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 from ribasim import models, utils
-from ribasim.config import Logging, Solver
+from ribasim.config import Allocation, Logging, Solver
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
 from ribasim.model import Model
@@ -23,7 +23,6 @@ from ribasim.node_types.user import User
 __all__ = [
     "models",
     "utils",
-    "Config",
     "Basin",
     "Edge",
     "FractionalFlow",
@@ -42,4 +41,5 @@ __all__ = [
     "DiscreteControl",
     "PidControl",
     "User",
+    "Allocation",
 ]

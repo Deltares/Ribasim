@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/Allocation.schema.json",
+    "title": "Allocation",
+    "description": "A Allocation object based on Ribasim.config.Allocation",
+    "type": "object",
+    "properties": {
+        "timestep": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "default": null
+        },
+        "use_allocation": {
+            "format": "default",
+            "type": "boolean",
+            "default": false
+        }
+    },
+    "required": [
+        "use_allocation"
+    ]
+}

@@ -34,6 +34,11 @@ from ribasim.schemas import (
 )
 
 
+class Allocation(BaseModel):
+    timestep: Optional[float] = None
+    use_allocation: bool = False
+
+
 class Results(BaseModel):
     basin: str = "results/basin.arrow"
     flow: str = "results/flow.arrow"

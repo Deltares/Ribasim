@@ -13,6 +13,7 @@ from pydantic import DirectoryPath, model_serializer, model_validator
 
 from ribasim import node_types
 from ribasim.config import (
+    Allocation,
     Basin,
     DiscreteControl,
     FlowBoundary,
@@ -135,6 +136,7 @@ class Model(FileModel):
     results_dir: str = "."
 
     database: Database = Database()
+    allocation: Optional[Allocation] = Allocation()
     results: Optional[Results] = Results()
     solver: Optional[Solver] = Solver()
     logging: Optional[Logging] = Logging()
