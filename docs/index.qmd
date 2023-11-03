@@ -52,9 +52,9 @@ a set of symbolic equations, and can be connected to each other. From this a sim
 system of equations is generated automatically. We use solvers with adaptive time stepping
 from [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/) to get results.
 
-<figure id="None" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png" alt="Figure 1: Example timeseries of a single basin, the Hupselse Beek, with the input and output fluxes on the top, and the storage volume (the state) below." style="max-width: 100%;"><figcaption>alt="Figure 1: Example timeseries of a single basin, the Hupselse Beek, with the input and output fluxes on the top, and the storage volume (the state) below."</figcaption></figure>
+![Example timeseries of a single basin, the Hupselse Beek, with the input and output fluxes on the top, and the storage volume (the state) below.](https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png)
 
-<figure id="None" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/4471859/179259174-0caccd4a-c51b-449e-873c-17d48cfc8870.png" alt="Figure 2: Example bar plot of the daily waterbalance for the Hupselse Beek, comparing results of Mozart (left) and Ribasim (right)." style="max-width: 100%;"><figcaption>alt="Figure 2: Example bar plot of the daily waterbalance for the Hupselse Beek, comparing results of Mozart (left) and Ribasim (right)."</figcaption></figure>
+![Example bar plot of the daily waterbalance for the Hupselse Beek, comparing results of Mozart (left) and Ribasim (right).](https://user-images.githubusercontent.com/4471859/179259174-0caccd4a-c51b-449e-873c-17d48cfc8870.png)
 
 
 # Introduction
@@ -108,7 +108,7 @@ Local Surface Water (LSW)). Each basin has an associated polygon, and the set of
 connected to each other as described by a graph, which we call the network. Below is a
 representation of both on the map.
 
-<figure id="None" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/4471859/185932183-62c305e6-bc14-4f3c-a74c-437f831c9145.png" alt="Figure 3: Mozart Local Surface Water polygons and their drainage." style="max-width: 100%;"><figcaption>alt="Figure 3: Mozart Local Surface Water polygons and their drainage."</figcaption></figure>
+![Mozart Local Surface Water polygons and their drainage.](https://user-images.githubusercontent.com/4471859/185932183-62c305e6-bc14-4f3c-a74c-437f831c9145.png)
 
 The network is described as graph. Flow can be bi-directional, and the graph does not have
 to be acyclic.
@@ -131,16 +131,16 @@ lines between A, B, C, and D) instead.
 
 Multiple basins may exist within the same spatial polygon, representing
 different aspects of the surface water system (perennial ditches, ephemeral
-ditches, or even surface ponding). <a href="#fig-p">Figure 4</a>, <a href="#fig-s">Figure 5</a>, <a href="#fig-t">Figure 6</a> show the 25.0 m
+ditches, or even surface ponding). @fig-p, @fig-s, @fig-t show the 25.0 m
 rasterized primary, secondary, and tertiary surface waters as identified by BRT
 TOP10NL [@pdoktopnl] in the Hupsel basin (as defined in the Mozart LSW's).
 These systems may represented in multiple ways.
 
-<figure id="fig-p" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/13662783/187625163-d0a81bb6-7f55-4ad1-83e2-90ec1ee79740.PNG" alt="Figure 4: Hupsel: primary surface water." style="max-width: 100%;"><figcaption>alt="Figure 4: Hupsel: primary surface water."</figcaption></figure>
+![Hupsel: primary surface water.](https://user-images.githubusercontent.com/13662783/187625163-d0a81bb6-7f55-4ad1-83e2-90ec1ee79740.PNG){#fig-p}
 
-<figure id="fig-s" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/13662783/187625170-1acdfb41-7077-443f-b140-ae18cbf21e53.PNG" alt="Figure 5: Hupsel: secondary surface water." style="max-width: 100%;"><figcaption>alt="Figure 5: Hupsel: secondary surface water."</figcaption></figure>
+![Hupsel: secondary surface water.](https://user-images.githubusercontent.com/13662783/187625170-1acdfb41-7077-443f-b140-ae18cbf21e53.PNG){#fig-s}
 
-<figure id="fig-t" style="max-width: 100%;"><img src="https://user-images.githubusercontent.com/13662783/187625174-3eec28b5-ddbb-4870-94c3-d9e9a43f8eb4.PNG" alt="Figure 6: Hupsel: tertiary surface water." style="max-width: 100%;"><figcaption>alt="Figure 6: Hupsel: tertiary surface water."</figcaption></figure>
+![Hupsel: tertiary surface water.](https://user-images.githubusercontent.com/13662783/187625174-3eec28b5-ddbb-4870-94c3-d9e9a43f8eb4.PNG){#fig-t}
 
 As a single basin (A) containing all surface water, discharging to its
 downstream basin to the west (B):
