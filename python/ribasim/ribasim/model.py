@@ -136,10 +136,10 @@ class Model(FileModel):
     results_dir: str = "."
 
     database: Database = Database()
-    allocation: Optional[Allocation] = Allocation()
-    results: Optional[Results] = Results()
-    solver: Optional[Solver] = Solver()
-    logging: Optional[Logging] = Logging()
+    allocation: Allocation | None = Allocation()
+    results: Results | None = Results()
+    solver: Solver | None = Solver()
+    logging: Logging | None = Logging()
 
     basin: Basin = Basin()
     fractional_flow: FractionalFlow = FractionalFlow()

@@ -55,7 +55,7 @@ def exists(connection: Connection, name: str) -> bool:
     return result is not None
 
 
-PathOrStr = Union[Path, str]
+PathOrStr = Path | str
 TABLES = ["profile", "state", "static", "time", "logic", "condition"]
 
 
@@ -222,7 +222,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def _load(cls, filepath: Path) -> Dict[str, Any]:
         db = context_file_loading.get().get("database")
-        if filepath is not None and Path(filepath).exists():
+        if filepath is not None and filepath.exists():
             df = cls._from_arrow(filepath)
         elif filepath is not None and db is not None:
             df = cls._from_db(db, str(filepath))

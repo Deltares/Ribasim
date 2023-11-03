@@ -50,7 +50,7 @@ class Results(BaseModel):
 
 class Solver(BaseModel):
     algorithm: str = "QNDF"
-    saveat: Union[float, List[float]] = []
+    saveat: float | List[float] = []
     adaptive: bool = True
     dt: Optional[float] = None
     dtmin: Optional[float] = None
