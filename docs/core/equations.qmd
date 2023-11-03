@@ -94,18 +94,16 @@ The presence of division by the basin area means that areas of size zero are not
 ## The reduction factor {#sec-reduction_factor}
 At several points in the equations below a *reduction factor* is used. This is a term that makes certain transitions more smooth, for instance when a pump stops providing water when its source basin dries up. The reduction factor is given by
 
-$$
+\begin{align}
     \phi(x; p) =
-    \begin{align}
-        \begin{cases}
-        0 &\text{if}\quad x < 0 \\
-            -2 \left(\frac{x}{p}\right)^3 + 3\left(\frac{x}{p}\right)^2 &\text{if}\quad 0 \le x \le p \\
-            1 &\text{if}\quad x > p
-        \end{cases}
-    \end{align},
-$$
+    \begin{cases}
+    0 &\text{if}\quad x < 0 \\
+        -2 \left(\frac{x}{p}\right)^3 + 3\left(\frac{x}{p}\right)^2 &\text{if}\quad 0 \le x \le p \\
+        1 &\text{if}\quad x > p
+    \end{cases}
+\end{align}
 
-where $p > 0$ is the threshold value which determines the interval $[0,p]$ of the smooth transition between $0$ and $1$, see the plot below.
+Here $p > 0$ is the threshold value which determines the interval $[0,p]$ of the smooth transition between $0$ and $1$, see the plot below.
 
 ```{python}
 # | code-fold: true
@@ -463,23 +461,21 @@ $$
     Q_\text{PID}(t) = K_p e(t) + K_i\int_{t_0}^t e(\tau)\text{d}\tau + K_d \frac{\text{d}e}{\text{d}t},
 $$ {#eq-PIDflow}
 
-for given constant parameters $K_p,K_i,K_d$. The pump or outlet can have associated minimum and maximum flow rates $Q_\min, Q_\max$, and so
+for given constant parameters $K_p,K_i,K_d$. The pump or outlet can have associated minimum and maximum flow rates $Q_{\min}, Q_{\max}$, and so
 $$
-Q_\text{pump/outlet} = \text{clip}(\Phi Q_\text{PID}; Q_\min, Q_\max).
+Q_\text{pump/outlet} = \text{clip}(\Phi Q_\text{PID}; Q_{\min}, Q_{\max}).
 $$
 
 Here $u_\text{us}$ is the storage of the basin upstream of the pump or outlet, $\Phi$ is the product of [reduction factors](equations.qmd#sec-reduction_factor) associated with the [pump](equations.qmd#sec-pump) or [outlet](equations.qmd#sec-outlet) and
 
-$$
-\text{clip}(Q; Q_\min, Q_\max) =
 \begin{align}
+    \text{clip}(Q; Q_{\min}, Q_{\max}) =
     \begin{cases}
-        Q_\min & \text{if} & Q < Q_\min \\
-        Q & \text{if} & Q_\min \leq Q \leq Q_\max \\
-        Q_\max & \text{if} & Q > Q_\max
+        Q_{\min} & \text{if} \quad Q < Q_{\min} \\
+        Q & \text{if} \quad Q_{\min} \leq Q \leq Q_{\max} \\
+        Q_{\max} & \text{if} \quad Q > Q_{\max}
     \end{cases}.
 \end{align}
-$$
 
 For the integral term we denote
 $$
@@ -511,7 +507,7 @@ that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controll
 
 Using this, solving @eq-PIDflow for $Q_\text{PID}$ yields
 $$
-Q_\text{pump/outlet} = \text{clip}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right)}{1\pm\phi(u_\text{us})\frac{K_d}{A(u_\text{PID})}};Q_\min,Q_\max\right),
+Q_\text{pump/outlet} = \text{clip}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right)}{1\pm\phi(u_\text{us})\frac{K_d}{A(u_\text{PID})}};Q_{\min},Q_{\max}\right),
 $$
 where the clipping is again done last. Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning that the PID controlled pump/outlet flow rate has to be computed after all other contributions to the PID controlled basin's storage are known.
 
