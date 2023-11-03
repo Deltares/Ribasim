@@ -66,12 +66,12 @@ A new graph is created from the subnetwork, which we call the allocation graph. 
 - Edges $\hat{E_S}$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
 
 For notational convenience, we use the notation
-$$
-    \begin{align}
-        \hat{V}^{\text{out}}_S(\hat{i}) = \left\{\hat{j} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\} \\
-        \hat{V}^{\text{in}}_S(\hat{j}) = \left\{\hat{i} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\}
-    \end{align}
-$$
+
+\begin{align}
+    \hat{V}^{\text{out}}_S(\hat{i}) = \left\{\hat{j} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\} \\
+    \hat{V}^{\text{in}}_S(\hat{j}) = \left\{\hat{i} \in \hat{V}_S : (\hat{i},\hat{j}) \in \hat{E}_S\right\}
+\end{align}
+
 for the set of in-neighbors and out-neighbors of a node in the allocation graph respectively.
 
 ### The allocation graph capacities
@@ -128,22 +128,18 @@ $$ {#eq-capacityconstraint}
 By the definition of $\hat{C}_S$ this also includes the source flows.
 - User outflow: The outflow of the user is dictated by the inflow and the return factor:
 $$
-\begin{align}
-    F_{\hat{i}\hat{k}} = r_k \cdot F_{\hat{k}\hat{j}}\\
-    \quad \forall\hat{k} \in \hat{U}_s, \\
-    \hat{V}^{\text{in}}_S(\hat{k}) = \{\hat{i}\},\\
+    F_{\hat{i}\hat{k}} = r_k \cdot F_{\hat{k}\hat{j}} \quad
+    \quad \forall\hat{k} \in \hat{U}_s, \quad
+    \hat{V}^{\text{in}}_S(\hat{k}) = \{\hat{i}\},\;
      \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}.
-\end{align}
 $$ {#eq-returnflowconstraint}
-Here we use that each user node in the allocation graph has an unique in-edge and out-edge.
+Here we use that each user node in the allocation graph has a unique in-edge and out-edge.
 - User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractinal flow: Let $\hat{L}_S \subset \hat{V}_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
-\begin{align}
-    F_{\hat{i}\hat{j}} \le f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \\
-    \forall \hat{i} \in \hat{L}_S, \\
+    F_{\hat{i}\hat{j}} \le f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \qquad
+    \forall \hat{i} \in \hat{L}_S, \;
     \hat{j} \in \hat{V}_S^\text{out}(\hat{i}).
-\end{align}
 $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
@@ -165,13 +161,11 @@ The allocation problem for an allocation graph at time $t$ is solved per priorit
 
 1. Define a capacity matrix with capacities as described above, that will be updated for each priority:
 $$
-\begin{align}
     \hat{C}_S^p \leftarrow \hat{C}_S;
-\end{align}
 $$
 2. Set the capacities of the edges that end in an user to their priority 1 demands:
 $$
-(\hat{C}_S^p)_{\hat{i},\hat{j}} \leftarrow d_j^1(t) \quad\text{ for all } (\hat{i},\hat{j}) \in \hat{U}_S;
+    (\hat{C}_S^p)_{\hat{i},\hat{j}} \leftarrow d_j^1(t) \quad\text{ for all } (\hat{i},\hat{j}) \in \hat{U}_S;
 $$
 3. Maximize the objective function given the constraints;
 4. Subtract the used flows from the edge capacities:

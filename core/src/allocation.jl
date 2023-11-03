@@ -402,7 +402,7 @@ end
 
 """
 Add the user allocation constraints to the allocation problem:
-The flow to a user us bounded from above by the demand of the user.
+The flow to a user is bounded from above by the demand of the user.
 """
 function add_constraints_user_allocation!(
     problem::JuMP.Model,
@@ -549,7 +549,7 @@ function add_constraints_user_returnflow!(
 end
 
 """
-Add the objective function to the allocation problem.
+Add the objective function to be maximized to the allocation problem.
 Objective function: Sum of flows to the users.
 """
 function add_objective_function!(
