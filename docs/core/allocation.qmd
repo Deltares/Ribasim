@@ -172,7 +172,7 @@ $$
 $$
     \hat{C}_S^p \leftarrow \hat{C}_S^p - F;
 $$
-5. Repeat steps 2-4 for the remaining priorities up to $p_\max$.
+5. Repeat steps 2-4 for the remaining priorities up to $p_{\max}$.
 
 :::{.callout-note}
 In the future there will be another solve before the priority 1 solve, taking the demand/supply from basins into account.
