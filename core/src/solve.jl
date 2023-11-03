@@ -11,6 +11,7 @@ node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
 node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG node ID => model node ID
+allocgraph_edge_ids_user_demand: AG user node ID => AG user inflow edge ID
 Source edge mapping: AG source node ID => subnetwork source edge ID
 graph_allocation: The graph used for the allocation problems
 capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
@@ -21,10 +22,11 @@ struct AllocationModel
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
+    allocgraph_edge_ids_user_demand::Dict{Int, Int}
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
-    problem::JuMPModel
+    problem::JuMP.Model
     Δt_allocation::Float64
 end
 

@@ -19,10 +19,10 @@ using PreallocationTools: get_tmp
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    @test F ≈ [4.0, 0.5, 0.0, 4.0, -0.0, 4.5]
+    @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.5]
 
     allocated = p.user.allocated
-    @test allocated[1] ≈ [0.0, 0.5]
-    @test allocated[2] ≈ [4.0, 0.0]
+    @test allocated[1] ≈ [4.0, 4.0]
+    @test allocated[2] ≈ [0.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
 end
