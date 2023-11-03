@@ -1,8 +1,7 @@
 import datetime
-import inspect
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +10,6 @@ import tomli
 import tomli_w
 from pydantic import DirectoryPath, model_serializer, model_validator
 
-from ribasim import node_types
 from ribasim.config import (
     Allocation,
     Basin,
@@ -33,9 +31,6 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge, EdgeStaticSchema
 from ribasim.geometry.node import Node, NodeStaticSchema
-
-# Do not import from ribasim namespace: will create import errors.
-# E.g. not: from ribasim import Basin
 from ribasim.input_base import (
     FileModel,
     NodeModel,
@@ -52,7 +47,7 @@ class Database(NodeModel, FileModel):
     @classmethod
     def _load(cls, filepath: Path) -> Dict[str, Any]:
         context_file_loading.get()["database"] = filepath
-        return {"node": {"filepath": "Node"}, "edge": {"filepath": "Edge"}}
+        return {"node": {"filepath": Path("Node")}, "edge": {"filepath": Path("Edge")}}
 
     def _save(self, directory):
         # We write all tables to a temporary database with a dot prefix,
@@ -136,10 +131,10 @@ class Model(FileModel):
     results_dir: str = "."
 
     database: Database = Database()
-    allocation: Allocation | None = Allocation()
-    results: Results | None = Results()
-    solver: Solver | None = Solver()
-    logging: Logging | None = Logging()
+    allocation: Allocation = Allocation()
+    results: Results = Results()
+    solver: Solver = Solver()
+    logging: Logging = Logging()
 
     basin: Basin = Basin()
     fractional_flow: FractionalFlow = FractionalFlow()
@@ -191,100 +186,61 @@ class Model(FileModel):
             if isinstance(getattr(self, k), (NodeModel,))
         }
 
-    @staticmethod
-    def get_node_types():
-        node_names_all, node_cls_all = list(
-            zip(*inspect.getmembers(node_types, inspect.isclass))
-        )
-        return node_names_all, node_cls_all
-
-    def validate_model_node_types(self):
-        """Check whether all node types in the node field are valid."""
-
-        node_names_all, _ = Model.get_node_types()
-
-        invalid_node_types = set()
-
-        # Check node types
-        for node_type in self.node.static["type"]:
-            if node_type not in node_names_all:
-                invalid_node_types.add(node_type)
-
-        if len(invalid_node_types) > 0:
-            invalid_node_types = ", ".join(invalid_node_types)
-            raise TypeError(
-                f"Invalid node types detected: [{invalid_node_types}]. Choose from: {', '.join(node_names_all)}."
-            )
-
-    def validate_model_node_field_IDs(self):
+    def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        _, node_cls_all = Model.get_node_types()
-
-        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+        n_nodes = len(self.database.node.df)
 
         # Check node IDs of node fields
-        node_IDs_all = []
-        n_nodes = len(self.node.static)
+        all_node_ids = set[int]()
+        for node in self.nodes().values():
+            all_node_ids.update(node.node_ids())
 
-        for name in self.fields():
-            if name in node_names_all_snake_case:
-                if node_field := getattr(self, name):
-                    node_IDs_field = node_field.get_node_IDs()
-                    node_IDs_all.append(list(node_IDs_field))
+        unique, counts = np.unique(all_node_ids, return_counts=True)
 
-        node_IDs_all = np.concatenate(node_IDs_all)
-        node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
-
-        node_IDs_positive_integers = np.greater(node_IDs_unique, 0) & np.equal(
-            node_IDs_unique.astype(int), node_IDs_unique
+        node_ids_positive_integers = np.greater(unique, 0) & np.equal(
+            unique.astype(int), unique
         )
 
-        if not node_IDs_positive_integers.all():
+        if not node_ids_positive_integers.all():
             raise ValueError(
-                f"Node IDs must be positive integers, got {node_IDs_unique[~node_IDs_positive_integers]}."
+                f"Node IDs must be positive integers, got {unique[~node_ids_positive_integers]}."
             )
 
-        if (node_ID_counts > 1).any():
+        if (counts > 1).any():
             raise ValueError(
-                f"These node IDs were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
+                f"These node IDs were assigned to multiple node types: {unique[(counts > 1)]}."
             )
 
-        if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
-            node_IDs_missing = set(np.arange(n_nodes) + 1) - set(node_IDs_unique)
-            node_IDs_over = set(node_IDs_unique) - set(np.arange(n_nodes) + 1)
+        if not np.array_equal(unique, np.arange(n_nodes) + 1):
+            node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
+            node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
             msg = [
                 f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static)."
             ]
-            if len(node_IDs_missing) > 0:
-                msg.append(f"These node IDs are missing: {node_IDs_missing}.")
+            if len(node_ids_missing) > 0:
+                msg.append(f"These node IDs are missing: {node_ids_missing}.")
 
-            if len(node_IDs_over) > 0:
-                msg.append(f"These node IDs are unexpected: {node_IDs_over}.")
+            if len(node_ids_over) > 0:
+                msg.append(f"These node IDs are unexpected: {node_ids_over}.")
 
             raise ValueError(" ".join(msg))
 
-    def validate_model_node_IDs(self):
+    def validate_model_node_ids(self):
         """Check whether the node IDs in the node field correspond to the node IDs on the node type fields."""
-
-        _, node_cls_all = Model.get_node_types()
-
-        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
         error_messages = []
 
-        for name in self.fields():
-            if name in node_names_all_snake_case:
-                if attr := getattr(self, name):
-                    node_IDs_field = attr.get_node_IDs()
-                    node_IDs_from_node_field = self.node.static.loc[
-                        self.node.static["type"] == attr.get_input_type()
-                    ].index
+        for node in self.nodes().values():
+            node_ids_field = node.node_ids()
+            node_ids_from_node_field = self.database.node.df.loc[
+                self.database.node.df["type"] == node.get_input_type()
+            ].index
 
-                    if not set(node_IDs_from_node_field) == set(node_IDs_field):
-                        error_messages.append(
-                            f"The node IDs in the field {name} {node_IDs_field} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
-                        )
+            if not set(node_ids_from_node_field) == set(node_ids_field):
+                error_messages.append(
+                    f"The node IDs in the field {node} {node_ids_field} do not correspond with the node IDs in the field node {node_ids_from_node_field.tolist()}."
+                )
 
         if len(error_messages) > 0:
             raise ValueError("\n".join(error_messages))
@@ -293,14 +249,12 @@ class Model(FileModel):
         """Validate the model.
 
         Checks:
-        - Whether all node types in the node field are valid
         - Whether the node IDs of the node_type fields are valid
         - Whether the node IDs in the node field correspond to the node IDs on the node type fields
         """
 
-        self.validate_model_node_types()
-        self.validate_model_node_field_IDs()
-        self.validate_model_node_IDs()
+        # self.validate_model_node_field_ids()
+        self.validate_model_node_ids()
 
     def write(self, directory: FilePath) -> None:
         """
@@ -312,7 +266,7 @@ class Model(FileModel):
         ----------
         directory: FilePath
         """
-        # self.validate_model()
+        self.validate_model()
         context_file_loading.set({})
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
@@ -321,6 +275,18 @@ class Model(FileModel):
 
         context_file_loading.set({})
         return fn
+
+    def sort(self):
+        """
+        Sort all input tables as required.
+
+        Tables are sorted by "node_id", unless otherwise specified.
+        Sorting is done automatically before writing the table.
+        """
+        for name in self.fields():
+            input_entry = getattr(self, name)
+            if isinstance(input_entry, TableModel):
+                input_entry.sort()
 
     @classmethod
     def _load(cls, filepath: FilePath) -> Dict[str, Any]:
@@ -432,18 +398,6 @@ class Model(FileModel):
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
-
-    def sort(self):
-        """
-        Sort all input tables as required.
-
-        Tables are sorted by "node_id", unless otherwise specified.
-        Sorting is done automatically before writing the table.
-        """
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.sort()
 
     def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)

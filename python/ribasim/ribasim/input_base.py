@@ -4,15 +4,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Optional,
-    Set,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Generic, List, Optional, Set, TypeVar
 
 import geopandas as gpd
 import pandas as pd
@@ -23,6 +15,7 @@ from pydantic import (
     DirectoryPath,
     Field,
     ValidationInfo,
+    field_validator,
     model_serializer,
     model_validator,
 )
@@ -55,7 +48,6 @@ def exists(connection: Connection, name: str) -> bool:
     return result is not None
 
 
-PathOrStr = Path | str
 TABLES = ["profile", "state", "static", "time", "logic", "condition"]
 
 
@@ -63,7 +55,11 @@ class BaseModel(PydanticBaseModel):
     """Overrides Pydantic BaseModel to set our own config."""
 
     model_config = ConfigDict(
-        validate_assignment=True, validate_default=True, revalidate_instances="always"
+        validate_assignment=True,
+        validate_default=True,
+        revalidate_instances="always",
+        use_enum_values=True,
+        extra="allow",
     )
 
     @classmethod
@@ -79,13 +75,23 @@ class NodeModel(BaseModel):
     @classmethod
     def check_node(cls, value: Any, info: ValidationInfo) -> Any:
         if isinstance(value, (Dict,)):
-            # TODO Derive from class itself (easy in Pydantic v1, not in v2)
             for key in TABLES:
                 layername = cls._layername(key)
                 path = value.setdefault(key, layername)
                 if path is None:
                     value[key] = path
         return value
+
+    # you can select multiple fields, or use '*' to select all fields
+    @field_validator("*")
+    @classmethod
+    def check_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
+        """Forward check to always set default sort keys."""
+        if isinstance(v, TableModel):
+            default = cls.model_fields[info.field_name].default
+            if default is not None and hasattr(default, "sort_keys"):
+                v.sort_keys = default.sort_keys
+        return v
 
     @classmethod
     def get_input_type(cls):
@@ -97,6 +103,18 @@ class NodeModel(BaseModel):
 
     def add(*args, **kwargs):
         pass
+
+    def tables(self):
+        for key in self.fields():
+            attr = getattr(self, key)
+            if isinstance(attr, TableModel):
+                yield attr
+
+    def node_ids(self):
+        node_ids: Set[int] = set()
+        for table in self.tables():
+            node_ids.update(table.node_ids())
+        return node_ids
 
     def _save(self, directory: DirectoryPath):
         for field in self.fields():
@@ -137,6 +155,8 @@ class FileModel(BaseModel, ABC):
         if isinstance(value, (Dict,)):
             # Pydantic Model init requires a dict
             filepath = value.get("filepath", None)
+            if filepath is None:
+                return value
         elif isinstance(value, (Path, str)):
             # Pydantic Model init requires a dict
             filepath = value
@@ -187,6 +207,7 @@ TableT = TypeVar("TableT")
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = None
+    sort_keys: List[str] = Field(default=["node_id"], exclude=True, repr=False)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -212,17 +233,17 @@ class TableModel(FileModel, Generic[TableT]):
             content.append(textwrap.indent(entry, prefix="   "))
         return "\n".join(content)
 
-    def get_node_IDs(self) -> Set[int]:
-        node_IDs: Set[int] = set()
-        if self.df is not None:
-            node_IDs.update(self.df["node_id"])
+    def node_ids(self) -> Set[int]:
+        node_ids: Set[int] = set()
+        if self.df is not None and "node_id" in self.df.columns:
+            node_ids.update(self.df["node_id"])
 
-        return node_IDs
+        return node_ids
 
     @classmethod
-    def _load(cls, filepath: Path) -> Dict[str, Any]:
+    def _load(cls, filepath: str | Path) -> Dict[str, Any]:
         db = context_file_loading.get().get("database")
-        if filepath is not None and filepath.exists():
+        if filepath is not None and Path(filepath).exists():
             df = cls._from_arrow(filepath)
         elif filepath is not None and db is not None:
             df = cls._from_db(db, str(filepath))
@@ -247,7 +268,6 @@ class TableModel(FileModel, Generic[TableT]):
         connection : Connection
             SQLite connection to the database.
         """
-        self.sort()
         table = str(self.filepath)
         with closing(connect(temp_path)) as connection:
             self.df.to_sql(table, connection, index=False, if_exists="replace")
@@ -273,10 +293,6 @@ class TableModel(FileModel, Generic[TableT]):
     def _from_arrow(cls, path: FilePath) -> DataFrame:
         return pd.read_feather(path)
 
-    @classmethod
-    def hasfid(cls):
-        return False
-
     def sort(self):
         """Sort all input tables as required.
 
@@ -284,14 +300,26 @@ class TableModel(FileModel, Generic[TableT]):
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values("node_id", ignore_index=True, inplace=True)
+            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
+
+    def schema(self):
+        """Retrieve Pandera Schema."""
+        optionalfieldtype = self.model_fields["df"].annotation
+        fieldtype = optionalfieldtype.__args__[0]  # First of Union
+        T = fieldtype.__args__[0]
+        return T
+
+    def record(self):
+        """Retrieve Pydantic Record used in Pandera Schema."""
+        T = self.schema()
+        return T.Config.dtype.type
+
+    def columns(self):
+        """Retrieve column names."""
+        return list(self.record().model_fields.keys())
 
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):
-    @classmethod
-    def hasfid(cls):
-        return True
-
     @classmethod
     def _from_db(cls, path: FilePath, table: str) -> DataFrame | None:
         with connect(path) as connection:
