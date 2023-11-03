@@ -40,11 +40,11 @@ build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia-docs",
 ] }
 quartodoc-build = "cd docs && quartodoc build && rm objects.json"
-quarto-preview = { cmd = "export QUARTO_PYTHON=$(pwd)/.pixi/env/python.exe && quarto preview docs", depends_on = [
+quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "export QUARTO_PYTHON=$(pwd)/.pixi/env/python.exe && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
