@@ -18,7 +18,6 @@ import IterTools
 import BasicModelInterface as BMI
 import HiGHS
 import JuMP
-import JuMP.Model as JuMPModel
 import TranscodingStreams
 
 using Arrow: Arrow, Table
