@@ -55,7 +55,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         if !valid_fractional_flow(
             connectivity.graph_flow,
             fractional_flow.node_id,
-            fractional_flow.fraction,
+            fractional_flow.control_mapping,
         )
             error("Invalid fractional flow node combinations found.")
         end

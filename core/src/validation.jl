@@ -549,18 +549,19 @@ outneighbor, that the fractions leaving a node add up to ≈1 and that the fract
 function valid_fractional_flow(
     graph_flow::DiGraph{Int},
     node_id::Vector{Int},
-    fraction::Vector{Float64},
+    control_mapping::Dict{Tuple{Int64, String}, NamedTuple},
 )::Bool
     errors = false
 
-    # Node ids that have fractional flow outneighbors
+    # Node IDs that have fractional flow outneighbors
     src_ids = Set{Int}()
 
     for id in node_id
         union!(src_ids, inneighbors(graph_flow, id))
     end
 
-    node_id_set = Set(node_id)
+    node_id_set = Set{Int}(node_id)
+    control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
         src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
@@ -571,26 +572,34 @@ function valid_fractional_flow(
             )
         end
 
-        fraction_sum = 0.0
+        # Each control state (including missing) must sum to 1
+        for control_state in control_states
+            fraction_sum = 0.0
 
-        for ff_id in intersect(src_outneighbor_ids, node_id_set)
-            ff_idx = findsorted(node_id, ff_id)
-            frac = fraction[ff_idx]
-            fraction_sum += frac
+            for ff_id in intersect(src_outneighbor_ids, node_id_set)
+                parameter_values = get(control_mapping, (ff_id, control_state), nothing)
+                if parameter_values === nothing
+                    continue
+                else
+                    (; fraction) = parameter_values
+                end
 
-            if frac <= 0
+                fraction_sum += fraction
+
+                if fraction <= 0
+                    errors = true
+                    @error(
+                        "Fractional flow nodes must have non-negative fractions, got $fraction for #$ff_id."
+                    )
+                end
+            end
+
+            if fraction_sum ≉ 1
                 errors = true
                 @error(
-                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id."
+                    "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
                 )
             end
-        end
-
-        if fraction_sum ≉ 1
-            errors = true
-            @error(
-                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
-            )
         end
     end
     return !errors

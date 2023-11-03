@@ -168,7 +168,7 @@ if !Sys.islinux()
             @test !Ribasim.valid_fractional_flow(
                 connectivity.graph_flow,
                 fractional_flow.node_id,
-                fractional_flow.fraction,
+                fractional_flow.control_mapping,
             )
         end
 
