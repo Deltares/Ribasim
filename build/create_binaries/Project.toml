@@ -8,4 +8,4 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 [compat]
 PackageCompiler = "2"
 TimeZones = "=1.13.0"
-julia = "1.9"
+julia = "1.10"
