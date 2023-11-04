@@ -14,7 +14,7 @@
     </disabled-settings>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_libribasim" />
-      <param name="julia" value="%env.JULIA_1_9%" />
+      <param name="julia" value="%env.JULIA_1_10%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">

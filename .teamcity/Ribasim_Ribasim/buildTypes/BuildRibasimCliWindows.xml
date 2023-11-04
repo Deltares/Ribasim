@@ -10,7 +10,7 @@
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_ribasim_cli" />
-      <param name="julia" value="%env.JULIA_1_9%" />
+      <param name="julia" value="%env.JULIA_1_10%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
