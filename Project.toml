@@ -1,0 +1,8 @@
+name = "root"
+authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
+description = "Meta-project used to share the Manifest of Ribasim and its dependents"
+
+[deps]
+Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
+libribasim = "f319f290-633d-4573-adfe-d6d5548b6388"
+ribasim_cli = "e45c999e-e944-4589-a8e6-7d0b7a60140a"
