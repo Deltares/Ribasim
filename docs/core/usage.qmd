@@ -506,7 +506,7 @@ node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
 length        | Float64 | $m$          | positive
 manning_n     | Float64 | $s m^{-\frac{1}{3}}$          | positive
-profile_with  | Float64 | $m$          | positive
+profile_width | Float64 | $m$          | positive
 profile_slope | Float64 | -            | -
 control_state | String  | -            | (optional)
 
