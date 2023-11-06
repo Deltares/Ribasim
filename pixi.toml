@@ -40,7 +40,7 @@ build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia-docs",
 ] }
 quartodoc-build = "cd docs && quartodoc build && rm objects.json"
-quarto-preview = { cmd = "quarto preview docs", depends_on = [
+quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
     "quartodoc-build",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
