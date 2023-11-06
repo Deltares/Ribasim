@@ -989,7 +989,10 @@ function formulate_flow!(
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
         upstream_id = only(inneighbors(graph_flow, id))
-        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
+        # overwrite the inflow such that flow is conserved over the FractionalFlow
+        outflow = flow[upstream_id, id] * fraction[i]
+        flow[upstream_id, id] = outflow
+        flow[id, downstream_id] = outflow
     end
     return nothing
 end
