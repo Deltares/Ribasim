@@ -7,6 +7,7 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
+allocation_network_id: The ID of this allocation network
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
@@ -19,6 +20,7 @@ problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
+    allocation_network_id::Int
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
@@ -449,6 +451,26 @@ struct User <: AbstractParameterNode
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
     priorities::Vector{Int}
+    record::NamedTuple{
+        (
+            :time,
+            :allocation_network_id,
+            :user_node_id,
+            :priority,
+            :demand,
+            :allocated,
+            :abstracted,
+        ),
+        Tuple{
+            Vector{Float64},
+            Vector{Int},
+            Vector{Int},
+            Vector{Int},
+            Vector{Float64},
+            Vector{Float64},
+            Vector{Float64},
+        },
+    }
 end
 
 # TODO Automatically add all nodetypes here
@@ -989,7 +1011,10 @@ function formulate_flow!(
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
         upstream_id = only(inneighbors(graph_flow, id))
-        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
+        # overwrite the inflow such that flow is conserved over the FractionalFlow
+        outflow = flow[upstream_id, id] * fraction[i]
+        flow[upstream_id, id] = outflow
+        flow[id, downstream_id] = outflow
     end
     return nothing
 end
