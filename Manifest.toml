@@ -1429,7 +1429,7 @@ uuid = "3cfb6a46-05f0-43df-bb16-bf763deb14b4"
 version = "0.1.0"
 
 [[deps.docs]]
-deps = ["Documenter", "DocumenterMarkdown", "InteractiveUtils", "JSON3", "OrderedCollections", "Ribasim"]
+deps = ["Configurations", "Dates", "Documenter", "DocumenterMarkdown", "InteractiveUtils", "JSON3", "Legolas", "Logging", "OrderedCollections", "Ribasim"]
 path = "docs"
 uuid = "8daea9ca-fc6c-4731-aa85-717fa0b706bc"
 version = "0.1.0"
