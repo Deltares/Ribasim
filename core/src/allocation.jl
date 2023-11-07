@@ -555,14 +555,22 @@ Objective function: Sum of flows to the users.
 function add_objective_function!(
     problem::JuMP.Model,
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
+    config::Config,
 )::Nothing
     F = problem[:F]
     A_basin = problem[:A_basin]
-    JuMP.@objective(
-        problem,
-        Max,
-        sum(A_basin) + sum([F[i] for i in values(allocgraph_edge_ids_user_demand)])
-    )
+    distribution = config.allocation.distribution
+    if distribution in ["quadratic_absolute", "quadratic_relative"]
+        # Assume demand = 1.0, set later
+        JuMP.@objective(
+            problem,
+            Min,
+            sum((A_basin .- 1.0) .^ 2) +
+            sum([(F[i] - 1.0)^2 for i in values(allocgraph_edge_ids_user_demand)])
+        )
+    else
+        error("Invalid allocation distribution type $distribution.")
+    end
     return nothing
 end
 
@@ -570,6 +578,7 @@ end
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
+    config::Config,
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}},
     allocgraph_node_ids_user_with_returnflow::Vector{Int},
     allocgraph_edges::Vector{Edge{Int}},
@@ -613,7 +622,7 @@ function allocation_problem(
     # TODO: The fractional flow constraints
 
     # Add objective to problem
-    add_objective_function!(problem, allocgraph_edge_ids_user_demand)
+    add_objective_function!(problem, allocgraph_edge_ids_user_demand, config)
 
     return problem
 end
@@ -640,6 +649,7 @@ An AllocationModel object.
 
 """
 function AllocationModel(
+    config::Config,
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
@@ -657,6 +667,7 @@ function AllocationModel(
 
     # The JuMP.jl allocation problem
     problem = allocation_problem(
+        config,
         node_id_mapping,
         allocgraph_node_ids_user_with_returnflow,
         allocgraph_edges,

@@ -282,6 +282,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
         push!(
             connectivity.allocation_models,
             AllocationModel(
+                config,
                 p,
                 allocation_group_node.fid,
                 source_edge_ids,

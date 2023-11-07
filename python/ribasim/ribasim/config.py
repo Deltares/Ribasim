@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 class Allocation(BaseModel):
     timestep: Optional[float] = None
     use_allocation: bool = False
+    distribution: str = "quadratic_relative"
 
 
 class Solver(BaseModel):
@@ -113,7 +114,11 @@ class Config(BaseModel):
     database: str
     allocation: Allocation = Field(
         default_factory=lambda: Allocation.parse_obj(
-            {"timestep": None, "use_allocation": False}
+            {
+                "timestep": None,
+                "use_allocation": False,
+                "distribution": "quadratic_relative",
+            }
         )
     )
     solver: Solver = Field(

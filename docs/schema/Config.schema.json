@@ -36,7 +36,8 @@
             "$ref": "https://deltares.github.io/Ribasim/schema/Allocation.schema.json",
             "default": {
                 "timestep": null,
-                "use_allocation": false
+                "use_allocation": false,
+                "distribution": "quadratic_relative"
             }
         },
         "solver": {
