@@ -45,33 +45,6 @@ If the example models change, re-run this script.
 
 2. Copy `.vscode/settings_template.json` into `.vscode/settings.json`
 
-## How to publish to PyPI {#sec-pypi}
-
-1) Update `__version__` in `ribasim/__init__.py`
-
-2) Open a terminal and run `cd python/ribasim`
-
-3) Activate the ribasim environment with `conda activate ribasim`
-
-4) If present remove dist folder
-
-5) Re-create the wheels:
-```
-python -m build
-```
-
-6) Check the package files:
-```
-twine check dist/*
-```
-
-7) Make a new commit with the updated version number, and push to remote
-
-8) Re-upload the new files:
-```
-twine upload dist/*
-```
-
 ## Linting
 
 To run our linting suite locally, execute:

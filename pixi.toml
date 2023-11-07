@@ -87,6 +87,19 @@ generate-python = """\
     datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py && \
     datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py"""
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
+# Publish
+create-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
+create-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
+create-wheels = { depends_on = [
+    "create-ribasim-python-wheel",
+    "create-ribasim-api-wheel",
+] }
+publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", depends_on = [
+    "create-ribasim-python-wheel",
+] }
+publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends_on = [
+    "create-ribasim-api-wheel",
+] }
 
 [dependencies]
 build = "*"
