@@ -809,11 +809,6 @@ function formulate_flow!(
             continue
         end
 
-        # For now allocated = demand
-        for priority in eachindex(allocated[i])
-            allocated[i][priority] = demand[i][priority](t)
-        end
-
         q = sum(allocated[i])
 
         # Smoothly let abstraction go to 0 as the source basin dries out

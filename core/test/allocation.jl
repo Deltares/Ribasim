@@ -22,7 +22,32 @@ using PreallocationTools: get_tmp
     @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.5]
 
     allocated = p.user.allocated
-    @test allocated[1] ≈ [4.0, 4.0]
-    @test allocated[2] ≈ [0.0, 0.0]
+    @test allocated[1] ≈ [0.0, 4.0]
+    @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
+end
+
+@testset "Simulation with allocation" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/simple_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    record = model.integrator.p.user.record
+    where_5 = (record.user_node_id .== 5)
+
+    @test all(record.demand[where_5] .== 1.0e-3)
+    @test all(
+        isapprox(
+            record.allocated[where_5],
+            collect(range(1.0e-3, 0.0, sum(where_5)));
+            rtol = 0.01,
+        ),
+    )
+    @test all(
+        isapprox(
+            record.abstracted[where_5],
+            collect(range(1.0e-3, 0.0, sum(where_5)));
+            rtol = 0.1,
+        ),
+    )
 end
