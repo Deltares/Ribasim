@@ -34,6 +34,7 @@ end
     model = Ribasim.run(toml_path)
     record = model.integrator.p.user.record
     where_5 = (record.user_node_id .== 5)
+    where_6 = .!where_5
 
     @test all(record.demand[where_5] .== 1.0e-3)
     @test all(
@@ -48,6 +49,27 @@ end
             record.abstracted[where_5],
             collect(range(1.0e-3, 0.0, sum(where_5)));
             rtol = 0.1,
+        ),
+    )
+    @test all(
+        isapprox(
+            record.demand[where_6],
+            collect(range(1.0e-3, 2.0e-3, sum(where_5)));
+            rtol = 0.01,
+        ),
+    )
+    @test all(
+        isapprox(
+            record.allocated[where_6],
+            collect(range(1.0e-3, 2.0e-3, sum(where_5)));
+            rtol = 0.01,
+        ),
+    )
+    @test all(
+        isapprox(
+            record.abstracted[where_6][2:end],
+            collect(range(1.0e-3, 2.0e-3, sum(where_5)))[2:end];
+            rtol = 0.01,
         ),
     )
 end
