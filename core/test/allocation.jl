@@ -46,9 +46,9 @@ end
     )
     @test all(
         isapprox(
-            record.abstracted[where_5],
-            collect(range(1.0e-3, 0.0, sum(where_5)));
-            rtol = 0.1,
+            record.abstracted[where_5][2:end],
+            collect(range(1.0e-3, 0.0, sum(where_5)))[2:end];
+            rtol = 0.01,
         ),
     )
     @test all(
