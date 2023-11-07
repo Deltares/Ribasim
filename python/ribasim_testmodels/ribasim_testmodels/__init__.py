@@ -5,8 +5,7 @@ from typing import Callable, Dict
 import ribasim
 
 import ribasim_testmodels
-from ribasim_testmodels.allocation import (
-    # looped_subnetwork_model,
+from ribasim_testmodels.allocation import (  # looped_subnetwork_model,
     subnetwork_model,
     user_model,
 )

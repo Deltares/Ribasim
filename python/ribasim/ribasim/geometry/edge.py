@@ -14,10 +14,11 @@ from ribasim.input_base import SpatialTableModel, TableT
 __all__ = ("Edge",)
 
 
-class EdgeStaticSchema(pa.SchemaModel):
+class EdgeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     from_node_id: Series[int] = pa.Field(default=0, coerce=True)
     to_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    # allocation_network_id: Series[int] = pa.Field(default=None, nullable=True)
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:

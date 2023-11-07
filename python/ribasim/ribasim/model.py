@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
-from pydantic import DirectoryPath, model_serializer, model_validator
+from pydantic import DirectoryPath, Field, model_serializer, model_validator
 
 from ribasim.config import (
     Allocation,
@@ -29,25 +29,32 @@ from ribasim.config import (
     Terminal,
     User,
 )
-from ribasim.geometry.edge import Edge, EdgeStaticSchema
-from ribasim.geometry.node import Node, NodeStaticSchema
-from ribasim.input_base import (
-    FileModel,
-    NodeModel,
-    TableModel,
-    context_file_loading,
-)
+from ribasim.geometry.edge import Edge, EdgeSchema
+from ribasim.geometry.node import Node, NodeSchema
+from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
 from ribasim.types import FilePath
 
 
-class Database(NodeModel, FileModel):
-    node: Node[NodeStaticSchema] = Node[NodeStaticSchema]()
-    edge: Edge[EdgeStaticSchema] = Edge[EdgeStaticSchema]()
+class Database(FileModel, NodeModel):
+    node: Node[NodeSchema] = Node[NodeSchema]()
+    edge: Edge[EdgeSchema] = Edge[EdgeSchema]()
+
+    def n_nodes(self):
+        if self.node.df is not None:
+            n = len(self.node.df)
+        else:
+            n = 0
+
+        return n
 
     @classmethod
     def _load(cls, filepath: Path) -> Dict[str, Any]:
         context_file_loading.get()["database"] = filepath
-        return {"node": {"filepath": Path("Node")}, "edge": {"filepath": Path("Edge")}}
+        return {}
+
+    @classmethod
+    def _layername(cls, field: str) -> str:
+        return field.capitalize()
 
     def _save(self, directory):
         # We write all tables to a temporary database with a dot prefix,
@@ -69,7 +76,7 @@ class Database(NodeModel, FileModel):
         context_file_loading.get()["database"] = db_path
 
     @model_serializer
-    def set_model(self) -> str:
+    def set_modelname(self) -> str:
         return "database.gpkg"
 
 
@@ -130,25 +137,27 @@ class Model(FileModel):
     input_dir: str = "."
     results_dir: str = "."
 
-    database: Database = Database()
-    allocation: Allocation = Allocation()
+    database: Database = Field(default_factory=Database)
     results: Results = Results()
     solver: Solver = Solver()
     logging: Logging = Logging()
 
-    basin: Basin = Basin()
-    fractional_flow: FractionalFlow = FractionalFlow()
-    level_boundary: LevelBoundary = LevelBoundary()
-    flow_boundary: FlowBoundary = FlowBoundary()
-    linear_resistance: LinearResistance = LinearResistance()
-    manning_resistance: ManningResistance = ManningResistance()
-    tabulated_rating_curve: TabulatedRatingCurve = TabulatedRatingCurve()
-    pump: Pump = Pump()
-    outlet: Outlet = Outlet()
-    terminal: Terminal = Terminal()
-    discrete_control: DiscreteControl = DiscreteControl()
-    pid_control: PidControl = PidControl()
-    user: User = User()
+    allocation: Allocation = Field(default_factory=Allocation)
+    basin: Basin = Field(default_factory=Basin)
+    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
+    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
+    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
+    linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
+    manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    tabulated_rating_curve: TabulatedRatingCurve = Field(
+        default_factory=TabulatedRatingCurve
+    )
+    pump: Pump = Field(default_factory=Pump)
+    outlet: Outlet = Field(default_factory=Outlet)
+    terminal: Terminal = Field(default_factory=Terminal)
+    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
+    pid_control: PidControl = Field(default_factory=PidControl)
+    user: User = Field(default_factory=User)
 
     def __repr__(self) -> str:
         first = []
@@ -169,8 +178,9 @@ class Model(FileModel):
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
-        content = self.dict(exclude_unset=True, exclude_defaults=True)
+        content = self.model_dump(exclude_unset=True, round_trip=True)
         fn = directory / "ribasim.toml"
+        print(content)
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
@@ -189,14 +199,14 @@ class Model(FileModel):
     def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        n_nodes = len(self.database.node.df)
+        n_nodes = self.database.n_nodes()
 
         # Check node IDs of node fields
         all_node_ids = set[int]()
         for node in self.nodes().values():
             all_node_ids.update(node.node_ids())
 
-        unique, counts = np.unique(all_node_ids, return_counts=True)
+        unique, counts = np.unique(list(all_node_ids), return_counts=True)
 
         node_ids_positive_integers = np.greater(unique, 0) & np.equal(
             unique.astype(int), unique
@@ -216,7 +226,7 @@ class Model(FileModel):
             node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
             node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
             msg = [
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static)."
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.database.node.df)."
             ]
             if len(node_ids_missing) > 0:
                 msg.append(f"These node IDs are missing: {node_ids_missing}.")
@@ -253,7 +263,7 @@ class Model(FileModel):
         - Whether the node IDs in the node field correspond to the node IDs on the node type fields
         """
 
-        # self.validate_model_node_field_ids()
+        self.validate_model_node_field_ids()
         self.validate_model_node_ids()
 
     def write(self, directory: FilePath) -> None:
@@ -333,11 +343,11 @@ class Model(FileModel):
                 data_node_id = condition[condition.node_id == node_id]
 
                 for listen_feature_id in data_node_id.listen_feature_id:
-                    point_start = self.node.static.iloc[node_id - 1].geometry
+                    point_start = self.node.df.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.node.static.iloc[listen_feature_id - 1].geometry
+                    point_end = self.node.df.iloc[listen_feature_id - 1].geometry
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
@@ -427,7 +437,7 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.node.static.loc[listen_feature_id, "type"]
+                listen_node_type = self.node.df.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -442,7 +452,7 @@ class Model(FileModel):
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.node.static.loc[affect_node_id, "type"]
+                affect_node_type = self.node.df.loc[affect_node_id, "type"]
                 affect_node_type_snake_case = node_clss[
                     node_types.index(affect_node_type)
                 ].get_toml_key()

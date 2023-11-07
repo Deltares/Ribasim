@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
 from ribasim import utils
-from ribasim.geometry.node import Node
+from ribasim.geometry.node import Node, NodeSchema
 from shapely import LineString
 
 
@@ -14,8 +14,8 @@ def test_utils():
 
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node = Node(
-        static=gpd.GeoDataFrame(
+    node = Node[NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,

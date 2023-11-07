@@ -59,16 +59,6 @@ class DiscreteControlLogic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
 
 
-class Edge(BaseModel):
-    fid: int
-    name: str
-    from_node_id: int
-    to_node_id: int
-    edge_type: str
-    allocation_network_id: Optional[int] = None
-    remarks: str = Field("", description="a hack for pandera")
-
-
 class FlowBoundaryStatic(BaseModel):
     node_id: int
     active: Optional[bool] = None
@@ -120,14 +110,6 @@ class ManningResistanceStatic(BaseModel):
     profile_width: float
     profile_slope: float
     control_state: Optional[str] = None
-    remarks: str = Field("", description="a hack for pandera")
-
-
-class Node(BaseModel):
-    fid: int
-    name: str
-    type: str
-    allocation_network_id: Optional[int] = None
     remarks: str = Field("", description="a hack for pandera")
 
 

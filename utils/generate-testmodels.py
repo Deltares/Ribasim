@@ -19,5 +19,6 @@ Don't put important stuff in here, it will be emptied for every run."""
     )
 
     for model_name, model_constructor in ribasim_testmodels.constructors.items():
+        print(f"Generating {model_name}")
         model = model_constructor()
         model.write(datadir / model_name)

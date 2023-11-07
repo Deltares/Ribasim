@@ -20,21 +20,25 @@ from ribasim.config import (
     Terminal,
     User,
 )
-from ribasim.geometry.edge import Edge
-from ribasim.geometry.node import Node
-from ribasim.model import Model
+from ribasim.geometry.edge import Edge, EdgeSchema
+from ribasim.geometry.node import Node, NodeSchema
+from ribasim.model import Database, Model
 
 __all__ = [
     "models",
     "utils",
+    "Allocation",
     "Basin",
+    "Database",
     "Edge",
+    "EdgeSchema",
     "FractionalFlow",
     "LevelBoundary",
     "LinearResistance",
     "ManningResistance",
     "Model",
     "Node",
+    "NodeSchema",
     "Pump",
     "Outlet",
     "FlowBoundary",
@@ -45,5 +49,4 @@ __all__ = [
     "DiscreteControl",
     "PidControl",
     "User",
-    "Allocation",
 ]

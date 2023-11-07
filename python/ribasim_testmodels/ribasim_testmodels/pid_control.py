@@ -32,8 +32,8 @@ def pid_control_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -46,8 +46,8 @@ def pid_control_model():
     to_id = np.array([2, 3, 4, 6, 2, 3, 6], dtype=np.int64)
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -144,8 +144,7 @@ def pid_control_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         level_boundary=level_boundary,
@@ -186,8 +185,8 @@ def discrete_control_of_pid_control_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -200,8 +199,8 @@ def discrete_control_of_pid_control_model():
     to_id = np.array([2, 3, 4, 5, 2, 6], dtype=np.int64)
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -318,8 +317,7 @@ def discrete_control_of_pid_control_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         outlet=outlet,
         tabulated_rating_curve=rating_curve,

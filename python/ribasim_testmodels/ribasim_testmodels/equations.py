@@ -20,8 +20,8 @@ def linear_resistance_model():
     node_type = ["Basin", "LinearResistance", "LevelBoundary"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -33,8 +33,8 @@ def linear_resistance_model():
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -91,8 +91,7 @@ def linear_resistance_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         level_boundary=level_boundary,
         linear_resistance=linear_resistance,
@@ -117,8 +116,8 @@ def rating_curve_model():
     node_type = ["Basin", "TabulatedRatingCurve", "Terminal"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -130,8 +129,8 @@ def rating_curve_model():
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -199,8 +198,7 @@ def rating_curve_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         terminal=terminal,
         tabulated_rating_curve=rating_curve,
@@ -227,8 +225,8 @@ def manning_resistance_model():
     node_type = ["Basin", "ManningResistance", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -240,8 +238,8 @@ def manning_resistance_model():
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -296,8 +294,7 @@ def manning_resistance_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         manning_resistance=manning_resistance,
         starttime="2020-01-01 00:00:00",
@@ -334,8 +331,8 @@ def misc_nodes_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -347,8 +344,8 @@ def misc_nodes_model():
     from_id = np.array([1, 2, 3, 4, 1, 6], dtype=np.int64)
     to_id = np.array([2, 3, 4, 5, 6, 7], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -436,8 +433,7 @@ def misc_nodes_model():
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         pump=pump,
@@ -467,8 +463,8 @@ def pid_control_equation_model():
     node_type = ["Basin", "Pump", "Terminal", "PidControl"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -480,8 +476,8 @@ def pid_control_equation_model():
     from_id = np.array([1, 2, 4], dtype=np.int64)
     to_id = np.array([2, 3, 2], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -555,8 +551,7 @@ def pid_control_equation_model():
     )
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         pump=pump,
         terminal=terminal,
