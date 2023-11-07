@@ -59,7 +59,7 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 
 1) Update `__version__` in `__init__.py`
 
-2) Open a terminal and run `pixi run create-ribasim-python-wheel` or `pixi run create-ribasim-api-wheel`
+2) Open a terminal and run `pixi run build-ribasim-python-wheel` or `pixi run build-ribasim-api-wheel`
 
 3) Make a new commit with the updated version number, and push to remote
 
