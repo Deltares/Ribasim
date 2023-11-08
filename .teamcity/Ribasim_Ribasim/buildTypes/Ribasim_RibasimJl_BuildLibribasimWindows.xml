@@ -34,6 +34,14 @@ pixi run build-libribasim]]></param>
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
+      <runner id="RUNNER_2427" name="Print versions" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[%env.JULIA_1_9% --version
+pixi --version]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
     </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim">
