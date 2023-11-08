@@ -8,7 +8,7 @@ function get_node_id_mapping(
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
 )
-    (; lookup, connectivity) = p
+    (; lookup, connectivity, user) = p
     (; graph_flow, edge_ids_flow_inv) = connectivity
 
     # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
@@ -23,6 +23,11 @@ function get_node_id_mapping(
 
         if node_type in [:user, :basin]
             add_allocgraph_node = true
+
+            if node_type == :user
+                user_idx = findsorted(user.node_id, subnetwork_node_id)
+                user.allocation_optimized[user_idx] = true
+            end
 
         elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
             # Each junction (that is, a node with more than 2 neighbors)

@@ -441,7 +441,10 @@ allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
 priorities: All used priority values. Each user has a demand for all these priorities,
-which is always 0.0 if it is not provided explicitly.
+    which is 0.0 if it is not provided explicitly.
+allocation_optimized: Whether the allocated abstraction rate of the user is set by allocation optimization.
+    If not, allocated is equal to demand.
+record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{Int}
@@ -451,6 +454,7 @@ struct User <: AbstractParameterNode
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
     priorities::Vector{Int}
+    allocation_optimized::BitVector
     record::NamedTuple{
         (
             :time,
@@ -797,7 +801,8 @@ function formulate_flow!(
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, allocated, demand, active, return_factor, min_level) = user
+    (; node_id, allocated, demand, active, return_factor, min_level, allocation_optimized) =
+        user
 
     flow = get_tmp(flow, storage)
 
@@ -807,6 +812,12 @@ function formulate_flow!(
 
         if !active[i]
             continue
+        end
+
+        if !allocation_optimized[i]
+            for priority_idx in eachindex(allocated[i])
+                allocated[i][priority_idx] = demand[i][priority_idx](t)
+            end
         end
 
         q = sum(allocated[i])

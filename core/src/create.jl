@@ -791,6 +791,8 @@ function User(db::DB, config::Config)::User
         abstracted = Vector{Float64}(),
     )
 
+    allocation_optimized = BitVector(zeros(UInt8, length(node_ids)))
+
     return User(
         node_ids,
         active,
@@ -799,6 +801,7 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
+        allocation_optimized,
         record,
     )
 end
