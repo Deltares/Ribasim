@@ -41,5 +41,6 @@ timing = false     # optional, whether to log debug timing statements
 flow = "results/flow.arrow"       # optional, default "results/flow.arrow"
 basin = "results/basin.arrow"     # optional, default "results/basin.arrow"
 control = "results/control.arrow" # optional, default "results/control.arrow"
+allocation = "results/allocation.arrow" # optional, default "results/allocation.arrow"
 compression = "zstd"             # optional, default "zstd", also supports "lz4"
 compression_level = 6            # optional, default 6

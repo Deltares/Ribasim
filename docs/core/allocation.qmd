@@ -62,8 +62,8 @@ Both fractional flow nodes and user nodes dictate proportional relationships bet
 
 A new graph is created from the subnetwork, which we call the allocation graph. To indicate the difference between subnetwork data and allocation graph data, the allocation graph data is denoted with a hat. The allocation graph consists of:
 
-- Nodes $\hat{V_S}$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node IDs to allocation graph node IDs. Unless specified otherwise, we assume this relationship between index symbols that appear both with and without a hat.
-- Edges $\hat{E_S}$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
+- Nodes $\hat{V}_s$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph. The implementation makes heavy use of the node id mapping $m_S : i \mapsto \hat{i}$ to translate from subnetwork node IDs to allocation graph node IDs. Unless specified otherwise, we assume this relationship between index symbols that appear both with and without a hat.
+- Edges $\hat{E}_S$, where the edges in the allocation graph are given by one or more edges in the subnetwork, where those edges connect nodes in the subnetwork that have an equivalent in the allocation graph. The direction of the edges in the allocation graph is given by the direction constraints in the subnetwork.
 
 For notational convenience, we use the notation
 

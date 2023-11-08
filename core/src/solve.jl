@@ -8,6 +8,7 @@ const VectorInterpolation =
 Store information for a subnetwork used for allocation.
 
 objective_type: The name of the type of objective used
+allocation_network_id: The ID of this allocation network
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
@@ -21,6 +22,7 @@ problem: The JuMP.jl model for solving the allocation problem
 """
 struct AllocationModel
     objective_type::Symbol
+    allocation_network_id::Int
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
@@ -441,7 +443,10 @@ allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
 priorities: All used priority values. Each user has a demand for all these priorities,
-which is always 0.0 if it is not provided explicitly.
+    which is 0.0 if it is not provided explicitly.
+allocation_optimized: Whether the allocated abstraction rate of the user is set by allocation optimization.
+    If not, allocated is equal to demand.
+record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{Int}
@@ -451,6 +456,27 @@ struct User <: AbstractParameterNode
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
     priorities::Vector{Int}
+    allocation_optimized::BitVector
+    record::NamedTuple{
+        (
+            :time,
+            :allocation_network_id,
+            :user_node_id,
+            :priority,
+            :demand,
+            :allocated,
+            :abstracted,
+        ),
+        Tuple{
+            Vector{Float64},
+            Vector{Int},
+            Vector{Int},
+            Vector{Int},
+            Vector{Float64},
+            Vector{Float64},
+            Vector{Float64},
+        },
+    }
 end
 
 # TODO Automatically add all nodetypes here
@@ -777,7 +803,8 @@ function formulate_flow!(
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, allocated, demand, active, return_factor, min_level) = user
+    (; node_id, allocated, demand, active, return_factor, min_level, allocation_optimized) =
+        user
 
     flow = get_tmp(flow, storage)
 
@@ -789,12 +816,23 @@ function formulate_flow!(
             continue
         end
 
-        # For now allocated = demand
-        for priority in eachindex(allocated[i])
-            allocated[i][priority] = demand[i][priority](t)
-        end
+        q = 0.0
 
-        q = sum(allocated[i])
+        if allocation_optimized[i]
+            # If allocation has been optimized for this user,
+            # use the minimum of that allocation and the current demand of the user
+            for priority_idx in eachindex(allocated[i])
+                alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
+                q += alloc
+            end
+        else
+            # If allocation has not been optimized for this user,
+            # use the demand as allocated directly
+            for priority_idx in eachindex(allocated[i])
+                alloc = demand[i][priority_idx](t)
+                q += alloc
+            end
+        end
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         _, basin_idx = id_index(basin.node_id, src_id)

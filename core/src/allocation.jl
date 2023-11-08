@@ -8,7 +8,7 @@ function get_node_id_mapping(
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
 )
-    (; lookup, connectivity) = p
+    (; lookup, connectivity, user) = p
     (; graph_flow, edge_ids_flow_inv) = connectivity
 
     # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
@@ -23,6 +23,11 @@ function get_node_id_mapping(
 
         if node_type in [:user, :basin]
             add_allocgraph_node = true
+
+            if node_type == :user
+                user_idx = findsorted(user.node_id, subnetwork_node_id)
+                user.allocation_optimized[user_idx] = true
+            end
 
         elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
             # Each junction (that is, a node with more than 2 neighbors)
@@ -650,6 +655,7 @@ An AllocationModel object.
 """
 function AllocationModel(
     config::Config,
+    allocation_network_id::Int,
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
@@ -679,6 +685,7 @@ function AllocationModel(
 
     return AllocationModel(
         Symbol(config.allocation.objective_type),
+        allocation_network_id,
         subnetwork_node_ids,
         node_id_mapping,
         node_id_mapping_inverse,
@@ -762,13 +769,37 @@ end
 """
 Assign the allocations to the users as determined by the solution of the allocation problem.
 """
-function assign_allocations!(allocation_model::AllocationModel, user::User)::Nothing
+function assign_allocations!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+    priority_idx::Int,
+)::Nothing
     (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+    (; connectivity, user) = p
+    (; graph_flow, flow) = connectivity
+    (; record) = user
     F = problem[:F]
+    flow = get_tmp(flow, 0)
     for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
         model_node_id = node_id_mapping_inverse[allocgraph_node_id][1]
         user_idx = findsorted(user.node_id, model_node_id)
-        user.allocated[user_idx] .= JuMP.value(F[allocgraph_edge_id])
+        allocated = JuMP.value(F[allocgraph_edge_id])
+        user.allocated[user_idx][priority_idx] = allocated
+
+        # Save allocations to record
+        push!(record.time, t)
+        push!(record.allocation_network_id, allocation_model.allocation_network_id)
+        push!(record.user_node_id, model_node_id)
+        push!(record.priority, user.priorities[priority_idx])
+        push!(record.demand, user.demand[user_idx][priority_idx](t))
+        push!(record.allocated, allocated)
+        # Note: This is now the last abstraction before the allocation update,
+        # should be the average abstraction since the last allocation solve
+        push!(
+            record.abstracted,
+            flow[only(inneighbors(graph_flow, model_node_id)), model_node_id],
+        )
     end
     return nothing
 end
@@ -833,6 +864,7 @@ and flows, solve the allocation problem and assign the results to the users.
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
     (; user) = p
     (; problem) = allocation_model
+    (; priorities, record) = user
 
     set_source_flows!(allocation_model, p)
 
@@ -841,7 +873,7 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
-    for priority_idx in eachindex(user.priorities)
+    for priority_idx in eachindex(priorities)
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, priority_idx)
@@ -861,6 +893,6 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
         end
 
         # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p.user)
+        assign_allocations!(allocation_model, p, t, priority_idx)
     end
 end
