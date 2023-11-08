@@ -27,7 +27,7 @@
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set Path=d:\ProgramData\julia/julia-1.9.0/bin/;%env.Path%
+          <param name="script.content"><![CDATA[set Path=%env.JULIA_DIR_1_9%;%env.Path%
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
