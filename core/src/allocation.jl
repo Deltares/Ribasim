@@ -755,7 +755,7 @@ function set_objective!(
         error("Invalid allocation objective type $objective_type.")
     end
     new_objective = JuMP.@expression(problem, ex)
-    JuMP.set_objective_function(problem, new_objective)
+    JuMP.@objective(problem, Min, new_objective)
     return nothing
 end
 
