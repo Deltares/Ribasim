@@ -814,13 +814,23 @@ function formulate_flow!(
             continue
         end
 
-        if !allocation_optimized[i]
+        q = 0.0
+
+        if allocation_optimized[i]
+            # If allocation has been optimized for this user,
+            # use the minimum of that allocation and the current demand of the user
             for priority_idx in eachindex(allocated[i])
-                allocated[i][priority_idx] = demand[i][priority_idx](t)
+                alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
+                q += alloc
+            end
+        else
+            # If allocation has not been optimized for this user,
+            # use the demand as allocated directly
+            for priority_idx in eachindex(allocated[i])
+                alloc = demand[i][priority_idx](t)
+                q += alloc
             end
         end
-
-        q = sum(allocated[i])
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         _, basin_idx = id_index(basin.node_id, src_id)
