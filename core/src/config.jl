@@ -125,7 +125,7 @@ end
 @option struct Allocation <: TableOption
     timestep::Union{Float64, Nothing} = nothing
     use_allocation::Bool = false
-    distribution::String = "quadratic_relative"
+    objective_type::String = "quadratic_relative"
 end
 
 @option @addnodetypes struct Config <: TableOption

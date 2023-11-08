@@ -7,6 +7,7 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
+objective_type: The name of the type of objective used
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
@@ -19,6 +20,7 @@ problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
+    objective_type::Symbol
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}

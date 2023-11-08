@@ -548,31 +548,31 @@ function add_constraints_user_returnflow!(
     return nothing
 end
 
-"""
-Add the objective function to be maximized to the allocation problem.
-Objective function: Sum of flows to the users.
-"""
-function add_objective_function!(
-    problem::JuMP.Model,
-    allocgraph_edge_ids_user_demand::Dict{Int, Int},
-    config::Config,
-)::Nothing
-    F = problem[:F]
-    A_basin = problem[:A_basin]
-    distribution = config.allocation.distribution
-    if distribution in ["quadratic_absolute", "quadratic_relative"]
-        # Assume demand = 1.0, set later
-        JuMP.@objective(
-            problem,
-            Min,
-            sum((A_basin .- 1.0) .^ 2) +
-            sum([(F[i] - 1.0)^2 for i in values(allocgraph_edge_ids_user_demand)])
-        )
-    else
-        error("Invalid allocation distribution type $distribution.")
-    end
-    return nothing
-end
+# """
+# Add the objective function to be maximized to the allocation problem.
+# Objective function: Sum of flows to the users.
+# """
+# function add_objective_function!(
+#     problem::JuMP.Model,
+#     allocgraph_edge_ids_user_demand::Dict{Int, Int},
+#     config::Config,
+# )::Nothing
+#     F = problem[:F]
+#     A_basin = problem[:A_basin]
+#     distribution = config.allocation.distribution
+#     if distribution in ["quadratic_absolute", "quadratic_relative"]
+#         # Assume demand = 1.0, set later
+#         JuMP.@objective(
+#             problem,
+#             Min,
+#             sum((A_basin .- 1.0) .^ 2) +
+#             sum([(F[i] - 1.0)^2 for i in values(allocgraph_edge_ids_user_demand)])
+#         )
+#     else
+#         error("Invalid allocation distribution type $distribution.")
+#     end
+#     return nothing
+# end
 
 """
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
@@ -621,8 +621,8 @@ function allocation_problem(
     add_constraints_user_returnflow!(problem, allocgraph_node_ids_user_with_returnflow)
     # TODO: The fractional flow constraints
 
-    # Add objective to problem
-    add_objective_function!(problem, allocgraph_edge_ids_user_demand, config)
+    # # Add objective to problem
+    # add_objective_function!(problem, allocgraph_edge_ids_user_demand, config)
 
     return problem
 end
@@ -678,6 +678,7 @@ function AllocationModel(
     )
 
     return AllocationModel(
+        Symbol(config.allocation.objective_type),
         subnetwork_node_ids,
         node_id_mapping,
         node_id_mapping_inverse,
@@ -690,28 +691,71 @@ function AllocationModel(
     )
 end
 
+# """
+# Set the demands of the users of the current time and priority
+# in the allocation problem.
+# """
+# function set_demands_priority!(
+#     allocation_model::AllocationModel,
+#     user::User,
+#     priority_idx::Int,
+#     t::Float64,
+# )::Nothing
+#     (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+#     (; demand, node_id) = user
+#     constraints_demand = problem[:demand_user]
+
+#     for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+#         model_user_id = node_id_mapping_inverse[allocgraph_node_id][1]
+#         user_idx = findsorted(node_id, model_user_id)
+#         JuMP.set_normalized_rhs(
+#             constraints_demand[allocgraph_edge_id],
+#             demand[user_idx][priority_idx](t),
+#         )
+#     end
+#     return nothing
+# end
+
 """
-Set the demands of the users of the current time and priority
-in the allocation problem.
+
 """
-function set_demands_priority!(
+function set_objective!(
     allocation_model::AllocationModel,
     user::User,
-    priority_idx::Int,
     t::Float64,
+    priority_idx::Int,
 )::Nothing
-    (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+    (; objective_type, problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) =
+        allocation_model
     (; demand, node_id) = user
-    constraints_demand = problem[:demand_user]
-
-    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
-        model_user_id = node_id_mapping_inverse[allocgraph_node_id][1]
-        user_idx = findsorted(node_id, model_user_id)
-        JuMP.set_normalized_rhs(
-            constraints_demand[allocgraph_edge_id],
-            demand[user_idx][priority_idx](t),
-        )
+    F = problem[:F]
+    ex = JuMP.QuadExpr()
+    if objective_type == :quadratic_absolute
+        for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+            user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
+            d = demand[user_idx][priority_idx](t)
+            F_ij = F[allocgraph_edge_id]
+            JuMP.add_to_expression!(ex, 1, F_ij, F_ij)
+            JuMP.add_to_expression!(ex, -2 * d, F_ij)
+            JuMP.add_to_expression!(ex, d^2)
+        end
+    elseif objective_type == :quadratic_relative
+        for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+            user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
+            d = demand[user_idx][priority_idx](t)
+            if d ≈ 0
+                continue
+            end
+            F_ij = F[allocgraph_edge_id]
+            JuMP.add_to_expression!(ex, 1.0 / d^2, F_ij, F_ij)
+            JuMP.add_to_expression!(ex, -2.0 / d, F_ij)
+            JuMP.add_to_expression!(ex, 1.0)
+        end
+    else
+        error("Invalid allocation objective type $objective_type.")
     end
+    new_objective = JuMP.@expression(problem, ex)
+    JuMP.set_objective_function(problem, new_objective)
     return nothing
 end
 
@@ -802,7 +846,12 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, priority_idx)
 
-        set_demands_priority!(allocation_model, user, priority_idx, t)
+        # Set the objective depending on the demands
+        # A new objective function is set instead of modifying the coefficients
+        # of an existing objective function because this is not supported for
+        # quadratic terms:
+        # https://jump.dev/JuMP.jl/stable/manual/objective/#Modify-an-objective-coefficient
+        set_objective!(allocation_model, user, t, priority_idx)
 
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)

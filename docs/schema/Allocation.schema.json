@@ -22,7 +22,7 @@
             "type": "boolean",
             "default": false
         },
-        "distribution": {
+        "objective_type": {
             "format": "default",
             "type": "string",
             "default": "quadratic_relative"
@@ -30,6 +30,6 @@
     },
     "required": [
         "use_allocation",
-        "distribution"
+        "objective_type"
     ]
 }
