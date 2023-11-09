@@ -10,7 +10,7 @@ function build_app()
         output_dir;
         # map from binary name to julia function name
         executables = ["ribasim" => "julia_main"],
-        precompile_execution_file = "../precompile.jl",
+        precompile_execution_file = "precompile.jl",
         include_lazy_artifacts = true,
         force = true,
     )
