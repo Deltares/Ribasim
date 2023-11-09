@@ -2,7 +2,6 @@
     "[julia]": {
         "editor.formatOnSave": true
     },
-    "julia.environmentPath": "core",
     "notebook.formatOnSave.enabled": true,
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
