@@ -27,17 +27,10 @@ install-without-pre-commit = { depends_on = [
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-instantiate-julia-core = "julia --project=core --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia-docs = "julia --project=docs --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia-build = "julia --project=build/create_binaries --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia = { depends_on = [
-    "instantiate-julia-core",
-    "instantiate-julia-docs",
-    "instantiate-julia-build",
-] }
+instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 # Docs
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
-    "instantiate-julia-docs",
+    "instantiate-julia",
 ] }
 quartodoc-build = "cd docs && quartodoc build && rm objects.json"
 quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
@@ -62,11 +55,11 @@ lint = { depends_on = [
 # Build
 build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project create_app.jl", depends_on = [
     "generate-testmodels",
-    "instantiate-julia-build",
+    "instantiate-julia",
 ] }
 build-libribasim = { cmd = "cd build/create_binaries && julia --project create_lib.jl", depends_on = [
     "generate-testmodels",
-    "instantiate-julia-build",
+    "instantiate-julia",
 ] }
 build = { depends_on = ["build-ribasim-cli", "build-libribasim"] }
 # Test
@@ -74,14 +67,14 @@ test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
-    "instantiate-julia-core",
+    "instantiate-julia",
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl", depends_on = [
-    "instantiate-julia-docs",
+    "instantiate-julia",
 ] }
 generate-python = """\
     datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py && \

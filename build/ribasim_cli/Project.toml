@@ -1,6 +1,7 @@
 name = "ribasim_cli"
 uuid = "e45c999e-e944-4589-a8e6-7d0b7a60140a"
-authors = ["Deltares and contributors"]
+authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
+manifest = "../../Manifest.toml"
 version = "0.1.0"
 
 [deps]
