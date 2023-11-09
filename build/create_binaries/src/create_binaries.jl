@@ -1,4 +1,15 @@
-__precompile__(false)
+module create_binaries
 
-# This is not really a package, but needs to be set up like one so we can run
-# `dev build/create_binaries` from the root project.
+using Artifacts
+using PackageCompiler
+using TOML
+using LibGit2
+
+export build_app, build_lib
+
+include("strip_cldr.jl")
+include("add_metadata.jl")
+include("create_app.jl")
+include("create_lib.jl")
+
+end

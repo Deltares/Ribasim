@@ -53,15 +53,18 @@ lint = { depends_on = [
     "mypy-ribasim-api",
 ] }
 # Build
-build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project create_app.jl", depends_on = [
+build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project build.jl --app", depends_on = [
     "generate-testmodels",
     "instantiate-julia",
 ] }
-build-libribasim = { cmd = "cd build/create_binaries && julia --project create_lib.jl", depends_on = [
+build-libribasim = { cmd = "cd build/create_binaries && julia --project build.jl --lib", depends_on = [
     "generate-testmodels",
     "instantiate-julia",
 ] }
-build = { depends_on = ["build-ribasim-cli", "build-libribasim"] }
+build = { cmd = "cd build/create_binaries && julia --project build.jl --app --lib", depends_on = [
+    "generate-testmodels",
+    "instantiate-julia",
+] }
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"

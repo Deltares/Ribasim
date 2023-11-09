@@ -1,6 +1,5 @@
 # Create Binaries
 
-
 Build the app with:
 
 ```
@@ -11,4 +10,10 @@ Build the shared library with:
 
 ```
 pixi run build-libribasim
+```
+
+Build both with:
+
+```
+pixi run build
 ```
