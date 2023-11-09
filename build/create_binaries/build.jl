@@ -6,7 +6,7 @@ Run from the command line with:
 
     julia --project build.jl --app --lib
 """
-function main(ARGS) end
+function main(ARGS)
     # change directory to this script's location
     cd(@__DIR__)
 
