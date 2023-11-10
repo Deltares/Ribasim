@@ -9,8 +9,7 @@
       <option name="executionTimeoutMin" value="120" />
     </options>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_ribasim_cli" />
-      <param name="julia" value="%env.JULIA_1_9%" />
+      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
@@ -23,8 +22,8 @@
       </runner>
       <runner id="RUNNER_2420" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set Path=%env.JULIA_DIR_1_9%;%env.Path%
-pixi run build-ribasim-cli]]></param>
+          <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
+            pixi run build-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -91,4 +90,3 @@ pixi run build-ribasim-cli]]></param>
     <cleanup />
   </settings>
 </build-type>
-
