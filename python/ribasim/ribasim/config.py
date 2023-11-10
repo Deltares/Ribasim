@@ -38,6 +38,7 @@ class Results(BaseModel):
     basin: str = "results/basin.arrow"
     flow: str = "results/flow.arrow"
     control: str = "results/control.arrow"
+    allocation: str = "results/allocation.arrow"
     outstate: Optional[str] = None
     compression: str = "zstd"
     compression_level: int = 6
@@ -145,6 +146,7 @@ class Config(BaseModel):
                 "basin": "results/basin.arrow",
                 "flow": "results/flow.arrow",
                 "control": "results/control.arrow",
+                "allocation": "results/allocation.arrow",
                 "outstate": None,
                 "compression": "zstd",
                 "compression_level": 6,
