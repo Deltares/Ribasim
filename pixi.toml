@@ -32,7 +32,7 @@ instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia",
 ] }
-quartodoc-build = "cd docs && quartodoc build && rm objects.json"
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
     "quartodoc-build",
 ] }
@@ -53,11 +53,11 @@ lint = { depends_on = [
     "mypy-ribasim-api",
 ] }
 # Build
-build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project build.jl --app", depends_on = [
+build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
     "instantiate-julia",
 ] }
-build-libribasim = { cmd = "cd build/create_binaries && julia --project build.jl --lib", depends_on = [
+build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
     "instantiate-julia",
 ] }
