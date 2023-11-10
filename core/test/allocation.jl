@@ -81,5 +81,5 @@ end
         @__DIR__,
         "../../generated_testmodels/minimal_subnetwork/results/allocation.arrow",
     )
-    @test ispath(allocation_output_path)
+    @test isfile(allocation_output_path)
 end
