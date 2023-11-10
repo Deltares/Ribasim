@@ -15,5 +15,6 @@ TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 [compat]
 Dates = "1"
 Logging = "1"
+SciMLBase = "2"
 TOML = "1"
 julia = "1.9"
