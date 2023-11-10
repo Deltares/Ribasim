@@ -6,6 +6,34 @@ Allocation is the process of assigning an allocated abstraction flow rate to use
 
 The allocation problem is solved per subnetwork of the Ribasim model, from which a new graph is created called the allocation graph. The allocation graph is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
+```{mermaid}
+sequenceDiagram
+  participant Sim as Process: Ribasim simulation
+  participant Param as Data: Parameters
+  participant State as Data: State
+  participant Optim as process: Allocation optimization
+  loop Simulation timestep, several times
+    State-->>Sim: Input
+    Param-->>Sim: Input
+    Sim-->>Param: Parameter updates by control
+    activate Sim
+    Sim->>Sim: Compute flows over edges per node type
+    Sim-->>Param: Set flows
+    Sim->>Sim: Time integration step
+    Sim-->>State: Update state
+    deactivate Sim
+  end
+  loop Allocation optimization, per allocation network
+    Param-->>Optim: Input
+    activate Optim
+    State-->>Optim: Input
+    Optim->>Optim: Optimize basin allocations if below target level
+    Optim->>Optim: Optimize user allocation, per priority
+    Optim-->>Param: Set allocated flow rates
+    deactivate Optim
+  end
+```
+
 # The allocation problem
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
