@@ -61,7 +61,7 @@ build-libribasim = { cmd = "cd build/create_binaries && julia --project build.jl
     "generate-testmodels",
     "instantiate-julia",
 ] }
-build = { cmd = "cd build/create_binaries && julia --project build.jl --app --lib", depends_on = [
+build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
     "instantiate-julia",
 ] }
