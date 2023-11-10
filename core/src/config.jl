@@ -112,6 +112,7 @@ end
     basin::String = "results/basin.arrow"
     flow::String = "results/flow.arrow"
     control::String = "results/control.arrow"
+    allocation::String = "results/allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
