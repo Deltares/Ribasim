@@ -13,18 +13,9 @@
       <setting-ref ref="RQ_271" />
     </disabled-settings>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_libribasim" />
-      <param name="julia" value="%env.JULIA_1_10%" />
+      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_2427" name="Print versions" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[%env.JULIA_1_9% --version
-pixi --version]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
           <param name="script.content" value="pixi run install-without-pre-commit" />
@@ -35,7 +26,7 @@ pixi --version]]></param>
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set Path=%env.JULIA_DIR_1_9%;%env.Path%
+          <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
@@ -90,4 +81,3 @@ pixi run build-libribasim]]></param>
     <cleanup />
   </settings>
 </build-type>
-
