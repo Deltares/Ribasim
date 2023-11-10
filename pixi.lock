@@ -28242,7 +28242,7 @@ package:
   size: 95111
   timestamp: 1695997251086
 - name: ruff
-  version: 0.1.3
+  version: 0.1.5
   manager: conda
   platform: linux-64
   dependencies:
@@ -28250,10 +28250,10 @@ package:
     libstdcxx-ng: '>=12'
     python: '>=3.12,<3.13.0a0'
     python_abi: 3.12.* *_cp312
-  url: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.1.3-py312h9118e91_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.1.5-py312h9118e91_0.conda
   hash:
-    md5: a6d67f24f7338fcf79a4847e0932662f
-    sha256: 0b9236f3d36fcd780b8dfa1f09555e61f5a458c6ae1e729c56516840ad50f714
+    md5: 2e2cb56137053970a885157905d6e9cf
+    sha256: b775431fbb2da9dcf3c4de070738565c3dda0d0cb84bb4e5d7892c81eaa4924b
   optional: false
   category: main
   build: py312h9118e91_0
@@ -28262,10 +28262,10 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 4786754
-  timestamp: 1698380134703
+  size: 4832209
+  timestamp: 1699507697400
 - name: ruff
-  version: 0.1.3
+  version: 0.1.5
   manager: conda
   platform: osx-64
   dependencies:
@@ -28273,10 +28273,10 @@ package:
     libcxx: '>=16.0.6'
     python: '>=3.12,<3.13.0a0'
     python_abi: 3.12.* *_cp312
-  url: https://conda.anaconda.org/conda-forge/osx-64/ruff-0.1.3-py312hde94f14_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-64/ruff-0.1.5-py312hde94f14_0.conda
   hash:
-    md5: 5b399a2f71cf3119c95518da923293f7
-    sha256: f174a816bbd69f9247cd019e6f1c585ea61662adfea75a953f8b388a923eef6b
+    md5: 2b74e5920fd7a4a9cee52f930a5d46b1
+    sha256: ac50dea60681c922487a57c2991c0c27222c7464c2abd6894915c278bcc2dbe4
   optional: false
   category: main
   build: py312hde94f14_0
@@ -28285,10 +28285,10 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 4545901
-  timestamp: 1698380808287
+  size: 4587294
+  timestamp: 1699508051210
 - name: ruff
-  version: 0.1.3
+  version: 0.1.5
   manager: conda
   platform: osx-arm64
   dependencies:
@@ -28296,10 +28296,10 @@ package:
     libcxx: '>=16.0.6'
     python: '>=3.12,<3.13.0a0 *_cpython'
     python_abi: 3.12.* *_cp312
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/ruff-0.1.3-py312h6267552_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/ruff-0.1.5-py312h6267552_0.conda
   hash:
-    md5: 3a9fda73483adf1a8e6316d7f5ccc082
-    sha256: 34172741dfee4c2d79b8322b16f48b3c884fb6637486d3fd29ea4a73ffa81443
+    md5: 2cdcc0e70bac01459ea476f601f88973
+    sha256: 0eb116cc02b720ebd128c921086255a21709a9c702892ebbfa0a9216539bdf2b
   optional: false
   category: main
   build: py312h6267552_0
@@ -28308,10 +28308,10 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 4318346
-  timestamp: 1698381201022
+  size: 4352351
+  timestamp: 1699508088217
 - name: ruff
-  version: 0.1.3
+  version: 0.1.5
   manager: conda
   platform: win-64
   dependencies:
@@ -28320,10 +28320,10 @@ package:
     ucrt: '>=10.0.20348.0'
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/ruff-0.1.3-py312h60fbdae_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/ruff-0.1.5-py312h60fbdae_0.conda
   hash:
-    md5: f7480f5842a3856bf071a20641f4fa48
-    sha256: d93bd89ee69d6186cd353093a20e32e41c1fcb9c42084a08978d93262c8b1e1f
+    md5: 0c9a42fcc3a43981469e40943c54cf61
+    sha256: 3f71f687e38c4c03a656afbe81e009aa69b7a86678ba05d7f5bb54e9536bd699
   optional: false
   category: main
   build: py312h60fbdae_0
@@ -28332,8 +28332,8 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 4710102
-  timestamp: 1698381156587
+  size: 4746907
+  timestamp: 1699508620199
 - name: s2n
   version: 1.3.55
   manager: conda
