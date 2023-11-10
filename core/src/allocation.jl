@@ -8,7 +8,7 @@ function get_node_id_mapping(
     subnetwork_node_ids::Vector{Int},
     source_edge_ids::Vector{Int},
 )
-    (; lookup, connectivity, user) = p
+    (; lookup, connectivity) = p
     (; graph_flow, edge_ids_flow_inv) = connectivity
 
     # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
