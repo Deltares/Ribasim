@@ -51,7 +51,7 @@
                 "dtmax": null,
                 "force_dtmin": false,
                 "abstol": 1.0e-6,
-                "reltol": 0.001,
+                "reltol": 1.0e-5,
                 "maxiters": 1000000000,
                 "sparse": true,
                 "autodiff": true
