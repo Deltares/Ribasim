@@ -1,0 +1,39 @@
+flowchart TB
+modeler([Modeler]):::user
+
+api["Ribasim Python\n[python]"]:::system
+modeler-->|prepare model|api
+
+subgraph ribasimBoundary[Ribasim]
+    ribasim["Ribasim.jl\n[julia]"]:::system
+    libribasim["libribasim\n[julia + python + BMI]"]:::system
+    cli["Ribasim CLI\n[julia]"]:::system
+    cli-->ribasim
+    libribasim-->ribasim
+end
+modeler-->|start|cli
+modeler-->|coupled simulation|libribasim
+
+subgraph qgisBoundary[QGIS]
+    QGIS[QGIS Application]:::system_ext
+    qgisPlugin["Ribasim QGIS plugin\n[python]"]:::system
+    QGIS-->qgisPlugin
+end
+modeler-->|prepare model|qgisBoundary
+
+model[("input model data\n[toml + geopackage + arrow]")]:::system
+qgisPlugin-->|read/write|model
+api-->|read/write|model
+ribasim-->|simulate|model
+
+output[("simulation output\n[arrow]")]:::system
+ribasim-->|write|output
+
+class qgisBoundary,ribasimBoundary boundary
+
+%% class definitions for C4 model
+classDef default stroke-width:1px,stroke:white,color:white
+classDef system fill:#1168bd
+classDef user fill:#08427b
+classDef system_ext fill:#999999
+classDef boundary fill:transparent,stroke-dasharray:5 5,stroke:black,color:black
