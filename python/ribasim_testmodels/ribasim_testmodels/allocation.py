@@ -621,8 +621,8 @@ def simple_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [3],
-                "flow_rate": [4.0e-3],
-                "max_flow_rate": [4.0e-3],
+                "flow_rate": [1.5e-3],
+                "max_flow_rate": [1.5e-3],
             }
         )
     )
@@ -651,7 +651,9 @@ def simple_subnetwork_model():
     )
 
     # Setup allocation:
-    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+    allocation = ribasim.Allocation(
+        use_allocation=True, timestep=86400, objective_type="quadratic_absolute"
+    )
 
     model = ribasim.Model(
         node=node,
