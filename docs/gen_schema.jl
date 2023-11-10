@@ -1,10 +1,8 @@
 """
 Generate JSON schemas for Ribasim input
 
-Run with `julia --project=docs docs/gen_schema.jl`
+Runs as part of `pixi run codegen`
 """
-
-pushfirst!(LOAD_PATH, normpath(@__DIR__, "../core"))
 
 using Ribasim
 using JSON3
