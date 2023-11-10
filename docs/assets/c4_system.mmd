@@ -1,7 +1,7 @@
 flowchart TB
 modeler([Modeler]):::user
 
-api["Ribasim Python API\n[python]"]:::system
+api["Ribasim Python\n[python]"]:::system
 modeler-->|prepare model|api
 
 ribasim["Ribasim\n[julia]"]:::system
@@ -25,8 +25,8 @@ ribasim-->|write|output
 class qgisBoundary boundary
 
 %% class definitions for C4 model
-classDef default stroke-width:1px,stroke:white,color:white;
-classDef system fill:#1168bd;
-classDef user fill:#08427b;
-classDef system_ext fill:#999999;
-classDef boundary fill:transparent,stroke-dasharray:5 5,stroke:black,color:black;
+classDef default stroke-width:1px,stroke:white,color:white
+classDef system fill:#1168bd
+classDef user fill:#08427b
+classDef system_ext fill:#999999
+classDef boundary fill:transparent,stroke-dasharray:5 5,stroke:black,color:black
