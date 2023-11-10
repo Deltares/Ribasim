@@ -589,7 +589,10 @@ function valid_fractional_flow(
                 if fraction <= 0
                     errors = true
                     @error(
-                        "Fractional flow nodes must have non-negative fractions, got $fraction for #$ff_id."
+                        "Fractional flow nodes must have non-negative fractions.",
+                        fraction,
+                        node_id = ff_id,
+                        control_state,
                     )
                 end
             end
@@ -597,7 +600,10 @@ function valid_fractional_flow(
             if fraction_sum ≉ 1
                 errors = true
                 @error(
-                    "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
+                    "The sum of fractional flow fractions leaving a node must be ≈1.",
+                    fraction_sum,
+                    node_id = src_id,
+                    control_state,
                 )
             end
         end
