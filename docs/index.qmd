@@ -44,6 +44,11 @@ Currently only Windows builds for `ribasim_cli.zip` are available.
 
 See [Usage](core/usage.qmd) for more information.
 
+```{mermaid}
+%%| file: assets/c4_system.mmd
+%%| fig-cap: "System overview of Ribasim"
+```
+
 # Status
 
 The initial focus is on being able to
