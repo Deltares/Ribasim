@@ -1,3 +1,4 @@
+using Test
 using Ribasim
 using Graphs: DiGraph, add_edge!
 using Dictionaries: Indices
