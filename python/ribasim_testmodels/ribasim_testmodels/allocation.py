@@ -285,6 +285,7 @@ def subnetwork_model():
 
 
 def looped_subnetwork_model():
+    """Create a user testmodel representing a subnetwork containing a loop in the topology."""
     # Setup the nodes:
     xy = np.array(
         [
@@ -532,7 +533,8 @@ def looped_subnetwork_model():
     return model
 
 
-def simple_subnetwork_model():
+def minimal_subnetwork_model():
+    """Create a subnetwork that is minimal with non-trivial allocation."""
     xy = np.array(
         [
             (0.0, 0.0),  # 1: FlowBoundary

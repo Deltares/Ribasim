@@ -24,11 +24,6 @@ function get_node_id_mapping(
         if node_type in [:user, :basin]
             add_allocgraph_node = true
 
-            if node_type == :user
-                user_idx = findsorted(user.node_id, subnetwork_node_id)
-                user.allocation_optimized[user_idx] = true
-            end
-
         elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
             # Each junction (that is, a node with more than 2 neighbors)
             # in the subnetwork gets an allocgraph node
@@ -809,7 +804,7 @@ and flows, solve the allocation problem and assign the results to the users.
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
     (; user) = p
     (; problem) = allocation_model
-    (; priorities, record) = user
+    (; priorities) = user
 
     set_source_flows!(allocation_model, p)
 

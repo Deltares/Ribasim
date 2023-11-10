@@ -457,12 +457,8 @@ $$
 From left to right:
 
 - The first reduction factor lets the user abstraction go smoothly to $0$ as the source basin dries out;
-- The second reduction factor lets the user abstraction go smoothly ro $0$ as the source basin level approaches the minimum source basin level (from above);
+- The second reduction factor lets the user abstraction go smoothly to $0$ as the source basin level approaches the minimum source basin level (from above);
 - The last term is the sum of the allocations over the priorities. If the current demand happens to be lower than the allocation at some priority, the demand is taken instead.
-
-::: {.callout-note}
-Currently $l_{\min}$ is a priority of a user, in the future this will become a property of a basin.
-:::
 
 Users also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the user:
 
