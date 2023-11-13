@@ -1,3 +1,4 @@
+using Test
 import Ribasim
 using Dates: Date
 

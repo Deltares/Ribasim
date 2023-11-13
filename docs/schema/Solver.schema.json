@@ -80,7 +80,7 @@
         "reltol": {
             "format": "double",
             "type": "number",
-            "default": 0.001
+            "default": 1.0e-5
         },
         "maxiters": {
             "format": "default",
