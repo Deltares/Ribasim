@@ -16,3 +16,37 @@ can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) un
 %%| file: ../assets/c4_component_ribasim.mmd
 %%| fig-cap: "Component overview of Ribasim"
 ```
+
+# The simulation loop
+
+`Ribasim.jl` in the above figure can be divided into 3 parts:
+
+- Model initialization
+- Running the simulation loop
+- Writing the output files
+
+The figure below gives a more detailed description of the simulation loop in the form of a [sequence diagram](https://en.wikipedia.org/wiki/Sequence_diagram).
+
+```{mermaid}
+sequenceDiagram
+    participant Sim as Process: Ribasim simulation
+    participant Param as Data: Parameters
+    participant State as Data: State
+    participant Optim as Process: Allocation optimization
+    loop Simulation loop (OrdinaryDiffEq.jl)
+        opt if allocation timestep has passed:<br>Allocation optimization, per allocation network (JuMP.jl, HiGHS)
+            Param-->>Optim: Input
+            State-->>Optim: Input
+            Optim->>Optim: Optimize Basin allocations if below target level
+            Optim->>Optim: Optimize User allocation, per priority
+            Optim-->>Param: Set allocated flow rates
+        end
+        State-->>Sim: Input
+        Param-->>Sim: Input
+        Sim-->>Param: Parameter updates by control
+        Sim->>Sim: Compute flows over edges per node type
+        Sim-->>Param: Set flows
+        Sim->>Sim: Time integration step
+        Sim-->>State: Update state
+  end
+```
