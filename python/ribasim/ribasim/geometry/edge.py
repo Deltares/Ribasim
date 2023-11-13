@@ -36,7 +36,7 @@ class Edge(SpatialTableModel[TableT], Generic[TableT]):
     """
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
-        return (self.static.edge_type == edge_type).to_numpy()
+        return (self.df.edge_type == edge_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:
         ax = kwargs.get("ax", None)
@@ -70,13 +70,13 @@ class Edge(SpatialTableModel[TableT], Generic[TableT]):
         where_flow = self.get_where_edge_type("flow")
         where_control = self.get_where_edge_type("control")
 
-        self.static[where_flow].plot(**kwargs_flow)
+        self.df[where_flow].plot(**kwargs_flow)
 
         if where_control.any():
-            self.static[where_control].plot(**kwargs_control)
+            self.df[where_control].plot(**kwargs_control)
 
         # Determine the angle for every caret marker and where to place it.
-        coords = shapely.get_coordinates(self.static.geometry).reshape(-1, 2, 2)
+        coords = shapely.get_coordinates(self.df.geometry).reshape(-1, 2, 2)
         x, y = np.mean(coords, axis=1).T
         dx, dy = np.diff(coords, axis=1)[:, 0, :].T
         angle = np.degrees(np.arctan2(dy, dx)) - 90
@@ -85,7 +85,7 @@ class Edge(SpatialTableModel[TableT], Generic[TableT]):
         # right is tedious.
         color = []
 
-        for i in range(len(self.static)):
+        for i in range(len(self.df)):
             if where_flow[i]:
                 color.append(color_flow)
             elif where_control[i]:

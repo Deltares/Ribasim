@@ -6,13 +6,14 @@ from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
     Any,
+    Callable,
     Dict,
     Generator,
     Generic,
     List,
-    Optional,
     Set,
     Tuple,
+    Type,
     TypeVar,
 )
 
@@ -26,7 +27,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     ValidationInfo,
-    field_validator,
     model_serializer,
     model_validator,
 )
@@ -105,7 +105,7 @@ class FileModel(BaseModel, ABC):
             model.
     """
 
-    filepath: Optional[Path] = Field(default=None, exclude=True)
+    filepath: Path | None = Field(default=None, exclude=True, repr=False)
 
     @model_validator(mode="before")
     @classmethod
@@ -114,23 +114,21 @@ class FileModel(BaseModel, ABC):
         if isinstance(value, (Dict,)):
             # Pydantic Model init requires a dict
             filepath = value.get("filepath", None)
-            if filepath is None:
-                return value
+            if filepath is not None:
+                filepath = Path(filepath)
+            data = cls._load(filepath)
+            value.update(data)
+            return value
         elif isinstance(value, (Path, str)):
             # Pydantic Model init requires a dict
-            filepath = value
+            data = cls._load(Path(value))
+            data["filepath"] = value
+            return data
         else:
             return value
 
-        data = cls._load(filepath)
-        # data["filepath"] = filepath
-        # TODO Validation always runs, not just on init.
-        # Make sure an existing model survives, without
-        # its DataFrame being overwritten.
-        return data
-
     @abstractmethod
-    def _save(self) -> None:
+    def _save(self, directory: DirectoryPath) -> None:
         """Save this instance to disk.
 
         This method needs to be implemented by any class deriving from
@@ -144,7 +142,7 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def _load(cls, filepath: Path) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
         """Load the data at filepath and returns it as a dictionary.
 
         If a derived FileModel does not load data from disk, this should
@@ -163,19 +161,19 @@ class FileModel(BaseModel, ABC):
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
-    sort_keys: List[str] = Field(default=["node_id"], exclude=True, repr=False)
 
     @model_serializer
-    def set_model(self) -> str | None:
-        return self.tablename() if self.filepath is None else self.filepath
+    def set_model(self) -> Path | None:
+        return self.filepath
 
-    def tablename(self) -> str:
+    @classmethod
+    def tablename(cls) -> str:
         """Retrieve tablename based on attached Schema.
 
         NodeSchema -> Schema
         TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
         """
-        names: List[str] = re.sub("([A-Z]+)", r" \1", str(self.schema())).split()
+        names: List[str] = re.sub("([A-Z]+)", r" \1", str(cls.tableschema())).split()
         if len(names) > 2:
             return f"{''.join(names[:-2])}{delimiter}{names[-2].lower()}"
         else:
@@ -216,23 +214,25 @@ class TableModel(FileModel, Generic[TableT]):
         return node_ids
 
     @classmethod
-    def _load(cls, filepath: str | Path) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
         db = context_file_loading.get().get("database")
-        if filepath is not None and Path(filepath).exists():
-            df = cls._from_arrow(filepath)
+        if filepath is not None:
+            adf = cls._from_arrow(filepath)
             # TODO Store filepath?
-        elif filepath is not None and db is not None:
-            df = cls._from_db(db, str(filepath))
+            return {"df": adf}
+        elif db is not None:
+            ddf = cls._from_db(db, cls.tablename())
+            return {"df": ddf}
         else:
-            df = None
+            return {}
 
-        return {"df": df}
-
-    def _save(self, directory: DirectoryPath):
+    def _save(
+        self, directory: DirectoryPath, sort_keys: List[str] = ["node_id"]
+    ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.df is not None and db_path is not None:
-            self.sort()
+            self.sort(sort_keys)
             self._write_table(db_path)
 
     def _write_table(self, temp_path: Path) -> None:
@@ -245,17 +245,18 @@ class TableModel(FileModel, Generic[TableT]):
             SQLite connection to the database.
         """
         table = self.tablename()
-        with closing(connect(temp_path)) as connection:
-            self.df.to_sql(table, connection, index=False, if_exists="replace")
+        if self.df is not None:  # double check to make mypy happy
+            with closing(connect(temp_path)) as connection:
+                self.df.to_sql(table, connection, index=False, if_exists="replace")
 
-            # Set geopackage attribute table
-            with closing(connection.cursor()) as cursor:
-                sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
-                cursor.execute(sql, (table, "attributes", table))
-            connection.commit()
+                # Set geopackage attribute table
+                with closing(connection.cursor()) as cursor:
+                    sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
+                    cursor.execute(sql, (table, "attributes", table))
+                connection.commit()
 
     @classmethod
-    def _from_db(cls, path: FilePath, table: str) -> DataFrame | None:
+    def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:
         with connect(path) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
@@ -266,28 +267,32 @@ class TableModel(FileModel, Generic[TableT]):
             return df
 
     @classmethod
-    def _from_arrow(cls, path: FilePath) -> DataFrame:
+    def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
         return pd.read_feather(path)
 
-    def sort(self):
+    def sort(self, sort_keys: List[str] = ["node_id"]):
         """Sort all input tables as required.
 
         Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
+            self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
 
-    def schema(self):
-        """Retrieve Pandera Schema."""
-        optionalfieldtype = self.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]  # First of Union
-        T = fieldtype.__args__[0]
+    @classmethod
+    def tableschema(cls) -> TableT:
+        """Retrieve Pandera Schema.
+
+        The type of the field `df` is known to always be an Optional[DataFrame[TableT]]]
+        """
+        optionalfieldtype = cls.model_fields["df"].annotation
+        fieldtype = optionalfieldtype.__args__[0]  # type: ignore
+        T: TableT = fieldtype.__args__[0]
         return T
 
     def record(self):
         """Retrieve Pydantic Record used in Pandera Schema."""
-        T = self.schema()
+        T = self.tableschema()
         return T.Config.dtype.type
 
     def columns(self):
@@ -321,63 +326,21 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf.to_file(path, layer=self.tablename(), driver="GPKG")
 
-    def sort(self):
+    def sort(self, sort_keys: List[str] = ["node_id"]):
         self.df.sort_index(inplace=True)
 
 
 class NodeModel(BaseModel):
     """Base class to handle combining the tables for a single node type."""
 
-    fset: Set[str] = Field(default=set[str](), exclude=True, repr=False)
+    _sort_keys: Dict[str, List[str]] = {}
 
-    def __init__(self, *args, **kwargs):
-        # Remove the defaults as provided by `check_node`
-        # This prevents the fields from being defined in
-        # the .toml when a model is written.
-        super().__init__(*args, **kwargs)
-
-        self.model_fields_set.clear()
-        for field in self.fset:
-            self.model_fields_set.add(field)
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_node(cls, value: Any, info: ValidationInfo) -> Any:
-        """Set tablename as default input when nothing is provided."""
-        if isinstance(value, (Dict,)):
-            fields = set[str]()
-            for key in cls.fields():
-                layername = cls._layername(key)
-                path = value.get(key, None)
-                if path is None:
-                    value[key] = layername
-
-                # fields.add(key)
-            value["fset"] = fields
-        return value
-
-    # you can select multiple fields, or use '*' to select all fields
-    @field_validator("*")
-    @classmethod
-    def check_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
-        """Forward check to always set default sort keys."""
-        if isinstance(v, TableModel):
-            default = cls.model_fields[info.field_name].default
-            if (
-                default is not None
-                and hasattr(default, "sort_keys")
-                and hasattr(v, "sort_keys")
-            ):
-                v.sort_keys = default.sort_keys
-        return v
-
-    @classmethod
-    def fields(cls) -> List[str]:
-        """Return the names of the fields contained in the Model."""
-        # Prevent the `fset` attribute from being used in `_save`.
-        fields = set(cls.model_fields.keys())
-        fields.discard("fset")
-        return list(fields)
+    @model_serializer(mode="wrap")
+    def set_modeld(
+        self, serializer: Callable[[Type["NodeModel"]], Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        content = serializer(self)
+        return dict(filter(lambda x: x[1], content.items()))
 
     @classmethod
     def get_input_type(cls):
@@ -409,5 +372,6 @@ class NodeModel(BaseModel):
 
     def _save(self, directory: DirectoryPath):
         for field in self.fields():
-            if field not in self.fset:
-                getattr(self, field)._save(directory)
+            getattr(self, field)._save(
+                directory, sort_keys=self._sort_keys.get("field", ["node_id"])
+            )

@@ -105,7 +105,7 @@ class Node(SpatialTableModel[TableT], Generic[TableT]):
             "": "k",
         }
 
-        for nodetype, df in self.static.df.groupby("type"):
+        for nodetype, df in self.df.groupby("type"):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]
@@ -118,10 +118,8 @@ class Node(SpatialTableModel[TableT], Generic[TableT]):
                 label=nodetype,
             )
 
-        geometry = self.static.df["geometry"]
-        for text, xy in zip(
-            self.static.df.index, np.column_stack((geometry.x, geometry.y))
-        ):
+        geometry = self.df["geometry"]
+        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax

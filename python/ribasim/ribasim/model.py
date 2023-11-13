@@ -36,8 +36,8 @@ from ribasim.types import FilePath
 
 
 class Database(FileModel, NodeModel):
-    node: Node[NodeSchema] = Node[NodeSchema]()
-    edge: Edge[EdgeSchema] = Edge[EdgeSchema]()
+    node: Node[NodeSchema] = Field(default_factory=Node[NodeSchema])
+    edge: Edge[EdgeSchema] = Field(default_factory=Edge[EdgeSchema])
 
     def n_nodes(self):
         if self.node.df is not None:
@@ -48,8 +48,9 @@ class Database(FileModel, NodeModel):
         return n
 
     @classmethod
-    def _load(cls, filepath: Path) -> Dict[str, Any]:
-        context_file_loading.get()["database"] = filepath
+    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+        if filepath is not None:
+            context_file_loading.get()["database"] = filepath
         return {}
 
     @classmethod
@@ -178,9 +179,11 @@ class Model(FileModel):
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
-        content = self.model_dump(exclude_unset=True, round_trip=True)
+        content = self.model_dump(exclude_unset=True, exclude_none=True)
+        # Filter empty dicts (default Nodes)
+        content = dict(filter(lambda x: x[1], content.items()))
+
         fn = directory / "ribasim.toml"
-        print(content)
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
@@ -266,7 +269,7 @@ class Model(FileModel):
         self.validate_model_node_field_ids()
         self.validate_model_node_ids()
 
-    def write(self, directory: FilePath) -> None:
+    def write(self, directory: FilePath) -> Path:
         """
         Write the contents of the model to a database and a TOML configuration file.
 
@@ -286,28 +289,19 @@ class Model(FileModel):
         context_file_loading.set({})
         return fn
 
-    def sort(self):
-        """
-        Sort all input tables as required.
-
-        Tables are sorted by "node_id", unless otherwise specified.
-        Sorting is done automatically before writing the table.
-        """
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.sort()
-
     @classmethod
-    def _load(cls, filepath: FilePath) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
         context_file_loading.set({})
 
-        path = Path(filepath)
-        with open(path, "rb") as f:
-            config = tomli.load(f)
+        if filepath is not None:
+            with open(filepath, "rb") as f:
+                config = tomli.load(f)
 
-        config["database"] = path.parent / config["database"]
-        return config
+            # Convert relative path to absolute path
+            config["database"] = filepath.parent / config["database"]
+            return config
+        else:
+            return {}
 
     @model_validator(mode="after")
     def reset_contextvar(self) -> "Model":
@@ -316,7 +310,7 @@ class Model(FileModel):
         return self
 
     @classmethod
-    def from_toml(cls, path: FilePath) -> "Model":
+    def from_toml(cls, path: Path | str) -> "Model":
         """
         Initialize a model from the TOML configuration file.
 
@@ -329,7 +323,7 @@ class Model(FileModel):
         -------
         model : Model
         """
-        kwargs = cls._load(path)
+        kwargs = cls._load(Path(path))
         return cls(**kwargs)
 
     def plot_control_listen(self, ax):
@@ -343,18 +337,20 @@ class Model(FileModel):
                 data_node_id = condition[condition.node_id == node_id]
 
                 for listen_feature_id in data_node_id.listen_feature_id:
-                    point_start = self.node.df.iloc[node_id - 1].geometry
+                    point_start = self.database.node.df.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.node.df.iloc[listen_feature_id - 1].geometry
+                    point_end = self.database.node.df.iloc[
+                        listen_feature_id - 1
+                    ].geometry
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
         if self.pid_control:
             static = self.pid_control.static
             time = self.pid_control.time
-            node_static = self.node.static
+            node_static = self.database.node.static
 
             for table in [static, time]:
                 if table is None:
@@ -401,9 +397,9 @@ class Model(FileModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
-        self.edge.plot(ax=ax, zorder=2)
+        self.database.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
-        self.node.plot(ax=ax, zorder=3)
+        self.database.node.plot(ax=ax, zorder=3)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
@@ -412,11 +408,11 @@ class Model(FileModel):
     def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
-        node_types, node_clss = Model.get_node_types()
+        node_types, node_clss = zip(self.nodes().items())
 
         truth_dict = {"T": ">", "F": "<"}
 
-        if not self.discrete_control:
+        if self.discrete_control.condition.df is None:
             raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
@@ -428,8 +424,10 @@ class Model(FileModel):
 
             out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
 
-            conditions = self.discrete_control.condition[
-                self.discrete_control.condition.node_id == control_node_id
+            if self.discrete_control.condition.df is None:
+                return
+            conditions = self.discrete_control.condition.df[
+                self.discrete_control.condition.df.node_id == control_node_id
             ]
 
             for truth_value, (index, condition) in zip(
@@ -437,7 +435,7 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.node.df.loc[listen_feature_id, "type"]
+                listen_node_type = self.database.node.df.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -447,12 +445,12 @@ class Model(FileModel):
             padding = len(enumeration) * " "
             out += f'\n{padding}This yielded control state "{control_state}":\n'
 
-            affect_node_ids = self.edge.static[
-                self.edge.static.from_node_id == control_node_id
+            affect_node_ids = self.database.edge.df[
+                self.database.edge.df.from_node_id == control_node_id
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.node.df.loc[affect_node_id, "type"]
+                affect_node_type = self.database.node.df.loc[affect_node_id, "type"]
                 affect_node_type_snake_case = node_clss[
                     node_types.index(affect_node_type)
                 ].get_toml_key()
@@ -461,8 +459,8 @@ class Model(FileModel):
 
                 static = getattr(self, affect_node_type_snake_case).static
                 row = static[
-                    (static.node_id == affect_node_id)
-                    & (static.control_state == control_state)
+                    (static.df.node_id == affect_node_id)
+                    & (static.df.control_state == control_state)
                 ].iloc[0]
 
                 names_and_values = []
