@@ -11,3 +11,8 @@ The core is implemented in the [Julia programming language](https://julialang.or
 can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the
 `core/` folder. For developers we also advise to read the
 [developer documentation](../contribute/core.qmd).
+
+```{mermaid}
+%%| file: ../assets/c4_component_ribasim.mmd
+%%| fig-cap: "Component overview of Ribasim"
+```

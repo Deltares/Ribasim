@@ -277,6 +277,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
         push!(
             connectivity.allocation_models,
             AllocationModel(
+                allocation_network_id,
                 p,
                 allocation_group_node.fid,
                 source_edge_ids,
@@ -601,10 +602,10 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
-        time = Vector{Float64}(),
-        control_node_id = Vector{Int}(),
-        truth_state = Vector{String}(),
-        control_state = Vector{String}(),
+        time = Float64[],
+        control_node_id = Int[],
+        truth_state = String[],
+        control_state = String[],
     )
 
     return DiscreteControl(
@@ -773,7 +774,17 @@ function User(db::DB, config::Config)::User
         error("Errors occurred when parsing User data.")
     end
 
-    allocated = [zeros(length(priorities)) for id in node_ids]
+    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+
+    record = (
+        time = Float64[],
+        allocation_network_id = Int[],
+        user_node_id = Int[],
+        priority = Int[],
+        demand = Float64[],
+        allocated = Float64[],
+        abstracted = Float64[],
+    )
 
     return User(
         node_ids,
@@ -783,6 +794,7 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
+        record,
     )
 end
 

@@ -167,6 +167,11 @@ function BMI.finalize(model::Model)::Model
     path = results_path(config, results.control)
     write_arrow(path, table, compress)
 
+    # allocation
+    table = allocation_table(model)
+    path = results_path(config, results.allocation)
+    write_arrow(path, table, compress)
+
     @debug "Wrote results."
     return model
 end
@@ -217,7 +222,7 @@ function create_callbacks(
         allocation_cb = PeriodicCallback(
             update_allocation!,
             config.allocation.timestep;
-            initial_affect = true,
+            initial_affect = false,
         )
         push!(callbacks, allocation_cb)
     end

@@ -20,6 +20,11 @@
             "type": "string",
             "default": "results/control.arrow"
         },
+        "allocation": {
+            "format": "default",
+            "type": "string",
+            "default": "results/allocation.arrow"
+        },
         "outstate": {
             "format": "default",
             "anyOf": [
@@ -47,6 +52,7 @@
         "basin",
         "flow",
         "control",
+        "allocation",
         "compression",
         "compression_level"
     ]

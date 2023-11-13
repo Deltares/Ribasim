@@ -55,6 +55,15 @@ end
     )
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[2:end]
+
+    # inflow = outflow over FractionalFlow
+    t = table.time[1]
+    @test length(p.fractional_flow.node_id) == 3
+    for id in p.fractional_flow.node_id
+        inflow = only(table.flow[table.to_node_id .== id .&& table.time .== t])
+        outflow = only(table.flow[table.from_node_id .== id .&& table.time .== t])
+        @test inflow == outflow
+    end
 end
 
 @testset "basic transient model" begin

@@ -72,6 +72,7 @@
                 "basin": "results/basin.arrow",
                 "flow": "results/flow.arrow",
                 "control": "results/control.arrow",
+                "allocation": "results/allocation.arrow",
                 "outstate": null,
                 "compression": "zstd",
                 "compression_level": 6
