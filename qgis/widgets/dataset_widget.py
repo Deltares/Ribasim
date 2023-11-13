@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, List, Set
 
 import numpy as np
+import toml
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -129,12 +130,12 @@ class DatasetWidget(QWidget):
         self.dataset_tree.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.dataset_line_edit = QLineEdit()
         self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
-        self.new_geopackage_button = QPushButton("New")
-        self.open_geopackage_button = QPushButton("Open")
+        self.new_ribasim_model_button = QPushButton("New")
+        self.open_ribasim_model_button = QPushButton("Open")
         self.remove_button = QPushButton("Remove from Dataset")
         self.add_button = QPushButton("Add to QGIS")
-        self.new_geopackage_button.clicked.connect(self.new_geopackage)
-        self.open_geopackage_button.clicked.connect(self.open_geopackage)
+        self.new_ribasim_model_button.clicked.connect(self.new_ribasim_model)
+        self.open_ribasim_model_button.clicked.connect(self.open_ribasim_model)
         self.suppress_popup_checkbox = QCheckBox("Suppress attribute form pop-up")
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
@@ -146,8 +147,8 @@ class DatasetWidget(QWidget):
         dataset_row = QHBoxLayout()
         layer_row = QHBoxLayout()
         dataset_row.addWidget(self.dataset_line_edit)
-        dataset_row.addWidget(self.open_geopackage_button)
-        dataset_row.addWidget(self.new_geopackage_button)
+        dataset_row.addWidget(self.open_ribasim_model_button)
+        dataset_row.addWidget(self.new_ribasim_model_button)
         dataset_layout.addLayout(dataset_row)
         dataset_layout.addWidget(self.dataset_tree)
         dataset_layout.addWidget(self.suppress_popup_checkbox)
@@ -158,7 +159,7 @@ class DatasetWidget(QWidget):
 
     @property
     def path(self) -> str:
-        """Returns currently active path to GeoPackage"""
+        """Returns currently active path to Ribasim model"""
         return self.dataset_line_edit.text()
 
     def explode_and_connect(self) -> None:
@@ -241,7 +242,10 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        nodes = load_nodes_from_geopackage(self.path)
+        with open(self.path, "r") as f:
+            model_filename = toml.load(f)["database"]
+            geo_path = Path(self.path).parent.joinpath(model_filename)
+        nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
         name = str(Path(self.path).stem)
@@ -255,10 +259,12 @@ class DatasetWidget(QWidget):
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
 
-    def new_geopackage(self) -> None:
-        """Create a new GeoPackage file, and set it as the active dataset."""
-        path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.gpkg")
+    def new_ribasim_model(self) -> None:
+        """Create a new Ribasim model file, and set it as the active dataset."""
+        path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
+            # TODO: Add start and end date to toml writing
+            # TODO: Write toml file besides the geopackage
             self.dataset_line_edit.setText(path)
             for input_type in (Node, Edge):
                 instance = input_type.create(path, self.parent.crs, names=[])
@@ -266,10 +272,10 @@ class DatasetWidget(QWidget):
             self.load_geopackage()
             self.parent.toggle_node_buttons(True)
 
-    def open_geopackage(self) -> None:
-        """Open a GeoPackage file, containing Ribasim input."""
+    def open_ribasim_model(self) -> None:
+        """Open a Ribasim model file."""
         self.dataset_tree.clear()
-        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.gpkg")
+        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
