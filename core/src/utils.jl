@@ -510,10 +510,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
             if id_ == id
                 push!(control_states_discrete_control, control_state)
-            end
 
-            if length(truth_state) != n_conditions
-                push!(truth_states_wrong_length, truth_state)
+                if length(truth_state) != n_conditions
+                    push!(truth_states_wrong_length, truth_state)
+                end
             end
         end
 
