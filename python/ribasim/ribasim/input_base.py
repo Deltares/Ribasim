@@ -26,7 +26,6 @@ from pydantic import (
     ConfigDict,
     DirectoryPath,
     Field,
-    ValidationInfo,
     model_serializer,
     model_validator,
 )
@@ -109,7 +108,7 @@ class FileModel(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def check_filepath(cls, value: Any, info: ValidationInfo) -> Any:
+    def check_filepath(cls, value: Any) -> Any:
         # Enable initialization with a Path.
         if isinstance(value, (Dict,)):
             # Pydantic Model init requires a dict
@@ -199,7 +198,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_validator(mode="before")
     @classmethod
-    def check_dataframe(cls, value: Any, info: ValidationInfo) -> Any:
+    def check_dataframe(cls, value: Any) -> Any:
         # Enable initialization with a DataFrame.
         if isinstance(value, (pd.DataFrame, gpd.GeoDataFrame)):
             value = {"df": value}

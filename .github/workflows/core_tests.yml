@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         julia_version:
-          - "1.9"
+          - "~1.10.0-0"
         os:
           - ubuntu-latest
           - macOS-latest
@@ -26,10 +26,9 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.0
         with:
           pixi-version: "latest"
-          cache: true
       - name: Prepare pixi
         run: pixi run install-without-pre-commit
       - name: Prepare model input

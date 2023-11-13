@@ -49,17 +49,16 @@ $$
 \mathbf{g}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1})
 $$
 by iterating $\mathbf{g}$ on an initial guess of $\mathbf{w}_{n+1}$;
-- Newton-Raphson iterations: approximate $\mathbf{w}_{n+1}$ as a root of the function
+- Newton iterations: approximate $\mathbf{w}_{n+1}$ as a root of the function
 $$
 \mathbf{h}(\mathbf{x}) = \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{x},t_{n+1}) - \mathbf{x},
 $$
 by iteratively finding the root of its linearized form:
-$$
+
 \begin{align}
 \mathbf{0} =& \mathbf{h}(\mathbf{w}_{n+1}^k) + \mathbf{J}(\mathbf{h})(\mathbf{w}_{n+1}^k)(\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k) \\
 =& \mathbf{w}_n + (t_{n+1}-t_n)\mathbf{f}(\mathbf{w}_{n+1}^k,t_{n+1}) - \mathbf{w}_{n+1}^k \\ +&\left[(t_{n+1}-t_n)\mathbf{J}(\mathbf{f})(\mathbf{w}_{n+1}^k)-\mathbf{I}\right](\mathbf{w}_{n+1}^{k+1}-\mathbf{w}_{n+1}^k).
 \end{align}
-$$ {#eq-newtoniter}
 Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and solving a linear system per iteration.
 
 # The advantage of implicit methods
@@ -67,7 +66,7 @@ Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and s
 The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly trough the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
 
 # Jacobian computations
-The iterations @eq-newtoniter require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](equations.qmd#the-jacobian).
+The Newton iterations above require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](equations.qmd#the-jacobian).
 
 There are several ways to compute the Jacobian:
 
@@ -77,7 +76,7 @@ There are several ways to compute the Jacobian:
 
 # Continuity considerations
 
-The convergence of the Newton-Raphson method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of $\mathbf{f}$ around the initial guess and root to find. An important aspect is the smoothness of $\mathbf{f}$. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below. the Manning resistance is not mentioned here since it is given by an analytical expression.
+The convergence of the Newton method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of $\mathbf{f}$ around the initial guess and root to find. An important aspect is the smoothness of $\mathbf{f}$. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below. the Manning resistance is not mentioned here since it is given by an analytical expression.
 
 Control mechanisms can change parameters of $\mathbf{f}$ discontinuously, leading to discontinuities of $\mathbf{f}$. This however does not yield problems for the time integration methods in `DifferentialEquations.jl`, since the [callback mechanisms](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) used to change these parameters make the solver take these discontinuities into account.
 

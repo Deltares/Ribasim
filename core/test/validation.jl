@@ -1,9 +1,11 @@
+using Test
 using Ribasim
 using Graphs: DiGraph, add_edge!
 using Dictionaries: Indices
 using DataInterpolations: LinearInterpolation
 import SQLite
 using Logging
+using Test
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
@@ -168,7 +170,7 @@ if !Sys.islinux()
             @test !Ribasim.valid_fractional_flow(
                 connectivity.graph_flow,
                 fractional_flow.node_id,
-                fractional_flow.fraction,
+                fractional_flow.control_mapping,
             )
         end
 
@@ -178,10 +180,16 @@ if !Sys.islinux()
               "Node #7 combines fractional flow outneighbors with other outneigbor types."
         @test logger.logs[2].level == Error
         @test logger.logs[2].message ==
-              "Fractional flow nodes must have non-negative fractions, got -0.1 for #3."
+              "Fractional flow nodes must have non-negative fractions."
+        @test logger.logs[2].kwargs[:node_id] == 3
+        @test logger.logs[2].kwargs[:fraction] ≈ -0.1
+        @test logger.logs[2].kwargs[:control_state] == ""
         @test logger.logs[3].level == Error
         @test logger.logs[3].message ==
-              "The sum of fractional flow fractions leaving a node must be ≈1, got 0.4 for #7."
+              "The sum of fractional flow fractions leaving a node must be ≈1."
+        @test logger.logs[3].kwargs[:node_id] == 7
+        @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
+        @test logger.logs[3].kwargs[:control_state] == ""
     end
 end
 

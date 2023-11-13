@@ -425,6 +425,24 @@ return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | (optional)
 priority      | Int      | -            | sorted per node id
 
+## Allocation results
+
+The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
+
+column                | type
+--------------------- | -----
+time                  | DateTime
+allocation_network_id | Int
+user_node_id          | Int
+priority              | Int
+demand                | Float64
+allocated             | Float64
+abstracted            | Float64
+
+::: {.callout-note}
+Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
+:::
+
 # LevelBoundary
 
 Acts like an infinitely large basin where the level does not change by flow.
@@ -506,7 +524,7 @@ node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
 length        | Float64 | $m$          | positive
 manning_n     | Float64 | $s m^{-\frac{1}{3}}$          | positive
-profile_with  | Float64 | $m$          | positive
+profile_width | Float64 | $m$          | positive
 profile_slope | Float64 | -            | -
 control_state | String  | -            | (optional)
 

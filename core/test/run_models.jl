@@ -44,7 +44,7 @@ end
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) == 7
+    @test length(logger.logs) == 8
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 
@@ -55,6 +55,15 @@ end
     )
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[2:end]
+
+    # inflow = outflow over FractionalFlow
+    t = table.time[1]
+    @test length(p.fractional_flow.node_id) == 3
+    for id in p.fractional_flow.node_id
+        inflow = only(table.flow[table.to_node_id .== id .&& table.time .== t])
+        outflow = only(table.flow[table.from_node_id .== id .&& table.time .== t])
+        @test inflow == outflow
+    end
 end
 
 @testset "basic transient model" begin
@@ -65,7 +74,7 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[469.8923, 469.89038, 410.71472, 1427.4194] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()
 end
 
@@ -189,8 +198,8 @@ end
     @test only(model.integrator.sol(0day)) == 1000.0
     # constant user withdraws to 0.9m/900m3
     @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic user withdraws to 0.5m/500m3
-    @test only(model.integrator.sol(180day)) ≈ 500 atol = 1
+    # dynamic user withdraws to 0.5m/509m3
+    @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 
 @testset "ManningResistance" begin

@@ -115,22 +115,17 @@ function parse_static_and_time(
                     if parameter_name in time_interpolatables
                         val = LinearInterpolation([val, val], trivial_timespan)
                     end
-                    # If this row defines a control state, collect the parameter values in
-                    # the parameter_values vector
-                    if !ismissing(control_state)
-                        push!(parameter_values, val)
-                    end
+                    # Collect the parameter values in the parameter_values vector
+                    push!(parameter_values, val)
                     # The initial parameter value is overwritten here each time until the last row,
                     # but in the case of control the proper initial parameter values are set later on
                     # in the code
                     getfield(out, parameter_name)[node_idx] = val
                 end
-                # If a control state is associated with this row, add the parameter values to the
-                # control mapping
-                if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] =
-                        NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
-                end
+                # Add the parameter values to the control mapping
+                control_state_key = coalesce(control_state, "")
+                control_mapping[(node_id, control_state_key)] =
+                    NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -282,6 +277,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
         push!(
             connectivity.allocation_models,
             AllocationModel(
+                allocation_network_id,
                 p,
                 allocation_group_node.fid,
                 source_edge_ids,
@@ -606,10 +602,10 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
-        time = Vector{Float64}(),
-        control_node_id = Vector{Int}(),
-        truth_state = Vector{String}(),
-        control_state = Vector{String}(),
+        time = Float64[],
+        control_node_id = Int[],
+        truth_state = String[],
+        control_state = String[],
     )
 
     return DiscreteControl(
@@ -778,7 +774,17 @@ function User(db::DB, config::Config)::User
         error("Errors occurred when parsing User data.")
     end
 
-    allocated = [zeros(length(priorities)) for id in node_ids]
+    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+
+    record = (
+        time = Float64[],
+        allocation_network_id = Int[],
+        user_node_id = Int[],
+        priority = Int[],
+        demand = Float64[],
+        allocated = Float64[],
+        abstracted = Float64[],
+    )
 
     return User(
         node_ids,
@@ -788,6 +794,7 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
+        record,
     )
 end
 

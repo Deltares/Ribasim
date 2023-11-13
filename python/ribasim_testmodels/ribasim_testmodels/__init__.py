@@ -5,7 +5,9 @@ from typing import Callable, Dict
 import ribasim
 
 import ribasim_testmodels
-from ribasim_testmodels.allocation import (  # looped_subnetwork_model,
+from ribasim_testmodels.allocation import (
+    minimal_subnetwork_model,
+    # looped_subnetwork_model,
     subnetwork_model,
     user_model,
 )
@@ -73,6 +75,7 @@ __all__ = [
     "outlet_model",
     "user_model",
     "subnetwork_model",
+    "minimal_subnetwork_model",
     # Disable until this issue is resolved:
     # https://github.com/Deltares/Ribasim/issues/692
     # "looped_subnetwork_model",

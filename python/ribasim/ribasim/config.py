@@ -64,7 +64,7 @@ class Solver(BaseModel):
     dtmax: Optional[float] = None
     force_dtmin: bool = False
     abstol: float = 1e-06
-    reltol: float = 0.001
+    reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True
     autodiff: bool = True

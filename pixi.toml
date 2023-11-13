@@ -17,34 +17,25 @@ repository = "https://github.com/Deltares/Ribasim"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
-install-quartodoc = "pip install quartodoc"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
     "install-ribasim-api",
     "install-ribasim-testmodels",
-    "install-quartodoc",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-instantiate-julia-core = "julia --project=core --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia-docs = "julia --project=docs --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia-build = "julia --project=build/create_binaries --eval='using Pkg; Pkg.instantiate()'"
-instantiate-julia = { depends_on = [
-    "instantiate-julia-core",
-    "instantiate-julia-docs",
-    "instantiate-julia-build",
-] }
+instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 # Docs
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
-    "instantiate-julia-docs",
+    "instantiate-julia",
 ] }
-quartodoc-build = "cd docs && quartodoc build && rm objects.json"
-quarto-preview = { cmd = "export QUARTO_PYTHON=$(pwd)/.pixi/env/python.exe && quarto preview docs", depends_on = [
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
+quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
     "quartodoc-build",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "export QUARTO_PYTHON=$(pwd)/.pixi/env/python.exe && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
@@ -60,31 +51,49 @@ lint = { depends_on = [
     "mypy-ribasim-api",
 ] }
 # Build
-build-ribasim-cli = { cmd = "cd build/create_binaries && julia --project create_app.jl", depends_on = [
+build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
-    "instantiate-julia-build",
+    "instantiate-julia",
 ] }
-build-libribasim = { cmd = "cd build/create_binaries && julia --project create_lib.jl", depends_on = [
+build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
-    "instantiate-julia-build",
+    "instantiate-julia",
 ] }
-build = { depends_on = ["build-ribasim-cli", "build-libribasim"] }
+build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_binaries", depends_on = [
+    "generate-testmodels",
+    "instantiate-julia",
+] }
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
-    "instantiate-julia-core",
+    "instantiate-julia",
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-python = "" #datamodel-codegen --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
 generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl", depends_on = [
-    "instantiate-julia-docs",
+    "instantiate-julia",
 ] }
+generate-python = """\
+    datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py && \
+    datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/Config.schema.json --output python/ribasim/ribasim/config.py"""
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
+# Publish
+build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
+build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
+build-wheels = { depends_on = [
+    "build-ribasim-python-wheel",
+    "build-ribasim-api-wheel",
+] }
+publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", depends_on = [
+    "build-ribasim-python-wheel",
+] }
+publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends_on = [
+    "build-ribasim-api-wheel",
+] }
 
 [dependencies]
 build = "*"
@@ -99,20 +108,21 @@ pandera = "*"
 pip = "*"
 pre-commit = "*"
 pyarrow = "*"
-pydantic = ">=2"
+pydantic = "~=1.0"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.9, <3.12"
+python = ">=3.9"
+quartodoc = "*"
 ruff = "*"
 shapely = ">=2.0"
 tomli = "*"
 tomli-w = "*"
 twine = "*"
+typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
-typing-extensions = ">=4.6"
 
 [target.win-64.dependencies]
 quarto = "*"

@@ -5,7 +5,10 @@ import ribasim
 
 
 def pump_discrete_control_model() -> ribasim.Model:
-    """Set up a basic model with a pump controlled based on basin levels"""
+    """
+    Set up a basic model with a pump controlled based on basin levels.
+    The LinearResistance is deactivated when the levels are almost equal.
+    """
 
     # Set up the nodes:
     xy = np.array(
@@ -14,7 +17,8 @@ def pump_discrete_control_model() -> ribasim.Model:
             (1.0, -1.0),  # 2: LinearResistance
             (2.0, 0.0),  # 3: Basin
             (1.0, 0.0),  # 4: Pump
-            (1.0, 1.0),  # 5: Control
+            (1.0, 1.0),  # 5: DiscreteControl
+            (2.0, -1.0),  # 6: DiscreteControl
         ]
     )
 
@@ -25,6 +29,7 @@ def pump_discrete_control_model() -> ribasim.Model:
         "LinearResistance",
         "Basin",
         "Pump",
+        "DiscreteControl",
         "DiscreteControl",
     ]
 
@@ -39,10 +44,10 @@ def pump_discrete_control_model() -> ribasim.Model:
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 1, 4, 5], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 3, 4], dtype=np.int64)
+    from_id = np.array([1, 2, 1, 4, 5, 6], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 3, 4, 2], dtype=np.int64)
 
-    edge_type = 4 * ["flow"] + ["control"]
+    edge_type = 4 * ["flow"] + 2 * ["control"]
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge[ribasim.EdgeSchema](
@@ -80,10 +85,10 @@ def pump_discrete_control_model() -> ribasim.Model:
     # Setup the discrete control:
     condition = pd.DataFrame(
         data={
-            "node_id": [5, 5],
-            "listen_feature_id": [1, 3],
-            "variable": ["level", "level"],
-            "greater_than": [0.8, 0.4],
+            "node_id": [5, 5, 6],
+            "listen_feature_id": [1, 3, 3],
+            "variable": ["level", "level", "level"],
+            "greater_than": [0.8, 0.4, 0.45],
         }
     )
 
@@ -91,14 +96,16 @@ def pump_discrete_control_model() -> ribasim.Model:
     # True,  False -> "off"
     # False, True  -> "off"
     # True,  True  -> "on"
+    # False  -> "active"
+    # True  -> "inactive"
 
     # Truth state as subset of the conditions above and in that order
 
     logic = pd.DataFrame(
         data={
-            "node_id": [5, 5, 5, 5],
-            "truth_state": ["FF", "TF", "FT", "TT"],
-            "control_state": ["on", "off", "off", "on"],
+            "node_id": [5, 5, 5, 5, 6, 6],
+            "truth_state": ["FF", "TF", "FT", "TT", "T", "F"],
+            "control_state": ["on", "off", "off", "on", "inactive", "active"],
         }
     )
 
@@ -119,8 +126,10 @@ def pump_discrete_control_model() -> ribasim.Model:
     linear_resistance = ribasim.LinearResistance(
         static=pd.DataFrame(
             data={
-                "node_id": [2],
-                "resistance": [1e5],
+                "node_id": [2, 2],
+                "active": [True, False],
+                "resistance": [1e5, 1e5],
+                "control_state": ["active", "inactive"],
             }
         )
     )

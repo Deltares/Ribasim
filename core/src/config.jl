@@ -84,7 +84,7 @@ const nodetypes = collect(keys(nodekinds))
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
     abstol::Float64 = 1e-6
-    reltol::Float64 = 1e-3
+    reltol::Float64 = 1e-5
     maxiters::Int = 1e9
     sparse::Bool = true
     autodiff::Bool = true
@@ -112,6 +112,7 @@ end
     basin::String = "results/basin.arrow"
     flow::String = "results/flow.arrow"
     control::String = "results/control.arrow"
+    allocation::String = "results/allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6

@@ -7,10 +7,12 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
+allocation_network_id: The ID of this allocation network
 node_id: All the IDs of the nodes that are in this subnetwork
 node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
     (all AG node ids are in the values)
 node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG node ID => model node ID
+allocgraph_edge_ids_user_demand: AG user node ID => AG user inflow edge ID
 Source edge mapping: AG source node ID => subnetwork source edge ID
 graph_allocation: The graph used for the allocation problems
 capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
@@ -18,13 +20,15 @@ problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
+    allocation_network_id::Int
     node_id::Vector{Int}
     node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
     node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
+    allocgraph_edge_ids_user_demand::Dict{Int, Int}
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
-    problem::JuMPModel
+    problem::JuMP.Model
     Δt_allocation::Float64
 end
 
@@ -403,9 +407,11 @@ struct DiscreteControl <: AbstractParameterNode
     condition_value::Vector{Bool}
     control_state::Dict{Int, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{Int, String}, String}
-    record::NamedTuple{
-        (:time, :control_node_id, :truth_state, :control_state),
-        Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Vector{String}},
+    record::@NamedTuple{
+        time::Vector{Float64},
+        control_node_id::Vector{Int},
+        truth_state::Vector{String},
+        control_state::Vector{String},
     }
 end
 
@@ -437,7 +443,8 @@ allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
 priorities: All used priority values. Each user has a demand for all these priorities,
-which is always 0.0 if it is not provided explicitly.
+    which is 0.0 if it is not provided explicitly.
+record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{Int}
@@ -447,6 +454,15 @@ struct User <: AbstractParameterNode
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
     priorities::Vector{Int}
+    record::@NamedTuple{
+        time::Vector{Float64},
+        allocation_network_id::Vector{Int},
+        user_node_id::Vector{Int},
+        priority::Vector{Int},
+        demand::Vector{Float64},
+        allocated::Vector{Float64},
+        abstracted::Vector{Float64},
+    }
 end
 
 # TODO Automatically add all nodetypes here
@@ -785,12 +801,16 @@ function formulate_flow!(
             continue
         end
 
-        # For now allocated = demand
-        for priority in eachindex(allocated[i])
-            allocated[i][priority] = demand[i][priority](t)
-        end
+        q = 0.0
 
-        q = sum(allocated[i])
+        # Take as effectively allocated the minimum of what is allocated by allocation optimization
+        # and the current demand.
+        # If allocation is not optimized then allocated = Inf, so the result is always
+        # effectively allocated = demand.
+        for priority_idx in eachindex(allocated[i])
+            alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
+            q += alloc
+        end
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         _, basin_idx = id_index(basin.node_id, src_id)
@@ -987,7 +1007,10 @@ function formulate_flow!(
     for (i, id) in enumerate(node_id)
         downstream_id = only(outneighbors(graph_flow, id))
         upstream_id = only(inneighbors(graph_flow, id))
-        flow[id, downstream_id] = flow[upstream_id, id] * fraction[i]
+        # overwrite the inflow such that flow is conserved over the FractionalFlow
+        outflow = flow[upstream_id, id] * fraction[i]
+        flow[upstream_id, id] = outflow
+        flow[id, downstream_id] = outflow
     end
     return nothing
 end

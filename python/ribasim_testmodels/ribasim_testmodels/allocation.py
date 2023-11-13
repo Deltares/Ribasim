@@ -283,6 +283,7 @@ def subnetwork_model():
 
 
 def looped_subnetwork_model():
+    """Create a user testmodel representing a subnetwork containing a loop in the topology."""
     # Setup the nodes:
     xy = np.array(
         [
@@ -522,6 +523,145 @@ def looped_subnetwork_model():
         outlet=outlet,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def minimal_subnetwork_model():
+    """Create a subnetwork that is minimal with non-trivial allocation."""
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: FlowBoundary
+            (0.0, 1.0),  # 2: Basin
+            (0.0, 2.0),  # 3: Pump
+            (0.0, 3.0),  # 4: Basin
+            (-1.0, 4.0),  # 5: User
+            (1.0, 4.0),  # 6: User
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["FlowBoundary", "Basin", "Pump", "Basin", "User", "User"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node[ribasim.NodeSchema](
+        df=gpd.GeoDataFrame(
+            data={"type": node_type, "allocation_network_id": 1},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array(
+        [1, 2, 3, 4, 4, 5, 6],
+        dtype=np.int64,
+    )
+    to_id = np.array(
+        [2, 3, 4, 5, 6, 4, 4],
+        dtype=np.int64,
+    )
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
+    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    edge = ribasim.Edge[ribasim.EdgeSchema](
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [2, 2, 4, 4],
+            "area": 1000.0,
+            "level": 2 * [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [2, 4],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [2, 4], "level": 1.0})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup the flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1],
+                "flow_rate": 2.0e-3,
+            }
+        )
+    )
+
+    # Setup the pump:
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": [3],
+                "flow_rate": [4.0e-3],
+                "max_flow_rate": [4.0e-3],
+            }
+        )
+    )
+
+    # Setup the users:
+    user = ribasim.User(
+        static=pd.DataFrame(
+            data={
+                "node_id": [5],
+                "demand": 1.0e-3,
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": 1,
+            }
+        ),
+        time=pd.DataFrame(
+            data={
+                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                "node_id": 6,
+                "demand": [1.0e-3, 2.0e-3],
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": 1,
+            }
+        ),
+    )
+
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
+    model = ribasim.Model(
+        database=ribasim.Database(
+            node=node,
+            edge=edge,
+        ),
+        basin=basin,
+        flow_boundary=flow_boundary,
+        pump=pump,
+        user=user,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

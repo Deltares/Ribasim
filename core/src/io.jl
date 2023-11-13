@@ -210,6 +210,23 @@ function discrete_control_table(model::Model)::NamedTuple
     return (; time, record.control_node_id, record.truth_state, record.control_state)
 end
 
+"Create an allocation result table for the saved data"
+function allocation_table(model::Model)::NamedTuple
+    (; config) = model
+    (; record) = model.integrator.p.user
+
+    time = datetime_since.(record.time, config.starttime)
+    return (;
+        time,
+        record.allocation_network_id,
+        record.user_node_id,
+        record.priority,
+        record.demand,
+        record.allocated,
+        record.abstracted,
+    )
+end
+
 "Write a result table to disk as an Arrow file"
 function write_arrow(
     path::AbstractString,

@@ -13,6 +13,7 @@ ignore = [
     "PD901",
 ]
 fixable = ["I"]
+extend-include = ["*.ipynb"]
 
 [pydocstyle]
 convention = "numpy"
