@@ -40,7 +40,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.4.0
         with:
           pixi-version: "latest"
-          cache: true
       - name: Prepare pixi
         run: pixi run install-without-pre-commit
 
