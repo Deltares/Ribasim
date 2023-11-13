@@ -330,9 +330,8 @@ class Model(FileModel):
         x_start, x_end = [], []
         y_start, y_end = [], []
 
-        if self.discrete_control:
-            condition = self.discrete_control.condition
-
+        condition = self.discrete_control.condition.df
+        if condition is not None:
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
 
@@ -347,10 +346,10 @@ class Model(FileModel):
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
-        if self.pid_control:
-            static = self.pid_control.static
-            time = self.pid_control.time
-            node_static = self.database.node.static
+        if self.pid_control.static.df is not None:
+            static = self.pid_control.static.df
+            time = self.pid_control.time.df
+            node_static = self.database.node.static.df
 
             for table in [static, time]:
                 if table is None:
@@ -408,8 +407,8 @@ class Model(FileModel):
     def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
-        node_types, node_clss = zip(self.nodes().items())
-
+        node_types, node_clss = zip(*self.nodes().items())
+        node_clss = [node_cls.get_input_type() for node_cls in node_clss]
         truth_dict = {"T": ">", "F": "<"}
 
         if self.discrete_control.condition.df is None:
@@ -426,6 +425,7 @@ class Model(FileModel):
 
             if self.discrete_control.condition.df is None:
                 return
+
             conditions = self.discrete_control.condition.df[
                 self.discrete_control.condition.df.node_id == control_node_id
             ]
@@ -451,16 +451,14 @@ class Model(FileModel):
 
             for affect_node_id in affect_node_ids:
                 affect_node_type = self.database.node.df.loc[affect_node_id, "type"]
-                affect_node_type_snake_case = node_clss[
-                    node_types.index(affect_node_type)
-                ].get_toml_key()
+                nodeattr = node_types[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
 
-                static = getattr(self, affect_node_type_snake_case).static
+                static = getattr(self, nodeattr).static.df
                 row = static[
-                    (static.df.node_id == affect_node_id)
-                    & (static.df.control_state == control_state)
+                    (static.node_id == affect_node_id)
+                    & (static.control_state == control_state)
                 ].iloc[0]
 
                 names_and_values = []
