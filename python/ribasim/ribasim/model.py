@@ -407,8 +407,8 @@ class Model(FileModel):
     def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
-        node_types, node_clss = zip(*self.nodes().items())
-        node_clss = [node_cls.get_input_type() for node_cls in node_clss]
+        node_attrs, node_instances = zip(*self.nodes().items())
+        node_clss = [node_cls.get_input_type() for node_cls in node_instances]
         truth_dict = {"T": ">", "F": "<"}
 
         if self.discrete_control.condition.df is None:
@@ -451,7 +451,7 @@ class Model(FileModel):
 
             for affect_node_id in affect_node_ids:
                 affect_node_type = self.database.node.df.loc[affect_node_id, "type"]
-                nodeattr = node_types[node_clss.index(affect_node_type)]
+                nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
 
