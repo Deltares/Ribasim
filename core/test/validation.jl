@@ -4,6 +4,7 @@ using Dictionaries: Indices
 using DataInterpolations: LinearInterpolation
 import SQLite
 using Logging
+using Test
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
@@ -179,9 +180,15 @@ if !Sys.islinux()
         @test logger.logs[2].level == Error
         @test logger.logs[2].message ==
               "Fractional flow nodes must have non-negative fractions."
+        @test logger.logs[2].kwargs[:node_id] == 3
+        @test logger.logs[2].kwargs[:fraction] ≈ -0.1
+        @test logger.logs[2].kwargs[:control_state] == ""
         @test logger.logs[3].level == Error
         @test logger.logs[3].message ==
               "The sum of fractional flow fractions leaving a node must be ≈1."
+        @test logger.logs[3].kwargs[:node_id] == 7
+        @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
+        @test logger.logs[3].kwargs[:control_state] == ""
     end
 end
 
