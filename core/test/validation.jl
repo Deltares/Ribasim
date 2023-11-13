@@ -178,10 +178,10 @@ if !Sys.islinux()
               "Node #7 combines fractional flow outneighbors with other outneigbor types."
         @test logger.logs[2].level == Error
         @test logger.logs[2].message ==
-              "Fractional flow nodes must have non-negative fractions, got -0.1 for #3."
+              "Fractional flow nodes must have non-negative fractions."
         @test logger.logs[3].level == Error
         @test logger.logs[3].message ==
-              "The sum of fractional flow fractions leaving a node must be ≈1, got 0.4 for #7."
+              "The sum of fractional flow fractions leaving a node must be ≈1."
     end
 end
 
