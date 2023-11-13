@@ -285,6 +285,7 @@ def subnetwork_model():
 
 
 def looped_subnetwork_model():
+    """Create a user testmodel representing a subnetwork containing a loop in the topology."""
     # Setup the nodes:
     xy = np.array(
         [
@@ -532,7 +533,8 @@ def looped_subnetwork_model():
     return model
 
 
-def simple_subnetwork_model():
+def minimal_subnetwork_model():
+    """Create a subnetwork that is minimal with non-trivial allocation."""
     xy = np.array(
         [
             (0.0, 0.0),  # 1: FlowBoundary
@@ -621,8 +623,8 @@ def simple_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [3],
-                "flow_rate": [1.5e-3],
-                "max_flow_rate": [1.5e-3],
+                "flow_rate": [4.0e-3],
+                "max_flow_rate": [4.0e-3],
             }
         )
     )
@@ -651,9 +653,7 @@ def simple_subnetwork_model():
     )
 
     # Setup allocation:
-    allocation = ribasim.Allocation(
-        use_allocation=True, timestep=86400, objective_type="quadratic_absolute"
-    )
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
         node=node,

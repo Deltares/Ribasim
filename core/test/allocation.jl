@@ -2,6 +2,7 @@ import Ribasim
 import JuMP
 using SQLite
 using PreallocationTools: get_tmp
+using DataFrames: DataFrame
 
 @testset "Allocation solve" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")

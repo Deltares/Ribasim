@@ -621,7 +621,6 @@ An AllocationModel object.
 
 """
 function AllocationModel(
-    config::Config,
     allocation_network_id::Int,
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
@@ -808,7 +807,7 @@ and flows, solve the allocation problem and assign the results to the users.
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
     (; user) = p
     (; problem) = allocation_model
-    (; priorities, record) = user
+    (; priorities) = user
 
     set_source_flows!(allocation_model, p)
 

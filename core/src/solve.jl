@@ -409,9 +409,11 @@ struct DiscreteControl <: AbstractParameterNode
     condition_value::Vector{Bool}
     control_state::Dict{Int, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{Int, String}, String}
-    record::NamedTuple{
-        (:time, :control_node_id, :truth_state, :control_state),
-        Tuple{Vector{Float64}, Vector{Int}, Vector{String}, Vector{String}},
+    record::@NamedTuple{
+        time::Vector{Float64},
+        control_node_id::Vector{Int},
+        truth_state::Vector{String},
+        control_state::Vector{String},
     }
 end
 
@@ -444,8 +446,6 @@ return_factor: the factor in [0,1] of how much of the abstracted water is given 
 min_level: The level of the source basin below which the user does not abstract
 priorities: All used priority values. Each user has a demand for all these priorities,
     which is 0.0 if it is not provided explicitly.
-allocation_optimized: Whether the allocated abstraction rate of the user is set by allocation optimization.
-    If not, allocated is equal to demand.
 record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
@@ -456,26 +456,14 @@ struct User <: AbstractParameterNode
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
     priorities::Vector{Int}
-    allocation_optimized::BitVector
-    record::NamedTuple{
-        (
-            :time,
-            :allocation_network_id,
-            :user_node_id,
-            :priority,
-            :demand,
-            :allocated,
-            :abstracted,
-        ),
-        Tuple{
-            Vector{Float64},
-            Vector{Int},
-            Vector{Int},
-            Vector{Int},
-            Vector{Float64},
-            Vector{Float64},
-            Vector{Float64},
-        },
+    record::@NamedTuple{
+        time::Vector{Float64},
+        allocation_network_id::Vector{Int},
+        user_node_id::Vector{Int},
+        priority::Vector{Int},
+        demand::Vector{Float64},
+        allocated::Vector{Float64},
+        abstracted::Vector{Float64},
     }
 end
 
@@ -818,20 +806,13 @@ function formulate_flow!(
 
         q = 0.0
 
-        if allocation_optimized[i]
-            # If allocation has been optimized for this user,
-            # use the minimum of that allocation and the current demand of the user
-            for priority_idx in eachindex(allocated[i])
-                alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
-                q += alloc
-            end
-        else
-            # If allocation has not been optimized for this user,
-            # use the demand as allocated directly
-            for priority_idx in eachindex(allocated[i])
-                alloc = demand[i][priority_idx](t)
-                q += alloc
-            end
+        # Take as effectively allocated the minimum of what is allocated by allocation optimization
+        # and the current demand.
+        # If allocation is not optimized then allocated = Inf, so the result is always
+        # effectively allocated = demand.
+        for priority_idx in eachindex(allocated[i])
+            alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
+            q += alloc
         end
 
         # Smoothly let abstraction go to 0 as the source basin dries out

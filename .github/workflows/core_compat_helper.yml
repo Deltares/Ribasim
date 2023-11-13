@@ -37,7 +37,13 @@ jobs:
       - name: "Run CompatHelper"
         run: |
           import CompatHelper
-          CompatHelper.main(; subdirs=["core"])
+          CompatHelper.main(; subdirs=[
+              "core",
+              "docs",
+              "build/create_binaries",
+              "build/libribasim",
+              "build/ribasim_cli"
+          ])
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
