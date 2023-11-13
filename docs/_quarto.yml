@@ -9,6 +9,8 @@ website:
   navbar:
     logo: https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png
     left:
+      - text: "Home"
+        href: index.qmd
       - text: "Julia core"
         file: core/index.qmd
       - text: "Python tooling"
