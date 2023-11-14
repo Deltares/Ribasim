@@ -94,7 +94,7 @@ There are 2 types of variables whose value has to be determined to solve the all
 $$
     A^\text{basin}_{\hat{i}} \ge 0, \quad \hat{B}_S,
 $$
-where $\hat{B} = m_S(B_S) \subset \hat{V}_S$ is the set of basin node ids in the allocation graph.
+where $\hat{B}_S = m_S(B_S) \subset \hat{V}_S$ is the set of basin node ids in the allocation graph.
 
 :::{.callout-note}
 Currently the basin allocations are not taken into account in the implementation.
@@ -102,17 +102,27 @@ Currently the basin allocations are not taken into account in the implementation
 
 ### The optimization objective
 
-The goal of allocation is to maximize the flow to the users. Therefore, we use the following optimization objective:
+The goal of allocation is to get the flow to the users as close as possible to their demand. To achieve this, the following objectives are supported:
+
+- `quadratic_absolute`:
 $$
-    \max \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} F_{\hat{i}\hat{j}}
-$$ {#eq-objective}
-This is a linear combination of the allocations to the users, where all allocations currently get a weight of $1$.
+    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left( F_{\hat{i}\hat{j}} - d_j^p(t)\right)^2
+$$
+- `quadratic_relative`:
+$$
+    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left( 1 - \frac{F_{\hat{i}\hat{j}}}{d_j^p(t)}\right)^2
+$$
+- `linear_absolute`:
+$$
+    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left| F_{\hat{i}\hat{j}} - d_j^p(t)\right|
+$$
+- `linear_relative`:
+$$
+    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left|1 - \frac{F_{\hat{i}\hat{j}}}{d_j^p(t)}\right|
+$$
 
 :::{.callout-note}
-This optimization objective will probably be modified in the future, to take things into account like:
-
-- Fair distribution in the case of water scarcity;
-- An allocation graph-wide preference ordering over sources.
+In the future new optimization objectives will be introduced, for demands of basins and priorities over sources. These will be used in combination with the above, in the form of goal programming.
 :::
 
 ### The optimization variable constraints
@@ -175,7 +185,9 @@ $$
 5. Repeat steps 2-4 for the remaining priorities up to $p_{\max}$.
 
 :::{.callout-note}
-In the future there will be another solve before the priority 1 solve, taking the demand/supply from basins into account.
+In the future there will be 2 more optimization solves:
+- One before optimizing for users, taking the demand/supply from basins into account;
+- One after optimizing for users, taking preferences over sources into account.
 :::
 
 ## Example
