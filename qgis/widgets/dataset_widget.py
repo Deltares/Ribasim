@@ -243,9 +243,7 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        with open(self.path, "r") as f:
-            model_filename = toml.load(f)["database"]
-            geo_path = Path(self.path).parent.joinpath(model_filename)
+        geo_path = self._get_database_path_from_ribasim_model()
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
@@ -259,6 +257,11 @@ class DatasetWidget(QWidget):
         self.edge_layer = nodes["Edge"].layer
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
+
+    def _get_database_path_from_ribasim_model(self) -> str:
+        with open(self.path, "r") as f:
+            model_filename = toml.load(f)["database"]
+            return str(Path(self.path).parent.joinpath(model_filename))
 
     def new_ribasim_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
