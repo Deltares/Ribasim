@@ -138,7 +138,7 @@ class Model(FileModel):
     input_dir: str = "."
     results_dir: str = "."
 
-    network: Network = Field(default_factory=Network)
+    network: Network = Field(default_factory=Network, alias="database")
     results: Results = Results()
     solver: Solver = Solver()
     logging: Logging = Logging()
@@ -179,8 +179,7 @@ class Model(FileModel):
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
-        content = self.model_dump(exclude_unset=True, exclude_none=True)
-        content["database"] = content.pop("network")
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
 
