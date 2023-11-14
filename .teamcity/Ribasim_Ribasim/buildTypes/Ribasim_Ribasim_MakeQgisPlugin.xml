@@ -10,7 +10,7 @@
     <build-runners>
       <runner id="RUNNER_2193" name="" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[rsync --verbose --recursive --delete qgis/ ribasim_qgis
+          <param name="script.content"><![CDATA[rsync --verbose --recursive --delete ribasim_qgis/ ribasim_qgis
 rm --force ribasim_qgis.zip
 zip -r ribasim_qgis.zip ribasim_qgis]]></param>
           <param name="teamcity.step.mode" value="default" />
