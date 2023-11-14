@@ -115,22 +115,17 @@ function parse_static_and_time(
                     if parameter_name in time_interpolatables
                         val = LinearInterpolation([val, val], trivial_timespan)
                     end
-                    # If this row defines a control state, collect the parameter values in
-                    # the parameter_values vector
-                    if !ismissing(control_state)
-                        push!(parameter_values, val)
-                    end
+                    # Collect the parameter values in the parameter_values vector
+                    push!(parameter_values, val)
                     # The initial parameter value is overwritten here each time until the last row,
                     # but in the case of control the proper initial parameter values are set later on
                     # in the code
                     getfield(out, parameter_name)[node_idx] = val
                 end
-                # If a control state is associated with this row, add the parameter values to the
-                # control mapping
-                if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] =
-                        NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
-                end
+                # Add the parameter values to the control mapping
+                control_state_key = coalesce(control_state, "")
+                control_mapping[(node_id, control_state_key)] =
+                    NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
