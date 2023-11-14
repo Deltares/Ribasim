@@ -791,8 +791,7 @@ function formulate_flow!(
 )::Nothing
     (; connectivity, basin) = p
     (; graph_flow, flow) = connectivity
-    (; node_id, allocated, demand, active, return_factor, min_level, allocation_optimized) =
-        user
+    (; node_id, allocated, demand, active, return_factor, min_level) = user
 
     flow = get_tmp(flow, storage)
 

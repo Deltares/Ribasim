@@ -24,11 +24,6 @@ function get_node_id_mapping(
         if node_type in [:user, :basin]
             add_allocgraph_node = true
 
-            if node_type == :user
-                user_idx = findsorted(user.node_id, subnetwork_node_id)
-                user.allocation_optimized[user_idx] = true
-            end
-
         elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
             # Each junction (that is, a node with more than 2 neighbors)
             # in the subnetwork gets an allocgraph node
@@ -546,6 +541,53 @@ function add_constraints_user_returnflow!(
     return nothing
 end
 
+function add_constraints_absolute_value!(
+    problem::JuMP.Model,
+    allocgraph_edge_ids_user_demand::Dict{Int, Int},
+    config::Config,
+)::Nothing
+    objective_type = config.allocation.objective_type
+    if startswith(objective_type, "linear")
+        allocgraph_edge_ids_user_demand = collect(values(allocgraph_edge_ids_user_demand))
+        F = problem[:F]
+        F_abs = problem[:F_abs]
+        d = 2.0
+
+        if config.allocation.objective_type == "linear_absolute"
+            # These constraints together make sure that F_abs acts as the absolute
+            # value F_abs = |x| where x = F-d (here for example d = 2)
+            problem[:abs_positive] = JuMP.@constraint(
+                problem,
+                [i = allocgraph_edge_ids_user_demand],
+                F_abs[i] >= (F[i] - d),
+                base_name = "abs_positive"
+            )
+            problem[:abs_negative] = JuMP.@constraint(
+                problem,
+                [i = allocgraph_edge_ids_user_demand],
+                F_abs[i] >= -(F[i] - d),
+                base_name = "abs_negative"
+            )
+        elseif config.allocation.objective_type == "linear_relative"
+            # These constraints together make sure that F_abs acts as the absolute
+            # value F_abs = |x| where x = 1-F/d (here for example d = 2)
+            problem[:abs_positive] = JuMP.@constraint(
+                problem,
+                [i = allocgraph_edge_ids_user_demand],
+                F_abs[i] >= (1 - F[i] / d),
+                base_name = "abs_positive"
+            )
+            problem[:abs_negative] = JuMP.@constraint(
+                problem,
+                [i = allocgraph_edge_ids_user_demand],
+                F_abs[i] >= -(1 - F[i] / d),
+                base_name = "abs_negative"
+            )
+        end
+    end
+    return nothing
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
@@ -591,6 +633,7 @@ function allocation_problem(
         allocgraph_node_outedge_ids,
     )
     add_constraints_user_returnflow!(problem, allocgraph_node_ids_user_with_returnflow)
+    add_constraints_absolute_value!(problem, allocgraph_edge_ids_user_demand, config)
     # TODO: The fractional flow constraints
 
     # # Add objective to problem
@@ -621,6 +664,7 @@ An AllocationModel object.
 
 """
 function AllocationModel(
+    config::Config,
     allocation_network_id::Int,
     p::Parameters,
     subnetwork_node_ids::Vector{Int},
@@ -677,20 +721,25 @@ function set_objective!(
         allocation_model
     (; demand, node_id) = user
     F = problem[:F]
-    ex = JuMP.QuadExpr()
-    if objective_type == :quadratic_absolute
-        for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
-            user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
-            d = demand[user_idx][priority_idx](t)
+    if objective_type in [:quadratic_absolute, :quadratic_relative]
+        ex = JuMP.QuadExpr()
+    elseif objective_type in [:linear_absolute, :linear_relative]
+        ex = sum(problem[:F_abs])
+    end
+
+    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
+        user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
+        d = demand[user_idx][priority_idx](t)
+
+        if objective_type == :quadratic_absolute
+            # Objective function ∑ (F - d)^2
             F_ij = F[allocgraph_edge_id]
             JuMP.add_to_expression!(ex, 1, F_ij, F_ij)
             JuMP.add_to_expression!(ex, -2 * d, F_ij)
             JuMP.add_to_expression!(ex, d^2)
-        end
-    elseif objective_type == :quadratic_relative
-        for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
-            user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
-            d = demand[user_idx][priority_idx](t)
+
+        elseif objective_type == :quadratic_relative
+            # Objective function ∑ (1 - F/d)^2S
             if d ≈ 0
                 continue
             end
@@ -698,11 +747,26 @@ function set_objective!(
             JuMP.add_to_expression!(ex, 1.0 / d^2, F_ij, F_ij)
             JuMP.add_to_expression!(ex, -2.0 / d, F_ij)
             JuMP.add_to_expression!(ex, 1.0)
+
+        elseif objective_type == :linear_absolute
+            # Objective function ∑ |F - d|
+            JuMP.set_normalized_rhs(problem[:abs_positive][allocgraph_edge_id], -d)
+            JuMP.set_normalized_rhs(problem[:abs_negative][allocgraph_edge_id], d)
+        elseif objective_type == :linear_relative
+            # Objective function ∑ |1 - F/d|
+            JuMP.set_normalized_coefficient(
+                problem[:abs_positive][allocgraph_edge_id],
+                F[allocgraph_edge_id],
+                iszero(d) ? 0 : 1 / d,
+            )
+            JuMP.set_normalized_coefficient(
+                problem[:abs_negative][allocgraph_edge_id],
+                F[allocgraph_edge_id],
+                iszero(d) ? 0 : -1 / d,
+            )
+        else
+            error("Invalid allocation objective type $objective_type.")
         end
-    elseif objective in [:linear_relative, :linear_absolute]
-        pass
-    else
-        error("Invalid allocation objective type $objective_type.")
     end
     new_objective = JuMP.@expression(problem, ex)
     JuMP.@objective(problem, Min, new_objective)

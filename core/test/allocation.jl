@@ -1,5 +1,6 @@
 import Ribasim
 import JuMP
+using Test
 using SQLite
 using PreallocationTools: get_tmp
 using DataFrames: DataFrame
@@ -30,7 +31,7 @@ end
 
 @testset "Allocation objective types" begin
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/simple_subnetwork/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
