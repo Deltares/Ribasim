@@ -26,11 +26,11 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
-from ribasim_qgis.core.topology import derive_connectivity, explode_lines
-
 from qgis.core import QgsMapLayer, QgsProject
 from qgis.core.additions.edit import edit
+
+from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
 class DatasetTreeWidget(QTreeWidget):
