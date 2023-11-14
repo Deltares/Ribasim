@@ -97,7 +97,7 @@ def trivial_model() -> ribasim.Model:
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(
+        network=ribasim.Network(
             node=node,
             edge=edge,
         ),

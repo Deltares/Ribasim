@@ -22,14 +22,14 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge, EdgeSchema
 from ribasim.geometry.node import Node, NodeSchema
-from ribasim.model import Database, Model
+from ribasim.model import Model, Network
 
 __all__ = [
     "models",
     "utils",
     "Allocation",
     "Basin",
-    "Database",
+    "Network",
     "Edge",
     "EdgeSchema",
     "FractionalFlow",

@@ -70,7 +70,7 @@ def bucket_model() -> ribasim.Model:
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
