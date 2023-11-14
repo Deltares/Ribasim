@@ -83,25 +83,16 @@ class FileModel(BaseModel, ABC):
     """Base class to represent models with a file representation.
 
     It therefore always has a `filepath` and if it is given on
-    initialization, it will parse that file. The filepath can be
-    relative, in which case the paths are expected to be resolved
-    relative to some root model. If a path is absolute, this path
-    will always be used, regardless of a root parent.
+    initialization, it will parse that file.
 
-    When saving a model, if the current filepath is relative, the
-    last resolved absolute path will be used. If the model has just
-    been read, the
-
-    This class extends the `validate` option of Pydantic,
+    This class extends the `model_validator` option of Pydantic,
     so when when a Path is given to a field with type `FileModel`,
     it doesn't error, but actually initializes the `FileModel`.
 
     Attributes
     ----------
         filepath (Optional[Path]):
-            The path of this FileModel. This path can be either absolute or relative.
-            If it is a relative path, it is assumed to be resolved from some root
-            model.
+            The path of this FileModel.
     """
 
     filepath: Path | None = Field(default=None, exclude=True, repr=False)
@@ -131,8 +122,7 @@ class FileModel(BaseModel, ABC):
         """Save this instance to disk.
 
         This method needs to be implemented by any class deriving from
-        FileModel, and is used in both the _save_instance and _save_tree
-        methods.
+        FileModel.
 
         Args:
             save_settings (ModelSaveSettings): The model save settings.
@@ -177,24 +167,6 @@ class TableModel(FileModel, Generic[TableT]):
             return f"{''.join(names[:-2])}{delimiter}{names[-2].lower()}"
         else:
             return names[0]
-
-    # def __repr__(self) -> str:
-    #     content = [f"<ribasim.{type(self).__name__}>"]
-    #     for field in self.fields():
-    #         attr = getattr(self, field)
-    #         if isinstance(attr, pd.DataFrame):
-    #             colnames = "(" + ", ".join(attr.columns) + ")"
-    #             if len(colnames) > 50:
-    #                 colnames = textwrap.indent(
-    #                     textwrap.fill(colnames, width=50), prefix="    "
-    #                 )
-    #                 entry = f"{field}: DataFrame(rows={len(attr)})\n{colnames}"
-    #             else:
-    #                 entry = f"{field}: DataFrame(rows={len(attr)}) {colnames}"
-    #         else:
-    #             entry = f"{field}: {attr}"
-    #         content.append(textwrap.indent(entry, prefix="   "))
-    #     return "\n".join(content)
 
     @model_validator(mode="before")
     @classmethod

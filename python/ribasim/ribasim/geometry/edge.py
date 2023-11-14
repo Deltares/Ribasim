@@ -2,6 +2,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pandera as pa
 import shapely
 from matplotlib.axes import Axes
@@ -18,7 +19,9 @@ class EdgeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     from_node_id: Series[int] = pa.Field(default=0, coerce=True)
     to_node_id: Series[int] = pa.Field(default=0, coerce=True)
-    # allocation_network_id: Series[int] = pa.Field(default=None, nullable=True)
+    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+        default=pd.NA, nullable=True, coerce=True
+    )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:

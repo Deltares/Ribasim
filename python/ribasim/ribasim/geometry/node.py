@@ -15,7 +15,9 @@ __all__ = ("Node",)
 class NodeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     type: Series[str] = pa.Field(default="")
-    # allocation_network_id: Series[int] = pa.Field(default=None, nullable=True)
+    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+        default=pd.NA, nullable=True, coerce=True
+    )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:
