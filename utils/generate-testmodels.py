@@ -6,9 +6,9 @@ import ribasim_testmodels
 if __name__ == "__main__":
     datadir = Path("generated_testmodels")
     if datadir.is_dir():
-        shutil.rmtree(datadir)
+        shutil.rmtree(datadir, ignore_errors=True)
 
-    datadir.mkdir()
+    datadir.mkdir(exist_ok=True)
     readme = datadir / "README.md"
     readme.write_text(
         """\

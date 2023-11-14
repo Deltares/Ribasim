@@ -55,7 +55,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         if !valid_fractional_flow(
             connectivity.graph_flow,
             fractional_flow.node_id,
-            fractional_flow.fraction,
+            fractional_flow.control_mapping,
         )
             error("Invalid fractional flow node combinations found.")
         end
@@ -400,15 +400,14 @@ function discrete_control_affect!(
     condition_ids = discrete_control.node_id .== discrete_control_node_id
 
     # Get the truth state for this discrete_control node
-    condition_value_local = discrete_control.condition_value[condition_ids]
-    truth_values = [ifelse(b, "T", "F") for b in condition_value_local]
-    truth_state = join(truth_values, "")
+    truth_values = [ifelse(b, "T", "F") for b in discrete_control.condition_value]
+    truth_state = join(truth_values[condition_ids], "")
 
     # Get the truth specific about the latest crossing
     if !ismissing(upcrossing)
         truth_values[condition_idx] = upcrossing ? "U" : "D"
     end
-    truth_state_crossing_specific = join(truth_values, "")
+    truth_state_crossing_specific = join(truth_values[condition_ids], "")
 
     # What the local control state should be
     control_state_new =
