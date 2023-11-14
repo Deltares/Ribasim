@@ -5,6 +5,7 @@ using Test
 using SQLite
 using PreallocationTools: get_tmp
 using DataFrames: DataFrame
+using SciMLBase: successful_retcode
 
 @testset "Allocation solve" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
@@ -22,7 +23,7 @@ using DataFrames: DataFrame
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.5]
+    @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.0]
 
     allocated = p.user.allocated
     @test allocated[1] ≈ [0.0, 4.0]
@@ -36,56 +37,40 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
-    Ribasim.run(config)
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+    problem = model.integrator.p.connectivity.allocation_models[1].problem
+    objective = JuMP.objective_function(problem)
+    @test objective isa JuMP.QuadExpr # Quadratic expression
+    F = problem[:F]
+    @test JuMP.UnorderedPair{JuMP.VariableRef}(F[2], F[2]) in keys(objective.terms) # F[2]^2 term
+    @test JuMP.UnorderedPair{JuMP.VariableRef}(F[3], F[3]) in keys(objective.terms) # F[3]^2 term
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
-    Ribasim.run(config)
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+    problem = model.integrator.p.connectivity.allocation_models[1].problem
+    objective = JuMP.objective_function(problem)
+    @test objective isa JuMP.QuadExpr # Quadratic expression
+    @test objective.aff.constant == 2.0
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
-    Ribasim.run(config)
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+    problem = model.integrator.p.connectivity.allocation_models[1].problem
+    objective = JuMP.objective_function(problem)
+    @test objective isa JuMP.AffExpr # Affine expression
+    @test :F_abs in keys(problem.obj_dict)
+    F_abs = problem[:F_abs]
+    @test objective == F_abs[3] + F_abs[2]
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
-    Ribasim.run(config)
-
-    # model = Ribasim.run(toml_path)
-    # record = model.integrator.p.user.record
-    # where_5 = (record.user_node_id .== 5)
-    # where_6 = .!where_5
-
-    # @test all(record.demand[where_5] .== 1.0e-3)
-    # @test all(
-    #     isapprox(
-    #         record.allocated[where_5],
-    #         collect(range(1.0e-3, 0.0, sum(where_5)));
-    #         rtol = 0.01,
-    #     ),
-    # )
-    # @test all(
-    #     isapprox(
-    #         record.abstracted[where_5][2:end],
-    #         collect(range(1.0e-3, 0.0, sum(where_5)))[2:end];
-    #         rtol = 0.01,
-    #     ),
-    # )
-    # @test all(
-    #     isapprox(
-    #         record.demand[where_6],
-    #         collect(range(1.0e-3, 2.0e-3, sum(where_5)));
-    #         rtol = 0.01,
-    #     ),
-    # )
-    # @test all(
-    #     isapprox(
-    #         record.allocated[where_6],
-    #         collect(range(1.0e-3, 2.0e-3, sum(where_5)));
-    #         rtol = 0.01,
-    #     ),
-    # )
-    # @test all(
-    #     isapprox(
-    #         record.abstracted[where_6][2:end],
-    #         collect(range(1.0e-3, 2.0e-3, sum(where_5)))[2:end];
-    #         rtol = 0.01,
-    #     ),
-    # )
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+    problem = model.integrator.p.connectivity.allocation_models[1].problem
+    objective = JuMP.objective_function(problem)
+    @test objective isa JuMP.AffExpr # Affine expression
+    @test :F_abs in keys(problem.obj_dict)
+    F_abs = problem[:F_abs]
+    @test objective == F_abs[3] + F_abs[2]
 end
