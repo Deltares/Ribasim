@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, List, Set
 
 import numpy as np
-import toml
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -29,6 +28,7 @@ from PyQt5.QtWidgets import (
 from qgis.core import QgsMapLayer, QgsProject
 from qgis.core.additions.edit import edit
 
+import ribasim_qgis.tomllib as tomllib
 from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
@@ -259,8 +259,8 @@ class DatasetWidget(QWidget):
         return
 
     def _get_database_path_from_ribasim_model(self) -> str:
-        with open(self.path, "r") as f:
-            model_filename = toml.load(f)["database"]
+        with open(self.path, "rb") as f:
+            model_filename = tomllib.load(f)["database"]
             return str(Path(self.path).parent.joinpath(model_filename))
 
     def new_ribasim_model(self) -> None:
@@ -277,13 +277,14 @@ class DatasetWidget(QWidget):
             self.parent.toggle_node_buttons(True)
 
     def _write_new_ribasim_model(self, database_name: str) -> None:
-        ribasim_model = {
-            "database": database_name,
-            "starttime": datetime(2020, 1, 1),
-            "endtime": datetime(2030, 1, 1),
-        }
         with open(self.path, "w") as f:
-            toml.dump(ribasim_model, f)
+            f.writelines(
+                [
+                    f'database = "{database_name}"\n',
+                    f"starttime = {datetime(2020, 1, 1)}\n",
+                    f"endtime = {datetime(2030, 1, 1)}\n",
+                ]
+            )
 
     def open_ribasim_model(self) -> None:
         """Open a Ribasim model file."""
