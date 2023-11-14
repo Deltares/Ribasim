@@ -33,7 +33,7 @@ class RibasimWidget(QWidget):
         self.layout = QVBoxLayout()
         self.tabwidget = QTabWidget()
         self.layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.dataset_widget, "Database")
+        self.tabwidget.addTab(self.dataset_widget, "Model")
         self.tabwidget.addTab(self.nodes_widget, "Nodes")
         self.tabwidget.addTab(self.results_widget, "Results")
         self.setLayout(self.layout)
