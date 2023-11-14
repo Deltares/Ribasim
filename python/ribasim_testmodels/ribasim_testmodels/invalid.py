@@ -16,7 +16,7 @@ def invalid_qh_model():
     node_type = 2 * ["TabulatedRatingCurve"] + ["Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -123,7 +123,7 @@ def invalid_fractional_flow_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -215,7 +215,7 @@ def invalid_discrete_control_model():
     node_type = ["Basin", "Pump", "Basin", "FlowBoundary", "DiscreteControl"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -343,7 +343,7 @@ def invalid_edge_types_model():
     node_type = ["Basin", "Pump", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),

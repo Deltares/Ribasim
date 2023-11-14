@@ -20,7 +20,7 @@ def linear_resistance_model():
     node_type = ["Basin", "LinearResistance", "LevelBoundary"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -116,7 +116,7 @@ def rating_curve_model():
     node_type = ["Basin", "TabulatedRatingCurve", "Terminal"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -225,7 +225,7 @@ def manning_resistance_model():
     node_type = ["Basin", "ManningResistance", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -331,7 +331,7 @@ def misc_nodes_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -463,7 +463,7 @@ def pid_control_equation_model():
     node_type = ["Basin", "Pump", "Terminal", "PidControl"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),

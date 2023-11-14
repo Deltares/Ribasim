@@ -1,4 +1,4 @@
-from typing import Any, Generic
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +7,7 @@ import pandera as pa
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
-from ribasim.input_base import SpatialTableModel, TableT
+from ribasim.input_base import SpatialTableModel
 
 __all__ = ("Node",)
 
@@ -22,7 +22,7 @@ class NodeSchema(pa.SchemaModel):
         add_missing_columns = True
 
 
-class Node(SpatialTableModel[TableT], Generic[TableT]):
+class Node(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
 
     @staticmethod

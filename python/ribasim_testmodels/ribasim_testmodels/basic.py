@@ -157,7 +157,7 @@ def basic_model() -> ribasim.Model:
     )
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
@@ -341,7 +341,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     node_id, node_type = ribasim.Node.node_ids_and_types(basin, rating_curve)
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
@@ -394,7 +394,7 @@ def outlet_model():
     node_type = ["LevelBoundary", "Outlet", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),

@@ -30,13 +30,13 @@ from ribasim.config import (
     User,
 )
 from ribasim.geometry.edge import Edge
-from ribasim.geometry.node import Node, NodeSchema
+from ribasim.geometry.node import Node
 from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
 from ribasim.types import FilePath
 
 
 class Database(FileModel, NodeModel):
-    node: Node[NodeSchema] = Field(default_factory=Node[NodeSchema])
+    node: Node = Field(default_factory=Node)
     edge: Edge = Field(default_factory=Edge)
 
     def n_nodes(self):

@@ -21,7 +21,7 @@ def user_model():
     node_type = ["Basin", "User", "User", "Terminal"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -162,7 +162,7 @@ def subnetwork_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -343,7 +343,7 @@ def looped_subnetwork_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -547,7 +547,7 @@ def minimal_subnetwork_model():
     node_type = ["FlowBoundary", "Basin", "Pump", "Basin", "User", "User"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),

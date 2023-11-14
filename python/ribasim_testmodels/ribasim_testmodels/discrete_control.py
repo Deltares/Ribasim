@@ -34,7 +34,7 @@ def pump_discrete_control_model() -> ribasim.Model:
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -172,7 +172,7 @@ def flow_condition_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -313,7 +313,7 @@ def level_boundary_condition_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -461,7 +461,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -595,7 +595,7 @@ def level_setpoint_with_minmax_model():
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),

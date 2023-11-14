@@ -8,7 +8,7 @@ from ribasim.geometry.node import Node
 
 
 def geometry_from_connectivity(
-    node: Node[Any], from_id: Sequence[int], to_id: Sequence[int]
+    node: Node, from_id: Sequence[int], to_id: Sequence[int]
 ) -> NDArray[Any]:
     """
     Create edge shapely geometries from connectivities.
@@ -38,7 +38,7 @@ def geometry_from_connectivity(
 
 
 def connectivity_from_geometry(
-    node: Node[Any], lines: NDArray[Any]
+    node: Node, lines: NDArray[Any]
 ) -> Tuple[NDArray[Any], NDArray[Any]]:
     """
     Derive from_node_id and to_node_id for every edge in lines. LineStrings

@@ -17,7 +17,7 @@ def backwater_model():
     _, counts = np.unique(node_type, return_counts=True)
     n_basin = counts[0]
 
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(node_xy)) + 1, name="fid"),

@@ -16,7 +16,7 @@ def bucket_model() -> ribasim.Model:
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
     node_type = ["Basin"]
     # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node[ribasim.NodeSchema](
+    node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
