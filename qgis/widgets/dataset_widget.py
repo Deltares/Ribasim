@@ -4,6 +4,7 @@ This widgets displays the available input layers in the GeoPackage.
 This widget also allows enabling or disabling individual elements for a
 computation.
 """
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Set
 
@@ -263,14 +264,23 @@ class DatasetWidget(QWidget):
         """Create a new Ribasim model file, and set it as the active dataset."""
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
-            # TODO: Add start and end date to toml writing
-            # TODO: Write toml file besides the geopackage
             self.dataset_line_edit.setText(path)
+            geo_path = Path(self.path).parent.joinpath("database.gpkg")
+            self._write_new_ribasim_model(geo_path.name)
             for input_type in (Node, Edge):
-                instance = input_type.create(path, self.parent.crs, names=[])
+                instance = input_type.create(str(geo_path), self.parent.crs, names=[])
                 instance.write()
             self.load_geopackage()
             self.parent.toggle_node_buttons(True)
+
+    def _write_new_ribasim_model(self, database_name: str) -> None:
+        ribasim_model = {
+            "database": database_name,
+            "starttime": datetime(2020, 1, 1),
+            "endtime": datetime(2030, 1, 1),
+        }
+        with open(self.path, "w") as f:
+            toml.dump(ribasim_model, f)
 
     def open_ribasim_model(self) -> None:
         """Open a Ribasim model file."""
