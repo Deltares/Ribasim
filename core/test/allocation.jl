@@ -53,6 +53,9 @@ end
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     @test objective.aff.constant == 2.0
+    F = problem[:F]
+    @test JuMP.UnorderedPair{JuMP.VariableRef}(F[2], F[2]) in keys(objective.terms) # F[2]^2 term
+    @test JuMP.UnorderedPair{JuMP.VariableRef}(F[3], F[3]) in keys(objective.terms) # F[3]^2 term
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
     model = Ribasim.run(config)
