@@ -399,6 +399,12 @@ end
 #     return nothing
 # end
 
+"""
+Certain allocation distribution types use absolute values in the objective function.
+Since most optimization packages do not support the absolute value function directly,
+New variables are introduced that act as the absolute value of an expression by
+posing the appropriate constraints.
+"""
 function add_variables_absolute_value!(
     problem::JuMP.Model,
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
@@ -541,6 +547,12 @@ function add_constraints_user_returnflow!(
     return nothing
 end
 
+"""
+Minimizing |expr| can be achieved by introducing a new variable expr_abs
+and posing the following constraints:
+expr_abs >= expr
+expr_abs >= -expr
+"""
 function add_constraints_absolute_value!(
     problem::JuMP.Model,
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
@@ -709,9 +721,10 @@ function AllocationModel(
 end
 
 """
-
+Set the objective for the given priority.
+For an objective with absolute values this also involves adjusting constraints.
 """
-function set_objective!(
+function set_objective_priority!(
     allocation_model::AllocationModel,
     user::User,
     t::Float64,
@@ -890,7 +903,7 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
         # of an existing objective function because this is not supported for
         # quadratic terms:
         # https://jump.dev/JuMP.jl/stable/manual/objective/#Modify-an-objective-coefficient
-        set_objective!(allocation_model, user, t, priority_idx)
+        set_objective_priority!(allocation_model, user, t, priority_idx)
 
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)
