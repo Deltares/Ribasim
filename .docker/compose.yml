@@ -2,7 +2,7 @@ version: '2'
 
 services:
   qgis:
-    image: qgis/qgis:release-3_32
+    image: qgis/qgis:release-3_34
     container_name: qgis
     volumes:
       - ../qgis/:/tests_directory/${PLUGIN_NAME}
