@@ -29,7 +29,7 @@ from ribasim.config import (
     Terminal,
     User,
 )
-from ribasim.geometry.edge import Edge, EdgeSchema
+from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node, NodeSchema
 from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
 from ribasim.types import FilePath
@@ -37,7 +37,7 @@ from ribasim.types import FilePath
 
 class Database(FileModel, NodeModel):
     node: Node[NodeSchema] = Field(default_factory=Node[NodeSchema])
-    edge: Edge[EdgeSchema] = Field(default_factory=Edge[EdgeSchema])
+    edge: Edge = Field(default_factory=Edge)
 
     def n_nodes(self):
         if self.node.df is not None:

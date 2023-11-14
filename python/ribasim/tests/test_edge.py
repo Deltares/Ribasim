@@ -2,7 +2,7 @@ import geopandas as gpd
 import pytest
 import shapely.geometry as sg
 from pydantic import ValidationError
-from ribasim.geometry.edge import Edge, EdgeSchema
+from ribasim.geometry.edge import Edge
 
 
 @pytest.fixture(scope="session")
@@ -26,4 +26,4 @@ def test_validation(edge):
             data={"from_node_id": [1, 1], "to_node_id": [None, 3]},
             geometry=[None, None],
         )
-        Edge[EdgeSchema](df=df)
+        Edge(df=df)

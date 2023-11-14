@@ -174,7 +174,7 @@ def basic_model() -> ribasim.Model:
         [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
     )
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
@@ -354,7 +354,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     from_id = np.array([1, 1, 2, 3], dtype=np.int64)
     to_id = np.array([2, 3, 4, 4], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
@@ -407,7 +407,7 @@ def outlet_model():
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,

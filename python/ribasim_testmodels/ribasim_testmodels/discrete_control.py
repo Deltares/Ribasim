@@ -50,7 +50,7 @@ def pump_discrete_control_model() -> ribasim.Model:
     edge_type = 4 * ["flow"] + 2 * ["control"]
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={"from_node_id": from_id, "to_node_id": to_id, "edge_type": edge_type},
             geometry=lines,
@@ -185,7 +185,7 @@ def flow_condition_model():
     from_id = np.array([1, 2, 3, 5], dtype=np.int64)
     to_id = np.array([2, 3, 4, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
@@ -326,7 +326,7 @@ def level_boundary_condition_model():
     from_id = np.array([1, 2, 3, 4, 6], dtype=np.int64)
     to_id = np.array([2, 3, 4, 5, 4], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
@@ -474,7 +474,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     from_id = np.array([1, 2, 4], dtype=np.int64)
     to_id = np.array([2, 3, 2], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
@@ -608,7 +608,7 @@ def level_setpoint_with_minmax_model():
     from_id = np.array([1, 3, 4, 2, 1, 5, 7, 7], dtype=np.int64)
     to_id = np.array([3, 4, 2, 1, 5, 6, 2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
-    edge = ribasim.Edge[ribasim.EdgeSchema](
+    edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,

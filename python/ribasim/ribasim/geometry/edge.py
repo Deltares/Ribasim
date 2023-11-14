@@ -1,4 +1,4 @@
-from typing import Any, Generic
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
-from ribasim.input_base import SpatialTableModel, TableT
+from ribasim.input_base import SpatialTableModel
 
 __all__ = ("Edge",)
 
@@ -25,7 +25,7 @@ class EdgeSchema(pa.SchemaModel):
         add_missing_columns = True
 
 
-class Edge(SpatialTableModel[TableT], Generic[TableT]):
+class Edge(SpatialTableModel[EdgeSchema]):
     """
     Defines the connections between nodes.
 
