@@ -26,7 +26,7 @@ def geometry_from_connectivity(
     edge_geometry : np.ndarray
         Array of shapely LineStrings.
     """
-    geometry = node.static["geometry"]
+    geometry = node.df["geometry"]
     from_points = shapely.get_coordinates(geometry.loc[from_id])
     to_points = shapely.get_coordinates(geometry.loc[to_id])
     n = len(from_points)
@@ -56,8 +56,8 @@ def connectivity_from_geometry(
     from_node_id : np.ndarray of int
     to_node_id : np.ndarray of int
     """
-    node_index = node.static.index
-    node_xy = shapely.get_coordinates(node.static.geometry.values)
+    node_index = node.df.index
+    node_xy = shapely.get_coordinates(node.df.geometry.values)
     edge_xy = shapely.get_coordinates(lines)
 
     xy = np.vstack([node_xy, edge_xy])
