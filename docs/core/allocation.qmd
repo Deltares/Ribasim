@@ -121,6 +121,8 @@ $$
     \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left|1 - \frac{F_{\hat{i}\hat{j}}}{d_j^p(t)}\right|
 $$
 
+To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{\hat{i}\hat{j}}$ is set to $0$.
+
 :::{.callout-note}
 In the future new optimization objectives will be introduced, for demands of basins and priorities over sources. These will be used in combination with the above, in the form of goal programming.
 :::

@@ -765,6 +765,7 @@ function set_objective_priority!(
             # Objective function ∑ |F - d|
             JuMP.set_normalized_rhs(problem[:abs_positive][allocgraph_edge_id], -d)
             JuMP.set_normalized_rhs(problem[:abs_negative][allocgraph_edge_id], d)
+
         elseif objective_type == :linear_relative
             # Objective function ∑ |1 - F/d|
             JuMP.set_normalized_coefficient(
