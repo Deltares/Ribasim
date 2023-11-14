@@ -180,6 +180,7 @@ class Model(FileModel):
         directory = Path(directory)
 
         content = self.model_dump(exclude_unset=True, exclude_none=True)
+        content["database"] = content.pop("network")
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
 
