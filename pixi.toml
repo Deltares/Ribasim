@@ -40,9 +40,9 @@ quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to 
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
 # Lint
-mypy-ribasim-python = "mypy --ignore-missing-imports python/ribasim/ribasim"
-mypy-ribasim-testmodels = "mypy --ignore-missing-imports python/ribasim_testmodels/ribasim_testmodels"
-mypy-ribasim-api = "mypy --ignore-missing-imports python/ribasim_api/ribasim_api"
+mypy-ribasim-python = "mypy python/ribasim/ribasim"
+mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
+mypy-ribasim-api = "mypy python/ribasim_api/ribasim_api"
 pre-commit = "pre-commit run --all-files"
 lint = { depends_on = [
     "pre-commit",
