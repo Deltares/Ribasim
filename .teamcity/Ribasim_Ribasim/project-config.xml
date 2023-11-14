@@ -19,7 +19,7 @@
     </extension>
     <extension id="PROJECT_EXT_108" type="versionedSettings">
       <parameters>
-        <param name="buildSettings" value="ALWAYS_USE_CURRENT" />
+        <param name="buildSettings" value="PREFER_VCS" />
         <param name="credentialsStorageType" value="credentialsJSON" />
         <param name="enabled" value="true" />
         <param name="rootId" value="Ribasim_Ribasim_Ribasim" />
