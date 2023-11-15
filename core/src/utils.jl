@@ -294,7 +294,7 @@ function qh_interpolation(
     level::AbstractVector,
     discharge::AbstractVector,
 )::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(discharge, level), allunique(level)
+    return LinearInterpolation(discharge, level; extrapolate = true), allunique(level)
 end
 
 """
@@ -466,10 +466,10 @@ function basin_bottoms(
     return bottom_a, bottom_b
 end
 
-"Get the compressor based on the Output"
-function get_compressor(output::Output)::TranscodingStreams.Codec
-    compressor = output.compression
-    level = output.compression_level
+"Get the compressor based on the Results section"
+function get_compressor(results::Results)::TranscodingStreams.Codec
+    compressor = results.compression
+    level = results.compression_level
     c = if compressor == lz4
         LZ4FrameCompressor(; compressionlevel = level)
     elseif compressor == zstd
@@ -510,10 +510,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
             if id_ == id
                 push!(control_states_discrete_control, control_state)
-            end
 
-            if length(truth_state) != n_conditions
-                push!(truth_states_wrong_length, truth_state)
+                if length(truth_state) != n_conditions
+                    push!(truth_states_wrong_length, truth_state)
+                end
             end
         end
 
@@ -917,4 +917,49 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     else
         one(T)
     end
+end
+
+"""Whether the given node node is flow constraining by having a maximum flow rate."""
+is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
+
+"""Whether the given node is flow direction constraining (only in direction of edges)."""
+is_flow_direction_constraining(node::AbstractParameterNode) =
+    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
+
+"""Find out whether a path exists between a start node and end node in the given graph."""
+function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::Int)::Bool
+    node_ids_visited = Set{Int}()
+    stack = [start_node_id]
+
+    while !isempty(stack)
+        current_node_id = pop!(stack)
+        if current_node_id == end_node_id
+            return true
+        end
+        if !(current_node_id in node_ids_visited)
+            push!(node_ids_visited, current_node_id)
+            for outneighbor_node_id in outneighbors(graph, current_node_id)
+                push!(stack, outneighbor_node_id)
+            end
+        end
+    end
+    return false
+end
+
+"""
+Get two dictionaries, where:
+- The first one gives the IDs of the inedges for each node ID in the graph
+- The second one gives the IDs of the outedges for each node ID in the graph
+"""
+function get_node_in_out_edges(
+    graph::DiGraph{Int},
+)::Tuple{Dict{Int, Vector{Int}}, Dict{Int, Vector{Int}}}
+    n_nodes = nv(graph)
+    node_inedge_ids = Dict(i => Int[] for i in 1:n_nodes)
+    node_outedge_ids = Dict(i => Int[] for i in 1:n_nodes)
+    for (i, edge) in enumerate(edges(graph))
+        push!(node_inedge_ids[edge.dst], i)
+        push!(node_outedge_ids[edge.src], i)
+    end
+    return node_inedge_ids, node_outedge_ids
 end

@@ -1,0 +1,59 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
+    "title": "Results",
+    "description": "A Results object based on Ribasim.config.Results",
+    "type": "object",
+    "properties": {
+        "basin": {
+            "format": "default",
+            "type": "string",
+            "default": "results/basin.arrow"
+        },
+        "flow": {
+            "format": "default",
+            "type": "string",
+            "default": "results/flow.arrow"
+        },
+        "control": {
+            "format": "default",
+            "type": "string",
+            "default": "results/control.arrow"
+        },
+        "allocation": {
+            "format": "default",
+            "type": "string",
+            "default": "results/allocation.arrow"
+        },
+        "outstate": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        },
+        "compression": {
+            "format": "default",
+            "type": "string",
+            "default": "zstd"
+        },
+        "compression_level": {
+            "format": "default",
+            "type": "integer",
+            "default": 6
+        }
+    },
+    "required": [
+        "basin",
+        "flow",
+        "control",
+        "allocation",
+        "compression",
+        "compression_level"
+    ]
+}

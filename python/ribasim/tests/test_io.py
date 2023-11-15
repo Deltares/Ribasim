@@ -9,6 +9,8 @@ from ribasim import Pump
 
 def assert_equal(a, b):
     """Like pandas.testing.assert_frame_equal, but ignoring the index."""
+    if a is None and b is None:
+        return True
 
     # TODO support assert basic == model, ignoring the index for all but node
     a = a.reset_index(drop=True)
@@ -25,32 +27,30 @@ def assert_equal(a, b):
 def test_basic(basic, tmp_path):
     model_orig = basic
     model_orig.write(tmp_path / "basic")
-    model_loaded = ribasim.Model.from_toml(tmp_path / "basic/basic.toml")
+    model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
 
-    assert model_orig.modelname == model_loaded.modelname
-    index_a = model_orig.node.static.index.to_numpy(int)
-    index_b = model_loaded.node.static.index.to_numpy(int)
+    index_a = model_orig.database.node.df.index.to_numpy(int)
+    index_b = model_loaded.database.node.df.index.to_numpy(int)
     assert_array_equal(index_a, index_b)
-    assert_equal(model_orig.node.static, model_loaded.node.static)
-    assert_equal(model_orig.edge.static, model_loaded.edge.static)
-    assert model_loaded.basin.time is None
+    assert_equal(model_orig.database.node.df, model_loaded.database.node.df)
+    assert_equal(model_orig.database.edge.df, model_loaded.database.edge.df)
+    assert model_loaded.basin.time.df is None
 
 
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient")
-    model_loaded = ribasim.Model.from_toml(
-        tmp_path / "basic_transient/basic_transient.toml"
-    )
+    model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
+    print(model_loaded.database.node)
+    print(model_loaded.database.edge)
 
-    assert model_orig.modelname == model_loaded.modelname
-    assert_equal(model_orig.node.static, model_loaded.node.static)
-    assert_equal(model_orig.edge.static, model_loaded.edge.static)
+    assert_equal(model_orig.database.node.df, model_loaded.database.node.df)
+    assert_equal(model_orig.database.edge.df, model_loaded.database.edge.df)
 
     time = model_loaded.basin.time
-    assert model_orig.basin.time.time[0] == time.time[0]
-    assert_equal(model_orig.basin.time, time)
-    assert time.shape == (1468, 8)
+    assert model_orig.basin.time.df.time[0] == time.df.time[0]
+    assert_equal(model_orig.basin.time.df, time.df)
+    assert time.df.shape == (1468, 8)
 
 
 def test_pydantic():
@@ -67,7 +67,4 @@ def test_repr():
 
     pump_1 = Pump(static=static_data)
 
-    assert (
-        repr(pump_1)
-        == "<ribasim.Pump>\n   static: DataFrame(rows=3)\n       (node_id, active, flow_rate, min_flow_rate,\n       max_flow_rate, control_state, remarks)"
-    )
+    assert repr(pump_1) == "Pump(static=TableModel[PumpStaticSchema]())"

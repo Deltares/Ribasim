@@ -1,6 +1,16 @@
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
-from ribasim_testmodels.allocation import subnetwork_model, user_model
+from typing import Callable, Dict
+
+import ribasim
+
+import ribasim_testmodels
+from ribasim_testmodels.allocation import (
+    minimal_subnetwork_model,
+    # looped_subnetwork_model,
+    subnetwork_model,
+    user_model,
+)
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_model,
@@ -65,4 +75,15 @@ __all__ = [
     "outlet_model",
     "user_model",
     "subnetwork_model",
+    "minimal_subnetwork_model",
+    # Disable until this issue is resolved:
+    # https://github.com/Deltares/Ribasim/issues/692
+    # "looped_subnetwork_model",
 ]
+
+# provide a mapping from model name to its constructor, so we can iterate over all models
+constructors: Dict[str, Callable[[], ribasim.Model]] = {}
+for model_name_model in __all__:
+    model_name = model_name_model.removesuffix("_model")
+    model_constructor = getattr(ribasim_testmodels, model_name_model)
+    constructors[model_name] = model_constructor

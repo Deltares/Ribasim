@@ -235,12 +235,10 @@ groundwater response to Ribasim.
 From Ribasim's perspective, the groundwater head is constant given a timestep,
 so that:
 
-$$
 \begin{align}
 p = -C \\
 q = -C\phi
 \end{align}
-$$
 
 When the head falls below the drainage elevation, the coefficients are 0.
 
@@ -249,22 +247,18 @@ When the head falls below the drainage elevation, the coefficients are 0.
 From Ribasim's perspective, infiltration is never limited when the head falls below
 the bottom:
 
-$$
 \begin{align}
 p = -C \\
 q = -Cb
 \end{align}
-$$
 
 Otherwise, infiltration and drainage occur with the same equation as for the
 drainage package:
 
-$$
 \begin{align}
 p = -C \\
 q = -C\phi
 \end{align}
-$$
 
 
 # Assigning MODFLOW water levels
@@ -273,12 +267,10 @@ Principally, MODFLOW deals with water levels; Ribasim deals with water volumes.
 The translation from a water volume to a water level for a single boundary
 condition is straightforward:
 
-$$
 \begin{align}
 \Delta d = \frac{\Delta V}{A} \\
 h = b + d
 \end{align}
-$$
 
 Where $d$ is water depth, $V$ is volume, $A$ is area, $h$ is water level, and
 $b$ is the bed elevation.

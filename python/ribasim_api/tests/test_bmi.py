@@ -10,13 +10,13 @@ from xmipy.errors import XMIError
 
 def test_initialize(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 
 
 def test_get_start_time(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     time = libribasim.get_start_time()
     assert time == pytest.approx(0.0)
@@ -24,14 +24,14 @@ def test_get_start_time(libribasim, basic, tmp_path):
 
 def test_get_current_time(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     assert libribasim.get_current_time() == pytest.approx(libribasim.get_start_time())
 
 
 def test_get_end_time(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_end_time = libribasim.get_end_time()
     excepted_end_time = (basic.endtime - basic.starttime).total_seconds()
@@ -40,7 +40,7 @@ def test_get_end_time(libribasim, basic, tmp_path):
 
 def test_update(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     libribasim.update()
     time = libribasim.get_current_time()
@@ -49,7 +49,7 @@ def test_update(libribasim, basic, tmp_path):
 
 def test_update_until(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     expected_time = 60.0
     libribasim.update_until(expected_time)
@@ -59,7 +59,7 @@ def test_update_until(libribasim, basic, tmp_path):
 
 def test_get_var_type(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     var_type = libribasim.get_var_type("volume")
     assert var_type == "double"
@@ -67,7 +67,7 @@ def test_get_var_type(libribasim, basic, tmp_path):
 
 def test_get_var_rank(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_rank = libribasim.get_var_rank("volume")
     expected_rank = 1
@@ -76,7 +76,7 @@ def test_get_var_rank(libribasim, basic, tmp_path):
 
 def test_get_var_shape(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_shape = libribasim.get_var_shape("volume")
     expected_shape = np.array([4])
@@ -85,7 +85,7 @@ def test_get_var_shape(libribasim, basic, tmp_path):
 
 def test_get_value_ptr(libribasim, basic, tmp_path):
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_volume = libribasim.get_value_ptr("volume")
     expected_volume = np.array([1.0, 1.0, 1.0, 1.0])
@@ -98,7 +98,7 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
     print the kernel error, and not crash the library
     """
     basic.write(tmp_path)
-    config_file = str(tmp_path / f"{basic.modelname}.toml")
+    config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 
     variable_name = "var-that-does-not-exist"
@@ -115,6 +115,7 @@ def test_get_component_name(libribasim):
     assert libribasim.get_component_name() == "Ribasim"
 
 
+@pytest.mark.skip("https://github.com/Deltares/Ribasim/issues/364")
 def test_get_version(libribasim):
     toml_path = Path(__file__).parents[3] / "core" / "Project.toml"
     with open(toml_path, mode="rb") as fp:

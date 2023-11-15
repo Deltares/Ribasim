@@ -65,6 +65,7 @@ class Edge(BaseModel):
     from_node_id: int
     to_node_id: int
     edge_type: str
+    allocation_network_id: Optional[int] = None
     remarks: str = Field("", description="a hack for pandera")
 
 
@@ -135,6 +136,7 @@ class Node(BaseModel):
     fid: int
     name: str
     type: str
+    allocation_network_id: Optional[int] = None
     remarks: str = Field("", description="a hack for pandera")
 
 

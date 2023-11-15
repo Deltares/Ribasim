@@ -107,7 +107,7 @@ function get_testmodels()::Vector{String}
     toml_paths = String[]
     for dir in dirs
         if !startswith(dir, "invalid_")
-            toml_path = normpath("generated_testmodels", dir, "$dir.toml")
+            toml_path = normpath("generated_testmodels", dir, "ribasim.toml")
             @assert isfile(toml_path)
             push!(toml_paths, toml_path)
         end

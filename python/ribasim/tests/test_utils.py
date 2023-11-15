@@ -15,7 +15,7 @@ def test_utils():
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
     node = Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,

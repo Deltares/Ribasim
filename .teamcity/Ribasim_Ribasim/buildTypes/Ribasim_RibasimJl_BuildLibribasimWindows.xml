@@ -4,7 +4,8 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="build\create_binaries\libribasim =&gt; libribasim.zip" />
+      <option name="artifactRules" value="ribasim\build\create_binaries\libribasim =&gt; libribasim.zip" />
+      <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
@@ -12,54 +13,31 @@
       <setting-ref ref="RQ_271" />
     </disabled-settings>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/env_build_libribasim" />
-      <param name="julia" value="%env.JULIA_1_9%" />
+      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_1955" name="Set up virtual environment" type="simpleRunner">
+      <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[if exist "%conda_env_path%" rd /q /s "%conda_env_path%"
-call conda env create -f environment.yml --prefix "%conda_env_path%"]]></param>
+          <param name="script.content" value="pixi run install-without-pre-commit" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1956" name="Install Python packages" type="simpleRunner">
+      <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call pip install --editable "python/ribasim"
-call pip install --editable "python/ribasim_testmodels"]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_1967" name="Prepare model input" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[call conda activate "%conda_env_path%"
-call python utils/generate-testmodels.py]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_1984" name="Instantiate environment" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="%julia% --project --eval &quot;using Pkg; Pkg.instantiate()&quot;" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_551" name="Build shared library" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="%julia% --project create_lib.jl" />
-          <param name="teamcity.build.workingDir" value="build/create_binaries" />
+          <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
+pixi run build-libribasim]]></param>
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim">
+        <checkout-rule rule=". =&gt; ribasim" />
+      </vcs-entry-ref>
     </vcs-settings>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
@@ -103,3 +81,4 @@ call python utils/generate-testmodels.py]]></param>
     <cleanup />
   </settings>
 </build-type>
+

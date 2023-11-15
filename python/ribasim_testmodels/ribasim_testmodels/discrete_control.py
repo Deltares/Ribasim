@@ -5,7 +5,10 @@ import ribasim
 
 
 def pump_discrete_control_model() -> ribasim.Model:
-    """Set up a basic model with a pump controlled based on basin levels"""
+    """
+    Set up a basic model with a pump controlled based on basin levels.
+    The LinearResistance is deactivated when the levels are almost equal.
+    """
 
     # Set up the nodes:
     xy = np.array(
@@ -14,7 +17,8 @@ def pump_discrete_control_model() -> ribasim.Model:
             (1.0, -1.0),  # 2: LinearResistance
             (2.0, 0.0),  # 3: Basin
             (1.0, 0.0),  # 4: Pump
-            (1.0, 1.0),  # 5: Control
+            (1.0, 1.0),  # 5: DiscreteControl
+            (2.0, -1.0),  # 6: DiscreteControl
         ]
     )
 
@@ -26,11 +30,12 @@ def pump_discrete_control_model() -> ribasim.Model:
         "Basin",
         "Pump",
         "DiscreteControl",
+        "DiscreteControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -39,14 +44,14 @@ def pump_discrete_control_model() -> ribasim.Model:
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 1, 4, 5], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 3, 4], dtype=np.int64)
+    from_id = np.array([1, 2, 1, 4, 5, 6], dtype=np.int64)
+    to_id = np.array([2, 3, 4, 3, 4, 2], dtype=np.int64)
 
-    edge_type = 4 * ["flow"] + ["control"]
+    edge_type = 4 * ["flow"] + 2 * ["control"]
 
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"from_node_id": from_id, "to_node_id": to_id, "edge_type": edge_type},
             geometry=lines,
             crs="EPSG:28992",
@@ -80,10 +85,10 @@ def pump_discrete_control_model() -> ribasim.Model:
     # Setup the discrete control:
     condition = pd.DataFrame(
         data={
-            "node_id": [5, 5],
-            "listen_feature_id": [1, 3],
-            "variable": ["level", "level"],
-            "greater_than": [0.8, 0.4],
+            "node_id": [5, 5, 6],
+            "listen_feature_id": [1, 3, 3],
+            "variable": ["level", "level", "level"],
+            "greater_than": [0.8, 0.4, 0.45],
         }
     )
 
@@ -91,14 +96,16 @@ def pump_discrete_control_model() -> ribasim.Model:
     # True,  False -> "off"
     # False, True  -> "off"
     # True,  True  -> "on"
+    # False  -> "active"
+    # True  -> "inactive"
 
     # Truth state as subset of the conditions above and in that order
 
     logic = pd.DataFrame(
         data={
-            "node_id": [5, 5, 5, 5],
-            "truth_state": ["FF", "TF", "FT", "TT"],
-            "control_state": ["on", "off", "off", "on"],
+            "node_id": [5, 5, 5, 5, 6, 6],
+            "truth_state": ["FF", "TF", "FT", "TT", "T", "F"],
+            "control_state": ["on", "off", "off", "on", "inactive", "active"],
         }
     )
 
@@ -119,17 +126,17 @@ def pump_discrete_control_model() -> ribasim.Model:
     linear_resistance = ribasim.LinearResistance(
         static=pd.DataFrame(
             data={
-                "node_id": [2],
-                "resistance": [1e5],
+                "node_id": [2, 2],
+                "active": [True, False],
+                "resistance": [1e5, 1e5],
+                "control_state": ["active", "inactive"],
             }
         )
     )
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="pump_discrete_control",
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         linear_resistance=linear_resistance,
         pump=pump,
@@ -166,7 +173,7 @@ def flow_condition_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -179,7 +186,7 @@ def flow_condition_model():
     to_id = np.array([2, 3, 4, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -267,9 +274,7 @@ def flow_condition_model():
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="flow_condition",
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         pump=pump,
         flow_boundary=flow_boundary,
@@ -309,7 +314,7 @@ def level_boundary_condition_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -322,7 +327,7 @@ def level_boundary_condition_model():
     to_id = np.array([2, 3, 4, 5, 4], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -415,9 +420,7 @@ def level_boundary_condition_model():
     )
 
     model = ribasim.Model(
-        modelname="level_boundary_condition",
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         outlet=outlet,
         level_boundary=level_boundary,
@@ -459,7 +462,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -472,7 +475,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     to_id = np.array([2, 3, 2], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -549,9 +552,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        modelname="tabulated_rating_curve_control",
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
@@ -595,7 +596,7 @@ def level_setpoint_with_minmax_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -608,7 +609,7 @@ def level_setpoint_with_minmax_model():
     to_id = np.array([3, 4, 2, 1, 5, 6, 2, 3], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -690,9 +691,7 @@ def level_setpoint_with_minmax_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        modelname="level_setpoint_with_minmax",
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         pump=pump,
         level_boundary=level_boundary,

@@ -15,9 +15,9 @@ Initialize a [`Model`](@ref) from a [`Config`](@ref).
 """
 function BMI.initialize(T::Type{Model}, config::Config)::Model
     alg = algorithm(config.solver)
-    gpkg_path = input_path(config, config.geopackage)
-    if !isfile(gpkg_path)
-        throw(SystemError("GeoPackage file not found: $gpkg_path"))
+    db_path = input_path(config, config.database)
+    if !isfile(db_path)
+        throw(SystemError("Database file not found: $db_path"))
     end
 
     # Setup timing logging
@@ -25,10 +25,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
-    # All data from the GeoPackage that we need during runtime is copied into memory,
+    # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
-    db = SQLite.DB(gpkg_path)
-    local parameters, state, n, tstops, level_exporters
+    db = SQLite.DB(db_path)
+    local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
 
@@ -55,20 +55,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         if !valid_fractional_flow(
             connectivity.graph_flow,
             fractional_flow.node_id,
-            fractional_flow.fraction,
+            fractional_flow.control_mapping,
         )
             error("Invalid fractional flow node combinations found.")
-        end
-
-        for id in pid_control.node_id
-            id_controlled = only(outneighbors(connectivity.graph_control, id))
-            pump_idx = findsorted(pump.node_id, id_controlled)
-            if pump_idx === nothing
-                outlet_idx = findsorted(outlet.node_id, id_controlled)
-                outlet.is_pid_controlled[outlet_idx] = true
-            else
-                pump.is_pid_controlled[pump_idx] = true
-            end
         end
 
         # tell the solver to stop when new data comes in
@@ -85,7 +74,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
         level_exporters = create_level_exporters(db, config, basin)
     finally
-        # always close the GeoPackage, also in case of an error
+        # always close the database, also in case of an error
         close(db)
     end
     @debug "Read database into memory."
@@ -118,7 +107,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters; config.solver.saveat)
+    callback, saved_flow = create_callbacks(parameters, config; config.solver.saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -158,29 +147,34 @@ end
 """
     BMI.finalize(model::Model)::Model
 
-Write all output to the configured output files.
+Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Model
     (; config) = model
-    (; output) = model.config
-    compress = get_compressor(output)
+    (; results) = model.config
+    compress = get_compressor(results)
 
     # basin
     table = basin_table(model)
-    path = output_path(config, output.basin)
+    path = results_path(config, results.basin)
     write_arrow(path, table, compress)
 
     # flow
     table = flow_table(model)
-    path = output_path(config, output.flow)
+    path = results_path(config, results.flow)
     write_arrow(path, table, compress)
 
     # discrete control
     table = discrete_control_table(model)
-    path = output_path(config, output.control)
+    path = results_path(config, results.control)
     write_arrow(path, table, compress)
 
-    @debug "Wrote output."
+    # allocation
+    table = allocation_table(model)
+    path = results_path(config, results.allocation)
+    write_arrow(path, table, compress)
+
+    @debug "Wrote results."
     return model
 end
 
@@ -205,13 +199,14 @@ function set_initial_discrete_controlled_parameters!(
 end
 
 """
-Create the different callbacks that are used to store output
+Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    parameters;
+    parameters::Parameters,
+    config::Config;
     saveat,
 )::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -224,6 +219,15 @@ function create_callbacks(
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
     push!(callbacks, tabulated_rating_curve_cb)
+
+    if config.allocation.use_allocation
+        allocation_cb = PeriodicCallback(
+            update_allocation!,
+            config.allocation.timestep;
+            initial_affect = false,
+        )
+        push!(callbacks, allocation_cb)
+    end
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
@@ -398,15 +402,14 @@ function discrete_control_affect!(
     condition_ids = discrete_control.node_id .== discrete_control_node_id
 
     # Get the truth state for this discrete_control node
-    condition_value_local = discrete_control.condition_value[condition_ids]
-    truth_values = [ifelse(b, "T", "F") for b in condition_value_local]
-    truth_state = join(truth_values, "")
+    truth_values = [ifelse(b, "T", "F") for b in discrete_control.condition_value]
+    truth_state = join(truth_values[condition_ids], "")
 
     # Get the truth specific about the latest crossing
     if !ismissing(upcrossing)
         truth_values[condition_idx] = upcrossing ? "U" : "D"
     end
-    truth_state_crossing_specific = join(truth_values, "")
+    truth_state_crossing_specific = join(truth_values[condition_ids], "")
 
     # What the local control state should be
     control_state_new =
@@ -504,6 +507,14 @@ function update_basin(integrator)::Nothing
     return nothing
 end
 
+"Solve the allocation problem for all users and assign allocated abstractions to user nodes."
+function update_allocation!(integrator)::Nothing
+    (; p, t) = integrator
+    for allocation_model in integrator.p.connectivity.allocation_models
+        allocate!(p, allocation_model, t)
+    end
+end
+
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
 function update_tabulated_rating_curve!(integrator)::Nothing
     (; node_id, tables, time) = integrator.p.tabulated_rating_curve
@@ -519,7 +530,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         discharge = [row.discharge for row in group]
         i = searchsortedfirst(node_id, id)
-        tables[i] = LinearInterpolation(discharge, level)
+        tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
     end
     return nothing
 end
@@ -568,7 +579,7 @@ BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
     run(config::Config)::Model
 
 Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
-Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing output with [`BMI.finalize`](@ref).
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing results with [`BMI.finalize`](@ref).
 """
 run(config_file::AbstractString)::Model = run(Config(config_file))
 

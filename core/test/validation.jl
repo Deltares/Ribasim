@@ -1,9 +1,11 @@
+using Test
 using Ribasim
 using Graphs: DiGraph, add_edge!
 using Dictionaries: Indices
 using DataInterpolations: LinearInterpolation
 import SQLite
 using Logging
+using Test
 
 @testset "Basin profile validation" begin
     node_id = Indices([1])
@@ -26,12 +28,12 @@ using Logging
 end
 
 @testset "Q(h) validation" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/invalid_qh.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(config, config.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(config, config.database)
+    db = SQLite.DB(db_path)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -43,10 +45,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" (#1) from the static table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve \"\" #1 from the static table has repeated levels, this can not be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" (#2) from the time table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve \"\" #2 from the time table has repeated levels, this can not be interpolated."
 end
 
 @testset "Neighbor count validation" begin
@@ -153,13 +155,13 @@ if !Sys.islinux()
     @testset "FractionalFlow validation" begin
         toml_path = normpath(
             @__DIR__,
-            "../../generated_testmodels/invalid_fractional_flow/invalid_fractional_flow.toml",
+            "../../generated_testmodels/invalid_fractional_flow/ribasim.toml",
         )
         @test ispath(toml_path)
 
         config = Ribasim.Config(toml_path)
-        gpkg_path = Ribasim.input_path(config, config.geopackage)
-        db = SQLite.DB(gpkg_path)
+        db_path = Ribasim.input_path(config, config.database)
+        db = SQLite.DB(db_path)
         p = Ribasim.Parameters(db, config)
         (; connectivity, fractional_flow) = p
 
@@ -168,7 +170,7 @@ if !Sys.islinux()
             @test !Ribasim.valid_fractional_flow(
                 connectivity.graph_flow,
                 fractional_flow.node_id,
-                fractional_flow.fraction,
+                fractional_flow.control_mapping,
             )
         end
 
@@ -178,23 +180,29 @@ if !Sys.islinux()
               "Node #7 combines fractional flow outneighbors with other outneigbor types."
         @test logger.logs[2].level == Error
         @test logger.logs[2].message ==
-              "Fractional flow nodes must have non-negative fractions, got -0.1 for #3."
+              "Fractional flow nodes must have non-negative fractions."
+        @test logger.logs[2].kwargs[:node_id] == 3
+        @test logger.logs[2].kwargs[:fraction] ≈ -0.1
+        @test logger.logs[2].kwargs[:control_state] == ""
         @test logger.logs[3].level == Error
         @test logger.logs[3].message ==
-              "The sum of fractional flow fractions leaving a node must be ≈1, got 0.4 for #7."
+              "The sum of fractional flow fractions leaving a node must be ≈1."
+        @test logger.logs[3].kwargs[:node_id] == 7
+        @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
+        @test logger.logs[3].kwargs[:control_state] == ""
     end
 end
 
 @testset "DiscreteControl logic validation" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/invalid_discrete_control/invalid_discrete_control.toml",
+        "../../generated_testmodels/invalid_discrete_control/ribasim.toml",
     )
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
 
     logger = TestLogger()
@@ -263,15 +271,13 @@ end
 end
 
 @testset "Edge type validation" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/invalid_edge_types/invalid_edge_types.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/ribasim.toml")
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    gpkg_path = Ribasim.input_path(cfg, cfg.geopackage)
-    db = SQLite.DB(gpkg_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do
         @test !Ribasim.valid_edge_types(db)

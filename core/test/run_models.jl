@@ -9,7 +9,7 @@ using PreallocationTools: get_tmp
 using DataFrames: DataFrame
 
 @testset "trivial model" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/trivial.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -17,7 +17,7 @@ using DataFrames: DataFrame
 end
 
 @testset "bucket model" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/bucket.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -25,7 +25,7 @@ end
 end
 
 @testset "basic model" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/basic.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
 
     logger = TestLogger()
@@ -44,7 +44,7 @@ end
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) == 7
+    @test length(logger.logs) == 8
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 
@@ -55,27 +55,32 @@ end
     )
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[2:end]
+
+    # inflow = outflow over FractionalFlow
+    t = table.time[1]
+    @test length(p.fractional_flow.node_id) == 3
+    for id in p.fractional_flow.node_id
+        inflow = only(table.flow[table.to_node_id .== id .&& table.time .== t])
+        outflow = only(table.flow[table.from_node_id .== id .&& table.time .== t])
+        @test inflow == outflow
+    end
 end
 
 @testset "basic transient model" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/basic_transient/basic_transient.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test length(model.integrator.p.basin.precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[469.8923, 469.89038, 410.71472, 1427.4194] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()
 end
 
 @testset "sparse and AD/FDM jac solver options" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/basic_transient/basic_transient.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
     config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
     sparse_ad = Ribasim.run(config)
@@ -97,10 +102,8 @@ end
 end
 
 @testset "TabulatedRatingCurve model" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/tabulated_rating_curve/tabulated_rating_curve.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -158,7 +161,7 @@ end
 end
 
 @testset "Outlet constraints" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/outlet.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
@@ -187,7 +190,7 @@ end
 end
 
 @testset "User" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/user.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
@@ -195,8 +198,8 @@ end
     @test only(model.integrator.sol(0day)) == 1000.0
     # constant user withdraws to 0.9m/900m3
     @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic user withdraws to 0.5m/500m3
-    @test only(model.integrator.sol(180day)) ≈ 500 atol = 1
+    # dynamic user withdraws to 0.5m/509m3
+    @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 
 @testset "ManningResistance" begin
@@ -254,7 +257,7 @@ end
         return h
     end
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/backwater.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)

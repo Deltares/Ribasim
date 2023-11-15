@@ -12,6 +12,7 @@ using SafeTestsets: @safetestset
     @safetestset "Basic Model Interface" include("bmi.jl")
     @safetestset "Utility functions" include("utils.jl")
     @safetestset "Control" include("control.jl")
+    @safetestset "Allocation" include("allocation.jl")
     @safetestset "Time" include("time.jl")
     @safetestset "Docs" include("docs.jl")
     @safetestset "Command Line Interface" include("cli.jl")

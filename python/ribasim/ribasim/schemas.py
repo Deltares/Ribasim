@@ -22,7 +22,11 @@ def gen_schema(name, cls):
             "Config": type(
                 f"{cname}.Config",
                 (),
-                {"dtype": PydanticModel(cls), "coerce": True},
+                {
+                    "dtype": PydanticModel(cls),
+                    "coerce": True,
+                    "add_missing_columns": True,
+                },
             )
         },
     )

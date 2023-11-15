@@ -6,9 +6,9 @@ import ribasim_testmodels
 if __name__ == "__main__":
     datadir = Path("generated_testmodels")
     if datadir.is_dir():
-        shutil.rmtree(datadir)
+        shutil.rmtree(datadir, ignore_errors=True)
 
-    datadir.mkdir()
+    datadir.mkdir(exist_ok=True)
     readme = datadir / "README.md"
     readme.write_text(
         """\
@@ -18,12 +18,7 @@ The content of this directory are generated testmodels for Ribasim
 Don't put important stuff in here, it will be emptied for every run."""
     )
 
-    models = [
-        model_generator()
-        for model_generator in map(
-            ribasim_testmodels.__dict__.get, ribasim_testmodels.__all__
-        )
-    ]
-
-    for model in models:
-        model.write(datadir / model.modelname)
+    for model_name, model_constructor in ribasim_testmodels.constructors.items():
+        print(f"Generating {model_name}")
+        model = model_constructor()
+        model.write(datadir / model_name)

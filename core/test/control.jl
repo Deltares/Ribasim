@@ -1,46 +1,57 @@
+using Test
 import Ribasim
 using Dates: Date
+using Test
+using PreallocationTools: get_tmp
 
 @testset "Pump discrete control" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/pump_discrete_control/pump_discrete_control.toml",
-    )
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control) = p
+    (; discrete_control, connectivity) = p
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
     @test pump_control_mapping[(4, "off")].flow_rate == 0
     @test pump_control_mapping[(4, "on")].flow_rate == 1.0e-5
 
-    logic_mapping::Dict{Tuple{Int, String}, String} =
-        Dict((5, "TT") => "on", (5, "TF") => "off", (5, "FF") => "on", (5, "FT") => "off")
+    logic_mapping::Dict{Tuple{Int, String}, String} = Dict(
+        (5, "TT") => "on",
+        (6, "F") => "active",
+        (5, "TF") => "off",
+        (5, "FF") => "on",
+        (5, "FT") => "off",
+        (6, "T") => "inactive",
+    )
 
     @test discrete_control.logic_mapping == logic_mapping
 
     # Control result
-    @test discrete_control.record.truth_state == ["TF", "FF", "FT"]
-    @test discrete_control.record.control_state == ["off", "on", "off"]
+    @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
+    @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
+    @test discrete_control.record.control_state ==
+          ["off", "active", "on", "off", "inactive"]
 
     level = Ribasim.get_storages_and_levels(model).level
     timesteps = Ribasim.timesteps(model)
 
     # Control times
-    t_1 = discrete_control.record.time[2]
+    t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(timesteps .≈ t_1)
     @test level[1, t_1_index] ≈ discrete_control.greater_than[1]
 
-    t_2 = discrete_control.record.time[3]
+    t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(timesteps .≈ t_2)
     @test level[2, t_2_index] ≈ discrete_control.greater_than[2]
+
+    flow = get_tmp(connectivity.flow, 0)
+    @test all(iszero, flow)
 end
 
 @testset "Flow condition control" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/flow_condition/flow_condition.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_condition/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
@@ -63,7 +74,7 @@ end
 @testset "Transient level boundary condition control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/level_boundary_condition/level_boundary_condition.toml",
+        "../../generated_testmodels/level_boundary_condition/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -85,8 +96,7 @@ end
 end
 
 @testset "PID control" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/pid_control/pid_control.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
@@ -127,7 +137,7 @@ end
 @testset "TabulatedRatingCurve control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/tabulated_rating_curve_control/tabulated_rating_curve_control.toml",
+        "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -146,7 +156,7 @@ end
 @testset "Setpoint with bounds control" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/level_setpoint_with_minmax/level_setpoint_with_minmax.toml",
+        "../../generated_testmodels/level_setpoint_with_minmax/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -176,7 +186,7 @@ end
 @testset "Set PID target with DiscreteControl" begin
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/discrete_control_of_pid_control/discrete_control_of_pid_control.toml",
+        "../../generated_testmodels/discrete_control_of_pid_control/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)

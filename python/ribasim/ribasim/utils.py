@@ -1,5 +1,3 @@
-import random
-import string
 from typing import Any, Sequence, Tuple
 
 import numpy as np
@@ -28,7 +26,7 @@ def geometry_from_connectivity(
     edge_geometry : np.ndarray
         Array of shapely LineStrings.
     """
-    geometry = node.static["geometry"]
+    geometry = node.df["geometry"]
     from_points = shapely.get_coordinates(geometry.loc[from_id])
     to_points = shapely.get_coordinates(geometry.loc[to_id])
     n = len(from_points)
@@ -58,8 +56,8 @@ def connectivity_from_geometry(
     from_node_id : np.ndarray of int
     to_node_id : np.ndarray of int
     """
-    node_index = node.static.index
-    node_xy = shapely.get_coordinates(node.static.geometry.values)
+    node_index = node.df.index
+    node_xy = shapely.get_coordinates(node.df.geometry.values)
     edge_xy = shapely.get_coordinates(lines)
 
     xy = np.vstack([node_xy, edge_xy])
@@ -78,8 +76,3 @@ def connectivity_from_geometry(
     from_id = node_index[edge_node_id[:, 0]].to_numpy()
     to_id = node_index[edge_node_id[:, 1]].to_numpy()
     return from_id, to_id
-
-
-def random_string(length=3):
-    letters = string.ascii_lowercase
-    return "".join(random.choice(letters) for i in range(length))

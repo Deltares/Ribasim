@@ -15,7 +15,7 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
-export Config, Solver, Output, Logging
+export Config, Solver, Results, Logging
 export algorithm, snake_case, zstd, lz4
 
 const schemas =
@@ -84,7 +84,7 @@ const nodetypes = collect(keys(nodekinds))
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
     abstol::Float64 = 1e-6
-    reltol::Float64 = 1e-3
+    reltol::Float64 = 1e-5
     maxiters::Int = 1e9
     sparse::Bool = true
     autodiff::Bool = true
@@ -108,10 +108,11 @@ function Base.convert(::Type{Compression}, str::AbstractString)
 end
 
 # Separate struct, as basin clashes with nodetype
-@option struct Output <: TableOption
-    basin::String = "output/basin.arrow"
-    flow::String = "output/flow.arrow"
-    control::String = "output/control.arrow"
+@option struct Results <: TableOption
+    basin::String = "results/basin.arrow"
+    flow::String = "results/flow.arrow"
+    control::String = "results/control.arrow"
+    allocation::String = "results/allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
@@ -122,27 +123,29 @@ end
     timing::Bool = false
 end
 
+@option struct Allocation <: TableOption
+    timestep::Union{Float64, Nothing} = nothing
+    use_allocation::Bool = false
+end
+
 @option @addnodetypes struct Config <: TableOption
     starttime::DateTime
     endtime::DateTime
 
-    # [s] Δt for periodic update frequency, including user horizons
-    update_timestep::Float64 = 60 * 60 * 24.0
-
     # optional, when Config is created from a TOML file, this is its directory
     relative_dir::String = "."  # ignored(!)
     input_dir::String = "."
-    output_dir::String = "."
+    results_dir::String = "."
 
     # input, required
-    geopackage::String
+    database::String
 
-    # output, required
-    output::Output = Output()
-
+    allocation::Allocation = Allocation()
     solver::Solver = Solver()
-
     logging::Logging = Logging()
+
+    # results, required
+    results::Results = Results()
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)

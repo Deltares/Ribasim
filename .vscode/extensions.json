@@ -2,9 +2,10 @@
     "recommendations": [
         "julialang.language-julia",
         "ms-python.python",
-        "ms-python.black-formatter",
         "ms-python.mypy-type-checker",
         "charliermarsh.ruff",
-        "njpwerner.autodocstring"
+        "njpwerner.autodocstring",
+        "quarto.quarto",
+        "tamasfe.even-better-toml"
     ]
 }

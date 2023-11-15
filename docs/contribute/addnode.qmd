@@ -115,6 +115,7 @@ from typing import Optional
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
+from pydantic import ConfigDict
 
 from ribasim import models
 from ribasim.input_base import TableModel
@@ -145,8 +146,7 @@ class NewNodeType(TableModel):
     static: Optional[DataFrame[StaticSchema]] = None
     # possible other schemas
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     def sort(self):
         self.static.sort_values("node_id", ignore_index=True, inplace=True)
@@ -168,7 +168,7 @@ In `python/ribasim/ribasim/geometry/node.py` add a color and shape description i
 
 # QGIS plugin
 
-The script `qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
+The script `ribasim_qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
 
 - Add a color and shape description in the `MARKERS` dictionary in `Node.renderer`,
   consistent with the entries added above;
@@ -239,26 +239,24 @@ There are several parts of the documentation which should be updated with the ne
 - `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behaviour of the new node;
 - `docs/core/usage.qmd` should contain a short explanation of the node and the possible schemas associated with it;
 - The example models constructed in `docs/python/examples.ipynb` should be extended with the new node type or a new example model with the new node type should be made.
+- In `_quarto.yml` add `NewNodeType` to the "Node types" contents for the Python API reference.
+
 
 # Finishing up
 
 When a new node type is created, one needs to run
 
 ```
-julia --project=docs docs/gen_schema.jl
-```
-to create new JSON Schemas in the docs folder.
-
-:::{.callout-note}
-If you haven't done so before, you first need to instantiate your docs environment.
-Run `julia --project=docs`, followed by running `instantiate` in the Pkg mode (press `]`).
-:::
-
-To generate the Python module `models.py` and `config.py` from the JSON Schemas, run:
-
-```
 pixi run codegen
 ```
 
+This will derive all JSON Schemas from the julia code, and write them to the docs folder.
+From these JSON Schemas the Python modules `models.py` and `config.py` are generated.
+
 Since adding a node type touches both the Python and Julia code,
 it is a good idea to run both the [Python test suite](python.qmd#test) and [Julia test suite](core.qmd#test) locally before creating a pull request.
+You can run all tests with:
+
+```
+pixi run tests
+```

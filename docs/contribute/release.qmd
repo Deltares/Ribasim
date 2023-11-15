@@ -54,7 +54,16 @@ All changes
 
 ## Release Ribasim Python to PyPI
 
-To be able to do `pip install ribasim`, Ribasim Python needs to be released on the Python Package Index, see [these instructions](python.qmd#sec-pypi)
+To be able to install packages with `pip`, they need to be released on the Python Package Index (PyPI).
+In order to publish Ribasim Python or Ribasim API follow the following steps:
+
+1) Update `__version__` in `__init__.py`
+
+2) Open a terminal and run `pixi run build-ribasim-python-wheel` or `pixi run build-ribasim-api-wheel`
+
+3) Make a new commit with the updated version number, and push to remote
+
+4) Publish on PyPI with `pixi run publish-ribasim-python` or `pixi run publish-ribasim-api`
 
 ## Wait for TeamCity to build the new release {#sec-teamcity}
 
@@ -64,7 +73,7 @@ If this succeeds, the release assets are uploaded to an S3 link with the version
 
 ```
 https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_cli.zip
-https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim-0.4.0-py3-none-any.whl
+https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim-0.5.0-py3-none-any.whl
 https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_qgis.zip
 ```
 

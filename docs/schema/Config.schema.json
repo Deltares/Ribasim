@@ -13,11 +13,6 @@
             "format": "date-time",
             "type": "string"
         },
-        "update_timestep": {
-            "format": "double",
-            "type": "number",
-            "default": 86400
-        },
         "relative_dir": {
             "format": "default",
             "type": "string",
@@ -28,24 +23,20 @@
             "type": "string",
             "default": "."
         },
-        "output_dir": {
+        "results_dir": {
             "format": "default",
             "type": "string",
             "default": "."
         },
-        "geopackage": {
+        "database": {
             "format": "default",
             "type": "string"
         },
-        "output": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/Output.schema.json",
+        "allocation": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/Allocation.schema.json",
             "default": {
-                "basin": "output/basin.arrow",
-                "flow": "output/flow.arrow",
-                "control": "output/control.arrow",
-                "outstate": null,
-                "compression": "zstd",
-                "compression_level": 6
+                "timestep": null,
+                "use_allocation": false
             }
         },
         "solver": {
@@ -60,7 +51,7 @@
                 "dtmax": null,
                 "force_dtmin": false,
                 "abstol": 1.0e-6,
-                "reltol": 0.001,
+                "reltol": 1.0e-5,
                 "maxiters": 1000000000,
                 "sparse": true,
                 "autodiff": true
@@ -75,10 +66,16 @@
                 "timing": false
             }
         },
-        "fractional_flow": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
+        "results": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
             "default": {
-                "static": null
+                "basin": "results/basin.arrow",
+                "flow": "results/flow.arrow",
+                "control": "results/control.arrow",
+                "allocation": "results/allocation.arrow",
+                "outstate": null,
+                "compression": "zstd",
+                "compression_level": 6
             }
         },
         "terminal": {
@@ -172,15 +169,14 @@
     "required": [
         "starttime",
         "endtime",
-        "update_timestep",
         "relative_dir",
         "input_dir",
-        "output_dir",
-        "geopackage",
-        "output",
+        "results_dir",
+        "database",
+        "allocation",
         "solver",
         "logging",
-        "fractional_flow",
+        "results",
         "terminal",
         "pid_control",
         "level_boundary",

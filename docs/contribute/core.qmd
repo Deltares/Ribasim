@@ -62,7 +62,7 @@ Before the tests can run, you need to [prepare model input](./python.qmd#prepare
 With the root of the repository as your working directory you can start the REPL with activated `Ribasim` environment by running the following:
 
 ```bash
-julia --project=core
+julia --project
 ```
 
 While not technically required, it is advised to import Ribasim first to catch installation issues early on.
@@ -72,12 +72,6 @@ julia> using Ribasim
 ```
 
 Then open the Pkg REPL by typing `]` and execute:
-
-```julia
-pkg> test
-```
-
-If you are in a different environment that depends on Ribasim, you can test Ribasim with the following command:
 
 ```julia
 pkg> test Ribasim
@@ -90,14 +84,9 @@ However, here, you don't have the dependencies available in the `[extras]` secti
 When you then debug your tests inside the REPL, you can include the `[extras]` dependencies as follows:
 
 ```julia
-using TestEnv
-TestEnv.activate()
+using TestEnv,
+TestEnv.activate("Ribasim")
 ```
-
-:::{.callout-tip}
-The Julia VS Code extension allows you to [open a REPL](https://www.julia-vscode.org/docs/stable/userguide/runningcode/#The-Julia-REPL) with the Ribasim environment already activated: `"julia.environmentPath": "Ribasim/core"`.
-That way you don't have to type `activate core` every time you open the REPL.
-:::
 
 ## Render documentation
 
@@ -131,14 +120,14 @@ Assuming your working directory is the root of the repository,
 you can activate this project by entering the Pkg mode of the REPL with `]` and execute:
 
 ```julia
-pkg> activate core
+pkg> activate .
 pkg> instantiate
 ```
 
 Press backspace to go back to the Julia REPL.
 There you can run a model with:
 ```julia
-julia> Ribasim.run("path/to/model.toml")
+julia> Ribasim.run("path/to/model/ribasim.toml")
 ```
 
 :::{.callout-tip}

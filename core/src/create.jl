@@ -115,22 +115,17 @@ function parse_static_and_time(
                     if parameter_name in time_interpolatables
                         val = LinearInterpolation([val, val], trivial_timespan)
                     end
-                    # If this row defines a control state, collect the parameter values in
-                    # the parameter_values vector
-                    if !ismissing(control_state)
-                        push!(parameter_values, val)
-                    end
+                    # Collect the parameter values in the parameter_values vector
+                    push!(parameter_values, val)
                     # The initial parameter value is overwritten here each time until the last row,
                     # but in the case of control the proper initial parameter values are set later on
                     # in the code
                     getfield(out, parameter_name)[node_idx] = val
                 end
-                # If a control state is associated with this row, add the parameter values to the
-                # control mapping
-                if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] =
-                        NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
-                end
+                # Add the parameter values to the control mapping
+                control_state_key = coalesce(control_state, "")
+                control_mapping[(node_id, control_state_key)] =
+                    NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -154,7 +149,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) (#$node_id) has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) #$node_id has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -168,7 +163,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node  $(repr(node_name)) (#$node_id) data not in any table."
+            @error "$nodetype node  $(repr(node_name)) #$node_id data not in any table."
             errors = true
         end
     end
@@ -230,6 +225,8 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
 
+    allocation_models = AllocationModel[]
+
     return Connectivity(
         graph_flow,
         graph_control,
@@ -239,7 +236,56 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         edge_ids_control,
         edge_connection_types_flow,
         edge_connection_types_control,
+        allocation_models,
     )
+end
+
+function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Nothing
+    (; connectivity) = p
+    node = load_structvector(db, config, NodeV1)
+    edge = load_structvector(db, config, EdgeV1)
+
+    # coalesce control_state to nothing to avoid boolean groupby logic on missing
+    allocation_groups_node =
+        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), node)
+    allocation_groups_edge =
+        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), edge)
+
+    allocation_groups_node_dict = Dict{Int, StructVector}()
+    allocation_groups_edge_dict = Dict{Int, StructVector}()
+
+    for allocation_group_node in allocation_groups_node
+        allocation_network_id = first(allocation_group_node).allocation_network_id
+        if !ismissing(allocation_network_id)
+            allocation_groups_node_dict[allocation_network_id] = allocation_group_node
+        end
+    end
+    for allocation_group_edge in allocation_groups_edge
+        allocation_network_id = first(allocation_group_edge).allocation_network_id
+        if !ismissing(allocation_network_id)
+            allocation_groups_edge_dict[allocation_network_id] = allocation_group_edge
+        end
+    end
+
+    for (allocation_network_id, allocation_group_node) in allocation_groups_node_dict
+        allocation_group_edge = get(
+            allocation_groups_edge_dict,
+            allocation_network_id,
+            StructVector{EdgeV1}(undef, 0),
+        )
+        source_edge_ids = [row.fid for row in allocation_group_edge]
+        push!(
+            connectivity.allocation_models,
+            AllocationModel(
+                allocation_network_id,
+                p,
+                allocation_group_node.fid,
+                source_edge_ids,
+                config.allocation.timestep,
+            ),
+        )
+    end
+    return nothing
 end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
@@ -309,11 +355,11 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            @error "TabulatedRatingCurve node $(repr(node_name)) (#$node_id) data not in any table."
+            @error "TabulatedRatingCurve node $(repr(node_name)) #$node_id data not in any table."
             errors = true
         end
         if !is_valid
-            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) (#$node_id) from the $source table has repeated levels, this can not be interpolated."
+            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) #$node_id from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end
@@ -556,10 +602,10 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
-        time = Vector{Float64}(),
-        control_node_id = Vector{Int}(),
-        truth_state = Vector{String}(),
-        control_state = Vector{String}(),
+        time = Float64[],
+        control_node_id = Int[],
+        truth_state = String[],
+        control_state = String[],
     )
 
     return DiscreteControl(
@@ -728,7 +774,17 @@ function User(db::DB, config::Config)::User
         error("Errors occurred when parsing User data.")
     end
 
-    allocated = [zeros(length(priorities)) for id in node_ids]
+    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+
+    record = (
+        time = Float64[],
+        allocation_network_id = Int[],
+        user_node_id = Int[],
+        priority = Int[],
+        demand = Float64[],
+        allocated = Float64[],
+        abstracted = Float64[],
+    )
 
     return User(
         node_ids,
@@ -738,6 +794,7 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
+        record,
     )
 end
 
@@ -761,6 +818,18 @@ function Parameters(db::DB, config::Config)::Parameters
     user = User(db, config)
 
     basin = Basin(db, config, chunk_size)
+
+    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+    for id in pid_control.node_id
+        id_controlled = only(outneighbors(connectivity.graph_control, id))
+        pump_idx = findsorted(pump.node_id, id_controlled)
+        if pump_idx === nothing
+            outlet_idx = findsorted(outlet.node_id, id_controlled)
+            outlet.is_pid_controlled[outlet_idx] = true
+        else
+            pump.is_pid_controlled[pump_idx] = true
+        end
+    end
 
     p = Parameters(
         config.starttime,
@@ -786,6 +855,10 @@ function Parameters(db::DB, config::Config)::Parameters
                 p.lookup[node_id] = fieldname
             end
         end
+    end
+    # Allocation data structures
+    if config.allocation.use_allocation
+        generate_allocation_models!(p, db, config)
     end
     return p
 end

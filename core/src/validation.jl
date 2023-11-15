@@ -27,22 +27,35 @@
 @schema "ribasim.levelexporter.static" LevelExporterStatic
 
 const delimiter = " / "
-tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = join(nodetype(sv), delimiter)
-tablename(sv::SchemaVersion{T, N}) where {T, N} = join(nodetype(sv), delimiter)
-isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = length(split(string(T), ".")) == 3
+tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
+tablename(sv::SchemaVersion{T, N}) where {T, N} =
+    join(filter(!isnothing, nodetype(sv)), delimiter)
+isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = isnode(sv())
+isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), ".")) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 
 """
 From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :static)
 """
-function nodetype(sv::SchemaVersion{T, N})::Tuple{Symbol, Symbol} where {T, N}
-    n, k = split(string(T), ".")[2:3]
+function nodetype(
+    sv::SchemaVersion{T, N},
+)::Tuple{Symbol, Union{Nothing, Symbol}} where {T, N}
     # Names derived from a schema are in underscores (basintime),
     # so we parse the related record Ribasim.BasinTimeV1
     # to derive BasinTime from it.
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), "."))
-    return Symbol(node[begin:length(n)]), Symbol(k)
+
+    elements = split(string(T), ".")
+    if isnode(sv)
+        n = elements[2]
+        k = Symbol(elements[3])
+    else
+        n = last(elements)
+        k = nothing
+    end
+
+    return Symbol(node[begin:length(n)]), k
 end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
@@ -109,10 +122,10 @@ n_neighbor_bounds_flow(nodetype) =
 
 n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
 n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, typemax(Int))
-n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
+n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
-n_neighbor_bounds_control(::Val{:FractionalFlow}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:FractionalFlow}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -125,11 +138,11 @@ n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
-# TODO NodeV1 and EdgeV1 are not yet used
 @version NodeV1 begin
     fid::Int
     name::String = isnothing(s) ? "" : String(s)
     type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
+    allocation_network_id::Union{Missing, Int}
 end
 
 @version EdgeV1 begin
@@ -138,6 +151,7 @@ end
     from_node_id::Int
     to_node_id::Int
     edge_type::String
+    allocation_network_id::Union{Missing, Int}
 end
 
 @version PumpStaticV1 begin
@@ -350,6 +364,7 @@ function is_consistent(node, edge, state, static, profile, time)
 end
 
 # functions used by sort(x; by)
+sort_by_fid(row) = row.fid
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
@@ -359,7 +374,8 @@ sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-
+sort_by_function(table::StructVector{NodeV1}) = sort_by_fid
+sort_by_function(table::StructVector{EdgeV1}) = sort_by_fid
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
@@ -381,14 +397,14 @@ end
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
 
-Tables loaded from GeoPackage into memory can be sorted.
+Tables loaded from the database into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
 function sorted_table!(
     table::StructVector{<:Legolas.AbstractRecord},
 )::StructVector{<:Legolas.AbstractRecord}
     by = sort_by_function(table)
-    if Tables.getcolumn(table, :node_id) isa Arrow.Primitive
+    if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
         if !issorted(table; by)
             error("Arrow table for $et not sorted as required.")
@@ -542,18 +558,19 @@ outneighbor, that the fractions leaving a node add up to ≈1 and that the fract
 function valid_fractional_flow(
     graph_flow::DiGraph{Int},
     node_id::Vector{Int},
-    fraction::Vector{Float64},
+    control_mapping::Dict{Tuple{Int64, String}, NamedTuple},
 )::Bool
     errors = false
 
-    # Node ids that have fractional flow outneighbors
+    # Node IDs that have fractional flow outneighbors
     src_ids = Set{Int}()
 
     for id in node_id
         union!(src_ids, inneighbors(graph_flow, id))
     end
 
-    node_id_set = Set(node_id)
+    node_id_set = Set{Int}(node_id)
+    control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
         src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
@@ -564,26 +581,40 @@ function valid_fractional_flow(
             )
         end
 
-        fraction_sum = 0.0
+        # Each control state (including missing) must sum to 1
+        for control_state in control_states
+            fraction_sum = 0.0
 
-        for ff_id in intersect(src_outneighbor_ids, node_id_set)
-            ff_idx = findsorted(node_id, ff_id)
-            frac = fraction[ff_idx]
-            fraction_sum += frac
+            for ff_id in intersect(src_outneighbor_ids, node_id_set)
+                parameter_values = get(control_mapping, (ff_id, control_state), nothing)
+                if parameter_values === nothing
+                    continue
+                else
+                    (; fraction) = parameter_values
+                end
 
-            if frac <= 0
+                fraction_sum += fraction
+
+                if fraction < 0
+                    errors = true
+                    @error(
+                        "Fractional flow nodes must have non-negative fractions.",
+                        fraction,
+                        node_id = ff_id,
+                        control_state,
+                    )
+                end
+            end
+
+            if !(fraction_sum ≈ 1)
                 errors = true
                 @error(
-                    "Fractional flow nodes must have non-negative fractions, got $frac for #$ff_id."
+                    "The sum of fractional flow fractions leaving a node must be ≈1.",
+                    fraction_sum,
+                    node_id = src_id,
+                    control_state,
                 )
             end
-        end
-
-        if fraction_sum ≉ 1
-            errors = true
-            @error(
-                "The sum of fractional flow fractions leaving a node must be ≈1, got $fraction_sum for #$src_id."
-            )
         end
     end
     return !errors

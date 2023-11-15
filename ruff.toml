@@ -1,6 +1,22 @@
-select = ["D", "E", "F", "NPY", "PD", "C4", "I"]
-ignore = ["D1", "D202", "D205", "D400", "D404", "E501", "PD002", "PD901"]
+# See https://docs.astral.sh/ruff/rules/
+select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD"]
+ignore = [
+    "D202",
+    "D205",
+    "D206",
+    "D400",
+    "D404",
+    "E402",
+    "E501",
+    "E703",
+    "PD002",
+    "PD901",
+]
 fixable = ["I"]
+extend-include = ["*.ipynb"]
+exclude = [
+    "ribasim_qgis/tomllib/*"
+]
 
 [pydocstyle]
 convention = "numpy"
