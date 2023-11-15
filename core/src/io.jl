@@ -201,9 +201,7 @@ function flow_table(model::Model)::NamedTuple
         if i == j
             push!(unique_edge_ids_flow, missing)
         else
-            label_src = label_for(graph, i)
-            label_dst = label_for(graph, j)
-            edge_metadata = graph[label_src, label_dst]
+            edge_metadata = metadata_from_edge(graph, Edge(i, j))
             push!(unique_edge_ids_flow, edge_metadata.id.id)
         end
     end

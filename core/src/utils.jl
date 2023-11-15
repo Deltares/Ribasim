@@ -63,6 +63,12 @@ function outneighbor_labels_type(
     ]
 end
 
+function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
+    label_src = label_for(graph, edge.src)
+    label_dst = label_for(graph, edge.dst)
+    return graph[label_src, label_dst]
+end
+
 "Calculate a profile storage by integrating the areas over the levels"
 function profile_storage(levels::Vector, areas::Vector)::Vector{Float64}
     # profile starts at the bottom; first storage is 0
