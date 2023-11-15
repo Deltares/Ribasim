@@ -9,6 +9,7 @@ from ribasim.config import (
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
+    LevelExporter,
     LinearResistance,
     Logging,
     ManningResistance,

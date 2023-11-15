@@ -22,6 +22,7 @@ from ribasim.schemas import (  # type: ignore
     FractionalFlowStaticSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
+    LevelExporterStaticSchema,
     LinearResistanceStaticSchema,
     ManningResistanceStaticSchema,
     OutletStaticSchema,
@@ -203,3 +204,12 @@ class FractionalFlow(NodeModel):
     static: TableModel[FractionalFlowStaticSchema] = Field(
         default_factory=TableModel[FractionalFlowStaticSchema]
     )
+
+
+class LevelExporter(NodeModel):
+    static: TableModel[LevelExporterStaticSchema] = Field(
+        default_factory=TableModel[LevelExporterStaticSchema]
+    )
+    _sort_keys: Dict[str, List[str]] = {
+        "static": ["name", "element_id", "node_id", "basin_level"],
+    }
