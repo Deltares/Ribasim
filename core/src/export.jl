@@ -27,7 +27,10 @@ function LevelExporter(tables, node_to_basin::Dict{Int, Int})::LevelExporter
         basin_level = getproperty.(group, :basin_level)
         element_level = getproperty.(group, :level)
         # Ensure it doesn't extrapolate before the first value.
-        new_interp = LinearInterpolation([element_level[1], element_level...], [prevfloat(basin_level[1]), basin_level...])
+        new_interp = LinearInterpolation(
+            [element_level[1], element_level...],
+            [prevfloat(basin_level[1]), basin_level...],
+        )
         push!(basin_ids, node_to_basin[node_id])
         push!(interpolations, new_interp)
     end
@@ -35,11 +38,15 @@ function LevelExporter(tables, node_to_basin::Dict{Int, Int})::LevelExporter
     return LevelExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
-function create_level_exporters(db::DB, config::Config, basin::Basin)::Dict{String, LevelExporter}
+function create_level_exporters(
+    db::DB,
+    config::Config,
+    basin::Basin,
+)::Dict{String, LevelExporter}
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, LevelExporterStaticV1)
     level_exporters = Dict{String, LevelExporter}()
-    if length(tables) > 0
+    if !isempty(tables) > 0
         for group in IterTools.groupby(row -> row.name, tables)
             name = first(getproperty.(group, :name))
             level_exporters[name] = LevelExporter(group, node_to_basin)
@@ -51,8 +58,9 @@ end
 """
 Compute a new water level for each external element.
 """
-function update!(exporter::LevelExporter, basin_level)
-    for (i, (index, interp)) in enumerate(zip(exporter.basin_index, exporter.interpolations))
+function update!(exporter::LevelExporter, basin_level)::Nothing
+    for (i, (index, interp)) in
+        enumerate(zip(exporter.basin_index, exporter.interpolations))
         exporter.level[i] = interp(basin_level[index])
     end
 end
