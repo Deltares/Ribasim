@@ -62,7 +62,7 @@ function parse_static_and_time(
 
     # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -124,7 +124,7 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                control_mapping[(node_id, control_state_key)] =
+                control_mapping[(NodeID(node_id), control_state_key)] =
                     NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
@@ -201,13 +201,19 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         error("Invalid edge types found.")
     end
 
-    graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
-    graph_control, edge_ids_control, edge_connection_types_control =
-        create_graph(db, "control")
+    graph = create_graph(db)
 
-    edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
+    # Build the sparsity structure of the flow matrix
+    flow = spzeros(nv(graph), nv(graph))
+    for e in edges(graph)
+        label_src = label_for(graph, e.src)
+        label_dst = label_for(graph, e.dst)
+        edge_metadata = graph[label_src, label_dst]
+        if edge_metadata.type == EdgeType.flow
+            flow[label_src.id, label_dst.id] = 1.0
+        end
+    end
 
-    flow = adjacency_matrix(graph_flow, Float64)
     # Add a self-loop, i.e. an entry on the diagonal, for all non-conservative node types.
     # This is used to store the gain (positive) or loss (negative) for the water balance.
     # Note that this only affects the sparsity structure.
@@ -227,17 +233,7 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
 
     allocation_models = AllocationModel[]
 
-    return Connectivity(
-        graph_flow,
-        graph_control,
-        flow,
-        edge_ids_flow,
-        edge_ids_flow_inv,
-        edge_ids_control,
-        edge_connection_types_flow,
-        edge_connection_types_control,
-        allocation_models,
-    )
+    return Connectivity(graph, flow, allocation_models)
 end
 
 function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Nothing
@@ -299,7 +295,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
     end
 
     return LinearResistance(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.control_mapping,
@@ -320,7 +316,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
     active = BitVector()
     errors = false
 
@@ -340,7 +336,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 is_active = coalesce(first(group).active, true)
                 interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
                 if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] =
+                    control_mapping[(NodeID(node_id), control_state)] =
                         (; tables = interpolation, active = is_active)
                 end
             end
@@ -368,7 +364,13 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
+    return TabulatedRatingCurve(
+        NodeID.(node_ids),
+        active,
+        interpolations,
+        time,
+        control_mapping,
+    )
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
@@ -381,7 +383,7 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
     end
 
     return ManningResistance(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
@@ -400,7 +402,7 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     end
 
     return FractionalFlow(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -431,7 +433,11 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         error("Errors occurred when parsing LevelBoundary data.")
     end
 
-    return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
+    return LevelBoundary(
+        NodeID.(node_ids),
+        parsed_parameters.active,
+        parsed_parameters.level,
+    )
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
@@ -468,14 +474,18 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
+    return FlowBoundary(
+        NodeID.(node_ids),
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
+    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -489,7 +499,7 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     end
 
     return Pump(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -504,7 +514,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
+    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -518,7 +528,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     end
 
     return Outlet(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -531,7 +541,7 @@ end
 
 function Terminal(db::DB, config::Config)::Terminal
     static = load_structvector(db, config, TerminalStaticV1)
-    return Terminal(static.node_id)
+    return Terminal(NodeID.(static.node_id))
 end
 
 function Basin(db::DB, config::Config, chunk_size::Int)::Basin
@@ -562,7 +572,7 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     check_no_nans(table, "Basin")
 
     return Basin(
-        Indices(node_id),
+        Indices(NodeID.(node_id)),
         precipitation,
         potential_evaporation,
         drainage,
@@ -673,9 +683,9 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     end
 
     return PidControl(
-        node_ids,
+        NodeID.(node_ids),
         BitVector(parsed_parameters.active),
-        parsed_parameters.listen_node_id,
+        NodeID.(parsed_parameters.listen_node_id),
         parsed_parameters.target,
         pid_parameters,
         pid_error,
@@ -847,15 +857,8 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
-        Dict{Int, Symbol}(),
     )
-    for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
-        if fieldtype <: AbstractParameterNode
-            for node_id in getfield(p, fieldname).node_id
-                p.lookup[node_id] = fieldname
-            end
-        end
-    end
+
     # Allocation data structures
     if config.allocation.use_allocation
         generate_allocation_models!(p, db, config)

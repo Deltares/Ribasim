@@ -12,25 +12,55 @@ function valid_edge_types(db::DB)::Bool
     return !errors
 end
 
-"Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(
-    db::DB,
-    edge_type_::String,
-)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
+function create_graph(db::DB)::MetaGraph
     node_rows = execute(db, "select fid, type from Node")
-    nodes = dictionary((fid => Symbol(type) for (; fid, type) in node_rows))
-    graph = DiGraph(length(nodes))
     edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-    edge_ids = Dictionary{Tuple{Int, Int}, Int}()
-    edge_connection_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
-        if edge_type == edge_type_
-            add_edge!(graph, from_node_id, to_node_id)
-            insert!(edge_ids, (from_node_id, to_node_id), fid)
-            insert!(edge_connection_types, fid, (nodes[from_node_id], nodes[to_node_id]))
-        end
+    graph = MetaGraph(
+        DiGraph();
+        label_type = NodeID,
+        vertex_data_type = NodeMetadata,
+        edge_data_type = EdgeMetadata,
+        graph_data = nothing, # In theory all remaining connectivity data could be put here
+    )
+    for (i, row) in enumerate(node_rows)
+        allocation_network_id =
+            hasproperty(row, :allocation_network_id) ? row.allocation_network_id : 0
+        graph[NodeID(row.fid)] = NodeMetadata(Symbol(row.type), i, allocation_network_id)
     end
-    return graph, edge_ids, edge_connection_types
+    for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
+        if edge_type == "flow"
+            edge_type = EdgeType.flow
+        elseif edge_type == "control"
+            edge_type = EdgeType.control
+        else
+            error("Invalid edge type $edge_type.")
+        end
+        graph[NodeID(from_node_id), NodeID(to_node_id)] =
+            EdgeMetadata(EdgeID(fid), edge_type)
+    end
+    return graph
+end
+
+function inneighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        label_in for label_in in inneighbor_labels(graph, label) if
+        graph[label_in, label].type == edge_type
+    ]
+end
+
+function outneighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        label_out for label_out in outneighbor_labels(graph, label) if
+        graph[label, label_out].type == edge_type
+    ]
 end
 
 "Calculate a profile storage by integrating the areas over the levels"
@@ -429,7 +459,7 @@ function get_level(
 end
 
 "Get the index of an ID in a set of indices."
-function id_index(ids::Indices{Int}, id::Int)::Tuple{Bool, Int}
+function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
     # We avoid creating Dictionary here since it converts the values to a Vector,
     # leading to allocations when used with PreallocationTools's ReinterpretArrays.
     hasindex, (_, i) = gettoken(ids, id)
@@ -488,8 +518,8 @@ Check:
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
-    (; discrete_control, connectivity, lookup) = p
-    (; graph_control) = connectivity
+    (; discrete_control, connectivity) = p
+    (; graph) = connectivity
     (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
@@ -677,11 +707,11 @@ function update_jac_prototype!(
     node::Union{LinearResistance, ManningResistance},
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
 
     for id in node.node_id
-        id_in = only(inneighbors(graph_flow, id))
-        id_out = only(outneighbors(graph_flow, id))
+        id_in = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        id_out = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         has_index_in, idx_in = id_index(basin.node_id, id_in)
         has_index_out, idx_out = id_index(basin.node_id, id_out)
@@ -742,10 +772,10 @@ function update_jac_prototype!(
     node::Union{Pump, Outlet, TabulatedRatingCurve, User},
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
 
     for (i, id) in enumerate(node.node_id)
-        id_in = only(inneighbors(graph_flow, id))
+        id_in = only(inneighbor_labels_type(graph, id, EdgeType.flow))
 
         if hasfield(typeof(node), :is_pid_controlled) && node.is_pid_controlled[i]
             continue
@@ -761,10 +791,10 @@ function update_jac_prototype!(
             jac_prototype[idx_in, idx_in] = 1.0
 
             _, idxs_out =
-                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
+                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph)
 
             if isempty(idxs_out)
-                id_out = only(outneighbors(graph_flow, id))
+                id_out = only(outneighbor_labels_type(graph, id, EdgeType.flow))
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
@@ -792,7 +822,7 @@ function update_jac_prototype!(
     node::PidControl,
 )::Nothing
     (; basin, connectivity, pump) = p
-    (; graph_control, graph_flow) = connectivity
+    (; graph) = connectivity
 
     n_basins = length(basin.node_id)
 
@@ -801,7 +831,7 @@ function update_jac_prototype!(
         id = node.node_id[i]
 
         # ID of controlled pump/outlet
-        id_controlled = only(outneighbors(graph_control, id))
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
@@ -849,17 +879,18 @@ Get the node type specific indices of the fractional flows and basins,
 that are consecutively connected to a node of given id.
 """
 function get_fractional_flow_connected_basins(
-    node_id::Int,
+    node_id::NodeID,
     basin::Basin,
     fractional_flow::FractionalFlow,
-    graph_flow::DiGraph{Int},
+    graph::MetaGraph,
 )::Tuple{Vector{Int}, Vector{Int}}
     fractional_flow_idxs = Int[]
     basin_idxs = Int[]
 
-    for first_outneighbor_id in outneighbors(graph_flow, node_id)
+    for first_outneighbor_id in outneighbor_labels_type(graph, node_id, EdgeType.flow)
         if first_outneighbor_id in fractional_flow.node_id
-            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
+            second_outneighbor_id =
+                only(outneighbor_labels_type(graph, first_outneighbor_id, EdgeType.flow))
             has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
             if has_index
                 push!(

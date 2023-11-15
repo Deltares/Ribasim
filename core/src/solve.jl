@@ -32,6 +32,19 @@ struct AllocationModel
     Δt_allocation::Float64
 end
 
+@enumx EdgeType flow control
+
+struct NodeMetadata
+    type::Symbol
+    data_index::Int
+    allocation_network_id::Int
+end
+
+struct EdgeMetadata
+    id::EdgeID
+    type::EdgeType.T
+end
+
 """
 Store the connectivity information
 
@@ -47,52 +60,23 @@ else
 end
 """
 struct Connectivity{T}
-    graph_flow::DiGraph{Int}
-    graph_control::DiGraph{Int}
+    graph::MetaGraph{
+        Int64,
+        DiGraph{Int64},
+        Ribasim.NodeID,
+        Ribasim.NodeMetadata,
+        Ribasim.EdgeMetadata,
+        Nothing,
+        MetaGraphsNext.var"#11#13",
+        Float64,
+    }
     flow::T
-    edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
-    edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
-    edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
-    edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
-    edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
     allocation_models::Vector{AllocationModel}
-    function Connectivity(
-        graph_flow,
-        graph_control,
-        flow::T,
-        edge_ids_flow,
-        edge_ids_flow_inv,
-        edge_ids_control,
-        edge_connection_types_flow,
-        edge_connection_types_control,
-        subnetwork,
-    ) where {T}
-        invalid_networks = Vector{String}()
-
-        if !valid_edges(edge_ids_flow, edge_connection_types_flow)
-            push!(invalid_networks, "flow")
+    function Connectivity(graph, flow::T, allocation_models) where {T}
+        if !valid_edges(graph)
+            error("Invalid connectivity.")
         end
-
-        if !valid_edges(edge_ids_control, edge_connection_types_control)
-            push!(invalid_networks, "control")
-        end
-
-        if isempty(invalid_networks)
-            new{T}(
-                graph_flow,
-                graph_control,
-                flow,
-                edge_ids_flow,
-                edge_ids_flow_inv,
-                edge_ids_control,
-                edge_connection_types_flow,
-                edge_connection_types_control,
-                subnetwork,
-            )
-        else
-            invalid_networks = join(invalid_networks, ", ")
-            error("Invalid network(s): $invalid_networks")
-        end
+        return new{T}(graph, flow, allocation_models)
     end
 end
 
@@ -116,7 +100,7 @@ else
 end
 """
 struct Basin{T, C} <: AbstractParameterNode
-    node_id::Indices{Int}
+    node_id::Indices{NodeID}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
@@ -184,11 +168,11 @@ time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -203,10 +187,10 @@ resistance: the resistance to flow; Q = Δh/resistance
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
 struct LinearResistance <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -243,13 +227,13 @@ Requirements:
 * (profile_width == 0) xor (profile_slope == 0)
 """
 struct ManningResistance <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -264,9 +248,9 @@ fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -275,7 +259,7 @@ active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
 """
 struct LevelBoundary <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     level::Vector{ScalarInterpolation}
 end
@@ -286,7 +270,7 @@ active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::Vector{ScalarInterpolation}
 end
@@ -301,12 +285,12 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
     is_pid_controlled::BitVector
 
     function Pump(
@@ -344,13 +328,13 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
 struct Outlet{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -384,7 +368,7 @@ end
 node_id: node ID of the Terminal node
 """
 struct Terminal <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
 end
 
 """
@@ -399,7 +383,7 @@ logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     listen_feature_id::Vector{Int}
     variable::Vector{String}
     look_ahead::Vector{Float64}
@@ -427,13 +411,13 @@ pid_params: a vector interpolation for parameters changing over time.
 error: the current error; basin_target - current_level
 """
 struct PidControl{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
-    listen_node_id::Vector{Int}
+    listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
     error::T
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -447,7 +431,7 @@ priorities: All used priority values. Each user has a demand for all these prior
 record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     demand::Vector{Vector{ScalarInterpolation}}
     allocated::Vector{Vector{Float64}}
@@ -482,7 +466,6 @@ struct Parameters{T, TSparse, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
-    lookup::Dict{Int, Symbol}
 end
 
 """
@@ -491,23 +474,18 @@ number of flow/control inneighbors and outneighbors
 """
 function valid_n_neighbors(p::Parameters)::Bool
     (; connectivity) = p
-    (; graph_flow, graph_control) = connectivity
+    (; graph) = connectivity
 
     errors = false
 
     for nodefield in nodefields(p)
-        errors |= !valid_n_neighbors(getfield(p, nodefield), graph_flow, graph_control)
+        errors |= !valid_n_neighbors(getfield(p, nodefield), graph)
     end
 
     return !errors
 end
 
-function valid_n_neighbors(
-    node::AbstractParameterNode,
-    graph_flow::DiGraph{Int},
-    graph_control::DiGraph{Int},
-)::Bool
-    node_id = node.node_id
+function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
     node_type = typeof(node)
     node_name = nameof(node_type)
 
@@ -516,14 +494,11 @@ function valid_n_neighbors(
 
     errors = false
 
-    for id in node_id
-        for (graph, bounds, edge_type) in zip(
-            (graph_flow, graph_control),
-            (bounds_flow, bounds_control),
-            (:flow, :control),
-        )
-            n_inneighbors = length(inneighbors(graph, id))
-            n_outneighbors = length(outneighbors(graph, id))
+    for id in node.node_id
+        for (bounds, edge_type) in
+            zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
+            n_inneighbors = length(inneighbor_labels_type(graph, id, edge_type))
+            n_outneighbors = length(outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
                 @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
@@ -546,7 +521,6 @@ function valid_n_neighbors(
             end
         end
     end
-
     return !errors
 end
 

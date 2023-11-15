@@ -406,38 +406,56 @@ function sorted_table!(
     return table
 end
 
+struct NodeID
+    id::Int
+end
+
+function Base.isless(label_1::NodeID, label_2::NodeID)::Bool
+    return label_1.id < label_2.id
+end
+
+function Base.getindex(M::AbstractMatrix{T}, id_row::NodeID, id_col::NodeID)::T where {T}
+    return M[id_row.id, id_col.id]
+end
+
+function Base.setindex!(
+    M::AbstractMatrix{T},
+    value::T,
+    id_row::NodeID,
+    id_col::NodeID,
+)::Nothing where {T}
+    M[id_row.id, id_col.id] = value
+    return nothing
+end
+
+struct EdgeID
+    id::Int
+end
+
 """
 Test for each node given its node type whether the nodes that
 # are downstream ('down-edge') of this node are of an allowed type
 """
-function valid_edges(
-    edge_ids::Dictionary{Tuple{Int, Int}, Int},
-    edge_connection_types::Dictionary{Int, Tuple{Symbol, Symbol}},
-)::Bool
-    rev_edge_ids = dictionary((v => k for (k, v) in pairs(edge_ids)))
-    errors = String[]
-    for (edge_id, (from_type, to_type)) in pairs(edge_connection_types)
-        if !(to_type in neighbortypes(from_type))
-            a, b = rev_edge_ids[edge_id]
-            push!(
-                errors,
-                "Cannot connect a $from_type to a $to_type (edge #$edge_id from node #$a to #$b).",
-            )
+function valid_edges(graph::MetaGraph)::Bool
+    errors = false
+    for e in edges(graph)
+        label_src = label_for(graph, e.src)
+        label_dst = label_for(graph, e.dst)
+        type_src = graph[label_src].type
+        type_dst = graph[label_dst].type
+        if !(type_dst in neighbortypes(type_src))
+            edge_id = graph[label_src, label_dist].id.id
+            @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node #$(label_src.id) to #$(label_dst.id))."
         end
     end
-    if isempty(errors)
-        return true
-    else
-        foreach(x -> @error(x), errors)
-        return false
-    end
+    return !errors
 end
 
 """
 Check whether the profile data has no repeats in the levels and the areas start positive.
 """
 function valid_profiles(
-    node_id::Indices{Int},
+    node_id::Indices{NodeID},
     level::Vector{Vector{Float64}},
     area::Vector{Vector{Float64}},
 )::Vector{String}
@@ -469,16 +487,16 @@ end
 Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
-    node_id::Vector{Int},
+    node_id::Vector{NodeID},
     flow_rate::Vector,
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple},
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
     node_type::Symbol,
 )::Bool
     errors = false
 
     # Collect ids of discrete controlled nodes so that they do not give another error
     # if their initial value is also invalid.
-    ids_controlled = Int[]
+    ids_controlled = NodeID[]
 
     for (key, control_values) in pairs(control_mapping)
         id_controlled = key[1]
@@ -506,12 +524,11 @@ function valid_flow_rates(
 end
 
 function valid_pid_connectivity(
-    pid_control_node_id::Vector{Int},
-    pid_control_listen_node_id::Vector{Int},
-    graph_flow::DiGraph{Int},
-    graph_control::DiGraph{Int},
-    basin_node_id::Indices{Int},
-    pump_node_id::Vector{Int},
+    pid_control_node_id::Vector{NodeID},
+    pid_control_listen_node_id::Vector{NodeID},
+    graph::MetaGraph,
+    basin_node_id::Indices{NodeID},
+    pump_node_id::Vector{NodeID},
 )::Bool
     errors = false
 
@@ -547,24 +564,24 @@ Check that nodes that have fractional flow outneighbors do not have any other ty
 outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
 """
 function valid_fractional_flow(
-    graph_flow::DiGraph{Int},
-    node_id::Vector{Int},
-    control_mapping::Dict{Tuple{Int64, String}, NamedTuple},
+    graph_flow::MetaGraph,
+    node_id::Vector{NodeID},
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
 )::Bool
     errors = false
 
     # Node IDs that have fractional flow outneighbors
-    src_ids = Set{Int}()
+    src_ids = Set{NodeID}()
 
     for id in node_id
-        union!(src_ids, inneighbors(graph_flow, id))
+        union!(src_ids, inneighbor_labels(graph_flow, id))
     end
 
-    node_id_set = Set{Int}(node_id)
+    node_id_set = Set{NodeID}(node_id)
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outneighbors(graph_flow, src_id))
+        src_outneighbor_ids = Set(outneighbor_labels(graph_flow, src_id))
         if src_outneighbor_ids ⊈ node_id
             errors = true
             @error(
