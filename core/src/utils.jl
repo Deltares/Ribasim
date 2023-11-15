@@ -439,7 +439,7 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(
     p::Parameters,
-    node_id::Int,
+    node_id::NodeID,
     t::Float64;
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
@@ -467,7 +467,7 @@ function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
+function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
     hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
@@ -482,9 +482,9 @@ end
 "Get the bottom on both ends of a node. If only one has a bottom, use that for both."
 function basin_bottoms(
     basin::Basin,
-    basin_a_id::Int,
-    basin_b_id::Int,
-    id::Int,
+    basin_a_id::NodeID,
+    basin_b_id::NodeID,
+    id::NodeID,
 )::Tuple{Float64, Float64}
     bottom_a = basin_bottom(basin, basin_a_id)
     bottom_b = basin_bottom(basin, basin_b_id)

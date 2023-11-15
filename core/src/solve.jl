@@ -601,7 +601,7 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; graph_control, graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
     (; current_area) = basin
 
@@ -626,13 +626,14 @@ function continuous_control!(
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
 
-        controlled_node_id = only(outneighbors(graph_control, id))
+        controlled_node_id =
+            only(outneighbor_labels_type(graph_control, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
 
         # No flow of outlet if source level is lower than target level
         if !controls_pump
-            src_id = only(inneighbors(graph_flow, controlled_node_id))
-            dst_id = only(outneighbors(graph_flow, controlled_node_id))
+            src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+            dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
 
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
@@ -656,7 +657,8 @@ function continuous_control!(
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
             # Upstream node of outlet does not have to be a basin
-            upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
+            upstream_node_id =
+                only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
@@ -723,8 +725,8 @@ function continuous_control!(
         end
 
         # Set flow for connected edges
-        src_id = only(inneighbors(graph_flow, controlled_node_id))
-        dst_id = only(outneighbors(graph_flow, controlled_node_id))
+        src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
@@ -738,7 +740,8 @@ function continuous_control!(
         if controls_pump
             for id in outneighbors(graph_flow, controlled_node_id)
                 if id in fractional_flow.node_id
-                    after_ff_id = only(outneighbours(graph_flow, id))
+                    after_ff_id =
+                        only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
                     ff_idx = findsorted(fractional_flow, id)
                     flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
                     flow[id, after_ff_id] = flow_rate_fraction
@@ -762,14 +765,14 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, allocated, demand, active, return_factor, min_level) = user
 
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph_flow, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
 
         if !active[i]
             continue
@@ -817,12 +820,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph_flow, id))
-        basin_b_id = only(outneighbors(graph_flow, id))
+        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if active[i]
             q =
@@ -847,12 +850,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        upstream_basin_id = only(inneighbors(graph_flow, id))
-        downstream_ids = outneighbors(graph_flow, id)
+        upstream_basin_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        downstream_ids = outneighbor_labels_type(graph, id, EdgeType.flow)
 
         if active[i]
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
@@ -917,13 +920,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph_flow, id))
-        basin_b_id = only(outneighbors(graph_flow, id))
+        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i]
             continue
@@ -974,13 +977,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        downstream_id = only(outneighbors(graph_flow, id))
-        upstream_id = only(inneighbors(graph_flow, id))
+        downstream_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        upstream_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
         # overwrite the inflow such that flow is conserved over the FractionalFlow
         outflow = flow[upstream_id, id] * fraction[i]
         flow[upstream_id, id] = outflow
@@ -996,12 +999,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id) = terminal
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for upstream_id in inneighbors(graph_flow, id)
+        for upstream_id in inneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[upstream_id, id]
             flow[id, id] -= q
         end
@@ -1016,16 +1019,16 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id) = level_boundary
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for in_id in inneighbors(graph_flow, id)
+        for in_id in inneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[in_id, id]
             flow[id, id] -= q
         end
-        for out_id in outneighbors(graph_flow, id)
+        for out_id in outneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[id, out_id]
             flow[id, id] += q
         end
@@ -1040,13 +1043,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for dst_id in outneighbors(graph_flow, id)
+        for dst_id in outneighbor_labels_type(graph, id, EdgeType.flow)
             if !active[i]
                 continue
             end
@@ -1067,14 +1070,14 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !isactive || pid_controlled
             continue
@@ -1102,13 +1105,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph_flow, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
 
         if !active[i] || is_pid_controlled[i]
             continue
@@ -1152,12 +1155,12 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inneighbors(graph_flow, basin_id)
+        for in_id in inneighbor_labels_type(graph, basin_id, EdgeType.flow)
             du[i] += flow[in_id, basin_id]
         end
-        for out_id in outneighbors(graph_flow, basin_id)
+        for out_id in outneighbor_labels_type(graph, basin_id, EdgeType.flow)
             du[i] -= flow[basin_id, out_id]
         end
     end

@@ -414,12 +414,12 @@ function Base.isless(label_1::NodeID, label_2::NodeID)::Bool
     return label_1.id < label_2.id
 end
 
-function Base.getindex(M::AbstractMatrix{T}, id_row::NodeID, id_col::NodeID)::T where {T}
+function Base.getindex(M::AbstractArray, id_row::NodeID, id_col::NodeID)
     return M[id_row.id, id_col.id]
 end
 
 function Base.setindex!(
-    M::AbstractMatrix{T},
+    M::AbstractArray,
     value::T,
     id_row::NodeID,
     id_col::NodeID,
