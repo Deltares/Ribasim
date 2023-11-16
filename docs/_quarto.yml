@@ -91,8 +91,3 @@ quartodoc:
         - Terminal
         - DiscreteControl
         - PidControl
-    - title: Utility functions
-      desc: Collection of utility functions.
-      contents:
-        - utils.geometry_from_connectivity
-        - utils.connectivity_from_geometry

@@ -279,7 +279,8 @@ class TableModel(FileModel, Generic[TableT]):
         """Retrieve Pydantic Record used in Pandera Schema."""
         T = cls.tableschema()
         if hasattr(T.Config, "dtype"):
-            return T.Config.dtype.type
+            # We always set a PydanticBaseModel dtype (see schemas.py)
+            return T.Config.dtype.type  # type: ignore
         else:
             return None
 
