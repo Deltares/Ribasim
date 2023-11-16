@@ -17,5 +17,5 @@ using SafeTestsets: @safetestset
     @safetestset "Docs" include("docs.jl")
     @safetestset "Command Line Interface" include("cli.jl")
     @safetestset "libribasim" include("libribasim.jl")
-    Aqua.test_all(Ribasim; ambiguities = false)
+    Aqua.test_all(Ribasim; ambiguities = false, persistent_tasks = false)
 end
