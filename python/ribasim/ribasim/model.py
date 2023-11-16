@@ -90,44 +90,58 @@ class Model(FileModel):
 
     Parameters
     ----------
-    node : Node
-        The ID, type and geometry of each node.
-    edge : Edge
-        How the nodes are connected.
+    starttime : datetime.datetime
+        Starting time of the simulation.
+    endtime : datetime.datetime
+        End time of the simulation.
+
+    update_timestep: float = 86400
+        The output time step of the simulation in seconds (default of 1 day)
+    relative_dir: str = "."
+        The relative directory of the input files.
+    input_dir: str = "."
+        The directory of the input files.
+    results_dir: str = "."
+        The directory of the results files.
+
+    network: Network
+        Class containing the topology (nodes and edges) of the model.
+
+    results: Results
+        Results configuration options.
+    solver: Solver
+        Solver configuration options.
+    logging: Logging
+        Logging configuration options.
+
+    allocation: Allocation
+        The allocation configuration.
     basin : Basin
         The waterbodies.
-    fractional_flow : None | FractionalFlow]
+    fractional_flow : FractionalFlow
         Split flows into fractions.
-    level_boundary : None | LevelBoundary]
+    level_boundary : LevelBoundary
         Boundary condition specifying the water level.
-    flow_boundary : None | FlowBoundary]
+    flow_boundary : FlowBoundary
         Boundary conditions specifying the flow.
-    linear_resistance: None | LinearResistance]
+    linear_resistance: LinearResistance
         Linear flow resistance.
-    manning_resistance : None | ManningResistance]
+    manning_resistance : ManningResistance
         Flow resistance based on the Manning formula.
-    tabulated_rating_curve : None | TabulatedRatingCurve]
+    tabulated_rating_curve : TabulatedRatingCurve
         Tabulated rating curve describing flow based on the upstream water level.
-    pump : None | Pump]
+    pump : Pump
         Prescribed flow rate from one basin to the other.
-    outlet : None | Outlet]
+    outlet : Outlet
         Prescribed flow rate from one basin to the other.
-    terminal : None | Terminal]
+    terminal : Terminal
         Water sink without state or properties.
-    discrete_control : None | DiscreteControl]
+    discrete_control : DiscreteControl
         Discrete control logic.
-    pid_control : None | PidControl]
+    pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : None | User]
+    user : User
         User node type with demand and priority.
-    starttime : Union[str, datetime.datetime]
-        Starting time of the simulation.
-    endtime : Union[str, datetime.datetime]
-        End time of the simulation.
-    solver : None | Solver]
-        Solver settings.
-    logging : None | logging]
-        Logging settings.
     """
 
     starttime: datetime.datetime
