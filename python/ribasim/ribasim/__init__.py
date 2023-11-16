@@ -22,31 +22,31 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge, EdgeSchema
 from ribasim.geometry.node import Node, NodeSchema
-from ribasim.model import Database, Model
+from ribasim.model import Model, Network
 
 __all__ = [
-    "models",
-    "utils",
     "Allocation",
     "Basin",
-    "Database",
+    "DiscreteControl",
     "Edge",
     "EdgeSchema",
+    "FlowBoundary",
     "FractionalFlow",
     "LevelBoundary",
     "LinearResistance",
+    "Logging",
     "ManningResistance",
     "Model",
+    "models",
+    "Network",
     "Node",
     "NodeSchema",
-    "Pump",
     "Outlet",
-    "FlowBoundary",
+    "PidControl",
+    "Pump",
     "Solver",
-    "Logging",
     "TabulatedRatingCurve",
     "Terminal",
-    "DiscreteControl",
-    "PidControl",
     "User",
+    "utils",
 ]

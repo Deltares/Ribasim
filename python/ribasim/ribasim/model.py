@@ -35,7 +35,7 @@ from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_lo
 from ribasim.types import FilePath
 
 
-class Database(FileModel, NodeModel):
+class Network(FileModel, NodeModel):
     node: Node = Field(default_factory=Node)
     edge: Edge = Field(default_factory=Edge)
 
@@ -138,7 +138,7 @@ class Model(FileModel):
     input_dir: str = "."
     results_dir: str = "."
 
-    database: Database = Field(default_factory=Database)
+    network: Network = Field(default_factory=Network, alias="database")
     results: Results = Results()
     solver: Solver = Solver()
     logging: Logging = Logging()
@@ -179,7 +179,7 @@ class Model(FileModel):
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
-        content = self.model_dump(exclude_unset=True, exclude_none=True)
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
 
@@ -202,7 +202,7 @@ class Model(FileModel):
     def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        n_nodes = self.database.n_nodes()
+        n_nodes = self.network.n_nodes()
 
         # Check node IDs of node fields
         all_node_ids = set[int]()
@@ -229,7 +229,7 @@ class Model(FileModel):
             node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
             node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
             msg = [
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.database.node.df)."
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.network.node.df)."
             ]
             if len(node_ids_missing) > 0:
                 msg.append(f"These node IDs are missing: {node_ids_missing}.")
@@ -246,8 +246,8 @@ class Model(FileModel):
 
         for node in self.nodes().values():
             node_ids_field = node.node_ids()
-            node_ids_from_node_field = self.database.node.df.loc[
-                self.database.node.df["type"] == node.get_input_type()
+            node_ids_from_node_field = self.network.node.df.loc[
+                self.network.node.df["type"] == node.get_input_type()
             ].index
 
             if not set(node_ids_from_node_field) == set(node_ids_field):
@@ -336,11 +336,11 @@ class Model(FileModel):
                 data_node_id = condition[condition.node_id == node_id]
 
                 for listen_feature_id in data_node_id.listen_feature_id:
-                    point_start = self.database.node.df.iloc[node_id - 1].geometry
+                    point_start = self.network.node.df.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.database.node.df.iloc[
+                    point_end = self.network.node.df.iloc[
                         listen_feature_id - 1
                     ].geometry
                     x_end.append(point_end.x)
@@ -349,7 +349,7 @@ class Model(FileModel):
         if self.pid_control.static.df is not None:
             static = self.pid_control.static.df
             time = self.pid_control.time.df
-            node_static = self.database.node.static.df
+            node_static = self.network.node.static.df
 
             for table in [static, time]:
                 if table is None:
@@ -396,9 +396,9 @@ class Model(FileModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
-        self.database.edge.plot(ax=ax, zorder=2)
+        self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
-        self.database.node.plot(ax=ax, zorder=3)
+        self.network.node.plot(ax=ax, zorder=3)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
@@ -435,7 +435,7 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.database.node.df.loc[listen_feature_id, "type"]
+                listen_node_type = self.network.node.df.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -445,12 +445,12 @@ class Model(FileModel):
             padding = len(enumeration) * " "
             out += f'\n{padding}This yielded control state "{control_state}":\n'
 
-            affect_node_ids = self.database.edge.df[
-                self.database.edge.df.from_node_id == control_node_id
+            affect_node_ids = self.network.edge.df[
+                self.network.edge.df.from_node_id == control_node_id
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.database.node.df.loc[affect_node_id, "type"]
+                affect_node_type = self.network.node.df.loc[affect_node_id, "type"]
                 nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
