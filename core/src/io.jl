@@ -202,7 +202,7 @@ function flow_table(model::Model)::NamedTuple
             push!(unique_edge_ids_flow, missing)
         else
             edge_metadata = metadata_from_edge(graph, Edge(i, j))
-            push!(unique_edge_ids_flow, edge_metadata.id.id)
+            push!(unique_edge_ids_flow, edge_metadata.id.value)
         end
     end
 

@@ -21,9 +21,9 @@ problem: The JuMP.jl model for solving the allocation problem
 """
 struct AllocationModel
     allocation_network_id::Int
-    node_id::Vector{Int}
-    node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
-    node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
+    node_id::Vector{NodeID}
+    node_id_mapping::Dict{NodeID, Tuple{Int, Symbol}}
+    node_id_mapping_inverse::Dict{Int, Tuple{NodeID, Symbol}}
     allocgraph_edge_ids_user_demand::Dict{Int, Int}
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
@@ -384,13 +384,13 @@ record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    listen_feature_id::Vector{Int}
+    listen_node_id::Vector{NodeID}
     variable::Vector{String}
     look_ahead::Vector{Float64}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
-    control_state::Dict{Int, Tuple{String, Float64}}
-    logic_mapping::Dict{Tuple{Int, String}, String}
+    control_state::Dict{NodeID, Tuple{String, Float64}}
+    logic_mapping::Dict{Tuple{NodeID, String}, String}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int},
@@ -626,8 +626,7 @@ function continuous_control!(
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
 
-        controlled_node_id =
-            only(outneighbor_labels_type(graph_control, id, EdgeType.control))
+        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
 
         # No flow of outlet if source level is lower than target level
@@ -738,7 +737,7 @@ function continuous_control!(
 
         # When the controlled pump flows out into fractional flow nodes
         if controls_pump
-            for id in outneighbors(graph_flow, controlled_node_id)
+            for id in outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow)
                 if id in fractional_flow.node_id
                     after_ff_id =
                         only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
@@ -1110,8 +1109,8 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbor_labels_type(graph_flow, id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i] || is_pid_controlled[i]
             continue

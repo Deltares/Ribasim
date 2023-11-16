@@ -5,26 +5,27 @@ Get:
 """
 function get_node_id_mapping(
     p::Parameters,
-    subnetwork_node_ids::Vector{Int},
+    subnetwork_node_ids::Vector{NodeID},
     source_edge_ids::Vector{Int},
 )
-    (; lookup, connectivity) = p
-    (; graph_flow, edge_ids_flow_inv) = connectivity
+    (; connectivity) = p
+    (; graph) = connectivity
 
     # Mapping node_id => (allocgraph_node_id, type) where such a correspondence exists;
     # allocgraph_node_type in [:user, :junction, :basin, :source]
-    node_id_mapping = Dict{Int, Tuple{Int, Symbol}}()
+    node_id_mapping = Dict{NodeID, Tuple{Int, Symbol}}()
 
     # Determine the number of nodes in the allocgraph
     n_allocgraph_nodes = 0
     for subnetwork_node_id in subnetwork_node_ids
         add_allocgraph_node = false
-        node_type = lookup[subnetwork_node_id]
+        node_type = graph[subnetwork_node_id].type
 
         if node_type in [:user, :basin]
             add_allocgraph_node = true
 
-        elseif length(all_neighbors(graph_flow, subnetwork_node_id)) > 2
+        elseif length(all_neighbor_labels_type(graph, subnetwork_node_id, EdgeType.flow)) >
+               2
             # Each junction (that is, a node with more than 2 neighbors)
             # in the subnetwork gets an allocgraph node
             add_allocgraph_node = true
@@ -303,7 +304,7 @@ Build the graph used for the allocation problem.
 """
 function allocation_graph(
     p::Parameters,
-    subnetwork_node_ids::Vector{Int},
+    subnetwork_node_ids::Vector{NodeID},
     source_edge_ids::Vector{Int},
 )
     # Get the subnetwork and allocation node correspondence
@@ -642,7 +643,7 @@ An AllocationModel object.
 function AllocationModel(
     allocation_network_id::Int,
     p::Parameters,
-    subnetwork_node_ids::Vector{Int},
+    subnetwork_node_ids::Vector{NodeID},
     source_edge_ids::Vector{Int},
     Δt_allocation::Float64,
 )::AllocationModel

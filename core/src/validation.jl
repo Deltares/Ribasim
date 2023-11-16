@@ -407,15 +407,18 @@ function sorted_table!(
 end
 
 struct NodeID
-    id::Int
+    value::Int
 end
 
-function Base.isless(label_1::NodeID, label_2::NodeID)::Bool
-    return label_1.id < label_2.id
+Base.broadcastable(id::NodeID) = Ref(id)
+Base.show(io::IO, id::NodeID) = print(io, "#$(id.value)")
+
+function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
+    return id_1.value < id_2.value
 end
 
 function Base.getindex(M::AbstractArray, id_row::NodeID, id_col::NodeID)
-    return M[id_row.id, id_col.id]
+    return M[id_row.value, id_col.value]
 end
 
 function Base.setindex!(
@@ -424,12 +427,12 @@ function Base.setindex!(
     id_row::NodeID,
     id_col::NodeID,
 )::Nothing where {T}
-    M[id_row.id, id_col.id] = value
+    M[id_row.value, id_col.value] = value
     return nothing
 end
 
 struct EdgeID
-    id::Int
+    value::Int
 end
 
 """
@@ -439,13 +442,13 @@ Test for each node given its node type whether the nodes that
 function valid_edges(graph::MetaGraph)::Bool
     errors = false
     for e in edges(graph)
-        label_src = label_for(graph, e.src)
-        label_dst = label_for(graph, e.dst)
-        type_src = graph[label_src].type
-        type_dst = graph[label_dst].type
+        id_src = label_for(graph, e.src)
+        id_dst = label_for(graph, e.dst)
+        type_src = graph[id_src].type
+        type_dst = graph[id_dst].type
         if !(type_dst in neighbortypes(type_src))
-            edge_id = graph[label_src, label_dist].id.id
-            @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node #$(label_src.id) to #$(label_dst.id))."
+            edge_id = graph[id_src, id_dst].id.value
+            @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node #$id_src to #$id_dst)."
         end
     end
     return !errors
@@ -539,16 +542,18 @@ function valid_pid_connectivity(
             errors = true
         end
 
-        controlled_id = only(outneighbors(graph_control, id))
+        controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
 
         if controlled_id in pump_node_id
-            pump_intake_id = only(inneighbors(graph_flow, controlled_id))
+            pump_intake_id =
+                only(inneighbor_labels_type(graph, controlled_id, EdgeType.flow))
             if pump_intake_id != listen_id
                 @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled pump #$controlled_id"
                 errors = true
             end
         else
-            outlet_outflow_id = only(outneighbors(graph_flow, controlled_id))
+            outlet_outflow_id =
+                only(outneighbor_labels_type(graph, controlled_id, EdgeType.flow))
             if outlet_outflow_id != listen_id
                 @error "Listen node #$listen_id of PidControl node #$id is not downstream of controlled outlet #$controlled_id"
                 errors = true

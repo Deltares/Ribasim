@@ -253,15 +253,15 @@ function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_feature_id, variable, greater_than, look_ahead)) in enumerate(
+    for (i, (listen_node_id, variable, greater_than, look_ahead)) in enumerate(
         zip(
-            discrete_control.listen_feature_id,
+            discrete_control.listen_node_id,
             discrete_control.variable,
             discrete_control.greater_than,
             discrete_control.look_ahead,
         ),
     )
-        value = get_value(p, listen_feature_id, variable, look_ahead, u, t)
+        value = get_value(p, listen_node_id, variable, look_ahead, u, t)
         diff = value - greater_than
         out[i] = diff
     end
@@ -273,7 +273,7 @@ from flow boundaries.
 """
 function get_value(
     p::Parameters,
-    feature_id::Int,
+    node_id::NodeID,
     variable::String,
     Δt::Float64,
     u::AbstractVector{Float64},
@@ -282,8 +282,8 @@ function get_value(
     (; basin, flow_boundary, level_boundary) = p
 
     if variable == "level"
-        hasindex_basin, basin_idx = id_index(basin.node_id, feature_id)
-        level_boundary_idx = findsorted(level_boundary.node_id, feature_id)
+        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
+        level_boundary_idx = findsorted(level_boundary.node_id, node_id)
 
         if hasindex_basin
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
@@ -298,7 +298,7 @@ function get_value(
         value = level
 
     elseif variable == "flow_rate"
-        flow_boundary_idx = findsorted(flow_boundary.node_id, feature_id)
+        flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
 
         if flow_boundary_idx === nothing
             error("Flow condition node #$feature_id is not a flow boundary.")
@@ -318,7 +318,7 @@ An upcrossing means that a condition (always greater than) becomes true.
 function discrete_control_affect_upcrossing!(integrator, condition_idx)
     (; p, u, t) = integrator
     (; discrete_control, basin) = p
-    (; variable, condition_value, listen_feature_id) = discrete_control
+    (; variable, condition_value, listen_node_id) = discrete_control
 
     condition_value[condition_idx] = true
 
@@ -330,7 +330,7 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    is_basin = id_index(basin.node_id, discrete_control.listen_feature_id[condition_idx])[1]
+    is_basin = id_index(basin.node_id, discrete_control.listen_node_id[condition_idx])[1]
     # NOTE: The above no longer works when listen feature ids can be something other than node ids
     # I think the more durable option is to give all possible condition types a different variable string,
     # e.g. basin.level and level_boundary.level
@@ -339,7 +339,7 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
-        _, condition_basin_idx = id_index(basin.node_id, listen_feature_id[condition_idx])
+        _, condition_basin_idx = id_index(basin.node_id, listen_node_id[condition_idx])
 
         if du[condition_basin_idx] < 0.0
             condition_value[condition_idx] = false
@@ -354,7 +354,7 @@ An downcrossing means that a condition (always greater than) becomes false.
 function discrete_control_affect_downcrossing!(integrator, condition_idx)
     (; p, u, t) = integrator
     (; discrete_control, basin) = p
-    (; variable, condition_value, listen_feature_id) = discrete_control
+    (; variable, condition_value, listen_node_id) = discrete_control
 
     condition_value[condition_idx] = false
 
@@ -372,7 +372,7 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
         du = zero(u)
         water_balance!(du, u, p, t)
         has_index, condition_basin_idx =
-            id_index(basin.node_id, listen_feature_id[condition_idx])
+            id_index(basin.node_id, listen_node_id[condition_idx])
 
         if has_index && du[condition_basin_idx] > 0.0
             condition_value[condition_idx] = true
@@ -445,13 +445,16 @@ function discrete_control_affect!(
         record = discrete_control.record
 
         push!(record.time, integrator.t)
-        push!(record.control_node_id, discrete_control_node_id)
+        push!(record.control_node_id, discrete_control_node_id.value)
         push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
-        for target_node_id in
-            outneighbors(connectivity.graph_control, discrete_control_node_id)
+        for target_node_id in outneighbor_labels_type(
+            connectivity.graph,
+            discrete_control_node_id,
+            EdgeType.control,
+        )
             set_control_params!(p, target_node_id, control_state_new)
         end
 
@@ -461,8 +464,8 @@ function discrete_control_affect!(
     return control_state_change
 end
 
-function set_control_params!(p::Parameters, node_id::Int, control_state::String)
-    node = getfield(p, p.lookup[node_id])
+function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
+    node = getfield(p, p.connectivity.graph[node_id].type)
     idx = searchsortedfirst(node.node_id, node_id)
     new_state = node.control_mapping[(node_id, control_state)]
 
@@ -496,7 +499,7 @@ function update_basin(integrator)::Nothing
     )
 
     for row in timeblock
-        hasindex, i = id_index(node_id, row.node_id)
+        hasindex, i = id_index(node_id, NodeID(row.node_id))
         @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
         set_table_row!(table, row, i)
     end

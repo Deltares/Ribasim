@@ -206,11 +206,11 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     # Build the sparsity structure of the flow matrix
     flow = spzeros(nv(graph), nv(graph))
     for e in edges(graph)
-        label_src = label_for(graph, e.src)
-        label_dst = label_for(graph, e.dst)
-        edge_metadata = graph[label_src, label_dst]
+        id_src = label_for(graph, e.src)
+        id_dst = label_for(graph, e.dst)
+        edge_metadata = graph[id_src, id_dst]
         if edge_metadata.type == EdgeType.flow
-            flow[label_src.id, label_dst.id] = 1.0
+            flow[id_src, id_dst] = 1.0
         end
     end
 
@@ -275,7 +275,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
             AllocationModel(
                 allocation_network_id,
                 p,
-                allocation_group_node.fid,
+                NodeID.(allocation_group_node.fid),
                 source_edge_ids,
                 config.allocation.timestep,
             ),
@@ -590,22 +590,22 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
 
     condition_value = fill(false, length(condition.node_id))
-    control_state::Dict{Int, Tuple{String, Float64}} = Dict()
+    control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
     rows = execute(db, "select from_node_id, edge_type from Edge")
     for (; from_node_id, edge_type) in rows
         if edge_type == "control"
-            control_state[from_node_id] = ("undefined_state", 0.0)
+            control_state[NodeID(from_node_id)] = ("undefined_state", 0.0)
         end
     end
 
     logic = load_structvector(db, config, DiscreteControlLogicV1)
 
-    logic_mapping = Dict{Tuple{Int, String}, String}()
+    logic_mapping = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[(node_id, truth_state)] = control_state_
+        logic_mapping[(NodeID(node_id), truth_state)] = control_state_
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
@@ -619,8 +619,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        condition.node_id, # Not unique
-        condition.listen_feature_id,
+        NodeID.(condition.node_id), # Not unique
+        NodeID.(condition.listen_feature_id),
         condition.variable,
         look_ahead,
         condition.greater_than,
@@ -797,7 +797,7 @@ function User(db::DB, config::Config)::User
     )
 
     return User(
-        node_ids,
+        NodeID.(node_ids),
         active,
         interpolations,
         allocated,
@@ -831,7 +831,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
-        id_controlled = only(outneighbors(connectivity.graph_control, id))
+        id_controlled =
+            only(outneighbor_labels_type(connectivity.graph, id, EdgeType.control))
         pump_idx = findsorted(pump.node_id, id_controlled)
         if pump_idx === nothing
             outlet_idx = findsorted(outlet.node_id, id_controlled)

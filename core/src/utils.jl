@@ -25,7 +25,8 @@ function create_graph(db::DB)::MetaGraph
     for (i, row) in enumerate(node_rows)
         allocation_network_id =
             hasproperty(row, :allocation_network_id) ? row.allocation_network_id : 0
-        graph[NodeID(row.fid)] = NodeMetadata(Symbol(row.type), i, allocation_network_id)
+        graph[NodeID(row.fid)] =
+            NodeMetadata(Symbol(snake_case(row.type)), i, allocation_network_id)
     end
     for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
         if edge_type == "flow"
@@ -60,6 +61,17 @@ function outneighbor_labels_type(
     return [
         label_out for label_out in outneighbor_labels(graph, label) if
         graph[label, label_out].type == edge_type
+    ]
+end
+
+function all_neighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        outneighbor_labels_type(graph, label, edge_type)...,
+        inneighbor_labels_type(graph, label, edge_type)...,
     ]
 end
 
@@ -526,7 +538,7 @@ Check:
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, connectivity) = p
     (; graph) = connectivity
-    (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
+    (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
@@ -560,10 +572,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         # Check whether these control states are defined for the
         # control outneighbors
-        for id_outneighbor in outneighbors(graph_control, id)
+        for id_outneighbor in outneighbor_labels_type(graph, id, EdgeType.control)
 
             # Node object for the outneighbor node type
-            node = getfield(p, lookup[id_outneighbor])
+            node = getfield(p, graph[id_outneighbor].type)
 
             # Get control states of the controlled node
             control_states_controlled = Set{String}()
@@ -587,9 +599,9 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             end
         end
     end
-    for (Δt, var, feature_id) in zip(look_ahead, variable, listen_feature_id)
+    for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = p.lookup[feature_id]
+            node_type = p.connectivity.graph[node_id].type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
             if node_type ∉ [:flow_boundary, :level_boundary]
@@ -604,7 +616,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                     idx = if node_type == :Basin
                         id_index(node.node_id, feature_id)
                     else
-                        searchsortedfirst(node.node_id, feature_id)
+                        searchsortedfirst(node.node_id, node_id)
                     end
                     interpolation = getfield(node, Symbol(var))[idx]
                     if t_end + Δt > interpolation.t[end]
@@ -623,9 +635,9 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-    logic_mapping::Dict{Tuple{Int, String}, String},
-)::Dict{Tuple{Int, String}, String}
-    logic_mapping_expanded = Dict{Tuple{Int, String}, String}()
+    logic_mapping::Dict{Tuple{NodeID, String}, String},
+)::Dict{Tuple{NodeID, String}, String}
+    logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
         pattern = r"^[TFUD\*]+$"
@@ -850,7 +862,7 @@ function update_jac_prototype!(
         jac_prototype[pid_state_idx, listen_idx] = 1.0
 
         if id_controlled in pump.node_id
-            id_pump_out = only(inneighbors(graph_flow, id_controlled))
+            id_pump_out = only(inneighbor_labels_type(graph, id_controlled, EdgeType.flow))
 
             # The basin downstream of the pump
             has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
@@ -863,7 +875,8 @@ function update_jac_prototype!(
                 jac_prototype[listen_idx, idx_out_out] = 1.0
             end
         else
-            id_outlet_in = only(outneighbors(graph_flow, id_controlled))
+            id_outlet_in =
+                only(outneighbor_labels_type(graph, id_controlled, EdgeType.flow))
 
             # The basin upstream of the outlet
             has_index, idx_out_in = id_index(basin.node_id, id_outlet_in)
