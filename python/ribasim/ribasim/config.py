@@ -3,7 +3,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from pydantic import Field
 
@@ -37,7 +37,7 @@ from ribasim.schemas import (  # type: ignore
 
 
 class Allocation(BaseModel):
-    timestep: Optional[float] = None
+    timestep: float | None = None
     use_allocation: bool = False
 
 
@@ -50,7 +50,7 @@ class Results(BaseModel):
     basin: Path = Path("results/basin.arrow")
     flow: Path = Path("results/flow.arrow")
     control: Path = Path("results/control.arrow")
-    outstate: Optional[str] = None
+    outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6
 
@@ -59,9 +59,9 @@ class Solver(BaseModel):
     algorithm: str = "QNDF"
     saveat: float | List[float] = []
     adaptive: bool = True
-    dt: Optional[float] = None
-    dtmin: Optional[float] = None
-    dtmax: Optional[float] = None
+    dt: float | None = None
+    dtmin: float | None = None
+    dtmax: float | None = None
     force_dtmin: bool = False
     abstol: float = 1e-06
     reltol: float = 1e-05

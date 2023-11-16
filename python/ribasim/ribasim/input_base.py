@@ -92,7 +92,7 @@ class FileModel(BaseModel, ABC):
 
     Attributes
     ----------
-        filepath (Optional[Path]):
+        filepath (Path | None):
             The path of this FileModel.
     """
 
@@ -255,7 +255,7 @@ class TableModel(FileModel, Generic[TableT]):
     def tableschema(cls) -> TableT:
         """Retrieve Pandera Schema.
 
-        The type of the field `df` is known to always be an Optional[DataFrame[TableT]]]
+        The type of the field `df` is known to always be an None | DataFrame[TableT]]]
         """
         optionalfieldtype = cls.model_fields["df"].annotation
         fieldtype = optionalfieldtype.__args__[0]  # type: ignore

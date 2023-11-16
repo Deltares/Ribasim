@@ -143,7 +143,7 @@ class NewNodeType(TableModel):
     possible other schemas
     """
 
-    static: Optional[DataFrame[StaticSchema]] = None
+    static: None | DataFrame[StaticSchema]
     # possible other schemas
 
     model_config = ConfigDict(validate_assignment=True)

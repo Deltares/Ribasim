@@ -96,37 +96,37 @@ class Model(FileModel):
         How the nodes are connected.
     basin : Basin
         The waterbodies.
-    fractional_flow : Optional[FractionalFlow]
+    fractional_flow : None | FractionalFlow]
         Split flows into fractions.
-    level_boundary : Optional[LevelBoundary]
+    level_boundary : None | LevelBoundary]
         Boundary condition specifying the water level.
-    flow_boundary : Optional[FlowBoundary]
+    flow_boundary : None | FlowBoundary]
         Boundary conditions specifying the flow.
-    linear_resistance: Optional[LinearResistance]
+    linear_resistance: None | LinearResistance]
         Linear flow resistance.
-    manning_resistance : Optional[ManningResistance]
+    manning_resistance : None | ManningResistance]
         Flow resistance based on the Manning formula.
-    tabulated_rating_curve : Optional[TabulatedRatingCurve]
+    tabulated_rating_curve : None | TabulatedRatingCurve]
         Tabulated rating curve describing flow based on the upstream water level.
-    pump : Optional[Pump]
+    pump : None | Pump]
         Prescribed flow rate from one basin to the other.
-    outlet : Optional[Outlet]
+    outlet : None | Outlet]
         Prescribed flow rate from one basin to the other.
-    terminal : Optional[Terminal]
+    terminal : None | Terminal]
         Water sink without state or properties.
-    discrete_control : Optional[DiscreteControl]
+    discrete_control : None | DiscreteControl]
         Discrete control logic.
-    pid_control : Optional[PidControl]
+    pid_control : None | PidControl]
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : Optional[User]
+    user : None | User]
         User node type with demand and priority.
     starttime : Union[str, datetime.datetime]
         Starting time of the simulation.
     endtime : Union[str, datetime.datetime]
         End time of the simulation.
-    solver : Optional[Solver]
+    solver : None | Solver]
         Solver settings.
-    logging : Optional[logging]
+    logging : None | logging]
         Logging settings.
     """
 
