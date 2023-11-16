@@ -311,7 +311,7 @@ def dutch_waterways_model():
         "",  # 17 -> 9
     ]
 
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={

@@ -5,7 +5,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from ribasim.input_base import BaseModel
 
 
 class BasinProfile(BaseModel):
@@ -218,27 +220,27 @@ class UserTime(BaseModel):
 
 
 class Root(BaseModel):
-    BasinProfile: BasinProfile | None
-    BasinState: BasinState | None
-    BasinStatic: BasinStatic | None
-    BasinTime: BasinTime | None
-    DiscreteControlCondition: DiscreteControlCondition | None
-    DiscreteControlLogic: DiscreteControlLogic | None
-    Edge: Edge | None
-    FlowBoundaryStatic: FlowBoundaryStatic | None
-    FlowBoundaryTime: FlowBoundaryTime | None
-    FractionalFlowStatic: FractionalFlowStatic | None
-    LevelBoundaryStatic: LevelBoundaryStatic | None
-    LevelBoundaryTime: LevelBoundaryTime | None
-    LinearResistanceStatic: LinearResistanceStatic | None
-    ManningResistanceStatic: ManningResistanceStatic | None
-    Node: Node | None
-    OutletStatic: OutletStatic | None
-    PidControlStatic: PidControlStatic | None
-    PidControlTime: PidControlTime | None
-    PumpStatic: PumpStatic | None
-    TabulatedRatingCurveStatic: TabulatedRatingCurveStatic | None
-    TabulatedRatingCurveTime: TabulatedRatingCurveTime | None
-    TerminalStatic: TerminalStatic | None
-    UserStatic: UserStatic | None
-    UserTime: UserTime | None
+    basinprofile: BasinProfile | None = None
+    basinstate: BasinState | None = None
+    basinstatic: BasinStatic | None = None
+    basintime: BasinTime | None = None
+    discretecontrolcondition: DiscreteControlCondition | None = None
+    discretecontrollogic: DiscreteControlLogic | None = None
+    edge: Edge | None = None
+    flowboundarystatic: FlowBoundaryStatic | None = None
+    flowboundarytime: FlowBoundaryTime | None = None
+    fractionalflowstatic: FractionalFlowStatic | None = None
+    levelboundarystatic: LevelBoundaryStatic | None = None
+    levelboundarytime: LevelBoundaryTime | None = None
+    linearresistancestatic: LinearResistanceStatic | None = None
+    manningresistancestatic: ManningResistanceStatic | None = None
+    node: Node | None = None
+    outletstatic: OutletStatic | None = None
+    pidcontrolstatic: PidControlStatic | None = None
+    pidcontroltime: PidControlTime | None = None
+    pumpstatic: PumpStatic | None = None
+    tabulatedratingcurvestatic: TabulatedRatingCurveStatic | None = None
+    tabulatedratingcurvetime: TabulatedRatingCurveTime | None = None
+    terminalstatic: TerminalStatic | None = None
+    userstatic: UserStatic | None = None
+    usertime: UserTime | None = None

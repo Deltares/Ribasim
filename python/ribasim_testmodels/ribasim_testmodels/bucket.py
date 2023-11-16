@@ -28,7 +28,7 @@ def bucket_model() -> ribasim.Model:
     # Setup the dummy edges:
     from_id = np.array([], dtype=np.int64)
     to_id = np.array([], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
