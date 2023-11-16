@@ -110,7 +110,7 @@ def user_model():
     solver = ribasim.Solver(algorithm="Tsit5")
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         user=user,
         terminal=terminal,
@@ -267,7 +267,7 @@ def subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         user=user,
         flow_boundary=flow_boundary,
@@ -515,7 +515,7 @@ def looped_subnetwork_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         user=user,
@@ -653,7 +653,7 @@ def minimal_subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        database=ribasim.Database(
+        network=ribasim.Network(
             node=node,
             edge=edge,
         ),

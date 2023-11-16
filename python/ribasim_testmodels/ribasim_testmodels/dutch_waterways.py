@@ -327,7 +327,7 @@ def dutch_waterways_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         linear_resistance=linear_resistance,
         pump=pump,

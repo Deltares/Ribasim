@@ -85,7 +85,7 @@ def invalid_qh_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(
+        network=ribasim.Network(
             edge=edge,
             node=node,
         ),
@@ -188,7 +188,7 @@ def invalid_fractional_flow_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         fractional_flow=fractional_flow,
         tabulated_rating_curve=rating_curve,
@@ -315,7 +315,7 @@ def invalid_discrete_control_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         pump=pump,
         flow_boundary=flow_boundary,
@@ -402,7 +402,7 @@ def invalid_edge_types_model():
 
     # Setup a model:
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         pump=pump,
         starttime="2020-01-01 00:00:00",

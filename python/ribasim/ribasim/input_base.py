@@ -69,6 +69,7 @@ class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
         validate_default=True,
+        populate_by_name=True,
         use_enum_values=True,
         extra="allow",
     )

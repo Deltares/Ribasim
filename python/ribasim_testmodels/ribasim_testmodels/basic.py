@@ -190,7 +190,7 @@ def basic_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        database=ribasim.Database(
+        network=ribasim.Network(
             node=node,
             edge=edge,
         ),
@@ -368,7 +368,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
@@ -470,7 +470,7 @@ def outlet_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         outlet=outlet,
         level_boundary=level_boundary,

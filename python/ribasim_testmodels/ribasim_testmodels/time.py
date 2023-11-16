@@ -92,7 +92,7 @@ def flow_boundary_time_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         starttime="2020-01-01 00:00:00",
