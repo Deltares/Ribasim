@@ -77,7 +77,7 @@ tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl", depends_on = [
     "instantiate-julia",
 ] }
-generate-python = "datamodel-codegen --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
+generate-python = "datamodel-codegen --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
