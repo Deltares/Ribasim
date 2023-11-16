@@ -1,7 +1,7 @@
 import datetime
 import shutil
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +48,7 @@ class Network(FileModel, NodeModel):
         return n
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         if filepath is not None:
             context_file_loading.get()["database"] = filepath
         return {}
@@ -210,7 +210,7 @@ class Model(FileModel):
         return {
             k: getattr(self, k)
             for k in self.model_fields.keys()
-            if isinstance(getattr(self, k), (NodeModel,))
+            if isinstance(getattr(self, k), NodeModel)
         }
 
     def validate_model_node_field_ids(self):
@@ -304,7 +304,7 @@ class Model(FileModel):
         return fn
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         context_file_loading.set({})
 
         if filepath is not None:

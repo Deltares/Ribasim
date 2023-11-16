@@ -1,4 +1,5 @@
-from typing import Any, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import shapely
@@ -39,7 +40,7 @@ def geometry_from_connectivity(
 
 def connectivity_from_geometry(
     node: Node, lines: NDArray[Any]
-) -> Tuple[NDArray[Any], NDArray[Any]]:
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """
     Derive from_node_id and to_node_id for every edge in lines. LineStrings
     may be used to connect multiple nodes in a sequence, but every linestring
