@@ -1,6 +1,5 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List
 
 from pydantic import Field
 
@@ -54,7 +53,7 @@ class Results(BaseModel):
 
 class Solver(BaseModel):
     algorithm: str = "QNDF"
-    saveat: float | List[float] = []
+    saveat: float | list[float] = []
     adaptive: bool = True
     dt: float | None = None
     dtmin: float | None = None
@@ -93,7 +92,7 @@ class PidControl(NodeModel):
         default_factory=TableModel[PidControlTimeSchema]
     )
 
-    _sort_keys: Dict[str, List[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
 
 
 class LevelBoundary(NodeModel):
@@ -104,7 +103,7 @@ class LevelBoundary(NodeModel):
         default_factory=TableModel[LevelBoundaryTimeSchema]
     )
 
-    _sort_keys: Dict[str, List[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
 
 
 class Pump(NodeModel):
@@ -120,7 +119,7 @@ class TabulatedRatingCurve(NodeModel):
     time: TableModel[TabulatedRatingCurveTimeSchema] = Field(
         default_factory=TableModel[TabulatedRatingCurveTimeSchema]
     )
-    _sort_keys: Dict[str, List[str]] = {
+    _sort_keys: dict[str, list[str]] = {
         "static": ["node_id", "level"],
         "time": ["time", "node_id", "level"],
     }
@@ -132,7 +131,7 @@ class User(NodeModel):
     )
     time: TableModel[UserTimeSchema] = Field(default_factory=TableModel[UserTimeSchema])
 
-    _sort_keys: Dict[str, List[str]] = {
+    _sort_keys: dict[str, list[str]] = {
         "static": ["node_id", "priority"],
         "time": ["node_id", "priority", "time"],
     }
@@ -146,7 +145,7 @@ class FlowBoundary(NodeModel):
         default_factory=TableModel[FlowBoundaryTimeSchema]
     )
 
-    _sort_keys: Dict[str, List[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
 
 
 class Basin(NodeModel):
@@ -163,7 +162,7 @@ class Basin(NodeModel):
         default_factory=TableModel[BasinTimeSchema]
     )
 
-    _sort_keys: Dict[str, List[str]] = {
+    _sort_keys: dict[str, list[str]] = {
         "profile": ["node_id", "level"],
         "time": ["time", "node_id"],
     }

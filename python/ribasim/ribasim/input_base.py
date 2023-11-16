@@ -1,19 +1,13 @@
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Generator
 from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Generator,
     Generic,
-    List,
-    Set,
-    Tuple,
-    Type,
     TypeVar,
 )
 
@@ -38,7 +32,7 @@ delimiter = " / "
 
 gpd.options.io_engine = "pyogrio"
 
-context_file_loading: ContextVar[Dict[str, Any]] = ContextVar(
+context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
 )
 
@@ -75,7 +69,7 @@ class BaseModel(PydanticBaseModel):
     )
 
     @classmethod
-    def fields(cls) -> List[str]:
+    def fields(cls) -> list[str]:
         """Return the names of the fields contained in the Model."""
         return list(cls.model_fields.keys())
 
@@ -102,7 +96,7 @@ class FileModel(BaseModel, ABC):
     @classmethod
     def check_filepath(cls, value: Any) -> Any:
         # Enable initialization with a Path.
-        if isinstance(value, (Dict,)):
+        if isinstance(value, dict):
             # Pydantic Model init requires a dict
             filepath = value.get("filepath", None)
             if filepath is not None:
@@ -110,7 +104,7 @@ class FileModel(BaseModel, ABC):
             data = cls._load(filepath)
             value.update(data)
             return value
-        elif isinstance(value, (Path, str)):
+        elif isinstance(value, Path | str):
             # Pydantic Model init requires a dict
             data = cls._load(Path(value))
             data["filepath"] = value
@@ -132,7 +126,7 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         """Load the data at filepath and returns it as a dictionary.
 
         If a derived FileModel does not load data from disk, this should
@@ -144,7 +138,7 @@ class FileModel(BaseModel, ABC):
 
         Returns
         -------
-            Dict: The data stored at filepath
+            dict: The data stored at filepath
         """
         raise NotImplementedError()
 
@@ -163,7 +157,7 @@ class TableModel(FileModel, Generic[TableT]):
         NodeSchema -> Schema
         TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
         """
-        names: List[str] = re.sub("([A-Z]+)", r" \1", str(cls.tableschema())).split()
+        names: list[str] = re.sub("([A-Z]+)", r" \1", str(cls.tableschema())).split()
         if len(names) > 2:
             return f"{''.join(names[:-2])}{delimiter}{names[-2].lower()}"
         else:
@@ -173,20 +167,20 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def check_dataframe(cls, value: Any) -> Any:
         # Enable initialization with a DataFrame.
-        if isinstance(value, (pd.DataFrame, gpd.GeoDataFrame)):
+        if isinstance(value, pd.DataFrame | gpd.GeoDataFrame):
             value = {"df": value}
 
         return value
 
-    def node_ids(self) -> Set[int]:
-        node_ids: Set[int] = set()
+    def node_ids(self) -> set[int]:
+        node_ids: set[int] = set()
         if self.df is not None and "node_id" in self.df.columns:
             node_ids.update(self.df["node_id"])
 
         return node_ids
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         db = context_file_loading.get().get("database")
         if filepath is not None:
             adf = cls._from_arrow(filepath)
@@ -199,7 +193,7 @@ class TableModel(FileModel, Generic[TableT]):
             return {}
 
     def _save(
-        self, directory: DirectoryPath, sort_keys: List[str] = ["node_id"]
+        self, directory: DirectoryPath, sort_keys: list[str] = ["node_id"]
     ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
@@ -242,7 +236,7 @@ class TableModel(FileModel, Generic[TableT]):
     def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
         return pd.read_feather(path)
 
-    def sort(self, sort_keys: List[str] = ["node_id"]):
+    def sort(self, sort_keys: list[str] = ["node_id"]):
         """Sort all input tables as required.
 
         Tables are sorted by "node_id", unless otherwise specified.
@@ -298,19 +292,19 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf.to_file(path, layer=self.tablename(), driver="GPKG")
 
-    def sort(self, sort_keys: List[str] = ["node_id"]):
+    def sort(self, sort_keys: list[str] = ["node_id"]):
         self.df.sort_index(inplace=True)
 
 
 class NodeModel(BaseModel):
     """Base class to handle combining the tables for a single node type."""
 
-    _sort_keys: Dict[str, List[str]] = {}
+    _sort_keys: dict[str, list[str]] = {}
 
     @model_serializer(mode="wrap")
     def set_modeld(
-        self, serializer: Callable[[Type["NodeModel"]], Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, serializer: Callable[[type["NodeModel"]], dict[str, Any]]
+    ) -> dict[str, Any]:
         content = serializer(self)
         return dict(filter(lambda x: x[1], content.items()))
 
@@ -333,12 +327,12 @@ class NodeModel(BaseModel):
                 yield attr
 
     def node_ids(self):
-        node_ids: Set[int] = set()
+        node_ids: set[int] = set()
         for table in self.tables():
             node_ids.update(table.node_ids())
         return node_ids
 
-    def node_ids_and_types(self) -> Tuple[List[int], List[str]]:
+    def node_ids_and_types(self) -> tuple[list[int], list[str]]:
         ids = self.node_ids()
         return list(ids), len(ids) * [self.get_input_type()]
 
