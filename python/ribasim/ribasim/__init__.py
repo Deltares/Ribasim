@@ -5,6 +5,7 @@ from ribasim import models, utils
 from ribasim.config import (
     Allocation,
     Basin,
+    Compression,
     DiscreteControl,
     FlowBoundary,
     FractionalFlow,
@@ -15,10 +16,12 @@ from ribasim.config import (
     Outlet,
     PidControl,
     Pump,
+    Results,
     Solver,
     TabulatedRatingCurve,
     Terminal,
     User,
+    Verbosity,
 )
 from ribasim.geometry.edge import Edge, EdgeSchema
 from ribasim.geometry.node import Node, NodeSchema
@@ -28,10 +31,12 @@ __all__ = [
     "Allocation",
     "Basin",
     "DiscreteControl",
+    "Compression",
     "Edge",
     "EdgeSchema",
     "FlowBoundary",
     "FractionalFlow",
+    "Results",
     "LevelBoundary",
     "LinearResistance",
     "Logging",
@@ -46,6 +51,7 @@ __all__ = [
     "Pump",
     "Solver",
     "TabulatedRatingCurve",
+    "Verbosity",
     "Terminal",
     "User",
     "utils",
