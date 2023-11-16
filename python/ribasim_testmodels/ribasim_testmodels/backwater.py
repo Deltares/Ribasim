@@ -18,7 +18,7 @@ def backwater_model():
     n_basin = counts[0]
 
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(node_xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -31,7 +31,7 @@ def backwater_model():
     to_id = ids[1:]
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -93,8 +93,7 @@ def backwater_model():
     )
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,

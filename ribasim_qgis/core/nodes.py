@@ -25,8 +25,6 @@ from typing import Any, Dict, List, Tuple
 
 from PyQt5.QtCore import Qt, QVariant
 from PyQt5.QtGui import QColor
-from ribasim_qgis.core import geopackage
-
 from qgis.core import (
     Qgis,
     QgsCategorizedSymbolRenderer,
@@ -42,6 +40,8 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
+
+from ribasim_qgis.core import geopackage
 
 
 class Input(abc.ABC):

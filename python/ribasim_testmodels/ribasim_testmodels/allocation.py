@@ -22,7 +22,7 @@ def user_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -35,7 +35,7 @@ def user_model():
     to_id = np.array([2, 3, 4, 4], dtype=np.int64)
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -110,8 +110,7 @@ def user_model():
     solver = ribasim.Solver(algorithm="Tsit5")
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         user=user,
         terminal=terminal,
@@ -164,7 +163,7 @@ def subnetwork_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -181,7 +180,7 @@ def subnetwork_model():
     allocation_network_id[0] = 1
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -219,8 +218,8 @@ def subnetwork_model():
             data={
                 "node_id": 1,
                 "flow_rate": np.arange(10, 0, -1),
-                "time": [f"2020-{i}-1 00:00:00" for i in range(1, 11)],
-            }
+                "time": pd.to_datetime([f"2020-{i}-1 00:00:00" for i in range(1, 11)]),
+            },
         )
     )
 
@@ -268,8 +267,7 @@ def subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         user=user,
         flow_boundary=flow_boundary,
@@ -346,7 +344,7 @@ def looped_subnetwork_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -425,7 +423,7 @@ def looped_subnetwork_model():
     )
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -517,8 +515,7 @@ def looped_subnetwork_model():
     )
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         user=user,
@@ -551,7 +548,7 @@ def minimal_subnetwork_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -572,7 +569,7 @@ def minimal_subnetwork_model():
     allocation_network_id[0] = 1
     lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -656,8 +653,10 @@ def minimal_subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        database=ribasim.Database(
+            node=node,
+            edge=edge,
+        ),
         basin=basin,
         flow_boundary=flow_boundary,
         pump=pump,

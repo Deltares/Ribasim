@@ -1,33 +1,34 @@
-from typing import Any, Dict, Union
+from typing import Any
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pandera as pa
 import shapely
-from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import DataFrame, Series
+from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
-from ribasim.input_base import TableModel
-from ribasim.types import FilePath
+from ribasim.input_base import SpatialTableModel
 
 __all__ = ("Edge",)
 
 
-class StaticSchema(pa.SchemaModel):
+class EdgeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
-    from_node_id: Series[int] = pa.Field(coerce=True)
-    to_node_id: Series[int] = pa.Field(coerce=True)
-    geometry: GeoSeries[Any]
+    from_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    to_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+        default=pd.NA, nullable=True, coerce=True
+    )
+    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:
         add_missing_columns = True
 
 
-class Edge(TableModel):
+class Edge(SpatialTableModel[EdgeSchema]):
     """
     Defines the connections between nodes.
 
@@ -37,51 +38,8 @@ class Edge(TableModel):
         Table describing the flow connections.
     """
 
-    static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
-
-    @classmethod
-    def _layername(cls, field) -> str:
-        return cls.get_input_type()
-
-    def write_layer(self, path: FilePath) -> None:
-        """
-        Write the contents of the input to a database.
-
-        Parameters
-        ----------
-        path : FilePath
-        """
-        self.sort()
-        dataframe = self.static
-        name = self._layername(dataframe)
-
-        gdf = gpd.GeoDataFrame(data=dataframe)
-        if "geometry" in gdf.columns:
-            gdf = gdf.set_geometry("geometry")
-        else:
-            gdf["geometry"] = None
-        gdf.to_file(path, layer=name, driver="GPKG")
-
-        return
-
-    @classmethod
-    def _kwargs_from_database(
-        cls, path: FilePath
-    ) -> Dict[str, Union[DataFrame[Any], GeoDataFrame, None]]:
-        kwargs = {}
-
-        field = "static"
-        layername = cls._layername(field)
-        df = gpd.read_file(path, layer=layername, engine="pyogrio", fid_as_index=True)
-        kwargs[field] = df
-
-        return kwargs
-
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
-        return (self.static.edge_type == edge_type).to_numpy()
+        return (self.df.edge_type == edge_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:
         ax = kwargs.get("ax", None)
@@ -115,13 +73,13 @@ class Edge(TableModel):
         where_flow = self.get_where_edge_type("flow")
         where_control = self.get_where_edge_type("control")
 
-        self.static[where_flow].plot(**kwargs_flow)
+        self.df[where_flow].plot(**kwargs_flow)
 
         if where_control.any():
-            self.static[where_control].plot(**kwargs_control)
+            self.df[where_control].plot(**kwargs_control)
 
         # Determine the angle for every caret marker and where to place it.
-        coords = shapely.get_coordinates(self.static.geometry).reshape(-1, 2, 2)
+        coords = shapely.get_coordinates(self.df.geometry).reshape(-1, 2, 2)
         x, y = np.mean(coords, axis=1).T
         dx, dy = np.diff(coords, axis=1)[:, 0, :].T
         angle = np.degrees(np.arctan2(dy, dx)) - 90
@@ -130,7 +88,7 @@ class Edge(TableModel):
         # right is tedious.
         color = []
 
-        for i in range(len(self.static)):
+        for i in range(len(self.df)):
             if where_flow[i]:
                 color.append(color_flow)
             elif where_control[i]:
@@ -149,6 +107,3 @@ class Edge(TableModel):
             )
 
         return ax
-
-    def sort(self):
-        self.static = self.static.sort_index()

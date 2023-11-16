@@ -115,6 +115,7 @@ from typing import Optional
 import pandera as pa
 from pandera.engines.pandas_engine import PydanticModel
 from pandera.typing import DataFrame
+from pydantic import ConfigDict
 
 from ribasim import models
 from ribasim.input_base import TableModel
@@ -145,8 +146,7 @@ class NewNodeType(TableModel):
     static: Optional[DataFrame[StaticSchema]] = None
     # possible other schemas
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     def sort(self):
         self.static.sort_values("node_id", ignore_index=True, inplace=True)
@@ -168,7 +168,7 @@ In `python/ribasim/ribasim/geometry/node.py` add a color and shape description i
 
 # QGIS plugin
 
-The script `qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
+The script `ribasim_qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
 
 - Add a color and shape description in the `MARKERS` dictionary in `Node.renderer`,
   consistent with the entries added above;
