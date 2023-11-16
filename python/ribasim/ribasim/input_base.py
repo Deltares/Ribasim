@@ -114,6 +114,18 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
+    def set_filepath(self, filepath: Path) -> None:
+        """Set the filepath of this instance.
+
+        Args:
+            filepath (Path): The filepath to set.
+        """
+        # Disable assignment validation, which would
+        # otherwise trigger check_filepath() and _load() again.
+        self.model_config["validate_assignment"] = False
+        self.filepath = filepath
+        self.model_config["validate_assignment"] = True
+
     @abstractmethod
     def _save(self, directory: DirectoryPath) -> None:
         """Save this instance to disk.
@@ -209,7 +221,10 @@ class TableModel(FileModel, Generic[TableT]):
     ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
-        if self.df is not None and db_path is not None:
+        if self.df is not None and self.filepath is not None:
+            self.sort(sort_keys)
+            self._write_arrow(self.filepath, directory)
+        elif self.df is not None and db_path is not None:
             self.sort(sort_keys)
             self._write_table(db_path)
 
@@ -232,6 +247,17 @@ class TableModel(FileModel, Generic[TableT]):
                     sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
                     cursor.execute(sql, (table, "attributes", table))
                 connection.commit()
+
+    def _write_arrow(self, filepath: Path, directory: Path) -> None:
+        """Write the contents of the input to a an arrow file."""
+        if self.df is not None:  # double check to make mypy happy
+            path = directory / filepath  # TODO: Handle relative dir?
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.df.to_feather(
+                path,
+                compression="zstd",
+                compression_level=6,
+            )
 
     @classmethod
     def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:

@@ -211,6 +211,12 @@ def basic_model() -> ribasim.Model:
     return model
 
 
+def basic_arrow_model() -> ribasim.Model:
+    model = basic_model()
+    model.basin.profile.set_filepath("input/profile.arrow")
+    return model
+
+
 def basic_transient_model() -> ribasim.Model:
     """Update the basic model with transient forcing"""
 
