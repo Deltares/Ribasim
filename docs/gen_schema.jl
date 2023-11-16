@@ -67,7 +67,7 @@ function gen_root_schema(TT::Vector, prefix = prefix, name = "root")
         "type" => "object",
     )
     for T in TT
-        tname = strip_prefix(T)
+        tname = lowercase(strip_prefix(T))
         schema["properties"][tname] = OrderedDict("\$ref" => "$tname.schema.json")
     end
     open(normpath(@__DIR__, "schema", "$(name).schema.json"), "w") do io

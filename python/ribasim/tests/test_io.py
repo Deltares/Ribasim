@@ -66,3 +66,13 @@ def test_repr():
     pump_1 = Pump(static=static_data)
 
     assert repr(pump_1) == "Pump(static=TableModel[PumpStaticSchema]())"
+
+
+def test_extra_columns():
+    static_data = pd.DataFrame(
+        data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0], "id": [-1, -2, -3]}
+    )
+
+    pump_1 = Pump(static=static_data)
+
+    assert "meta_id" in pump_1.static.df.columns

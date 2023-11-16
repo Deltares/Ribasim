@@ -45,7 +45,7 @@ def pid_control_model():
     from_id = np.array([1, 2, 3, 4, 6, 5, 7], dtype=np.int64)
     to_id = np.array([2, 3, 4, 6, 2, 3, 6], dtype=np.int64)
 
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -198,7 +198,7 @@ def discrete_control_of_pid_control_model():
     from_id = np.array([1, 2, 3, 4, 6, 7], dtype=np.int64)
     to_id = np.array([2, 3, 4, 5, 2, 6], dtype=np.int64)
 
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={

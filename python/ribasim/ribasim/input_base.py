@@ -26,11 +26,13 @@ from pydantic import (
     ConfigDict,
     DirectoryPath,
     Field,
+    field_validator,
     model_serializer,
     model_validator,
 )
 
 from ribasim.types import FilePath
+from ribasim.utils import prefix_column
 
 __all__ = ("TableModel",)
 
@@ -152,6 +154,16 @@ class FileModel(BaseModel, ABC):
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
+    @field_validator("df")
+    @classmethod
+    def prefix_extra_columns(cls, v: DataFrame[TableT]):
+        """Prefix extra columns with meta_."""
+        if isinstance(v, pd.DataFrame):
+            v.rename(
+                lambda x: prefix_column(x, cls.columns()), axis="columns", inplace=True
+            )
+        return v
+
     @model_serializer
     def set_model(self) -> Path | None:
         return self.filepath
@@ -262,14 +274,23 @@ class TableModel(FileModel, Generic[TableT]):
         T: TableT = fieldtype.__args__[0]
         return T
 
-    def record(self):
+    @classmethod
+    def record(cls) -> Type[PydanticBaseModel] | None:
         """Retrieve Pydantic Record used in Pandera Schema."""
-        T = self.tableschema()
-        return T.Config.dtype.type
+        T = cls.tableschema()
+        if hasattr(T.Config, "dtype"):
+            return T.Config.dtype.type
+        else:
+            return None
 
-    def columns(self):
+    @classmethod
+    def columns(cls) -> List[str]:
         """Retrieve column names."""
-        return list(self.record().model_fields.keys())
+        T = cls.record()
+        if T is not None:
+            return list(T.model_fields.keys())
+        else:
+            return []
 
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):

@@ -28,7 +28,7 @@ def invalid_qh_model():
     # Setup the edges:
     from_id = np.array([], dtype=np.int64)
     to_id = np.array([], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -136,7 +136,7 @@ def invalid_fractional_flow_model():
     # Invalid: Node #7 combines fractional flow outneighbors with other outneigbor types.
     from_id = np.array([1, 7, 7, 3, 7, 4], dtype=np.int64)
     to_id = np.array([7, 2, 3, 5, 4, 6], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -227,7 +227,7 @@ def invalid_discrete_control_model():
     # Setup the edges:
     from_id = np.array([1, 2, 4, 5], dtype=np.int64)
     to_id = np.array([2, 3, 3, 2], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -355,7 +355,7 @@ def invalid_edge_types_model():
     # Setup the edges:
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
