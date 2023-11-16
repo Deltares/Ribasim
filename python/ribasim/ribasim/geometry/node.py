@@ -1,4 +1,5 @@
-from typing import Any, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -89,7 +90,7 @@ class Node(SpatialTableModel[NodeSchema]):
 
     def connectivity_from_geometry(
         self, lines: NDArray[Any]
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
         """
         Derive from_node_id and to_node_id for every edge in lines. LineStrings
         may be used to connect multiple nodes in a sequence, but every linestring

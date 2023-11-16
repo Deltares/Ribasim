@@ -6,7 +6,7 @@ computation.
 """
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Set
+from typing import Any
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -49,7 +49,7 @@ class DatasetTreeWidget(QTreeWidget):
         self.setColumnWidth(0, 1)
         self.setColumnWidth(2, 1)
 
-    def items(self) -> List[QTreeWidgetItem]:
+    def items(self) -> list[QTreeWidgetItem]:
         root = self.invisibleRootItem()
         return [root.child(i) for i in range(root.childCount())]
 
@@ -320,7 +320,7 @@ class DatasetWidget(QWidget):
             active_nodes[item.text(1)] = not (item.checkbox.isChecked() == 0)
         return active_nodes
 
-    def selection_names(self) -> Set[str]:
+    def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
         return {item.element.name for item in selection}
