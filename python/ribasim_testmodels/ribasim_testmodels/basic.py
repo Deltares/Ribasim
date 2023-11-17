@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -213,7 +215,8 @@ def basic_model() -> ribasim.Model:
 
 def basic_arrow_model() -> ribasim.Model:
     model = basic_model()
-    model.basin.profile.set_filepath("input/profile.arrow")
+    model.basin.profile.set_filepath(Path("profile.arrow"))
+    model.input_dir = Path("input")
     return model
 
 

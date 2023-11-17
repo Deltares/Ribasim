@@ -37,6 +37,14 @@ def test_basic(basic, tmp_path):
     assert model_loaded.basin.time.df is None
 
 
+def test_basic_arrow(basic_arrow, tmp_path):
+    model_orig = basic_arrow
+    model_orig.write(tmp_path / "basic_arrow")
+    model_loaded = ribasim.Model(filepath=tmp_path / "basic_arrow/ribasim.toml")
+
+    assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
+
+
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient")

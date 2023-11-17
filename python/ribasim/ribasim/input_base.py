@@ -23,6 +23,7 @@ from pydantic import (
     field_validator,
     model_serializer,
     model_validator,
+    validate_call,
 )
 
 from ribasim.types import FilePath
@@ -114,6 +115,7 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
+    @validate_call
     def set_filepath(self, filepath: Path) -> None:
         """Set the filepath of this instance.
 
@@ -127,14 +129,11 @@ class FileModel(BaseModel, ABC):
         self.model_config["validate_assignment"] = True
 
     @abstractmethod
-    def _save(self, directory: DirectoryPath) -> None:
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
         """Save this instance to disk.
 
         This method needs to be implemented by any class deriving from
         FileModel.
-
-        Args:
-            save_settings (ModelSaveSettings): The model save settings.
         """
         raise NotImplementedError()
 
@@ -171,8 +170,8 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def set_model(self) -> Path | None:
-        return self.filepath
+    def set_model(self) -> str | None:
+        return str(self.filepath.name) if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
@@ -217,13 +216,16 @@ class TableModel(FileModel, Generic[TableT]):
             return {}
 
     def _save(
-        self, directory: DirectoryPath, sort_keys: list[str] = ["node_id"]
+        self,
+        directory: DirectoryPath,
+        input_dir: DirectoryPath,
+        sort_keys: list[str] = ["node_id"],
     ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.df is not None and self.filepath is not None:
             self.sort(sort_keys)
-            self._write_arrow(self.filepath, directory)
+            self._write_arrow(self.filepath, directory, input_dir)
         elif self.df is not None and db_path is not None:
             self.sort(sort_keys)
             self._write_table(db_path)
@@ -248,10 +250,10 @@ class TableModel(FileModel, Generic[TableT]):
                     cursor.execute(sql, (table, "attributes", table))
                 connection.commit()
 
-    def _write_arrow(self, filepath: Path, directory: Path) -> None:
+    def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to a an arrow file."""
         if self.df is not None:  # double check to make mypy happy
-            path = directory / filepath  # TODO: Handle relative dir?
+            path = directory / input_dir / filepath
             path.parent.mkdir(parents=True, exist_ok=True)
             self.df.to_feather(
                 path,
@@ -272,7 +274,8 @@ class TableModel(FileModel, Generic[TableT]):
 
     @classmethod
     def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
-        return pd.read_feather(path)
+        directory = context_file_loading.get().get("directory", Path("."))
+        return pd.read_feather(directory / path)
 
     def sort(self, sort_keys: list[str] = ["node_id"]):
         """Sort all input tables as required.
@@ -384,8 +387,10 @@ class NodeModel(BaseModel):
         ids = self.node_ids()
         return list(ids), len(ids) * [self.get_input_type()]
 
-    def _save(self, directory: DirectoryPath):
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
         for field in self.fields():
             getattr(self, field)._save(
-                directory, sort_keys=self._sort_keys.get("field", ["node_id"])
+                directory,
+                input_dir,
+                sort_keys=self._sort_keys.get("field", ["node_id"]),
             )
