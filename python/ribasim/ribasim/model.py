@@ -355,23 +355,6 @@ class Model(FileModel):
         context_file_loading.set({})
         return self
 
-    @classmethod
-    def from_toml(cls, path: Path | str) -> "Model":
-        """
-        Initialize a model from the TOML configuration file.
-
-        Parameters
-        ----------
-        path : FilePath
-            Path to the configuration TOML file.
-
-        Returns
-        -------
-        model : Model
-        """
-        kwargs = cls._load(Path(path))
-        return cls(**kwargs)
-
     def plot_control_listen(self, ax):
         x_start, x_end = [], []
         y_start, y_end = [], []
