@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 from qgis import processing
 from qgis.core import QgsVectorLayer
@@ -31,7 +29,7 @@ def explode_lines(edge: QgsVectorLayer) -> None:
     return
 
 
-def derive_connectivity(node_index, node_xy, edge_xy) -> Tuple[np.ndarray, np.ndarray]:
+def derive_connectivity(node_index, node_xy, edge_xy) -> tuple[np.ndarray, np.ndarray]:
     """
     Derive connectivity on the basis of xy locations.
 

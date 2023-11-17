@@ -1,80 +1,80 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-        "BasinProfile": {
-            "$ref": "BasinProfile.schema.json"
+        "basinprofile": {
+            "$ref": "basinprofile.schema.json"
         },
-        "BasinState": {
-            "$ref": "BasinState.schema.json"
+        "basinstate": {
+            "$ref": "basinstate.schema.json"
         },
-        "BasinStatic": {
-            "$ref": "BasinStatic.schema.json"
+        "basinstatic": {
+            "$ref": "basinstatic.schema.json"
         },
-        "BasinTime": {
-            "$ref": "BasinTime.schema.json"
+        "basintime": {
+            "$ref": "basintime.schema.json"
         },
-        "DiscreteControlCondition": {
-            "$ref": "DiscreteControlCondition.schema.json"
+        "discretecontrolcondition": {
+            "$ref": "discretecontrolcondition.schema.json"
         },
-        "DiscreteControlLogic": {
-            "$ref": "DiscreteControlLogic.schema.json"
+        "discretecontrollogic": {
+            "$ref": "discretecontrollogic.schema.json"
         },
-        "Edge": {
-            "$ref": "Edge.schema.json"
+        "edge": {
+            "$ref": "edge.schema.json"
         },
-        "FlowBoundaryStatic": {
-            "$ref": "FlowBoundaryStatic.schema.json"
+        "flowboundarystatic": {
+            "$ref": "flowboundarystatic.schema.json"
         },
-        "FlowBoundaryTime": {
-            "$ref": "FlowBoundaryTime.schema.json"
+        "flowboundarytime": {
+            "$ref": "flowboundarytime.schema.json"
         },
-        "FractionalFlowStatic": {
-            "$ref": "FractionalFlowStatic.schema.json"
+        "fractionalflowstatic": {
+            "$ref": "fractionalflowstatic.schema.json"
         },
-        "LevelBoundaryStatic": {
-            "$ref": "LevelBoundaryStatic.schema.json"
+        "levelboundarystatic": {
+            "$ref": "levelboundarystatic.schema.json"
         },
-        "LevelBoundaryTime": {
-            "$ref": "LevelBoundaryTime.schema.json"
+        "levelboundarytime": {
+            "$ref": "levelboundarytime.schema.json"
         },
-        "BasinLevelExporter": {
-            "$ref": "BasinLevelExporter.schema.json"
+        "basinlevelexporter": {
+            "$ref": "basinlevelexporter.schema.json"
         },
-        "LinearResistanceStatic": {
-            "$ref": "LinearResistanceStatic.schema.json"
+        "linearresistancestatic": {
+            "$ref": "linearresistancestatic.schema.json"
         },
-        "ManningResistanceStatic": {
-            "$ref": "ManningResistanceStatic.schema.json"
+        "manningresistancestatic": {
+            "$ref": "manningresistancestatic.schema.json"
         },
-        "Node": {
-            "$ref": "Node.schema.json"
+        "node": {
+            "$ref": "node.schema.json"
         },
-        "OutletStatic": {
-            "$ref": "OutletStatic.schema.json"
+        "outletstatic": {
+            "$ref": "outletstatic.schema.json"
         },
-        "PidControlStatic": {
-            "$ref": "PidControlStatic.schema.json"
+        "pidcontrolstatic": {
+            "$ref": "pidcontrolstatic.schema.json"
         },
-        "PidControlTime": {
-            "$ref": "PidControlTime.schema.json"
+        "pidcontroltime": {
+            "$ref": "pidcontroltime.schema.json"
         },
-        "PumpStatic": {
-            "$ref": "PumpStatic.schema.json"
+        "pumpstatic": {
+            "$ref": "pumpstatic.schema.json"
         },
-        "TabulatedRatingCurveStatic": {
-            "$ref": "TabulatedRatingCurveStatic.schema.json"
+        "tabulatedratingcurvestatic": {
+            "$ref": "tabulatedratingcurvestatic.schema.json"
         },
-        "TabulatedRatingCurveTime": {
-            "$ref": "TabulatedRatingCurveTime.schema.json"
+        "tabulatedratingcurvetime": {
+            "$ref": "tabulatedratingcurvetime.schema.json"
         },
-        "TerminalStatic": {
-            "$ref": "TerminalStatic.schema.json"
+        "terminalstatic": {
+            "$ref": "terminalstatic.schema.json"
         },
-        "UserStatic": {
-            "$ref": "UserStatic.schema.json"
+        "userstatic": {
+            "$ref": "userstatic.schema.json"
         },
-        "UserTime": {
-            "$ref": "UserTime.schema.json"
+        "usertime": {
+            "$ref": "usertime.schema.json"
         }
     },
     "$id": "https://deltares.github.io/Ribasim/schema/root.schema.json",

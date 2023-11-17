@@ -21,7 +21,7 @@ Each node layer is (optionally) represented in multiple places:
 """
 
 import abc
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from PyQt5.QtCore import Qt, QVariant
 from PyQt5.QtGui import QColor
@@ -63,7 +63,7 @@ class Input(abc.ABC):
         return cls.input_type.split("/")[0].strip()
 
     @classmethod
-    def create(cls, path: str, crs: Any, names: List[str]) -> "Input":
+    def create(cls, path: str, crs: Any, names: list[str]) -> "Input":
         instance = cls(path)
         if instance.name in names:
             raise ValueError(f"Name already exists in geopackage: {instance.name}")
@@ -108,7 +108,7 @@ class Input(abc.ABC):
         self.layer = QgsVectorLayer(f"{self.path}|layername={self.name}", self.name)
         return
 
-    def from_geopackage(self) -> Tuple[Any, Any]:
+    def from_geopackage(self) -> tuple[Any, Any]:
         self.layer_from_geopackage()
         return (self.layer, self.renderer, self.labels)
 
@@ -570,7 +570,7 @@ NONSPATIALNODETYPES = {
 EDGETYPES = {"flow", "control"}
 
 
-def load_nodes_from_geopackage(path: str) -> Dict[str, Input]:
+def load_nodes_from_geopackage(path: str) -> dict[str, Input]:
     # List the names in the geopackage
     gpkg_names = geopackage.layers(path)
     nodes = {}

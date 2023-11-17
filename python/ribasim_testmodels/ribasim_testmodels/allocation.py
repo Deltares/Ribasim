@@ -33,7 +33,7 @@ def user_model():
     # Setup the edges:
     from_id = np.array([1, 1, 2, 3], dtype=np.int64)
     to_id = np.array([2, 3, 4, 4], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -110,7 +110,7 @@ def user_model():
     solver = ribasim.Solver(algorithm="Tsit5")
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         user=user,
         terminal=terminal,
@@ -178,7 +178,7 @@ def subnetwork_model():
     to_id = np.array([2, 3, 4, 10, 5, 6, 7, 8, 11, 12, 13, 9, 2, 6, 8], dtype=np.int64)
     allocation_network_id = len(from_id) * [None]
     allocation_network_id[0] = 1
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -267,7 +267,7 @@ def subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         user=user,
         flow_boundary=flow_boundary,
@@ -421,7 +421,7 @@ def looped_subnetwork_model():
         ],
         dtype=np.int64,
     )
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -515,7 +515,7 @@ def looped_subnetwork_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
         user=user,
@@ -567,7 +567,7 @@ def minimal_subnetwork_model():
     )
     allocation_network_id = len(from_id) * [None]
     allocation_network_id[0] = 1
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -653,7 +653,7 @@ def minimal_subnetwork_model():
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        database=ribasim.Database(
+        network=ribasim.Network(
             node=node,
             edge=edge,
         ),

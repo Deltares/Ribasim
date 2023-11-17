@@ -29,7 +29,7 @@ def backwater_model():
     ids = np.arange(1, x.size + 1, dtype=np.int64)
     from_id = ids[:-1]
     to_id = ids[1:]
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -93,7 +93,7 @@ def backwater_model():
     )
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,
