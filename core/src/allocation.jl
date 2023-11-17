@@ -386,19 +386,6 @@ function add_variables_flow!(
     return nothing
 end
 
-# """
-# Add the basin allocation variables A_basin to the allocation problem.
-# The variable indices are the allocation graph basin node IDs.
-# Non-negativivity constraints are also immediately added to the basin allocation variables.
-# """
-# function add_variables_allocation_basin!(
-#     problem::JuMP.Model,
-#     allocgraph_node_ids_basin::Vector{Int},
-# )::Nothing
-#     JuMP.@variable(problem, A_basin[i = allocgraph_node_ids_basin] >= 0.0)
-#     return nothing
-# end
-
 """
 Certain allocation distribution types use absolute values in the objective function.
 Since most optimization packages do not support the absolute value function directly,
@@ -626,11 +613,10 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, allocgraph_edges)
-    # add_variables_allocation_basin!(problem, allocgraph_node_ids_basin)
     add_variables_absolute_value!(problem, allocgraph_edge_ids_user_demand, config)
+    # TODO: Add variables for allocation to basins
 
     # Add constraints to problem
-    # add_constraints_basin_allocation!(problem, allocgraph_node_ids_basin)
     add_constraints_capacity!(problem, capacity, allocgraph_edges)
     add_constraints_source!(
         problem,
@@ -647,9 +633,6 @@ function allocation_problem(
     add_constraints_user_returnflow!(problem, allocgraph_node_ids_user_with_returnflow)
     add_constraints_absolute_value!(problem, allocgraph_edge_ids_user_demand, config)
     # TODO: The fractional flow constraints
-
-    # # Add objective to problem
-    # add_objective_function!(problem, allocgraph_edge_ids_user_demand, config)
 
     return problem
 end
@@ -903,7 +886,7 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
         # A new objective function is set instead of modifying the coefficients
         # of an existing objective function because this is not supported for
         # quadratic terms:
-        # https://jump.dev/JuMP.jl/stable/manual/objective/#Modify-an-objective-coefficient
+        # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
         set_objective_priority!(allocation_model, user, t, priority_idx)
 
         # Solve the allocation problem for this priority

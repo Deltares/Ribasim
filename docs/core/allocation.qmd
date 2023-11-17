@@ -123,6 +123,12 @@ $$
 
 To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{\hat{i}\hat{j}}$ is set to $0$.
 
+For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a user, for `*_relative` objectives it cares about the fraction of the demand allocated to the user. For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
+
+:::{.callout-note}
+These options for objectives for allocation to users have not been tested thoroughly, and might change in the future.
+:::
+
 The absolute value applied here is not supported in a linear programming context directly; this requires introduction of new variables and constraints. For more details see [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
 
 :::{.callout-note}
