@@ -29,11 +29,11 @@ def test_basic(basic, tmp_path):
     model_orig.write(tmp_path / "basic")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
 
-    index_a = model_orig.database.node.df.index.to_numpy(int)
-    index_b = model_loaded.database.node.df.index.to_numpy(int)
+    index_a = model_orig.network.node.df.index.to_numpy(int)
+    index_b = model_loaded.network.node.df.index.to_numpy(int)
     assert_array_equal(index_a, index_b)
-    assert_equal(model_orig.database.node.df, model_loaded.database.node.df)
-    assert_equal(model_orig.database.edge.df, model_loaded.database.edge.df)
+    assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
+    assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
     assert model_loaded.basin.time.df is None
 
 
@@ -41,11 +41,9 @@ def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
-    print(model_loaded.database.node)
-    print(model_loaded.database.edge)
 
-    assert_equal(model_orig.database.node.df, model_loaded.database.node.df)
-    assert_equal(model_orig.database.edge.df, model_loaded.database.edge.df)
+    assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
+    assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time[0] == time.df.time[0]
@@ -68,3 +66,13 @@ def test_repr():
     pump_1 = Pump(static=static_data)
 
     assert repr(pump_1) == "Pump(static=TableModel[PumpStaticSchema]())"
+
+
+def test_extra_columns():
+    static_data = pd.DataFrame(
+        data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0], "id": [-1, -2, -3]}
+    )
+
+    pump_1 = Pump(static=static_data)
+
+    assert "meta_id" in pump_1.static.df.columns

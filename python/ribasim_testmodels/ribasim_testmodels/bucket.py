@@ -28,7 +28,7 @@ def bucket_model() -> ribasim.Model:
     # Setup the dummy edges:
     from_id = np.array([], dtype=np.int64)
     to_id = np.array([], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -70,7 +70,7 @@ def bucket_model() -> ribasim.Model:
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     model = ribasim.Model(
-        database=ribasim.Database(node=node, edge=edge),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",

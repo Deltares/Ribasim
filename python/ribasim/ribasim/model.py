@@ -1,7 +1,7 @@
 import datetime
 import shutil
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,7 +35,7 @@ from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_lo
 from ribasim.types import FilePath
 
 
-class Database(FileModel, NodeModel):
+class Network(FileModel, NodeModel):
     node: Node = Field(default_factory=Node)
     edge: Edge = Field(default_factory=Edge)
 
@@ -48,7 +48,7 @@ class Database(FileModel, NodeModel):
         return n
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         if filepath is not None:
             context_file_loading.get()["database"] = filepath
         return {}
@@ -90,44 +90,58 @@ class Model(FileModel):
 
     Parameters
     ----------
-    node : Node
-        The ID, type and geometry of each node.
-    edge : Edge
-        How the nodes are connected.
+    starttime : datetime.datetime
+        Starting time of the simulation.
+    endtime : datetime.datetime
+        End time of the simulation.
+
+    update_timestep: float = 86400
+        The output time step of the simulation in seconds (default of 1 day)
+    relative_dir: str = "."
+        The relative directory of the input files.
+    input_dir: str = "."
+        The directory of the input files.
+    results_dir: str = "."
+        The directory of the results files.
+
+    network: Network
+        Class containing the topology (nodes and edges) of the model.
+
+    results: Results
+        Results configuration options.
+    solver: Solver
+        Solver configuration options.
+    logging: Logging
+        Logging configuration options.
+
+    allocation: Allocation
+        The allocation configuration.
     basin : Basin
         The waterbodies.
-    fractional_flow : Optional[FractionalFlow]
+    fractional_flow : FractionalFlow
         Split flows into fractions.
-    level_boundary : Optional[LevelBoundary]
+    level_boundary : LevelBoundary
         Boundary condition specifying the water level.
-    flow_boundary : Optional[FlowBoundary]
+    flow_boundary : FlowBoundary
         Boundary conditions specifying the flow.
-    linear_resistance: Optional[LinearResistance]
+    linear_resistance: LinearResistance
         Linear flow resistance.
-    manning_resistance : Optional[ManningResistance]
+    manning_resistance : ManningResistance
         Flow resistance based on the Manning formula.
-    tabulated_rating_curve : Optional[TabulatedRatingCurve]
+    tabulated_rating_curve : TabulatedRatingCurve
         Tabulated rating curve describing flow based on the upstream water level.
-    pump : Optional[Pump]
+    pump : Pump
         Prescribed flow rate from one basin to the other.
-    outlet : Optional[Outlet]
+    outlet : Outlet
         Prescribed flow rate from one basin to the other.
-    terminal : Optional[Terminal]
+    terminal : Terminal
         Water sink without state or properties.
-    discrete_control : Optional[DiscreteControl]
+    discrete_control : DiscreteControl
         Discrete control logic.
-    pid_control : Optional[PidControl]
+    pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : Optional[User]
+    user : User
         User node type with demand and priority.
-    starttime : Union[str, datetime.datetime]
-        Starting time of the simulation.
-    endtime : Union[str, datetime.datetime]
-        End time of the simulation.
-    solver : Optional[Solver]
-        Solver settings.
-    logging : Optional[logging]
-        Logging settings.
     """
 
     starttime: datetime.datetime
@@ -138,7 +152,7 @@ class Model(FileModel):
     input_dir: str = "."
     results_dir: str = "."
 
-    database: Database = Field(default_factory=Database)
+    network: Network = Field(default_factory=Network, alias="database")
     results: Results = Results()
     solver: Solver = Solver()
     logging: Logging = Logging()
@@ -179,7 +193,7 @@ class Model(FileModel):
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
-        content = self.model_dump(exclude_unset=True, exclude_none=True)
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
 
@@ -196,13 +210,13 @@ class Model(FileModel):
         return {
             k: getattr(self, k)
             for k in self.model_fields.keys()
-            if isinstance(getattr(self, k), (NodeModel,))
+            if isinstance(getattr(self, k), NodeModel)
         }
 
     def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        n_nodes = self.database.n_nodes()
+        n_nodes = self.network.n_nodes()
 
         # Check node IDs of node fields
         all_node_ids = set[int]()
@@ -229,7 +243,7 @@ class Model(FileModel):
             node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
             node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
             msg = [
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.database.node.df)."
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.network.node.df)."
             ]
             if len(node_ids_missing) > 0:
                 msg.append(f"These node IDs are missing: {node_ids_missing}.")
@@ -246,8 +260,8 @@ class Model(FileModel):
 
         for node in self.nodes().values():
             node_ids_field = node.node_ids()
-            node_ids_from_node_field = self.database.node.df.loc[
-                self.database.node.df["type"] == node.get_input_type()
+            node_ids_from_node_field = self.network.node.df.loc[
+                self.network.node.df["type"] == node.get_input_type()
             ].index
 
             if not set(node_ids_from_node_field) == set(node_ids_field):
@@ -290,7 +304,7 @@ class Model(FileModel):
         return fn
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> Dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
         context_file_loading.set({})
 
         if filepath is not None:
@@ -336,11 +350,11 @@ class Model(FileModel):
                 data_node_id = condition[condition.node_id == node_id]
 
                 for listen_feature_id in data_node_id.listen_feature_id:
-                    point_start = self.database.node.df.iloc[node_id - 1].geometry
+                    point_start = self.network.node.df.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.database.node.df.iloc[
+                    point_end = self.network.node.df.iloc[
                         listen_feature_id - 1
                     ].geometry
                     x_end.append(point_end.x)
@@ -349,7 +363,7 @@ class Model(FileModel):
         if self.pid_control.static.df is not None:
             static = self.pid_control.static.df
             time = self.pid_control.time.df
-            node_static = self.database.node.static.df
+            node_static = self.network.node.static.df
 
             for table in [static, time]:
                 if table is None:
@@ -396,9 +410,9 @@ class Model(FileModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
-        self.database.edge.plot(ax=ax, zorder=2)
+        self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
-        self.database.node.plot(ax=ax, zorder=3)
+        self.network.node.plot(ax=ax, zorder=3)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
@@ -435,7 +449,7 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.database.node.df.loc[listen_feature_id, "type"]
+                listen_node_type = self.network.node.df.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -445,12 +459,12 @@ class Model(FileModel):
             padding = len(enumeration) * " "
             out += f'\n{padding}This yielded control state "{control_state}":\n'
 
-            affect_node_ids = self.database.edge.df[
-                self.database.edge.df.from_node_id == control_node_id
+            affect_node_ids = self.network.edge.df[
+                self.network.edge.df.from_node_id == control_node_id
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.database.node.df.loc[affect_node_id, "type"]
+                affect_node_type = self.network.node.df.loc[affect_node_id, "type"]
                 nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "

@@ -10,7 +10,6 @@ This module lightly wraps a few QGIS built in functions to:
 """
 import sqlite3
 from contextlib import contextmanager
-from typing import List
 
 from qgis import processing
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
@@ -27,7 +26,7 @@ def sqlite3_cursor(path):
         connection.close()
 
 
-def layers(path: str) -> List[str]:
+def layers(path: str) -> list[str]:
     """
     Return all layers that are present in the geopackage.
 
@@ -38,7 +37,7 @@ def layers(path: str) -> List[str]:
 
     Returns
     -------
-    layernames: List[str]
+    layernames: list[str]
     """
     with sqlite3_cursor(path) as cursor:
         cursor.execute("Select table_name from gpkg_contents")
