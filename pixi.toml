@@ -121,6 +121,7 @@ twine = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
+qgis = "3.34.0.*"
 
 [target.win-64.dependencies]
 quarto = "*"
