@@ -16,6 +16,5 @@
         "editor.codeActionsOnSave": {
             "source.fixAll": true
         }
-    },
-    "python.analysis.autoImportCompletions": true
+    }
 }

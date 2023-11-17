@@ -105,8 +105,8 @@ class FileModel(BaseModel, ABC):
             if filepath is not None:
                 filepath = Path(filepath)
             data = cls._load(filepath)
-            value.update(data)
-            return value
+            data.update(value)
+            return data
         elif isinstance(value, Path | str):
             # Pydantic Model init requires a dict
             data = cls._load(Path(value))
@@ -240,26 +240,26 @@ class TableModel(FileModel, Generic[TableT]):
             SQLite connection to the database.
         """
         table = self.tablename()
-        if self.df is not None:  # double check to make mypy happy
-            with closing(connect(temp_path)) as connection:
-                self.df.to_sql(table, connection, index=False, if_exists="replace")
+        assert self.df is not None
+        with closing(connect(temp_path)) as connection:
+            self.df.to_sql(table, connection, index=False, if_exists="replace")
 
-                # Set geopackage attribute table
-                with closing(connection.cursor()) as cursor:
-                    sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
-                    cursor.execute(sql, (table, "attributes", table))
-                connection.commit()
+            # Set geopackage attribute table
+            with closing(connection.cursor()) as cursor:
+                sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
+                cursor.execute(sql, (table, "attributes", table))
+            connection.commit()
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to a an arrow file."""
-        if self.df is not None:  # double check to make mypy happy
-            path = directory / input_dir / filepath
-            path.parent.mkdir(parents=True, exist_ok=True)
-            self.df.to_feather(
-                path,
-                compression="zstd",
-                compression_level=6,
-            )
+        assert self.df is not None
+        path = directory / input_dir / filepath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.df.to_feather(
+            path,
+            compression="zstd",
+            compression_level=6,
+        )
 
     @classmethod
     def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:

@@ -166,7 +166,7 @@ class Model(FileModel):
     update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
     relative_dir: Path = Path(".")
     input_dir: Path = Path(".")
-    results_dir: Path = Path(".")
+    results_dir: Path = Path("results")
 
     network: Network = Field(default_factory=Network, alias="database")
     results: Results = Results()
@@ -312,6 +312,11 @@ class Model(FileModel):
 
         self.validate_model_node_field_ids()
         self.validate_model_node_ids()
+
+    @classmethod
+    def read(cls, filepath: FilePath) -> "Model":
+        """Read model from TOML file."""
+        return cls(filepath=filepath)  # type: ignore
 
     def write(self, directory: FilePath) -> Path:
         """
