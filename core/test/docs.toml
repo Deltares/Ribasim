@@ -6,7 +6,7 @@ endtime = 2021-01-01   # required
 # input files
 database = "database.gpkg" # required
 input_dir = "."            # optional, default "."
-results_dir = "."          # optional, default "."
+results_dir = "results"    # optional, default "."
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
