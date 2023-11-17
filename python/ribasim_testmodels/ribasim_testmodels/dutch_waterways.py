@@ -197,7 +197,7 @@ def dutch_waterways_model():
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     # Set up the nodes:
-    node_id, node_type = ribasim.Node.get_node_ids_and_types(
+    node_id, node_type = ribasim.Node.node_ids_and_types(
         basin,
         linear_resistance,
         pump,
@@ -260,7 +260,7 @@ def dutch_waterways_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type, "name": node_name},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
@@ -311,9 +311,9 @@ def dutch_waterways_model():
         "",  # 17 -> 9
     ]
 
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -327,8 +327,7 @@ def dutch_waterways_model():
     )
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         linear_resistance=linear_resistance,
         pump=pump,

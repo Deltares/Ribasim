@@ -1,54 +1,38 @@
-from typing import Any, Dict, Union
+from collections.abc import Sequence
+from typing import Any
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
-from geopandas import GeoDataFrame
-from pandera.typing import DataFrame, Series
+import shapely
+from numpy.typing import NDArray
+from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
-from ribasim.input_base import TableModel
-from ribasim.types import FilePath
+from ribasim.input_base import SpatialTableModel
 
 __all__ = ("Node",)
 
 
-class StaticSchema(pa.SchemaModel):
+class NodeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
-    type: Series[str]
-    geometry: GeoSeries[Any]
+    type: Series[str] = pa.Field(default="")
+    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+        default=pd.NA, nullable=True, coerce=True
+    )
+    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:
         add_missing_columns = True
 
 
-class Node(TableModel):
-    """
-    The Ribasim nodes as Point geometries.
-
-    Parameters
-    ----------
-    static : geopandas.GeoDataFrame
-        Table with node ID, type and geometry.
-    """
-
-    static: DataFrame[StaticSchema]
-
-    class Config:
-        validate_assignment = True
-
-    @classmethod
-    def _layername(cls, field) -> str:
-        return cls.get_input_type()
-
-    @classmethod
-    def hasfid(cls):
-        return True
+class Node(SpatialTableModel[NodeSchema]):
+    """The Ribasim nodes as Point geometries."""
 
     @staticmethod
-    def get_node_ids_and_types(*nodes):
+    def node_ids_and_types(*nodes):
+        # TODO Not sure if this staticmethod belongs here
         data_types = {"node_id": int, "node_type": str}
         node_type = pd.DataFrame(
             {col: pd.Series(dtype=dtype) for col, dtype in data_types.items()}
@@ -58,17 +42,14 @@ class Node(TableModel):
             if not node:
                 continue
 
-            for table_type in ["static", "time", "condition"]:
-                if hasattr(node, table_type):
-                    table = getattr(node, table_type)
-                    if table is not None:
-                        node_type_table = pd.DataFrame(
-                            data={
-                                "node_id": table.node_id,
-                                "node_type": len(table) * [node.get_input_type()],
-                            }
-                        )
-                        node_type = node_type._append(node_type_table)
+            ids, types = node.node_ids_and_types()
+            node_type_table = pd.DataFrame(
+                data={
+                    "node_id": ids,
+                    "node_type": types,
+                }
+            )
+            node_type = node_type._append(node_type_table)
 
         node_type = node_type.drop_duplicates(subset="node_id")
         node_type = node_type.sort_values("node_id")
@@ -78,37 +59,76 @@ class Node(TableModel):
 
         return node_id, node_type
 
-    def write_layer(self, path: FilePath) -> None:
+    def geometry_from_connectivity(
+        self, from_id: Sequence[int], to_id: Sequence[int]
+    ) -> NDArray[Any]:
         """
-        Write the contents of the input to a database.
+        Create edge shapely geometries from connectivities.
 
         Parameters
         ----------
-        path : FilePath
+        node : Ribasim.Node
+        from_id : Sequence[int]
+            First node of every edge.
+        to_id : Sequence[int]
+            Second node of every edge.
+
+        Returns
+        -------
+        edge_geometry : np.ndarray
+            Array of shapely LineStrings.
         """
-        self.sort()
-        dataframe = self.static
-        name = self._layername(dataframe)
+        geometry = self.df["geometry"]
+        from_points = shapely.get_coordinates(geometry.loc[from_id])
+        to_points = shapely.get_coordinates(geometry.loc[to_id])
+        n = len(from_points)
+        vertices = np.empty((n * 2, 2), dtype=from_points.dtype)
+        vertices[0::2, :] = from_points
+        vertices[1::2, :] = to_points
+        indices = np.repeat(np.arange(n), 2)
+        return shapely.linestrings(coords=vertices, indices=indices)
 
-        gdf = gpd.GeoDataFrame(data=dataframe)
-        gdf = gdf.set_geometry("geometry")
+    def connectivity_from_geometry(
+        self, lines: NDArray[Any]
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
+        """
+        Derive from_node_id and to_node_id for every edge in lines. LineStrings
+        may be used to connect multiple nodes in a sequence, but every linestring
+        vertex must also a node.
 
-        gdf.to_file(path, layer=name, driver="GPKG")
+        Parameters
+        ----------
+        node : Node
+        lines : np.ndarray
+            Array of shapely linestrings.
 
-        return
+        Returns
+        -------
+        from_node_id : np.ndarray of int
+        to_node_id : np.ndarray of int
+        """
+        node_index = self.df.index
+        node_xy = shapely.get_coordinates(self.df.geometry.values)
+        edge_xy = shapely.get_coordinates(lines)
 
-    @classmethod
-    def _kwargs_from_database(
-        cls, path: FilePath
-    ) -> Dict[str, Union[GeoDataFrame, DataFrame[Any], None]]:
-        kwargs = {}
+        xy = np.vstack([node_xy, edge_xy])
+        _, inverse = np.unique(xy, return_inverse=True, axis=0)
+        _, index, inverse = np.unique(
+            xy, return_index=True, return_inverse=True, axis=0
+        )
+        uniques_index = index[inverse]
 
-        field = "static"
-        layername = cls._layername(field)
-        df = gpd.read_file(path, layer=layername, engine="pyogrio", fid_as_index=True)
-        kwargs[field] = df
+        node_node_id, edge_node_id = np.split(uniques_index, [len(node_xy)])
+        if not np.isin(edge_node_id, node_node_id).all():
+            raise ValueError(
+                "Edge lines contain coordinates that are not in the node layer. "
+                "Please ensure all edges are snapped to nodes exactly."
+            )
 
-        return kwargs
+        edge_node_id = edge_node_id.reshape((-1, 2))
+        from_id = node_index[edge_node_id[:, 0]].to_numpy()
+        to_id = node_index[edge_node_id[:, 1]].to_numpy()
+        return from_id, to_id
 
     def plot(self, ax=None, zorder=None) -> Any:
         """
@@ -161,7 +181,7 @@ class Node(TableModel):
             "": "k",
         }
 
-        for nodetype, df in self.static.groupby("type"):
+        for nodetype, df in self.df.groupby("type"):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]
@@ -174,13 +194,8 @@ class Node(TableModel):
                 label=nodetype,
             )
 
-        geometry = self.static["geometry"]
-        for text, xy in zip(
-            self.static.index, np.column_stack((geometry.x, geometry.y))
-        ):
+        geometry = self.df["geometry"]
+        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax
-
-    def sort(self):
-        self.static = self.static.sort_index()

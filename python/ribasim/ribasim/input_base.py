@@ -1,18 +1,44 @@
 import re
-import textwrap
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Generator
 from contextlib import closing
+from contextvars import ContextVar
+from pathlib import Path
 from sqlite3 import Connection, connect
-from typing import Any, Dict, Set, Union
+from typing import (
+    Any,
+    Generic,
+    TypeVar,
+)
 
+import geopandas as gpd
 import pandas as pd
-from pandas import DataFrame
-from pydantic import BaseModel
+import pandera as pa
+from pandera.typing import DataFrame
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import (
+    ConfigDict,
+    DirectoryPath,
+    Field,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from ribasim.types import FilePath
+from ribasim.utils import prefix_column
 
 __all__ = ("TableModel",)
 
 delimiter = " / "
+
+gpd.options.io_engine = "pyogrio"
+
+context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
+    "file_loading", default={}
+)
+
+TableT = TypeVar("TableT", bound=pa.DataFrameModel)
 
 
 def esc_id(identifier: str) -> str:
@@ -30,65 +56,164 @@ def exists(connection: Connection, name: str) -> bool:
     return result is not None
 
 
-class TableModel(BaseModel):
-    class Config:
-        validate_assignment = True
+TABLES = ["profile", "state", "static", "time", "logic", "condition"]
+
+
+class BaseModel(PydanticBaseModel):
+    """Overrides Pydantic BaseModel to set our own config."""
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+        validate_default=True,
+        populate_by_name=True,
+        use_enum_values=True,
+        extra="allow",
+    )
 
     @classmethod
-    def get_input_type(cls):
-        return cls.__name__
+    def fields(cls) -> list[str]:
+        """Return the names of the fields contained in the Model."""
+        return list(cls.model_fields.keys())
+
+
+class FileModel(BaseModel, ABC):
+    """Base class to represent models with a file representation.
+
+    It therefore always has a `filepath` and if it is given on
+    initialization, it will parse that file.
+
+    This class extends the `model_validator` option of Pydantic,
+    so when when a Path is given to a field with type `FileModel`,
+    it doesn't error, but actually initializes the `FileModel`.
+
+    Attributes
+    ----------
+        filepath (Path | None):
+            The path of this FileModel.
+    """
+
+    filepath: Path | None = Field(default=None, exclude=True, repr=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_filepath(cls, value: Any) -> Any:
+        # Enable initialization with a Path.
+        if isinstance(value, dict):
+            # Pydantic Model init requires a dict
+            filepath = value.get("filepath", None)
+            if filepath is not None:
+                filepath = Path(filepath)
+            data = cls._load(filepath)
+            value.update(data)
+            return value
+        elif isinstance(value, Path | str):
+            # Pydantic Model init requires a dict
+            data = cls._load(Path(value))
+            data["filepath"] = value
+            return data
+        else:
+            return value
+
+    @abstractmethod
+    def _save(self, directory: DirectoryPath) -> None:
+        """Save this instance to disk.
+
+        This method needs to be implemented by any class deriving from
+        FileModel.
+
+        Args:
+            save_settings (ModelSaveSettings): The model save settings.
+        """
+        raise NotImplementedError()
 
     @classmethod
-    def get_toml_key(cls):
-        """Get the class name in snake case, e.g. FlowBoundary -> flow_boundary."""
-        name_camel_case = cls.__name__
+    @abstractmethod
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+        """Load the data at filepath and returns it as a dictionary.
 
-        # Insert underscore before capital letters
-        name_snake_case = re.sub(r"(?<!^)(?=[A-Z])", "_", name_camel_case)
+        If a derived FileModel does not load data from disk, this should
+        return an empty dictionary.
 
-        # Convert to lowercase
-        name_snake_case = name_snake_case.lower()
+        Args
+        ----
+            filepath (Path): Path to the data to load.
 
-        return name_snake_case
+        Returns
+        -------
+            dict: The data stored at filepath
+        """
+        raise NotImplementedError()
+
+
+class TableModel(FileModel, Generic[TableT]):
+    df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+
+    @field_validator("df")
+    @classmethod
+    def prefix_extra_columns(cls, v: DataFrame[TableT]):
+        """Prefix extra columns with meta_."""
+        if isinstance(v, pd.DataFrame):
+            v.rename(
+                lambda x: prefix_column(x, cls.columns()), axis="columns", inplace=True
+            )
+        return v
+
+    @model_serializer
+    def set_model(self) -> Path | None:
+        return self.filepath
 
     @classmethod
-    def fields(cls):
-        """Return the input fields."""
-        return cls.__fields__.keys()
+    def tablename(cls) -> str:
+        """Retrieve tablename based on attached Schema.
 
-    def __repr__(self) -> str:
-        content = [f"<ribasim.{type(self).__name__}>"]
-        for field in self.fields():
-            attr = getattr(self, field)
-            if isinstance(attr, pd.DataFrame):
-                colnames = "(" + ", ".join(attr.columns) + ")"
-                if len(colnames) > 50:
-                    colnames = textwrap.indent(
-                        textwrap.fill(colnames, width=50), prefix="    "
-                    )
-                    entry = f"{field}: DataFrame(rows={len(attr)})\n{colnames}"
-                else:
-                    entry = f"{field}: DataFrame(rows={len(attr)}) {colnames}"
-            else:
-                entry = f"{field}: {attr}"
-            content.append(textwrap.indent(entry, prefix="   "))
-        return "\n".join(content)
+        NodeSchema -> Schema
+        TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
+        """
+        names: list[str] = re.sub("([A-Z]+)", r" \1", str(cls.tableschema())).split()
+        if len(names) > 2:
+            return f"{''.join(names[:-2])}{delimiter}{names[-2].lower()}"
+        else:
+            return names[0]
 
-    def get_node_IDs(self) -> Set[int]:
-        node_IDs: Set[int] = set()
-        for name in self.fields():
-            attr = getattr(self, name)
-            if isinstance(attr, pd.DataFrame):
-                if "node_id" in attr:
-                    node_IDs.update(attr["node_id"])
+    @model_validator(mode="before")
+    @classmethod
+    def check_dataframe(cls, value: Any) -> Any:
+        # Enable initialization with a DataFrame.
+        if isinstance(value, pd.DataFrame | gpd.GeoDataFrame):
+            value = {"df": value}
 
-        return node_IDs
+        return value
+
+    def node_ids(self) -> set[int]:
+        node_ids: set[int] = set()
+        if self.df is not None and "node_id" in self.df.columns:
+            node_ids.update(self.df["node_id"])
+
+        return node_ids
 
     @classmethod
-    def _layername(cls, field) -> str:
-        return f"{cls.get_input_type()}{delimiter}{field}"
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+        db = context_file_loading.get().get("database")
+        if filepath is not None:
+            adf = cls._from_arrow(filepath)
+            # TODO Store filepath?
+            return {"df": adf}
+        elif db is not None:
+            ddf = cls._from_db(db, cls.tablename())
+            return {"df": ddf}
+        else:
+            return {}
 
-    def write_table(self, connection: Connection) -> None:
+    def _save(
+        self, directory: DirectoryPath, sort_keys: list[str] = ["node_id"]
+    ) -> None:
+        # TODO directory could be used to save an arrow file
+        db_path = context_file_loading.get().get("database")
+        if self.df is not None and db_path is not None:
+            self.sort(sort_keys)
+            self._write_table(db_path)
+
+    def _write_table(self, temp_path: Path) -> None:
         """
         Write the contents of the input to a database.
 
@@ -97,103 +222,144 @@ class TableModel(BaseModel):
         connection : Connection
             SQLite connection to the database.
         """
-        self.sort()
-        sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
-        for field in self.fields():
-            dataframe = getattr(self, field)
-            if dataframe is None:
-                continue
-            name = self._layername(field)
+        table = self.tablename()
+        if self.df is not None:  # double check to make mypy happy
+            with closing(connect(temp_path)) as connection:
+                self.df.to_sql(table, connection, index=False, if_exists="replace")
 
-            dataframe.to_sql(name, connection, index=False, if_exists="replace")
-            with closing(connection.cursor()) as cursor:
-                cursor.execute(sql, (name, "attributes", name))
-
-        return
+                # Set geopackage attribute table
+                with closing(connection.cursor()) as cursor:
+                    sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
+                    cursor.execute(sql, (table, "attributes", table))
+                connection.commit()
 
     @classmethod
-    def _kwargs_from_database(cls, path: FilePath) -> Dict[str, Union[DataFrame, None]]:
-        kwargs = {}
+    def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:
         with connect(path) as connection:
-            for key in cls.fields():
-                layername = cls._layername(key)
+            if exists(connection, table):
+                query = f"select * from {esc_id(table)}"
+                df = pd.read_sql_query(query, connection, parse_dates=["time"])
+            else:
+                df = None
 
-                if exists(connection, layername):
-                    query = f"select * from {esc_id(layername)}"
-                    df = pd.read_sql_query(query, connection, parse_dates=["time"])
-                else:
-                    df = None
-
-                kwargs[key] = df
-
-        return kwargs
+            return df
 
     @classmethod
-    def _kwargs_from_toml(cls, config: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
-        return {key: pd.read_feather(path) for key, path in config.items()}
+    def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
+        return pd.read_feather(path)
 
-    @classmethod
-    def from_database(cls, path: FilePath):
-        """
-        Initialize input from a database.
-
-        The database tables are searched for the relevant table names.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the database.
-
-        Returns
-        -------
-        ribasim_input
-        """
-        kwargs = cls._kwargs_from_database(path)
-        return cls(**kwargs)
-
-    @classmethod
-    def from_config(cls, config: Dict[str, Any]):
-        """
-        Initialize input from a TOML configuration file.
-
-        The database tables are searched for the relevant table names. Arrow
-        tables will also be read if specified. If a table is present in both
-        the database and as an Arrow table, the data of the Arrow table is
-        used.
-
-        Parameters
-        ----------
-        config : Dict[str, Any]
-
-        Returns
-        -------
-        ribasim_input
-        """
-        database = config["database"]
-        kwargs = cls._kwargs_from_database(database)
-        input_content = config.get(cls.get_input_type(), None)
-        if input_content:
-            kwargs.update(**cls._kwargs_from_toml(config))
-
-        if all(v is None for v in kwargs.values()):
-            return None
-        else:
-            return cls(**kwargs)
-
-    @classmethod
-    def hasfid(cls):
-        return False
-
-    def sort(self):
+    def sort(self, sort_keys: list[str] = ["node_id"]):
         """Sort all input tables as required.
 
         Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """
-        for field in self.fields():
-            dataframe = getattr(self, field)
-            if dataframe is None:
-                continue
+        if self.df is not None:
+            self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+
+    @classmethod
+    def tableschema(cls) -> TableT:
+        """Retrieve Pandera Schema.
+
+        The type of the field `df` is known to always be an DataFrame[TableT]]] | None
+        """
+        optionalfieldtype = cls.model_fields["df"].annotation
+        fieldtype = optionalfieldtype.__args__[0]  # type: ignore
+        T: TableT = fieldtype.__args__[0]
+        return T
+
+    @classmethod
+    def record(cls) -> type[PydanticBaseModel] | None:
+        """Retrieve Pydantic Record used in Pandera Schema."""
+        T = cls.tableschema()
+        if hasattr(T.Config, "dtype"):
+            # We always set a PydanticBaseModel dtype (see schemas.py)
+            return T.Config.dtype.type  # type: ignore
+        else:
+            return None
+
+    @classmethod
+    def columns(cls) -> list[str]:
+        """Retrieve column names."""
+        T = cls.record()
+        if T is not None:
+            return list(T.model_fields.keys())
+        else:
+            return []
+
+
+class SpatialTableModel(TableModel[TableT], Generic[TableT]):
+    @classmethod
+    def _from_db(cls, path: FilePath, table: str):
+        with connect(path) as connection:
+            if exists(connection, table):
+                df = gpd.read_file(path, layer=table, fid_as_index=True)
             else:
-                dataframe.sort_values("node_id", ignore_index=True, inplace=True)
-        return
+                print(f"Can't read from {path}:{table}")
+                df = None
+
+            return df
+
+    def _write_table(self, path: FilePath) -> None:
+        """
+        Write the contents of the input to a database.
+
+        Parameters
+        ----------
+        path : FilePath
+        """
+
+        gdf = gpd.GeoDataFrame(data=self.df)
+        gdf = gdf.set_geometry("geometry")
+
+        gdf.to_file(path, layer=self.tablename(), driver="GPKG")
+
+    def sort(self, sort_keys: list[str] = ["node_id"]):
+        self.df.sort_index(inplace=True)
+
+
+class NodeModel(BaseModel):
+    """Base class to handle combining the tables for a single node type."""
+
+    _sort_keys: dict[str, list[str]] = {}
+
+    @model_serializer(mode="wrap")
+    def set_modeld(
+        self, serializer: Callable[[type["NodeModel"]], dict[str, Any]]
+    ) -> dict[str, Any]:
+        content = serializer(self)
+        return dict(filter(lambda x: x[1], content.items()))
+
+    @classmethod
+    def get_input_type(cls):
+        return cls.__name__
+
+    @classmethod
+    def _layername(cls, field: str) -> str:
+        return f"{cls.get_input_type()}{delimiter}{field}"
+
+    def add(*args, **kwargs):
+        # TODO This is the new API
+        pass
+
+    def tables(self) -> Generator[TableModel[Any], Any, None]:
+        for key in self.fields():
+            attr = getattr(self, key)
+            if isinstance(attr, TableModel):
+                yield attr
+
+    def node_ids(self):
+        node_ids: set[int] = set()
+        for table in self.tables():
+            node_ids.update(table.node_ids())
+        return node_ids
+
+    def node_ids_and_types(self) -> tuple[list[int], list[str]]:
+        ids = self.node_ids()
+        return list(ids), len(ids) * [self.get_input_type()]
+
+    def _save(self, directory: DirectoryPath):
+        for field in self.fields():
+            getattr(self, field)._save(
+                directory, sort_keys=self._sort_keys.get("field", ["node_id"])
+            )

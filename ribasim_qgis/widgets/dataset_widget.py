@@ -4,8 +4,9 @@ This widgets displays the available input layers in the GeoPackage.
 This widget also allows enabling or disabling individual elements for a
 computation.
 """
+from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Set
+from typing import Any
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -24,11 +25,12 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
-from ribasim_qgis.core.topology import derive_connectivity, explode_lines
-
 from qgis.core import QgsMapLayer, QgsProject
 from qgis.core.additions.edit import edit
+
+import ribasim_qgis.tomllib as tomllib
+from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -47,7 +49,7 @@ class DatasetTreeWidget(QTreeWidget):
         self.setColumnWidth(0, 1)
         self.setColumnWidth(2, 1)
 
-    def items(self) -> List[QTreeWidgetItem]:
+    def items(self) -> list[QTreeWidgetItem]:
         root = self.invisibleRootItem()
         return [root.child(i) for i in range(root.childCount())]
 
@@ -129,12 +131,12 @@ class DatasetWidget(QWidget):
         self.dataset_tree.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.dataset_line_edit = QLineEdit()
         self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
-        self.new_geopackage_button = QPushButton("New")
-        self.open_geopackage_button = QPushButton("Open")
+        self.new_model_button = QPushButton("New")
+        self.open_model_button = QPushButton("Open")
         self.remove_button = QPushButton("Remove from Dataset")
         self.add_button = QPushButton("Add to QGIS")
-        self.new_geopackage_button.clicked.connect(self.new_geopackage)
-        self.open_geopackage_button.clicked.connect(self.open_geopackage)
+        self.new_model_button.clicked.connect(self.new_model)
+        self.open_model_button.clicked.connect(self.open_model)
         self.suppress_popup_checkbox = QCheckBox("Suppress attribute form pop-up")
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
@@ -146,8 +148,8 @@ class DatasetWidget(QWidget):
         dataset_row = QHBoxLayout()
         layer_row = QHBoxLayout()
         dataset_row.addWidget(self.dataset_line_edit)
-        dataset_row.addWidget(self.open_geopackage_button)
-        dataset_row.addWidget(self.new_geopackage_button)
+        dataset_row.addWidget(self.open_model_button)
+        dataset_row.addWidget(self.new_model_button)
         dataset_layout.addLayout(dataset_row)
         dataset_layout.addWidget(self.dataset_tree)
         dataset_layout.addWidget(self.suppress_popup_checkbox)
@@ -158,7 +160,7 @@ class DatasetWidget(QWidget):
 
     @property
     def path(self) -> str:
-        """Returns currently active path to GeoPackage"""
+        """Returns currently active path to Ribasim model (.toml)"""
         return self.dataset_line_edit.text()
 
     def explode_and_connect(self) -> None:
@@ -241,7 +243,8 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        nodes = load_nodes_from_geopackage(self.path)
+        geo_path = self._get_database_path_from_model_file()
+        nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
         name = str(Path(self.path).stem)
@@ -255,21 +258,38 @@ class DatasetWidget(QWidget):
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
 
-    def new_geopackage(self) -> None:
-        """Create a new GeoPackage file, and set it as the active dataset."""
-        path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.gpkg")
+    def _get_database_path_from_model_file(self) -> str:
+        with open(self.path, "rb") as f:
+            model_filename = tomllib.load(f)["database"]
+            return str(Path(self.path).parent.joinpath(model_filename))
+
+    def new_model(self) -> None:
+        """Create a new Ribasim model file, and set it as the active dataset."""
+        path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
+            geo_path = Path(self.path).parent.joinpath("database.gpkg")
+            self._write_new_model(geo_path.name)
             for input_type in (Node, Edge):
-                instance = input_type.create(path, self.parent.crs, names=[])
+                instance = input_type.create(str(geo_path), self.parent.crs, names=[])
                 instance.write()
             self.load_geopackage()
             self.parent.toggle_node_buttons(True)
 
-    def open_geopackage(self) -> None:
-        """Open a GeoPackage file, containing Ribasim input."""
+    def _write_new_model(self, database_name: str) -> None:
+        with open(self.path, "w") as f:
+            f.writelines(
+                [
+                    f'database = "{database_name}"\n',
+                    f"starttime = {datetime(2020, 1, 1)}\n",
+                    f"endtime = {datetime(2030, 1, 1)}\n",
+                ]
+            )
+
+    def open_model(self) -> None:
+        """Open a Ribasim model file."""
         self.dataset_tree.clear()
-        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.gpkg")
+        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
@@ -300,7 +320,7 @@ class DatasetWidget(QWidget):
             active_nodes[item.text(1)] = not (item.checkbox.isChecked() == 0)
         return active_nodes
 
-    def selection_names(self) -> Set[str]:
+    def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
         return {item.element.name for item in selection}

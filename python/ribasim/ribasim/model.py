@@ -1,43 +1,87 @@
 import datetime
-import inspect
 import shutil
-from contextlib import closing
 from pathlib import Path
-from sqlite3 import connect
-from typing import Any, Optional, Type, cast
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
-from pydantic import BaseModel
+from pydantic import DirectoryPath, Field, model_serializer, model_validator
 
-from ribasim import geometry, node_types
-from ribasim.config import Allocation, Logging, Solver
+from ribasim.config import (
+    Allocation,
+    Basin,
+    DiscreteControl,
+    FlowBoundary,
+    FractionalFlow,
+    LevelBoundary,
+    LinearResistance,
+    Logging,
+    ManningResistance,
+    Outlet,
+    PidControl,
+    Pump,
+    Results,
+    Solver,
+    TabulatedRatingCurve,
+    Terminal,
+    User,
+)
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
-
-# Do not import from ribasim namespace: will create import errors.
-# E.g. not: from ribasim import Basin
-from ribasim.input_base import TableModel
-from ribasim.node_types.basin import Basin
-from ribasim.node_types.discrete_control import DiscreteControl
-from ribasim.node_types.flow_boundary import FlowBoundary
-from ribasim.node_types.fractional_flow import FractionalFlow
-from ribasim.node_types.level_boundary import LevelBoundary
-from ribasim.node_types.linear_resistance import LinearResistance
-from ribasim.node_types.manning_resistance import ManningResistance
-from ribasim.node_types.outlet import Outlet
-from ribasim.node_types.pid_control import PidControl
-from ribasim.node_types.pump import Pump
-from ribasim.node_types.tabulated_rating_curve import TabulatedRatingCurve
-from ribasim.node_types.terminal import Terminal
-from ribasim.node_types.user import User
+from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
 from ribasim.types import FilePath
 
 
-class Model(BaseModel):
+class Network(FileModel, NodeModel):
+    node: Node = Field(default_factory=Node)
+    edge: Edge = Field(default_factory=Edge)
+
+    def n_nodes(self):
+        if self.node.df is not None:
+            n = len(self.node.df)
+        else:
+            n = 0
+
+        return n
+
+    @classmethod
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+        if filepath is not None:
+            context_file_loading.get()["database"] = filepath
+        return {}
+
+    @classmethod
+    def _layername(cls, field: str) -> str:
+        return field.capitalize()
+
+    def _save(self, directory):
+        # We write all tables to a temporary database with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
+        directory = Path(directory)
+        db_path = directory / "database.gpkg"
+        db_path = db_path.resolve()
+        temp_path = db_path.with_stem(".database")
+
+        # avoid adding tables to existing model
+        temp_path.unlink(missing_ok=True)
+        context_file_loading.get()["database"] = temp_path
+
+        self.node._save(directory)
+        self.edge._save(directory)
+
+        shutil.move(temp_path, db_path)
+        context_file_loading.get()["database"] = db_path
+
+    @model_serializer
+    def set_modelname(self) -> str:
+        return "database.gpkg"
+
+
+class Model(FileModel):
     """
     A full Ribasim model schematisation with all input.
 
@@ -46,76 +90,89 @@ class Model(BaseModel):
 
     Parameters
     ----------
-    node : Node
-        The ID, type and geometry of each node.
-    edge : Edge
-        How the nodes are connected.
+    starttime : datetime.datetime
+        Starting time of the simulation.
+    endtime : datetime.datetime
+        End time of the simulation.
+
+    update_timestep: float = 86400
+        The output time step of the simulation in seconds (default of 1 day)
+    relative_dir: str = "."
+        The relative directory of the input files.
+    input_dir: str = "."
+        The directory of the input files.
+    results_dir: str = "."
+        The directory of the results files.
+
+    network: Network
+        Class containing the topology (nodes and edges) of the model.
+
+    results: Results
+        Results configuration options.
+    solver: Solver
+        Solver configuration options.
+    logging: Logging
+        Logging configuration options.
+
+    allocation: Allocation
+        The allocation configuration.
     basin : Basin
         The waterbodies.
-    fractional_flow : Optional[FractionalFlow]
+    fractional_flow : FractionalFlow
         Split flows into fractions.
-    level_boundary : Optional[LevelBoundary]
+    level_boundary : LevelBoundary
         Boundary condition specifying the water level.
-    flow_boundary : Optional[FlowBoundary]
+    flow_boundary : FlowBoundary
         Boundary conditions specifying the flow.
-    linear_resistance: Optional[LinearResistance]
+    linear_resistance: LinearResistance
         Linear flow resistance.
-    manning_resistance : Optional[ManningResistance]
+    manning_resistance : ManningResistance
         Flow resistance based on the Manning formula.
-    tabulated_rating_curve : Optional[TabulatedRatingCurve]
+    tabulated_rating_curve : TabulatedRatingCurve
         Tabulated rating curve describing flow based on the upstream water level.
-    pump : Optional[Pump]
+    pump : Pump
         Prescribed flow rate from one basin to the other.
-    outlet : Optional[Outlet]
+    outlet : Outlet
         Prescribed flow rate from one basin to the other.
-    terminal : Optional[Terminal]
+    terminal : Terminal
         Water sink without state or properties.
-    discrete_control : Optional[DiscreteControl]
+    discrete_control : DiscreteControl
         Discrete control logic.
-    pid_control : Optional[PidControl]
+    pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : Optional[User]
+    user : User
         User node type with demand and priority.
-    starttime : Union[str, datetime.datetime]
-        Starting time of the simulation.
-    endtime : Union[str, datetime.datetime]
-        End time of the simulation.
-    allocation : Optional[Allocation]
-        Allocation settings.
-    solver : Optional[Solver]
-        Solver settings.
-    logging : Optional[logging]
-        Logging settings.
     """
 
-    node: Node
-    edge: Edge
-    basin: Basin
-    fractional_flow: Optional[FractionalFlow]
-    level_boundary: Optional[LevelBoundary]
-    flow_boundary: Optional[FlowBoundary]
-    linear_resistance: Optional[LinearResistance]
-    manning_resistance: Optional[ManningResistance]
-    tabulated_rating_curve: Optional[TabulatedRatingCurve]
-    pump: Optional[Pump]
-    outlet: Optional[Outlet]
-    terminal: Optional[Terminal]
-    discrete_control: Optional[DiscreteControl]
-    pid_control: Optional[PidControl]
-    user: Optional[User]
     starttime: datetime.datetime
     endtime: datetime.datetime
-    allocation: Optional[Allocation]
-    solver: Optional[Solver]
-    logging: Optional[Logging]
 
-    class Config:
-        validate_assignment = True
+    update_timestep: float = 86400
+    relative_dir: str = "."
+    input_dir: str = "."
+    results_dir: str = "."
 
-    @classmethod
-    def fields(cls):
-        """Return the names of the fields contained in the Model."""
-        return cls.__fields__.keys()
+    network: Network = Field(default_factory=Network, alias="database")
+    results: Results = Results()
+    solver: Solver = Solver()
+    logging: Logging = Logging()
+
+    allocation: Allocation = Field(default_factory=Allocation)
+    basin: Basin = Field(default_factory=Basin)
+    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
+    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
+    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
+    linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
+    manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    tabulated_rating_curve: TabulatedRatingCurve = Field(
+        default_factory=TabulatedRatingCurve
+    )
+    pump: Pump = Field(default_factory=Pump)
+    outlet: Outlet = Field(default_factory=Outlet)
+    terminal: Terminal = Field(default_factory=Terminal)
+    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
+    pid_control: PidControl = Field(default_factory=PidControl)
+    user: User = Field(default_factory=User)
 
     def __repr__(self) -> str:
         first = []
@@ -135,153 +192,82 @@ class Model(BaseModel):
 
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
-        content = {
-            "starttime": self.starttime,
-            "endtime": self.endtime,
-            "database": "database.gpkg",
-        }
-        if self.solver is not None:
-            section = {k: v for k, v in self.solver.dict().items() if v is not None}
-            content["solver"] = section
 
-        if self.allocation is not None:
-            section = {k: v for k, v in self.allocation.dict().items() if v is not None}
-            content["allocation"] = section
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
+        # Filter empty dicts (default Nodes)
+        content = dict(filter(lambda x: x[1], content.items()))
 
-        # TODO This should be rewritten as self.dict(exclude_unset=True, exclude_defaults=True)
-        # after we make sure that we have a (sub)model that's only the config, instead
-        # the mix of models and config it is now.
-        if self.logging is not None:
-            section = {k: v for k, v in self.logging.dict().items() if v is not None}
-            content["logging"] = section
-
-        with open(directory / "ribasim.toml", "wb") as f:
+        fn = directory / "ribasim.toml"
+        with open(fn, "wb") as f:
             tomli_w.dump(content, f)
-        return
+        return fn
 
-    def _write_tables(self, directory: FilePath) -> None:
-        """Write the input to database tables."""
-        # We write all tables to a temporary database with a dot prefix,
-        # and at the end move this over the target file.
-        # This does not throw a PermissionError if the file is open in QGIS.
-        directory = Path(directory)
-        db_path = directory / "database.gpkg"
-        temp_path = db_path.with_stem(".database.gpkg")
-        # avoid adding tables to existing model
-        temp_path.unlink(missing_ok=True)
+    def _save(self, directory: DirectoryPath):
+        for sub in self.nodes().values():
+            sub._save(directory)
 
-        # write to database using geopandas
-        self.node.write_layer(temp_path)
-        self.edge.write_layer(temp_path)
+    def nodes(self):
+        return {
+            k: getattr(self, k)
+            for k in self.model_fields.keys()
+            if isinstance(getattr(self, k), NodeModel)
+        }
 
-        # write to database using sqlite3
-        with closing(connect(temp_path)) as connection:
-            for name in self.fields():
-                input_entry = getattr(self, name)
-                is_geometry = isinstance(input_entry, Node) or isinstance(
-                    input_entry, Edge
-                )
-                if isinstance(input_entry, TableModel) and not is_geometry:
-                    input_entry.write_table(connection)
-            connection.commit()
-
-        shutil.move(temp_path, db_path)
-        return
-
-    @staticmethod
-    def get_node_types():
-        node_names_all, node_cls_all = list(
-            zip(*inspect.getmembers(node_types, inspect.isclass))
-        )
-        return node_names_all, node_cls_all
-
-    def validate_model_node_types(self):
-        """Check whether all node types in the node field are valid."""
-
-        node_names_all, _ = Model.get_node_types()
-
-        invalid_node_types = set()
-
-        # Check node types
-        for node_type in self.node.static["type"]:
-            if node_type not in node_names_all:
-                invalid_node_types.add(node_type)
-
-        if len(invalid_node_types) > 0:
-            invalid_node_types = ", ".join(invalid_node_types)
-            raise TypeError(
-                f"Invalid node types detected: [{invalid_node_types}]. Choose from: {', '.join(node_names_all)}."
-            )
-
-    def validate_model_node_field_IDs(self):
+    def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        _, node_cls_all = Model.get_node_types()
-
-        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
+        n_nodes = self.network.n_nodes()
 
         # Check node IDs of node fields
-        node_IDs_all = []
-        n_nodes = len(self.node.static)
+        all_node_ids = set[int]()
+        for node in self.nodes().values():
+            all_node_ids.update(node.node_ids())
 
-        for name in self.fields():
-            if name in node_names_all_snake_case:
-                if node_field := getattr(self, name):
-                    node_IDs_field = node_field.get_node_IDs()
-                    node_IDs_all.append(list(node_IDs_field))
+        unique, counts = np.unique(list(all_node_ids), return_counts=True)
 
-        node_IDs_all = np.concatenate(node_IDs_all)
-        node_IDs_unique, node_ID_counts = np.unique(node_IDs_all, return_counts=True)
-
-        node_IDs_positive_integers = np.greater(node_IDs_unique, 0) & np.equal(
-            node_IDs_unique.astype(int), node_IDs_unique
+        node_ids_positive_integers = np.greater(unique, 0) & np.equal(
+            unique.astype(int), unique
         )
 
-        if not node_IDs_positive_integers.all():
+        if not node_ids_positive_integers.all():
             raise ValueError(
-                f"Node IDs must be positive integers, got {node_IDs_unique[~node_IDs_positive_integers]}."
+                f"Node IDs must be positive integers, got {unique[~node_ids_positive_integers]}."
             )
 
-        if (node_ID_counts > 1).any():
+        if (counts > 1).any():
             raise ValueError(
-                f"These node IDs were assigned to multiple node types: {node_IDs_unique[(node_ID_counts > 1)]}."
+                f"These node IDs were assigned to multiple node types: {unique[(counts > 1)]}."
             )
 
-        if not np.array_equal(node_IDs_unique, np.arange(n_nodes) + 1):
-            node_IDs_missing = set(np.arange(n_nodes) + 1) - set(node_IDs_unique)
-            node_IDs_over = set(node_IDs_unique) - set(np.arange(n_nodes) + 1)
+        if not np.array_equal(unique, np.arange(n_nodes) + 1):
+            node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
+            node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
             msg = [
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.node.static)."
+                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.network.node.df)."
             ]
-            if len(node_IDs_missing) > 0:
-                msg.append(f"These node IDs are missing: {node_IDs_missing}.")
+            if len(node_ids_missing) > 0:
+                msg.append(f"These node IDs are missing: {node_ids_missing}.")
 
-            if len(node_IDs_over) > 0:
-                msg.append(f"These node IDs are unexpected: {node_IDs_over}.")
+            if len(node_ids_over) > 0:
+                msg.append(f"These node IDs are unexpected: {node_ids_over}.")
 
             raise ValueError(" ".join(msg))
 
-    def validate_model_node_IDs(self):
+    def validate_model_node_ids(self):
         """Check whether the node IDs in the node field correspond to the node IDs on the node type fields."""
-
-        _, node_cls_all = Model.get_node_types()
-
-        node_names_all_snake_case = [cls.get_toml_key() for cls in node_cls_all]
 
         error_messages = []
 
-        for name in self.fields():
-            if name in node_names_all_snake_case:
-                if attr := getattr(self, name):
-                    node_IDs_field = attr.get_node_IDs()
-                    node_IDs_from_node_field = self.node.static.loc[
-                        self.node.static["type"] == attr.get_input_type()
-                    ].index
+        for node in self.nodes().values():
+            node_ids_field = node.node_ids()
+            node_ids_from_node_field = self.network.node.df.loc[
+                self.network.node.df["type"] == node.get_input_type()
+            ].index
 
-                    if not set(node_IDs_from_node_field) == set(node_IDs_field):
-                        error_messages.append(
-                            f"The node IDs in the field {name} {node_IDs_field} do not correspond with the node IDs in the field node {node_IDs_from_node_field.tolist()}."
-                        )
+            if not set(node_ids_from_node_field) == set(node_ids_field):
+                error_messages.append(
+                    f"The node IDs in the field {node} {node_ids_field} do not correspond with the node IDs in the field node {node_ids_from_node_field.tolist()}."
+                )
 
         if len(error_messages) > 0:
             raise ValueError("\n".join(error_messages))
@@ -290,16 +276,14 @@ class Model(BaseModel):
         """Validate the model.
 
         Checks:
-        - Whether all node types in the node field are valid
         - Whether the node IDs of the node_type fields are valid
         - Whether the node IDs in the node field correspond to the node IDs on the node type fields
         """
 
-        self.validate_model_node_types()
-        self.validate_model_node_field_IDs()
-        self.validate_model_node_IDs()
+        self.validate_model_node_field_ids()
+        self.validate_model_node_ids()
 
-    def write(self, directory: FilePath) -> None:
+    def write(self, directory: FilePath) -> Path:
         """
         Write the contents of the model to a database and a TOML configuration file.
 
@@ -310,15 +294,37 @@ class Model(BaseModel):
         directory: FilePath
         """
         self.validate_model()
-
+        context_file_loading.set({})
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        self._write_toml(directory)
-        self._write_tables(directory)
-        return
+        self._save(directory)
+        fn = self._write_toml(directory)
 
-    @staticmethod
-    def from_toml(path: FilePath) -> "Model":
+        context_file_loading.set({})
+        return fn
+
+    @classmethod
+    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+        context_file_loading.set({})
+
+        if filepath is not None:
+            with open(filepath, "rb") as f:
+                config = tomli.load(f)
+
+            # Convert relative path to absolute path
+            config["database"] = filepath.parent / config["database"]
+            return config
+        else:
+            return {}
+
+    @model_validator(mode="after")
+    def reset_contextvar(self) -> "Model":
+        # Drop database info
+        context_file_loading.set({})
+        return self
+
+    @classmethod
+    def from_toml(cls, path: Path | str) -> "Model":
         """
         Initialize a model from the TOML configuration file.
 
@@ -331,48 +337,33 @@ class Model(BaseModel):
         -------
         model : Model
         """
-
-        path = Path(path)
-        with open(path, "rb") as f:
-            config = tomli.load(f)
-
-        kwargs: dict[str, Any] = {}
-        config["database"] = path.parent / config["database"]
-
-        for module in [geometry, node_types]:
-            for _, node_type_cls in inspect.getmembers(module, inspect.isclass):
-                cls_casted = cast(Type[TableModel], node_type_cls)
-                kwargs[node_type_cls.get_toml_key()] = cls_casted.from_config(config)
-
-        kwargs["starttime"] = config["starttime"]
-        kwargs["endtime"] = config["endtime"]
-        kwargs["solver"] = config.get("solver")
-
-        return Model(**kwargs)
+        kwargs = cls._load(Path(path))
+        return cls(**kwargs)
 
     def plot_control_listen(self, ax):
         x_start, x_end = [], []
         y_start, y_end = [], []
 
-        if self.discrete_control:
-            condition = self.discrete_control.condition
-
+        condition = self.discrete_control.condition.df
+        if condition is not None:
             for node_id in condition.node_id.unique():
                 data_node_id = condition[condition.node_id == node_id]
 
                 for listen_feature_id in data_node_id.listen_feature_id:
-                    point_start = self.node.static.iloc[node_id - 1].geometry
+                    point_start = self.network.node.df.iloc[node_id - 1].geometry
                     x_start.append(point_start.x)
                     y_start.append(point_start.y)
 
-                    point_end = self.node.static.iloc[listen_feature_id - 1].geometry
+                    point_end = self.network.node.df.iloc[
+                        listen_feature_id - 1
+                    ].geometry
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
-        if self.pid_control:
-            static = self.pid_control.static
-            time = self.pid_control.time
-            node_static = self.node.static
+        if self.pid_control.static.df is not None:
+            static = self.pid_control.static.df
+            time = self.pid_control.time.df
+            node_static = self.network.node.static.df
 
             for table in [static, time]:
                 if table is None:
@@ -419,34 +410,22 @@ class Model(BaseModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
-        self.edge.plot(ax=ax, zorder=2)
+        self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
-        self.node.plot(ax=ax, zorder=3)
+        self.network.node.plot(ax=ax, zorder=3)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
 
-    def sort(self):
-        """
-        Sort all input tables as required.
-
-        Tables are sorted by "node_id", unless otherwise specified.
-        Sorting is done automatically before writing the table.
-        """
-        for name in self.fields():
-            input_entry = getattr(self, name)
-            if isinstance(input_entry, TableModel):
-                input_entry.sort()
-
     def print_discrete_control_record(self, path: FilePath) -> None:
         path = Path(path)
         df_control = pd.read_feather(path)
-        node_types, node_clss = Model.get_node_types()
-
+        node_attrs, node_instances = zip(*self.nodes().items())
+        node_clss = [node_cls.get_input_type() for node_cls in node_instances]
         truth_dict = {"T": ">", "F": "<"}
 
-        if not self.discrete_control:
+        if self.discrete_control.condition.df is None:
             raise ValueError("This model has no control input.")
 
         for index, row in df_control.iterrows():
@@ -458,8 +437,11 @@ class Model(BaseModel):
 
             out = f"{enumeration}At {datetime} the control node with ID {control_node_id} reached truth state {truth_state}:\n"
 
-            conditions = self.discrete_control.condition[
-                self.discrete_control.condition.node_id == control_node_id
+            if self.discrete_control.condition.df is None:
+                return
+
+            conditions = self.discrete_control.condition.df[
+                self.discrete_control.condition.df.node_id == control_node_id
             ]
 
             for truth_value, (index, condition) in zip(
@@ -467,7 +449,7 @@ class Model(BaseModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.node.static.loc[listen_feature_id, "type"]
+                listen_node_type = self.network.node.df.loc[listen_feature_id, "type"]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -477,19 +459,17 @@ class Model(BaseModel):
             padding = len(enumeration) * " "
             out += f'\n{padding}This yielded control state "{control_state}":\n'
 
-            affect_node_ids = self.edge.static[
-                self.edge.static.from_node_id == control_node_id
+            affect_node_ids = self.network.edge.df[
+                self.network.edge.df.from_node_id == control_node_id
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.node.static.loc[affect_node_id, "type"]
-                affect_node_type_snake_case = node_clss[
-                    node_types.index(affect_node_type)
-                ].get_toml_key()
+                affect_node_type = self.network.node.df.loc[affect_node_id, "type"]
+                nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "
 
-                static = getattr(self, affect_node_type_snake_case).static
+                static = getattr(self, nodeattr).static.df
                 row = static[
                     (static.node_id == affect_node_id)
                     & (static.control_state == control_state)

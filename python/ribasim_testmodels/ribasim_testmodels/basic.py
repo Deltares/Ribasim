@@ -144,7 +144,7 @@ def basic_model() -> ribasim.Model:
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_id, node_type = ribasim.Node.get_node_ids_and_types(
+    node_id, node_type = ribasim.Node.node_ids_and_types(
         basin,
         level_boundary,
         flow_boundary,
@@ -158,7 +158,7 @@ def basic_model() -> ribasim.Model:
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
@@ -173,9 +173,9 @@ def basic_model() -> ribasim.Model:
     to_id = np.array(
         [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
     )
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -190,8 +190,10 @@ def basic_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        network=ribasim.Network(
+            node=node,
+            edge=edge,
+        ),
         basin=basin,
         level_boundary=level_boundary,
         flow_boundary=flow_boundary,
@@ -237,7 +239,7 @@ def basic_transient_model() -> ribasim.Model:
             "urban_runoff": 0.0,
         }
     )
-    basin_ids = model.basin.static["node_id"].to_numpy()
+    basin_ids = model.basin.static.df["node_id"].to_numpy()
     forcing = (
         pd.concat(
             [timeseries.assign(node_id=id) for id in basin_ids], ignore_index=True
@@ -256,7 +258,6 @@ def basic_transient_model() -> ribasim.Model:
 
     model.basin.time = forcing
     model.basin.state = state
-    model.logging = None
 
     return model
 
@@ -337,11 +338,11 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_id, node_type = ribasim.Node.get_node_ids_and_types(basin, rating_curve)
+    node_id, node_type = ribasim.Node.node_ids_and_types(basin, rating_curve)
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
@@ -352,9 +353,9 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     # Setup the edges:
     from_id = np.array([1, 1, 2, 3], dtype=np.int64)
     to_id = np.array([2, 3, 4, 4], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -367,8 +368,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
@@ -395,7 +395,7 @@ def outlet_model():
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={"type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -406,9 +406,9 @@ def outlet_model():
     # Setup the edges:
     from_id = np.array([1, 2], dtype=np.int64)
     to_id = np.array([2, 3], dtype=np.int64)
-    lines = ribasim.utils.geometry_from_connectivity(node, from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
-        static=gpd.GeoDataFrame(
+        df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
@@ -470,8 +470,7 @@ def outlet_model():
     )
 
     model = ribasim.Model(
-        node=node,
-        edge=edge,
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         outlet=outlet,
         level_boundary=level_boundary,
