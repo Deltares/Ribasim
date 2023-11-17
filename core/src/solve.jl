@@ -465,6 +465,15 @@ struct User <: AbstractParameterNode
     }
 end
 
+"""
+LevelExporter linearly interpolates basin levels.
+"""
+struct LevelExporter
+    basin_index::Vector{Int}
+    interpolations::Vector{ScalarInterpolation}
+    level::Vector{Float64}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, TSparse, C1, C2}
     starttime::DateTime
@@ -483,6 +492,7 @@ struct Parameters{T, TSparse, C1, C2}
     pid_control::PidControl{T}
     user::User
     lookup::Dict{Int, Symbol}
+    level_exporters::Dict{String, LevelExporter}
 end
 
 """

@@ -72,7 +72,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
 
-        level_exporters = create_level_exporters(db, config, basin)
     finally
         # always close the database, also in case of an error
         close(db)
@@ -141,7 +140,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     set_initial_discrete_controlled_parameters!(integrator, storage)
 
-    return Model(integrator, config, saved_flow, level_exporters)
+    return Model(integrator, config, saved_flow)
 end
 
 """
@@ -233,6 +232,11 @@ function create_callbacks(
     saved_flow = SavedValues(Float64, Vector{Float64})
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
+
+    # interpolate the levels
+    tstops = get_tstops(basin.time.time, starttime)
+    export_cb = PresetTimeCallback(tstops, update_exporter_levels!)
+    push!(callbacks, export_cb)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -533,6 +537,18 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
     end
     return nothing
+end
+
+function update_exporter_levels!(integrator)::Nothing
+    parameters = integrator.p
+    basin_level = parameters.basin.current_level
+
+    for exporter in values(parameters.level_exporters)
+        for (i, (index, interp)) in
+            enumerate(zip(exporter.basin_index, exporter.interpolations))
+            exporter.level[i] = interp(basin_level[index])
+        end
+    end
 end
 
 function BMI.update(model::Model)::Model

@@ -798,6 +798,44 @@ function User(db::DB, config::Config)::User
     )
 end
 
+function LevelExporter(tables, node_to_basin::Dict{Int, Int})::LevelExporter
+    basin_ids = Int[]
+    interpolations = ScalarInterpolation[]
+
+    for group in IterTools.groupby(row -> row.element_id, tables)
+        node_id = first(getproperty.(group, :node_id))
+        basin_level = getproperty.(group, :basin_level)
+        element_level = getproperty.(group, :level)
+        # Ensure it doesn't extrapolate before the first value.
+        new_interp = LinearInterpolation(
+            [element_level[1], element_level...],
+            [prevfloat(basin_level[1]), basin_level...],
+        )
+        push!(basin_ids, node_to_basin[node_id])
+        push!(interpolations, new_interp)
+    end
+
+    return LevelExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+end
+
+function create_level_exporters(
+    db::DB,
+    config::Config,
+    basin::Basin,
+)::Dict{String, LevelExporter}
+    # TODO validate
+    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
+    tables = load_structvector(db, config, BasinLevelExporterV1)
+    level_exporters = Dict{String, LevelExporter}()
+    if !isempty(tables) > 0
+        for group in IterTools.groupby(row -> row.name, tables)
+            name = first(getproperty.(group, :name))
+            level_exporters[name] = LevelExporter(group, node_to_basin)
+        end
+    end
+    return level_exporters
+end
+
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_size = pickchunksize(n_states)
@@ -818,6 +856,8 @@ function Parameters(db::DB, config::Config)::Parameters
     user = User(db, config)
 
     basin = Basin(db, config, chunk_size)
+
+    level_exporters = create_level_exporters(db, config, basin)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
@@ -848,6 +888,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user,
         Dict{Int, Symbol}(),
+        level_exporters,
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
         if fieldtype <: AbstractParameterNode

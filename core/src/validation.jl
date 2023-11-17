@@ -8,6 +8,7 @@
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
+@schema "ribasim.basin.levelexporter" BasinLevelExporter
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -24,7 +25,6 @@
 @schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.user.static" UserStatic
 @schema "ribasim.user.time" UserTime
-@schema "ribasim.levelexporter.static" LevelExporterStatic
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -203,6 +203,14 @@ end
     level::Float64
 end
 
+@version BasinLevelExporterV1 begin
+    name::String
+    element_id::Int
+    node_id::Int
+    basin_level::Float64
+    level::Float64
+end
+
 @version FractionalFlowStaticV1 begin
     node_id::Int
     fraction::Float64
@@ -321,14 +329,6 @@ end
     return_factor::Float64
     min_level::Float64
     priority::Int
-end
-
-@version LevelExporterStaticV1 begin
-    name::String
-    element_id::Int
-    node_id::Int
-    basin_level::Float64
-    level::Float64
 end
 
 function variable_names(s::Any)
