@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://deltares.github.io/Ribasim/schema/LevelExporterStatic.schema.json",
-    "title": "LevelExporterStatic",
-    "description": "A LevelExporterStatic object based on Ribasim.LevelExporterStaticV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinLevelExporter.schema.json",
+    "title": "BasinLevelExporter",
+    "description": "A BasinLevelExporter object based on Ribasim.BasinLevelExporterV1",
     "type": "object",
     "properties": {
         "name": {

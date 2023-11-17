@@ -9,7 +9,6 @@ from ribasim.config import (
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
-    LevelExporter,
     LinearResistance,
     Logging,
     ManningResistance,
@@ -50,5 +49,4 @@ __all__ = [
     "DiscreteControl",
     "PidControl",
     "User",
-    "LevelExporter",
 ]

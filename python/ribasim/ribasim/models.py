@@ -43,6 +43,15 @@ class BasinTime(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
 
 
+class BasinExporter(BaseModel):
+    name: str
+    element_id: int
+    node_id: int
+    basin_level: float
+    level: float
+    remarks: str = Field("", description="a hack for pandera")
+
+
 class DiscreteControlCondition(BaseModel):
     node_id: int
     listen_feature_id: int
@@ -100,15 +109,6 @@ class LevelBoundaryStatic(BaseModel):
 class LevelBoundaryTime(BaseModel):
     node_id: int
     time: datetime
-    level: float
-    remarks: str = Field("", description="a hack for pandera")
-
-
-class LevelExporterStatic(BaseModel):
-    name: str
-    element_id: int
-    node_id: int
-    basin_level: float
     level: float
     remarks: str = Field("", description="a hack for pandera")
 
@@ -232,6 +232,7 @@ class Root(BaseModel):
     BasinState: Optional[BasinState] = None
     BasinStatic: Optional[BasinStatic] = None
     BasinTime: Optional[BasinTime] = None
+    BasinExporter: Optional[BasinExporter] = None
     DiscreteControlCondition: Optional[DiscreteControlCondition] = None
     DiscreteControlLogic: Optional[DiscreteControlLogic] = None
     Edge: Optional[Edge] = None
@@ -240,7 +241,6 @@ class Root(BaseModel):
     FractionalFlowStatic: Optional[FractionalFlowStatic] = None
     LevelBoundaryStatic: Optional[LevelBoundaryStatic] = None
     LevelBoundaryTime: Optional[LevelBoundaryTime] = None
-    LevelExporterStatic: Optional[LevelExporterStatic] = None
     LinearResistanceStatic: Optional[LinearResistanceStatic] = None
     ManningResistanceStatic: Optional[ManningResistanceStatic] = None
     Node: Optional[Node] = None

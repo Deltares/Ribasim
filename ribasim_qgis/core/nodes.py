@@ -336,6 +336,18 @@ class BasinTime(Input):
     ]
 
 
+class BasinExporter(Input):
+    input_type = "Basin / exporter"
+    geometry_type = "No Geometry"
+    attributes = [
+        QgsField("name", QVariant.String),
+        QgsField("element_id", QVariant.Int),
+        QgsField("node_id", QVariant.Int),
+        QgsField("basin_level", QVariant.Double),
+        QgsField("level", QVariant.Double),
+    ]
+
+
 class BasinState(Input):
     input_type = "Basin / state"
     geometry_type = "No Geometry"

@@ -37,8 +37,8 @@
         "LevelBoundaryTime": {
             "$ref": "LevelBoundaryTime.schema.json"
         },
-        "LevelExporterStatic": {
-            "$ref": "LevelExporterStatic.schema.json"
+        "BasinLevelExporter": {
+            "$ref": "BasinLevelExporter.schema.json"
         },
         "LinearResistanceStatic": {
             "$ref": "LinearResistanceStatic.schema.json"

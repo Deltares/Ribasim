@@ -17,7 +17,6 @@ from ribasim.config import (
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
-    LevelExporter,
     LinearResistance,
     Logging,
     ManningResistance,
@@ -101,7 +100,7 @@ class Model(FileModel):
         Split flows into fractions.
     level_boundary : Optional[LevelBoundary]
         Boundary condition specifying the water level.
-    level_exporter : Optional[LevelExporter]
+    exporter : Optional[LevelExporter]
         Translates basin water levels to spatially distributed water levels.
     flow_boundary : Optional[FlowBoundary]
         Boundary conditions specifying the flow.
@@ -150,7 +149,6 @@ class Model(FileModel):
     basin: Basin = Field(default_factory=Basin)
     fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
     level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
-    level_exporter: LevelExporter = Field(default_factory=LevelExporter)
     flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
