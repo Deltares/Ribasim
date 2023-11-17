@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ribasim_qgis"
+description = "Ribasim QGIS Plugin"
+readme = "README.md"
+authors = [{ name = "Deltares and contributors", email = "ribasim.info@deltares.nl" }]
+license = { text = "MIT" }
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Hydrology",
+]
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+[tool.setuptools]
+zip-safe = true
+
+[tool.setuptools.dynamic]
+version.attr = "ribasim_testmodels.__version__"
+
+[tool.setuptools.packages.find]
+include = ["*"]
+
+[tool.setuptools.package-data]
+"ribasim_testmodels" = ["py.typed"]
+
+[project.urls]
+Documentation = "https://deltares.github.io/Ribasim"
+Source = "https://github.com/Deltares/Ribasim"

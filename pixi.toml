@@ -17,11 +17,13 @@ repository = "https://github.com/Deltares/Ribasim"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
+install-ribasim-qgis = "pip install --no-deps --editable ribasim_qgis"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
     "install-ribasim-api",
     "install-ribasim-testmodels",
+    "install-ribasim-qgis",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
