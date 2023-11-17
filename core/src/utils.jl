@@ -12,6 +12,15 @@ function valid_edge_types(db::DB)::Bool
     return !errors
 end
 
+"""
+Return a directed metagraph with data of nodes (NodeMetadata):
+- Node type (snake case)
+- Allocation network ID
+
+and data of edges (EdgeMetadata):
+- Edge ID (EdgeID)
+- type (flow/control)
+"""
 function create_graph(db::DB)::MetaGraph
     node_rows = execute(db, "select fid, type from Node")
     edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
@@ -29,11 +38,10 @@ function create_graph(db::DB)::MetaGraph
             NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
     for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
-        if edge_type == "flow"
-            edge_type = EdgeType.flow
-        elseif edge_type == "control"
-            edge_type = EdgeType.control
-        else
+        try
+            # hasfield does not work
+            edge_type = getfield(EdgeType, Symbol(edge_type))
+        catch
             error("Invalid edge type $edge_type.")
         end
         graph[NodeID(from_node_id), NodeID(to_node_id)] =
@@ -42,6 +50,10 @@ function create_graph(db::DB)::MetaGraph
     return graph
 end
 
+"""
+Get the inneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
 function inneighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
@@ -53,6 +65,10 @@ function inneighbor_labels_type(
     ]
 end
 
+"""
+Get the outneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
 function outneighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
@@ -64,6 +80,10 @@ function outneighbor_labels_type(
     ]
 end
 
+"""
+Get the in- and outneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
 function all_neighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
@@ -75,6 +95,10 @@ function all_neighbor_labels_type(
     ]
 end
 
+"""
+Get the metadata of an edge in the graph from an edge of the underlying
+DiGraph.
+"""
 function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
     label_src = label_for(graph, edge.src)
     label_dst = label_for(graph, edge.dst)

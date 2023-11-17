@@ -34,11 +34,17 @@ end
 
 @enumx EdgeType flow control
 
+"""
+Type for storing metadata of nodes in the graph.
+"""
 struct NodeMetadata
     type::Symbol
     allocation_network_id::Int
 end
 
+"""
+Type for storing metadata of edges in the graph.
+"""
 struct EdgeMetadata
     id::EdgeID
     type::EdgeType.T
