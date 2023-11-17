@@ -37,8 +37,8 @@
         "levelboundarytime": {
             "$ref": "levelboundarytime.schema.json"
         },
-        "basinlevelexporter": {
-            "$ref": "basinlevelexporter.schema.json"
+        "basinexporter": {
+            "$ref": "basinexporter.schema.json"
         },
         "linearresistancestatic": {
             "$ref": "linearresistancestatic.schema.json"

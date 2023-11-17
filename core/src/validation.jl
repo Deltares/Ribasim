@@ -8,7 +8,7 @@
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.levelexporter" BasinLevelExporter
+@schema "ribasim.basin.exporter" BasinExporter
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -203,7 +203,7 @@ end
     level::Float64
 end
 
-@version BasinLevelExporterV1 begin
+@version BasinExporterV1 begin
     name::String
     element_id::Int
     node_id::Int

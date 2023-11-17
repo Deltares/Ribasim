@@ -825,7 +825,7 @@ function create_level_exporters(
 )::Dict{String, LevelExporter}
     # TODO validate
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-    tables = load_structvector(db, config, BasinLevelExporterV1)
+    tables = load_structvector(db, config, BasinExporterV1)
     level_exporters = Dict{String, LevelExporter}()
     if !isempty(tables) > 0
         for group in IterTools.groupby(row -> row.name, tables)

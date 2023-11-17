@@ -234,8 +234,7 @@ function create_callbacks(
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
-    tstops = get_tstops(basin.time.time, starttime)
-    export_cb = PresetTimeCallback(tstops, update_exporter_levels!)
+    export_cb = PeriodicCallback(update_exporter_levels!, 86400.0; final_affect = true)
     push!(callbacks, export_cb)
 
     n_conditions = length(discrete_control.node_id)
@@ -541,7 +540,7 @@ end
 
 function update_exporter_levels!(integrator)::Nothing
     parameters = integrator.p
-    basin_level = parameters.basin.current_level
+    basin_level = get_tmp(parameters.basin.current_level, 0)
 
     for exporter in values(parameters.level_exporters)
         for (i, (index, interp)) in
