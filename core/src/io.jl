@@ -231,17 +231,22 @@ function exported_levels_table(model::Model)::NamedTuple
     (; config, saved, integrator) = model
     (; t, saveval) = saved.exported_levels
 
-    name, exporter = first(integrator.p.level_exporters)
-    nelem = length(exporter.basin_index)
-    unique_elem_id = collect(1:nelem)
-    ntsteps = length(t)
+    # The level exporter may contain multiple named systems, but the
+    # saved levels are flat.
+    time = DateTime[]
+    name = String[]
+    element_id = Int[]
+    for (unique_name, exporter) in integrator.p.level_exporters
+        nelem = length(exporter.basin_index)
+        unique_elem_id = collect(1:nelem)
+        ntsteps = length(t)
+        append!(time, repeat(datetime_since.(t, config.starttime); inner = nelem))
+        append!(element_id, repeat(unique_elem_id; outer = ntsteps))
+        append!(name, fill(unique_name, length(time)))
+    end
 
-    time = repeat(datetime_since.(t, config.starttime); inner = nelem)
-    elem_id = repeat(unique_elem_id; outer = ntsteps)
-    levels = FlatVector(saveval)
-    names = fill(name, length(time))
-
-    return (; time, names, elem_id, levels)
+    level = FlatVector(saveval)
+    return (; time, name, element_id, level)
 end
 
 "Write a result table to disk as an Arrow file"

@@ -513,10 +513,7 @@ end
 """Interpolate the levels and save them to SavedValues"""
 function save_exported_levels(u, t, integrator)
     update_exporter_levels!(integrator)
-    # TODO: multiple systems. Although at the point, shouldn't we
-    # just write to disk instead of using SavedValues?
-    exporter = first(values(integrator.p.level_exporters))
-    copy(exporter.level)
+    return vcat([exporter.level for exporter in values(integrator.p.level_exporters)]...)
 end
 
 "Load updates from 'Basin / time' into the parameters"
