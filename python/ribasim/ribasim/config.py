@@ -47,6 +47,7 @@ class Results(BaseModel):
     basin: Path = Path("results/basin.arrow")
     flow: Path = Path("results/flow.arrow")
     control: Path = Path("results/control.arrow")
+    exported_levels: Path = Path("results/exported_levels.arrow")
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6

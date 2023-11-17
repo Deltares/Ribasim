@@ -106,7 +106,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters, config; config.solver.saveat)
+    callback, saved = create_callbacks(parameters, config; config.solver.saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -140,7 +140,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     set_initial_discrete_controlled_parameters!(integrator, storage)
 
-    return Model(integrator, config, saved_flow)
+    return Model(integrator, config, saved)
 end
 
 """
@@ -171,6 +171,11 @@ function BMI.finalize(model::Model)::Model
     # allocation
     table = allocation_table(model)
     path = results_path(config, results.allocation)
+    write_arrow(path, table, compress)
+
+    # exported levels
+    table = exported_levels_table(model)
+    path = results_path(config, results.exported_levels)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
@@ -207,7 +212,7 @@ function create_callbacks(
     parameters::Parameters,
     config::Config;
     saveat,
-)::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
+)::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
@@ -234,8 +239,16 @@ function create_callbacks(
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
-    export_cb = PeriodicCallback(update_exporter_levels!, 86400.0; final_affect = true)
+    saved_exported_levels = SavedValues(Float64, Vector{Float64})
+    export_cb = SavingCallback(
+        save_exported_levels,
+        saved_exported_levels;
+        saveat,
+        save_start = false,
+    )
     push!(callbacks, export_cb)
+
+    saved = SavedResults(saved_flow, saved_exported_levels)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -249,7 +262,7 @@ function create_callbacks(
     end
     callback = CallbackSet(callbacks...)
 
-    return callback, saved_flow
+    return callback, saved
 end
 
 """
@@ -485,6 +498,27 @@ function save_flow(u, t, integrator)
     copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
 end
 
+function update_exporter_levels!(integrator)::Nothing
+    parameters = integrator.p
+    basin_level = get_tmp(parameters.basin.current_level, 0)
+
+    for exporter in values(parameters.level_exporters)
+        for (i, (index, interp)) in
+            enumerate(zip(exporter.basin_index, exporter.interpolations))
+            exporter.level[i] = interp(basin_level[index])
+        end
+    end
+end
+
+"""Interpolate the levels and save them to SavedValues"""
+function save_exported_levels(u, t, integrator)
+    update_exporter_levels!(integrator)
+    # TODO: multiple systems. Although at the point, shouldn't we
+    # just write to disk instead of using SavedValues?
+    exporter = first(values(integrator.p.level_exporters))
+    copy(exporter.level)
+end
+
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
     (; basin) = integrator.p
@@ -536,18 +570,6 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
     end
     return nothing
-end
-
-function update_exporter_levels!(integrator)::Nothing
-    parameters = integrator.p
-    basin_level = get_tmp(parameters.basin.current_level, 0)
-
-    for exporter in values(parameters.level_exporters)
-        for (i, (index, interp)) in
-            enumerate(zip(exporter.basin_index, exporter.interpolations))
-            exporter.level[i] = interp(basin_level[index])
-        end
-    end
 end
 
 function BMI.update(model::Model)::Model
@@ -616,10 +638,10 @@ function run(config::Config)::Model
         )
     end
 
-    with_logger(logger) do
-        model = Model(config)
-        solve!(model)
-        BMI.finalize(model)
-        return model
-    end
+    #with_logger(logger) do
+    model = Model(config)
+    solve!(model)
+    BMI.finalize(model)
+    return model
+    #end
 end

@@ -8,16 +8,22 @@ The Model struct is an initialized model, combined with the [`Config`](@ref) use
 The Basic Model Interface ([BMI](https://github.com/Deltares/BasicModelInterface.jl)) is implemented on the Model.
 A Model can be created from the path to a TOML configuration file, or a Config object.
 """
+
+struct SavedResults
+    flow::SavedValues{Float64, Vector{Float64}}
+    exported_levels::SavedValues{Float64, Vector{Float64}}
+end
+
 struct Model{T}
     integrator::T
     config::Config
-    saved_flow::SavedValues{Float64, Vector{Float64}}
+    saved::SavedResults
     function Model(
         integrator::T,
         config,
-        saved_flow,
+        saved,
     ) where {T <: SciMLBase.AbstractODEIntegrator}
-        new{T}(integrator, config, saved_flow)
+        new{T}(integrator, config, saved)
     end
 end
 

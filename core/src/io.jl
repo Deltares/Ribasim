@@ -182,8 +182,8 @@ end
 
 "Create a flow result table from the saved data"
 function flow_table(model::Model)::NamedTuple
-    (; config, saved_flow, integrator) = model
-    (; t, saveval) = saved_flow
+    (; config, saved, integrator) = model
+    (; t, saveval) = saved.flow
     (; connectivity) = integrator.p
 
     I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
@@ -225,6 +225,23 @@ function allocation_table(model::Model)::NamedTuple
         record.allocated,
         record.abstracted,
     )
+end
+
+function exported_levels_table(model::Model)::NamedTuple
+    (; config, saved, integrator) = model
+    (; t, saveval) = saved.exported_levels
+
+    name, exporter = first(integrator.p.level_exporters)
+    nelem = length(exporter.basin_index)
+    unique_elem_id = collect(1:nelem)
+    ntsteps = length(t)
+
+    time = repeat(datetime_since.(t, config.starttime); inner = nelem)
+    elem_id = repeat(unique_elem_id; outer = ntsteps)
+    levels = FlatVector(saveval)
+    names = fill(name, length(time))
+
+    return (; time, names, elem_id, levels)
 end
 
 "Write a result table to disk as an Arrow file"
