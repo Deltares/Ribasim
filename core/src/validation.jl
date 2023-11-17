@@ -59,37 +59,37 @@ end
 
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
-neighbortypes(::Val{:Pump}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Outlet}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:User}) = Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:Basin}) = Set((
-    :LinearResistance,
-    :TabulatedRatingCurve,
-    :ManningResistance,
-    :Pump,
-    :Outlet,
-    :User,
+neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:outlet}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:user}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:basin}) = Set((
+    :linear_resistance,
+    :tabulated_rating_curve,
+    :manning_resistance,
+    :pump,
+    :outlet,
+    :user,
 ))
-neighbortypes(::Val{:Terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:FractionalFlow}) = Set((:Basin, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:FlowBoundary}) =
-    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
-neighbortypes(::Val{:LevelBoundary}) =
-    Set((:LinearResistance, :ManningResistance, :Pump, :Outlet))
-neighbortypes(::Val{:LinearResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:ManningResistance}) = Set((:Basin, :LevelBoundary))
-neighbortypes(::Val{:DiscreteControl}) = Set((
-    :Pump,
-    :Outlet,
-    :TabulatedRatingCurve,
-    :LinearResistance,
-    :ManningResistance,
-    :FractionalFlow,
-    :PidControl,
+neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
+neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:flow_boundary}) =
+    Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:level_boundary}) =
+    Set((:linear_resistance, :manning_resistance, :pump, :outlet))
+neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
+neighbortypes(::Val{:manning_resistance}) = Set((:basin, :level_boundary))
+neighbortypes(::Val{:discrete_control}) = Set((
+    :pump,
+    :outlet,
+    :tabulated_rating_curve,
+    :linear_resistance,
+    :manning_resistance,
+    :fractioal_flow,
+    :pid_control,
 ))
-neighbortypes(::Val{:PidControl}) = Set((:Pump, :Outlet))
-neighbortypes(::Val{:TabulatedRatingCurve}) =
-    Set((:Basin, :FractionalFlow, :Terminal, :LevelBoundary))
+neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
+neighbortypes(::Val{:tabulated_rating_curve}) =
+    Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Any) = Set{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -446,9 +446,11 @@ function valid_edges(graph::MetaGraph)::Bool
         id_dst = label_for(graph, e.dst)
         type_src = graph[id_src].type
         type_dst = graph[id_dst].type
+
         if !(type_dst in neighbortypes(type_src))
+            errors = true
             edge_id = graph[id_src, id_dst].id.value
-            @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node #$id_src to #$id_dst)."
+            @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node $id_src to $id_dst)."
         end
     end
     return !errors
@@ -466,20 +468,20 @@ function valid_profiles(
 
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
-            push!(errors, "Basin #$id has repeated levels, this cannot be interpolated.")
+            push!(errors, "Basin $id has repeated levels, this cannot be interpolated.")
         end
 
         if areas[1] <= 0
             push!(
                 errors,
-                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node #$id).",
+                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node $id).",
             )
         end
 
         if areas[end] < areas[end - 1]
             push!(
                 errors,
-                "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #$id.",
+                "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id.",
             )
         end
     end
@@ -509,7 +511,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of #$id_controlled."
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of $id_controlled."
         end
     end
 
@@ -519,7 +521,7 @@ function valid_flow_rates(
         end
         if flow_rate_ < 0.0
             errors = true
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static #$id."
+            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static $id."
         end
     end
 
@@ -538,7 +540,7 @@ function valid_pid_connectivity(
     for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
         has_index, _ = id_index(basin_node_id, listen_id)
         if !has_index
-            @error "Listen node #$listen_id of PidControl node #$id is not a Basin"
+            @error "Listen node $listen_id of PidControl node $id is not a Basin"
             errors = true
         end
 
@@ -548,14 +550,14 @@ function valid_pid_connectivity(
             pump_intake_id =
                 only(inneighbor_labels_type(graph, controlled_id, EdgeType.flow))
             if pump_intake_id != listen_id
-                @error "Listen node #$listen_id of PidControl node #$id is not upstream of controlled pump #$controlled_id"
+                @error "Listen node $listen_id of PidControl node $id is not upstream of controlled pump $controlled_id"
                 errors = true
             end
         else
             outlet_outflow_id =
                 only(outneighbor_labels_type(graph, controlled_id, EdgeType.flow))
             if outlet_outflow_id != listen_id
-                @error "Listen node #$listen_id of PidControl node #$id is not downstream of controlled outlet #$controlled_id"
+                @error "Listen node $listen_id of PidControl node $id is not downstream of controlled outlet $controlled_id"
                 errors = true
             end
         end
@@ -590,7 +592,7 @@ function valid_fractional_flow(
         if src_outneighbor_ids ⊈ node_id
             errors = true
             @error(
-                "Node #$src_id combines fractional flow outneighbors with other outneigbor types."
+                "Node $src_id combines fractional flow outneighbors with other outneigbor types."
             )
         end
 

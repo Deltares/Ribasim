@@ -36,7 +36,6 @@ end
 
 struct NodeMetadata
     type::Symbol
-    data_index::Int
     allocation_network_id::Int
 end
 
@@ -374,7 +373,7 @@ end
 """
 node_id: node ID of the DiscreteControl node; these are not unique but repeated
     by the amount of conditions of this DiscreteControl node
-listen_feature_id: the ID of the node/edge being condition on
+listen_node_id: the ID of the node being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
@@ -501,22 +500,22 @@ function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
             n_outneighbors = length(outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
                 errors = true
             end
         end
@@ -770,8 +769,8 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbor_labels_type(graph_flow, id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i]
             continue

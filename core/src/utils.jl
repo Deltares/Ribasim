@@ -22,11 +22,11 @@ function create_graph(db::DB)::MetaGraph
         edge_data_type = EdgeMetadata,
         graph_data = nothing, # In theory all remaining connectivity data could be put here
     )
-    for (i, row) in enumerate(node_rows)
+    for row in node_rows
         allocation_network_id =
             hasproperty(row, :allocation_network_id) ? row.allocation_network_id : 0
         graph[NodeID(row.fid)] =
-            NodeMetadata(Symbol(snake_case(row.type)), i, allocation_network_id)
+            NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
     for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
         if edge_type == "flow"
@@ -125,8 +125,8 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     bottom = first(level_discrete)
 
     if level < bottom
-        node_id = basin.node_id[state_idx]
-        @error "The level $level of basin #$node_id is lower than the bottom of this basin $bottom."
+        node_id = basin.node_id[NodeID(state_idx)]
+        @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
         return NaN
     end
 
@@ -567,7 +567,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "DiscreteControl node #$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "DiscreteControl node $id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the
@@ -594,7 +594,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node).name.name
-                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                @error "These control states from DiscreteControl node $id are not defined for controlled $node_type $id_outneighbor: $undefined_list."
                 errors = true
             end
         end
@@ -606,22 +606,22 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             # (e.g. for some node some variables are transient, some not).
             if node_type ∉ [:flow_boundary, :level_boundary]
                 errors = true
-                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node #$feature_id."
+                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
             else
                 if Δt < 0
                     errors = true
-                    @error "Negative look ahead supplied for listen variable '$var' from listen node #$feature_id."
+                    @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
                 else
                     node = getfield(p, node_type)
                     idx = if node_type == :Basin
-                        id_index(node.node_id, feature_id)
+                        id_index(node.node_id, node_id)
                     else
                         searchsortedfirst(node.node_id, node_id)
                     end
                     interpolation = getfield(node, Symbol(var))[idx]
                     if t_end + Δt > interpolation.t[end]
                         errors = true
-                        @error "Look ahead for listen variable '$var' from listen node #$feature_id goes past timeseries end during simulation."
+                        @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
                     end
                 end
             end
@@ -669,7 +669,7 @@ function expand_logic_mapping(
 
                 if haskey(logic_mapping_expanded, new_key)
                     control_state_existing = logic_mapping_expanded[new_key]
-                    msg = "Multiple control states found for DiscreteControl node #$node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
+                    msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
                     @assert control_state_existing == control_state msg
                 else
                     logic_mapping_expanded[new_key] = control_state

@@ -291,7 +291,7 @@ function get_value(
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
-                "Level condition node '$feature_id' is neither a basin nor a level boundary.",
+                "Level condition node '$node_id' is neither a basin nor a level boundary.",
             )
         end
 
@@ -301,7 +301,7 @@ function get_value(
         flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
 
         if flow_boundary_idx === nothing
-            error("Flow condition node #$feature_id is not a flow boundary.")
+            error("Flow condition node $node_id is not a flow boundary.")
         end
 
         value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
@@ -529,7 +529,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         id = first(group).node_id
         level = [row.level for row in group]
         discharge = [row.discharge for row in group]
-        i = searchsortedfirst(node_id, id)
+        i = searchsortedfirst(node_id, NodeID(id))
         tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
     end
     return nothing

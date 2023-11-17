@@ -14,16 +14,16 @@ using PreallocationTools: get_tmp
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
-    @test pump_control_mapping[(4, "off")].flow_rate == 0
-    @test pump_control_mapping[(4, "on")].flow_rate == 1.0e-5
+    @test pump_control_mapping[(Ribasim.NodeID(4), "off")].flow_rate == 0
+    @test pump_control_mapping[(Ribasim.NodeID(4), "on")].flow_rate == 1.0e-5
 
-    logic_mapping::Dict{Tuple{Int, String}, String} = Dict(
-        (5, "TT") => "on",
-        (6, "F") => "active",
-        (5, "TF") => "off",
-        (5, "FF") => "on",
-        (5, "FT") => "off",
-        (6, "T") => "inactive",
+    logic_mapping::Dict{Tuple{Ribasim.NodeID, String}, String} = Dict(
+        (Ribasim.NodeID(5), "TT") => "on",
+        (Ribasim.NodeID(6), "F") => "active",
+        (Ribasim.NodeID(5), "TF") => "off",
+        (Ribasim.NodeID(5), "FF") => "on",
+        (Ribasim.NodeID(5), "FT") => "off",
+        (Ribasim.NodeID(6), "T") => "inactive",
     )
 
     @test discrete_control.logic_mapping == logic_mapping
@@ -196,8 +196,9 @@ end
     timesteps = Ribasim.timesteps(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
-    target_high = pid_control.control_mapping[(6, "target_high")].target.u[1]
-    target_low = pid_control.control_mapping[(6, "target_low")].target.u[1]
+    target_high =
+        pid_control.control_mapping[(Ribasim.NodeID(6), "target_high")].target.u[1]
+    target_low = pid_control.control_mapping[(Ribasim.NodeID(6), "target_low")].target.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(timesteps, t_target_jump)
