@@ -1,10 +1,7 @@
-using Test
-using Ribasim
-import BasicModelInterface as BMI
+@testitem "adaptive timestepping" begin
+    import BasicModelInterface as BMI
 
-toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-
-@testset "adaptive timestepping" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
     @test BMI.get_time_units(model) == "s"
     dt0 = 0.0001269439f0
@@ -21,7 +18,10 @@ toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test BMI.get_current_time(model) == 86400.0
 end
 
-@testset "fixed timestepping" begin
+@testitem "fixed timestepping" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     dt = 10.0
     config = Ribasim.Config(
         toml_path;
@@ -43,7 +43,10 @@ end
     @test BMI.get_current_time(model) == 2dt + 60
 end
 
-@testset "get_value_ptr" begin
+@testitem "get_value_ptr" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
     storage0 = BMI.get_value_ptr(model, "volume")
     @test storage0 == ones(4)
@@ -54,7 +57,10 @@ end
     @test storage0 === storage != ones(4)
 end
 
-@testset "get_value_ptr_all_values" begin
+@testitem "get_value_ptr_all_values" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
     for name in ["volume", "level", "infiltration", "drainage"]

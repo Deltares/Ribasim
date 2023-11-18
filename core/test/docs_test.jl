@@ -1,9 +1,7 @@
-using Test
-using Documenter
-using Ribasim
+@testitem "Doctests" begin
+    using Documenter
 
-DocMeta.setdocmeta!(Ribasim, :DocTestSetup, :(using Ribasim); recursive = true)
+    DocMeta.setdocmeta!(Ribasim, :DocTestSetup, :(using Ribasim); recursive = true)
 
-@testset "Doctests" begin
     doctest(Ribasim; manual = false)
 end

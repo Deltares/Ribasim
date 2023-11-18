@@ -1,14 +1,6 @@
-using Dates
-using Logging: Debug, with_logger
-using Test
-using Ribasim
-import BasicModelInterface as BMI
-using SciMLBase: successful_retcode
-import Tables
-using PreallocationTools: get_tmp
-using DataFrames: DataFrame
+@testitem "trivial model" begin
+    using SciMLBase: successful_retcode
 
-@testset "trivial model" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -16,7 +8,9 @@ using DataFrames: DataFrame
     @test successful_retcode(model)
 end
 
-@testset "bucket model" begin
+@testitem "bucket model" begin
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -24,7 +18,12 @@ end
     @test successful_retcode(model)
 end
 
-@testset "basic model" begin
+@testitem "basic model" begin
+    using Logging: Debug, with_logger
+    using SciMLBase: successful_retcode
+    import Tables
+    using Dates
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
 
@@ -66,7 +65,9 @@ end
     end
 end
 
-@testset "basic arrow model" begin
+@testitem "basic arrow model" begin
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -74,7 +75,9 @@ end
     @test successful_retcode(model)
 end
 
-@testset "basic transient model" begin
+@testitem "basic transient model" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
@@ -86,7 +89,9 @@ end
         Sys.isapple()
 end
 
-@testset "sparse and AD/FDM jac solver options" begin
+@testitem "sparse and AD/FDM jac solver options" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
@@ -109,7 +114,9 @@ end
     @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
 end
 
-@testset "TabulatedRatingCurve model" begin
+@testitem "TabulatedRatingCurve model" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
     @test ispath(toml_path)
@@ -121,12 +128,14 @@ end
     @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
 end
 
-"Shorthand for Ribasim.get_area_and_level"
-function lookup(profile, S)
-    Ribasim.get_area_and_level(profile.S, profile.A, profile.h, S)[1:2]
-end
+@testitem "Profile" begin
+    import Tables
 
-@testset "Profile" begin
+    "Shorthand for Ribasim.get_area_and_level"
+    function lookup(profile, S)
+        Ribasim.get_area_and_level(profile.S, profile.A, profile.h, S)[1:2]
+    end
+
     n_interpolations = 100
     storage = range(0.0, 1000.0, n_interpolations)
 
@@ -168,11 +177,15 @@ end
     @test A ≈ 10 * h
 end
 
-@testset "Outlet constraints" begin
+@testitem "Outlet constraints" begin
+    using DataFrames: DataFrame
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
+    @test successful_retcode(model)
     p = model.integrator.p
     (; level_boundary, outlet) = p
     (; level) = level_boundary
@@ -197,10 +210,13 @@ end
     all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
-@testset "User" begin
+@testitem "User" begin
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    @test successful_retcode(model)
 
     day = 86400.0
     @test only(model.integrator.sol(0day)) == 1000.0
@@ -210,7 +226,10 @@ end
     @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 
-@testset "ManningResistance" begin
+@testitem "ManningResistance" begin
+    using PreallocationTools: get_tmp
+    using SciMLBase: successful_retcode
+
     """
     Apply the "standard step method" finite difference method to find a
     backwater curve.

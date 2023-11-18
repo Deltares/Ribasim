@@ -1,25 +1,22 @@
-using Ribasim
-using Dictionaries: Indices
-using Test
-using DataInterpolations: LinearInterpolation
-using StructArrays: StructVector
-using SQLite
-using Logging
+@testitem "id_index" begin
+    using Dictionaries: Indices
 
-@testset "id_index" begin
     ids = Indices([2, 4, 6])
     @test Ribasim.id_index(ids, 4) === (true, 2)
     @test Ribasim.id_index(ids, 5) === (false, 0)
 end
 
-@testset "profile_storage" begin
+@testitem "profile_storage" begin
     @test Ribasim.profile_storage([0.0, 1.0], [0.0, 1000.0]) == [0.0, 500.0]
     @test Ribasim.profile_storage([6.0, 7.0], [0.0, 1000.0]) == [0.0, 500.0]
     @test Ribasim.profile_storage([6.0, 7.0, 9.0], [0.0, 1000.0, 1000.0]) ==
           [0.0, 500.0, 2500.0]
 end
 
-@testset "bottom" begin
+@testitem "bottom" begin
+    using Dictionaries: Indices
+    using StructArrays: StructVector
+
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
     level = [[0.0, 1.0], [4.0, 5.0]]
@@ -54,7 +51,11 @@ end
     )
 end
 
-@testset "Convert levels to storages" begin
+@testitem "Convert levels to storages" begin
+    using Dictionaries: Indices
+    using StructArrays: StructVector
+    using Logging
+
     level = [
         0.0,
         0.42601923740838954,
@@ -114,7 +115,7 @@ end
     @test storages ≈ storages_
 end
 
-@testset "Expand logic_mapping" begin
+@testitem "Expand logic_mapping" begin
     logic_mapping = Dict{Tuple{Int, String}, String}()
     logic_mapping[(1, "*T*")] = "foo"
     logic_mapping[(2, "FF")] = "bar"
@@ -159,7 +160,9 @@ end
     )
 end
 
-@testset "Jacobian sparsity" begin
+@testitem "Jacobian sparsity" begin
+    import SQLite
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
@@ -191,7 +194,7 @@ end
     @test jac_prototype.nzval == ones(5)
 end
 
-@testset "FlatVector" begin
+@testitem "FlatVector" begin
     vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
     fv = Ribasim.FlatVector(vv)
     @test length(fv) == 6
@@ -207,7 +210,7 @@ end
     @test length(fv) == 0
 end
 
-@testset "reduction_factor" begin
+@testitem "reduction_factor" begin
     @test Ribasim.reduction_factor(-2.0, 2.0) === 0.0
     @test Ribasim.reduction_factor(0.0f0, 2.0) === 0.0f0
     @test Ribasim.reduction_factor(0.0, 2.0) === 0.0
