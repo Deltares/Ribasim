@@ -67,8 +67,8 @@ Logging = "<0.0.1,1"
 LoggingExtras = "1"
 OrdinaryDiffEq = "6.7"
 PreallocationTools = "0.4"
+ReTestItems = "1.20"
 SQLite = "1.5.1"
-SafeTestsets = "0.1"
 SciMLBase = "1.60, 2"
 SparseArrays = "<0.0.1,1"
 StructArrays = "0.6.13"
@@ -89,11 +89,11 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 IOCapture = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
-SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestReports = "dcd651b4-b50a-5b6b-8f22-87e9f253a252"
 
 [targets]
-test = ["Aqua", "CSV", "DataFrames", "Documenter", "IOCapture", "Logging", "SafeTestsets", "TerminalLoggers", "Test", "TestReports", "TOML"]
+test = ["Aqua", "CSV", "DataFrames", "Documenter", "IOCapture", "Logging", "ReTestItems", "TerminalLoggers", "Test", "TestReports", "TOML"]
