@@ -5,6 +5,8 @@ endtime = 2021-01-01   # required
 
 # input files
 database = "database.gpkg" # required
+input_dir = "."            # optional, default "."
+results_dir = "results"    # optional, default "."
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
@@ -37,9 +39,9 @@ timing = false     # optional, whether to log debug timing statements
 
 [results]
 # These results files are always written
-flow = "results/flow.arrow"       # optional, default "results/flow.arrow"
-basin = "results/basin.arrow"     # optional, default "results/basin.arrow"
-control = "results/control.arrow" # optional, default "results/control.arrow"
+flow = "results/flow.arrow"             # optional, default "results/flow.arrow"
+basin = "results/basin.arrow"           # optional, default "results/basin.arrow"
+control = "results/control.arrow"       # optional, default "results/control.arrow"
 allocation = "results/allocation.arrow" # optional, default "results/allocation.arrow"
-compression = "zstd"             # optional, default "zstd", also supports "lz4"
-compression_level = 6            # optional, default 6
+compression = "zstd"                    # optional, default "zstd", also supports "lz4"
+compression_level = 6                   # optional, default 6
