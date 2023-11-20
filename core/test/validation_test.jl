@@ -1,13 +1,7 @@
-using Test
-using Ribasim
-using Graphs: DiGraph, add_edge!
-using Dictionaries: Indices
-using DataInterpolations: LinearInterpolation
-import SQLite
-using Logging
-using Test
+@testitem "Basin profile validation" begin
+    using Dictionaries: Indices
+    using DataInterpolations: LinearInterpolation
 
-@testset "Basin profile validation" begin
     node_id = Indices([1])
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
@@ -27,7 +21,10 @@ using Test
     @test itp isa LinearInterpolation
 end
 
-@testset "Q(h) validation" begin
+@testitem "Q(h) validation" begin
+    import SQLite
+    using Logging
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
 
@@ -51,7 +48,10 @@ end
           "A Q(h) relationship for TabulatedRatingCurve \"\" #2 from the time table has repeated levels, this can not be interpolated."
 end
 
-@testset "Neighbor count validation" begin
+@testitem "Neighbor count validation" begin
+    using Graphs: DiGraph, add_edge!
+    using Logging
+
     graph_flow = DiGraph(6)
     add_edge!(graph_flow, 2, 1)
     add_edge!(graph_flow, 3, 1)
@@ -114,7 +114,11 @@ end
     )
 end
 
-@testset "PidControl connectivity validation" begin
+@testitem "PidControl connectivity validation" begin
+    using Graphs: DiGraph, add_edge!
+    using Dictionaries: Indices
+    using Logging
+
     pid_control_node_id = [1, 6]
     pid_control_listen_node_id = [3, 5]
     pump_node_id = [2, 4]
@@ -150,50 +154,53 @@ end
           "Listen node #5 of PidControl node #6 is not upstream of controlled pump #2"
 end
 
-# This test model is not written on Ubuntu CI, see #479
-if !Sys.islinux()
-    @testset "FractionalFlow validation" begin
-        toml_path = normpath(
-            @__DIR__,
-            "../../generated_testmodels/invalid_fractional_flow/ribasim.toml",
+@testitem "FractionalFlow validation" begin
+    import SQLite
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_fractional_flow/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(config, config.database)
+    db = SQLite.DB(db_path)
+    p = Ribasim.Parameters(db, config)
+    (; connectivity, fractional_flow) = p
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_fractional_flow(
+            connectivity.graph_flow,
+            fractional_flow.node_id,
+            fractional_flow.control_mapping,
         )
-        @test ispath(toml_path)
-
-        config = Ribasim.Config(toml_path)
-        db_path = Ribasim.input_path(config, config.database)
-        db = SQLite.DB(db_path)
-        p = Ribasim.Parameters(db, config)
-        (; connectivity, fractional_flow) = p
-
-        logger = TestLogger()
-        with_logger(logger) do
-            @test !Ribasim.valid_fractional_flow(
-                connectivity.graph_flow,
-                fractional_flow.node_id,
-                fractional_flow.control_mapping,
-            )
-        end
-
-        @test length(logger.logs) == 3
-        @test logger.logs[1].level == Error
-        @test logger.logs[1].message ==
-              "Node #7 combines fractional flow outneighbors with other outneigbor types."
-        @test logger.logs[2].level == Error
-        @test logger.logs[2].message ==
-              "Fractional flow nodes must have non-negative fractions."
-        @test logger.logs[2].kwargs[:node_id] == 3
-        @test logger.logs[2].kwargs[:fraction] ≈ -0.1
-        @test logger.logs[2].kwargs[:control_state] == ""
-        @test logger.logs[3].level == Error
-        @test logger.logs[3].message ==
-              "The sum of fractional flow fractions leaving a node must be ≈1."
-        @test logger.logs[3].kwargs[:node_id] == 7
-        @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
-        @test logger.logs[3].kwargs[:control_state] == ""
     end
+
+    @test length(logger.logs) == 3
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Node #7 combines fractional flow outneighbors with other outneigbor types."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Fractional flow nodes must have non-negative fractions."
+    @test logger.logs[2].kwargs[:node_id] == 3
+    @test logger.logs[2].kwargs[:fraction] ≈ -0.1
+    @test logger.logs[2].kwargs[:control_state] == ""
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "The sum of fractional flow fractions leaving a node must be ≈1."
+    @test logger.logs[3].kwargs[:node_id] == 7
+    @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
+    @test logger.logs[3].kwargs[:control_state] == ""
 end
 
-@testset "DiscreteControl logic validation" begin
+@testitem "DiscreteControl logic validation" begin
+    import SQLite
+    using Logging
+
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/invalid_discrete_control/ribasim.toml",
@@ -228,7 +235,9 @@ end
           "Negative look ahead supplied for listen variable 'flow_rate' from listen node #4."
 end
 
-@testset "Pump/outlet flow rate sign validation" begin
+@testitem "Pump/outlet flow rate sign validation" begin
+    using Logging
+
     logger = TestLogger()
 
     with_logger(logger) do
@@ -270,7 +279,10 @@ end
           "Pump flow rates must be non-negative, found -1.0 for control state 'foo' of #1."
 end
 
-@testset "Edge type validation" begin
+@testitem "Edge type validation" begin
+    import SQLite
+    using Logging
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/ribasim.toml")
     @test ispath(toml_path)

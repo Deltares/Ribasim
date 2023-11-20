@@ -36,6 +36,7 @@ from ribasim.schemas import (  # type: ignore
 class Allocation(BaseModel):
     timestep: float | None = None
     use_allocation: bool = False
+    objective_type: str = "quadratic_relative"
 
 
 class Compression(str, Enum):
