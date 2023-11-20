@@ -571,7 +571,7 @@ Check that nodes that have fractional flow outneighbors do not have any other ty
 outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
 """
 function valid_fractional_flow(
-    graph_flow::MetaGraph,
+    graph::MetaGraph,
     node_id::Vector{NodeID},
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
 )::Bool
@@ -581,14 +581,14 @@ function valid_fractional_flow(
     src_ids = Set{NodeID}()
 
     for id in node_id
-        union!(src_ids, inneighbor_labels(graph_flow, id))
+        union!(src_ids, inneighbor_labels(graph, id))
     end
 
     node_id_set = Set{NodeID}(node_id)
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outneighbor_labels(graph_flow, src_id))
+        src_outneighbor_ids = Set(outneighbor_labels(graph, src_id))
         if src_outneighbor_ids ⊈ node_id
             errors = true
             @error(

@@ -53,7 +53,12 @@ end
 """
 Store the connectivity information
 
-graph_flow, graph_control: directed graph with vertices equal to ids
+graph: a directed metagraph with data of nodes (NodeMetadata):
+  - Node type (snake case)
+  - Allocation network ID
+  and data of edges (EdgeMetadata):
+  - Edge ID (EdgeID)
+  - type (flow/control)
 flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
@@ -744,8 +749,7 @@ function continuous_control!(
         if controls_pump
             for id in outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow)
                 if id in fractional_flow.node_id
-                    after_ff_id =
-                        only(outneighbor_labels_type(graph_flow, id, EdgeType.flow))
+                    after_ff_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
                     ff_idx = findsorted(fractional_flow, id)
                     flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
                     flow[id, after_ff_id] = flow_rate_fraction
