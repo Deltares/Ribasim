@@ -1,49 +1,3 @@
-using Test
-using Dates
-using Ribasim
-using Arrow
-import BasicModelInterface as BMI
-using SciMLBase: successful_retcode
-using TimerOutputs
-using PreallocationTools: get_tmp
-
-include("../../utils/testdata.jl")
-
-datadir = normpath(@__DIR__, "../../generated_testmodels")
-
-TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
-
-@timeit_debug to "qh_relation" @testset "qh_relation" begin
-    # Basin without forcing
-    # TODO test QH relation
-    sleep(0.1)
-end
-
-# show(Ribasim.to)  # commented out to avoid spamming the test output
-is_running_under_teamcity() && teamcity_message("qh_relation", TimerOutputs.todict(to))
-reset_timer!(Ribasim.to)
-
-@timeit_debug to "forcing_eqs" @testset "forcing_eqs" begin
-    # TODO test forcing
-    sleep(0.05)
-end
-
-# show(Ribasim.to)  # commented out to avoid spamming the test output
-is_running_under_teamcity() && teamcity_message("forcing_eqs", TimerOutputs.todict(to))
-TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
-
-# @testset "bifurcation" begin
-
-# end
-
-# @testset "conservation of flow" begin
-
-# end
-
-# @testset "salinity" begin
-
-# end
-
 # # Node equation tests
 #
 # The tests below are for the equations of flow associated with particular node types.
@@ -61,7 +15,9 @@ TimerOutputs.disable_debug_timings(Ribasim)  # causes recompilation (!)
 # Equation: storage' = -(2*level(storage)-C)/resistance, storage(t0) = storage0
 # Solution: storage(t) = limit_storage + (storage0 - limit_storage)*exp(-t/(basin_area*resistance))
 # Here limit_storage is the storage at which the level of the basin is equal to the level of the level boundary
-@testset "LinearResistance" begin
+@testitem "LinearResistance" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
     @test ispath(toml_path)
@@ -86,7 +42,9 @@ end
 # Equation: w' = -α/basin_area * w^2, w = (level(storage) - level_min)/basin_area
 # Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
 # storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
-@testset "TabulatedRatingCurve" begin
+@testitem "TabulatedRatingCurve" begin
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/rating_curve/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -118,7 +76,9 @@ end
 # Solution: (implicit, given by Wolfram Alpha).
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
-@testset "ManningResistance" begin
+@testitem "ManningResistance" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
     @test ispath(toml_path)
@@ -153,7 +113,9 @@ end
 # The second order linear inhomogeneous ODE for this model is derived by
 # differentiating the equation for the storage of the controlled basin
 # once to time to get rid of the integral term.
-@testset "PID control" begin
+@testitem "PID control" begin
+    using SciMLBase: successful_retcode
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pid_control_equation/ribasim.toml")
     @test ispath(toml_path)
@@ -197,7 +159,10 @@ end
 # storage1 = storage1(t0) + (t-t0)*(frac*q_boundary - q_pump)
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
-@testset "MiscellaneousNodes" begin
+@testitem "MiscellaneousNodes" begin
+    using PreallocationTools: get_tmp
+    using SciMLBase: successful_retcode
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
