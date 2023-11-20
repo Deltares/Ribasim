@@ -635,10 +635,10 @@ function run(config::Config)::Model
         )
     end
 
-    #with_logger(logger) do
-    model = Model(config)
-    solve!(model)
-    BMI.finalize(model)
-    return model
-    #end
+    with_logger(logger) do
+        model = Model(config)
+        solve!(model)
+        BMI.finalize(model)
+        return model
+    end
 end
