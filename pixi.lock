@@ -28219,6 +28219,90 @@ package:
   size: 3906427
   timestamp: 1695422270104
 - platform: linux-64
+  name: pyqt-stubs
+  version: 5.15.6.0
+  category: main
+  manager: conda
+  dependencies:
+  - pyqt ~=5.15.0
+  - python >=3.5
+  url: https://conda.anaconda.org/conda-forge/noarch/pyqt-stubs-5.15.6.0-pyhd8ed1ab_0.tar.bz2
+  hash:
+    md5: caeef90e1ca817ee1e90fd5a56dab068
+    sha256: 15a722cdbece3d495872f204e9cb431e492f4102baa274b2e61fb8a1f8f7956b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  noarch: python
+  size: 302912
+  timestamp: 1656002911218
+- platform: osx-64
+  name: pyqt-stubs
+  version: 5.15.6.0
+  category: main
+  manager: conda
+  dependencies:
+  - pyqt ~=5.15.0
+  - python >=3.5
+  url: https://conda.anaconda.org/conda-forge/noarch/pyqt-stubs-5.15.6.0-pyhd8ed1ab_0.tar.bz2
+  hash:
+    md5: caeef90e1ca817ee1e90fd5a56dab068
+    sha256: 15a722cdbece3d495872f204e9cb431e492f4102baa274b2e61fb8a1f8f7956b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  noarch: python
+  size: 302912
+  timestamp: 1656002911218
+- platform: osx-arm64
+  name: pyqt-stubs
+  version: 5.15.6.0
+  category: main
+  manager: conda
+  dependencies:
+  - pyqt ~=5.15.0
+  - python >=3.5
+  url: https://conda.anaconda.org/conda-forge/noarch/pyqt-stubs-5.15.6.0-pyhd8ed1ab_0.tar.bz2
+  hash:
+    md5: caeef90e1ca817ee1e90fd5a56dab068
+    sha256: 15a722cdbece3d495872f204e9cb431e492f4102baa274b2e61fb8a1f8f7956b
+  build: pyhd8ed1ab_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  noarch: python
+  size: 302912
+  timestamp: 1656002911218
+- platform: win-64
+  name: pyqt-stubs
+  version: 5.15.6.0
+  category: main
+  manager: conda
+  dependencies:
+  - pyqt ~=5.15.0
+  - python >=3.5
+  url: https://conda.anaconda.org/conda-forge/noarch/pyqt-stubs-5.15.6.0-pyhd8ed1ab_0.tar.bz2
+  hash:
+    md5: caeef90e1ca817ee1e90fd5a56dab068
+    sha256: 15a722cdbece3d495872f204e9cb431e492f4102baa274b2e61fb8a1f8f7956b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  noarch: python
+  size: 302912
+  timestamp: 1656002911218
+- platform: linux-64
   name: pyqt5-sip
   version: 12.12.2
   category: main
