@@ -21,9 +21,15 @@
             "format": "default",
             "type": "boolean",
             "default": false
+        },
+        "objective_type": {
+            "format": "default",
+            "type": "string",
+            "default": "quadratic_relative"
         }
     },
     "required": [
-        "use_allocation"
+        "use_allocation",
+        "objective_type"
     ]
 }
