@@ -1,3 +1,3 @@
 using ReTestItems, Ribasim
 
-runtests(Ribasim; nworkers = 8)
+runtests(Ribasim; nworkers = 4)
