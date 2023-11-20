@@ -371,6 +371,7 @@ sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
+sort_by_exporter(row) = (row.name, row.element_id, row.node_id, row.basin_level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -380,6 +381,7 @@ sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
+sort_by_function(table::StructVector{BasinExporterV1}) = sort_by_exporter
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -618,4 +620,38 @@ function valid_fractional_flow(
         end
     end
     return !errors
+end
+
+function valid_level_exporter(
+    element_id::Int,
+    node_id::Int,
+    node_to_basin::Dict{Int, Int},
+    basin_level::Vector{Float64},
+    element_level::Vector{Float64},
+)
+    # The Schema ensures that the entries are sorted properly, so we do not need to validate the order here.
+    errors = String[]
+
+    if !(node_id in keys(node_to_basin))
+        push!(
+            errors,
+            "The node_id of the BasinExporter does not refer to a basin: node_id $(node_id) for element_id $(element_id).",
+        )
+    end
+
+    if !allunique(basin_level)
+        push!(
+            errors,
+            "BasinExporter element_id $(element_id) has repeated basin levels, this cannot be interpolated.",
+        )
+    end
+
+    if !allunique(element_level)
+        push!(
+            errors,
+            "BasinExporter element_id $(element_id) has repeated element levels, this cannot be interpolated.",
+        )
+    end
+
+    return errors
 end

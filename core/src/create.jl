@@ -798,24 +798,46 @@ function User(db::DB, config::Config)::User
     )
 end
 
-function LevelExporter(tables, node_to_basin::Dict{Int, Int})::LevelExporter
+function LevelExporter(tables, name, node_to_basin::Dict{Int, Int})::LevelExporter
     basin_ids = Int[]
     interpolations = ScalarInterpolation[]
 
+    errors = String[]
     for group in IterTools.groupby(row -> row.element_id, tables)
+        element_id = first(getproperty.(group, :element_id))
         node_id = first(getproperty.(group, :node_id))
         basin_level = getproperty.(group, :basin_level)
         element_level = getproperty.(group, :level)
-        # Ensure it doesn't extrapolate before the first value.
-        new_interp = LinearInterpolation(
-            [element_level[1], element_level...],
-            [prevfloat(basin_level[1]), basin_level...],
+
+        group_errors = valid_level_exporter(
+            element_id,
+            node_id,
+            node_to_basin,
+            basin_level,
+            element_level,
         )
-        push!(basin_ids, node_to_basin[node_id])
-        push!(interpolations, new_interp)
+
+        if isempty(group_errors)
+            # Ensure it doesn't extrapolate before the first value.
+            new_interp = LinearInterpolation(
+                [element_level[1], element_level...],
+                [prevfloat(basin_level[1]), basin_level...],
+            )
+            push!(basin_ids, node_to_basin[node_id])
+            push!(interpolations, new_interp)
+        else
+            append!(errors, group_errors)
+        end
     end
 
-    return LevelExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+    if isempty(errors)
+        return LevelExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+    else
+        foreach(x -> @error(x), errors)
+        error(
+            "Errors occurred while parsing BasinExporter data for group with name: $(name).",
+        )
+    end
 end
 
 function create_level_exporters(
@@ -823,14 +845,13 @@ function create_level_exporters(
     config::Config,
     basin::Basin,
 )::Dict{String, LevelExporter}
-    # TODO validate
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinExporterV1)
     level_exporters = Dict{String, LevelExporter}()
     if !isempty(tables) > 0
         for group in IterTools.groupby(row -> row.name, tables)
             name = first(getproperty.(group, :name))
-            level_exporters[name] = LevelExporter(group, node_to_basin)
+            level_exporters[name] = LevelExporter(group, name, node_to_basin)
         end
     end
     return level_exporters
