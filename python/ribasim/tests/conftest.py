@@ -10,6 +10,11 @@ def basic() -> ribasim.Model:
 
 
 @pytest.fixture()
+def basic_arrow() -> ribasim.Model:
+    return ribasim_testmodels.basic_arrow_model()
+
+
+@pytest.fixture()
 def basic_transient() -> ribasim.Model:
     return ribasim_testmodels.basic_transient_model()
 

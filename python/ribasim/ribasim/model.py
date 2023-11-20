@@ -8,7 +8,14 @@ import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
-from pydantic import DirectoryPath, Field, model_serializer, model_validator
+from pydantic import (
+    DirectoryPath,
+    Field,
+    field_serializer,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from ribasim.config import (
     Allocation,
@@ -36,6 +43,10 @@ from ribasim.types import FilePath
 
 
 class Network(FileModel, NodeModel):
+    filepath: Path | None = Field(
+        default=Path("database.gpkg"), exclude=True, repr=False
+    )
+
     node: Node = Field(default_factory=Node)
     edge: Edge = Field(default_factory=Edge)
 
@@ -50,35 +61,40 @@ class Network(FileModel, NodeModel):
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
         if filepath is not None:
-            context_file_loading.get()["database"] = filepath
+            directory = context_file_loading.get().get("directory", Path("."))
+            context_file_loading.get()["database"] = directory / filepath
         return {}
 
     @classmethod
     def _layername(cls, field: str) -> str:
         return field.capitalize()
 
-    def _save(self, directory):
+    def _save(self, directory, input_dir=Path(".")):
         # We write all tables to a temporary database with a dot prefix,
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
         directory = Path(directory)
-        db_path = directory / "database.gpkg"
+        db_path = directory / input_dir / "database.gpkg"
         db_path = db_path.resolve()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = db_path.with_stem(".database")
 
         # avoid adding tables to existing model
         temp_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = temp_path
 
-        self.node._save(directory)
-        self.edge._save(directory)
+        self.node._save(directory, input_dir)
+        self.edge._save(directory, input_dir)
 
         shutil.move(temp_path, db_path)
         context_file_loading.get()["database"] = db_path
 
     @model_serializer
     def set_modelname(self) -> str:
-        return "database.gpkg"
+        if self.filepath is not None:
+            return str(self.filepath.name)
+        else:
+            return str(self.model_fields["filepath"].default)
 
 
 class Model(FileModel):
@@ -95,13 +111,13 @@ class Model(FileModel):
     endtime : datetime.datetime
         End time of the simulation.
 
-    update_timestep: float = 86400
+    update_timestep: datetime.timedelta = timedelta(seconds=86400)
         The output time step of the simulation in seconds (default of 1 day)
-    relative_dir: str = "."
+    relative_dir: Path = Path(".")
         The relative directory of the input files.
-    input_dir: str = "."
+    input_dir: Path = Path(".")
         The directory of the input files.
-    results_dir: str = "."
+    results_dir: Path = Path(".")
         The directory of the results files.
 
     network: Network
@@ -147,10 +163,10 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    update_timestep: float = 86400
-    relative_dir: str = "."
-    input_dir: str = "."
-    results_dir: str = "."
+    update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
+    relative_dir: Path = Path(".")
+    input_dir: Path = Path(".")
+    results_dir: Path = Path("results")
 
     network: Network = Field(default_factory=Network, alias="database")
     results: Results = Results()
@@ -174,6 +190,21 @@ class Model(FileModel):
     pid_control: PidControl = Field(default_factory=PidControl)
     user: User = Field(default_factory=User)
 
+    @field_validator("update_timestep")
+    @classmethod
+    def timestep_in_seconds(cls, v: Any) -> datetime.timedelta:
+        if not isinstance(v, datetime.timedelta):
+            v = datetime.timedelta(seconds=v)
+        return v
+
+    @field_serializer("update_timestep")
+    def serialize_dt(self, td: datetime.timedelta) -> int:
+        return int(td.total_seconds())
+
+    @field_serializer("relative_dir", "input_dir", "results_dir")
+    def serialize_path(self, path: Path) -> str:
+        return str(path)
+
     def __repr__(self) -> str:
         first = []
         second = []
@@ -196,15 +227,14 @@ class Model(FileModel):
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
-
         fn = directory / "ribasim.toml"
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
 
-    def _save(self, directory: DirectoryPath):
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
         for sub in self.nodes().values():
-            sub._save(directory)
+            sub._save(directory, input_dir)
 
     def nodes(self):
         return {
@@ -283,6 +313,11 @@ class Model(FileModel):
         self.validate_model_node_field_ids()
         self.validate_model_node_ids()
 
+    @classmethod
+    def read(cls, filepath: FilePath) -> "Model":
+        """Read model from TOML file."""
+        return cls(filepath=filepath)  # type: ignore
+
     def write(self, directory: FilePath) -> Path:
         """
         Write the contents of the model to a database and a TOML configuration file.
@@ -297,7 +332,7 @@ class Model(FileModel):
         context_file_loading.set({})
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        self._save(directory)
+        self._save(directory, self.input_dir)
         fn = self._write_toml(directory)
 
         context_file_loading.set({})
@@ -311,8 +346,10 @@ class Model(FileModel):
             with open(filepath, "rb") as f:
                 config = tomli.load(f)
 
-            # Convert relative path to absolute path
-            config["database"] = filepath.parent / config["database"]
+            context_file_loading.get()["directory"] = filepath.parent / config.get(
+                "input_dir", "."
+            )
+
             return config
         else:
             return {}
@@ -322,23 +359,6 @@ class Model(FileModel):
         # Drop database info
         context_file_loading.set({})
         return self
-
-    @classmethod
-    def from_toml(cls, path: Path | str) -> "Model":
-        """
-        Initialize a model from the TOML configuration file.
-
-        Parameters
-        ----------
-        path : FilePath
-            Path to the configuration TOML file.
-
-        Returns
-        -------
-        model : Model
-        """
-        kwargs = cls._load(Path(path))
-        return cls(**kwargs)
 
     def plot_control_listen(self, ax):
         x_start, x_end = [], []
