@@ -18,7 +18,7 @@
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.5]
+    @test F ≈ [0.0, 4.0, 0.0, 0.0, 0.0, 4.0]
 
     allocated = p.user.allocated
     @test allocated[1] ≈ [0.0, 4.0]
@@ -26,10 +26,10 @@
     @test allocated[3] ≈ [0.0, 0.0]
 end
 
-@testset "Allocation objective types" begin
+@testitem "Allocation objective types" begin
     using DataFrames: DataFrame
+    using SciMLBase: successful_retcode
     import JuMP
-    using DataFrames: DataFrame
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")

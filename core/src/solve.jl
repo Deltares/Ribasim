@@ -23,9 +23,9 @@ problem: The JuMP.jl model for solving the allocation problem
 struct AllocationModel
     objective_type::Symbol
     allocation_network_id::Int
-    node_id::Vector{Int}
-    node_id_mapping::Dict{Int, Tuple{Int, Symbol}}
-    node_id_mapping_inverse::Dict{Int, Tuple{Int, Symbol}}
+    node_id::Vector{NodeID}
+    node_id_mapping::Dict{NodeID, Tuple{Int, Symbol}}
+    node_id_mapping_inverse::Dict{Int, Tuple{NodeID, Symbol}}
     allocgraph_edge_ids_user_demand::Dict{Int, Int}
     source_edge_mapping::Dict{Int, Int}
     graph_allocation::DiGraph{Int}
@@ -34,10 +34,33 @@ struct AllocationModel
     Δt_allocation::Float64
 end
 
+@enumx EdgeType flow control
+
+"""
+Type for storing metadata of nodes in the graph.
+"""
+struct NodeMetadata
+    type::Symbol
+    allocation_network_id::Int
+end
+
+"""
+Type for storing metadata of edges in the graph.
+"""
+struct EdgeMetadata
+    id::EdgeID
+    type::EdgeType.T
+end
+
 """
 Store the connectivity information
 
-graph_flow, graph_control: directed graph with vertices equal to ids
+graph: a directed metagraph with data of nodes (NodeMetadata):
+  - Node type (snake case)
+  - Allocation network ID
+  and data of edges (EdgeMetadata):
+  - Edge ID (EdgeID)
+  - type (flow/control)
 flow: store the flow on every flow edge
 edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
 edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
@@ -49,52 +72,23 @@ else
 end
 """
 struct Connectivity{T}
-    graph_flow::DiGraph{Int}
-    graph_control::DiGraph{Int}
+    graph::MetaGraph{
+        Int64,
+        DiGraph{Int64},
+        Ribasim.NodeID,
+        Ribasim.NodeMetadata,
+        Ribasim.EdgeMetadata,
+        Nothing,
+        MetaGraphsNext.var"#11#13",
+        Float64,
+    }
     flow::T
-    edge_ids_flow::Dictionary{Tuple{Int, Int}, Int}
-    edge_ids_flow_inv::Dictionary{Int, Tuple{Int, Int}}
-    edge_ids_control::Dictionary{Tuple{Int, Int}, Int}
-    edge_connection_type_flow::Dictionary{Int, Tuple{Symbol, Symbol}}
-    edge_connection_type_control::Dictionary{Int, Tuple{Symbol, Symbol}}
     allocation_models::Vector{AllocationModel}
-    function Connectivity(
-        graph_flow,
-        graph_control,
-        flow::T,
-        edge_ids_flow,
-        edge_ids_flow_inv,
-        edge_ids_control,
-        edge_connection_types_flow,
-        edge_connection_types_control,
-        subnetwork,
-    ) where {T}
-        invalid_networks = Vector{String}()
-
-        if !valid_edges(edge_ids_flow, edge_connection_types_flow)
-            push!(invalid_networks, "flow")
+    function Connectivity(graph, flow::T, allocation_models) where {T}
+        if !valid_edges(graph)
+            error("Invalid connectivity.")
         end
-
-        if !valid_edges(edge_ids_control, edge_connection_types_control)
-            push!(invalid_networks, "control")
-        end
-
-        if isempty(invalid_networks)
-            new{T}(
-                graph_flow,
-                graph_control,
-                flow,
-                edge_ids_flow,
-                edge_ids_flow_inv,
-                edge_ids_control,
-                edge_connection_types_flow,
-                edge_connection_types_control,
-                subnetwork,
-            )
-        else
-            invalid_networks = join(invalid_networks, ", ")
-            error("Invalid network(s): $invalid_networks")
-        end
+        return new{T}(graph, flow, allocation_models)
     end
 end
 
@@ -118,7 +112,7 @@ else
 end
 """
 struct Basin{T, C} <: AbstractParameterNode
-    node_id::Indices{Int}
+    node_id::Indices{NodeID}
     precipitation::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
@@ -186,11 +180,11 @@ time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -205,10 +199,10 @@ resistance: the resistance to flow; Q = Δh/resistance
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
 struct LinearResistance <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -245,13 +239,13 @@ Requirements:
 * (profile_width == 0) xor (profile_slope == 0)
 """
 struct ManningResistance <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -266,9 +260,9 @@ fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -277,7 +271,7 @@ active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
 """
 struct LevelBoundary <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     level::Vector{ScalarInterpolation}
 end
@@ -288,7 +282,7 @@ active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::Vector{ScalarInterpolation}
 end
@@ -303,12 +297,12 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
     is_pid_controlled::BitVector
 
     function Pump(
@@ -346,13 +340,13 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
 struct Outlet{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -386,13 +380,13 @@ end
 node_id: node ID of the Terminal node
 """
 struct Terminal <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
 end
 
 """
 node_id: node ID of the DiscreteControl node; these are not unique but repeated
     by the amount of conditions of this DiscreteControl node
-listen_feature_id: the ID of the node/edge being condition on
+listen_node_id: the ID of the node being condition on
 variable: the name of the variable in the condition
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
@@ -401,14 +395,14 @@ logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
-    node_id::Vector{Int}
-    listen_feature_id::Vector{Int}
+    node_id::Vector{NodeID}
+    listen_node_id::Vector{NodeID}
     variable::Vector{String}
     look_ahead::Vector{Float64}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
-    control_state::Dict{Int, Tuple{String, Float64}}
-    logic_mapping::Dict{Tuple{Int, String}, String}
+    control_state::Dict{NodeID, Tuple{String, Float64}}
+    logic_mapping::Dict{Tuple{NodeID, String}, String}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int},
@@ -429,13 +423,13 @@ pid_params: a vector interpolation for parameters changing over time.
 error: the current error; basin_target - current_level
 """
 struct PidControl{T} <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
-    listen_node_id::Vector{Int}
+    listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
     error::T
-    control_mapping::Dict{Tuple{Int, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
@@ -449,7 +443,7 @@ priorities: All used priority values. Each user has a demand for all these prior
 record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
-    node_id::Vector{Int}
+    node_id::Vector{NodeID}
     active::BitVector
     demand::Vector{Vector{ScalarInterpolation}}
     allocated::Vector{Vector{Float64}}
@@ -484,7 +478,6 @@ struct Parameters{T, TSparse, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
-    lookup::Dict{Int, Symbol}
 end
 
 """
@@ -493,23 +486,18 @@ number of flow/control inneighbors and outneighbors
 """
 function valid_n_neighbors(p::Parameters)::Bool
     (; connectivity) = p
-    (; graph_flow, graph_control) = connectivity
+    (; graph) = connectivity
 
     errors = false
 
     for nodefield in nodefields(p)
-        errors |= !valid_n_neighbors(getfield(p, nodefield), graph_flow, graph_control)
+        errors |= !valid_n_neighbors(getfield(p, nodefield), graph)
     end
 
     return !errors
 end
 
-function valid_n_neighbors(
-    node::AbstractParameterNode,
-    graph_flow::DiGraph{Int},
-    graph_control::DiGraph{Int},
-)::Bool
-    node_id = node.node_id
+function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
     node_type = typeof(node)
     node_name = nameof(node_type)
 
@@ -518,37 +506,33 @@ function valid_n_neighbors(
 
     errors = false
 
-    for id in node_id
-        for (graph, bounds, edge_type) in zip(
-            (graph_flow, graph_control),
-            (bounds_flow, bounds_control),
-            (:flow, :control),
-        )
-            n_inneighbors = length(inneighbors(graph, id))
-            n_outneighbors = length(outneighbors(graph, id))
+    for id in node.node_id
+        for (bounds, edge_type) in
+            zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
+            n_inneighbors = length(inneighbor_labels_type(graph, id, edge_type))
+            n_outneighbors = length(outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node #$id)."
+                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node #$id)."
+                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
                 errors = true
             end
         end
     end
-
     return !errors
 end
 
@@ -629,7 +613,7 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; graph_control, graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
     (; current_area) = basin
 
@@ -654,13 +638,13 @@ function continuous_control!(
         listened_node_id = listen_node_id[i]
         _, listened_node_idx = id_index(basin.node_id, listened_node_id)
 
-        controlled_node_id = only(outneighbors(graph_control, id))
+        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
 
         # No flow of outlet if source level is lower than target level
         if !controls_pump
-            src_id = only(inneighbors(graph_flow, controlled_node_id))
-            dst_id = only(outneighbors(graph_flow, controlled_node_id))
+            src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+            dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
 
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
@@ -684,7 +668,8 @@ function continuous_control!(
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
             # Upstream node of outlet does not have to be a basin
-            upstream_node_id = only(inneighbors(graph_flow, controlled_node_id))
+            upstream_node_id =
+                only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
@@ -751,8 +736,8 @@ function continuous_control!(
         end
 
         # Set flow for connected edges
-        src_id = only(inneighbors(graph_flow, controlled_node_id))
-        dst_id = only(outneighbors(graph_flow, controlled_node_id))
+        src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
@@ -764,9 +749,9 @@ function continuous_control!(
 
         # When the controlled pump flows out into fractional flow nodes
         if controls_pump
-            for id in outneighbors(graph_flow, controlled_node_id)
+            for id in outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow)
                 if id in fractional_flow.node_id
-                    after_ff_id = only(outneighbours(graph_flow, id))
+                    after_ff_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
                     ff_idx = findsorted(fractional_flow, id)
                     flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
                     flow[id, after_ff_id] = flow_rate_fraction
@@ -790,14 +775,14 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, allocated, demand, active, return_factor, min_level) = user
 
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i]
             continue
@@ -845,12 +830,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, resistance) = linear_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph_flow, id))
-        basin_b_id = only(outneighbors(graph_flow, id))
+        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if active[i]
             q =
@@ -875,12 +860,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, tables) = tabulated_rating_curve
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        upstream_basin_id = only(inneighbors(graph_flow, id))
-        downstream_ids = outneighbors(graph_flow, id)
+        upstream_basin_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        downstream_ids = outneighbor_labels_type(graph, id, EdgeType.flow)
 
         if active[i]
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
@@ -945,13 +930,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbors(graph_flow, id))
-        basin_b_id = only(outneighbors(graph_flow, id))
+        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i]
             continue
@@ -1002,13 +987,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, fraction) = fractional_flow
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        downstream_id = only(outneighbors(graph_flow, id))
-        upstream_id = only(inneighbors(graph_flow, id))
+        downstream_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        upstream_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
         # overwrite the inflow such that flow is conserved over the FractionalFlow
         outflow = flow[upstream_id, id] * fraction[i]
         flow[upstream_id, id] = outflow
@@ -1024,12 +1009,12 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id) = terminal
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for upstream_id in inneighbors(graph_flow, id)
+        for upstream_id in inneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[upstream_id, id]
             flow[id, id] -= q
         end
@@ -1044,16 +1029,16 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id) = level_boundary
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for in_id in inneighbors(graph_flow, id)
+        for in_id in inneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[in_id, id]
             flow[id, id] -= q
         end
-        for out_id in outneighbors(graph_flow, id)
+        for out_id in outneighbor_labels_type(graph, id, EdgeType.flow)
             q = flow[id, out_id]
             flow[id, id] += q
         end
@@ -1068,13 +1053,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate) = flow_boundary
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for dst_id in outneighbors(graph_flow, id)
+        for dst_id in outneighbor_labels_type(graph, id, EdgeType.flow)
             if !active[i]
                 continue
             end
@@ -1095,14 +1080,14 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled) = pump
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !isactive || pid_controlled
             continue
@@ -1130,13 +1115,13 @@ function formulate_flow!(
     t::Float64,
 )::Nothing
     (; connectivity, basin) = p
-    (; graph_flow, flow) = connectivity
+    (; graph, flow) = connectivity
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbors(graph_flow, id))
-        dst_id = only(outneighbors(graph_flow, id))
+        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
 
         if !active[i] || is_pid_controlled[i]
             continue
@@ -1180,12 +1165,12 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inneighbors(graph_flow, basin_id)
+        for in_id in inneighbor_labels_type(graph, basin_id, EdgeType.flow)
             du[i] += flow[in_id, basin_id]
         end
-        for out_id in outneighbors(graph_flow, basin_id)
+        for out_id in outneighbor_labels_type(graph, basin_id, EdgeType.flow)
             du[i] -= flow[basin_id, out_id]
         end
     end
