@@ -17,7 +17,7 @@ The figure below gives a more detailed description of the simulation loop in the
 - Allocation optimization; activated when the allocation timestep has been passed;
 - Control actions; activated when some discrete control callback is triggered;
 - Water balance; computing the flows over flow edges happens each timestep;
-- Time integration step; Done by the selected integrator from `OrdinaryDiffEq.jl`.
+- Time integration step; done by the integrator from `OrdinaryDiffEq.jl`.
 
 ```{mermaid, style="margin-top: 0"}
 sequenceDiagram
