@@ -8,7 +8,7 @@
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.exporter" BasinExporter
+@schema "ribasim.basin.subgrid" BasinSubgrid
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -203,12 +203,12 @@ end
     level::Float64
 end
 
-@version BasinExporterV1 begin
+@version BasinSubgridV1 begin
     name::String
-    element_id::Int
+    subgrid_id::Int
     node_id::Int
     basin_level::Float64
-    level::Float64
+    subgrid_level::Float64
 end
 
 @version FractionalFlowStaticV1 begin
@@ -371,7 +371,7 @@ sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
-sort_by_exporter(row) = (row.name, row.element_id, row.node_id, row.basin_level)
+sort_by_exporter(row) = (row.name, row.subgrid_id, row.node_id, row.basin_level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -381,7 +381,7 @@ sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
-sort_by_function(table::StructVector{BasinExporterV1}) = sort_by_exporter
+sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_exporter
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -622,12 +622,15 @@ function valid_fractional_flow(
     return !errors
 end
 
-function valid_level_exporter(
-    element_id::Int,
+"""
+Validate the entries for a single subgrid element.
+"""
+function valid_subgrid_exporter(
+    subgrid_id::Int,
     node_id::Int,
     node_to_basin::Dict{Int, Int},
     basin_level::Vector{Float64},
-    element_level::Vector{Float64},
+    subgrid_level::Vector{Float64},
 )
     # The Schema ensures that the entries are sorted properly, so we do not need to validate the order here.
     errors = String[]
@@ -635,21 +638,21 @@ function valid_level_exporter(
     if !(node_id in keys(node_to_basin))
         push!(
             errors,
-            "The node_id of the BasinExporter does not refer to a basin: node_id $(node_id) for element_id $(element_id).",
+            "The node_id of the BasinSubgrid does not refer to a basin: node_id $(node_id) for subgrid_id $(subgrid_id).",
         )
     end
 
     if !allunique(basin_level)
         push!(
             errors,
-            "BasinExporter element_id $(element_id) has repeated basin levels, this cannot be interpolated.",
+            "BasinSubgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated.",
         )
     end
 
-    if !allunique(element_level)
+    if !allunique(subgrid_level)
         push!(
             errors,
-            "BasinExporter element_id $(element_id) has repeated element levels, this cannot be interpolated.",
+            "BasinSubgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated.",
         )
     end
 

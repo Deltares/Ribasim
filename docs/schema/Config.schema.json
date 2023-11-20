@@ -158,12 +158,6 @@
             "default": {
                 "static": null
             }
-        },
-        "level_exporter": {
-            "$ref": "https://deltares.github.io/Ribasim/schema/level_exporter.schema.json",
-            "default": {
-                "static": null
-            }
         }
     },
     "required": [
@@ -188,7 +182,6 @@
         "manning_resistance",
         "discrete_control",
         "outlet",
-        "linear_resistance",
-        "level_exporter"
+        "linear_resistance"
     ]
 }

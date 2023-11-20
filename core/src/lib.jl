@@ -11,7 +11,7 @@ A Model can be created from the path to a TOML configuration file, or a Config o
 
 struct SavedResults
     flow::SavedValues{Float64, Vector{Float64}}
-    exported_levels::SavedValues{Float64, Vector{Float64}}
+    subgrid_levels::SavedValues{Float64, Vector{Float64}}
 end
 
 struct Model{T}

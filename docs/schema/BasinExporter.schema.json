@@ -1,15 +1,15 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinLevelExporter.schema.json",
-    "title": "BasinExporter",
-    "description": "A BasinExporter object based on Ribasim.BasinExporterV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinSubgridExporter.schema.json",
+    "title": "BasinSubgrid",
+    "description": "A BasinSubgrid object based on Ribasim.BasinSubgridV1",
     "type": "object",
     "properties": {
         "name": {
             "format": "default",
             "type": "string"
         },
-        "element_id": {
+        "subgrid_id": {
             "format": "default",
             "type": "integer"
         },
@@ -21,7 +21,7 @@
             "format": "double",
             "type": "number"
         },
-        "level": {
+        "subgrid_level": {
             "format": "double",
             "type": "number"
         },
@@ -34,7 +34,7 @@
     },
     "required": [
         "name",
-        "element_id",
+        "subgrid_id",
         "node_id",
         "basin_level",
         "level"

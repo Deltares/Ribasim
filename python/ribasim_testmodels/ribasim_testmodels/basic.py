@@ -186,7 +186,7 @@ def basic_model() -> ribasim.Model:
         )
     )
     # Setup logging
-    logging = ribasim.Logging(verbosity="info")
+    logging = ribasim.Logging(verbosity="debug")
 
     # Setup a model:
     model = ribasim.Model(

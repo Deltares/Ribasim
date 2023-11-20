@@ -44,12 +44,12 @@ class BasinTime(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
 
 
-class BasinExporter(BaseModel):
+class BasinSubgrid(BaseModel):
     name: str
-    element_id: int
+    subgrid_id: int
     node_id: int
     basin_level: float
-    level: float
+    subgrid_level: float
     remarks: str = Field("", description="a hack for pandera")
 
 
@@ -233,7 +233,7 @@ class Root(BaseModel):
     basinstate: BasinState | None = None
     basinstatic: BasinStatic | None = None
     basintime: BasinTime | None = None
-    basinexporter: BasinExporter | None = None
+    basinsubgrid: BasinSubgrid | None = None
     discretecontrolcondition: DiscreteControlCondition | None = None
     discretecontrollogic: DiscreteControlLogic | None = None
     edge: Edge | None = None

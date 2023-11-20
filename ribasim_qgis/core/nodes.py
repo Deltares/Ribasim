@@ -336,15 +336,15 @@ class BasinTime(Input):
     ]
 
 
-class BasinExporter(Input):
-    input_type = "Basin / exporter"
+class BasinSubgrid(Input):
+    input_type = "Basin / subgrid"
     geometry_type = "No Geometry"
     attributes = [
         QgsField("name", QVariant.String),
-        QgsField("element_id", QVariant.Int),
+        QgsField("subgrid_id", QVariant.Int),
         QgsField("node_id", QVariant.Int),
         QgsField("basin_level", QVariant.Double),
-        QgsField("level", QVariant.Double),
+        QgsField("subgrid_level", QVariant.Double),
     ]
 
 

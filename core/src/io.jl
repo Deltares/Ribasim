@@ -227,26 +227,26 @@ function allocation_table(model::Model)::NamedTuple
     )
 end
 
-function exported_levels_table(model::Model)::NamedTuple
+function subgrid_levels_table(model::Model)::NamedTuple
     (; config, saved, integrator) = model
-    (; t, saveval) = saved.exported_levels
+    (; t, saveval) = saved.subgrid_levels
 
     # The level exporter may contain multiple named systems, but the
     # saved levels are flat.
     time = DateTime[]
     name = String[]
-    element_id = Int[]
-    for (unique_name, exporter) in integrator.p.level_exporters
+    subgrid_id = Int[]
+    for (unique_name, exporter) in integrator.p.subgrid_exporters
         nelem = length(exporter.basin_index)
         unique_elem_id = collect(1:nelem)
         ntsteps = length(t)
         append!(time, repeat(datetime_since.(t, config.starttime); inner = nelem))
-        append!(element_id, repeat(unique_elem_id; outer = ntsteps))
+        append!(subgrid_id, repeat(unique_elem_id; outer = ntsteps))
         append!(name, fill(unique_name, length(time)))
     end
 
-    level = FlatVector(saveval)
-    return (; time, name, element_id, level)
+    subgrid_level = FlatVector(saveval)
+    return (; time, name, subgrid_id, subgrid_level)
 end
 
 "Write a result table to disk as an Arrow file"

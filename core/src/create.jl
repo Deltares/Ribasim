@@ -798,29 +798,29 @@ function User(db::DB, config::Config)::User
     )
 end
 
-function LevelExporter(tables, name, node_to_basin::Dict{Int, Int})::LevelExporter
+function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridExporter
     basin_ids = Int[]
     interpolations = ScalarInterpolation[]
 
     errors = String[]
-    for group in IterTools.groupby(row -> row.element_id, tables)
-        element_id = first(getproperty.(group, :element_id))
+    for group in IterTools.groupby(row -> row.subgrid_id, tables)
+        subgrid_id = first(getproperty.(group, :subgrid_id))
         node_id = first(getproperty.(group, :node_id))
         basin_level = getproperty.(group, :basin_level)
-        element_level = getproperty.(group, :level)
+        subgrid_level = getproperty.(group, :subgrid_level)
 
-        group_errors = valid_level_exporter(
-            element_id,
+        group_errors = valid_subgrid_exporter(
+            subgrid_id,
             node_id,
             node_to_basin,
             basin_level,
-            element_level,
+            subgrid_level,
         )
 
         if isempty(group_errors)
             # Ensure it doesn't extrapolate before the first value.
             new_interp = LinearInterpolation(
-                [element_level[1], element_level...],
+                [subgrid_level[1], subgrid_level...],
                 [prevfloat(basin_level[1]), basin_level...],
             )
             push!(basin_ids, node_to_basin[node_id])
@@ -831,30 +831,33 @@ function LevelExporter(tables, name, node_to_basin::Dict{Int, Int})::LevelExport
     end
 
     if isempty(errors)
-        return LevelExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+        return SubgridExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
     else
         foreach(x -> @error(x), errors)
         error(
-            "Errors occurred while parsing BasinExporter data for group with name: $(name).",
+            "Errors occurred while parsing BasinSubgrid data for group with name: $(name).",
         )
     end
 end
 
-function create_level_exporters(
+function create_subgrid_exporters(
     db::DB,
     config::Config,
     basin::Basin,
-)::Dict{String, LevelExporter}
-    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-    tables = load_structvector(db, config, BasinExporterV1)
-    level_exporters = Dict{String, LevelExporter}()
-    if !isempty(tables) > 0
-        for group in IterTools.groupby(row -> row.name, tables)
-            name = first(getproperty.(group, :name))
-            level_exporters[name] = LevelExporter(group, name, node_to_basin)
+)::Dict{String, SubgridExporter}
+    subgrid_exporters = Dict{String, SubgridExporter}()
+    if !isnothing(config.results.subgrid_levels)
+        node_to_basin =
+            Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
+        tables = load_structvector(db, config, BasinSubgridV1)
+        if !isempty(tables)
+            for group in IterTools.groupby(row -> row.name, tables)
+                name = first(getproperty.(group, :name))
+                subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
+            end
         end
     end
-    return level_exporters
+    return subgrid_exporters
 end
 
 function Parameters(db::DB, config::Config)::Parameters
@@ -878,7 +881,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     basin = Basin(db, config, chunk_size)
 
-    level_exporters = create_level_exporters(db, config, basin)
+    subgrid_exporters = create_subgrid_exporters(db, config, basin)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
@@ -909,7 +912,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user,
         Dict{Int, Symbol}(),
-        level_exporters,
+        subgrid_exporters,
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
         if fieldtype <: AbstractParameterNode
