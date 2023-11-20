@@ -1,9 +1,4 @@
-import subprocess
 from pathlib import Path
-
-subprocess.run(
-    ["pip", "install", "--no-deps", "--editable", "ribasim_qgis"], check=True
-)
 
 target_path = Path("ribasim_qgis").absolute()
 source_path = Path(".pixi/env/Library/python/plugins/ribasim_qgis")
