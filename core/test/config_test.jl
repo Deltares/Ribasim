@@ -1,12 +1,9 @@
-using Test
-using Ribasim
-using Dates
-using Configurations: UndefKeywordError
-using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
-using CodecLz4: LZ4FrameCompressor
-using CodecZstd: ZstdCompressor
+@testitem "config" begin
+    using CodecLz4: LZ4FrameCompressor
+    using CodecZstd: ZstdCompressor
+    using Configurations: UndefKeywordError
+    using Dates
 
-@testset "config" begin
     @test_throws UndefKeywordError Ribasim.Config()
     @test_throws UndefKeywordError Ribasim.Config(
         startime = now(),
@@ -40,11 +37,15 @@ using CodecZstd: ZstdCompressor
     end
 
     @testset "docs" begin
-        Ribasim.Config(normpath(@__DIR__, "docs.toml"))
+        config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
+        @test config isa Ribasim.Config
+        @test config.solver.adaptive
     end
 end
 
-@testset "Solver" begin
+@testitem "Solver" begin
+    using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+
     solver = Ribasim.Solver()
     @test solver.algorithm == "QNDF"
     Ribasim.Solver(;
@@ -74,7 +75,7 @@ end
     Ribasim.algorithm(Ribasim.Solver(; algorithm = "Euler", autodiff = true))
 end
 
-@testset "snake_case" begin
+@testitem "snake_case" begin
     @test Ribasim.snake_case("CamelCase") == "camel_case"
     @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
     @test Ribasim.snake_case("snake_case") == "snake_case"
