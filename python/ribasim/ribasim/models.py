@@ -233,7 +233,7 @@ class Root(BaseModel):
     basinstate: BasinState | None = None
     basinstatic: BasinStatic | None = None
     basintime: BasinTime | None = None
-    Basinexporter: BasinExporter | None = None
+    basinexporter: BasinExporter | None = None
     discretecontrolcondition: DiscreteControlCondition | None = None
     discretecontrollogic: DiscreteControlLogic | None = None
     edge: Edge | None = None
