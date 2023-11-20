@@ -1,16 +1,5 @@
-import Arrow
-import Legolas
-import SQLite
-import Tables
-using Dates
-using Ribasim
-using StructArrays: StructVector
-using Test
-using TestReports
-
-recordproperty("name", "Input/Output")  # TODO To check in TeamCity
-
-@testset "relativepath" begin
+@testitem "relativepath" begin
+    using Dates
 
     # relative to tomldir
     config = Ribasim.Config(;
@@ -39,7 +28,9 @@ recordproperty("name", "Input/Output")  # TODO To check in TeamCity
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
 end
 
-@testset "time" begin
+@testitem "time" begin
+    using Dates
+
     t0 = DateTime(2020)
     @test Ribasim.datetime_since(0.0, t0) === t0
     @test Ribasim.datetime_since(1.0, t0) === t0 + Second(1)
@@ -49,26 +40,32 @@ end
     @test Ribasim.seconds_since(DateTime("2020-01-01T00:00:03.142"), t0) ≈ 3.142
 end
 
-@testset "findlastgroup" begin
+@testitem "findlastgroup" begin
     @test Ribasim.findlastgroup(2, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 6:8
     @test Ribasim.findlastgroup(2, [2]) === 1:1
     @test Ribasim.findlastgroup(3, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 1:0
 end
 
-"Convert an in-memory table to a memory mapped Arrow table"
-function to_arrow_table(
-    path,
-    table::StructVector{T},
-)::StructVector{T} where {T <: Legolas.AbstractRecord}
-    open(path; write = true) do io
-        Arrow.write(io, table)
-    end
-    table = Arrow.Table(path)
-    nt = Tables.columntable(table)
-    return StructVector{T}(nt)
-end
+@testitem "table sort" begin
+    import Arrow
+    import Legolas
+    using StructArrays: StructVector
+    import SQLite
+    import Tables
 
-@testset "table sort" begin
+    "Convert an in-memory table to a memory mapped Arrow table"
+    function to_arrow_table(
+        path,
+        table::StructVector{T},
+    )::StructVector{T} where {T <: Legolas.AbstractRecord}
+        open(path; write = true) do io
+            Arrow.write(io, table)
+        end
+        table = Arrow.Table(path)
+        nt = Tables.columntable(table)
+        return StructVector{T}(nt)
+    end
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
