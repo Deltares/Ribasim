@@ -1,13 +1,8 @@
-using Test
-import Ribasim
-import JuMP
-using Test
-using SQLite
-using PreallocationTools: get_tmp
-using DataFrames: DataFrame
-using SciMLBase: successful_retcode
+@testitem "Allocation solve" begin
+    using PreallocationTools: get_tmp
+    import SQLite
+    import JuMP
 
-@testset "Allocation solve" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
@@ -32,6 +27,10 @@ using SciMLBase: successful_retcode
 end
 
 @testset "Allocation objective types" begin
+    using DataFrames: DataFrame
+    import JuMP
+    using DataFrames: DataFrame
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)

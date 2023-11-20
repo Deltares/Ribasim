@@ -1,12 +1,10 @@
-using Test
-using Ribasim
-import BasicModelInterface as BMI
+@testitem "libribasim" begin
+    import BasicModelInterface as BMI
 
-include("../../build/libribasim/src/libribasim.jl")
+    include("../../build/libribasim/src/libribasim.jl")
 
-toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-@testset "libribasim" begin
     # data from which we create pointers for libribasim
     time = [-1.0]
     var_name = "volume"
