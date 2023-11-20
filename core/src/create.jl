@@ -273,6 +273,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
         push!(
             connectivity.allocation_models,
             AllocationModel(
+                config,
                 allocation_network_id,
                 p,
                 NodeID.(allocation_group_node.fid),
@@ -795,6 +796,18 @@ function User(db::DB, config::Config)::User
         allocated = Float64[],
         abstracted = Float64[],
     )
+
+    record = (
+        time = Vector{Float64}(),
+        allocation_network_id = Vector{Int}(),
+        user_node_id = Vector{Int}(),
+        priority = Vector{Int}(),
+        demand = Vector{Float64}(),
+        allocated = Vector{Float64}(),
+        abstracted = Vector{Float64}(),
+    )
+
+    allocation_optimized = BitVector(zeros(UInt8, length(node_ids)))
 
     return User(
         NodeID.(node_ids),

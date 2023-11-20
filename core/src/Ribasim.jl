@@ -64,9 +64,9 @@ TimerOutputs.complement!()
 
 include("validation.jl")
 include("solve.jl")
-include("allocation.jl")
 include("config.jl")
 using .config
+include("allocation.jl")
 include("utils.jl")
 include("lib.jl")
 include("io.jl")
