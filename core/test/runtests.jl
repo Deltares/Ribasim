@@ -1,3 +1,3 @@
 using ReTestItems, Ribasim
 
-runtests(Ribasim; nworkers = 4)
+runtests(Ribasim; nworkers = min(4, Sys.CPU_THREADS))
