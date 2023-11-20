@@ -17,13 +17,11 @@ repository = "https://github.com/Deltares/Ribasim"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
-install-ribasim-qgis = "pip install --no-deps --editable ribasim_qgis"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
     "install-ribasim-api",
     "install-ribasim-testmodels",
-    "install-ribasim-qgis",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
@@ -73,8 +71,6 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
     "instantiate-julia",
     "generate-testmodels",
 ] }
-start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
-test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
@@ -96,6 +92,15 @@ publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", 
 publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends_on = [
     "build-ribasim-api-wheel",
 ] }
+# QGIS
+install-ribasim-qgis = "pip install --no-deps --editable ribasim_qgis"
+install-imod-qgis = "git clone --depth=1 https://github.com/Deltares/imod-qgis.git .pixi/env/Library/python/plugins/imod && cd .pixi/env/Library/python/plugins/imod && mv imodqgis .. && cd .. && rm imod --recursive --force"
+start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
+test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
+install-qgis = { depends_on = [
+    "install-ribasim-qgis",
+    "install-imod-qgis"
+]}
 
 [dependencies]
 build = "*"
