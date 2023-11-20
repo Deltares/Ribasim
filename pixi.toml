@@ -93,13 +93,15 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
     "build-ribasim-api-wheel",
 ] }
 # QGIS
-install-ribasim-qgis = "pip install --no-deps --editable ribasim_qgis"
+install-ribasim-qgis = "python ribasim_qgis/scripts/install_into_qgis.py"
 install-imod-qgis = "git clone --depth=1 https://github.com/Deltares/imod-qgis.git .pixi/env/Library/python/plugins/imod && cd .pixi/env/Library/python/plugins/imod && mv imodqgis .. && cd .. && rm imod --recursive --force"
+enable-qgis-plugins = "python ribasim_qgis/scripts/enable_plugins.py"
 start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
 test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 install-qgis = { depends_on = [
     "install-ribasim-qgis",
-    "install-imod-qgis"
+    "install-imod-qgis",
+    "enable-qgis-plugins",
 ]}
 
 [dependencies]
@@ -131,6 +133,7 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 qgis = "3.34.0.*"
+platformdirs = "*"
 
 [target.win-64.dependencies]
 quarto = "*"
