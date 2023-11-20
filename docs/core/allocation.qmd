@@ -82,7 +82,7 @@ The capacities of the edges of the allocation graph are collected in the sparse 
 
 The capacities are determined in 4 different ways:
 
-- If an edge does not exist in the allocation graph, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n`$, then $(C_S)_{i,j} = 0$;
+- If an edge does not exist in the allocation graph, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
 - The capacity of the edge $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite;
 - If the edge is a source, the capacity of the edge is given by the flow rate of that source.
 
@@ -106,22 +106,22 @@ The goal of allocation is to get the flow to the users as close as possible to t
 
 - `quadratic_absolute`:
 $$
-    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left( F_{\hat{i}\hat{j}} - d_j^p(t)\right)^2
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( F_{ij} - d_j^p(t)\right)^2
 $$
 - `quadratic_relative`:
 $$
-    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left( 1 - \frac{F_{\hat{i}\hat{j}}}{d_j^p(t)}\right)^2
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( 1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
 $$
 - `linear_absolute`:
 $$
-    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left| F_{\hat{i}\hat{j}} - d_j^p(t)\right|
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
 $$
 - `linear_relative`:
 $$
-    \min \sum_{(\hat{i},\hat{j})\in \hat{E}_S\;:\; \hat{i}\in \hat{U}_S} \left|1 - \frac{F_{\hat{i}\hat{j}}}{d_j^p(t)}\right|
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right|
 $$
 
-To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{\hat{i}\hat{j}}$ is set to $0$.
+To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{ij}$ is set to $0$.
 
 For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a user, for `*_relative` objectives it cares about the fraction of the demand allocated to the user. For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
 
