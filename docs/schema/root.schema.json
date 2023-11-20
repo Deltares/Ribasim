@@ -10,6 +10,9 @@
         "basinstatic": {
             "$ref": "basinstatic.schema.json"
         },
+        "basinsubgrid": {
+            "$ref": "basinsubgrid.schema.json"
+        },
         "basintime": {
             "$ref": "basintime.schema.json"
         },
@@ -36,9 +39,6 @@
         },
         "levelboundarytime": {
             "$ref": "levelboundarytime.schema.json"
-        },
-        "basinexporter": {
-            "$ref": "basinexporter.schema.json"
         },
         "linearresistancestatic": {
             "$ref": "linearresistancestatic.schema.json"

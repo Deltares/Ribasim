@@ -25,6 +25,18 @@
             "type": "string",
             "default": "results/allocation.arrow"
         },
+        "subgrid_levels": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        },
         "outstate": {
             "format": "default",
             "anyOf": [

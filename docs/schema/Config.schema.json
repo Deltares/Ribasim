@@ -73,6 +73,7 @@
                 "flow": "results/flow.arrow",
                 "control": "results/control.arrow",
                 "allocation": "results/allocation.arrow",
+                "subgrid_levels": null,
                 "outstate": null,
                 "compression": "zstd",
                 "compression_level": 6
@@ -131,6 +132,7 @@
                 "profile": null,
                 "state": null,
                 "static": null,
+                "subgrid": null,
                 "time": null
             }
         },
@@ -158,6 +160,12 @@
             "default": {
                 "static": null
             }
+        },
+        "fractional_flow": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/fractional_flow.schema.json",
+            "default": {
+                "static": null
+            }
         }
     },
     "required": [
@@ -182,6 +190,7 @@
         "manning_resistance",
         "discrete_control",
         "outlet",
-        "linear_resistance"
+        "linear_resistance",
+        "fractional_flow"
     ]
 }
