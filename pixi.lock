@@ -35189,6 +35189,86 @@ package:
   size: 18580
   timestamp: 1695236716910
 - platform: linux-64
+  name: types-requests
+  version: 2.31.0.10
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  - urllib3 >=2
+  url: https://conda.anaconda.org/conda-forge/noarch/types-requests-2.31.0.10-pyhd8ed1ab_0.conda
+  hash:
+    md5: 84dca7318667fa091bbfd8724d22ea99
+    sha256: 6d8ff7a6caae75aba965557b1d7f538f50f8a7851a4ba5a1cf1637acf1b6292b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0 AND MIT
+  noarch: python
+  size: 25660
+  timestamp: 1697612426162
+- platform: osx-64
+  name: types-requests
+  version: 2.31.0.10
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  - urllib3 >=2
+  url: https://conda.anaconda.org/conda-forge/noarch/types-requests-2.31.0.10-pyhd8ed1ab_0.conda
+  hash:
+    md5: 84dca7318667fa091bbfd8724d22ea99
+    sha256: 6d8ff7a6caae75aba965557b1d7f538f50f8a7851a4ba5a1cf1637acf1b6292b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: Apache-2.0 AND MIT
+  noarch: python
+  size: 25660
+  timestamp: 1697612426162
+- platform: osx-arm64
+  name: types-requests
+  version: 2.31.0.10
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  - urllib3 >=2
+  url: https://conda.anaconda.org/conda-forge/noarch/types-requests-2.31.0.10-pyhd8ed1ab_0.conda
+  hash:
+    md5: 84dca7318667fa091bbfd8724d22ea99
+    sha256: 6d8ff7a6caae75aba965557b1d7f538f50f8a7851a4ba5a1cf1637acf1b6292b
+  build: pyhd8ed1ab_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: Apache-2.0 AND MIT
+  noarch: python
+  size: 25660
+  timestamp: 1697612426162
+- platform: win-64
+  name: types-requests
+  version: 2.31.0.10
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  - urllib3 >=2
+  url: https://conda.anaconda.org/conda-forge/noarch/types-requests-2.31.0.10-pyhd8ed1ab_0.conda
+  hash:
+    md5: 84dca7318667fa091bbfd8724d22ea99
+    sha256: 6d8ff7a6caae75aba965557b1d7f538f50f8a7851a4ba5a1cf1637acf1b6292b
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: Apache-2.0 AND MIT
+  noarch: python
+  size: 25660
+  timestamp: 1697612426162
+- platform: linux-64
   name: typing-extensions
   version: 4.8.0
   category: main
