@@ -73,6 +73,8 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
     "instantiate-julia",
     "generate-testmodels",
 ] }
+start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
+test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
