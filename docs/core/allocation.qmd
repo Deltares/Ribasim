@@ -104,7 +104,7 @@ Currently the basin allocations are not taken into account in the implementation
 
 The goal of allocation is to maximize the flow to the users. Therefore, we use the following optimization objective:
 $$
-    \max \sum_{(i,j)\in \E_S\;:\; i\in U_S} F_{i,j}
+    \max \sum_{(i,j)\in E_S\;:\; i\in U_S} F_{i,j}
 $$ {#eq-objective}
 This is a linear combination of the allocations to the users, where all allocations currently get a weight of $1$.
 
@@ -118,28 +118,28 @@ This optimization objective will probably be modified in the future, to take thi
 ### The optimization variable constraints
 - Flow conservation: For the basins in the allocation graph we have that
 $$
-    \sum_{\hat{j}=1}^{\hat{n}} F_{\hat{k}\hat{j}} \le \sum_{\hat{i}=1}^{\hat{n}} F_{\hat{i}\hat{k}}, \quad \forall\hat{k} \in \hat{B}_S.
+    \sum_{j=1}^{n'} F_{kj} \le \sum_{i=1}^{n'} F_{ik}, \quad \forall k \in B_S.
 $$  {#eq-flowconservationconstraint}
 Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
 - Capacity: the flows over the edges are positive and bounded by the edge capacity:
 $$
-    F_{\hat{i}\hat{j}} \le \left(\hat{C}_S\right)_{\hat{i}\hat{j}}, \quad \forall(\hat{i},\hat{j}) \in \hat{E}_S.
+    F_{ij} \le \left(C_S\right)_{ij}, \quad \forall(i,j) \in E_S.
 $$ {#eq-capacityconstraint}
-By the definition of $\hat{C}_S$ this also includes the source flows.
+By the definition of $C_S$ this also includes the source flows.
 - User outflow: The outflow of the user is dictated by the inflow and the return factor:
 $$
-    F_{\hat{i}\hat{k}} = r_k \cdot F_{\hat{k}\hat{j}} \quad
-    \quad \forall\hat{k} \in \hat{U}_s, \quad
-    \hat{V}^{\text{in}}_S(\hat{k}) = \{\hat{i}\},\;
-     \hat{V}^{\text{out}}_S(\hat{k}) = \{\hat{j}\}.
+    F_{ik} = r_k \cdot F_{kj} \quad
+    \quad \forall k \in U_S, \quad
+    V^{\text{in}}_S(k) = \{i\},\;
+     V^{\text{out}}_S(k) = \{j\}.
 $$ {#eq-returnflowconstraint}
 Here we use that each user node in the allocation graph has a unique in-edge and out-edge.
 - User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
-- Fractinal flow: Let $\hat{L}_S \subset \hat{V}_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
+- Fractinal flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
-    F_{\hat{i}\hat{j}} \le f_j \sum_{k\in \hat{V}^\text{in}_S(\hat{i})} F_{\hat{k}\hat{i}} \qquad
-    \forall \hat{i} \in \hat{L}_S, \;
-    \hat{j} \in \hat{V}_S^\text{out}(\hat{i}).
+    F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
+    \forall i \in L_S, \;
+    j \in V_S^\text{out}(i).
 $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
