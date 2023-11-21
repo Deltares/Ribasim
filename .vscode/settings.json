@@ -7,14 +7,14 @@
         "source.fixAll.ruff": true,
         "source.organizeImports.ruff": true
     },
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportMissingImports": "none"
-    },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
             "source.fixAll": true
         }
-    }
+    },
+    "python.analysis.extraPaths": [
+        ".pixi/env/Library/python"
+    ]
 }

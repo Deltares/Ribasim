@@ -48,6 +48,7 @@ website:
         - contribute/index.qmd
         - contribute/core.qmd
         - contribute/python.qmd
+        - contribute/qgis.qmd
         - contribute/addnode.qmd
         - contribute/release.qmd
 
