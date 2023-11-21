@@ -92,6 +92,15 @@ publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", 
 publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends_on = [
     "build-ribasim-api-wheel",
 ] }
+# QGIS
+install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
+install-imod-qgis = "python ribasim_qgis/scripts/install_imod_qgis.py"
+start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
+test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
+install-qgis-plugins = { depends_on = [
+    "install-ribasim-qgis",
+    "install-imod-qgis",
+] }
 
 [dependencies]
 build = "*"
@@ -121,6 +130,10 @@ twine = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
+qgis = "3.28.*"
+platformdirs = "*"
+pyqt-stubs = "*"
+types-requests = "*"
 
 [target.win-64.dependencies]
 quarto = "*"
