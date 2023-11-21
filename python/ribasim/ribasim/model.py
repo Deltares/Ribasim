@@ -38,7 +38,7 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
-from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
+from ribasim.input_base import FileModel, NodeModel, context_file_loading
 from ribasim.types import FilePath
 
 
@@ -206,20 +206,24 @@ class Model(FileModel):
         return str(path)
 
     def __repr__(self) -> str:
-        first = []
-        second = []
+        """Generate a succinct overview of the Model content.
+
+        Skip "empty" NodeModel instances: when all dataframes are None.
+        """
+        content = ["ribasim.Model("]
+        INDENT = "    "
         for field in self.fields():
             attr = getattr(self, field)
-            if isinstance(attr, TableModel):
-                second.append(f"{field}: {repr(attr)}")
+            if isinstance(attr, NodeModel):
+                attr_content = attr._repr_content()
+                typename = type(attr).__name__
+                if attr_content:
+                    content.append(f"{INDENT}{field}={typename}({attr_content}),")
             else:
-                first.append(f"{field}={repr(attr)}")
-        content = ["<ribasim.Model>"] + first + second
-        return "\n".join(content)
+                content.append(f"{INDENT}{field}={repr(attr)},")
 
-    def _repr_html(self):
-        # Default to standard repr for now
-        return self.__repr__()
+        content.append(")")
+        return "\n".join(content)
 
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
