@@ -2,6 +2,73 @@
 title: "Julia core development"
 ---
 
+# Julia core overview
+
+This section is about the Julia core in `Ribasim.jl`. See the component overview [here](index.qmd) for the context of this computational core.
+
+`Ribasim.jl` can be divided into 3 parts:
+
+- Model initialization
+- Running the simulation loop
+- Writing the output files
+
+The figure below gives a more detailed description of the simulation loop in the form of a [sequence diagram](https://en.wikipedia.org/wiki/Sequence_diagram). From top to bottom, it contains the following blocks:
+
+- Allocation optimization; activated when the allocation timestep has been passed;
+- Control actions; activated when some discrete control callback is triggered;
+- Water balance; computing the flows over flow edges happens each timestep;
+- Time integration step; done by the integrator from `OrdinaryDiffEq.jl`.
+
+```{mermaid, style="margin-top: 0"}
+sequenceDiagram
+    autonumber
+    participant Int as Process: Integrator
+    participant Optim as Process: Allocation optimization
+    participant Param as Data: Parameters
+    participant State as Data: State
+    participant Sim as Process: Water balance
+    loop Simulation loop (OrdinaryDiffEq.jl)
+        activate Int
+        %% Allocation
+        rect rgb(200, 200, 200)
+            opt Allocation optimization, per allocation network (JuMP.jl, HiGHS)
+                activate Optim
+                Int->>Optim: Callback: allocation timestep has passed
+                Param-->>Optim: Input
+                State-->>Optim: Input
+                Optim->>Optim: Optimize Basin allocations if below target level
+                Optim->>Optim: Optimize User allocation, per priority
+                Optim-->>Param: Set allocated flow rates
+                deactivate Optim
+            end
+        end
+        %% Control
+        rect rgb(200, 200, 200)
+            opt Control actions
+                Int->>Int: DiscreteControl callback
+                Int-->>Param: Parameter updates by control
+            end
+        end
+        %% water_balance!
+        rect rgb(200, 200, 200)
+            activate Sim
+            State-->>Sim: Input
+            Param-->>Sim: Input
+            Sim->>Sim: Compute flows over edges per node type
+            Sim-->>Param: Set flows
+            deactivate Sim
+        end
+        %% Time integration
+        rect rgb(200, 200, 200)
+            State-->>Int: Input
+            Param-->>Int: Input
+            Int->>Int: Time integration step
+            Int-->>State: Update state
+        end
+        deactivate Int
+  end
+```
+
 # Set up the developer environment
 
 ## Install Julia via Juliaup

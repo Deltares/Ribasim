@@ -13,6 +13,7 @@ from ribasim_testmodels.allocation import (
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
+    basic_arrow_model,
     basic_model,
     basic_transient_model,
     outlet_model,
@@ -50,6 +51,7 @@ from ribasim_testmodels.trivial import trivial_model
 __all__ = [
     "backwater_model",
     "basic_model",
+    "basic_arrow_model",
     "basic_transient_model",
     "bucket_model",
     "pump_discrete_control_model",
