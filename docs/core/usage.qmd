@@ -294,7 +294,7 @@ subgrid_level | Float64 | $m$   | per subgrid_id: increasing
 
 The name column is used to distinguish between spatially distinct water bodies that may
 exist within a single basin (e.g. perennial versus ephemeral streams). When no
-distinction is required, all rows should given the same name.
+distinction is required, all rows should be given the same name.
 
 name  | subgrid_id | node_id | basin_level | subgrid_level
 ----- | ---------- | ------- | ----------- | -------------
