@@ -240,7 +240,7 @@ function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; connectivity) = p
     (; allocation_models, graph) = connectivity
 
-    for allocation_network_id in keys(graph[].node_ids_allocation_graph)
+    for allocation_network_id in keys(graph[].node_ids)
         push!(
             allocation_models,
             AllocationModel(config, allocation_network_id, p, config.allocation.timestep),

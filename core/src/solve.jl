@@ -34,10 +34,12 @@ struct AllocationModel
     Δt_allocation::Float64
 end
 
-@enumx EdgeType flow control
+@enumx EdgeType flow control none
 
 """
-Type for storing metadata of nodes in the graph.
+Type for storing metadata of nodes in the graph
+type: type of the node
+allocation_network_id: Allocation network ID (0 if not in subnetwork)
 """
 struct NodeMetadata
     type::Symbol
@@ -45,11 +47,21 @@ struct NodeMetadata
 end
 
 """
-Type for storing metadata of edges in the graph.
+Type for storing metadata of edges in the graph:
+id: ID of the edge
+type: type of the edge
+allocation_network_id_source: ID of allocation network where this edge is a source
+  (0 if not a source)
+from_id: the node ID of the source node
+to_id: the node ID of the destination node
+allocation_flow: whether this edge has a flow in an allocation graph
 """
 struct EdgeMetadata
-    id::EdgeID
     type::EdgeType.T
+    allocation_network_id_source::Int
+    from_id::NodeID
+    to_id::NodeID
+    allocation_flow::Bool
 end
 
 """
@@ -59,11 +71,8 @@ graph: a directed metagraph with data of nodes (NodeMetadata):
   - Node type (snake case)
   - Allocation network ID
   and data of edges (EdgeMetadata):
-  - Edge ID (EdgeID)
   - type (flow/control)
 flow: store the flow on every flow edge
-edge_ids_flow, edge_ids_control: get the external edge id from (src, dst)
-edge_connection_type_flow, edge_connection_types_control: get (src_node_type, dst_node_type) from edge id
 
 if autodiff
     T = DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}}
@@ -79,8 +88,9 @@ struct Connectivity{T}
         Ribasim.NodeMetadata,
         Ribasim.EdgeMetadata,
         @NamedTuple{
-            node_ids_allocation_graph::Dict{Int, Vector{NodeID}},
-            edge_ids_allocation_graph::Dict{Int, Vector{EdgeID}},
+            node_ids::Dict{Int, Set{NodeID}},
+            edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
+            edges_source::Dict{Int, Set{EdgeMetadata}},
         },
         MetaGraphsNext.var"#11#13",
         Float64,

@@ -52,7 +52,7 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, EdgeID, NodeMetadata, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, EdgeType
 
     graph = MetaGraph(
         DiGraph();
@@ -67,10 +67,10 @@ end
         graph[NodeID(i)] = NodeMetadata(type, 9)
     end
 
-    graph[NodeID(2), NodeID(1)] = EdgeMetadata(EdgeID(1), EdgeType.flow)
-    graph[NodeID(3), NodeID(1)] = EdgeMetadata(EdgeID(2), EdgeType.flow)
-    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeID(3), EdgeType.flow)
-    graph[NodeID(5), NodeID(6)] = EdgeMetadata(EdgeID(4), EdgeType.control)
+    graph[NodeID(2), NodeID(1)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(3), NodeID(1)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(5), NodeID(6)] = EdgeMetadata(EdgeType.control)
 
     pump = Ribasim.Pump(
         Ribasim.NodeID[1, 6],
@@ -98,9 +98,9 @@ end
     @test logger.logs[3].message ==
           "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
-    graph[NodeID(2), NodeID(5)] = EdgeMetadata(EdgeID(5), EdgeType.flow)
-    graph[NodeID(5), NodeID(3)] = EdgeMetadata(EdgeID(6), EdgeType.flow)
-    graph[NodeID(5), NodeID(4)] = EdgeMetadata(EdgeID(7), EdgeType.flow)
+    graph[NodeID(2), NodeID(5)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(5), NodeID(3)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(5), NodeID(4)] = EdgeMetadata(EdgeType.flow)
 
     fractional_flow =
         Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
@@ -131,7 +131,7 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, EdgeID, NodeMetadata, EdgeMetadata
+    using Ribasim: NodeID, NodeMetadata, EdgeMetadata
 
     pid_control_node_id = NodeID[1, 6]
     pid_control_listen_node_id = NodeID[3, 5]
@@ -153,11 +153,11 @@ end
     graph[NodeID(5)] = NodeMetadata(:basin, 0)
     graph[NodeID(7)] = NodeMetadata(:basin, 0)
 
-    graph[NodeID(3), NodeID(4)] = EdgeMetadata(EdgeID(1), EdgeType.flow)
-    graph[NodeID(7), NodeID(2)] = EdgeMetadata(EdgeID(2), EdgeType.flow)
+    graph[NodeID(3), NodeID(4)] = EdgeMetadata(EdgeType.flow)
+    graph[NodeID(7), NodeID(2)] = EdgeMetadata(EdgeType.flow)
 
-    graph[NodeID(1), NodeID(4)] = EdgeMetadata(EdgeID(3), EdgeType.control)
-    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeID(4), EdgeType.control)
+    graph[NodeID(1), NodeID(4)] = EdgeMetadata(EdgeType.control)
+    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeType.control)
 
     basin_node_id = Indices(NodeID[5, 7])
 

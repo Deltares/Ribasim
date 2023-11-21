@@ -406,15 +406,13 @@ function sorted_table!(
     return table
 end
 
-abstract type ID end
-
-struct NodeID <: ID
+struct NodeID
     value::Int
 end
 
 Base.convert(::Type{NodeID}, value::Int) = NodeID(value)
-Base.broadcastable(id::ID) = Ref(id)
-Base.show(io::IO, id::ID) = print(io, '#', id.value)
+Base.broadcastable(id::NodeID) = Ref(id)
+Base.show(io::IO, id::NodeID) = print(io, '#', id.value)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
     return id_1.value < id_2.value
@@ -436,10 +434,6 @@ function Base.setindex!(
     # once the flow is stored in a different data structure
     M[id_row.value, id_col.value] = value
     return nothing
-end
-
-struct EdgeID
-    value::Int
 end
 
 """

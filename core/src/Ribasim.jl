@@ -20,6 +20,7 @@ import HiGHS
 import JuMP
 import TranscodingStreams
 
+using Accessors: @set
 using Arrow: Arrow, Table
 using CodecLz4: LZ4FrameCompressor
 using CodecZstd: ZstdCompressor

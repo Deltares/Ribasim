@@ -21,43 +21,56 @@ and data of edges (EdgeMetadata):
 """
 function create_graph(db::DB)::MetaGraph
     node_rows = execute(db, "select fid, type, allocation_network_id from Node")
-    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-    node_ids_allocation_graph = Dict{Int, Vector{NodeID}}()
-    edge_ids_allocation_graph = Dict{Int, Vector{EdgeID}}()
+    edge_rows = execute(
+        db,
+        "select from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
+    )
+    node_ids = Dict{Int, Set{NodeID}}()
+    edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
+    edges_source = Dict{Int, Set{EdgeMetadata}}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = EdgeMetadata,
-        graph_data = (; node_ids_allocation_graph, edge_ids_allocation_graph),
+        graph_data = (; node_ids, edge_ids, edges_source),
     )
     for row in node_rows
         node_id = NodeID(row.fid)
         # Process allocation network ID
-        if hasproperty(row, :allocation_network_id)
-            if ismissing(row.allocation_network_id)
-                allocation_network_id = 0
-            else
-                allocation_network_id = row.allocation_network_id
-                if !haskey(node_ids_allocation_graph, allocation_network_id)
-                    node_ids_allocation_graph[allocation_network_id] = Vector{NodeID}()
-                end
-                push!(node_ids_allocation_graph[allocation_network_id], node_id)
-            end
-        else
+        if ismissing(row.allocation_network_id)
             allocation_network_id = 0
+        else
+            allocation_network_id = row.allocation_network_id
+            if !haskey(node_ids, allocation_network_id)
+                node_ids[allocation_network_id] = Set{NodeID}()
+            end
+            push!(node_ids[allocation_network_id], node_id)
         end
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
-    for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
+    for (; from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
         try
             # hasfield does not work
             edge_type = getfield(EdgeType, Symbol(edge_type))
         catch
             error("Invalid edge type $edge_type.")
         end
-        graph[NodeID(from_node_id), NodeID(to_node_id)] =
-            EdgeMetadata(EdgeID(fid), edge_type)
+        id_src = NodeID(from_node_id)
+        id_dst = NodeID(to_node_id)
+        if ismissing(allocation_network_id)
+            allocation_network_id = 0
+        else
+            edge_metadata =
+                EdgeMetadata(edge_type, allocation_network_id, id_src, id_dst, false)
+            graph[id_src, id_dst] = edge_metadata
+            if allocation_network_id != 0
+                if !haskey(edges_source, allocation_network_id)
+                    edges_source[allocation_network_id] = Set{EdgeMetadata}()
+                end
+                push!(edges_source[allocation_network_id], edge_metadata)
+            end
+        end
     end
     return graph
 end
