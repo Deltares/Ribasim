@@ -834,7 +834,8 @@ function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridEx
             # Ensure it doesn't extrapolate before the first value.
             new_interp = LinearInterpolation(
                 [subgrid_level[1], subgrid_level...],
-                [prevfloat(basin_level[1]), basin_level...],
+                [prevfloat(basin_level[1]), basin_level...];
+                extrapolate = true,
             )
             push!(basin_ids, node_to_basin[node_id])
             push!(interpolations, new_interp)
