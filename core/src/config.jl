@@ -109,10 +109,10 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
-    basin::String = "results/basin.arrow"
-    flow::String = "results/flow.arrow"
-    control::String = "results/control.arrow"
-    allocation::String = "results/allocation.arrow"
+    basin::String = "basin.arrow"
+    flow::String = "flow.arrow"
+    control::String = "control.arrow"
+    allocation::String = "allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
@@ -134,12 +134,12 @@ end
     endtime::DateTime
 
     # optional, when Config is created from a TOML file, this is its directory
-    relative_dir::String = "."  # ignored(!)
+    relative_dir::String = "."
     input_dir::String = "."
-    results_dir::String = "."
+    results_dir::String = "results"
 
     # input, required
-    database::String
+    database::String = "database.gpkg"
 
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
