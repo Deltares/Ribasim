@@ -1,0 +1,34 @@
+---
+title: "QGIS plugin development"
+---
+
+# Set up the developer environment
+
+First set up pixi as described in the [Python tooling](python.qmd) page.
+
+QGIS is installed with Pixi when running `pixi run install`.
+To further set up the development environment, you must add the plugins to QGIS.
+The simplest way to do this is by running `pixi run install-qgis-plugins`.
+It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it.
+
+:::{.callout-note}
+On Windows you need to have Developer mode enabled.
+Otherwise you will not have enough access rights to create symlinks.
+For more info, see this [Windows blog](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/).
+:::
+
+# Running QGIS
+
+In order to run QGIS with the plugins, simply call `pixi run qgis`.
+You will find the Ribasim and iMOD plugins in the tool bars.
+
+:::{.callout-note}
+On Windows, running QGIS from the start menu will disable Python, and thus the plugins.
+QGIS needs some more paths during the startup and the Pixi environment provides those.
+:::
+
+# Running tests
+
+To run the QGIS plugin tests in the application environment of QGIS, it is best to make use of the Docker environment provided in this repository. Make sure that docker is installed and available in your path.
+
+Then simply call `pixi run test-ribasim-qgis`.
