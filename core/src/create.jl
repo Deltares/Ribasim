@@ -236,50 +236,14 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     return Connectivity(graph, flow, allocation_models)
 end
 
-function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Nothing
+function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; connectivity) = p
-    node = load_structvector(db, config, NodeV1)
-    edge = load_structvector(db, config, EdgeV1)
+    (; allocation_models, graph) = connectivity
 
-    # coalesce control_state to nothing to avoid boolean groupby logic on missing
-    allocation_groups_node =
-        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), node)
-    allocation_groups_edge =
-        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), edge)
-
-    allocation_groups_node_dict = Dict{Int, StructVector}()
-    allocation_groups_edge_dict = Dict{Int, StructVector}()
-
-    for allocation_group_node in allocation_groups_node
-        allocation_network_id = first(allocation_group_node).allocation_network_id
-        if !ismissing(allocation_network_id)
-            allocation_groups_node_dict[allocation_network_id] = allocation_group_node
-        end
-    end
-    for allocation_group_edge in allocation_groups_edge
-        allocation_network_id = first(allocation_group_edge).allocation_network_id
-        if !ismissing(allocation_network_id)
-            allocation_groups_edge_dict[allocation_network_id] = allocation_group_edge
-        end
-    end
-
-    for (allocation_network_id, allocation_group_node) in allocation_groups_node_dict
-        allocation_group_edge = get(
-            allocation_groups_edge_dict,
-            allocation_network_id,
-            StructVector{EdgeV1}(undef, 0),
-        )
-        source_edge_ids = [row.fid for row in allocation_group_edge]
+    for allocation_network_id in keys(graph[].node_ids_allocation_graph)
         push!(
-            connectivity.allocation_models,
-            AllocationModel(
-                config,
-                allocation_network_id,
-                p,
-                NodeID.(allocation_group_node.fid),
-                source_edge_ids,
-                config.allocation.timestep,
-            ),
+            allocation_models,
+            AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
         )
     end
     return nothing
@@ -875,7 +839,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.allocation.use_allocation
-        generate_allocation_models!(p, db, config)
+        generate_allocation_models!(p, config)
     end
     return p
 end

@@ -14,28 +14,40 @@ end
 
 """
 Return a directed metagraph with data of nodes (NodeMetadata):
-- Node type (snake case)
-- Allocation network ID
+[`NodeMetadata`](@ref)
 
 and data of edges (EdgeMetadata):
-- Edge ID (EdgeID)
-- type (flow/control)
+[`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB)::MetaGraph
-    node_rows = execute(db, "select fid, type from Node")
+    node_rows = execute(db, "select fid, type, allocation_network_id from Node")
     edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    node_ids_allocation_graph = Dict{Int, Vector{NodeID}}()
+    edge_ids_allocation_graph = Dict{Int, Vector{EdgeID}}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = EdgeMetadata,
-        graph_data = nothing, # In theory all remaining connectivity data could be put here
+        graph_data = (; node_ids_allocation_graph, edge_ids_allocation_graph),
     )
     for row in node_rows
-        allocation_network_id =
-            hasproperty(row, :allocation_network_id) ? row.allocation_network_id : 0
-        graph[NodeID(row.fid)] =
-            NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
+        node_id = NodeID(row.fid)
+        # Process allocation network ID
+        if hasproperty(row, :allocation_network_id)
+            if ismissing(row.allocation_network_id)
+                allocation_network_id = 0
+            else
+                allocation_network_id = row.allocation_network_id
+                if !haskey(node_ids_allocation_graph, allocation_network_id)
+                    node_ids_allocation_graph[allocation_network_id] = Vector{NodeID}()
+                end
+                push!(node_ids_allocation_graph[allocation_network_id], node_id)
+            end
+        else
+            allocation_network_id = 0
+        end
+        graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
     for (; from_node_id, to_node_id, edge_type, fid) in edge_rows
         try
@@ -93,6 +105,26 @@ function all_neighbor_labels_type(
         outneighbor_labels_type(graph, label, edge_type)...,
         inneighbor_labels_type(graph, label, edge_type)...,
     ]
+end
+
+function outflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return outneighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+function inflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return inneighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+function inoutflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return all_neighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+function outflow_id(graph::MetaGraph, id::NodeID)::NodeID
+    return only(outflow_ids(graph, id))
+end
+
+function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
+    return only(inflow_ids(graph, id))
 end
 
 """
@@ -752,8 +784,8 @@ function update_jac_prototype!(
     (; graph) = connectivity
 
     for id in node.node_id
-        id_in = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        id_out = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        id_in = inflow_id(graph, id)
+        id_out = outflow_id(graph, id)
 
         has_index_in, idx_in = id_index(basin.node_id, id_in)
         has_index_out, idx_out = id_index(basin.node_id, id_out)
@@ -817,7 +849,7 @@ function update_jac_prototype!(
     (; graph) = connectivity
 
     for (i, id) in enumerate(node.node_id)
-        id_in = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        id_in = inflow_id(graph, id)
 
         if hasfield(typeof(node), :is_pid_controlled) && node.is_pid_controlled[i]
             continue
@@ -836,7 +868,7 @@ function update_jac_prototype!(
                 get_fractional_flow_connected_basins(id, basin, fractional_flow, graph)
 
             if isempty(idxs_out)
-                id_out = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+                id_out = outflow_id(graph, id)
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
@@ -886,7 +918,7 @@ function update_jac_prototype!(
         jac_prototype[pid_state_idx, listen_idx] = 1.0
 
         if id_controlled in pump.node_id
-            id_pump_out = only(inneighbor_labels_type(graph, id_controlled, EdgeType.flow))
+            id_pump_out = inflow_id(graph, id_controlled)
 
             # The basin downstream of the pump
             has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
@@ -899,8 +931,7 @@ function update_jac_prototype!(
                 jac_prototype[listen_idx, idx_out_out] = 1.0
             end
         else
-            id_outlet_in =
-                only(outneighbor_labels_type(graph, id_controlled, EdgeType.flow))
+            id_outlet_in = outflow_id(graph, id_controlled)
 
             # The basin upstream of the outlet
             has_index, idx_out_in = id_index(basin.node_id, id_outlet_in)
@@ -930,10 +961,9 @@ function get_fractional_flow_connected_basins(
     fractional_flow_idxs = Int[]
     basin_idxs = Int[]
 
-    for first_outneighbor_id in outneighbor_labels_type(graph, node_id, EdgeType.flow)
+    for first_outneighbor_id in outflow_ids(graph, node_id)
         if first_outneighbor_id in fractional_flow.node_id
-            second_outneighbor_id =
-                only(outneighbor_labels_type(graph, first_outneighbor_id, EdgeType.flow))
+            second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
             has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
             if has_index
                 push!(

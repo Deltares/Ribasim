@@ -406,18 +406,23 @@ function sorted_table!(
     return table
 end
 
-struct NodeID
+abstract type ID end
+
+struct NodeID <: ID
     value::Int
 end
 
-Base.broadcastable(id::NodeID) = Ref(id)
-Base.show(io::IO, id::NodeID) = print(io, "#$(id.value)")
+Base.convert(::Type{NodeID}, value::Int) = NodeID(value)
+Base.broadcastable(id::ID) = Ref(id)
+Base.show(io::IO, id::ID) = print(io, '#', id.value)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
     return id_1.value < id_2.value
 end
 
 function Base.getindex(M::AbstractArray, id_row::NodeID, id_col::NodeID)
+    # TODO: This method is only used for the flow matrix, and can be removed
+    # once the flow is stored in a different data structure
     return M[id_row.value, id_col.value]
 end
 
@@ -427,6 +432,8 @@ function Base.setindex!(
     id_row::NodeID,
     id_col::NodeID,
 )::Nothing where {T}
+    # TODO: This method is only used for the flow matrix, and can be removed
+    # once the flow is stored in a different data structure
     M[id_row.value, id_col.value] = value
     return nothing
 end
@@ -547,15 +554,13 @@ function valid_pid_connectivity(
         controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
 
         if controlled_id in pump_node_id
-            pump_intake_id =
-                only(inneighbor_labels_type(graph, controlled_id, EdgeType.flow))
+            pump_intake_id = inflow_id(graph, controlled_id)
             if pump_intake_id != listen_id
                 @error "Listen node $listen_id of PidControl node $id is not upstream of controlled pump $controlled_id"
                 errors = true
             end
         else
-            outlet_outflow_id =
-                only(outneighbor_labels_type(graph, controlled_id, EdgeType.flow))
+            outlet_outflow_id = outflow_id(graph, controlled_id)
             if outlet_outflow_id != listen_id
                 @error "Listen node $listen_id of PidControl node $id is not downstream of controlled outlet $controlled_id"
                 errors = true

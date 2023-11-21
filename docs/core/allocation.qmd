@@ -74,7 +74,7 @@ For notational convenience, we use the notation
     V^{\text{in}}_S(j) = \left\{i \in V'_S : (i,j) \in E_S\right\}
 \end{align}
 
-for the set of in-neighbors and out-neighbors of a node in the allocation graph respectively.s
+for the set of in-neighbors and out-neighbors of a node in the allocation graph respectively
 
 ### The allocation graph capacities
 
@@ -155,7 +155,7 @@ $$
 $$ {#eq-returnflowconstraint}
 Here we use that each user node in the allocation graph has a unique in-edge and out-edge.
 - User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
-- Fractinal flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
+- Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
     F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
     \forall i \in L_S, \;

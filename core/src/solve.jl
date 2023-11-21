@@ -78,7 +78,10 @@ struct Connectivity{T}
         Ribasim.NodeID,
         Ribasim.NodeMetadata,
         Ribasim.EdgeMetadata,
-        Nothing,
+        @NamedTuple{
+            node_ids_allocation_graph::Dict{Int, Vector{NodeID}},
+            edge_ids_allocation_graph::Dict{Int, Vector{EdgeID}},
+        },
         MetaGraphsNext.var"#11#13",
         Float64,
     }
@@ -643,8 +646,8 @@ function continuous_control!(
 
         # No flow of outlet if source level is lower than target level
         if !controls_pump
-            src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
-            dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+            src_id = inflow_id(graph, controlled_node_id)
+            dst_id = outflow_id(graph, controlled_node_id)
 
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
@@ -668,8 +671,7 @@ function continuous_control!(
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
             # Upstream node of outlet does not have to be a basin
-            upstream_node_id =
-                only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+            upstream_node_id = inflow_id(graph, controlled_node_id)
             has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
             if has_index
                 upstream_basin_storage = u.storage[upstream_basin_idx]
@@ -736,8 +738,8 @@ function continuous_control!(
         end
 
         # Set flow for connected edges
-        src_id = only(inneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow))
+        src_id = inflow_id(graph, controlled_node_id)
+        dst_id = outflow_id(graph, controlled_node_id)
 
         flow[src_id, controlled_node_id] = flow_rate
         flow[controlled_node_id, dst_id] = flow_rate
@@ -749,9 +751,9 @@ function continuous_control!(
 
         # When the controlled pump flows out into fractional flow nodes
         if controls_pump
-            for id in outneighbor_labels_type(graph, controlled_node_id, EdgeType.flow)
+            for id in outflow_ids(graph, controlled_node_id)
                 if id in fractional_flow.node_id
-                    after_ff_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+                    after_ff_id = outflow_ids(graph, id)
                     ff_idx = findsorted(fractional_flow, id)
                     flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
                     flow[id, after_ff_id] = flow_rate_fraction
@@ -781,8 +783,8 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        src_id = inflow_id(graph, id)
+        dst_id = outflow_id(graph, id)
 
         if !active[i]
             continue
@@ -834,8 +836,8 @@ function formulate_flow!(
     (; node_id, active, resistance) = linear_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_a_id = inflow_id(graph, id)
+        basin_b_id = outflow_id(graph, id)
 
         if active[i]
             q =
@@ -864,8 +866,8 @@ function formulate_flow!(
     (; node_id, active, tables) = tabulated_rating_curve
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        upstream_basin_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        downstream_ids = outneighbor_labels_type(graph, id, EdgeType.flow)
+        upstream_basin_id = inflow_id(graph, id)
+        downstream_ids = outflow_id(graph, id)
 
         if active[i]
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
@@ -935,8 +937,8 @@ function formulate_flow!(
         manning_resistance
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
-        basin_a_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        basin_b_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        basin_a_id = inflow_id(graph, id)
+        basin_b_id = outflow_id(graph, id)
 
         if !active[i]
             continue
@@ -992,8 +994,8 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
-        downstream_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
-        upstream_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
+        downstream_id = outflow_id(graph, id)
+        upstream_id = inflow_id(graph, id)
         # overwrite the inflow such that flow is conserved over the FractionalFlow
         outflow = flow[upstream_id, id] * fraction[i]
         flow[upstream_id, id] = outflow
@@ -1014,7 +1016,7 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for upstream_id in inneighbor_labels_type(graph, id, EdgeType.flow)
+        for upstream_id in inflow_id(graph, id)
             q = flow[upstream_id, id]
             flow[id, id] -= q
         end
@@ -1034,11 +1036,11 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for in_id in inneighbor_labels_type(graph, id, EdgeType.flow)
+        for in_id in inflow_ids(graph, id)
             q = flow[in_id, id]
             flow[id, id] -= q
         end
-        for out_id in outneighbor_labels_type(graph, id, EdgeType.flow)
+        for out_id in outflow_ids(graph, id)
             q = flow[id, out_id]
             flow[id, id] += q
         end
@@ -1059,7 +1061,7 @@ function formulate_flow!(
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for dst_id in outneighbor_labels_type(graph, id, EdgeType.flow)
+        for dst_id in outflow_ids(graph, id)
             if !active[i]
                 continue
             end
@@ -1086,8 +1088,8 @@ function formulate_flow!(
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
-        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        src_id = inflow_id(graph, id)
+        dst_id = outflow_id(graph, id)
 
         if !isactive || pid_controlled
             continue
@@ -1120,8 +1122,8 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
-        src_id = only(inneighbor_labels_type(graph, id, EdgeType.flow))
-        dst_id = only(outneighbor_labels_type(graph, id, EdgeType.flow))
+        src_id = inflow_id(graph, id)
+        dst_id = outflow_id(graph, id)
 
         if !active[i] || is_pid_controlled[i]
             continue
@@ -1167,10 +1169,10 @@ function formulate_du!(
     # add all ingoing flows
     (; graph) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inneighbor_labels_type(graph, basin_id, EdgeType.flow)
+        for in_id in inflow_ids(graph, basin_id)
             du[i] += flow[in_id, basin_id]
         end
-        for out_id in outneighbor_labels_type(graph, basin_id, EdgeType.flow)
+        for out_id in outflow_ids(graph, basin_id)
             du[i] -= flow[basin_id, out_id]
         end
     end

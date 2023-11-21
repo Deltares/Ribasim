@@ -1,29 +1,9 @@
 """
-Temporary solution before 'edge_ids_flow_inv' is no longer needed.
-"""
-function get_edge_ids_flow_inv(graph::MetaGraph)
-    edge_ids_flow_inv = Dict{Int, Tuple{NodeID, NodeID}}()
-    for e in edges(graph)
-        id_src = label_for(graph, e.src)
-        id_dst = label_for(graph, e.dst)
-        edge_metadata = graph[id_src, id_dst]
-        if edge_metadata.type == EdgeType.flow
-            edge_ids_flow_inv[edge_metadata.id.value] = (id_src, id_dst)
-        end
-    end
-    return edge_ids_flow_inv
-end
-
-"""
 Get:
 - The mapping from subnetwork node IDs to allocation graph node IDs
 - The mapping from allocation graph source node IDs to subnetwork source edge IDs
 """
-function get_node_id_mapping(
-    p::Parameters,
-    subnetwork_node_ids::Vector{NodeID},
-    source_edge_ids::Vector{Int},
-)
+function get_node_id_mapping(p::Parameters)
     (; connectivity) = p
     (; graph) = connectivity
 
@@ -103,12 +83,9 @@ function find_allocation_graph_edges!(
     capacity = spzeros(n_allocgraph_nodes, n_allocgraph_nodes)
 
     for subnetwork_node_id in subnetwork_node_ids
-        subnetwork_inneighbor_ids =
-            inneighbor_labels_type(graph, subnetwork_node_id, EdgeType.flow)
-        subnetwork_outneighbor_ids =
-            outneighbor_labels_type(graph, subnetwork_node_id, EdgeType.flow)
-        subnetwork_neighbor_ids =
-            all_neighbor_labels_type(graph, subnetwork_node_id, EdgeType.flow)
+        subnetwork_inneighbor_ids = inflow_ids(graph, subnetwork_node_id)
+        subnetwork_outneighbor_ids = outflow_ids(graph, subnetwork_node_id)
+        subnetwork_neighbor_ids = inoutflow_ids(graph, subnetwork_node_id)
 
         if subnetwork_node_id in keys(node_id_mapping)
             if subnetwork_node_id ∉ user.node_id
@@ -241,8 +218,7 @@ function process_allocation_graph_edges!(
 
             # Find flow direction constraints
             if is_flow_direction_constraining(node)
-                subnetwork_inneighbor_node_id =
-                    only(inneighbor_labels_type(graph, subnetwork_node_id_2, EdgeType.flow))
+                subnetwork_inneighbor_node_id = inflow_id(graph, subnetwork_node_id_2)
 
                 if subnetwork_inneighbor_node_id == subnetwork_node_id_1
                     negative_flow = false
@@ -323,11 +299,7 @@ end
 """
 Build the graph used for the allocation problem.
 """
-function allocation_graph(
-    p::Parameters,
-    subnetwork_node_ids::Vector{NodeID},
-    source_edge_ids::Vector{Int},
-)
+function allocation_graph(p::Parameters, allocation_network_id::Int)
     # Get the subnetwork and allocation node correspondence
     node_id_mapping, source_edge_mapping =
         get_node_id_mapping(p, subnetwork_node_ids, source_edge_ids)
@@ -337,9 +309,6 @@ function allocation_graph(
     for (subnetwork_node_id, (allocgraph_node_id, node_type)) in node_id_mapping
         node_id_mapping_inverse[allocgraph_node_id] = (subnetwork_node_id, node_type)
     end
-
-    # Initialize the allocation graph
-    graph_allocation = DiGraph(length(node_id_mapping))
 
     # Find the edges in the allocation graph
     allocgraph_edges_composite, capacity = find_allocation_graph_edges!(
@@ -614,11 +583,6 @@ Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
     config::Config,
-    node_id_mapping::Dict{NodeID, Tuple{Int, Symbol}},
-    allocgraph_node_ids_user_with_returnflow::Vector{Int},
-    allocgraph_edges::Vector{Edge{Int}},
-    allocgraph_edge_ids_user_demand::Dict{Int, Int},
-    source_edge_mapping::Dict{Int, Int},
     graph_allocation::DiGraph{Int},
     capacity::SparseMatrixCSC{Float64, Int},
 )::JuMP.Model
@@ -684,41 +648,16 @@ function AllocationModel(
     config::Config,
     allocation_network_id::Int,
     p::Parameters,
-    subnetwork_node_ids::Vector{NodeID},
-    source_edge_ids::Vector{Int},
     Δt_allocation::Float64,
 )::AllocationModel
-    graph_allocation,
-    capacity,
-    node_id_mapping,
-    node_id_mapping_inverse,
-    source_edge_mapping,
-    allocgraph_node_ids_user_with_returnflow,
-    allocgraph_edges,
-    allocgraph_edge_ids_user_demand =
-        allocation_graph(p, subnetwork_node_ids, source_edge_ids)
+    capacity = allocation_graph(p, allocation_network_id)
 
     # The JuMP.jl allocation problem
-    problem = allocation_problem(
-        config,
-        node_id_mapping,
-        allocgraph_node_ids_user_with_returnflow,
-        allocgraph_edges,
-        allocgraph_edge_ids_user_demand,
-        source_edge_mapping,
-        graph_allocation,
-        capacity,
-    )
+    problem = allocation_problem(config, graph_allocation, capacity)
 
     return AllocationModel(
         Symbol(config.allocation.objective_type),
         allocation_network_id,
-        subnetwork_node_ids,
-        node_id_mapping,
-        node_id_mapping_inverse,
-        allocgraph_edge_ids_user_demand,
-        source_edge_mapping,
-        graph_allocation,
         capacity,
         problem,
         Δt_allocation,
@@ -822,13 +761,7 @@ function assign_allocations!(
         push!(record.allocated, allocated)
         # Note: This is now the last abstraction before the allocation update,
         # should be the average abstraction since the last allocation solve
-        push!(
-            record.abstracted,
-            flow[
-                only(inneighbor_labels_type(graph, model_node_id, EdgeType.flow)),
-                model_node_id,
-            ],
-        )
+        push!(record.abstracted, flow[inflow_id(graph, model_node_id), model_node_id])
     end
     return nothing
 end

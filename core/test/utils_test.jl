@@ -1,7 +1,7 @@
 @testitem "id_index" begin
     using Dictionaries: Indices
 
-    ids = Indices([Ribasim.NodeID(2), Ribasim.NodeID(4), Ribasim.NodeID(6)])
+    ids = Indices(Ribasim.NodeID[2, 4, 6])
     @test Ribasim.id_index(ids, Ribasim.NodeID(4)) === (true, 2)
     @test Ribasim.id_index(ids, Ribasim.NodeID(5)) === (false, 0)
 end
@@ -23,7 +23,7 @@ end
     darea = zeros(2)
     storage = Ribasim.profile_storage.(level, area)
     basin = Ribasim.Basin(
-        Indices([Ribasim.NodeID(5), Ribasim.NodeID(7)]),
+        Indices(Ribasim.NodeID[5, 7]),
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
@@ -97,7 +97,7 @@ end
     ]
     storage = Ribasim.profile_storage(level, area)
     basin = Ribasim.Basin(
-        Indices([Ribasim.NodeID(1)]),
+        Indices(Ribasim.NodeID[1]),
         zeros(1),
         zeros(1),
         zeros(1),
