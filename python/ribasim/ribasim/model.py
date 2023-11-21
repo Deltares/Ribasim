@@ -225,10 +225,6 @@ class Model(FileModel):
         content.append(")")
         return "\n".join(content)
 
-    def _repr_html(self):
-        # Default to standard repr for now
-        return self.__repr__()
-
     def _write_toml(self, directory: FilePath):
         directory = Path(directory)
 
