@@ -319,7 +319,7 @@ class TableModel(FileModel, Generic[TableT]):
     def __repr__(self) -> str:
         # Make sure not to return just "None", because it gets extremely confusing
         # when debugging.
-        return f"<{self.tablename()}>\n{self.df.__repr__()}"
+        return f"{self.tablename()}\n{self.df.__repr__()}"
 
     def _repr_html_(self):
         if self.df is None:

@@ -210,17 +210,19 @@ class Model(FileModel):
 
         Skip "empty" NodeModel instances: when all dataframes are None.
         """
-        content = ["<ribasim.Model>"]
+        content = ["ribasim.Model("]
+        INDENT = "    "
         for field in self.fields():
             attr = getattr(self, field)
             if isinstance(attr, NodeModel):
                 attr_content = attr._repr_content()
                 typename = type(attr).__name__
                 if attr_content:
-                    content.append(f"{field}={typename}({attr_content})")
+                    content.append(f"{INDENT}{field}={typename}({attr_content}),")
             else:
-                content.append(f"{field}={repr(attr)}")
+                content.append(f"{INDENT}{field}={repr(attr)},")
 
+        content.append(")")
         return "\n".join(content)
 
     def _repr_html(self):
