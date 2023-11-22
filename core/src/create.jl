@@ -860,15 +860,12 @@ function create_subgrid_exporters(
     basin::Basin,
 )::Dict{String, SubgridExporter}
     subgrid_exporters = Dict{String, SubgridExporter}()
-    if !isnothing(config.results.subgrid_levels)
-        node_to_basin =
-            Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-        tables = load_structvector(db, config, BasinSubgridV1)
-        if !isempty(tables)
-            for group in IterTools.groupby(row -> row.name, tables)
-                name = first(getproperty.(group, :name))
-                subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
-            end
+    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
+    tables = load_structvector(db, config, BasinSubgridV1)
+    if !isempty(tables)
+        for group in IterTools.groupby(row -> row.name, tables)
+            name = first(getproperty.(group, :name))
+            subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
         end
     end
     return subgrid_exporters

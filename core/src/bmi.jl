@@ -174,11 +174,9 @@ function BMI.finalize(model::Model)::Model
     write_arrow(path, table, compress)
 
     # exported levels
-    if !isnothing(results.subgrid_levels)
-        table = subgrid_levels_table(model)
-        path = results_path(config, results.subgrid_levels)
-        write_arrow(path, table, compress)
-    end
+    table = subgrid_levels_table(model)
+    path = results_path(config, results.subgrid_levels)
+    write_arrow(path, table, compress)
 
     @debug "Wrote results."
     return model

@@ -112,8 +112,6 @@ def trivial_model() -> ribasim.Model:
         )
     )
 
-    results = ribasim.Results(subgrid_levels="results/subgrid_levels.arrow")
-
     model = ribasim.Model(
         network=ribasim.Network(
             node=node,
@@ -124,6 +122,6 @@ def trivial_model() -> ribasim.Model:
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
-        results=results,
+        results=ribasim.Results(),
     )
     return model
