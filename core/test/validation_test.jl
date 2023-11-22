@@ -304,7 +304,7 @@ end
           "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
 end
 
-@testset "Level exporter validation" begin
+@testitem "Level exporter validation" begin
     node_to_basin = Dict(9 => 1)
     errors = Ribasim.valid_subgrid_exporter(1, 10, node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     @test length(errors) == 1
