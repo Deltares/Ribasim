@@ -60,17 +60,16 @@ function create_graph(db::DB)::MetaGraph
         id_dst = NodeID(to_node_id)
         if ismissing(allocation_network_id)
             allocation_network_id = 0
-        else
-            edge_metadata =
-                EdgeMetadata(edge_type, allocation_network_id, id_src, id_dst, false)
-            graph[id_src, id_dst] = edge_metadata
-            if allocation_network_id != 0
-                if !haskey(edges_source, allocation_network_id)
-                    edges_source[allocation_network_id] = Set{EdgeMetadata}()
-                end
-                push!(edges_source[allocation_network_id], edge_metadata)
-            end
         end
+        edge_metadata =
+            EdgeMetadata(edge_type, allocation_network_id, id_src, id_dst, false)
+        if allocation_network_id != 0
+            if !haskey(edges_source, allocation_network_id)
+                edges_source[allocation_network_id] = Set{EdgeMetadata}()
+            end
+            push!(edges_source[allocation_network_id], edge_metadata)
+        end
+        graph[id_src, id_dst] = edge_metadata
     end
     return graph
 end
@@ -1043,9 +1042,13 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
 
-"""Find out whether a path exists between a start node and end node in the given graph."""
-function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::Int)::Bool
-    node_ids_visited = Set{Int}()
+"""Find out whether a path exists between a start node and end node in the given allocation graph."""
+function allocation_path_exists_in_graph(
+    graph::MetaGraph,
+    start_node_id::NodeID,
+    end_node_id::NodeID,
+)::Bool
+    node_ids_visited = Set{NodeID}()
     stack = [start_node_id]
 
     while !isempty(stack)
@@ -1055,28 +1058,10 @@ function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::I
         end
         if !(current_node_id in node_ids_visited)
             push!(node_ids_visited, current_node_id)
-            for outneighbor_node_id in outneighbors(graph, current_node_id)
+            for outneighbor_node_id in outflow_ids_allocation(graph, current_node_id)
                 push!(stack, outneighbor_node_id)
             end
         end
     end
     return false
-end
-
-"""
-Get two dictionaries, where:
-- The first one gives the IDs of the inedges for each node ID in the graph
-- The second one gives the IDs of the outedges for each node ID in the graph
-"""
-function get_node_in_out_edges(
-    graph::DiGraph{Int},
-)::Tuple{Dict{Int, Vector{Int}}, Dict{Int, Vector{Int}}}
-    n_nodes = nv(graph)
-    node_inedge_ids = Dict(i => Int[] for i in 1:n_nodes)
-    node_outedge_ids = Dict(i => Int[] for i in 1:n_nodes)
-    for (i, edge) in enumerate(edges(graph))
-        push!(node_inedge_ids[edge.dst], i)
-        push!(node_outedge_ids[edge.src], i)
-    end
-    return node_inedge_ids, node_outedge_ids
 end
