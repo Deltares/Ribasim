@@ -39,7 +39,7 @@ function indicate_allocation_flow!(
     id_dst::NodeID,
 )::Nothing
     if !haskey(graph, id_src, id_dst)
-        edge_metadata = EdgeMetadata(EdgeType.none, 0, id_src, id_dst, true)
+        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true)
     else
         edge_metadata = graph[id_src, id_dst]
         edge_metadata = @set edge_metadata.allocation_flow = true
@@ -485,7 +485,6 @@ function add_constraints_flow_conservation!(
     (; connectivity) = p
     (; graph) = connectivity
     F = problem[:F]
-    println(F)
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_basin = [node_id for node_id in node_ids if graph[node_id].type == :basin]
     problem[:flow_conservation] = JuMP.@constraint(
@@ -545,12 +544,19 @@ expr_abs >= -expr
 """
 function add_constraints_absolute_value!(
     problem::JuMP.Model,
-    allocgraph_edge_ids_user_demand::Dict{Int, Int},
+    p::Parameters,
+    allocation_network_id::Int,
     config::Config,
 )::Nothing
+    (; connectivity) = p
+    (; graph) = connectivity
+    node_ids = graph[].node_ids[allocation_network_id]
+
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
-        allocgraph_edge_ids_user_demand = collect(values(allocgraph_edge_ids_user_demand))
+        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+        node_ids_user_inflow =
+            Dict(node_id_user => only(inflow_ids_allocation(graph, node_id_user)))
         F = problem[:F]
         F_abs = problem[:F_abs]
         d = 2.0
@@ -560,14 +566,16 @@ function add_constraints_absolute_value!(
             # value F_abs = |x| where x = F-d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
                 problem,
-                [i = allocgraph_edge_ids_user_demand],
-                F_abs[i] >= (F[i] - d),
+                [node_id_user = node_ids_user],
+                F_abs[node_id_user.value] >=
+                (F[node_ids_user_inflow[node_id_user].value, node_id_user.value] - d),
                 base_name = "abs_positive"
             )
             problem[:abs_negative] = JuMP.@constraint(
                 problem,
-                [i = allocgraph_edge_ids_user_demand],
-                F_abs[i] >= -(F[i] - d),
+                [node_id_user = node_ids_user],
+                F_abs[node_id_user.value] >=
+                -(F[node_ids_user_inflow[node_id_user].value, node_id_user.value] - d),
                 base_name = "abs_negative"
             )
         elseif config.allocation.objective_type == "linear_relative"
@@ -575,14 +583,18 @@ function add_constraints_absolute_value!(
             # value F_abs = |x| where x = 1-F/d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
                 problem,
-                [i = allocgraph_edge_ids_user_demand],
-                F_abs[i] >= (1 - F[i] / d),
+                [node_id_user = node_ids_user],
+                F_abs[node_id_user.value] >= (
+                    1 - F[node_ids_user_inflow[node_id_user].value, node_id_user.value] / d
+                ),
                 base_name = "abs_positive"
             )
             problem[:abs_negative] = JuMP.@constraint(
                 problem,
-                [i = allocgraph_edge_ids_user_demand],
-                F_abs[i] >= -(1 - F[i] / d),
+                [node_id_user = node_ids_user],
+                F_abs[node_id_user.value] >= -(
+                    1 - F[node_ids_user_inflow[node_id_user].value, node_id_user.value] / d
+                ),
                 base_name = "abs_negative"
             )
         end
@@ -665,13 +677,16 @@ For an objective with absolute values this also involves adjusting constraints.
 """
 function set_objective_priority!(
     allocation_model::AllocationModel,
-    user::User,
+    p::Parameters,
     t::Float64,
     priority_idx::Int,
 )::Nothing
-    (; objective_type, problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) =
-        allocation_model
+    (; objective_type, problem, allocation_network_id) = allocation_model
+    (; connectivity, user) = p
+    (; graph) = connectivity
     (; demand, node_id) = user
+    edge_ids = graph[].edge_ids[allocation_network_id]
+
     F = problem[:F]
     if objective_type in [:quadratic_absolute, :quadratic_relative]
         ex = JuMP.QuadExpr()
@@ -679,15 +694,20 @@ function set_objective_priority!(
         ex = sum(problem[:F_abs])
     end
 
-    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
-        user_idx = findsorted(node_id, node_id_mapping_inverse[allocgraph_node_id][1])
+    for edge_id in edge_ids
+        node_id_user = edge_id[2]
+        if graph[node_id_user].type != :user
+            continue
+        end
+
+        user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
+        F_edge = F[edge_id[1].value, edge_id[2].value]
 
         if objective_type == :quadratic_absolute
             # Objective function ∑ (F - d)^2
-            F_ij = F[allocgraph_edge_id]
-            JuMP.add_to_expression!(ex, 1, F_ij, F_ij)
-            JuMP.add_to_expression!(ex, -2 * d, F_ij)
+            JuMP.add_to_expression!(ex, 1, F_edge, F_edge)
+            JuMP.add_to_expression!(ex, -2 * d, F_edge)
             JuMP.add_to_expression!(ex, d^2)
 
         elseif objective_type == :quadratic_relative
@@ -695,9 +715,8 @@ function set_objective_priority!(
             if d ≈ 0
                 continue
             end
-            F_ij = F[allocgraph_edge_id]
-            JuMP.add_to_expression!(ex, 1.0 / d^2, F_ij, F_ij)
-            JuMP.add_to_expression!(ex, -2.0 / d, F_ij)
+            JuMP.add_to_expression!(ex, 1.0 / d^2, F_edge, F_edge)
+            JuMP.add_to_expression!(ex, -2.0 / d, F_edge)
             JuMP.add_to_expression!(ex, 1.0)
 
         elseif objective_type == :linear_absolute
@@ -709,12 +728,12 @@ function set_objective_priority!(
             # Objective function ∑ |1 - F/d|
             JuMP.set_normalized_coefficient(
                 problem[:abs_positive][allocgraph_edge_id],
-                F[allocgraph_edge_id],
+                F_edge,
                 iszero(d) ? 0 : 1 / d,
             )
             JuMP.set_normalized_coefficient(
                 problem[:abs_negative][allocgraph_edge_id],
-                F[allocgraph_edge_id],
+                F_edge,
                 iszero(d) ? 0 : -1 / d,
             )
         else
@@ -735,28 +754,32 @@ function assign_allocations!(
     t::Float64,
     priority_idx::Int,
 )::Nothing
-    (; problem, allocgraph_edge_ids_user_demand, node_id_mapping_inverse) = allocation_model
+    (; problem, allocation_network_id) = allocation_model
     (; connectivity, user) = p
     (; graph, flow) = connectivity
     (; record) = user
+    edge_ids = graph[].edge_ids[allocation_network_id]
     F = problem[:F]
     flow = get_tmp(flow, 0)
-    for (allocgraph_node_id, allocgraph_edge_id) in allocgraph_edge_ids_user_demand
-        model_node_id = node_id_mapping_inverse[allocgraph_node_id][1]
-        user_idx = findsorted(user.node_id, model_node_id)
-        allocated = JuMP.value(F[allocgraph_edge_id])
+    for edge_id in edge_ids
+        user_node_id = edge_id[2]
+        if graph[user_node_id].type != :user
+            continue
+        end
+        user_idx = findsorted(user.node_id, user_node_id)
+        allocated = JuMP.value(F[edge_id[1].value, edge_id[2].value])
         user.allocated[user_idx][priority_idx] = allocated
 
         # Save allocations to record
         push!(record.time, t)
         push!(record.allocation_network_id, allocation_model.allocation_network_id)
-        push!(record.user_node_id, model_node_id.value)
+        push!(record.user_node_id, user_node_id.value)
         push!(record.priority, user.priorities[priority_idx])
         push!(record.demand, user.demand[user_idx][priority_idx](t))
         push!(record.allocated, allocated)
         # Note: This is now the last abstraction before the allocation update,
         # should be the average abstraction since the last allocation solve
-        push!(record.abstracted, flow[inflow_id(graph, model_node_id), model_node_id])
+        push!(record.abstracted, flow[inflow_id(graph, user_node_id), user_node_id])
     end
     return nothing
 end
@@ -765,19 +788,20 @@ end
 Set the source flows as capacities on edges in the AG.
 """
 function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
-    (; problem, source_edge_mapping) = allocation_model
-    # Temporary solution!
-    edge_ids_flow_inv = get_edge_ids_flow_inv(p.connectivity.graph)
+    (; problem) = allocation_model
+    (; connectivity) = p
+    (; graph) = connectivity
+    (; allocation_network_id) = allocation_model
+    edge_ids = graph[].edge_ids[allocation_network_id]
+    source_constraints = problem[:source]
 
     # It is assumed that the allocation procedure does not have to be differentiated.
     flow = get_tmp(p.connectivity.flow, 0)
 
-    for (allocgraph_source_node_id, subnetwork_source_edge_id) in source_edge_mapping
-        node_ids = edge_ids_flow_inv[subnetwork_source_edge_id]
-        JuMP.set_normalized_rhs(
-            problem[:source][allocgraph_source_node_id],
-            flow[node_ids...],
-        )
+    for edge_id in edge_ids
+        if graph[edge_id...].allocation_network_id_source == allocation_network_id
+            JuMP.set_normalized_rhs(source_constraints[edge_id], flow[edge_id...])
+        end
     end
     return nothing
 end
@@ -790,14 +814,18 @@ Set the values of the edge capacities. 2 cases:
 """
 function adjust_edge_capacities!(
     allocation_model::AllocationModel,
+    p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; problem, capacity, graph_allocation) = allocation_model
+    (; connectivity) = p
+    (; graph) = connectivity
+    (; problem, capacity, allocation_network_id) = allocation_model
+    edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
-    for (i, e) in enumerate(edges(graph_allocation))
-        c = capacity[e.src, e.dst]
+    for edge_id in edge_ids
+        c = capacity[edge_id...]
 
         # Edges with infinite capacity have no capacity constraints
         if isinf(c)
@@ -806,13 +834,14 @@ function adjust_edge_capacities!(
 
         if priority_idx == 1
             # Before the first allocation solve, set the edge capacities to their full capacity
-            JuMP.set_normalized_rhs(constraints_capacity[i], c)
+            JuMP.set_normalized_rhs(constraints_capacity[edge_id], c)
         else
             # Before an allocation solve, subtract the flow used by allocation for the previous priority
             # from the edge capacities
             JuMP.set_normalized_rhs(
-                constraints_capacity[i],
-                JuMP.normalized_rhs(constraints_capacity[i]) - JuMP.value(F[i]),
+                constraints_capacity[edge_id],
+                JuMP.normalized_rhs(constraints_capacity[edge_id]) -
+                JuMP.value(F[edge_id[1].value, edge_id[2].value]),
             )
         end
     end
@@ -837,14 +866,14 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
     for priority_idx in eachindex(priorities)
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
-        adjust_edge_capacities!(allocation_model, priority_idx)
+        adjust_edge_capacities!(allocation_model, p, priority_idx)
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients
         # of an existing objective function because this is not supported for
         # quadratic terms:
         # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_priority!(allocation_model, user, t, priority_idx)
+        set_objective_priority!(allocation_model, p, t, priority_idx)
 
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)

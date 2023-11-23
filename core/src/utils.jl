@@ -23,7 +23,7 @@ function create_graph(db::DB)::MetaGraph
     node_rows = execute(db, "select fid, type, allocation_network_id from Node")
     edge_rows = execute(
         db,
-        "select from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
+        "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
     )
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
@@ -49,7 +49,7 @@ function create_graph(db::DB)::MetaGraph
         end
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
-    for (; from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
+    for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
         try
             # hasfield does not work
             edge_type = getfield(EdgeType, Symbol(edge_type))
@@ -62,7 +62,7 @@ function create_graph(db::DB)::MetaGraph
             allocation_network_id = 0
         end
         edge_metadata =
-            EdgeMetadata(edge_type, allocation_network_id, id_src, id_dst, false)
+            EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
         if allocation_network_id != 0
             if !haskey(edges_source, allocation_network_id)
                 edges_source[allocation_network_id] = Set{EdgeMetadata}()

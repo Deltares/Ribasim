@@ -9,13 +9,6 @@ Store information for a subnetwork used for allocation.
 
 objective_type: The name of the type of objective used
 allocation_network_id: The ID of this allocation network
-node_id: All the IDs of the nodes that are in this subnetwork
-node_id_mapping: Mapping Dictionary; model_node_id => AG_node_id where such a correspondence exists
-    (all AG node ids are in the values)
-node_id_mapping_inverse: The inverse of node_id_mapping, Dictionary; AG node ID => model node ID
-allocgraph_edge_ids_user_demand: AG user node ID => AG user inflow edge ID
-Source edge mapping: AG source node ID => subnetwork source edge ID
-graph_allocation: The graph used for the allocation problems
 capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
@@ -23,12 +16,6 @@ problem: The JuMP.jl model for solving the allocation problem
 struct AllocationModel
     objective_type::Symbol
     allocation_network_id::Int
-    node_id::Vector{NodeID}
-    node_id_mapping::Dict{NodeID, Tuple{Int, Symbol}}
-    node_id_mapping_inverse::Dict{Int, Tuple{NodeID, Symbol}}
-    allocgraph_edge_ids_user_demand::Dict{Int, Int}
-    source_edge_mapping::Dict{Int, Int}
-    graph_allocation::DiGraph{Int}
     capacity::SparseMatrixCSC{Float64, Int}
     problem::JuMP.Model
     Δt_allocation::Float64
@@ -48,7 +35,7 @@ end
 
 """
 Type for storing metadata of edges in the graph:
-id: ID of the edge
+id: ID of the edge (only used for labeling flow output)
 type: type of the edge
 allocation_network_id_source: ID of allocation network where this edge is a source
   (0 if not a source)
@@ -57,6 +44,7 @@ to_id: the node ID of the destination node
 allocation_flow: whether this edge has a flow in an allocation graph
 """
 struct EdgeMetadata
+    id::Int
     type::EdgeType.T
     allocation_network_id_source::Int
     from_id::NodeID
