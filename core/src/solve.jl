@@ -467,9 +467,7 @@ struct User <: AbstractParameterNode
     }
 end
 
-"""
-SubgridExporter linearly interpolates basin levels.
-"""
+"SubgridExporter linearly interpolates basin levels."
 struct SubgridExporter
     basin_index::Vector{Int}
     interpolations::Vector{ScalarInterpolation}

@@ -862,11 +862,9 @@ function create_subgrid_exporters(
     subgrid_exporters = Dict{String, SubgridExporter}()
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridLevelV1)
-    if !isempty(tables)
-        for group in IterTools.groupby(row -> row.name, tables)
-            name = first(getproperty.(group, :name))
-            subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
-        end
+    for group in IterTools.groupby(row -> row.name, tables)
+        name = first(getproperty.(group, :name))
+        subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
     end
     return subgrid_exporters
 end
