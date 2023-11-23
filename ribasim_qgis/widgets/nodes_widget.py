@@ -4,7 +4,6 @@ from typing import Optional, cast
 from PyQt5.QtWidgets import QGridLayout, QPushButton, QVBoxLayout, QWidget
 
 from ribasim_qgis.core.nodes import NODES
-from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
 
 class NodesWidget(QWidget):
@@ -53,6 +52,8 @@ class NodesWidget(QWidget):
         node_type: str
             Name of the element type.
         """
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
         parent_widget = cast(RibasimWidget, self.parent())
         klass = NODES[node_type]
         names = parent_widget.selection_names()

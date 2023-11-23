@@ -53,8 +53,8 @@ class Input(abc.ABC):
         self.name = self.input_type()
         self.__path = path
 
-    @abc.abstractmethod
     @classmethod
+    @abc.abstractmethod
     def input_type(cls) -> str:
         ...
 

@@ -32,7 +32,6 @@ from qgis.core.additions.edit import edit
 import ribasim_qgis.tomllib as tomllib
 from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
-from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -224,6 +223,8 @@ class DatasetWidget(QWidget):
         on_top: bool = False,
         labels: Any = None,
     ) -> QgsMapLayer | None:
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
         parent_widget = cast(RibasimWidget, self.parent())
         return parent_widget.add_layer(
             layer,
@@ -256,6 +257,9 @@ class DatasetWidget(QWidget):
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
         name = str(Path(self.path).stem)
+
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
         parent_widget = cast(RibasimWidget, self.parent())
         parent_widget.create_groups(name)
         for item in self.dataset_tree.items():
@@ -279,6 +283,9 @@ class DatasetWidget(QWidget):
             self.dataset_line_edit.setText(path)
             geo_path = Path(self.path).parent.joinpath("database.gpkg")
             self._write_new_model(geo_path.name)
+
+            from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
             parent_widget = cast(RibasimWidget, self.parent())
             for input_type in (Node, Edge):
                 instance = input_type.create(str(geo_path), parent_widget.crs, names=[])
@@ -303,6 +310,9 @@ class DatasetWidget(QWidget):
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
+
+            from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
             parent_widget = cast(RibasimWidget, self.parent())
             parent_widget.toggle_node_buttons(True)
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
