@@ -1,5 +1,7 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
+# If the kind consists of multiple words, these can also be split with extra dots,
+# such that from the "subgrid.level" schema we get "subgrid_level".
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
@@ -8,7 +10,7 @@
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.subgrid.level" BasinSubgridLevel
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -31,7 +33,7 @@ tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
 tablename(sv::SchemaVersion{T, N}) where {T, N} =
     join(filter(!isnothing, nodetype(sv)), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = isnode(sv())
-isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), ".")) == 3
+isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), '.'; limit = 3)) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 
 """
@@ -44,9 +46,9 @@ function nodetype(
     # so we parse the related record Ribasim.BasinTimeV1
     # to derive BasinTime from it.
     record = Legolas.record_type(sv)
-    node = last(split(string(Symbol(record)), "."))
+    node = last(split(string(Symbol(record)), '.'; limit = 3))
 
-    elements = split(string(T), ".")
+    elements = split(string(T), '.'; limit = 3)
     if isnode(sv)
         n = elements[2]
         k = Symbol(elements[3])
@@ -203,7 +205,7 @@ end
     level::Float64
 end
 
-@version BasinSubgridV1 begin
+@version BasinSubgridLevelV1 begin
     name::String
     subgrid_id::Int
     node_id::Int
@@ -381,7 +383,7 @@ sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
-sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_exporter
+sort_by_function(table::StructVector{BasinSubgridLevelV1}) = sort_by_exporter
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -638,21 +640,21 @@ function valid_subgrid_exporter(
     if !(node_id in keys(node_to_basin))
         push!(
             errors,
-            "The node_id of the BasinSubgrid does not refer to a basin: node_id $(node_id) for subgrid_id $(subgrid_id).",
+            "The node_id of the Basin / subgrid_level does not refer to a basin: node_id $(node_id) for subgrid_id $(subgrid_id).",
         )
     end
 
     if !allunique(basin_level)
         push!(
             errors,
-            "BasinSubgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated.",
+            "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated.",
         )
     end
 
     if !allunique(subgrid_level)
         push!(
             errors,
-            "BasinSubgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated.",
+            "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated.",
         )
     end
 

@@ -79,7 +79,7 @@ def trivial_model() -> ribasim.Model:
     # 2. start at 0.0
     # 3. start at 1.0
     #
-    subgrid = pd.DataFrame(
+    subgrid_level = pd.DataFrame(
         data={
             "name": "primary-system",
             "subgrid_id": [1, 1, 2, 2, 3, 3],
@@ -88,7 +88,7 @@ def trivial_model() -> ribasim.Model:
             "subgrid_level": [-1.0, 0.0, 0.0, 1.0, 1.0, 2.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static, subgrid=subgrid)
+    basin = ribasim.Basin(profile=profile, static=static, subgrid_level=subgrid_level)
 
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 1000.0.

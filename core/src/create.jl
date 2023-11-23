@@ -849,7 +849,7 @@ function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridEx
     else
         foreach(x -> @error(x), errors)
         error(
-            "Errors occurred while parsing BasinSubgrid data for group with name: $(name).",
+            "Errors occurred while parsing Basin / subgrid_level data for group with name: $(name).",
         )
     end
 end
@@ -861,7 +861,7 @@ function create_subgrid_exporters(
 )::Dict{String, SubgridExporter}
     subgrid_exporters = Dict{String, SubgridExporter}()
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-    tables = load_structvector(db, config, BasinSubgridV1)
+    tables = load_structvector(db, config, BasinSubgridLevelV1)
     if !isempty(tables)
         for group in IterTools.groupby(row -> row.name, tables)
             name = first(getproperty.(group, :name))

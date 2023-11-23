@@ -309,7 +309,7 @@ end
     errors = Ribasim.valid_subgrid_exporter(1, 10, node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     @test length(errors) == 1
     @test errors[1] ==
-          "The node_id of the BasinSubgrid does not refer to a basin: node_id 10 for subgrid_id 1."
+          "The node_id of the Basin / subgrid_level does not refer to a basin: node_id 10 for subgrid_id 1."
 
     errors = Ribasim.valid_subgrid_exporter(
         1,
@@ -320,7 +320,7 @@ end
     )
     @test length(errors) == 2
     @test errors[1] ==
-          "BasinSubgrid subgrid_id 1 has repeated basin levels, this cannot be interpolated."
+          "Basin / subgrid_level subgrid_id 1 has repeated basin levels, this cannot be interpolated."
     @test errors[2] ==
-          "BasinSubgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
+          "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
 end

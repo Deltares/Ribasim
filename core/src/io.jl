@@ -227,9 +227,9 @@ function allocation_table(model::Model)::NamedTuple
     )
 end
 
-function subgrid_levels_table(model::Model)::NamedTuple
+function subgrid_level_table(model::Model)::NamedTuple
     (; config, saved, integrator) = model
-    (; t, saveval) = saved.subgrid_levels
+    (; t, saveval) = saved.subgrid_level
 
     # The level exporter may contain multiple named systems, but the
     # saved levels are flat.

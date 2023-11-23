@@ -41,7 +41,7 @@
             ],
             "default": null
         },
-        "subgrid": {
+        "subgrid.level": {
             "format": "default",
             "anyOf": [
                 {

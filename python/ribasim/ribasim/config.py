@@ -10,7 +10,7 @@ from ribasim.schemas import (  # type: ignore
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
-    BasinSubgridSchema,
+    BasinSubgridLevelSchema,
     BasinTimeSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
@@ -48,7 +48,7 @@ class Results(BaseModel):
     basin: Path = Path("results/basin.arrow")
     flow: Path = Path("results/flow.arrow")
     control: Path = Path("results/control.arrow")
-    subgrid_levels: Path = Path("results/subgrid_levels.arrow")
+    subgrid_level: Path = Path("results/subgrid_level.arrow")
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6
@@ -164,14 +164,14 @@ class Basin(NodeModel):
     time: TableModel[BasinTimeSchema] = Field(
         default_factory=TableModel[BasinTimeSchema]
     )
-    subgrid: TableModel[BasinSubgridSchema] = Field(
-        default_factory=TableModel[BasinSubgridSchema]
+    subgrid_level: TableModel[BasinSubgridLevelSchema] = Field(
+        default_factory=TableModel[BasinSubgridLevelSchema]
     )
 
     _sort_keys: dict[str, list[str]] = {
         "profile": ["node_id", "level"],
         "time": ["time", "node_id"],
-        "subgrid": ["name", "subgrid_id", "node_id", "basin_level"],
+        "subgrid_level": ["name", "subgrid_id", "node_id", "basin_level"],
     }
 
 

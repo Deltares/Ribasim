@@ -113,7 +113,7 @@ end
     flow::String = "results/flow.arrow"
     control::String = "results/control.arrow"
     allocation::String = "results/allocation.arrow"
-    subgrid_levels::String = "results/subgrid_levels.arrow"
+    subgrid_level::String = "results/subgrid_level.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6

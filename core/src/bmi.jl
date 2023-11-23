@@ -174,8 +174,8 @@ function BMI.finalize(model::Model)::Model
     write_arrow(path, table, compress)
 
     # exported levels
-    table = subgrid_levels_table(model)
-    path = results_path(config, results.subgrid_levels)
+    table = subgrid_level_table(model)
+    path = results_path(config, results.subgrid_level)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
@@ -239,16 +239,12 @@ function create_callbacks(
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
-    saved_subgrid_levels = SavedValues(Float64, Vector{Float64})
-    export_cb = SavingCallback(
-        save_subgrid_levels,
-        saved_subgrid_levels;
-        saveat,
-        save_start = false,
-    )
+    saved_subgrid_level = SavedValues(Float64, Vector{Float64})
+    export_cb =
+        SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = false)
     push!(callbacks, export_cb)
 
-    saved = SavedResults(saved_flow, saved_subgrid_levels)
+    saved = SavedResults(saved_flow, saved_subgrid_level)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -498,7 +494,7 @@ function save_flow(u, t, integrator)
     copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
 end
 
-function update_subgrid_levels!(integrator)::Nothing
+function update_subgrid_level!(integrator)::Nothing
     parameters = integrator.p
     basin_level = get_tmp(parameters.basin.current_level, 0)
 
@@ -511,8 +507,8 @@ function update_subgrid_levels!(integrator)::Nothing
 end
 
 """Interpolate the levels and save them to SavedValues"""
-function save_subgrid_levels(u, t, integrator)
-    update_subgrid_levels!(integrator)
+function save_subgrid_level(u, t, integrator)
+    update_subgrid_level!(integrator)
     return vcat(
         [exporter.subgrid_level for exporter in values(integrator.p.subgrid_exporters)]...,
     )

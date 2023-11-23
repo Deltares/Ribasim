@@ -1,6 +1,6 @@
 struct SavedResults
     flow::SavedValues{Float64, Vector{Float64}}
-    subgrid_levels::SavedValues{Float64, Vector{Float64}}
+    subgrid_level::SavedValues{Float64, Vector{Float64}}
 end
 
 """
