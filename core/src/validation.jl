@@ -419,8 +419,6 @@ function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
 end
 
 function Base.getindex(M::AbstractArray, id_row::NodeID, id_col::NodeID)
-    # TODO: This method is only used for the flow matrix, and can be removed
-    # once the flow is stored in a different data structure
     return M[id_row.value, id_col.value]
 end
 
@@ -430,8 +428,6 @@ function Base.setindex!(
     id_row::NodeID,
     id_col::NodeID,
 )::Nothing where {T}
-    # TODO: This method is only used for the flow matrix, and can be removed
-    # once the flow is stored in a different data structure
     M[id_row.value, id_col.value] = value
     return nothing
 end
