@@ -284,7 +284,7 @@ This functionality can be used to translate a single lumped basin level to a mor
 
 column        | type    | unit  | restriction
 ------------- | ------- | ----- | ------------------------
-name          | String  | -     |
+name          | String  | -     | (optional, does not have to be unique)
 subgrid_id    | Int     | -     | sorted
 node_id       | Int     | -     | constant per subgrid_id
 basin_level   | Float64 | $m$   | per subgrid_id: increasing
@@ -293,17 +293,17 @@ subgrid_level | Float64 | $m$   | per subgrid_id: increasing
 The name column is used to distinguish between spatially distinct water bodies that may exist within a single basin (e.g. perennial versus ephemeral streams).
 When no distinction is required, all rows should be given the same name.
 
-name  | subgrid_id | node_id | basin_level | subgrid_level
------ | ---------- | ------- | ----------- | -------------
-first |          1 |       9 |         0.0 |           0.0
-first |          1 |       9 |         1.0 |           1.0
-first |          1 |       9 |         2.0 |           2.0
-first |          2 |       9 |         0.0 |           0.5
-first |          2 |       9 |         1.0 |           1.5
-first |          2 |       9 |         2.0 |           2.5
+name     | subgrid_id | node_id | basin_level | subgrid_level
+-------- | ---------- | ------- | ----------- | -------------
+"first"  |          1 |       9 |         0.0 |           0.0
+"first"  |          1 |       9 |         1.0 |           1.0
+"first"  |          1 |       9 |         2.0 |           2.0
+"second" |          2 |       9 |         0.0 |           0.5
+"second" |          2 |       9 |         1.0 |           1.5
+"second" |          2 |       9 |         2.0 |           2.5
 
 The example shows the table for two subgrid elements.
-Both subgrid elements use the water level of basin with `node_id` 9 to interpolate to their respective water levels.
+Both subgrid elements use the water level of the basin with `node_id` 9 to interpolate to their respective water levels.
 The first element has a one to one connection with the water level; the second also has a one to one connection, but is offset by half a meter.
 A basin water level of 0.3 would be translated to a water level of 0.3 for the first subgrid element, and 0.8 for the second.
 Water levels beyond the last `basin_level` are linearly extrapolated.
