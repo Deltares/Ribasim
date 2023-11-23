@@ -14,14 +14,14 @@ end
 Initialize a [`Model`](@ref) from a [`Config`](@ref).
 """
 function BMI.initialize(T::Type{Model}, config::Config)::Model
-    alg = algorithm(config.solver)
-    db_path = input_path(config, config.database)
+    alg = algorithm(config.toml.solver)
+    db_path = input_path(config, config.toml.database)
     if !isfile(db_path)
         throw(SystemError("Database file not found: $db_path"))
     end
 
     # Setup timing logging
-    if config.logging.timing
+    if config.toml.logging.timing
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
@@ -63,9 +63,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # tell the solver to stop when new data comes in
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
-        tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
+        tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.toml.starttime)
         time_user = load_structvector(db, config, UserTimeV1)
-        tstops_user = get_tstops(time_user.time, config.starttime)
+        tstops_user = get_tstops(time_user.time, config.toml.starttime)
         tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
 
         # use state
@@ -91,13 +91,13 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
-    t_end = seconds_since(config.endtime, config.starttime)
+    t_end = seconds_since(config.toml.endtime, config.toml.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype = config.toml.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
@@ -105,7 +105,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters, config; config.solver.saveat)
+    callback, saved_flow = create_callbacks(parameters, config; config.toml.solver.saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -121,19 +121,19 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         callback,
         tstops,
         isoutofdomain = (u, p, t) -> any(<(0), u.storage),
-        config.solver.saveat,
-        config.solver.adaptive,
-        dt = something(config.solver.dt, t0),
-        config.solver.dtmin,
-        dtmax = something(config.solver.dtmax, t_end),
-        config.solver.force_dtmin,
-        config.solver.abstol,
-        config.solver.reltol,
-        config.solver.maxiters,
+        config.toml.solver.saveat,
+        config.toml.solver.adaptive,
+        dt = something(config.toml.solver.dt, t0),
+        config.toml.solver.dtmin,
+        dtmax = something(config.toml.solver.dtmax, t_end),
+        config.toml.solver.force_dtmin,
+        config.toml.solver.abstol,
+        config.toml.solver.reltol,
+        config.toml.solver.maxiters,
     )
     @debug "Setup integrator."
 
-    if config.logging.timing
+    if config.toml.logging.timing
         @show Ribasim.to
     end
 
@@ -149,27 +149,27 @@ Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Model
     (; config) = model
-    (; results) = model.config
+    (; results) = model.config.toml
     compress = get_compressor(results)
 
     # basin
     table = basin_table(model)
-    path = results_path(config, results.basin)
+    path = results_path(config, BASIN_NAME)
     write_arrow(path, table, compress)
 
     # flow
     table = flow_table(model)
-    path = results_path(config, results.flow)
+    path = results_path(config, FLOW_NAME)
     write_arrow(path, table, compress)
 
     # discrete control
     table = discrete_control_table(model)
-    path = results_path(config, results.control)
+    path = results_path(config, CONTROL_NAME)
     write_arrow(path, table, compress)
 
     # allocation
     table = allocation_table(model)
-    path = results_path(config, results.allocation)
+    path = results_path(config, ALLOCATION_NAME)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
@@ -218,10 +218,10 @@ function create_callbacks(
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
     push!(callbacks, tabulated_rating_curve_cb)
 
-    if config.allocation.use_allocation
+    if config.toml.allocation.use_allocation
         allocation_cb = PeriodicCallback(
             update_allocation!,
-            config.allocation.timestep;
+            config.toml.allocation.timestep;
             initial_affect = false,
         )
         push!(callbacks, allocation_cb)
@@ -568,7 +568,8 @@ end
 
 BMI.get_current_time(model::Model) = model.integrator.t
 BMI.get_start_time(model::Model) = 0.0
-BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.config.starttime)
+BMI.get_end_time(model::Model) =
+    seconds_since(model.config.toml.endtime, model.config.toml.starttime)
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
@@ -592,10 +593,10 @@ function run(config::Config)::Model
 
     # Reconfigure the logger if necessary with the correct loglevel
     # but make sure to only log from Ribasim
-    if min_enabled_level(logger) + 1 != config.logging.verbosity
+    if min_enabled_level(logger) + 1 != config.toml.logging.verbosity
         logger = EarlyFilteredLogger(
             is_current_module,
-            LevelOverrideLogger(config.logging.verbosity, logger),
+            LevelOverrideLogger(config.toml.logging.verbosity, logger),
         )
     end
 

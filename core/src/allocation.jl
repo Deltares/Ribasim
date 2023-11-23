@@ -397,7 +397,7 @@ function add_variables_absolute_value!(
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
     config::Config,
 )::Nothing
-    if startswith(config.allocation.objective_type, "linear")
+    if startswith(config.toml.allocation.objective_type, "linear")
         problem[:F_abs] =
             JuMP.@variable(problem, F_abs[values(allocgraph_edge_ids_user_demand)])
     end
@@ -545,14 +545,14 @@ function add_constraints_absolute_value!(
     allocgraph_edge_ids_user_demand::Dict{Int, Int},
     config::Config,
 )::Nothing
-    objective_type = config.allocation.objective_type
+    objective_type = config.toml.allocation.objective_type
     if startswith(objective_type, "linear")
         allocgraph_edge_ids_user_demand = collect(values(allocgraph_edge_ids_user_demand))
         F = problem[:F]
         F_abs = problem[:F_abs]
         d = 2.0
 
-        if config.allocation.objective_type == "linear_absolute"
+        if config.toml.allocation.objective_type == "linear_absolute"
             # These constraints together make sure that F_abs acts as the absolute
             # value F_abs = |x| where x = F-d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
@@ -567,7 +567,7 @@ function add_constraints_absolute_value!(
                 F_abs[i] >= -(F[i] - d),
                 base_name = "abs_negative"
             )
-        elseif config.allocation.objective_type == "linear_relative"
+        elseif config.toml.allocation.objective_type == "linear_relative"
             # These constraints together make sure that F_abs acts as the absolute
             # value F_abs = |x| where x = 1-F/d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
@@ -689,7 +689,7 @@ function AllocationModel(
     )
 
     return AllocationModel(
-        Symbol(config.allocation.objective_type),
+        Symbol(config.toml.allocation.objective_type),
         allocation_network_id,
         subnetwork_node_ids,
         node_id_mapping,

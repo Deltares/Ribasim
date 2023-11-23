@@ -1,5 +1,4 @@
 from enum import Enum
-from pathlib import Path
 
 from pydantic import Field
 
@@ -44,10 +43,6 @@ class Compression(str, Enum):
 
 
 class Results(BaseModel):
-    basin: Path = Field(default=Path("basin.arrow"), exclude=True, repr=False)
-    flow: Path = Field(default=Path("flow.arrow"), exclude=True, repr=False)
-    control: Path = Field(default=Path("control.arrow"), exclude=True, repr=False)
-    allocation: Path = Field(default=Path("allocation.arrow"), exclude=True, repr=False)
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6

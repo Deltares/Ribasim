@@ -15,7 +15,7 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
-export Config, Solver, Results, Logging
+export Config, Solver, Results, Logging, Toml
 export algorithm, snake_case, zstd, lz4
 
 const schemas =
@@ -109,10 +109,6 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
-    basin::String = "basin.arrow"
-    flow::String = "flow.arrow"
-    control::String = "control.arrow"
-    allocation::String = "allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
@@ -129,16 +125,15 @@ end
     objective_type::String = "quadratic_relative"
 end
 
-@option @addnodetypes struct Config <: TableOption
+@option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
 
-    # optional, when Config is created from a TOML file, this is its directory
-    relative_dir::String = "."
-    input_dir::String = "."
-    results_dir::String = "results"
+    # when Config is created from a TOML file, this is its directory
+    input_dir::String
+    results_dir::String
 
-    # input, required
+    # input
     database::String = "database.gpkg"
 
     allocation::Allocation = Allocation()
@@ -148,6 +143,13 @@ end
     # results, required
     results::Results = Results()
 end
+
+struct Config
+    toml::Toml
+    relative_dir::String
+end
+
+Config(toml::Toml) = Config(toml, ".")
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
     level == "debug" && return Debug

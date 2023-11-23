@@ -2,29 +2,38 @@
     using Dates
 
     # relative to tomldir
-    config = Ribasim.Config(;
+    toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        relative_dir = "model",
         database = "path/to/file",
+        input_dir = ".",
+        results_dir = "results",
     )
+    config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "path", "to", "file")
 
     # also relative to inputdir
-    config = Ribasim.Config(;
+    toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        relative_dir = "model",
-        input_dir = "input",
         database = "path/to/file",
+        input_dir = "input",
+        results_dir = "results",
     )
+    config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
           normpath("model", "input", "path", "to", "file")
 
     # absolute path
-    config =
-        Ribasim.Config(; starttime = now(), endtime = now(), database = "/path/to/file")
+    toml = Ribasim.Toml(;
+        starttime = now(),
+        endtime = now(),
+        database = "/path/to/file",
+        input_dir = ".",
+        results_dir = "results",
+    )
+    config = Ribasim.Config(toml)
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
 end
 
@@ -69,7 +78,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.database)
+    db_path = Ribasim.input_path(config, config.toml.database)
     db = SQLite.DB(db_path)
 
     # load a sorted table

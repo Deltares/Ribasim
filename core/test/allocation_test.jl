@@ -6,7 +6,7 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.input_path(cfg, cfg.toml.database)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)

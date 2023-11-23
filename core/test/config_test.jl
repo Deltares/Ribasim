@@ -4,22 +4,13 @@
     using Configurations: UndefKeywordError
     using Dates
 
-    @test_throws UndefKeywordError Ribasim.Config()
-    @test_throws UndefKeywordError Ribasim.Config(
-        startime = now(),
-        endtime = now(),
-        database = "",
-        foo = "bar",
-    )
-
     @testset "testrun" begin
         config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
         @test config isa Ribasim.Config
-        @test config.endtime > config.starttime
-        @test config.solver == Ribasim.Solver(; saveat = 86400.0)
-        @test config.results.compression == Ribasim.zstd
-        @test config.results.compression_level == 6
-        @test config.results.basin == "basin.arrow"
+        @test config.toml.endtime > config.toml.starttime
+        @test config.toml.solver == Ribasim.Solver(; saveat = 86400.0)
+        @test config.toml.results.compression == Ribasim.zstd
+        @test config.toml.results.compression_level == 6
     end
 
     @testset "results" begin
@@ -40,7 +31,7 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test config.solver.adaptive
+        @test config.toml.solver.adaptive
     end
 end
 

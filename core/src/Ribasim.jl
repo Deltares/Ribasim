@@ -69,5 +69,6 @@ include("lib.jl")
 include("io.jl")
 include("create.jl")
 include("bmi.jl")
+include("consts.jl")
 
 end  # module Ribasim

@@ -26,7 +26,7 @@
     )
     @test flow_added_1 == flow_1_to_2.flow
 
-    t = Ribasim.seconds_since.(flow_1_to_2.time, model.config.starttime)
+    t = Ribasim.seconds_since.(flow_1_to_2.time, model.config.toml.starttime)
     flow_expected = @. 1 + sin(0.5 * π * (t - t[1]) / (t[end] - t[1]))^2
     # some difference is expected since the modeled flow is for the period up to t
     @test isapprox(flow_added_1, flow_expected, rtol = 0.005)

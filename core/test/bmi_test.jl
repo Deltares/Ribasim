@@ -29,8 +29,8 @@ end
         solver_adaptive = false,
         solver_dt = dt,
     )
-    @test config.solver.algorithm == "ImplicitEuler"
-    @test !config.solver.adaptive
+    @test config.toml.solver.algorithm == "ImplicitEuler"
+    @test !config.toml.solver.adaptive
     model = Ribasim.Model(config)
 
     @test BMI.get_time_step(model) == dt

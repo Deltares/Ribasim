@@ -12,6 +12,3 @@ time = "basin/time.arrow"
 
 [solver]
 saveat = 86400
-
-[results]
-basin = "foo.arrow" # should be ignored

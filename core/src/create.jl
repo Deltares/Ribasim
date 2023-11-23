@@ -89,7 +89,7 @@ function parse_static_and_time(
     end
 
     errors = false
-    t_end = seconds_since(config.endtime, config.starttime)
+    t_end = seconds_since(config.toml.endtime, config.toml.starttime)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
 
     for (node_idx, (node_id, node_name)) in enumerate(zip(node_ids, node_names))
@@ -139,7 +139,7 @@ function parse_static_and_time(
                 # If the parameter is interpolatable, create an interpolation object
                 if parameter_name in time_interpolatables
                     val, is_valid = get_scalar_interpolation(
-                        config.starttime,
+                        config.toml.starttime,
                         t_end,
                         time_subset,
                         node_id,
@@ -220,7 +220,7 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
     end
     flow .= 0.0
 
-    if config.solver.autodiff
+    if config.toml.solver.autodiff
         # FixedSizeDiffCache performs better for sparse matrix
         flow = FixedSizeDiffCache(flow, chunk_size)
     end
@@ -282,7 +282,7 @@ function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Not
                 p,
                 allocation_group_node.fid,
                 source_edge_ids,
-                config.allocation.timestep,
+                config.toml.allocation.timestep,
             ),
         )
     end
@@ -350,7 +350,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         elseif node_id in time_node_ids
             source = "time"
             # get the timestamp that applies to the model starttime
-            idx_starttime = searchsortedlast(time.time, config.starttime)
+            idx_starttime = searchsortedlast(time.time, config.toml.starttime)
             pre_table = view(time, 1:idx_starttime)
             interpolation, is_valid = qh_interpolation(node_id, pre_table)
             push!(interpolations, interpolation)
@@ -483,7 +483,7 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     end
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
+    flow_rate = if config.toml.solver.autodiff
         DiffCache(parsed_parameters.flow_rate, chunk_size)
     else
         parsed_parameters.flow_rate
@@ -512,7 +512,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     end
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
+    flow_rate = if config.toml.solver.autodiff
         DiffCache(parsed_parameters.flow_rate, chunk_size)
     else
         parsed_parameters.flow_rate
@@ -541,7 +541,7 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     current_level = zeros(n)
     current_area = zeros(n)
 
-    if config.solver.autodiff
+    if config.toml.solver.autodiff
         current_level = DiffCache(current_level, chunk_size)
         current_area = DiffCache(current_area, chunk_size)
     end
@@ -559,7 +559,7 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     time = load_structvector(db, config, BasinTimeV1)
 
     set_static_value!(table, node_id, static)
-    set_current_value!(table, node_id, time, config.starttime)
+    set_current_value!(table, node_id, time, config.toml.starttime)
     check_no_nans(table, "Basin")
 
     return Basin(
@@ -643,7 +643,7 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
 
     pid_error = zeros(length(node_ids))
 
-    if config.solver.autodiff
+    if config.toml.solver.autodiff
         pid_error = DiffCache(pid_error, chunk_size)
     end
 
@@ -705,7 +705,7 @@ function User(db::DB, config::Config)::User
 
     errors = false
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
-    t_end = seconds_since(config.endtime, config.starttime)
+    t_end = seconds_since(config.toml.endtime, config.toml.starttime)
 
     # Create a dictionary priority => time data for that priority
     time_priority_dict::Dict{Int, StructVector{UserTimeV1}} = Dict(
@@ -734,7 +734,7 @@ function User(db::DB, config::Config)::User
             for p in priorities
                 if p in keys(time_priority_dict)
                     demand_p_itp, is_valid = get_scalar_interpolation(
-                        config.starttime,
+                        config.toml.starttime,
                         t_end,
                         time_priority_dict[p],
                         node_id,
@@ -845,7 +845,7 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     p = Parameters(
-        config.starttime,
+        config.toml.starttime,
         connectivity,
         basin,
         linear_resistance,
@@ -870,7 +870,7 @@ function Parameters(db::DB, config::Config)::Parameters
         end
     end
     # Allocation data structures
-    if config.allocation.use_allocation
+    if config.toml.allocation.use_allocation
         generate_allocation_models!(p, db, config)
     end
     return p
