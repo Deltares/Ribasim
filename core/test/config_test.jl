@@ -19,6 +19,7 @@
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
         @test config.results.compression == Ribasim.zstd
         @test config.results.compression_level == 6
+        @test config.results.basin == "basin.arrow"
     end
 
     @testset "results" begin

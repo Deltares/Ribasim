@@ -141,6 +141,10 @@ function Config(config_path::AbstractString; kwargs...)::Config
         Config,
         config_path;
         relative_dir = dirname(normpath(config_path)),
+        results_basin = "basin.arrow",
+        results_flow = "flow.arrow",
+        results_control = "control.arrow",
+        results_allocation = "allocation.arrow",
         kwargs...,
     )
 end
