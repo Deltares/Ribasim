@@ -74,7 +74,7 @@
                 "flow": "results/flow.arrow",
                 "control": "results/control.arrow",
                 "allocation": "results/allocation.arrow",
-                "subgrid_levels": null,
+                "subgrid_levels": "results/subgrid_levels.arrow",
                 "outstate": null,
                 "compression": "zstd",
                 "compression_level": 6

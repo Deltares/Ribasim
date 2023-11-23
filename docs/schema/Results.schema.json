@@ -27,15 +27,8 @@
         },
         "subgrid_levels": {
             "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "string"
-                }
-            ],
-            "default": null
+            "type": "string",
+            "default": "results/subgrid_levels.arrow"
         },
         "outstate": {
             "format": "default",
@@ -65,6 +58,7 @@
         "flow",
         "control",
         "allocation",
+        "subgrid_levels",
         "compression",
         "compression_level"
     ]
