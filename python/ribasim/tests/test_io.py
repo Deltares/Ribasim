@@ -72,8 +72,13 @@ def test_repr():
     )
 
     pump_1 = Pump(static=static_data)
+    pump_2 = Pump()
 
-    assert repr(pump_1) == "Pump(static=TableModel[PumpStaticSchema]())"
+    assert repr(pump_1) == "Pump(static)"
+    assert repr(pump_2) == "Pump()"
+    # Ensure _repr_html doesn't error
+    assert isinstance(pump_1.static._repr_html_(), str)
+    assert isinstance(pump_2.static._repr_html_(), str)
 
 
 def test_extra_columns():
