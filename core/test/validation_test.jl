@@ -67,10 +67,16 @@ end
         graph[NodeID(i)] = NodeMetadata(type, 9)
     end
 
-    graph[NodeID(2), NodeID(1)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(3), NodeID(1)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(5), NodeID(6)] = EdgeMetadata(EdgeType.control)
+    function set_edge_metadata!(id_1, id_2, edge_type)
+        graph[NodeID(id_1), NodeID(id_2)] =
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+        return nothing
+    end
+
+    set_edge_metadata!(2, 1, EdgeType.flow)
+    set_edge_metadata!(3, 1, EdgeType.flow)
+    set_edge_metadata!(6, 2, EdgeType.flow)
+    set_edge_metadata!(5, 6, EdgeType.control)
 
     pump = Ribasim.Pump(
         Ribasim.NodeID[1, 6],
@@ -98,9 +104,9 @@ end
     @test logger.logs[3].message ==
           "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
-    graph[NodeID(2), NodeID(5)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(5), NodeID(3)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(5), NodeID(4)] = EdgeMetadata(EdgeType.flow)
+    set_edge_metadata!(2, 5, EdgeType.flow)
+    set_edge_metadata!(5, 3, EdgeType.flow)
+    set_edge_metadata!(5, 4, EdgeType.flow)
 
     fractional_flow =
         Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
@@ -131,7 +137,7 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, NodeMetadata, EdgeMetadata
+    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
 
     pid_control_node_id = NodeID[1, 6]
     pid_control_listen_node_id = NodeID[3, 5]
@@ -153,11 +159,17 @@ end
     graph[NodeID(5)] = NodeMetadata(:basin, 0)
     graph[NodeID(7)] = NodeMetadata(:basin, 0)
 
-    graph[NodeID(3), NodeID(4)] = EdgeMetadata(EdgeType.flow)
-    graph[NodeID(7), NodeID(2)] = EdgeMetadata(EdgeType.flow)
+    function set_edge_metadata!(id_1, id_2, edge_type)
+        graph[NodeID(id_1), NodeID(id_2)] =
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+        return nothing
+    end
 
-    graph[NodeID(1), NodeID(4)] = EdgeMetadata(EdgeType.control)
-    graph[NodeID(6), NodeID(2)] = EdgeMetadata(EdgeType.control)
+    set_edge_metadata!(3, 4, EdgeType.flow)
+    set_edge_metadata!(7, 2, EdgeType.flow)
+
+    set_edge_metadata!(1, 4, EdgeType.control)
+    set_edge_metadata!(6, 2, EdgeType.control)
 
     basin_node_id = Indices(NodeID[5, 7])
 
@@ -183,6 +195,7 @@ end
 @testitem "FractionalFlow validation" begin
     import SQLite
     using Logging
+    using Ribasim: NodeID
 
     toml_path = normpath(
         @__DIR__,

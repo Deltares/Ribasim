@@ -865,7 +865,7 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         upstream_basin_id = inflow_id(graph, id)
-        downstream_ids = outflow_id(graph, id)
+        downstream_ids = outflow_ids(graph, id)
 
         if active[i]
             hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
@@ -1014,7 +1014,7 @@ function formulate_flow!(
     flow = get_tmp(flow, storage)
 
     for id in node_id
-        for upstream_id in inflow_id(graph, id)
+        for upstream_id in inflow_ids(graph, id)
             q = flow[upstream_id, id]
             flow[id, id] -= q
         end
