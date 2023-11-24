@@ -139,7 +139,7 @@ end
 
 struct Config
     toml::Toml
-    relative_dir::String
+    dir::String
 end
 
 Config(toml::Toml) = Config(toml, ".")
@@ -152,27 +152,22 @@ keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `s
 """
 function Config(config_path::AbstractString; kwargs...)::Config
     toml = from_toml(Toml, config_path; kwargs...)
-    relative_dir = dirname(normpath(config_path))
-    Config(toml, relative_dir)
+    dir = dirname(normpath(config_path))
+    Config(toml, dir)
 end
 
-Base.getproperty(config::Config, sym::Symbol) = getfield(getfield(config, :toml), sym)
 Base.getproperty(config::Config, sym::Symbol) = getproperty(getfield(config, :toml), sym)
-"""
-    relative_dir(config::Config)
 
-Get the relative directory of the configuration
-"""
-relative_dir(config::Config) = getfield(config, :relative_dir)
+Base.dirname(config::Config) = getfield(config, :dir)
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
-    return normpath(relative_dir(config), config.input_dir, path)
+    return normpath(dirname(config), config.input_dir, path)
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
 function results_path(config::Config, path::String)
-    return normpath(relative_dir(config), config.results_dir, path)
+    return normpath(dirname(config), config.results_dir, path)
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
