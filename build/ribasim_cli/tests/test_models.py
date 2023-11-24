@@ -13,7 +13,7 @@ import ribasim_testmodels
 def test_ribasim_cli(model_constructor, tmp_path):
     model = model_constructor()
     assert isinstance(model, ribasim.Model)
-    model.write(tmp_path)
+    model.write(tmp_path / "ribasim.toml")
 
     executable = (
         Path(__file__).parents[2]
