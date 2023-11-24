@@ -20,6 +20,8 @@ Each node layer is (optionally) represented in multiple places:
 
 """
 
+from __future__ import annotations
+
 import abc
 from typing import Any, cast
 
@@ -81,7 +83,7 @@ class Input(abc.ABC):
         path: str,
         crs: QgsCoordinateReferenceSystem,
         names: list[str],
-    ) -> "Input":
+    ) -> Input:
         if cls.input_type() in names:
             raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
         instance = cls(path)
@@ -387,6 +389,25 @@ class BasinTime(Input):
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
             QgsField("urban_runoff", QVariant.Double),
+        ]
+
+
+class BasinSubgridLevel(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / subgrid"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("subgrid_id", QVariant.Int),
+            QgsField("node_id", QVariant.Int),
+            QgsField("basin_level", QVariant.Double),
+            QgsField("subgrid_level", QVariant.Double),
         ]
 
 

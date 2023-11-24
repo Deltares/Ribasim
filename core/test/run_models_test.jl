@@ -6,6 +6,10 @@
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
+
+    # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+    subgrid = model.integrator.p.subgrid
+    @test all(diff(subgrid.level) .≈ 1.0)
 end
 
 @testitem "bucket model" begin
@@ -191,7 +195,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    timesteps = model.saved_flow.t
+    timesteps = model.saved.flow.t
     flow = DataFrame(Ribasim.flow_table(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)
@@ -301,6 +305,6 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test model.saved_flow.saveval[end][2] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test model.saved_flow.saveval[end][end - 1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test model.saved.flow.saveval[end][2] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test model.saved.flow.saveval[end][end - 1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end

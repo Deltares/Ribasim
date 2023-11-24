@@ -5,26 +5,6 @@
     "description": "A Results object based on Ribasim.config.Results",
     "type": "object",
     "properties": {
-        "basin": {
-            "format": "default",
-            "type": "string",
-            "default": "results/basin.arrow"
-        },
-        "flow": {
-            "format": "default",
-            "type": "string",
-            "default": "results/flow.arrow"
-        },
-        "control": {
-            "format": "default",
-            "type": "string",
-            "default": "results/control.arrow"
-        },
-        "allocation": {
-            "format": "default",
-            "type": "string",
-            "default": "results/allocation.arrow"
-        },
         "outstate": {
             "format": "default",
             "anyOf": [
@@ -46,14 +26,16 @@
             "format": "default",
             "type": "integer",
             "default": 6
+        },
+        "subgrid": {
+            "format": "default",
+            "type": "boolean",
+            "default": false
         }
     },
     "required": [
-        "basin",
-        "flow",
-        "control",
-        "allocation",
         "compression",
-        "compression_level"
+        "compression_level",
+        "subgrid"
     ]
 }

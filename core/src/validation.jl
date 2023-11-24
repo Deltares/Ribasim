@@ -8,6 +8,7 @@
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
+@schema "ribasim.basin.subgrid" BasinSubgrid
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -30,7 +31,7 @@ tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
 tablename(sv::SchemaVersion{T, N}) where {T, N} =
     join(filter(!isnothing, nodetype(sv)), delimiter)
 isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = isnode(sv())
-isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), ".")) == 3
+isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), '.'; limit = 3)) == 3
 nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
 
 """
@@ -43,9 +44,9 @@ function nodetype(
     # so we parse the related record Ribasim.BasinTimeV1
     # to derive BasinTime from it.
     record = Legolas.record_type(sv)
-    node = last(split(string(Symbol(record)), "."))
+    node = last(split(string(Symbol(record)), '.'; limit = 3))
 
-    elements = split(string(T), ".")
+    elements = split(string(T), '.'; limit = 3)
     if isnode(sv)
         n = elements[2]
         k = Symbol(elements[3])
@@ -200,6 +201,13 @@ end
 @version BasinStateV1 begin
     node_id::Int
     level::Float64
+end
+
+@version BasinSubgridV1 begin
+    subgrid_id::Int
+    node_id::Int
+    basin_level::Float64
+    subgrid_level::Float64
 end
 
 @version FractionalFlowStaticV1 begin
@@ -362,6 +370,7 @@ sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
+sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -371,6 +380,7 @@ sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
+sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -450,29 +460,30 @@ function valid_profiles(
     node_id::Indices{NodeID},
     level::Vector{Vector{Float64}},
     area::Vector{Vector{Float64}},
-)::Vector{String}
-    errors = String[]
+)::Bool
+    errors = false
 
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
-            push!(errors, "Basin $id has repeated levels, this cannot be interpolated.")
+            errors = true
+            @error "Basin $id has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
-            push!(
-                errors,
-                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node $id).",
+            errors = true
+            @error(
+                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons.",
+                node_id = id,
+                area = areas[1],
             )
         end
 
         if areas[end] < areas[end - 1]
-            push!(
-                errors,
-                "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id.",
-            )
+            errors = true
+            @error "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id."
         end
     end
-    return errors
+    return !errors
 end
 
 """
@@ -617,5 +628,35 @@ function valid_fractional_flow(
             end
         end
     end
+    return !errors
+end
+
+"""
+Validate the entries for a single subgrid element.
+"""
+function valid_subgrid(
+    subgrid_id::Int,
+    node_id::NodeID,
+    node_to_basin::Dict{NodeID, Int},
+    basin_level::Vector{Float64},
+    subgrid_level::Vector{Float64},
+)::Bool
+    errors = false
+
+    if !(node_id in keys(node_to_basin))
+        errors = true
+        @error "The node_id of the Basin / subgrid_level does not refer to a basin." node_id subgrid_id
+    end
+
+    if !allunique(basin_level)
+        errors = true
+        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
+    end
+
+    if !allunique(subgrid_level)
+        errors = true
+        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
+    end
+
     return !errors
 end

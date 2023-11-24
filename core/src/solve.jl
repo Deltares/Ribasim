@@ -141,25 +141,21 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
-        errors = valid_profiles(node_id, level, area)
-        if isempty(errors)
-            return new{T, C}(
-                node_id,
-                precipitation,
-                potential_evaporation,
-                drainage,
-                infiltration,
-                current_level,
-                current_area,
-                area,
-                level,
-                storage,
-                time,
-            )
-        else
-            foreach(x -> @error(x), errors)
-            error("Errors occurred when parsing Basin data.")
-        end
+        is_valid = valid_profiles(node_id, level, area)
+        is_valid || error("Invalid Basin / profile table.")
+        return new{T, C}(
+            node_id,
+            precipitation,
+            potential_evaporation,
+            drainage,
+            infiltration,
+            current_level,
+            current_area,
+            area,
+            level,
+            storage,
+            time,
+        )
     end
 end
 
@@ -462,6 +458,13 @@ struct User <: AbstractParameterNode
     }
 end
 
+"Subgrid linearly interpolates basin levels."
+struct Subgrid
+    basin_index::Vector{Int}
+    interpolations::Vector{ScalarInterpolation}
+    level::Vector{Float64}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, TSparse, C1, C2}
     starttime::DateTime
@@ -479,6 +482,8 @@ struct Parameters{T, TSparse, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
+    lookup::Dict{Int, Symbol}
+    subgrid::Subgrid
 end
 
 """

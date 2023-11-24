@@ -785,6 +785,38 @@ function User(db::DB, config::Config)::User
     )
 end
 
+function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
+    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
+    tables = load_structvector(db, config, BasinSubgridV1)
+
+    basin_ids = Int[]
+    interpolations = ScalarInterpolation[]
+    has_error = false
+    for group in IterTools.groupby(row -> row.subgrid_id, tables)
+        subgrid_id = first(getproperty.(group, :subgrid_id))
+        node_id = NodeID(first(getproperty.(group, :node_id)))
+        basin_level = getproperty.(group, :basin_level)
+        subgrid_level = getproperty.(group, :subgrid_level)
+
+        is_valid =
+            valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+
+        if !is_valid
+            has_error = true
+            # Ensure it doesn't extrapolate before the first value.
+            pushfirst!(subgrid_level, first(subgrid_level))
+            pushfirst!(basin_level, nextfloat(-Inf))
+            new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
+            push!(basin_ids, node_to_basin[node_id])
+            push!(interpolations, new_interp)
+        end
+    end
+
+    has_error && error("Invalid Basin / subgrid table.")
+
+    return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+end
+
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_size = pickchunksize(n_states)
@@ -805,6 +837,7 @@ function Parameters(db::DB, config::Config)::Parameters
     user = User(db, config)
 
     basin = Basin(db, config, chunk_size)
+    subgrid_level = Subgrid(db, config, basin)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
@@ -835,6 +868,8 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
+        Dict{Int, Symbol}(),
+        subgrid_level,
     )
 
     # Allocation data structures

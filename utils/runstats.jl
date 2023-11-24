@@ -18,7 +18,7 @@ using LibGit2
 
 "Add key config settings like solver settings to a dictionary"
 function add_config!(dict, config::Ribasim.Config)
-    confdict = to_dict(config)
+    confdict = to_dict(getfield(config, :toml))
     for (k, v) in confdict["solver"]
         if k == "saveat"
             # convert possible vector to scalar

@@ -179,8 +179,8 @@ function flow_table(
     to_node_id::Vector{Int},
     flow::FlatVector{Float64},
 }
-    (; config, saved_flow, integrator) = model
-    (; t, saveval) = saved_flow
+    (; config, saved, integrator) = model
+    (; t, saveval) = saved.flow
     (; connectivity) = integrator.p
     (; graph) = connectivity
 
@@ -250,6 +250,27 @@ function allocation_table(
         record.allocated,
         record.abstracted,
     )
+end
+
+function subgrid_level_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    subgrid_id::Vector{Int},
+    subgrid_level::Vector{Float64},
+}
+    (; config, saved, integrator) = model
+    (; t, saveval) = saved.subgrid_level
+    subgrid = integrator.p.subgrid
+
+    nelem = length(subgrid.basin_index)
+    ntsteps = length(t)
+    unique_elem_id = collect(1:nelem)
+
+    time = repeat(datetime_since.(t, config.starttime); inner = nelem)
+    subgrid_id = repeat(unique_elem_id; outer = ntsteps)
+    subgrid_level = FlatVector(saveval)
+    return (; time, subgrid_id, subgrid_level)
 end
 
 "Write a result table to disk as an Arrow file"
