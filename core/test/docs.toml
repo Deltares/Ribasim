@@ -4,8 +4,8 @@ starttime = 2019-01-01 # required
 endtime = 2021-01-01   # required
 
 # input files
-input_dir = "."         # required, default "."
-results_dir = "results" # required, default "results"
+input_dir = "."         # required
+results_dir = "results" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
