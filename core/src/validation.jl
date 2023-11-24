@@ -410,27 +410,17 @@ struct NodeID
     value::Int
 end
 
+Base.Int(id::NodeID) = id.value
 Base.convert(::Type{NodeID}, value::Int) = NodeID(value)
+Base.convert(::Type{Int}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
-Base.show(io::IO, id::NodeID) = print(io, '#', id.value)
+Base.show(io::IO, id::NodeID) = print(io, '#', Int(id))
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
-    return id_1.value < id_2.value
+    return Int(id_1) < Int(id_2)
 end
 
-function Base.getindex(M::AbstractArray, id_row::NodeID, id_col::NodeID)
-    return M[id_row.value, id_col.value]
-end
-
-function Base.setindex!(
-    M::AbstractArray,
-    value::T,
-    id_row::NodeID,
-    id_col::NodeID,
-)::Nothing where {T}
-    M[id_row.value, id_col.value] = value
-    return nothing
-end
+Base.to_index(id::NodeID) = Int(id)
 
 """
 Test for each node given its node type whether the nodes that

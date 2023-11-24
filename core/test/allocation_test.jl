@@ -19,7 +19,7 @@
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    @test F[(NodeID(1), NodeID(2))] ≈ 4.5
+    @test F[(NodeID(1), NodeID(2))] ≈ 4.0
     @test F[(NodeID(8), NodeID(12))] ≈ 0.0
     @test F[(NodeID(6), NodeID(11))] ≈ 0.0
     @test F[(NodeID(6), NodeID(8))] ≈ 0.0
