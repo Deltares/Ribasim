@@ -50,7 +50,6 @@ class Input(abc.ABC):
     """Abstract base class for Ribasim input layers."""
 
     def __init__(self, path: str):
-        self.name = self.input_type()
         self._path = path
 
     @classmethod
@@ -83,9 +82,9 @@ class Input(abc.ABC):
         crs: QgsCoordinateReferenceSystem,
         names: list[str],
     ) -> "Input":
+        if cls.input_type() in names:
+            raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
         instance = cls(path)
-        if instance.name in names:
-            raise ValueError(f"Name already exists in geopackage: {instance.name}")
         instance.layer = instance.new_layer(crs)
         return instance
 
@@ -94,7 +93,7 @@ class Input(abc.ABC):
         Separate creation of the instance with creating the layer, since the
         layer might also come from an existing geopackage.
         """
-        layer = QgsVectorLayer(self.geometry_type(), self.name, "memory")
+        layer = QgsVectorLayer(self.geometry_type(), self.input_type(), "memory")
         provider = layer.dataProvider()
         assert provider is not None
         provider.addAttributes(self.attributes())
@@ -123,7 +122,9 @@ class Input(abc.ABC):
         return None
 
     def layer_from_geopackage(self) -> QgsVectorLayer:
-        self.layer = QgsVectorLayer(f"{self._path}|layername={self.name}", self.name)
+        self.layer = QgsVectorLayer(
+            f"{self._path}|layername={self.input_type()}", self.input_type()
+        )
         return self.layer
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
@@ -131,11 +132,11 @@ class Input(abc.ABC):
         return (self.layer, self.renderer, self.labels)
 
     def write(self) -> None:
-        self.layer = geopackage.write_layer(self._path, self.layer, self.name)
+        self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())
         self.set_defaults()
 
     def remove_from_geopackage(self) -> None:
-        geopackage.remove_layer(self._path, self.name)
+        geopackage.remove_layer(self._path, self.input_type())
 
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
@@ -165,7 +166,7 @@ class Node(Input):
     def write(self) -> None:
         # Special case the Node layer write because it needs to generate a new file.
         self.layer = geopackage.write_layer(
-            self._path, self.layer, self.name, newfile=True
+            self._path, self.layer, self.input_type(), newfile=True
         )
         self.set_defaults()
         return

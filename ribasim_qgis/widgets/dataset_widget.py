@@ -35,7 +35,7 @@ from qgis.core import (
 from qgis.core.additions.edit import edit
 
 from ribasim_qgis.core.model import get_database_path_from_model_file
-from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
@@ -69,9 +69,9 @@ class DatasetTreeWidget(QTreeWidget):
         item.setText(1, name)
         return item
 
-    def add_node_layer(self, element) -> None:
+    def add_node_layer(self, element: Input) -> None:
         # These are mandatory elements, cannot be unticked
-        item = self.add_item(name=element.name, enabled=True)
+        item = self.add_item(name=element.input_type(), enabled=True)
         item.element = element
 
     def remove_geopackage_layers(self) -> None:
@@ -337,7 +337,7 @@ class DatasetWidget(QWidget):
     def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        return {item.element.name for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
+        return {item.element.input_type() for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
 
-    def add_node_layer(self, element) -> None:
+    def add_node_layer(self, element: Input) -> None:
         self.dataset_tree.add_node_layer(element)

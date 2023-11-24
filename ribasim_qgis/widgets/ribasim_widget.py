@@ -21,6 +21,7 @@ from qgis.core import (
 )
 from qgis.gui import QgisInterface
 
+from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
 from ribasim_qgis.widgets.results_widget import ResultsWidget
@@ -69,7 +70,7 @@ class RibasimWidget(QWidget):
         assert map_settings is not None
         return map_settings.destinationCrs()
 
-    def add_node_layer(self, element: Any):
+    def add_node_layer(self, element: Input):
         self.dataset_widget.add_node_layer(element)
 
     def toggle_node_buttons(self, state: bool) -> None:
