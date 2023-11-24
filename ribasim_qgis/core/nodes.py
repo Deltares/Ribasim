@@ -23,6 +23,7 @@ Each node layer is (optionally) represented in multiple places:
 from __future__ import annotations
 
 import abc
+from pathlib import Path
 from typing import Any, cast
 
 from PyQt5.QtCore import Qt, QVariant
@@ -788,7 +789,7 @@ NONSPATIALNODETYPES: set[str] = {
 EDGETYPES = {"flow", "control"}
 
 
-def load_nodes_from_geopackage(path: str) -> dict[str, Input]:
+def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:
     # List the names in the geopackage
     gpkg_names = geopackage.layers(path)
     nodes = {}

@@ -3,6 +3,8 @@ from typing import cast
 from PyQt5.QtWidgets import QFileDialog, QPushButton, QVBoxLayout, QWidget
 from qgis.core import QgsVectorLayer
 
+from ribasim_qgis.core.model import get_property_from_model_file
+
 
 class ResultsWidget(QWidget):
     def __init__(self, parent: QWidget):
@@ -10,17 +12,18 @@ class ResultsWidget(QWidget):
 
         super().__init__(parent)
         self.ribasim_widget = cast(RibasimWidget, parent)
-        self.node_results_button = QPushButton("Associate Node Results")
-        self.edge_results_button = QPushButton("Associate Edge Results")
-        self.node_results_button.clicked.connect(self.set_node_results)
-        self.edge_results_button.clicked.connect(self.set_edge_results)
+        refresh_results_button = QPushButton("Refresh Results")
+        refresh_results_button.clicked.connect(self.refresh_results)
 
         # layout
         layout = QVBoxLayout()
-        layout.addWidget(self.node_results_button)
-        layout.addWidget(self.edge_results_button)
+        layout.addWidget(refresh_results_button)
         layout.addStretch()
         self.setLayout(layout)
+
+    def refresh_results(self) -> None:
+        self.set_node_results()
+        self.set_edge_results()
 
     def set_node_results(self) -> None:
         node_layer = self.ribasim_widget.dataset_widget.node_layer
@@ -33,7 +36,10 @@ class ResultsWidget(QWidget):
         self._set_results(edge_layer, "edge_id")
 
     def _set_results(self, layer: QgsVectorLayer, column: str) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.arrow")
+        path = (
+            get_property_from_model_file(self.ribasim_widget.path, "results_dir")
+            / "basin.arrow"
+        )
         if path == "":
             return
         if layer is not None:

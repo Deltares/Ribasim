@@ -36,7 +36,7 @@ from qgis.core import (
 )
 from qgis.core.additions.edit import edit
 
-from ribasim_qgis.core.model import get_database_path_from_model_file
+from ribasim_qgis.core.model import get_directory_path_from_model_file
 from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
@@ -261,7 +261,10 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        geo_path = get_database_path_from_model_file(self.path)
+        geo_path = (
+            get_directory_path_from_model_file(self.path, property="input_dir")
+            / "database.gpkg"
+        )
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
