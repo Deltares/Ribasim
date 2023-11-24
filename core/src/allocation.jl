@@ -511,9 +511,9 @@ function add_constraints_user_returnflow!(
     problem[:return_flow] = JuMP.@constraint(
         problem,
         [node_id_user = node_ids_user_with_returnflow],
-        F[node_id_user.value, only(outflow_ids_allocation(graph, node_id_user)).value] <=
+        F[Int(node_id_user), Int(only(outflow_ids_allocation(graph, node_id_user)))] <=
         user.return_factor[findsorted(user.node_id, node_id)] *
-        F[only(inflow_ids_allocation(graph, node_id_user)).value, node_iduser.value],
+        F[Int(only(inflow_ids_allocation(graph, node_id_user))), Int(node_iduser)],
         base_name = "return_flow",
     )
     return nothing
@@ -749,7 +749,7 @@ function assign_allocations!(
         # Save allocations to record
         push!(record.time, t)
         push!(record.allocation_network_id, allocation_model.allocation_network_id)
-        push!(record.user_node_id, user_node_id.value)
+        push!(record.user_node_id, Int(user_node_id))
         push!(record.priority, user.priorities[priority_idx])
         push!(record.demand, user.demand[user_idx][priority_idx](t))
         push!(record.allocated, allocated)

@@ -129,15 +129,11 @@ end
 function get_storages_and_levels(
     model::Model,
 )::@NamedTuple{
-    time::Vector{Dates.DateTime},
+    time::Vector{DateTime},
     node_id::Vector{NodeID},
     storage::Matrix{Float64},
     level::Matrix{Float64},
 }
-    NamedTuple{
-        (:time, :node_id, :storage, :level),
-        Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
-    }
     (; config, integrator) = model
     (; sol, p) = integrator
 
@@ -155,19 +151,34 @@ function get_storages_and_levels(
 end
 
 "Create the basin result table from the saved data"
-function basin_table(model::Model)::NamedTuple
+function basin_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{Int},
+    storage::Vector{Float64},
+    level::Vector{Float64},
+}
     data = get_storages_and_levels(model)
     nbasin = length(data.node_id)
     ntsteps = length(data.time)
 
     time = repeat(data.time; inner = nbasin)
-    node_id = repeat(data.node_id; outer = ntsteps)
+    node_id = repeat(Int.(data.node_id); outer = ntsteps)
 
     return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
 end
 
 "Create a flow result table from the saved data"
-function flow_table(model::Model)::NamedTuple
+function flow_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    edge_id::Vector{Union{Int, Missing}},
+    from_node_id::Vector{Int},
+    to_node_id::Vector{Int},
+    flow::FlatVector{Float64},
+}
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
@@ -199,7 +210,14 @@ function flow_table(model::Model)::NamedTuple
 end
 
 "Create a discrete control result table from the saved data"
-function discrete_control_table(model::Model)::NamedTuple
+function discrete_control_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    control_node_id::Vector{Int},
+    truth_state::Vector{String},
+    control_state::Vector{String},
+}
     (; config) = model
     (; record) = model.integrator.p.discrete_control
 
@@ -208,7 +226,17 @@ function discrete_control_table(model::Model)::NamedTuple
 end
 
 "Create an allocation result table for the saved data"
-function allocation_table(model::Model)::NamedTuple
+function allocation_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    allocation_network_id::Vector{Int},
+    user_node_id::Vector{Int},
+    priority::Vector{Int},
+    demand::Vector{Float64},
+    allocated::Vector{Float64},
+    abstracted::Vector{Float64},
+}
     (; config) = model
     (; record) = model.integrator.p.user
 
@@ -229,10 +257,11 @@ function write_arrow(
     path::AbstractString,
     table::NamedTuple,
     compress::TranscodingStreams.Codec,
-)
+)::Nothing
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
     mkpath(dirname(path))
     Arrow.write(path, table; compress)
+    return nothing
 end

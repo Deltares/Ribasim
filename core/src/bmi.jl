@@ -449,7 +449,7 @@ function discrete_control_affect!(
         record = discrete_control.record
 
         push!(record.time, integrator.t)
-        push!(record.control_node_id, discrete_control_node_id.value)
+        push!(record.control_node_id, Int(discrete_control_node_id))
         push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
