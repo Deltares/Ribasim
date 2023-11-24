@@ -261,10 +261,9 @@ class DatasetWidget(QWidget):
     def _get_database_path_from_model_file(self) -> str:
         with open(self.path, "rb") as f:
             input_dir = Path(tomllib.load(f)["input_dir"])
-        if input_dir.is_absolute():
-            return str(input_dir / "database.gpkg")
-        else:
-            return str((Path(self.path).parent / input_dir / "database.gpkg").resolve())
+        # The .joinpath method (/) of pathlib.Path will take care of an absolute input_dir.
+        # No need to check it ourselves!
+        return str((Path(self.path).parent / input_dir / "database.gpkg").resolve())
 
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
