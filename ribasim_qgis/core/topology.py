@@ -1,7 +1,8 @@
 from collections.abc import Iterable
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
 # qgis is monkey patched by plugins.processing.
 # Importing from plugins directly for mypy
@@ -38,8 +39,10 @@ def explode_lines(edge: QgsVectorLayer) -> None:
 
 
 def derive_connectivity(
-    node_index, node_xy, edge_xy
-) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+    node_index: npt.NDArray[np.int_],
+    node_xy: npt.NDArray[np.float_],
+    edge_xy: npt.NDArray[np.float_],
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
     """
     Derive connectivity on the basis of xy locations.
 
