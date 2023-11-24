@@ -16,7 +16,7 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, zstd, lz4
+export algorithm, snake_case, zstd, lz4, input_path, results_path
 
 const schemas =
     getfield.(
@@ -128,19 +128,12 @@ end
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
-
-    # when Config is created from a TOML file, this is its directory
     input_dir::String
     results_dir::String
-
-    # input
     database::String = "database.gpkg"
-
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
-
-    # results, required
     results::Results = Results()
 end
 
@@ -150,6 +143,37 @@ struct Config
 end
 
 Config(toml::Toml) = Config(toml, ".")
+
+"""
+    Config(config_path::AbstractString; kwargs...)
+
+Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
+keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
+"""
+function Config(config_path::AbstractString; kwargs...)::Config
+    toml = from_toml(Toml, config_path; kwargs...)
+    relative_dir = dirname(normpath(config_path))
+    Config(toml, relative_dir)
+end
+
+Base.getproperty(config::Config, sym::Symbol) = getfield(getfield(config, :toml), sym)
+
+"""
+    relative_dir(config::Config)
+
+Get the relative directory of the configuration
+"""
+relative_dir(config::Config) = getfield(config, :relative_dir)
+
+"Construct a path relative to both the TOML directory and the optional `input_dir`"
+function input_path(config::Config, path::String)
+    return normpath(relative_dir(config), config.input_dir, path)
+end
+
+"Construct a path relative to both the TOML directory and the optional `results_dir`"
+function results_path(config::Config, path::String)
+    return normpath(relative_dir(config), config.results_dir, path)
+end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
     level == "debug" && return Debug

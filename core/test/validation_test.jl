@@ -29,7 +29,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.toml.database)
+    db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
 
     logger = TestLogger()
@@ -165,7 +165,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.toml.database)
+    db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, config)
     (; connectivity, fractional_flow) = p
@@ -208,7 +208,7 @@ end
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.toml.database)
+    db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
 
@@ -288,7 +288,7 @@ end
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.toml.database)
+    db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do

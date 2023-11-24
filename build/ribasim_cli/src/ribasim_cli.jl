@@ -37,7 +37,7 @@ function julia_main()::Cint
             println("The model finished successfully")
             0
         else
-            t = Ribasim.datetime_since(model.integrator.t, model.config.toml.starttime)
+            t = Ribasim.datetime_since(model.integrator.t, model.config.starttime)
             retcode = model.integrator.sol.retcode
             println("The model exited at model time $t with return code $retcode")
             println("See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes")

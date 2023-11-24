@@ -7,10 +7,10 @@
     @testset "testrun" begin
         config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
         @test config isa Ribasim.Config
-        @test config.toml.endtime > config.toml.starttime
-        @test config.toml.solver == Ribasim.Solver(; saveat = 86400.0)
-        @test config.toml.results.compression == Ribasim.zstd
-        @test config.toml.results.compression_level == 6
+        @test config.endtime > config.starttime
+        @test config.solver == Ribasim.Solver(; saveat = 86400.0)
+        @test config.results.compression == Ribasim.zstd
+        @test config.results.compression_level == 6
     end
 
     @testset "results" begin
@@ -31,7 +31,7 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test config.toml.solver.adaptive
+        @test config.solver.adaptive
     end
 end
 

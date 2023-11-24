@@ -166,7 +166,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.toml.database)
+    db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
@@ -181,7 +181,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.toml.database)
+    db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)

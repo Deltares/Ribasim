@@ -60,8 +60,12 @@ function load_data(
     schema = Legolas._schema_version_from_record_type(record)
 
     node, kind = nodetype(schema)
-    path =
-        isnothing(kind) ? nothing : getfield(getfield(config.toml, snake_case(node)), kind)
+    path = if isnothing(kind)
+        nothing
+    else
+        toml = getfield(config, :toml)
+        getfield(getfield(toml, snake_case(node)), kind)
+    end
     sqltable = tablename(schema)
 
     table = if !isnothing(path)
@@ -121,28 +125,6 @@ function load_structvector(
     return sorted_table!(table)
 end
 
-"Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.toml.input_dir, path)
-end
-
-"Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.toml.results_dir, path)
-end
-
-"""
-    Config(config_path::AbstractString; kwargs...)
-
-Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
-keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
-"""
-function Config(config_path::AbstractString; kwargs...)::Config
-    toml = from_toml(Toml, config_path; kwargs...)
-    relative_dir = dirname(normpath(config_path))
-    Config(toml, relative_dir)
-end
-
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
     model::Model,
@@ -154,7 +136,7 @@ function get_storages_and_levels(
     (; sol, p) = integrator
 
     node_id = p.basin.node_id.values::Vector{Int}
-    tsteps = datetime_since.(timesteps(model), config.toml.starttime)
+    tsteps = datetime_since.(timesteps(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
@@ -190,7 +172,7 @@ function flow_table(model::Model)::NamedTuple
     nflow = length(I)
     ntsteps = length(t)
 
-    time = repeat(datetime_since.(t, config.toml.starttime); inner = nflow)
+    time = repeat(datetime_since.(t, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
@@ -204,7 +186,7 @@ function discrete_control_table(model::Model)::NamedTuple
     (; config) = model
     (; record) = model.integrator.p.discrete_control
 
-    time = datetime_since.(record.time, config.toml.starttime)
+    time = datetime_since.(record.time, config.starttime)
     return (; time, record.control_node_id, record.truth_state, record.control_state)
 end
 
@@ -213,7 +195,7 @@ function allocation_table(model::Model)::NamedTuple
     (; config) = model
     (; record) = model.integrator.p.user
 
-    time = datetime_since.(record.time, config.toml.starttime)
+    time = datetime_since.(record.time, config.starttime)
     return (;
         time,
         record.allocation_network_id,

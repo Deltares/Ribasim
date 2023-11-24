@@ -78,7 +78,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.toml.database)
+    db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
 
     # load a sorted table

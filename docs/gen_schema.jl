@@ -92,7 +92,7 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
     for (fieldnames, fieldtype) in zip(fieldnames(T), fieldtypes(T))
         fieldname = string(fieldnames)
         ref = false
-        if fieldtype <: Ribasim.config.toml.TableOption
+        if fieldtype <: Ribasim.config.TableOption
             schema["properties"][fieldname] = OrderedDict(
                 "\$ref" => "$(prefix)$(strip_prefix(fieldtype)).schema.json",
                 "default" => fieldtype(),
@@ -108,7 +108,7 @@ function gen_schema(T::DataType, prefix = prefix; pandera = true)
                 merge!(schema["properties"][fieldname], type)
             end
         end
-        if T <: Ribasim.config.toml.TableOption
+        if T <: Ribasim.config.TableOption
             d = field_default(T, fieldnames)
             if !(d isa Configurations.ExproniconLite.NoDefault)
                 if !ref
@@ -149,7 +149,7 @@ end
 for T in subtypes(Legolas.AbstractRecord)
     gen_schema(T)
 end
-for T in subtypes(Ribasim.config.toml.TableOption)
+for T in subtypes(Ribasim.config.TableOption)
     gen_schema(T; pandera = false)
 end
 gen_root_schema(subtypes(Legolas.AbstractRecord))

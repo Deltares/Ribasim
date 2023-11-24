@@ -492,7 +492,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; graph_control) = connectivity
     (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
 
-    t_end = seconds_since(config.toml.endtime, config.toml.starttime)
+    t_end = seconds_since(config.endtime, config.starttime)
     errors = false
 
     for id in unique(node_id)
