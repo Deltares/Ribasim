@@ -252,7 +252,13 @@ function allocation_table(
     )
 end
 
-function subgrid_level_table(model::Model)::NamedTuple
+function subgrid_level_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    subgrid_id::Vector{Int},
+    subgrid_level::Vector{Float64},
+}
     (; config, saved, integrator) = model
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.subgrid
