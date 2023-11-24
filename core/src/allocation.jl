@@ -1,3 +1,7 @@
+"""
+Find all nodes in the subnetwork which will be used in the allocation network.
+Some nodes are skipped to optimize allocation optimization.
+"""
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     (; connectivity) = p
     (; graph) = connectivity
@@ -28,11 +32,18 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     return Nothing
 end
 
+"""
+Find out whether the given edge is a source for an allocation network.
+"""
 function is_allocation_source(graph::MetaGraph, id_src::NodeID, id_dst::NodeID)::Bool
     return haskey(graph, id_src, id_dst) &&
            graph[id_src, id_dst].allocation_network_id_source != 0
 end
 
+"""
+Add to the edge metadata that the given edge is used for allocation flow.
+If the edge does not exist, it is created.
+"""
 function indicate_allocation_flow!(
     graph::MetaGraph,
     id_src::NodeID,
@@ -52,10 +63,7 @@ end
 This loop finds allocation graph edges in several ways:
 - Between allocation graph nodes whose equivalent in the subnetwork are directly connected
 - Between allocation graph nodes whose equivalent in the subnetwork are connected
-  with one or more non-junction nodes in between
-
-Here edges are added to the allocation graph that are given by a single edge in
-the subnetwork.
+  with one or more allocation graph nodes in between
 """
 function find_allocation_graph_edges!(
     p::Parameters,
@@ -233,7 +241,7 @@ function process_allocation_graph_edges!(
 end
 
 """
-The source nodes must only have one outneighbor.
+The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
 function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
     (; connectivity) = p
@@ -260,7 +268,7 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
             ]
             if length(ids_allocation_out) !== 1
                 errors = true
-                # TODO: Add error message
+                @error "Source edge ($id_source, $id_dst) is not the only allocation edge coming from $id_source"
             end
         end
     end
@@ -268,8 +276,7 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
 end
 
 """
-Remove user return flow edges that are upstream of the user itself, and collect the IDs
-of the allocation graph node IDs of the users that do not have this problem.
+Remove allocation user return flow edges that are upstream of the user itself.
 """
 function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
     (; connectivity) = p
@@ -311,6 +318,7 @@ function allocation_graph(
         error("Errors in sources in allocation graph.")
     end
 
+    # Discard user return flow in allocation if this leads to a closed loop of flow
     avoid_using_own_returnflow!(p, allocation_network_id)
 
     return capacity
@@ -318,7 +326,7 @@ end
 
 """
 Add the flow variables F to the allocation problem.
-The variable indices are the allocation graph edge IDs.
+The variable indices are (edge_source_id, edge_dst_id).
 Non-negativivity constraints are also immediately added to the flow variables.
 """
 function add_variables_flow!(
@@ -356,32 +364,9 @@ function add_variables_absolute_value!(
 end
 
 """
-Add the basin allocation constraints to the allocation problem;
-the allocations to the basins are bounded from above by the basin demand
-(these are set before each allocation solve).
-The constraint indices are allocation graph basin node IDs.
-
-Constraint:
-allocation to basin <= basin demand
-"""
-function add_constraints_basin_allocation!(
-    problem::JuMP.Model,
-    node_ids_basin::Vector{Int},
-)::Nothing
-    A_basin = problem[:A_basin]
-    problem[:basin_allocation] = JuMP.@constraint(
-        problem,
-        [i = node_ids_basin],
-        A_basin[i] <= 0.0,
-        base_name = "basin_allocation"
-    )
-    return nothing
-end
-
-"""
 Add the flow capacity constraints to the allocation problem.
 Only finite capacities get a constraint.
-The constraint indices are the allocation graph edge IDs.
+The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
 flow over edge <= edge capacity
@@ -414,7 +399,7 @@ end
 """
 Add the source constraints to the allocation problem.
 The actual threshold values will be set before each allocation solve.
-The constraint indices are the allocation graph source node IDs.
+The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
 flow over source edge <= source flow in subnetwork
@@ -441,6 +426,10 @@ function add_constraints_source!(
     return nothing
 end
 
+"""
+Get the inneighbors of the given ID such that the connecting edge
+is an allocation flow edge.
+"""
 function inflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     inflow_ids = NodeID[]
     for inneighbor_id in inneighbor_labels(graph, node_id)
@@ -451,6 +440,10 @@ function inflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     return inflow_ids
 end
 
+"""
+Get the outneighbors of the given ID such that the connecting edge
+is an allocation flow edge.
+"""
 function outflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     outflow_ids = NodeID[]
     for outneighbor_id in outneighbor_labels(graph, node_id)
@@ -463,7 +456,7 @@ end
 
 """
 Add the flow conservation constraints to the allocation problem.
-The constraint indices are allocation graph user node IDs.
+The constraint indices are user node IDs.
 
 Constraint:
 sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
@@ -495,10 +488,10 @@ end
 
 """
 Add the user returnflow constraints to the allocation problem.
-The constraint indices are allocation graph user node IDs.
+The constraint indices are user node IDs.
 
 Constraint:
-outflow from user = return factor * inflow to user
+outflow from user <= return factor * inflow to user
 """
 function add_constraints_user_returnflow!(
     problem::JuMP.Model,
@@ -518,7 +511,7 @@ function add_constraints_user_returnflow!(
     problem[:return_flow] = JuMP.@constraint(
         problem,
         [node_id_user = node_ids_user_with_returnflow],
-        F[node_id_user.value, only(outflow_ids_allocation(graph, node_id_user)).value] ==
+        F[node_id_user.value, only(outflow_ids_allocation(graph, node_id_user)).value] <=
         user.return_factor[findsorted(user.node_id, node_id)] *
         F[only(inflow_ids_allocation(graph, node_id_user)).value, node_iduser.value],
         base_name = "return_flow",
@@ -625,16 +618,13 @@ Construct the JuMP.jl problem for allocation.
 
 Inputs
 ------
+config: The model configuration with allocation configuration in config.allocation
 p: Ribasim problem parameters
-subnetwork_node_ids: the problem node IDs that are part of the allocation subnetwork
-source_edge_ids:: The IDs of the edges in the subnetwork whose flow fill be taken as
-    a source in allocation
 Δt_allocation: The timestep between successive allocation solves
 
 Outputs
 -------
 An AllocationModel object.
-
 """
 function AllocationModel(
     config::Config,
@@ -642,6 +632,7 @@ function AllocationModel(
     p::Parameters,
     Δt_allocation::Float64,
 )::AllocationModel
+    # Add allocation graph data to the model MetaGraph
     capacity = allocation_graph(p, allocation_network_id)
 
     # The JuMP.jl allocation problem
@@ -762,7 +753,7 @@ function assign_allocations!(
         push!(record.priority, user.priorities[priority_idx])
         push!(record.demand, user.demand[user_idx][priority_idx](t))
         push!(record.allocated, allocated)
-        # Note: This is now the last abstraction before the allocation update,
+        # TODO: This is now the last abstraction before the allocation update,
         # should be the average abstraction since the last allocation solve
         push!(record.abstracted, flow[inflow_id(graph, user_node_id), user_node_id])
     end
@@ -770,7 +761,7 @@ function assign_allocations!(
 end
 
 """
-Set the source flows as capacities on edges in the AG.
+Set the source flows as capacities on threir edges in the allocation problem.
 """
 function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
     (; problem) = allocation_model

@@ -119,22 +119,37 @@ function all_neighbor_labels_type(
     ]
 end
 
+"""
+Get the outneighbors over flow edges.
+"""
 function outflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
     return outneighbor_labels_type(graph, id, EdgeType.flow)
 end
 
+"""
+Get the inneighbors over flow edges.
+"""
 function inflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
     return inneighbor_labels_type(graph, id, EdgeType.flow)
 end
 
+"""
+Get the in- and outneighbors over flow edges.
+"""
 function inoutflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
     return all_neighbor_labels_type(graph, id, EdgeType.flow)
 end
 
+"""
+Get the unique outneighbor over a flow edge.
+"""
 function outflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(outflow_ids(graph, id))
 end
 
+"""
+Get the unique inneighbor over a flow edge.
+"""
 function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end

@@ -175,6 +175,10 @@ function BMI.finalize(model::Model)::Model
     return model
 end
 
+"""
+Set parameters of nodes that are controlled by DiscreteControl to the
+values corresponding to the initial state of the model.
+"""
 function set_initial_discrete_controlled_parameters!(
     integrator,
     storage0::Vector{Float64},
