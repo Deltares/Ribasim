@@ -431,7 +431,7 @@ function discrete_control_affect!(
             discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
         else
             error(
-                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node #$discrete_control_node_id.",
+                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node $discrete_control_node_id.",
             )
         end
 
