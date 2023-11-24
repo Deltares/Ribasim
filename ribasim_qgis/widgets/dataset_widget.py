@@ -99,7 +99,7 @@ class DatasetTreeWidget(QTreeWidget):
             return
 
         # Start deleting
-        elements = {item.element for item in selection}  # type: ignore
+        elements = {item.element for item in selection}  # type: ignore[attr-defined] # TODO: dynamic item.element should be in some dict.
         qgs_instance = QgsProject.instance()
         assert qgs_instance is not None
 
@@ -337,7 +337,7 @@ class DatasetWidget(QWidget):
     def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        return {item.element.name for item in selection}  # type: ignore
+        return {item.element.name for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
 
     def add_node_layer(self, element) -> None:
         self.dataset_tree.add_node_layer(element)

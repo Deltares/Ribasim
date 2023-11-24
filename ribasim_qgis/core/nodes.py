@@ -757,7 +757,7 @@ class UserTime(Input):
 
 
 NODES: dict[str, type[Input]] = {
-    cls.input_type(): cls  # type: ignore
+    cls.input_type(): cls  # type: ignore[type-abstract] # mypy doesn't see that all classes are concrete.
     for cls in Input.__subclasses__()
 }
 NONSPATIALNODETYPES: set[str] = {
