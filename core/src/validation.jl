@@ -460,29 +460,30 @@ function valid_profiles(
     node_id::Indices{NodeID},
     level::Vector{Vector{Float64}},
     area::Vector{Vector{Float64}},
-)::Vector{String}
-    errors = String[]
+)::Bool
+    errors = false
 
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
-            push!(errors, "Basin $id has repeated levels, this cannot be interpolated.")
+            errors = true
+            @error "Basin $id has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
-            push!(
-                errors,
-                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area $(areas[1]) for node $id).",
+            errors = true
+            @error(
+                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons.",
+                node_id = id,
+                area = areas[1],
             )
         end
 
         if areas[end] < areas[end - 1]
-            push!(
-                errors,
-                "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id.",
-            )
+            errors = true
+            @error "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id."
         end
     end
-    return errors
+    return !errors
 end
 
 """

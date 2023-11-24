@@ -141,25 +141,21 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
-        errors = valid_profiles(node_id, level, area)
-        if isempty(errors)
-            return new{T, C}(
-                node_id,
-                precipitation,
-                potential_evaporation,
-                drainage,
-                infiltration,
-                current_level,
-                current_area,
-                area,
-                level,
-                storage,
-                time,
-            )
-        else
-            foreach(x -> @error(x), errors)
-            error("Errors occurred when parsing Basin data.")
-        end
+        is_valid = valid_profiles(node_id, level, area)
+        is_valid || error("Invalid Basin / profile table.")
+        return new{T, C}(
+            node_id,
+            precipitation,
+            potential_evaporation,
+            drainage,
+            infiltration,
+            current_level,
+            current_area,
+            area,
+            level,
+            storage,
+            time,
+        )
     end
 end
 

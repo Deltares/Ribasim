@@ -1,22 +1,35 @@
 @testitem "Basin profile validation" begin
     using Dictionaries: Indices
+    using Ribasim: NodeID, valid_profiles, qh_interpolation
     using DataInterpolations: LinearInterpolation
+    using Logging
 
-    node_id = Indices([Ribasim.NodeID(1)])
+    node_id = Indices([NodeID(1)])
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
-    errors = Ribasim.valid_profiles(node_id, level, area)
-    @test "Basin #1 has repeated levels, this cannot be interpolated." in errors
-    @test "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons (got area 0.0 for node #1)." in
-          errors
-    @test "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1." in
-          errors
-    @test length(errors) == 3
 
-    itp, valid = Ribasim.qh_interpolation([0.0, 0.0], [1.0, 2.0])
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_profiles(node_id, level, area)
+    end
+
+    @test length(logger.logs) == 3
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Basin #1 has repeated levels, this cannot be interpolated."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
+          "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons."
+    @test logger.logs[2].kwargs[:node_id] == NodeID(1)
+    @test logger.logs[2].kwargs[:area] == 0
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1."
+
+    itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid
     @test itp isa LinearInterpolation
-    itp, valid = Ribasim.qh_interpolation([0.0, 0.1], [1.0, 2.0])
+    itp, valid = qh_interpolation([0.0, 0.1], [1.0, 2.0])
     @test valid
     @test itp isa LinearInterpolation
 end
