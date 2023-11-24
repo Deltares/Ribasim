@@ -34,7 +34,7 @@ from qgis.core import (
 )
 from qgis.core.additions.edit import edit
 
-import ribasim_qgis.tomllib as tomllib
+from ribasim_qgis.core.model import get_database_path_from_model_file
 from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
@@ -259,7 +259,7 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        geo_path = self._get_database_path_from_model_file()
+        geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
@@ -273,11 +273,6 @@ class DatasetWidget(QWidget):
         self.edge_layer = nodes["Edge"].layer
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
-
-    def _get_database_path_from_model_file(self) -> str:
-        with open(self.path, "rb") as f:
-            model_filename = tomllib.load(f)["database"]
-            return str(Path(self.path).parent.joinpath(model_filename))
 
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""

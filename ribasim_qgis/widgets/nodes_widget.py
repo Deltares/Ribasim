@@ -3,6 +3,7 @@ from typing import cast
 
 from PyQt5.QtWidgets import QGridLayout, QPushButton, QVBoxLayout, QWidget
 
+from ribasim_qgis.core.model import get_database_path_from_model_file
 from ribasim_qgis.core.nodes import NODES
 
 
@@ -57,7 +58,11 @@ class NodesWidget(QWidget):
         """
         klass = NODES[node_type]
         names = self.ribasim_widget.selection_names()
-        node = klass.create(self.ribasim_widget.path, self.ribasim_widget.crs, names)
+        node = klass.create(
+            get_database_path_from_model_file(self.ribasim_widget.path),
+            self.ribasim_widget.crs,
+            names,
+        )
         # Write to geopackage
         node.write()
         # Add to QGIS
