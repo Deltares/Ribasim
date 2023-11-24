@@ -51,7 +51,7 @@ class Input(abc.ABC):
 
     def __init__(self, path: str):
         self.name = self.input_type()
-        self.__path = path
+        self._path = path
 
     @classmethod
     @abc.abstractmethod
@@ -123,7 +123,7 @@ class Input(abc.ABC):
         return None
 
     def layer_from_geopackage(self) -> QgsVectorLayer:
-        self.layer = QgsVectorLayer(f"{self.__path}|layername={self.name}", self.name)
+        self.layer = QgsVectorLayer(f"{self._path}|layername={self.name}", self.name)
         return self.layer
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
@@ -131,11 +131,11 @@ class Input(abc.ABC):
         return (self.layer, self.renderer, self.labels)
 
     def write(self) -> None:
-        self.layer = geopackage.write_layer(self.__path, self.layer, self.name)
+        self.layer = geopackage.write_layer(self._path, self.layer, self.name)
         self.set_defaults()
 
     def remove_from_geopackage(self) -> None:
-        geopackage.remove_layer(self.__path, self.name)
+        geopackage.remove_layer(self._path, self.name)
 
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
@@ -165,7 +165,7 @@ class Node(Input):
     def write(self) -> None:
         # Special case the Node layer write because it needs to generate a new file.
         self.layer = geopackage.write_layer(
-            self.__path, self.layer, self.name, newfile=True
+            self._path, self.layer, self.name, newfile=True
         )
         self.set_defaults()
         return
@@ -756,7 +756,10 @@ class UserTime(Input):
         ]
 
 
-NODES: dict[str, Any] = {cls.input_type(): cls for cls in Input.__subclasses__()}
+NODES: dict[str, type[Input]] = {
+    cls.input_type(): cls  # type: ignore
+    for cls in Input.__subclasses__()
+}
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }

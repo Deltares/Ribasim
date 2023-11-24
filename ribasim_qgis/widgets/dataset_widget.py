@@ -26,7 +26,12 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qgis.core import QgsFeature, QgsMapLayer, QgsProject, QgsVectorLayer
+from qgis.core import (
+    QgsFeature,
+    QgsMapLayer,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.core.additions.edit import edit
 
 import ribasim_qgis.tomllib as tomllib
@@ -35,7 +40,7 @@ from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
 class DatasetTreeWidget(QTreeWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None):
         super().__init__(parent)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setHeaderHidden(True)
@@ -126,9 +131,13 @@ class DatasetTreeWidget(QTreeWidget):
 
 
 class DatasetWidget(QWidget):
-    def __init__(self, parent: QWidget | None):
+    def __init__(self, parent: QWidget):
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
         super().__init__(parent)
-        self.dataset_tree = DatasetTreeWidget()
+
+        self.ribasim_widget = cast(RibasimWidget, parent)
+        self.dataset_tree = DatasetTreeWidget(self)
         self.dataset_tree.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.dataset_line_edit = QLineEdit()
         self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
@@ -144,6 +153,7 @@ class DatasetWidget(QWidget):
         self.add_button.clicked.connect(self.add_selection_to_qgis)
         self.edge_layer: Optional[QgsVectorLayer] = None
         self.node_layer: Optional[QgsVectorLayer] = None
+
         # Layout
         dataset_layout = QVBoxLayout()
         dataset_row = QHBoxLayout()
@@ -223,10 +233,7 @@ class DatasetWidget(QWidget):
         on_top: bool = False,
         labels: Any = None,
     ) -> QgsMapLayer | None:
-        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-        parent_widget = cast(RibasimWidget, self.parent())
-        return parent_widget.add_layer(
+        return self.ribasim_widget.add_layer(
             layer,
             destination,
             renderer,
@@ -257,11 +264,7 @@ class DatasetWidget(QWidget):
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
         name = str(Path(self.path).stem)
-
-        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-        parent_widget = cast(RibasimWidget, self.parent())
-        parent_widget.create_groups(name)
+        self.ribasim_widget.create_groups(name)
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
 
@@ -284,14 +287,13 @@ class DatasetWidget(QWidget):
             geo_path = Path(self.path).parent.joinpath("database.gpkg")
             self._write_new_model(geo_path.name)
 
-            from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-            parent_widget = cast(RibasimWidget, self.parent())
             for input_type in (Node, Edge):
-                instance = input_type.create(str(geo_path), parent_widget.crs, names=[])
+                instance = input_type.create(
+                    str(geo_path), self.ribasim_widget.crs, names=[]
+                )
                 instance.write()
             self.load_geopackage()
-            parent_widget.toggle_node_buttons(True)
+            self.ribasim_widget.toggle_node_buttons(True)
 
     def _write_new_model(self, database_name: str) -> None:
         with open(self.path, "w") as f:
@@ -310,11 +312,7 @@ class DatasetWidget(QWidget):
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
-
-            from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-            parent_widget = cast(RibasimWidget, self.parent())
-            parent_widget.toggle_node_buttons(True)
+            self.ribasim_widget.toggle_node_buttons(True)
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     def remove_geopackage_layer(self) -> None:

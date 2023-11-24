@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, cast
+from typing import cast
 
 from PyQt5.QtWidgets import QGridLayout, QPushButton, QVBoxLayout, QWidget
 
@@ -7,9 +7,11 @@ from ribasim_qgis.core.nodes import NODES
 
 
 class NodesWidget(QWidget):
-    def __init__(self, parent: Optional[QWidget]):
-        super().__init__(parent)
+    def __init__(self, parent: QWidget):
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
+        super().__init__(parent)
+        self.ribasim_widget = cast(RibasimWidget, parent)
         self.node_buttons: dict[str, QPushButton] = {}
         for node in NODES:
             if node in ("Node", "Edge"):
@@ -19,6 +21,7 @@ class NodesWidget(QWidget):
             self.node_buttons[node] = button
         self.toggle_node_buttons(False)  # no dataset loaded yet
 
+        # layout
         node_layout = QVBoxLayout()
         node_grid = QGridLayout()
         n_row = -(len(self.node_buttons) // -2)  # Ceiling division
@@ -52,17 +55,14 @@ class NodesWidget(QWidget):
         node_type: str
             Name of the element type.
         """
-        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-        parent_widget = cast(RibasimWidget, self.parent())
         klass = NODES[node_type]
-        names = parent_widget.selection_names()
-        node = klass.create(parent_widget.path, parent_widget.crs, names)
+        names = self.ribasim_widget.selection_names()
+        node = klass.create(self.ribasim_widget.path, self.ribasim_widget.crs, names)
         # Write to geopackage
         node.write()
         # Add to QGIS
-        parent_widget.add_layer(
+        self.ribasim_widget.add_layer(
             node.layer, "Ribasim Input", node.renderer, labels=node.labels
         )
         # Add to dataset tree
-        parent_widget.add_node_layer(node)
+        self.ribasim_widget.add_node_layer(node)
