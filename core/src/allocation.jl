@@ -2,7 +2,7 @@
 Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
-function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
+function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
     (; connectivity) = p
     (; graph) = connectivity
 
@@ -29,7 +29,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     end
 
     filter!(in(used_nodes), node_ids)
-    return Nothing
+    return nothing
 end
 
 """
