@@ -13,11 +13,6 @@
             "format": "date-time",
             "type": "string"
         },
-        "relative_dir": {
-            "format": "default",
-            "type": "string",
-            "default": "."
-        },
         "input_dir": {
             "format": "default",
             "type": "string",
@@ -26,7 +21,7 @@
         "results_dir": {
             "format": "default",
             "type": "string",
-            "default": "."
+            "default": "results"
         },
         "database": {
             "format": "default",
@@ -44,8 +39,7 @@
             "$ref": "https://deltares.github.io/Ribasim/schema/Solver.schema.json",
             "default": {
                 "algorithm": "QNDF",
-                "saveat": [
-                ],
+                "saveat": [],
                 "adaptive": true,
                 "dt": null,
                 "dtmin": null,
@@ -172,7 +166,6 @@
     "required": [
         "starttime",
         "endtime",
-        "relative_dir",
         "input_dir",
         "results_dir",
         "database",

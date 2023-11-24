@@ -26,7 +26,7 @@ def assert_equal(a, b):
 
 def test_basic(basic, tmp_path):
     model_orig = basic
-    model_orig.write(tmp_path / "basic")
+    model_orig.write(tmp_path / "basic/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
 
     index_a = model_orig.network.node.df.index.to_numpy(int)
@@ -39,7 +39,7 @@ def test_basic(basic, tmp_path):
 
 def test_basic_arrow(basic_arrow, tmp_path):
     model_orig = basic_arrow
-    model_orig.write(tmp_path / "basic_arrow")
+    model_orig.write(tmp_path / "basic_arrow/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_arrow/ribasim.toml")
 
     assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
@@ -47,7 +47,7 @@ def test_basic_arrow(basic_arrow, tmp_path):
 
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
-    model_orig.write(tmp_path / "basic_transient")
+    model_orig.write(tmp_path / "basic_transient/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
 
     assert_equal(model_orig.network.node.df, model_loaded.network.node.df)

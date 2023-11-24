@@ -1,5 +1,4 @@
 from enum import Enum
-from pathlib import Path
 
 from pydantic import Field
 
@@ -45,10 +44,6 @@ class Compression(str, Enum):
 
 
 class Results(BaseModel):
-    basin: Path = Path("results/basin.arrow")
-    flow: Path = Path("results/flow.arrow")
-    control: Path = Path("results/control.arrow")
-    subgrid_level: Path = Path("results/subgrid_level.arrow")
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6

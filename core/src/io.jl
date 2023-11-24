@@ -60,7 +60,12 @@ function load_data(
     schema = Legolas._schema_version_from_record_type(record)
 
     node, kind = nodetype(schema)
-    path = isnothing(kind) ? nothing : getfield(getfield(config, snake_case(node)), kind)
+    path = if isnothing(kind)
+        nothing
+    else
+        toml = getfield(config, :toml)
+        getfield(getfield(toml, snake_case(node)), kind)
+    end
     sqltable = tablename(schema)
 
     table = if !isnothing(path)
@@ -118,31 +123,6 @@ function load_structvector(
     end
 
     return sorted_table!(table)
-end
-
-"Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.input_dir, path)
-end
-
-"Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.results_dir, path)
-end
-
-"""
-    Config(config_path::AbstractString; kwargs...)
-
-Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
-keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
-"""
-function Config(config_path::AbstractString; kwargs...)::Config
-    return from_toml(
-        Config,
-        config_path;
-        relative_dir = dirname(normpath(config_path)),
-        kwargs...,
-    )
 end
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"
