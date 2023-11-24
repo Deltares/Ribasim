@@ -121,6 +121,6 @@ def trivial_model() -> ribasim.Model:
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
-        results=ribasim.Results(),
+        results=ribasim.Results(subgrid=True),
     )
     return model

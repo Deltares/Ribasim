@@ -47,6 +47,7 @@ class Results(BaseModel):
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6
+    subgrid: bool = False
 
 
 class Solver(BaseModel):

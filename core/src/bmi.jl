@@ -240,9 +240,15 @@ function create_callbacks(
 
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
-    export_cb =
-        SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = false)
-    push!(callbacks, export_cb)
+    if config.results.subgrid
+        export_cb = SavingCallback(
+            save_subgrid_level,
+            saved_subgrid_level;
+            saveat,
+            save_start = false,
+        )
+        push!(callbacks, export_cb)
+    end
 
     saved = SavedResults(saved_flow, saved_subgrid_level)
 
@@ -629,10 +635,10 @@ function run(config::Config)::Model
         )
     end
 
-    #    with_logger(logger) do
-    model = Model(config)
-    solve!(model)
-    BMI.finalize(model)
-    return model
-    #    end
+    with_logger(logger) do
+        model = Model(config)
+        solve!(model)
+        BMI.finalize(model)
+        return model
+    end
 end
