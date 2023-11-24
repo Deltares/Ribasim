@@ -167,7 +167,7 @@ class Basin(NodeModel):
     _sort_keys: dict[str, list[str]] = {
         "profile": ["node_id", "level"],
         "time": ["time", "node_id"],
-        "subgrid_level": ["subgrid_id", "node_id", "basin_level"],
+        "subgrid": ["subgrid_id", "basin_level"],
     }
 
 

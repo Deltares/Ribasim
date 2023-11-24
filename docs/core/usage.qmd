@@ -286,8 +286,8 @@ column        | type    | unit  | restriction
 ------------- | ------- | ----- | ------------------------
 subgrid_id    | Int     | -     | sorted
 node_id       | Int     | -     | constant per subgrid_id
-basin_level   | Float64 | $m$   | per subgrid_id: increasing
-subgrid_level | Float64 | $m$   | per subgrid_id: increasing
+basin_level   | Float64 | $m$   | sorted per subgrid_id
+subgrid_level | Float64 | $m$   | sorted per subgrid_id
 
 The table below shows example input for two subgrid elements:
 
