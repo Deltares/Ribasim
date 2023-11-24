@@ -154,22 +154,22 @@ function BMI.finalize(model::Model)::Model
 
     # basin
     table = basin_table(model)
-    path = results_path(config, BASIN_NAME)
+    path = results_path(config, RESULTS_FILENAME.basin)
     write_arrow(path, table, compress)
 
     # flow
     table = flow_table(model)
-    path = results_path(config, FLOW_NAME)
+    path = results_path(config, RESULTS_FILENAME.flow)
     write_arrow(path, table, compress)
 
     # discrete control
     table = discrete_control_table(model)
-    path = results_path(config, CONTROL_NAME)
+    path = results_path(config, RESULTS_FILENAME.control)
     write_arrow(path, table, compress)
 
     # allocation
     table = allocation_table(model)
-    path = results_path(config, ALLOCATION_NAME)
+    path = results_path(config, RESULTS_FILENAME.allocation)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
