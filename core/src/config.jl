@@ -15,8 +15,8 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
-export Config, Solver, Results, Logging
-export algorithm, snake_case, zstd, lz4
+export Config, Solver, Results, Logging, Toml
+export algorithm, snake_case, zstd, lz4, input_path, results_path
 
 const schemas =
     getfield.(
@@ -109,10 +109,6 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
-    basin::String = "results/basin.arrow"
-    flow::String = "results/flow.arrow"
-    control::String = "results/control.arrow"
-    allocation::String = "results/allocation.arrow"
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
@@ -129,24 +125,49 @@ end
     objective_type::String = "quadratic_relative"
 end
 
-@option @addnodetypes struct Config <: TableOption
+@option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
-
-    # optional, when Config is created from a TOML file, this is its directory
-    relative_dir::String = "."  # ignored(!)
-    input_dir::String = "."
-    results_dir::String = "."
-
-    # input, required
-    database::String
-
+    input_dir::String
+    results_dir::String
+    database::String = "database.gpkg"
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
-
-    # results, required
     results::Results = Results()
+end
+
+struct Config
+    toml::Toml
+    dir::String
+end
+
+Config(toml::Toml) = Config(toml, ".")
+
+"""
+    Config(config_path::AbstractString; kwargs...)
+
+Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
+keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
+"""
+function Config(config_path::AbstractString; kwargs...)::Config
+    toml = from_toml(Toml, config_path; kwargs...)
+    dir = dirname(normpath(config_path))
+    Config(toml, dir)
+end
+
+Base.getproperty(config::Config, sym::Symbol) = getproperty(getfield(config, :toml), sym)
+
+Base.dirname(config::Config) = getfield(config, :dir)
+
+"Construct a path relative to both the TOML directory and the optional `input_dir`"
+function input_path(config::Config, path::String)
+    return normpath(dirname(config), config.input_dir, path)
+end
+
+"Construct a path relative to both the TOML directory and the optional `results_dir`"
+function results_path(config::Config, path::String)
+    return normpath(dirname(config), config.results_dir, path)
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)

@@ -13,8 +13,11 @@ def get_database_path_from_model_file(path: str) -> str:
     Returns_:
         str: Full path to database Geopackage.
     """
-    model_filename = get_property_from_model_file(path, "database")
-    return str(Path(path).parent.joinpath(model_filename))
+    with open(path, "rb") as f:
+        input_dir = Path(tomllib.load(f)["input_dir"])
+    # The .joinpath method (/) of pathlib.Path will take care of an absolute input_dir.
+    # No need to check it ourselves!
+    return str((Path(path).parent / input_dir / "database.gpkg").resolve())
 
 
 def get_property_from_model_file(path: str, property: str) -> Any:

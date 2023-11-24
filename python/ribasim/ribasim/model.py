@@ -38,7 +38,7 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
-from ribasim.input_base import FileModel, NodeModel, TableModel, context_file_loading
+from ribasim.input_base import FileModel, NodeModel, context_file_loading
 from ribasim.types import FilePath
 
 
@@ -60,9 +60,9 @@ class Network(FileModel, NodeModel):
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
-        if filepath is not None:
-            directory = context_file_loading.get().get("directory", Path("."))
-            context_file_loading.get()["database"] = directory / filepath
+        directory = context_file_loading.get().get("directory", None)
+        if directory is not None:
+            context_file_loading.get()["database"] = directory / "database.gpkg"
         return {}
 
     @classmethod
@@ -113,11 +113,9 @@ class Model(FileModel):
 
     update_timestep: datetime.timedelta = timedelta(seconds=86400)
         The output time step of the simulation in seconds (default of 1 day)
-    relative_dir: Path = Path(".")
-        The relative directory of the input files.
     input_dir: Path = Path(".")
         The directory of the input files.
-    results_dir: Path = Path(".")
+    results_dir: Path = Path("results")
         The directory of the results files.
 
     network: Network
@@ -164,11 +162,10 @@ class Model(FileModel):
     endtime: datetime.datetime
 
     update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
-    relative_dir: Path = Path(".")
-    input_dir: Path = Path(".")
-    results_dir: Path = Path("results")
+    input_dir: Path = Field(default_factory=lambda: Path("."))
+    results_dir: Path = Field(default_factory=lambda: Path("results"))
 
-    network: Network = Field(default_factory=Network, alias="database")
+    network: Network = Field(default_factory=Network, alias="database", exclude=True)
     results: Results = Results()
     solver: Solver = Solver()
     logging: Logging = Logging()
@@ -201,33 +198,40 @@ class Model(FileModel):
     def serialize_dt(self, td: datetime.timedelta) -> int:
         return int(td.total_seconds())
 
-    @field_serializer("relative_dir", "input_dir", "results_dir")
+    @field_serializer("input_dir", "results_dir")
     def serialize_path(self, path: Path) -> str:
         return str(path)
 
+    def model_post_init(self, __context: Any) -> None:
+        # Always write dir fields
+        self.model_fields_set.update({"input_dir", "results_dir"})
+
     def __repr__(self) -> str:
-        first = []
-        second = []
+        """Generate a succinct overview of the Model content.
+
+        Skip "empty" NodeModel instances: when all dataframes are None.
+        """
+        content = ["ribasim.Model("]
+        INDENT = "    "
         for field in self.fields():
             attr = getattr(self, field)
-            if isinstance(attr, TableModel):
-                second.append(f"{field}: {repr(attr)}")
+            if isinstance(attr, NodeModel):
+                attr_content = attr._repr_content()
+                typename = type(attr).__name__
+                if attr_content:
+                    content.append(f"{INDENT}{field}={typename}({attr_content}),")
             else:
-                first.append(f"{field}={repr(attr)}")
-        content = ["<ribasim.Model>"] + first + second
+                content.append(f"{INDENT}{field}={repr(attr)},")
+
+        content.append(")")
         return "\n".join(content)
 
-    def _repr_html(self):
-        # Default to standard repr for now
-        return self.__repr__()
-
-    def _write_toml(self, directory: FilePath):
-        directory = Path(directory)
+    def _write_toml(self, fn: FilePath):
+        fn = Path(fn)
 
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
-        fn = directory / "ribasim.toml"
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
@@ -318,22 +322,26 @@ class Model(FileModel):
         """Read model from TOML file."""
         return cls(filepath=filepath)  # type: ignore
 
-    def write(self, directory: FilePath) -> Path:
+    def write(self, filepath: Path | str) -> Path:
         """
-        Write the contents of the model to a database and a TOML configuration file.
+        Write the contents of the model to disk and save it as a TOML configuration file.
 
-        If ``directory`` does not exist, it is created before writing.
+        If ``filepath.parent`` does not exist, it is created before writing.
 
         Parameters
         ----------
-        directory: FilePath
+        filepath: FilePath ending in .toml
         """
         self.validate_model()
+        filepath = Path(filepath)
+        if not filepath.suffix == ".toml":
+            raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
         context_file_loading.set({})
-        directory = Path(directory)
+        filepath = Path(filepath)
+        directory = filepath.parent
         directory.mkdir(parents=True, exist_ok=True)
         self._save(directory, self.input_dir)
-        fn = self._write_toml(directory)
+        fn = self._write_toml(filepath)
 
         context_file_loading.set({})
         return fn
@@ -349,7 +357,6 @@ class Model(FileModel):
             context_file_loading.get()["directory"] = filepath.parent / config.get(
                 "input_dir", "."
             )
-
             return config
         else:
             return {}

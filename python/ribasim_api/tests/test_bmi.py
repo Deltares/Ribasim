@@ -9,13 +9,13 @@ from xmipy.errors import XMIError
 
 
 def test_initialize(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 
 
 def test_get_start_time(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     time = libribasim.get_start_time()
@@ -23,14 +23,14 @@ def test_get_start_time(libribasim, basic, tmp_path):
 
 
 def test_get_current_time(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     assert libribasim.get_current_time() == pytest.approx(libribasim.get_start_time())
 
 
 def test_get_end_time(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_end_time = libribasim.get_end_time()
@@ -39,7 +39,7 @@ def test_get_end_time(libribasim, basic, tmp_path):
 
 
 def test_update(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     libribasim.update()
@@ -48,7 +48,7 @@ def test_update(libribasim, basic, tmp_path):
 
 
 def test_update_until(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     expected_time = 60.0
@@ -58,7 +58,7 @@ def test_update_until(libribasim, basic, tmp_path):
 
 
 def test_get_var_type(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     var_type = libribasim.get_var_type("volume")
@@ -66,7 +66,7 @@ def test_get_var_type(libribasim, basic, tmp_path):
 
 
 def test_get_var_rank(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_rank = libribasim.get_var_rank("volume")
@@ -75,7 +75,7 @@ def test_get_var_rank(libribasim, basic, tmp_path):
 
 
 def test_get_var_shape(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_shape = libribasim.get_var_shape("volume")
@@ -84,7 +84,7 @@ def test_get_var_shape(libribasim, basic, tmp_path):
 
 
 def test_get_value_ptr(libribasim, basic, tmp_path):
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     actual_volume = libribasim.get_value_ptr("volume")
@@ -97,7 +97,7 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
     Unknown or invalid variable address should trigger Python Exception,
     print the kernel error, and not crash the library
     """
-    basic.write(tmp_path)
+    basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 

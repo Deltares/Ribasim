@@ -316,6 +316,17 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return []
 
+    def __repr__(self) -> str:
+        # Make sure not to return just "None", because it gets extremely confusing
+        # when debugging.
+        return f"{self.tablename()}\n{self.df.__repr__()}"
+
+    def _repr_html_(self):
+        if self.df is None:
+            return self.__repr__()
+        else:
+            return f"<div>{self.tablename()}</div>" + self.df._repr_html_()
+
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):
     @classmethod
@@ -394,3 +405,23 @@ class NodeModel(BaseModel):
                 input_dir,
                 sort_keys=self._sort_keys.get("field", ["node_id"]),
             )
+
+    def _repr_content(self) -> str:
+        """Generate a succinct overview of the content.
+
+        Skip "empty" attributes: when the dataframe of a TableModel is None.
+        """
+        content = []
+        for field in self.fields():
+            attr = getattr(self, field)
+            if isinstance(attr, TableModel):
+                if attr.df is not None:
+                    content.append(field)
+            else:
+                content.append(field)
+        return ", ".join(content)
+
+    def __repr__(self) -> str:
+        content = self._repr_content()
+        typename = type(self).__name__
+        return f"{typename}({content})"

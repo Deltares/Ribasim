@@ -60,7 +60,12 @@ function load_data(
     schema = Legolas._schema_version_from_record_type(record)
 
     node, kind = nodetype(schema)
-    path = isnothing(kind) ? nothing : getfield(getfield(config, snake_case(node)), kind)
+    path = if isnothing(kind)
+        nothing
+    else
+        toml = getfield(config, :toml)
+        getfield(getfield(toml, snake_case(node)), kind)
+    end
     sqltable = tablename(schema)
 
     table = if !isnothing(path)
@@ -120,42 +125,23 @@ function load_structvector(
     return sorted_table!(table)
 end
 
-"Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.input_dir, path)
-end
-
-"Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String)
-    return normpath(config.relative_dir, config.results_dir, path)
-end
-
-"""
-    Config(config_path::AbstractString; kwargs...)
-
-Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To overrule
-keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
-"""
-function Config(config_path::AbstractString; kwargs...)::Config
-    return from_toml(
-        Config,
-        config_path;
-        relative_dir = dirname(normpath(config_path)),
-        kwargs...,
-    )
-end
-
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
     model::Model,
-)::NamedTuple{
-    (:time, :node_id, :storage, :level),
-    Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
+)::@NamedTuple{
+    time::Vector{Dates.DateTime},
+    node_id::Vector{NodeID},
+    storage::Matrix{Float64},
+    level::Matrix{Float64},
 }
+    NamedTuple{
+        (:time, :node_id, :storage, :level),
+        Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
+    }
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    node_id = p.basin.node_id.values::Vector{Int}
+    node_id = p.basin.node_id.values::Vector{NodeID}
     tsteps = datetime_since.(timesteps(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
@@ -185,15 +171,26 @@ function flow_table(model::Model)::NamedTuple
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
+    (; graph) = connectivity
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
+    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
     # self-loops have no edge ID
-    unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    # unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    unique_edge_ids_flow = Union{Int, Missing}[]
+    for (i, j) in zip(I, J)
+        if i == j
+            push!(unique_edge_ids_flow, missing)
+        else
+            edge_metadata = metadata_from_edge(graph, Edge(i, j))
+            push!(unique_edge_ids_flow, edge_metadata.id)
+        end
+    end
+
     nflow = length(I)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
-    edge_id = repeat(unique_edge_ids; outer = ntsteps)
+    edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = FlatVector(saveval)

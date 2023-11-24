@@ -4,14 +4,6 @@
     using Configurations: UndefKeywordError
     using Dates
 
-    @test_throws UndefKeywordError Ribasim.Config()
-    @test_throws UndefKeywordError Ribasim.Config(
-        startime = now(),
-        endtime = now(),
-        database = "",
-        foo = "bar",
-    )
-
     @testset "testrun" begin
         config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
         @test config isa Ribasim.Config

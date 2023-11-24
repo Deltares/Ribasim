@@ -12,25 +12,156 @@ function valid_edge_types(db::DB)::Bool
     return !errors
 end
 
-"Return a directed graph, and a mapping from source and target nodes to edge fid."
-function create_graph(
-    db::DB,
-    edge_type_::String,
-)::Tuple{DiGraph, Dictionary{Tuple{Int, Int}, Int}, Dictionary{Int, Tuple{Symbol, Symbol}}}
-    node_rows = execute(db, "select fid, type from Node")
-    nodes = dictionary((fid => Symbol(type) for (; fid, type) in node_rows))
-    graph = DiGraph(length(nodes))
-    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-    edge_ids = Dictionary{Tuple{Int, Int}, Int}()
-    edge_connection_types = Dictionary{Int, Tuple{Symbol, Symbol}}()
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
-        if edge_type == edge_type_
-            add_edge!(graph, from_node_id, to_node_id)
-            insert!(edge_ids, (from_node_id, to_node_id), fid)
-            insert!(edge_connection_types, fid, (nodes[from_node_id], nodes[to_node_id]))
+"""
+Return a directed metagraph with data of nodes (NodeMetadata):
+[`NodeMetadata`](@ref)
+
+and data of edges (EdgeMetadata):
+[`EdgeMetadata`](@ref)
+"""
+function create_graph(db::DB)::MetaGraph
+    node_rows = execute(db, "select fid, type, allocation_network_id from Node")
+    edge_rows = execute(
+        db,
+        "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
+    )
+    node_ids = Dict{Int, Set{NodeID}}()
+    edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
+    edges_source = Dict{Int, Set{EdgeMetadata}}()
+    graph = MetaGraph(
+        DiGraph();
+        label_type = NodeID,
+        vertex_data_type = NodeMetadata,
+        edge_data_type = EdgeMetadata,
+        graph_data = (; node_ids, edge_ids, edges_source),
+    )
+    for row in node_rows
+        node_id = NodeID(row.fid)
+        # Process allocation network ID
+        if ismissing(row.allocation_network_id)
+            allocation_network_id = 0
+        else
+            allocation_network_id = row.allocation_network_id
+            if !haskey(node_ids, allocation_network_id)
+                node_ids[allocation_network_id] = Set{NodeID}()
+            end
+            push!(node_ids[allocation_network_id], node_id)
         end
+        graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
     end
-    return graph, edge_ids, edge_connection_types
+    for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
+        try
+            # hasfield does not work
+            edge_type = getfield(EdgeType, Symbol(edge_type))
+        catch
+            error("Invalid edge type $edge_type.")
+        end
+        id_src = NodeID(from_node_id)
+        id_dst = NodeID(to_node_id)
+        if ismissing(allocation_network_id)
+            allocation_network_id = 0
+        end
+        edge_metadata =
+            EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
+        if allocation_network_id != 0
+            if !haskey(edges_source, allocation_network_id)
+                edges_source[allocation_network_id] = Set{EdgeMetadata}()
+            end
+            push!(edges_source[allocation_network_id], edge_metadata)
+        end
+        graph[id_src, id_dst] = edge_metadata
+    end
+    return graph
+end
+
+"""
+Get the inneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
+function inneighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        label_in for label_in in inneighbor_labels(graph, label) if
+        graph[label_in, label].type == edge_type
+    ]
+end
+
+"""
+Get the outneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
+function outneighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        label_out for label_out in outneighbor_labels(graph, label) if
+        graph[label, label_out].type == edge_type
+    ]
+end
+
+"""
+Get the in- and outneighbor node IDs of the given node ID (label)
+over the given edge type in the graph.
+"""
+function all_neighbor_labels_type(
+    graph::MetaGraph,
+    label::NodeID,
+    edge_type::EdgeType.T,
+)::Vector{NodeID}
+    return [
+        outneighbor_labels_type(graph, label, edge_type)...,
+        inneighbor_labels_type(graph, label, edge_type)...,
+    ]
+end
+
+"""
+Get the outneighbors over flow edges.
+"""
+function outflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return outneighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+"""
+Get the inneighbors over flow edges.
+"""
+function inflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return inneighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+"""
+Get the in- and outneighbors over flow edges.
+"""
+function inoutflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+    return all_neighbor_labels_type(graph, id, EdgeType.flow)
+end
+
+"""
+Get the unique outneighbor over a flow edge.
+"""
+function outflow_id(graph::MetaGraph, id::NodeID)::NodeID
+    return only(outflow_ids(graph, id))
+end
+
+"""
+Get the unique inneighbor over a flow edge.
+"""
+function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
+    return only(inflow_ids(graph, id))
+end
+
+"""
+Get the metadata of an edge in the graph from an edge of the underlying
+DiGraph.
+"""
+function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
+    label_src = label_for(graph, edge.src)
+    label_dst = label_for(graph, edge.dst)
+    return graph[label_src, label_dst]
 end
 
 "Calculate a profile storage by integrating the areas over the levels"
@@ -77,8 +208,8 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     bottom = first(level_discrete)
 
     if level < bottom
-        node_id = basin.node_id[state_idx]
-        @error "The level $level of basin #$node_id is lower than the bottom of this basin $bottom."
+        node_id = basin.node_id[NodeID(state_idx)]
+        @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
         return NaN
     end
 
@@ -409,7 +540,7 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(
     p::Parameters,
-    node_id::Int,
+    node_id::NodeID,
     t::Float64;
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
@@ -429,7 +560,7 @@ function get_level(
 end
 
 "Get the index of an ID in a set of indices."
-function id_index(ids::Indices{Int}, id::Int)::Tuple{Bool, Int}
+function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
     # We avoid creating Dictionary here since it converts the values to a Vector,
     # leading to allocations when used with PreallocationTools's ReinterpretArrays.
     hasindex, (_, i) = gettoken(ids, id)
@@ -437,7 +568,7 @@ function id_index(ids::Indices{Int}, id::Int)::Tuple{Bool, Int}
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::Int)::Union{Float64, Nothing}
+function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
     hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
@@ -452,9 +583,9 @@ end
 "Get the bottom on both ends of a node. If only one has a bottom, use that for both."
 function basin_bottoms(
     basin::Basin,
-    basin_a_id::Int,
-    basin_b_id::Int,
-    id::Int,
+    basin_a_id::NodeID,
+    basin_b_id::NodeID,
+    id::NodeID,
 )::Tuple{Float64, Float64}
     bottom_a = basin_bottom(basin, basin_a_id)
     bottom_b = basin_bottom(basin, basin_b_id)
@@ -488,9 +619,9 @@ Check:
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
-    (; discrete_control, connectivity, lookup) = p
-    (; graph_control) = connectivity
-    (; node_id, logic_mapping, look_ahead, variable, listen_feature_id) = discrete_control
+    (; discrete_control, connectivity) = p
+    (; graph) = connectivity
+    (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
@@ -519,15 +650,15 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "DiscreteControl node #$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "DiscreteControl node $id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the
         # control outneighbors
-        for id_outneighbor in outneighbors(graph_control, id)
+        for id_outneighbor in outneighbor_labels_type(graph, id, EdgeType.control)
 
             # Node object for the outneighbor node type
-            node = getfield(p, lookup[id_outneighbor])
+            node = getfield(p, graph[id_outneighbor].type)
 
             # Get control states of the controlled node
             control_states_controlled = Set{String}()
@@ -546,34 +677,34 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node).name.name
-                @error "These control states from DiscreteControl node #$id are not defined for controlled $node_type #$id_outneighbor: $undefined_list."
+                @error "These control states from DiscreteControl node $id are not defined for controlled $node_type $id_outneighbor: $undefined_list."
                 errors = true
             end
         end
     end
-    for (Δt, var, feature_id) in zip(look_ahead, variable, listen_feature_id)
+    for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = p.lookup[feature_id]
+            node_type = p.connectivity.graph[node_id].type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
             if node_type ∉ [:flow_boundary, :level_boundary]
                 errors = true
-                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node #$feature_id."
+                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
             else
                 if Δt < 0
                     errors = true
-                    @error "Negative look ahead supplied for listen variable '$var' from listen node #$feature_id."
+                    @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
                 else
                     node = getfield(p, node_type)
                     idx = if node_type == :Basin
-                        id_index(node.node_id, feature_id)
+                        id_index(node.node_id, node_id)
                     else
-                        searchsortedfirst(node.node_id, feature_id)
+                        searchsortedfirst(node.node_id, node_id)
                     end
                     interpolation = getfield(node, Symbol(var))[idx]
                     if t_end + Δt > interpolation.t[end]
                         errors = true
-                        @error "Look ahead for listen variable '$var' from listen node #$feature_id goes past timeseries end during simulation."
+                        @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
                     end
                 end
             end
@@ -587,9 +718,9 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-    logic_mapping::Dict{Tuple{Int, String}, String},
-)::Dict{Tuple{Int, String}, String}
-    logic_mapping_expanded = Dict{Tuple{Int, String}, String}()
+    logic_mapping::Dict{Tuple{NodeID, String}, String},
+)::Dict{Tuple{NodeID, String}, String}
+    logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
         pattern = r"^[TFUD\*]+$"
@@ -621,7 +752,7 @@ function expand_logic_mapping(
 
                 if haskey(logic_mapping_expanded, new_key)
                     control_state_existing = logic_mapping_expanded[new_key]
-                    msg = "Multiple control states found for DiscreteControl node #$node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
+                    msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
                     @assert control_state_existing == control_state msg
                 else
                     logic_mapping_expanded[new_key] = control_state
@@ -677,11 +808,11 @@ function update_jac_prototype!(
     node::Union{LinearResistance, ManningResistance},
 )::Nothing
     (; basin, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
 
     for id in node.node_id
-        id_in = only(inneighbors(graph_flow, id))
-        id_out = only(outneighbors(graph_flow, id))
+        id_in = inflow_id(graph, id)
+        id_out = outflow_id(graph, id)
 
         has_index_in, idx_in = id_index(basin.node_id, id_in)
         has_index_out, idx_out = id_index(basin.node_id, id_out)
@@ -742,10 +873,10 @@ function update_jac_prototype!(
     node::Union{Pump, Outlet, TabulatedRatingCurve, User},
 )::Nothing
     (; basin, fractional_flow, connectivity) = p
-    (; graph_flow) = connectivity
+    (; graph) = connectivity
 
     for (i, id) in enumerate(node.node_id)
-        id_in = only(inneighbors(graph_flow, id))
+        id_in = inflow_id(graph, id)
 
         if hasfield(typeof(node), :is_pid_controlled) && node.is_pid_controlled[i]
             continue
@@ -761,10 +892,10 @@ function update_jac_prototype!(
             jac_prototype[idx_in, idx_in] = 1.0
 
             _, idxs_out =
-                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph_flow)
+                get_fractional_flow_connected_basins(id, basin, fractional_flow, graph)
 
             if isempty(idxs_out)
-                id_out = only(outneighbors(graph_flow, id))
+                id_out = outflow_id(graph, id)
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
                 if has_index_out
@@ -792,7 +923,7 @@ function update_jac_prototype!(
     node::PidControl,
 )::Nothing
     (; basin, connectivity, pump) = p
-    (; graph_control, graph_flow) = connectivity
+    (; graph) = connectivity
 
     n_basins = length(basin.node_id)
 
@@ -801,7 +932,7 @@ function update_jac_prototype!(
         id = node.node_id[i]
 
         # ID of controlled pump/outlet
-        id_controlled = only(outneighbors(graph_control, id))
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
 
         _, listen_idx = id_index(basin.node_id, listen_node_id)
 
@@ -814,7 +945,7 @@ function update_jac_prototype!(
         jac_prototype[pid_state_idx, listen_idx] = 1.0
 
         if id_controlled in pump.node_id
-            id_pump_out = only(inneighbors(graph_flow, id_controlled))
+            id_pump_out = inflow_id(graph, id_controlled)
 
             # The basin downstream of the pump
             has_index, idx_out_out = id_index(basin.node_id, id_pump_out)
@@ -827,7 +958,7 @@ function update_jac_prototype!(
                 jac_prototype[listen_idx, idx_out_out] = 1.0
             end
         else
-            id_outlet_in = only(outneighbors(graph_flow, id_controlled))
+            id_outlet_in = outflow_id(graph, id_controlled)
 
             # The basin upstream of the outlet
             has_index, idx_out_in = id_index(basin.node_id, id_outlet_in)
@@ -849,17 +980,17 @@ Get the node type specific indices of the fractional flows and basins,
 that are consecutively connected to a node of given id.
 """
 function get_fractional_flow_connected_basins(
-    node_id::Int,
+    node_id::NodeID,
     basin::Basin,
     fractional_flow::FractionalFlow,
-    graph_flow::DiGraph{Int},
+    graph::MetaGraph,
 )::Tuple{Vector{Int}, Vector{Int}}
     fractional_flow_idxs = Int[]
     basin_idxs = Int[]
 
-    for first_outneighbor_id in outneighbors(graph_flow, node_id)
+    for first_outneighbor_id in outflow_ids(graph, node_id)
         if first_outneighbor_id in fractional_flow.node_id
-            second_outneighbor_id = only(outneighbors(graph_flow, first_outneighbor_id))
+            second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
             has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
             if has_index
                 push!(
@@ -926,9 +1057,13 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
 
-"""Find out whether a path exists between a start node and end node in the given graph."""
-function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::Int)::Bool
-    node_ids_visited = Set{Int}()
+"""Find out whether a path exists between a start node and end node in the given allocation graph."""
+function allocation_path_exists_in_graph(
+    graph::MetaGraph,
+    start_node_id::NodeID,
+    end_node_id::NodeID,
+)::Bool
+    node_ids_visited = Set{NodeID}()
     stack = [start_node_id]
 
     while !isempty(stack)
@@ -938,28 +1073,10 @@ function path_exists_in_graph(graph::DiGraph, start_node_id::Int, end_node_id::I
         end
         if !(current_node_id in node_ids_visited)
             push!(node_ids_visited, current_node_id)
-            for outneighbor_node_id in outneighbors(graph, current_node_id)
+            for outneighbor_node_id in outflow_ids_allocation(graph, current_node_id)
                 push!(stack, outneighbor_node_id)
             end
         end
     end
     return false
-end
-
-"""
-Get two dictionaries, where:
-- The first one gives the IDs of the inedges for each node ID in the graph
-- The second one gives the IDs of the outedges for each node ID in the graph
-"""
-function get_node_in_out_edges(
-    graph::DiGraph{Int},
-)::Tuple{Dict{Int, Vector{Int}}, Dict{Int, Vector{Int}}}
-    n_nodes = nv(graph)
-    node_inedge_ids = Dict(i => Int[] for i in 1:n_nodes)
-    node_outedge_ids = Dict(i => Int[] for i in 1:n_nodes)
-    for (i, edge) in enumerate(edges(graph))
-        push!(node_inedge_ids[edge.dst], i)
-        push!(node_outedge_ids[edge.src], i)
-    end
-    return node_inedge_ids, node_outedge_ids
 end

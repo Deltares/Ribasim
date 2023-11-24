@@ -9,7 +9,7 @@ from shapely import Point
 
 def test_repr(basic):
     representation = repr(basic).split("\n")
-    assert representation[0] == "<ribasim.Model>"
+    assert representation[0] == "ribasim.Model("
 
 
 def test_solver():
@@ -115,5 +115,5 @@ def test_node_ids_unsequential(basic):
 
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
-    model_orig.write(tmp_path / "tabulated_rating_curve")
+    model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
     Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
