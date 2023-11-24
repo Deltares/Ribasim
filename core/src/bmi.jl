@@ -587,16 +587,25 @@ function BMI.update_until(model::Model, time)::Model
 end
 
 function BMI.get_value_ptr(model::Model, name::AbstractString)
-    if name == "volume"
-        model.integrator.u.storage
-    elseif name == "level"
-        get_tmp(model.integrator.p.basin.current_level, 0)
-    elseif name == "infiltration"
-        model.integrator.p.basin.infiltration
-    elseif name == "drainage"
-        model.integrator.p.basin.drainage
+    if occursin("/", name)
+        variable, part = split(name, "/")
+        if variable == "subgrid_level"
+            model.integrator.p.subgrid_exporters[part]
+        else
+            error("Unknown variable $variable in $name")
+        end
     else
-        error("Unknown variable $name")
+        if name == "volume"
+            model.integrator.u.storage
+        elseif name == "level"
+            get_tmp(model.integrator.p.basin.current_level, 0)
+        elseif name == "infiltration"
+            model.integrator.p.basin.infiltration
+        elseif name == "drainage"
+            model.integrator.p.basin.drainage
+        else
+            error("Unknown variable $name")
+        end
     end
 end
 
