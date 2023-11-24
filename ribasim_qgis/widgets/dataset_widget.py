@@ -7,7 +7,7 @@ computation.
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -151,8 +151,8 @@ class DatasetWidget(QWidget):
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
         self.add_button.clicked.connect(self.add_selection_to_qgis)
-        self.edge_layer: Optional[QgsVectorLayer] = None
-        self.node_layer: Optional[QgsVectorLayer] = None
+        self.edge_layer: QgsVectorLayer | None = None
+        self.node_layer: QgsVectorLayer | None = None
 
         # Layout
         dataset_layout = QVBoxLayout()

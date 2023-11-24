@@ -6,7 +6,7 @@ connection to the QGIS Layers Panel, and ensures there is a group for the
 Ribasim layers there.
 """
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from qgis.core import (
@@ -49,7 +49,7 @@ class RibasimWidget(QWidget):
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
-        self.group: Optional[QgsLayerTreeGroup] = None
+        self.group: QgsLayerTreeGroup | None = None
         self.groups: dict[str, QgsLayerTreeGroup] = {}
 
         return
@@ -125,10 +125,10 @@ class RibasimWidget(QWidget):
         self,
         layer: QgsVectorLayer,
         destination: str,
-        renderer: Optional[QgsFeatureRenderer] = None,
-        suppress: Optional[bool] = None,
+        renderer: QgsFeatureRenderer | None = None,
+        suppress: bool | None = None,
         on_top: bool = False,
-        labels: Optional[QgsAbstractVectorLayerLabeling] = None,
+        labels: QgsAbstractVectorLayerLabeling | None = None,
     ) -> QgsMapLayer | None:
         """
         Add a layer to the Layers Panel

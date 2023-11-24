@@ -21,7 +21,7 @@ Each node layer is (optionally) represented in multiple places:
 """
 
 import abc
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from PyQt5.QtCore import Qt, QVariant
 from PyQt5.QtGui import QColor
@@ -115,7 +115,7 @@ class Input(abc.ABC):
         pass
 
     @property
-    def renderer(self) -> Optional[QgsFeatureRenderer]:
+    def renderer(self) -> QgsFeatureRenderer | None:
         return None
 
     @property
