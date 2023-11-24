@@ -10,7 +10,7 @@ from ribasim.schemas import (  # type: ignore
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
-    BasinSubgridLevelSchema,
+    BasinSubgridSchema,
     BasinTimeSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
@@ -164,14 +164,14 @@ class Basin(NodeModel):
     time: TableModel[BasinTimeSchema] = Field(
         default_factory=TableModel[BasinTimeSchema]
     )
-    subgrid_level: TableModel[BasinSubgridLevelSchema] = Field(
-        default_factory=TableModel[BasinSubgridLevelSchema]
+    subgrid: TableModel[BasinSubgridSchema] = Field(
+        default_factory=TableModel[BasinSubgridSchema]
     )
 
     _sort_keys: dict[str, list[str]] = {
         "profile": ["node_id", "level"],
         "time": ["time", "node_id"],
-        "subgrid_level": ["name", "subgrid_id", "node_id", "basin_level"],
+        "subgrid_level": ["subgrid_id", "node_id", "basin_level"],
     }
 
 

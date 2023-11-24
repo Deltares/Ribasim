@@ -304,20 +304,14 @@ end
           "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
 end
 
-@testitem "Level exporter validation" begin
+@testitem "Subgrid validation" begin
     node_to_basin = Dict(9 => 1)
-    errors = Ribasim.valid_subgrid_exporter(1, 10, node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+    errors = Ribasim.valid_subgrid(1, 10, node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     @test length(errors) == 1
     @test errors[1] ==
           "The node_id of the Basin / subgrid_level does not refer to a basin: node_id 10 for subgrid_id 1."
 
-    errors = Ribasim.valid_subgrid_exporter(
-        1,
-        9,
-        node_to_basin,
-        [-1.0, 0.0, 0.0],
-        [-1.0, 0.0, 0.0],
-    )
+    errors = Ribasim.valid_subgrid(1, 9, node_to_basin, [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0])
     @test length(errors) == 2
     @test errors[1] ==
           "Basin / subgrid_level subgrid_id 1 has repeated basin levels, this cannot be interpolated."

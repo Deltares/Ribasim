@@ -811,10 +811,12 @@ function User(db::DB, config::Config)::User
     )
 end
 
-function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridExporter
+function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
+    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
+    tables = load_structvector(db, config, BasinSubgridV1)
+
     basin_ids = Int[]
     interpolations = ScalarInterpolation[]
-
     errors = String[]
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
         subgrid_id = first(getproperty.(group, :subgrid_id))
@@ -822,13 +824,8 @@ function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridEx
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
-        group_errors = valid_subgrid_exporter(
-            subgrid_id,
-            node_id,
-            node_to_basin,
-            basin_level,
-            subgrid_level,
-        )
+        group_errors =
+            valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
 
         if isempty(group_errors)
             # Ensure it doesn't extrapolate before the first value.
@@ -845,28 +842,13 @@ function SubgridExporter(tables, name, node_to_basin::Dict{Int, Int})::SubgridEx
     end
 
     if isempty(errors)
-        return SubgridExporter(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+        return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
     else
         foreach(x -> @error(x), errors)
         error(
             "Errors occurred while parsing Basin / subgrid_level data for group with name: $(name).",
         )
     end
-end
-
-function create_subgrid_exporters(
-    db::DB,
-    config::Config,
-    basin::Basin,
-)::Dict{String, SubgridExporter}
-    subgrid_exporters = Dict{String, SubgridExporter}()
-    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-    tables = load_structvector(db, config, BasinSubgridLevelV1)
-    for group in IterTools.groupby(row -> row.name, tables)
-        name = first(getproperty.(group, :name))
-        subgrid_exporters[name] = SubgridExporter(group, name, node_to_basin)
-    end
-    return subgrid_exporters
 end
 
 function Parameters(db::DB, config::Config)::Parameters
@@ -889,8 +871,7 @@ function Parameters(db::DB, config::Config)::Parameters
     user = User(db, config)
 
     basin = Basin(db, config, chunk_size)
-
-    subgrid_exporters = create_subgrid_exporters(db, config, basin)
+    subgrid_level = Subgrid(db, config, basin)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
@@ -921,7 +902,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user,
         Dict{Int, Symbol}(),
-        subgrid_exporters,
+        subgrid_level,
     )
     for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
         if fieldtype <: AbstractParameterNode

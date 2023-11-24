@@ -230,23 +230,16 @@ end
 function subgrid_level_table(model::Model)::NamedTuple
     (; config, saved, integrator) = model
     (; t, saveval) = saved.subgrid_level
+    subgrid = integrator.p.subgrid
 
-    # The level exporter may contain multiple named systems, but the
-    # saved levels are flat.
-    time = DateTime[]
-    name = String[]
-    subgrid_id = Int[]
-    for (unique_name, exporter) in integrator.p.subgrid_exporters
-        nelem = length(exporter.basin_index)
-        unique_elem_id = collect(1:nelem)
-        ntsteps = length(t)
-        append!(time, repeat(datetime_since.(t, config.starttime); inner = nelem))
-        append!(subgrid_id, repeat(unique_elem_id; outer = ntsteps))
-        append!(name, fill(unique_name, length(time)))
-    end
+    nelem = length(subgrid.basin_index)
+    ntsteps = length(t)
+    unique_elem_id = collect(1:nelem)
 
+    time = repeat(datetime_since.(t, config.starttime); inner = nelem)
+    subgrid_id = repeat(unique_elem_id; outer = ntsteps)
     subgrid_level = FlatVector(saveval)
-    return (; time, name, subgrid_id, subgrid_level)
+    return (; time, subgrid_id, subgrid_level)
 end
 
 "Write a result table to disk as an Arrow file"

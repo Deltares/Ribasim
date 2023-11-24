@@ -467,11 +467,11 @@ struct User <: AbstractParameterNode
     }
 end
 
-"SubgridExporter linearly interpolates basin levels."
-struct SubgridExporter
+"Subgrid linearly interpolates basin levels."
+struct Subgrid
     basin_index::Vector{Int}
     interpolations::Vector{ScalarInterpolation}
-    subgrid_level::Vector{Float64}
+    level::Vector{Float64}
 end
 
 # TODO Automatically add all nodetypes here
@@ -492,7 +492,7 @@ struct Parameters{T, TSparse, C1, C2}
     pid_control::PidControl{T}
     user::User
     lookup::Dict{Int, Symbol}
-    subgrid_exporters::Dict{String, SubgridExporter}
+    subgrid::Subgrid
 end
 
 """

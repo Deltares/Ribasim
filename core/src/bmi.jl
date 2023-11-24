@@ -495,23 +495,17 @@ function save_flow(u, t, integrator)
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    parameters = integrator.p
-    basin_level = get_tmp(parameters.basin.current_level, 0)
-
-    for exporter in values(parameters.subgrid_exporters)
-        for (i, (index, interp)) in
-            enumerate(zip(exporter.basin_index, exporter.interpolations))
-            exporter.subgrid_level[i] = interp(basin_level[index])
-        end
+    basin_level = get_tmp(integrator.p.basin.current_level, 0)
+    subgrid = integrator.p.subgrid
+    for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
+        subgrid.level[i] = interp(basin_level[index])
     end
 end
 
 "Interpolate the levels and save them to SavedValues"
 function save_subgrid_level(u, t, integrator)
     update_subgrid_level!(integrator)
-    return vcat(
-        [exporter.subgrid_level for exporter in values(integrator.p.subgrid_exporters)]...,
-    )
+    return integrator.p.subgrid.level
 end
 
 "Load updates from 'Basin / time' into the parameters"
@@ -587,25 +581,18 @@ function BMI.update_until(model::Model, time)::Model
 end
 
 function BMI.get_value_ptr(model::Model, name::AbstractString)
-    if occursin("/", name)
-        variable, part = split(name, "/")
-        if variable == "subgrid_level"
-            model.integrator.p.subgrid_exporters[part]
-        else
-            error("Unknown variable $variable in $name")
-        end
+    if name == "volume"
+        model.integrator.u.storage
+    elseif name == "level"
+        get_tmp(model.integrator.p.basin.current_level, 0)
+    elseif name == "infiltration"
+        model.integrator.p.basin.infiltration
+    elseif name == "drainage"
+        model.integrator.p.basin.drainage
+    elseif name == "subgrid_level"
+        model.integrator.p.subgrid.level
     else
-        if name == "volume"
-            model.integrator.u.storage
-        elseif name == "level"
-            get_tmp(model.integrator.p.basin.current_level, 0)
-        elseif name == "infiltration"
-            model.integrator.p.basin.infiltration
-        elseif name == "drainage"
-            model.integrator.p.basin.drainage
-        else
-            error("Unknown variable $name")
-        end
+        error("Unknown variable $name")
     end
 end
 
@@ -642,10 +629,10 @@ function run(config::Config)::Model
         )
     end
 
-    with_logger(logger) do
-        model = Model(config)
-        solve!(model)
-        BMI.finalize(model)
-        return model
-    end
+    #    with_logger(logger) do
+    model = Model(config)
+    solve!(model)
+    BMI.finalize(model)
+    return model
+    #    end
 end

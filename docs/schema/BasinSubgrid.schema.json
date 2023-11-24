@@ -1,14 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://deltares.github.io/Ribasim/schema/BasinSubgridLevel.schema.json",
-    "title": "BasinSubgridLevel",
-    "description": "A BasinSubgridLevel object based on Ribasim.BasinSubgridLevelV1",
+    "$id": "https://deltares.github.io/Ribasim/schema/BasinSubgrid.schema.json",
+    "title": "BasinSubgrid",
+    "description": "A BasinSubgrid object based on Ribasim.BasinSubgridV1",
     "type": "object",
     "properties": {
-        "name": {
-            "format": "default",
-            "type": "string"
-        },
         "subgrid_id": {
             "format": "default",
             "type": "integer"
@@ -33,7 +29,6 @@
         }
     },
     "required": [
-        "name",
         "subgrid_id",
         "node_id",
         "basin_level",

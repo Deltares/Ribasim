@@ -8,8 +8,8 @@
     @test successful_retcode(model)
 
     # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
-    subgrid_exporter = model.integrator.p.subgrid_exporters["primary-system"]
-    @test all(diff(subgrid_exporter.subgrid_level) .≈ 1.0)
+    subgrid = model.integrator.p.subgrid
+    @test all(diff(subgrid.level) .≈ 1.0)
 end
 
 @testitem "bucket model" begin

@@ -33,8 +33,7 @@ class BasinStatic(BaseModel):
     remarks: str = Field("", description="a hack for pandera")
 
 
-class BasinSubgridLevel(BaseModel):
-    name: str
+class BasinSubgrid(BaseModel):
     subgrid_id: int
     node_id: int
     basin_level: float
@@ -232,7 +231,7 @@ class Root(BaseModel):
     basinprofile: BasinProfile | None = None
     basinstate: BasinState | None = None
     basinstatic: BasinStatic | None = None
-    basinsubgridlevel: BasinSubgridLevel | None = None
+    basinsubgrid: BasinSubgrid | None = None
     basintime: BasinTime | None = None
     discretecontrolcondition: DiscreteControlCondition | None = None
     discretecontrollogic: DiscreteControlLogic | None = None

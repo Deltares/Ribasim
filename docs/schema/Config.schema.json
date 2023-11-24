@@ -133,7 +133,7 @@
                 "profile": null,
                 "state": null,
                 "static": null,
-                "subgrid.level": null,
+                "subgrid": null,
                 "time": null
             }
         },

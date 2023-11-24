@@ -141,7 +141,7 @@ name it must have in the database if it is stored there.
   - `Basin / profile`: geometries of the basins
   - `Basin / time`: time series of the forcing values
   - `Basin / state`: used as initial condition of the basins
-  - `Basin / subgrid_level`: used to interpolate basin levels to a more detailed spatial representation
+  - `Basin / subgrid`: used to interpolate basin levels to a more detailed spatial representation
 - FractionalFlow: connect two of these from a Basin to get a fixed ratio bifurcation
   - `FractionalFlow / static`: fractions
 - LevelBoundary: stores water at a given level unaffected by flow, like an infinitely large basin
@@ -276,7 +276,7 @@ Internally this get converted to two functions, $A(S)$ and $h(S)$, by integratin
 The minimum area cannot be zero to avoid numerical issues.
 The maximum area is used to convert the precipitation flux into an inflow.
 
-## Basin / subgrid_level
+## Basin / subgrid
 
 The subgrid_level table defines a piecewise linear interpolation from a basin water level to a subgrid element water level.
 Many subgrid elements may be associated with a single basin, each with distinct interpolation functions.
@@ -284,25 +284,22 @@ This functionality can be used to translate a single lumped basin level to a mor
 
 column        | type    | unit  | restriction
 ------------- | ------- | ----- | ------------------------
-name          | String  | -     | (optional, does not have to be unique)
 subgrid_id    | Int     | -     | sorted
 node_id       | Int     | -     | constant per subgrid_id
 basin_level   | Float64 | $m$   | per subgrid_id: increasing
 subgrid_level | Float64 | $m$   | per subgrid_id: increasing
 
-The name column is used to distinguish between spatially distinct water bodies that may exist within a single basin (e.g. perennial versus ephemeral streams).
-When no distinction is required, all rows should be given the same name.
+The table below shows example input for two subgrid elements:
 
-name     | subgrid_id | node_id | basin_level | subgrid_level
--------- | ---------- | ------- | ----------- | -------------
-"first"  |          1 |       9 |         0.0 |           0.0
-"first"  |          1 |       9 |         1.0 |           1.0
-"first"  |          1 |       9 |         2.0 |           2.0
-"second" |          2 |       9 |         0.0 |           0.5
-"second" |          2 |       9 |         1.0 |           1.5
-"second" |          2 |       9 |         2.0 |           2.5
+subgrid_id | node_id | basin_level | subgrid_level
+---------- | ------- | ----------- | -------------
+         1 |       9 |         0.0 |           0.0
+         1 |       9 |         1.0 |           1.0
+         1 |       9 |         2.0 |           2.0
+         2 |       9 |         0.0 |           0.5
+         2 |       9 |         1.0 |           1.5
+         2 |       9 |         2.0 |           2.5
 
-The example shows the table for two subgrid elements.
 Both subgrid elements use the water level of the basin with `node_id` 9 to interpolate to their respective water levels.
 The first element has a one to one connection with the water level; the second also has a one to one connection, but is offset by half a meter.
 A basin water level of 0.3 would be translated to a water level of 0.3 for the first subgrid element, and 0.8 for the second.
