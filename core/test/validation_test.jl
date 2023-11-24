@@ -2,7 +2,7 @@
     using Dictionaries: Indices
     using DataInterpolations: LinearInterpolation
 
-    node_id = Indices([1])
+    node_id = Indices([Ribasim.NodeID(1)])
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
     errors = Ribasim.valid_profiles(node_id, level, area)
@@ -49,30 +49,48 @@ end
 end
 
 @testitem "Neighbor count validation" begin
-    using Graphs: DiGraph, add_edge!
+    using Graphs: DiGraph
     using Logging
+    using MetaGraphsNext: MetaGraph
+    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, EdgeType
 
-    graph_flow = DiGraph(6)
-    add_edge!(graph_flow, 2, 1)
-    add_edge!(graph_flow, 3, 1)
-    add_edge!(graph_flow, 6, 2)
+    graph = MetaGraph(
+        DiGraph();
+        label_type = NodeID,
+        vertex_data_type = NodeMetadata,
+        edge_data_type = EdgeMetadata,
+        graph_data = nothing,
+    )
 
-    graph_control = DiGraph(6)
-    add_edge!(graph_control, 5, 6)
+    for i in 1:6
+        type = i in [1, 6] ? :pump : :other
+        graph[NodeID(i)] = NodeMetadata(type, 9)
+    end
+
+    function set_edge_metadata!(id_1, id_2, edge_type)
+        graph[NodeID(id_1), NodeID(id_2)] =
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+        return nothing
+    end
+
+    set_edge_metadata!(2, 1, EdgeType.flow)
+    set_edge_metadata!(3, 1, EdgeType.flow)
+    set_edge_metadata!(6, 2, EdgeType.flow)
+    set_edge_metadata!(5, 6, EdgeType.control)
 
     pump = Ribasim.Pump(
-        [1, 6],
+        Ribasim.NodeID[1, 6],
         [true, true],
         [0.0, 0.0],
         [0.0, 0.0],
         [1.0, 1.0],
-        Dict{Tuple{Int, String}, NamedTuple}(),
+        Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
         falses(2),
     )
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(pump, graph_flow, graph_control)
+        @test !Ribasim.valid_n_neighbors(pump, graph)
     end
 
     @test length(logger.logs) == 3
@@ -86,16 +104,16 @@ end
     @test logger.logs[3].message ==
           "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
 
-    add_edge!(graph_flow, 2, 5)
-    add_edge!(graph_flow, 5, 3)
-    add_edge!(graph_flow, 5, 4)
+    set_edge_metadata!(2, 5, EdgeType.flow)
+    set_edge_metadata!(5, 3, EdgeType.flow)
+    set_edge_metadata!(5, 4, EdgeType.flow)
 
     fractional_flow =
-        Ribasim.FractionalFlow([5], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
+        Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(fractional_flow, graph_flow, graph_control)
+        @test !Ribasim.valid_n_neighbors(fractional_flow, graph)
     end
 
     @test length(logger.logs) == 2
@@ -115,32 +133,52 @@ end
 end
 
 @testitem "PidControl connectivity validation" begin
-    using Graphs: DiGraph, add_edge!
     using Dictionaries: Indices
+    using Graphs: DiGraph
     using Logging
+    using MetaGraphsNext: MetaGraph
+    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
 
-    pid_control_node_id = [1, 6]
-    pid_control_listen_node_id = [3, 5]
-    pump_node_id = [2, 4]
+    pid_control_node_id = NodeID[1, 6]
+    pid_control_listen_node_id = NodeID[3, 5]
+    pump_node_id = NodeID[2, 4]
 
-    graph_flow = DiGraph(7)
-    graph_control = DiGraph(7)
+    graph = MetaGraph(
+        DiGraph();
+        label_type = NodeID,
+        vertex_data_type = NodeMetadata,
+        edge_data_type = EdgeMetadata,
+        graph_data = nothing,
+    )
 
-    add_edge!(graph_flow, 3, 4)
-    add_edge!(graph_flow, 7, 2)
+    graph[NodeID(1)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(6)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(2)] = NodeMetadata(:pump, 0)
+    graph[NodeID(4)] = NodeMetadata(:pump, 0)
+    graph[NodeID(3)] = NodeMetadata(:something_else, 0)
+    graph[NodeID(5)] = NodeMetadata(:basin, 0)
+    graph[NodeID(7)] = NodeMetadata(:basin, 0)
 
-    add_edge!(graph_control, 1, 4)
-    add_edge!(graph_control, 6, 2)
+    function set_edge_metadata!(id_1, id_2, edge_type)
+        graph[NodeID(id_1), NodeID(id_2)] =
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+        return nothing
+    end
 
-    basin_node_id = Indices([5, 7])
+    set_edge_metadata!(3, 4, EdgeType.flow)
+    set_edge_metadata!(7, 2, EdgeType.flow)
+
+    set_edge_metadata!(1, 4, EdgeType.control)
+    set_edge_metadata!(6, 2, EdgeType.control)
+
+    basin_node_id = Indices(NodeID[5, 7])
 
     logger = TestLogger()
     with_logger(logger) do
         @test !Ribasim.valid_pid_connectivity(
             pid_control_node_id,
             pid_control_listen_node_id,
-            graph_flow,
-            graph_control,
+            graph,
             basin_node_id,
             pump_node_id,
         )
@@ -157,6 +195,7 @@ end
 @testitem "FractionalFlow validation" begin
     import SQLite
     using Logging
+    using Ribasim: NodeID
 
     toml_path = normpath(
         @__DIR__,
@@ -173,7 +212,7 @@ end
     logger = TestLogger()
     with_logger(logger) do
         @test !Ribasim.valid_fractional_flow(
-            connectivity.graph_flow,
+            connectivity.graph,
             fractional_flow.node_id,
             fractional_flow.control_mapping,
         )
@@ -186,13 +225,13 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
-    @test logger.logs[2].kwargs[:node_id] == 3
+    @test logger.logs[2].kwargs[:node_id] == NodeID(3)
     @test logger.logs[2].kwargs[:fraction] ≈ -0.1
     @test logger.logs[2].kwargs[:control_state] == ""
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "The sum of fractional flow fractions leaving a node must be ≈1."
-    @test logger.logs[3].kwargs[:node_id] == 7
+    @test logger.logs[3].kwargs[:node_id] == NodeID(7)
     @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
     @test logger.logs[3].kwargs[:control_state] == ""
 end
@@ -242,13 +281,13 @@ end
 
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
-            [1],
+            [Ribasim.NodeID(1)],
             [true],
             [-1.0],
             [NaN],
             [NaN],
             [NaN],
-            Dict{Tuple{Int, String}, NamedTuple}(),
+            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
             [false],
         )
     end
@@ -262,12 +301,14 @@ end
 
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
-            [1],
+            Ribasim.NodeID[1],
             [true],
             [-1.0],
             [NaN],
             [NaN],
-            Dict{Tuple{Int, String}, NamedTuple}((1, "foo") => (; flow_rate = -1.0)),
+            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(
+                (Ribasim.NodeID(1), "foo") => (; flow_rate = -1.0),
+            ),
             [false],
         )
     end

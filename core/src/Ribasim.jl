@@ -20,6 +20,7 @@ import HiGHS
 import JuMP
 import TranscodingStreams
 
+using Accessors: @set
 using Arrow: Arrow, Table
 using CodecLz4: LZ4FrameCompressor
 using CodecZstd: ZstdCompressor
@@ -29,8 +30,9 @@ using DataInterpolations: LinearInterpolation, derivative
 using Dates
 using DBInterface: execute, prepare
 using Dictionaries: Indices, Dictionary, gettoken, dictionary
-using ForwardDiff: pickchunksize
 using DiffEqCallbacks
+using EnumX
+using ForwardDiff: pickchunksize
 using Graphs:
     add_edge!,
     adjacency_matrix,
@@ -46,6 +48,8 @@ using Graphs:
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
+using MetaGraphsNext:
+    MetaGraphsNext, MetaGraph, label_for, labels, outneighbor_labels, inneighbor_labels
 using OrdinaryDiffEq
 using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase

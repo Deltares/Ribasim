@@ -128,14 +128,16 @@ end
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
     model::Model,
-)::NamedTuple{
-    (:time, :node_id, :storage, :level),
-    Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{NodeID},
+    storage::Matrix{Float64},
+    level::Matrix{Float64},
 }
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    node_id = p.basin.node_id.values::Vector{Int}
+    node_id = p.basin.node_id.values::Vector{NodeID}
     tsteps = datetime_since.(timesteps(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
@@ -149,31 +151,57 @@ function get_storages_and_levels(
 end
 
 "Create the basin result table from the saved data"
-function basin_table(model::Model)::NamedTuple
+function basin_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{Int},
+    storage::Vector{Float64},
+    level::Vector{Float64},
+}
     data = get_storages_and_levels(model)
     nbasin = length(data.node_id)
     ntsteps = length(data.time)
 
     time = repeat(data.time; inner = nbasin)
-    node_id = repeat(data.node_id; outer = ntsteps)
+    node_id = repeat(Int.(data.node_id); outer = ntsteps)
 
     return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
 end
 
 "Create a flow result table from the saved data"
-function flow_table(model::Model)::NamedTuple
+function flow_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    edge_id::Vector{Union{Int, Missing}},
+    from_node_id::Vector{Int},
+    to_node_id::Vector{Int},
+    flow::FlatVector{Float64},
+}
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; connectivity) = integrator.p
+    (; graph) = connectivity
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
+    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
     # self-loops have no edge ID
-    unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    # unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    unique_edge_ids_flow = Union{Int, Missing}[]
+    for (i, j) in zip(I, J)
+        if i == j
+            push!(unique_edge_ids_flow, missing)
+        else
+            edge_metadata = metadata_from_edge(graph, Edge(i, j))
+            push!(unique_edge_ids_flow, edge_metadata.id)
+        end
+    end
+
     nflow = length(I)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
-    edge_id = repeat(unique_edge_ids; outer = ntsteps)
+    edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = FlatVector(saveval)
@@ -182,7 +210,14 @@ function flow_table(model::Model)::NamedTuple
 end
 
 "Create a discrete control result table from the saved data"
-function discrete_control_table(model::Model)::NamedTuple
+function discrete_control_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    control_node_id::Vector{Int},
+    truth_state::Vector{String},
+    control_state::Vector{String},
+}
     (; config) = model
     (; record) = model.integrator.p.discrete_control
 
@@ -191,7 +226,17 @@ function discrete_control_table(model::Model)::NamedTuple
 end
 
 "Create an allocation result table for the saved data"
-function allocation_table(model::Model)::NamedTuple
+function allocation_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    allocation_network_id::Vector{Int},
+    user_node_id::Vector{Int},
+    priority::Vector{Int},
+    demand::Vector{Float64},
+    allocated::Vector{Float64},
+    abstracted::Vector{Float64},
+}
     (; config) = model
     (; record) = model.integrator.p.user
 
@@ -227,10 +272,11 @@ function write_arrow(
     path::AbstractString,
     table::NamedTuple,
     compress::TranscodingStreams.Codec,
-)
+)::Nothing
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
     mkpath(dirname(path))
     Arrow.write(path, table; compress)
+    return nothing
 end

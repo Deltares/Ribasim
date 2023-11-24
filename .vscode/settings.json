@@ -16,5 +16,6 @@
     },
     "python.analysis.extraPaths": [
         ".pixi/env/Library/python"
-    ]
+    ],
+    "mypy-type-checker.importStrategy": "fromEnvironment"
 }
