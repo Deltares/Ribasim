@@ -1,16 +1,16 @@
-"Check that only supported edge types are declared."
-function valid_edge_types(db::DB)::Bool
-    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-    errors = false
+# "Check that only supported edge types are declared."
+# function valid_edge_types(db::DB)::Bool
+#     edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+#     errors = false
 
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
-        if edge_type ∉ ["flow", "control"]
-            errors = true
-            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
-        end
-    end
-    return !errors
-end
+#     for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+#         if edge_type ∉ ["flow", "control"]
+#             errors = true
+#             @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+#         end
+#     end
+#     return !errors
+# end
 
 """
 Return a directed metagraph with data of nodes (NodeMetadata):
@@ -19,21 +19,32 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB)::MetaGraph
+function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     node_rows = execute(db, "select fid, type, allocation_network_id from Node")
     edge_rows = execute(
         db,
         "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
     )
+    allocation_models = Dict{Int, AllocationModel}()
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
     edges_source = Dict{Int, Set{EdgeMetadata}}()
+    flow_counter = 0
+    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    flow = Float64[]
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = EdgeMetadata,
-        graph_data = (; node_ids, edge_ids, edges_source),
+        graph_data = (;
+            allocation_models,
+            node_ids,
+            edge_ids,
+            edges_source,
+            flow_dict,
+            flow,
+        ),
     )
     for row in node_rows
         node_id = NodeID(row.fid)
@@ -48,6 +59,12 @@ function create_graph(db::DB)::MetaGraph
             push!(node_ids[allocation_network_id], node_id)
         end
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
+        if row.type in nonconservative_nodetypes
+            graph[node_id, node_id] =
+                EdgeMetadata(0, EdgeType.flow, 0, node_id, node_id, false)
+            flow_counter += 1
+            flow_dict[(node_id, node_id)] = flow_counter
+        end
     end
     for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
         try
@@ -63,15 +80,42 @@ function create_graph(db::DB)::MetaGraph
         end
         edge_metadata =
             EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
-        if allocation_network_id != 0
-            if !haskey(edges_source, allocation_network_id)
-                edges_source[allocation_network_id] = Set{EdgeMetadata}()
-            end
-            push!(edges_source[allocation_network_id], edge_metadata)
-        end
         graph[id_src, id_dst] = edge_metadata
+        flow_counter += 1
+        flow_dict[(id_src, id_dst)] = flow_counter
     end
+
+    flow = zeros(flow_counter)
+    flow = config.solver.autodiff ? DiffCache(flow, chunk_size) : flow
+    graph_data = graph[]
+    graph_data = @set graph_data.flow = flow
+    graph = MetaGraph(
+        graph.graph,
+        graph.vertex_labels,
+        graph.vertex_properties,
+        graph.edge_data,
+        graph_data,
+        graph.weight_function,
+        graph.default_weight,
+    )
     return graph
+end
+
+function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    return nothing
+end
+
+function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
+    return nothing
+end
+
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
+    (; flow_dict, flow) = graph[]
+    return get_tmp(flow, val)[flow_dict[(id_src, id_dst)]]
 end
 
 """
@@ -619,8 +663,7 @@ Check:
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
-    (; discrete_control, connectivity) = p
-    (; graph) = connectivity
+    (; discrete_control, graph) = p
     (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
@@ -684,7 +727,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     end
     for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = p.connectivity.graph[node_id].type
+            node_type = graph[node_id].type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
             if node_type ∉ [:flow_boundary, :level_boundary]
@@ -807,8 +850,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::Union{LinearResistance, ManningResistance},
 )::Nothing
-    (; basin, connectivity) = p
-    (; graph) = connectivity
+    (; basin, graph) = p
 
     for id in node.node_id
         id_in = inflow_id(graph, id)
@@ -872,8 +914,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::Union{Pump, Outlet, TabulatedRatingCurve, User},
 )::Nothing
-    (; basin, fractional_flow, connectivity) = p
-    (; graph) = connectivity
+    (; basin, fractional_flow, graph) = p
 
     for (i, id) in enumerate(node.node_id)
         id_in = inflow_id(graph, id)
@@ -922,8 +963,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::PidControl,
 )::Nothing
-    (; basin, connectivity, pump) = p
-    (; graph) = connectivity
+    (; basin, graph, pump) = p
 
     n_basins = length(basin.node_id)
 

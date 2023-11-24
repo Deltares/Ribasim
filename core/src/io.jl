@@ -170,29 +170,31 @@ end
 function flow_table(model::Model)::NamedTuple
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
-    (; connectivity) = integrator.p
-    (; graph) = connectivity
+    (; graph) = integrator.p
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
     # self-loops have no edge ID
-    # unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    from_node_id = Int[]
+    to_node_id = Int[]
     unique_edge_ids_flow = Union{Int, Missing}[]
-    for (i, j) in zip(I, J)
-        if i == j
+    for e in edges(graph)
+        edge_metadata = metadata_from_edge(graph, e)
+        id = edge_metadata.id
+        push!(from_node_id, edge_metadata.from_id.value)
+        push!(to_node_id, edge_metadata.to_id.value)
+        if id == 0
             push!(unique_edge_ids_flow, missing)
         else
-            edge_metadata = metadata_from_edge(graph, Edge(i, j))
-            push!(unique_edge_ids_flow, edge_metadata.id)
+            push!(unique_edge_ids_flow, id)
         end
     end
 
-    nflow = length(I)
+    nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
-    from_node_id = repeat(I; outer = ntsteps)
-    to_node_id = repeat(J; outer = ntsteps)
+    from_node_id = repeat(from_node_id; outer = ntsteps)
+    to_node_id = repeat(to_node_id; outer = ntsteps)
     flow = FlatVector(saveval)
 
     return (; time, edge_id, from_node_id, to_node_id, flow)

@@ -40,11 +40,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, connectivity, basin, pump, outlet, fractional_flow) = parameters
+        (; pid_control, basin, pump, graph, fractional_flow) = parameters
         if !valid_pid_connectivity(
             pid_control.node_id,
             pid_control.listen_node_id,
-            connectivity.graph,
+            graph,
             basin.node_id,
             pump.node_id,
         )
@@ -52,7 +52,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         end
 
         if !valid_fractional_flow(
-            connectivity.graph,
+            graph,
             fractional_flow.node_id,
             fractional_flow.control_mapping,
         )
@@ -394,7 +394,7 @@ function discrete_control_affect!(
     upcrossing::Union{Bool, Missing},
 )::Bool
     p = integrator.p
-    (; discrete_control, connectivity) = p
+    (; discrete_control, graph) = p
 
     # Get the discrete_control node that listens to this condition
     discrete_control_node_id = discrete_control.node_id[condition_idx]
@@ -454,11 +454,8 @@ function discrete_control_affect!(
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
-        for target_node_id in outneighbor_labels_type(
-            connectivity.graph,
-            discrete_control_node_id,
-            EdgeType.control,
-        )
+        for target_node_id in
+            outneighbor_labels_type(graph, discrete_control_node_id, EdgeType.control)
             set_control_params!(p, target_node_id, control_state_new)
         end
 
@@ -469,7 +466,7 @@ function discrete_control_affect!(
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
-    node = getfield(p, p.connectivity.graph[node_id].type)
+    node = getfield(p, graph[node_id].type)
     idx = searchsortedfirst(node.node_id, node_id)
     new_state = node.control_mapping[(node_id, control_state)]
 
@@ -483,7 +480,7 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    copy(nonzeros(get_tmp(integrator.p.connectivity.flow, u)))
+    copy(get_tmp(integrator.p.graph[].flow, 0.0))
 end
 
 "Load updates from 'Basin / time' into the parameters"
