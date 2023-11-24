@@ -346,16 +346,39 @@ end
 end
 
 @testitem "Subgrid validation" begin
-    node_to_basin = Dict(9 => 1)
-    errors = Ribasim.valid_subgrid(1, 10, node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
-    @test length(errors) == 1
-    @test errors[1] ==
-          "The node_id of the Basin / subgrid_level does not refer to a basin: node_id 10 for subgrid_id 1."
+    using Ribasim: valid_subgrid, NodeID
+    using Logging
 
-    errors = Ribasim.valid_subgrid(1, 9, node_to_basin, [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0])
-    @test length(errors) == 2
-    @test errors[1] ==
+    node_to_basin = Dict(NodeID(9) => 1)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_subgrid(1, NodeID(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "The node_id of the Basin / subgrid_level does not refer to a basin."
+    @test logger.logs[1].kwargs[:node_id] == NodeID(10)
+    @test logger.logs[1].kwargs[:subgrid_id] == 1
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_subgrid(
+            1,
+            NodeID(9),
+            node_to_basin,
+            [-1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+        )
+    end
+
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
           "Basin / subgrid_level subgrid_id 1 has repeated basin levels, this cannot be interpolated."
-    @test errors[2] ==
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
           "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
 end

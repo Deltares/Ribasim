@@ -1,7 +1,5 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-# If the kind consists of multiple words, these can also be split with extra dots,
-# such that from the "subgrid.level" schema we get "subgrid_level".
 @schema "ribasim.node" Node
 @schema "ribasim.edge" Edge
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
@@ -637,34 +635,27 @@ Validate the entries for a single subgrid element.
 """
 function valid_subgrid(
     subgrid_id::Int,
-    node_id::Int,
-    node_to_basin::Dict{Int, Int},
+    node_id::NodeID,
+    node_to_basin::Dict{NodeID, Int},
     basin_level::Vector{Float64},
     subgrid_level::Vector{Float64},
-)
-    # The Schema ensures that the entries are sorted properly, so we do not need to validate the order here.
-    errors = String[]
+)::Bool
+    errors = false
 
     if !(node_id in keys(node_to_basin))
-        push!(
-            errors,
-            "The node_id of the Basin / subgrid_level does not refer to a basin: node_id $(node_id) for subgrid_id $(subgrid_id).",
-        )
+        errors = true
+        @error "The node_id of the Basin / subgrid_level does not refer to a basin." node_id subgrid_id
     end
 
     if !allunique(basin_level)
-        push!(
-            errors,
-            "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated.",
-        )
+        errors = true
+        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
     end
 
     if !allunique(subgrid_level)
-        push!(
-            errors,
-            "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated.",
-        )
+        errors = true
+        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
     end
 
-    return errors
+    return !errors
 end

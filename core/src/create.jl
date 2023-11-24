@@ -791,36 +791,30 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
     basin_ids = Int[]
     interpolations = ScalarInterpolation[]
-    errors = String[]
+    has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
         subgrid_id = first(getproperty.(group, :subgrid_id))
-        node_id = first(getproperty.(group, :node_id))
+        node_id = NodeID(first(getproperty.(group, :node_id)))
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
-        group_errors =
+        is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
 
-        if isempty(group_errors)
+        if !is_valid
+            has_error = true
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
             new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
             push!(basin_ids, node_to_basin[node_id])
             push!(interpolations, new_interp)
-        else
-            append!(errors, group_errors)
         end
     end
 
-    if isempty(errors)
-        return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
-    else
-        foreach(x -> @error(x), errors)
-        error(
-            "Errors occurred while parsing Basin / subgrid_level data for group with name: $(name).",
-        )
-    end
+    has_error && error("Invalid Basin / subgrid table.")
+
+    return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
 function Parameters(db::DB, config::Config)::Parameters
