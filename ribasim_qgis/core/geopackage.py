@@ -11,7 +11,9 @@ This module lightly wraps a few QGIS built in functions to:
 import sqlite3
 from contextlib import contextmanager
 
-from qgis import processing
+# qgis is monkey patched by plugins.processing.
+# Importing from plugins directly for mypy
+from plugins import processing
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
 
@@ -72,11 +74,13 @@ def write_layer(
     options.driverName = "gpkg"
     options.layerName = layername
     if not newfile:
-        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+        options.actionOnExistingFile = (
+            QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
+        )
     write_result, error_message = QgsVectorFileWriter.writeAsVectorFormat(
         layer, path, options
     )
-    if write_result != QgsVectorFileWriter.NoError:
+    if write_result != QgsVectorFileWriter.WriterError.NoError:
         raise RuntimeError(
             f"Layer {layername} could not be written to geopackage: {path}"
             f" with error: {error_message}"

@@ -49,6 +49,7 @@ lint = { depends_on = [
     "mypy-ribasim-python",
     "mypy-ribasim-testmodels",
     "mypy-ribasim-api",
+    "mypy-ribasim-qgis",
 ] }
 # Build
 build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
@@ -101,6 +102,7 @@ install-qgis-plugins = { depends_on = [
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
+mypy-ribasim-qgis = "mypy ribasim_qgis"
 
 [dependencies]
 build = "*"
