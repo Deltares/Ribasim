@@ -175,7 +175,7 @@ function BMI.finalize(model::Model)::Model
 
     # exported levels
     table = subgrid_level_table(model)
-    path = results_path(config, results.subgrid_level)
+    path = results_path(config, RESULTS_FILENAME.subgrid_levels)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
