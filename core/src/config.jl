@@ -157,7 +157,7 @@ function Config(config_path::AbstractString; kwargs...)::Config
 end
 
 Base.getproperty(config::Config, sym::Symbol) = getfield(getfield(config, :toml), sym)
-
+Base.getproperty(config::Config, sym::Symbol) = getproperty(getfield(config, :toml), sym)
 """
     relative_dir(config::Config)
 
