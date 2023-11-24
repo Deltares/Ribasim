@@ -59,8 +59,8 @@ end
     t = table.time[1]
     @test length(p.fractional_flow.node_id) == 3
     for id in p.fractional_flow.node_id
-        inflow = only(table.flow[table.to_node_id .== id .&& table.time .== t])
-        outflow = only(table.flow[table.from_node_id .== id .&& table.time .== t])
+        inflow = only(table.flow[table.to_node_id .== id.value .&& table.time .== t])
+        outflow = only(table.flow[table.from_node_id .== id.value .&& table.time .== t])
         @test inflow == outflow
     end
 end

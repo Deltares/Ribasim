@@ -128,14 +128,20 @@ end
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
     model::Model,
-)::NamedTuple{
-    (:time, :node_id, :storage, :level),
-    Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
+)::@NamedTuple{
+    time::Vector{Dates.DateTime},
+    node_id::Vector{NodeID},
+    storage::Matrix{Float64},
+    level::Matrix{Float64},
 }
+    NamedTuple{
+        (:time, :node_id, :storage, :level),
+        Tuple{Vector{Dates.DateTime}, Vector{Int}, Matrix{Float64}, Matrix{Float64}},
+    }
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    node_id = p.basin.node_id.values::Vector{Int}
+    node_id = p.basin.node_id.values::Vector{NodeID}
     tsteps = datetime_since.(timesteps(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
@@ -165,15 +171,26 @@ function flow_table(model::Model)::NamedTuple
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; connectivity) = integrator.p
+    (; graph) = connectivity
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, integrator.u))
+    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
     # self-loops have no edge ID
-    unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    # unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    unique_edge_ids_flow = Union{Int, Missing}[]
+    for (i, j) in zip(I, J)
+        if i == j
+            push!(unique_edge_ids_flow, missing)
+        else
+            edge_metadata = metadata_from_edge(graph, Edge(i, j))
+            push!(unique_edge_ids_flow, edge_metadata.id)
+        end
+    end
+
     nflow = length(I)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
-    edge_id = repeat(unique_edge_ids; outer = ntsteps)
+    edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(I; outer = ntsteps)
     to_node_id = repeat(J; outer = ntsteps)
     flow = FlatVector(saveval)

@@ -62,7 +62,7 @@ function parse_static_and_time(
 
     # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -124,7 +124,7 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                control_mapping[(node_id, control_state_key)] =
+                control_mapping[(NodeID(node_id), control_state_key)] =
                     NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
@@ -201,13 +201,19 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
         error("Invalid edge types found.")
     end
 
-    graph_flow, edge_ids_flow, edge_connection_types_flow = create_graph(db, "flow")
-    graph_control, edge_ids_control, edge_connection_types_control =
-        create_graph(db, "control")
+    graph = create_graph(db)
 
-    edge_ids_flow_inv = Dictionary(values(edge_ids_flow), keys(edge_ids_flow))
+    # Build the sparsity structure of the flow matrix
+    flow = spzeros(nv(graph), nv(graph))
+    for e in edges(graph)
+        id_src = label_for(graph, e.src)
+        id_dst = label_for(graph, e.dst)
+        edge_metadata = graph[id_src, id_dst]
+        if edge_metadata.type == EdgeType.flow
+            flow[id_src, id_dst] = 1.0
+        end
+    end
 
-    flow = adjacency_matrix(graph_flow, Float64)
     # Add a self-loop, i.e. an entry on the diagonal, for all non-conservative node types.
     # This is used to store the gain (positive) or loss (negative) for the water balance.
     # Note that this only affects the sparsity structure.
@@ -227,63 +233,17 @@ function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
 
     allocation_models = AllocationModel[]
 
-    return Connectivity(
-        graph_flow,
-        graph_control,
-        flow,
-        edge_ids_flow,
-        edge_ids_flow_inv,
-        edge_ids_control,
-        edge_connection_types_flow,
-        edge_connection_types_control,
-        allocation_models,
-    )
+    return Connectivity(graph, flow, allocation_models)
 end
 
-function generate_allocation_models!(p::Parameters, db::DB, config::Config)::Nothing
+function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; connectivity) = p
-    node = load_structvector(db, config, NodeV1)
-    edge = load_structvector(db, config, EdgeV1)
+    (; allocation_models, graph) = connectivity
 
-    # coalesce control_state to nothing to avoid boolean groupby logic on missing
-    allocation_groups_node =
-        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), node)
-    allocation_groups_edge =
-        IterTools.groupby(row -> coalesce(row.allocation_network_id, nothing), edge)
-
-    allocation_groups_node_dict = Dict{Int, StructVector}()
-    allocation_groups_edge_dict = Dict{Int, StructVector}()
-
-    for allocation_group_node in allocation_groups_node
-        allocation_network_id = first(allocation_group_node).allocation_network_id
-        if !ismissing(allocation_network_id)
-            allocation_groups_node_dict[allocation_network_id] = allocation_group_node
-        end
-    end
-    for allocation_group_edge in allocation_groups_edge
-        allocation_network_id = first(allocation_group_edge).allocation_network_id
-        if !ismissing(allocation_network_id)
-            allocation_groups_edge_dict[allocation_network_id] = allocation_group_edge
-        end
-    end
-
-    for (allocation_network_id, allocation_group_node) in allocation_groups_node_dict
-        allocation_group_edge = get(
-            allocation_groups_edge_dict,
-            allocation_network_id,
-            StructVector{EdgeV1}(undef, 0),
-        )
-        source_edge_ids = [row.fid for row in allocation_group_edge]
+    for allocation_network_id in keys(graph[].node_ids)
         push!(
-            connectivity.allocation_models,
-            AllocationModel(
-                config,
-                allocation_network_id,
-                p,
-                allocation_group_node.fid,
-                source_edge_ids,
-                config.allocation.timestep,
-            ),
+            allocation_models,
+            AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
         )
     end
     return nothing
@@ -300,7 +260,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
     end
 
     return LinearResistance(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.control_mapping,
@@ -321,7 +281,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{Int, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
     active = BitVector()
     errors = false
 
@@ -341,7 +301,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 is_active = coalesce(first(group).active, true)
                 interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
                 if !ismissing(control_state)
-                    control_mapping[(node_id, control_state)] =
+                    control_mapping[(NodeID(node_id), control_state)] =
                         (; tables = interpolation, active = is_active)
                 end
             end
@@ -369,7 +329,13 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
+    return TabulatedRatingCurve(
+        NodeID.(node_ids),
+        active,
+        interpolations,
+        time,
+        control_mapping,
+    )
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
@@ -382,7 +348,7 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
     end
 
     return ManningResistance(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
@@ -401,7 +367,7 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     end
 
     return FractionalFlow(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -432,7 +398,11 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         error("Errors occurred when parsing LevelBoundary data.")
     end
 
-    return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
+    return LevelBoundary(
+        NodeID.(node_ids),
+        parsed_parameters.active,
+        parsed_parameters.level,
+    )
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
@@ -469,14 +439,18 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
+    return FlowBoundary(
+        NodeID.(node_ids),
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
+    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -490,7 +464,7 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     end
 
     return Pump(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -505,7 +479,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
+    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -519,7 +493,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
     end
 
     return Outlet(
-        parsed_parameters.node_id,
+        NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -532,7 +506,7 @@ end
 
 function Terminal(db::DB, config::Config)::Terminal
     static = load_structvector(db, config, TerminalStaticV1)
-    return Terminal(static.node_id)
+    return Terminal(NodeID.(static.node_id))
 end
 
 function Basin(db::DB, config::Config, chunk_size::Int)::Basin
@@ -563,7 +537,7 @@ function Basin(db::DB, config::Config, chunk_size::Int)::Basin
     check_no_nans(table, "Basin")
 
     return Basin(
-        Indices(node_id),
+        Indices(NodeID.(node_id)),
         precipitation,
         potential_evaporation,
         drainage,
@@ -581,22 +555,22 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
 
     condition_value = fill(false, length(condition.node_id))
-    control_state::Dict{Int, Tuple{String, Float64}} = Dict()
+    control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
     rows = execute(db, "select from_node_id, edge_type from Edge")
     for (; from_node_id, edge_type) in rows
         if edge_type == "control"
-            control_state[from_node_id] = ("undefined_state", 0.0)
+            control_state[NodeID(from_node_id)] = ("undefined_state", 0.0)
         end
     end
 
     logic = load_structvector(db, config, DiscreteControlLogicV1)
 
-    logic_mapping = Dict{Tuple{Int, String}, String}()
+    logic_mapping = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[(node_id, truth_state)] = control_state_
+        logic_mapping[(NodeID(node_id), truth_state)] = control_state_
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
@@ -610,8 +584,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        condition.node_id, # Not unique
-        condition.listen_feature_id,
+        NodeID.(condition.node_id), # Not unique
+        NodeID.(condition.listen_feature_id),
         condition.variable,
         look_ahead,
         condition.greater_than,
@@ -674,9 +648,9 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     end
 
     return PidControl(
-        node_ids,
+        NodeID.(node_ids),
         BitVector(parsed_parameters.active),
-        parsed_parameters.listen_node_id,
+        NodeID.(parsed_parameters.listen_node_id),
         parsed_parameters.target,
         pid_parameters,
         pid_error,
@@ -800,7 +774,7 @@ function User(db::DB, config::Config)::User
     allocation_optimized = BitVector(zeros(UInt8, length(node_ids)))
 
     return User(
-        node_ids,
+        NodeID.(node_ids),
         active,
         interpolations,
         allocated,
@@ -834,7 +808,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
-        id_controlled = only(outneighbors(connectivity.graph_control, id))
+        id_controlled =
+            only(outneighbor_labels_type(connectivity.graph, id, EdgeType.control))
         pump_idx = findsorted(pump.node_id, id_controlled)
         if pump_idx === nothing
             outlet_idx = findsorted(outlet.node_id, id_controlled)
@@ -860,18 +835,11 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
-        Dict{Int, Symbol}(),
     )
-    for (fieldname, fieldtype) in zip(fieldnames(Parameters), fieldtypes(Parameters))
-        if fieldtype <: AbstractParameterNode
-            for node_id in getfield(p, fieldname).node_id
-                p.lookup[node_id] = fieldname
-            end
-        end
-    end
+
     # Allocation data structures
     if config.allocation.use_allocation
-        generate_allocation_models!(p, db, config)
+        generate_allocation_models!(p, config)
     end
     return p
 end
