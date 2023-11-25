@@ -13,8 +13,8 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         node_type = graph[node_id].type
         if node_type in [:user, :basin]
             push!(used_nodes, node_id)
-
-        elseif length(inoutflow_ids(graph, node_id)) > 2
+        elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
+            # use count since the length of the iterator is unknown
             push!(used_nodes, node_id)
         end
     end

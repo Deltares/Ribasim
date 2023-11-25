@@ -515,8 +515,8 @@ function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
     for id in node.node_id
         for (bounds, edge_type) in
             zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
-            n_inneighbors = length(inneighbor_labels_type(graph, id, edge_type))
-            n_outneighbors = length(outneighbor_labels_type(graph, id, edge_type))
+            n_inneighbors = count(x -> true, inneighbor_labels_type(graph, id, edge_type))
+            n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
                 @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
