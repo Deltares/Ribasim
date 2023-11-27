@@ -29342,6 +29342,86 @@ package:
   size: 69716519
   timestamp: 1699865367134
 - platform: linux-64
+  name: qgis-plugin-manager
+  version: 1.6.1
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  url: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3039cc77e9dd82d527de5d77933a5d76
+    sha256: 9df61faa73fb66315430af866fe90076fb363893ae6fe31d4105e36072b74a0a
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: GPL-3.0-only
+  license_family: GPL
+  noarch: python
+  size: 44219
+  timestamp: 1694708722178
+- platform: osx-64
+  name: qgis-plugin-manager
+  version: 1.6.1
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  url: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3039cc77e9dd82d527de5d77933a5d76
+    sha256: 9df61faa73fb66315430af866fe90076fb363893ae6fe31d4105e36072b74a0a
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: GPL-3.0-only
+  license_family: GPL
+  noarch: python
+  size: 44219
+  timestamp: 1694708722178
+- platform: osx-arm64
+  name: qgis-plugin-manager
+  version: 1.6.1
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  url: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3039cc77e9dd82d527de5d77933a5d76
+    sha256: 9df61faa73fb66315430af866fe90076fb363893ae6fe31d4105e36072b74a0a
+  build: pyhd8ed1ab_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: GPL-3.0-only
+  license_family: GPL
+  noarch: python
+  size: 44219
+  timestamp: 1694708722178
+- platform: win-64
+  name: qgis-plugin-manager
+  version: 1.6.1
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  url: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3039cc77e9dd82d527de5d77933a5d76
+    sha256: 9df61faa73fb66315430af866fe90076fb363893ae6fe31d4105e36072b74a0a
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: GPL-3.0-only
+  license_family: GPL
+  noarch: python
+  size: 44219
+  timestamp: 1694708722178
+- platform: linux-64
   name: qjson
   version: 0.9.0
   category: main

@@ -95,10 +95,12 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 ] }
 # QGIS
 install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
-install-imod-qgis = "python ribasim_qgis/scripts/install_imod_qgis.py"
+install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
+install-plugin-reloader = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
 test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 install-qgis-plugins = { depends_on = [
+    "install-plugin-reloader",
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
@@ -136,6 +138,7 @@ qgis = "3.28.*"
 platformdirs = "*"
 pyqt-stubs = "*"
 types-requests = "*"
+qgis-plugin-manager = "*"
 
 [target.win-64.dependencies]
 quarto = "*"
