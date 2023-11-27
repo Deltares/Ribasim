@@ -801,15 +801,15 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
 
-        if !is_valid
-            has_error = true
-        else
+        if is_valid
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
             new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
             push!(basin_ids, node_to_basin[node_id])
             push!(interpolations, new_interp)
+        else
+            has_error = true
         end
     end
 
