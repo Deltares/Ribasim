@@ -26,7 +26,6 @@ from qgis.gui import QgisInterface
 from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
-from ribasim_qgis.widgets.results_widget import ResultsWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
@@ -38,17 +37,15 @@ class RibasimWidget(QWidget):
         self.iface = iface
         self.message_bar = self.iface.messageBar()
 
-        self.dataset_widget = DatasetWidget(self)
-        self.nodes_widget = NodesWidget(self)
-        self.results_widget = ResultsWidget(self)
+        self.__dataset_widget = DatasetWidget(self)
+        self.__nodes_widget = NodesWidget(self)
 
         # Layout
         layout = QVBoxLayout()
         self.tabwidget = QTabWidget()
         layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.dataset_widget, "Model")
-        self.tabwidget.addTab(self.nodes_widget, "Nodes")
-        self.tabwidget.addTab(self.results_widget, "Results")
+        self.tabwidget.addTab(self.__dataset_widget, "Model")
+        self.tabwidget.addTab(self.__nodes_widget, "Nodes")
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
@@ -60,8 +57,16 @@ class RibasimWidget(QWidget):
     # Inter-widget communication
     # --------------------------
     @property
-    def path(self) -> str:
-        return self.dataset_widget.path
+    def path(self) -> Path:
+        return self.__dataset_widget.path
+
+    @property
+    def node_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.node_layer
+
+    @property
+    def edge_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.edge_layer
 
     @property
     def crs(self) -> QgsCoordinateReferenceSystem:
@@ -73,13 +78,13 @@ class RibasimWidget(QWidget):
         return map_settings.destinationCrs()
 
     def add_node_layer(self, element: Input):
-        self.dataset_widget.add_node_layer(element)
+        self.__dataset_widget.add_node_layer(element)
 
     def toggle_node_buttons(self, state: bool) -> None:
-        self.nodes_widget.toggle_node_buttons(state)
+        self.__nodes_widget.toggle_node_buttons(state)
 
     def selection_names(self):
-        return self.dataset_widget.selection_names()
+        return self.__dataset_widget.selection_names()
 
     # QGIS layers
     # -----------

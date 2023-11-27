@@ -139,6 +139,7 @@ platformdirs = "*"
 pyqt-stubs = "*"
 types-requests = "*"
 qgis-plugin-manager = "*"
+libgdal-arrow-parquet = "3.7.2.*"
 
 [target.win-64.dependencies]
 quarto = "*"
