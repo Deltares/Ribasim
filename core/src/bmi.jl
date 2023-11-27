@@ -517,7 +517,7 @@ end
 "Interpolate the levels and save them to SavedValues"
 function save_subgrid_level(u, t, integrator)
     update_subgrid_level!(integrator)
-    return integrator.p.subgrid.level
+    return copy(integrator.p.subgrid.level)
 end
 
 "Load updates from 'Basin / time' into the parameters"
