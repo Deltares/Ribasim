@@ -742,7 +742,7 @@ function assign_allocations!(
         # should be the average abstraction since the last allocation solve
         push!(
             record.abstracted,
-            get_flow(graph, inflow_id(graph, user_node_id), user_node_id),
+            get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
         )
     end
     return nothing

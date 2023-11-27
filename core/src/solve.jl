@@ -472,16 +472,18 @@ struct Parameters{T, C1, C2}
         NodeMetadata,
         EdgeMetadata,
         @NamedTuple{
-            allocation_models::Dict{Int, AllocationModel},
             node_ids::Dict{Int, Set{NodeID}},
             edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
             edges_source::Dict{Int, Set{EdgeMetadata}},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
             flow::T,
+            flow_vertical_dict::Dict{NodeID, Int},
+            flow_vertical::T,
         },
         MetaGraphsNext.var"#11#13",
         Float64,
     }
+    allocation_models::Vector{AllocationModel}
     basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
@@ -758,8 +760,8 @@ function continuous_control!(
         src_id = inflow_id(graph, controlled_node_id)
         dst_id = outflow_id(graph, controlled_node_id)
 
-        flow[src_id, controlled_node_id] = flow_rate
-        flow[controlled_node_id, dst_id] = flow_rate
+        set_flow!(graph, src_id, controlled_node_id, flow_rate)
+        set_flow!(graph, controlled_node_id, dst_id, flow_rate)
 
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index

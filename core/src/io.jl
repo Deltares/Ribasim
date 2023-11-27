@@ -171,21 +171,27 @@ function flow_table(model::Model)::NamedTuple
     (; config, saved_flow, integrator) = model
     (; t, saveval) = saved_flow
     (; graph) = integrator.p
+    (; flow_dict, flow_vertical_dict) = graph[]
 
     # self-loops have no edge ID
     from_node_id = Int[]
     to_node_id = Int[]
-    unique_edge_ids_flow = Union{Int, Missing}[]
-    for e in edges(graph)
-        edge_metadata = metadata_from_edge(graph, e)
-        id = edge_metadata.id
-        push!(from_node_id, edge_metadata.from_id.value)
-        push!(to_node_id, edge_metadata.to_id.value)
-        if id == 0
-            push!(unique_edge_ids_flow, missing)
-        else
-            push!(unique_edge_ids_flow, id)
-        end
+    unique_edge_ids_flow = Vector{Union{Int, Missing}}()
+    flow_vertical_dict_inverse = Dict(value => key for (key, value) in flow_vertical_dict)
+    flow_dict_inverse = Dict(value => key for (key, value) in flow_dict)
+
+    for i in 1:length(flow_vertical_dict_inverse)
+        id = flow_vertical_dict_inverse[i]
+        push!(from_node_id, id.value)
+        push!(to_node_id, id.value)
+        push!(unique_edge_ids_flow, missing)
+    end
+
+    for i in 1:length(flow_dict_inverse)
+        from_id, to_id = flow_dict_inverse[i]
+        push!(from_node_id, from_id.value)
+        push!(to_node_id, to_id.value)
+        push!(unique_edge_ids_flow, graph[from_id, to_id].id)
     end
 
     nflow = length(unique_edge_ids_flow)

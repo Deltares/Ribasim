@@ -466,7 +466,7 @@ function discrete_control_affect!(
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
-    node = getfield(p, graph[node_id].type)
+    node = getfield(p, p.graph[node_id].type)
     idx = searchsortedfirst(node.node_id, node_id)
     new_state = node.control_mapping[(node_id, control_state)]
 
@@ -480,7 +480,10 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    copy(get_tmp(integrator.p.graph[].flow, 0.0))
+    [
+        get_tmp(integrator.p.graph[].flow_vertical, 0.0)...,
+        get_tmp(integrator.p.graph[].flow, 0.0)...,
+    ]
 end
 
 "Load updates from 'Basin / time' into the parameters"
@@ -511,7 +514,7 @@ end
 "Solve the allocation problem for all users and assign allocated abstractions to user nodes."
 function update_allocation!(integrator)::Nothing
     (; p, t) = integrator
-    for allocation_model in integrator.p.connectivity.allocation_models
+    for allocation_model in integrator.p.allocation_models
         allocate!(p, allocation_model, t)
     end
 end

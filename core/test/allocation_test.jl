@@ -14,13 +14,12 @@
     close(db)
 
     graph = p.graph
-    flow = get_tmp(graph[].flow, 0)
-    flow[1, 2] = 4.5 # Source flow
-    allocation_model = graph[].allocation_models[1]
+    Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5) # Source flow
+    allocation_model = p.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    @test F[(NodeID(1), NodeID(2))] ≈ 4.5
+    @test F[(NodeID(1), NodeID(2))] ≈ 4.0
     @test F[(NodeID(8), NodeID(12))] ≈ 0.0
     @test F[(NodeID(6), NodeID(11))] ≈ 0.0
     @test F[(NodeID(6), NodeID(8))] ≈ 0.0
@@ -46,7 +45,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.graph.allocation_models[1].problem
+    problem = model.integrator.p.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     F = problem[:F]
@@ -62,7 +61,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.graph.allocation_models[1].problem
+    problem = model.integrator.p.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     @test objective.aff.constant == 2.0
@@ -79,7 +78,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.graph.allocation_models[1].problem
+    problem = model.integrator.p.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
@@ -89,7 +88,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.graph.allocation_models[1].problem
+    problem = model.integrator.p.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)

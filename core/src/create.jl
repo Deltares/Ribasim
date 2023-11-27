@@ -237,8 +237,7 @@ const nonconservative_nodetypes =
 # end
 
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
-    (; graph) = p
-    (; allocation_models) = graph[]
+    (; graph, allocation_models) = p
 
     for allocation_network_id in keys(graph[].node_ids)
         push!(
@@ -787,6 +786,7 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_size = pickchunksize(n_states)
     graph = create_graph(db, config, chunk_size)
+    allocation_models = Vector{AllocationModel}()
 
     linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
@@ -805,8 +805,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
-        id_controlled =
-            only(outneighbor_labels_type(connectivity.graph, id, EdgeType.control))
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
         pump_idx = findsorted(pump.node_id, id_controlled)
         if pump_idx === nothing
             outlet_idx = findsorted(outlet.node_id, id_controlled)
@@ -819,6 +818,7 @@ function Parameters(db::DB, config::Config)::Parameters
     p = Parameters(
         config.starttime,
         graph,
+        allocation_models,
         basin,
         linear_resistance,
         manning_resistance,
@@ -833,7 +833,6 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user,
     )
-
     # Allocation data structures
     if config.allocation.use_allocation
         generate_allocation_models!(p, config)

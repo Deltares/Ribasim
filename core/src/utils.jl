@@ -1,16 +1,16 @@
-# "Check that only supported edge types are declared."
-# function valid_edge_types(db::DB)::Bool
-#     edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
-#     errors = false
+"Check that only supported edge types are declared."
+function valid_edge_types(db::DB)::Bool
+    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    errors = false
 
-#     for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
-#         if edge_type ∉ ["flow", "control"]
-#             errors = true
-#             @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
-#         end
-#     end
-#     return !errors
-# end
+    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+        if edge_type ∉ ["flow", "control"]
+            errors = true
+            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+        end
+    end
+    return !errors
+end
 
 """
 Return a directed metagraph with data of nodes (NodeMetadata):
@@ -25,26 +25,19 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
         db,
         "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
     )
-    allocation_models = Dict{Int, AllocationModel}()
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
     edges_source = Dict{Int, Set{EdgeMetadata}}()
     flow_counter = 0
     flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
-    flow = Float64[]
+    flow_vertical_counter = 0
+    flow_vertical_dict = Dict{NodeID, Int}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = EdgeMetadata,
-        graph_data = (;
-            allocation_models,
-            node_ids,
-            edge_ids,
-            edges_source,
-            flow_dict,
-            flow,
-        ),
+        graph_data = nothing,
     )
     for row in node_rows
         node_id = NodeID(row.fid)
@@ -60,10 +53,8 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
         end
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
         if row.type in nonconservative_nodetypes
-            graph[node_id, node_id] =
-                EdgeMetadata(0, EdgeType.flow, 0, node_id, node_id, false)
-            flow_counter += 1
-            flow_dict[(node_id, node_id)] = flow_counter
+            flow_vertical_counter += 1
+            flow_vertical_dict[node_id] = flow_vertical_counter
         end
     end
     for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
@@ -83,39 +74,61 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
         graph[id_src, id_dst] = edge_metadata
         flow_counter += 1
         flow_dict[(id_src, id_dst)] = flow_counter
+        if allocation_network_id != 0
+            if !haskey(edges_source, allocation_network_id)
+                edges_source[allocation_network_id] = Set{EdgeMetadata}()
+            end
+            push!(edges_source[allocation_network_id], edge_metadata)
+        end
     end
 
     flow = zeros(flow_counter)
-    flow = config.solver.autodiff ? DiffCache(flow, chunk_size) : flow
-    graph_data = graph[]
-    graph_data = @set graph_data.flow = flow
-    graph = MetaGraph(
-        graph.graph,
-        graph.vertex_labels,
-        graph.vertex_properties,
-        graph.edge_data,
-        graph_data,
-        graph.weight_function,
-        graph.default_weight,
+    flow_vertical = zeros(flow_vertical_counter)
+    if config.solver.autodiff
+        flow = DiffCache(flow, chunk_size)
+        flow_vertical = DiffCache(flow_vertical, chunk_size)
+    end
+    graph_data = (;
+        node_ids,
+        edge_ids,
+        edges_source,
+        flow_dict,
+        flow,
+        flow_vertical_dict,
+        flow_vertical,
     )
+    graph = @set graph.graph_data = graph_data
     return graph
 end
 
 function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow) = graph[]
-    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
+    if id_src == id_dst
+        get_tmp(flow_vertical, q)[flow_vertical_dict[id_src]] = q
+    else
+        get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    end
     return nothing
 end
 
 function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow) = graph[]
-    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
+    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
+    if id_src == id_dst
+        get_tmp(flow_vertical, q)[flow_vertical_dict[id_src]] += q
+    else
+        get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
+    end
     return nothing
 end
 
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
-    (; flow_dict, flow) = graph[]
-    return get_tmp(flow, val)[flow_dict[(id_src, id_dst)]]
+    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
+    if id_src == id_dst
+        return get_tmp(flow_vertical, val)[flow_vertical_dict[id_src]]
+    else
+        return get_tmp(flow, val)[flow_dict[(id_src, id_dst)]]
+    end
+    return nothing
 end
 
 """
