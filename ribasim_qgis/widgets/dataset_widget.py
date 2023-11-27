@@ -281,8 +281,8 @@ class DatasetWidget(QWidget):
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
-            geo_path = Path(self.path).parent.joinpath("database.gpkg")
-            self._write_new_model(geo_path.name)
+            geo_path = Path(self.path).with_name("database.gpkg")
+            self._write_new_model()
 
             for input_type in (Node, Edge):
                 instance = input_type.create(
@@ -292,13 +292,14 @@ class DatasetWidget(QWidget):
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
 
-    def _write_new_model(self, database_name: str) -> None:
+    def _write_new_model(self) -> None:
         with open(self.path, "w") as f:
             f.writelines(
                 [
-                    f'database = "{database_name}"\n',
                     f"starttime = {datetime(2020, 1, 1)}\n",
-                    f"endtime = {datetime(2030, 1, 1)}\n",
+                    f"endtime = {datetime(2021, 1, 1)}\n",
+                    'input_dir = "."\n',
+                    'results_dir = "results"\n',
                 ]
             )
 
