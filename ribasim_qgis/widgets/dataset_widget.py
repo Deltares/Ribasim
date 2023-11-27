@@ -36,7 +36,10 @@ from qgis.core import (
 )
 from qgis.core.additions.edit import edit
 
-from ribasim_qgis.core.model import get_database_path_from_model_file
+from ribasim_qgis.core.model import (
+    get_database_path_from_model_file,
+    get_directory_path_from_model_file,
+)
 from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
@@ -313,7 +316,7 @@ class DatasetWidget(QWidget):
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
-            self.ribasim_widget.refresh_results()
+            self.refresh_results()
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     def remove_geopackage_layer(self) -> None:
@@ -347,3 +350,34 @@ class DatasetWidget(QWidget):
 
     def add_node_layer(self, element: Input) -> None:
         self.dataset_tree.add_node_layer(element)
+
+    def refresh_results(self) -> None:
+        self.__set_node_results()
+        self.__set_edge_results()
+
+    def __set_node_results(self) -> None:
+        node_layer = self.ribasim_widget.node_layer
+        assert node_layer is not None
+        self.__set_results(node_layer, "node_id", "basin.arrow")
+
+    def __set_edge_results(self) -> None:
+        edge_layer = self.ribasim_widget.edge_layer
+        assert edge_layer is not None
+        self.__set_results(edge_layer, "edge_id", "flow.arrow")
+
+    def __set_results(
+        self,
+        layer: QgsVectorLayer,
+        column: str,
+        output_file_name: str,
+    ) -> None:
+        path = (
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
+            / output_file_name
+        )
+        if layer is not None:
+            layer.setCustomProperty("arrow_type", "timeseries")
+            layer.setCustomProperty("arrow_path", str(path))
+            layer.setCustomProperty("arrow_fid_column", column)
