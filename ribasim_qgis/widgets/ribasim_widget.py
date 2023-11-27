@@ -89,6 +89,9 @@ class RibasimWidget(QWidget):
     def selection_names(self):
         return self.__dataset_widget.selection_names()
 
+    def refresh_results(self):
+        self.__results_widget.refresh_results()
+
     # QGIS layers
     # -----------
     def create_subgroup(self, name: str, part: str) -> None:

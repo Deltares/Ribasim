@@ -313,6 +313,7 @@ class DatasetWidget(QWidget):
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
+            self.ribasim_widget.refresh_results()
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     def remove_geopackage_layer(self) -> None:
