@@ -229,6 +229,7 @@ end
 @testitem "ManningResistance" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
+    using Ribasim: NodeID
 
     """
     Apply the "standard step method" finite difference method to find a
@@ -301,6 +302,9 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test model.saved_flow.saveval[end][2] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test model.saved_flow.saveval[end][end - 1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    n_self_loops = length(p.graph[].flow_dict)
+    @test Ribasim.get_flow(p.graph, NodeID(1), NodeID(2), 0) ≈ 5.0 atol = 0.001 skip =
+        Sys.isapple()
+    @test Ribasim.get_flow(p.graph, NodeID(101), NodeID(102), 0) ≈ 5.0 atol = 0.001 skip =
+        Sys.isapple()
 end

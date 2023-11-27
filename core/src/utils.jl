@@ -102,33 +102,37 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
 end
 
 function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
-    if id_src == id_dst
-        get_tmp(flow_vertical, q)[flow_vertical_dict[id_src]] = q
-    else
-        get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
-    end
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    return nothing
+end
+
+function set_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] = q
     return nothing
 end
 
 function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
-    if id_src == id_dst
-        get_tmp(flow_vertical, q)[flow_vertical_dict[id_src]] += q
-    else
-        get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
-    end
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
+    return nothing
+end
+
+function add_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] += q
     return nothing
 end
 
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
-    (; flow_dict, flow, flow_vertical_dict, flow_vertical) = graph[]
-    if id_src == id_dst
-        return get_tmp(flow_vertical, val)[flow_vertical_dict[id_src]]
-    else
-        return get_tmp(flow, val)[flow_dict[(id_src, id_dst)]]
-    end
-    return nothing
+    (; flow_dict, flow) = graph[]
+    return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
+end
+
+function get_flow(graph::MetaGraph, id::NodeID, val)::Number
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    return get_tmp(flow_vertical, val)[flow_vertical_dict[id]]
 end
 
 """
@@ -787,35 +791,37 @@ function expand_logic_mapping(
         control_state = logic_mapping[(node_id, truth_state)]
         n_wildcards = count(==('*'), truth_state)
 
-        if n_wildcards > 0
+        substitutions = if n_wildcards > 0
+            substitutions = Iterators.product(fill(['T', 'F'], n_wildcards)...)
+        else
+            [nothing]
+        end
 
-            # Loop over all substitution sets for the wildcards
-            for substitution in Iterators.product(fill(['T', 'F'], n_wildcards)...)
-                truth_state_new = ""
-                s_index = 0
+        # Loop over all substitution sets for the wildcards
+        for substitution in substitutions
+            truth_state_new = ""
+            s_index = 0
 
-                # If a wildcard is found replace it, otherwise take the old truth value
-                for truth_value in truth_state
-                    truth_state_new *= if truth_value == '*'
-                        s_index += 1
-                        substitution[s_index]
-                    else
-                        truth_value
-                    end
-                end
-
-                new_key = (node_id, truth_state_new)
-
-                if haskey(logic_mapping_expanded, new_key)
-                    control_state_existing = logic_mapping_expanded[new_key]
-                    msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
-                    @assert control_state_existing == control_state msg
+            # If a wildcard is found replace it, otherwise take the old truth value
+            for truth_value in truth_state
+                truth_state_new *= if truth_value == '*'
+                    s_index += 1
+                    substitution[s_index]
                 else
-                    logic_mapping_expanded[new_key] = control_state
+                    truth_value
                 end
             end
-        else
-            logic_mapping_expanded[(node_id, truth_state)] = control_state
+
+            new_key = (node_id, truth_state_new)
+
+            if haskey(logic_mapping_expanded, new_key)
+                control_state_existing = logic_mapping_expanded[new_key]
+                control_states = sort([control_state, control_state_existing])
+                msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_states."
+                @assert control_state_existing == control_state msg
+            else
+                logic_mapping_expanded[new_key] = control_state
+            end
         end
     end
     return logic_mapping_expanded

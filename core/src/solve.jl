@@ -52,47 +52,6 @@ struct EdgeMetadata
     allocation_flow::Bool
 end
 
-# """
-# Store the connectivity information
-
-# graph: a directed metagraph with data of nodes (NodeMetadata):
-#   - Node type (snake case)
-#   - Allocation network ID
-#   and data of edges (EdgeMetadata):
-#   - type (flow/control)
-# flow: store the flow on every flow edge
-
-# if autodiff
-#     T = DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}}
-# else
-#     T = SparseMatrixCSC{Float64, Int}
-# end
-# """
-# struct Connectivity{T}
-#     graph::MetaGraph{
-#         Int64,
-#         DiGraph{Int64},
-#         Ribasim.NodeID,
-#         Ribasim.NodeMetadata,
-#         Ribasim.EdgeMetadata,
-#         @NamedTuple{
-#             node_ids::Dict{Int, Set{NodeID}},
-#             edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
-#             edges_source::Dict{Int, Set{EdgeMetadata}},
-#         },
-#         MetaGraphsNext.var"#11#13",
-#         Float64,
-#     }
-#     flow::T
-#     allocation_models::Vector{AllocationModel}
-#     function Connectivity(graph, flow::T, allocation_models) where {T}
-#         if !valid_edges(graph)
-#             error("Invalid connectivity.")
-#         end
-#         return new{T}(graph, flow, allocation_models)
-#     end
-# end
-
 abstract type AbstractParameterNode end
 
 """
@@ -605,7 +564,7 @@ function formulate_basins!(
 
         influx = precipitation - evaporation + drainage - infiltration
         du.storage[i] += influx
-        set_flow!(graph, id, id, influx)
+        set_flow!(graph, id, influx)
     end
     return nothing
 end
@@ -833,7 +792,7 @@ function formulate_flow!(
 
         # Return flow is immediate
         set_flow!(graph, id, dst_id, q * return_factor[i])
-        set_flow!(graph, id, id, -q * (1 - return_factor[i]))
+        set_flow!(graph, id, -q * (1 - return_factor[i]))
     end
     return nothing
 end
@@ -1024,7 +983,7 @@ function formulate_flow!(
     for id in node_id
         for upstream_id in inflow_ids(graph, id)
             q = get_flow(graph, upstream_id, id, storage)
-            add_flow!(graph, id, id, -q)
+            add_flow!(graph, id, -q)
         end
     end
     return nothing
@@ -1042,11 +1001,11 @@ function formulate_flow!(
     for id in node_id
         for in_id in inflow_ids(graph, id)
             q = get_flow(graph, in_id, id, storage)
-            add_flow!(graph, id, id, -q)
+            add_flow!(graph, id, -q)
         end
         for out_id in outflow_ids(graph, id)
             q = get_flow(graph, id, out_id, storage)
-            add_flow!(graph, id, id, q)
+            add_flow!(graph, id, q)
         end
     end
     return nothing
@@ -1072,7 +1031,7 @@ function formulate_flow!(
 
             # Adding water is always possible
             set_flow!(graph, id, dst_id, rate)
-            set_flow!(graph, id, id, rate)
+            set_flow!(graph, id, rate)
         end
     end
 end
@@ -1167,20 +1126,12 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    # add vertical flows
-
     for (i, basin_id) in enumerate(basin.node_id)
         for in_id in inflow_ids(graph, basin_id)
             du[i] += get_flow(graph, in_id, basin_id, storage)
         end
         for out_id in outflow_ids(graph, basin_id)
             du[i] -= get_flow(graph, basin_id, out_id, storage)
-        end
-    end
-    for (node_id, flow_idx) in flow_vertical_dict
-        if graph[node_id].type == :basin
-            _, state_idx = id_index(basin.node_id, node_id)
-            du[state_idx] += flow_vertical[flow_idx]
         end
     end
     return nothing
@@ -1229,6 +1180,8 @@ function water_balance!(
     integral = u.integral
 
     du .= 0.0
+    get_tmp(graph[].flow, storage) .= 0.0
+    get_tmp(graph[].flow_vertical, storage) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
