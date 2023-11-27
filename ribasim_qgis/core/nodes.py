@@ -52,7 +52,7 @@ from ribasim_qgis.core import geopackage
 class Input(abc.ABC):
     """Abstract base class for Ribasim input layers."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         self._path = path
 
     @classmethod
@@ -81,7 +81,7 @@ class Input(abc.ABC):
     @classmethod
     def create(
         cls,
-        path: str,
+        path: Path,
         crs: QgsCoordinateReferenceSystem,
         names: list[str],
     ) -> Input:

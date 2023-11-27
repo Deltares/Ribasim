@@ -172,9 +172,9 @@ class DatasetWidget(QWidget):
         self.setLayout(dataset_layout)
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         """Returns currently active path to Ribasim model (.toml)"""
-        return self.dataset_line_edit.text()
+        return Path(self.dataset_line_edit.text())
 
     def explode_and_connect(self) -> None:
         node = self.node_layer
@@ -268,7 +268,7 @@ class DatasetWidget(QWidget):
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
-        name = str(Path(self.path).stem)
+        name = self.path.stem
         self.ribasim_widget.create_groups(name)
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
@@ -284,12 +284,14 @@ class DatasetWidget(QWidget):
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
-            geo_path = Path(self.path).with_name("database.gpkg")
+            geo_path = self.path.with_name("database.gpkg")
             self._write_new_model()
 
             for input_type in (Node, Edge):
                 instance = input_type.create(
-                    str(geo_path), self.ribasim_widget.crs, names=[]
+                    geo_path,
+                    self.ribasim_widget.crs,
+                    names=[],
                 )
                 instance.write()
             self.load_geopackage()

@@ -1,9 +1,9 @@
 from typing import cast
 
-from PyQt5.QtWidgets import QFileDialog, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from qgis.core import QgsVectorLayer
 
-from ribasim_qgis.core.model import get_property_from_model_file
+from ribasim_qgis.core.model import get_directory_path_from_model_file
 
 
 class ResultsWidget(QWidget):
@@ -37,11 +37,11 @@ class ResultsWidget(QWidget):
 
     def _set_results(self, layer: QgsVectorLayer, column: str) -> None:
         path = (
-            get_property_from_model_file(self.ribasim_widget.path, "results_dir")
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
             / "basin.arrow"
         )
-        if path == "":
-            return
         if layer is not None:
             layer.setCustomProperty("arrow_type", "timeseries")
             layer.setCustomProperty("arrow_path", path)

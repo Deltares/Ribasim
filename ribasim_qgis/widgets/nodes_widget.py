@@ -59,7 +59,9 @@ class NodesWidget(QWidget):
         klass = NODES[node_type]
         names = self.ribasim_widget.selection_names()
         node = klass.create(
-            get_directory_path_from_model_file(self.ribasim_widget.path),
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="input_dir"
+            ),
             self.ribasim_widget.crs,
             names,
         )

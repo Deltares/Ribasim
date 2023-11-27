@@ -60,7 +60,7 @@ class RibasimWidget(QWidget):
     # Inter-widget communication
     # --------------------------
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self.dataset_widget.path
 
     @property
