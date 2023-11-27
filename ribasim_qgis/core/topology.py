@@ -1,14 +1,14 @@
 from collections.abc import Iterable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
-try:
+if TYPE_CHECKING:
     from numpy.typing import NDArray
-except ImportError:
+else:
     from collections.abc import Sequence
 
-    NDArray = Sequence
+    NDArray: type = Sequence
 
 # qgis is monkey patched by plugins.processing.
 # Importing from plugins directly for mypy
