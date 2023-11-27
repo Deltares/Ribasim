@@ -38,17 +38,17 @@ class RibasimWidget(QWidget):
         self.iface = iface
         self.message_bar = self.iface.messageBar()
 
-        self.dataset_widget = DatasetWidget(self)
-        self.nodes_widget = NodesWidget(self)
-        self.results_widget = ResultsWidget(self)
+        self.__dataset_widget = DatasetWidget(self)
+        self.__nodes_widget = NodesWidget(self)
+        self.__results_widget = ResultsWidget(self)
 
         # Layout
         layout = QVBoxLayout()
         self.tabwidget = QTabWidget()
         layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.dataset_widget, "Model")
-        self.tabwidget.addTab(self.nodes_widget, "Nodes")
-        self.tabwidget.addTab(self.results_widget, "Results")
+        self.tabwidget.addTab(self.__dataset_widget, "Model")
+        self.tabwidget.addTab(self.__nodes_widget, "Nodes")
+        self.tabwidget.addTab(self.__results_widget, "Results")
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
@@ -61,7 +61,15 @@ class RibasimWidget(QWidget):
     # --------------------------
     @property
     def path(self) -> Path:
-        return self.dataset_widget.path
+        return self.__dataset_widget.path
+
+    @property
+    def node_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.node_layer
+
+    @property
+    def edge_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.edge_layer
 
     @property
     def crs(self) -> QgsCoordinateReferenceSystem:
@@ -73,13 +81,13 @@ class RibasimWidget(QWidget):
         return map_settings.destinationCrs()
 
     def add_node_layer(self, element: Input):
-        self.dataset_widget.add_node_layer(element)
+        self.__dataset_widget.add_node_layer(element)
 
     def toggle_node_buttons(self, state: bool) -> None:
-        self.nodes_widget.toggle_node_buttons(state)
+        self.__nodes_widget.toggle_node_buttons(state)
 
     def selection_names(self):
-        return self.dataset_widget.selection_names()
+        return self.__dataset_widget.selection_names()
 
     # QGIS layers
     # -----------

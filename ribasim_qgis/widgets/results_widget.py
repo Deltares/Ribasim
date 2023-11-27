@@ -26,12 +26,12 @@ class ResultsWidget(QWidget):
         self.set_edge_results()
 
     def set_node_results(self) -> None:
-        node_layer = self.ribasim_widget.dataset_widget.node_layer
+        node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
         self._set_results(node_layer, "node_id")
 
     def set_edge_results(self) -> None:
-        edge_layer = self.ribasim_widget.dataset_widget.edge_layer
+        edge_layer = self.ribasim_widget.edge_layer
         assert edge_layer is not None
         self._set_results(edge_layer, "edge_id")
 
