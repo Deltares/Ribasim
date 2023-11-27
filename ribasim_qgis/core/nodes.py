@@ -392,6 +392,25 @@ class BasinTime(Input):
         ]
 
 
+class BasinSubgridLevel(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / subgrid"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("subgrid_id", QVariant.Int),
+            QgsField("node_id", QVariant.Int),
+            QgsField("basin_level", QVariant.Double),
+            QgsField("subgrid_level", QVariant.Double),
+        ]
+
+
 class BasinState(Input):
     @classmethod
     def input_type(cls) -> str:

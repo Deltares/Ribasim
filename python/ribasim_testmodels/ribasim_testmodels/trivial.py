@@ -72,7 +72,22 @@ def trivial_model() -> ribasim.Model:
             "urban_runoff": [0.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static)
+
+    # Create a subgrid level interpolation from one basin to three elements. Scale one to one, but:
+    #
+    # 1. start at -1.0
+    # 2. start at 0.0
+    # 3. start at 1.0
+    #
+    subgrid = pd.DataFrame(
+        data={
+            "subgrid_id": [1, 1, 2, 2, 3, 3],
+            "node_id": [1, 1, 1, 1, 1, 1],
+            "basin_level": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+            "subgrid_level": [-1.0, 0.0, 0.0, 1.0, 1.0, 2.0],
+        }
+    )
+    basin = ribasim.Basin(profile=profile, static=static, subgrid=subgrid)
 
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 1000.0.
@@ -106,5 +121,6 @@ def trivial_model() -> ribasim.Model:
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        results=ribasim.Results(subgrid=True),
     )
     return model
