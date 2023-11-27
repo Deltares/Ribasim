@@ -28,21 +28,26 @@ class ResultsWidget(QWidget):
     def set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
-        self._set_results(node_layer, "node_id")
+        self._set_results(node_layer, "node_id", "basin.arrow")
 
     def set_edge_results(self) -> None:
         edge_layer = self.ribasim_widget.edge_layer
         assert edge_layer is not None
-        self._set_results(edge_layer, "edge_id")
+        self._set_results(edge_layer, "edge_id", "flow.arrow")
 
-    def _set_results(self, layer: QgsVectorLayer, column: str) -> None:
+    def _set_results(
+        self,
+        layer: QgsVectorLayer,
+        column: str,
+        output_file_name: str,
+    ) -> None:
         path = (
             get_directory_path_from_model_file(
                 self.ribasim_widget.path, property="results_dir"
             )
-            / "basin.arrow"
+            / output_file_name
         )
         if layer is not None:
             layer.setCustomProperty("arrow_type", "timeseries")
-            layer.setCustomProperty("arrow_path", path)
+            layer.setCustomProperty("arrow_path", str(path))
             layer.setCustomProperty("arrow_fid_column", column)
