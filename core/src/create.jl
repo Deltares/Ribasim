@@ -803,6 +803,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
         if !is_valid
             has_error = true
+        else
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
