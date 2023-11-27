@@ -20,6 +20,8 @@ Each node layer is (optionally) represented in multiple places:
 
 """
 
+from __future__ import annotations
+
 import abc
 from typing import Any, cast
 
@@ -81,7 +83,7 @@ class Input(abc.ABC):
         path: str,
         crs: QgsCoordinateReferenceSystem,
         names: list[str],
-    ) -> "Input":
+    ) -> Input:
         if cls.input_type() in names:
             raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
         instance = cls(path)

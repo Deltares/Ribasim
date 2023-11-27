@@ -4,6 +4,9 @@ This widgets displays the available input layers in the GeoPackage.
 This widget also allows enabling or disabling individual elements for a
 computation.
 """
+
+from __future__ import annotations
+
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path

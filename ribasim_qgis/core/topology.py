@@ -2,7 +2,13 @@ from collections.abc import Iterable
 from typing import cast
 
 import numpy as np
-import numpy.typing as npt
+
+try:
+    from numpy.typing import NDArray
+except ImportError:
+    from collections.abc import Sequence
+
+    NDArray = Sequence
 
 # qgis is monkey patched by plugins.processing.
 # Importing from plugins directly for mypy
@@ -39,10 +45,10 @@ def explode_lines(edge: QgsVectorLayer) -> None:
 
 
 def derive_connectivity(
-    node_index: npt.NDArray[np.int_],
-    node_xy: npt.NDArray[np.float_],
-    edge_xy: npt.NDArray[np.float_],
-) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    node_index: NDArray[np.int_],
+    node_xy: NDArray[np.float_],
+    edge_xy: NDArray[np.float_],
+) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
     """
     Derive connectivity on the basis of xy locations.
 
