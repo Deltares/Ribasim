@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.3.0"
+version = "0.4.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]

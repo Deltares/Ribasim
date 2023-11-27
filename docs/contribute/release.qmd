@@ -73,7 +73,7 @@ If this succeeds, the release assets are uploaded to an S3 link with the version
 
 ```
 https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_cli.zip
-https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim-0.5.0-py3-none-any.whl
+https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim-0.6.0-py3-none-any.whl
 https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_qgis.zip
 ```
 
