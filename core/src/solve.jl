@@ -1024,7 +1024,7 @@ function formulate_flow!(
     for id in node_id
         for upstream_id in inflow_ids(graph, id)
             q = get_flow(graph, upstream_id, id, storage)
-            set_flow!(graph, id, id, -q)
+            add_flow!(graph, id, id, -q)
         end
     end
     return nothing
@@ -1162,15 +1162,25 @@ function formulate_du!(
     basin::Basin,
     storage::AbstractVector,
 )::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
+    # add vertical flows
+
     for (i, basin_id) in enumerate(basin.node_id)
         for in_id in inflow_ids(graph, basin_id)
             du[i] += get_flow(graph, in_id, basin_id, storage)
         end
         for out_id in outflow_ids(graph, basin_id)
             du[i] -= get_flow(graph, basin_id, out_id, storage)
+        end
+    end
+    for (node_id, flow_idx) in flow_vertical_dict
+        if graph[node_id].type == :basin
+            _, state_idx = id_index(basin.node_id, node_id)
+            du[state_idx] += flow_vertical[flow_idx]
         end
     end
     return nothing
