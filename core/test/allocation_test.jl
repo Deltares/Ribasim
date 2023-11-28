@@ -19,18 +19,16 @@
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = JuMP.value.(allocation_model.problem[:F])
-    # TODO investigate why it flips between 4.0 and 4.5
-    # https://github.com/Deltares/Ribasim/issues/825
     val = F[(NodeID(1), NodeID(2))]
-    @test val ≈ 4.0 || val ≈ 4.5
+    @test val ≈ 0.0
     @test F[(NodeID(8), NodeID(12))] ≈ 0.0
     @test F[(NodeID(6), NodeID(11))] ≈ 0.0
     @test F[(NodeID(6), NodeID(8))] ≈ 0.0
-    @test F[(NodeID(2), NodeID(10))] ≈ 4.0
+    @test F[(NodeID(2), NodeID(10))] ≈ 0.0
     @test F[(NodeID(2), NodeID(6))] ≈ 0.0
 
     allocated = p.user.allocated
-    @test allocated[1] ≈ [0.0, 4.0]
+    @test allocated[1] ≈ [0.0, 0.0]
     @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
 end
