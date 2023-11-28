@@ -16,7 +16,7 @@ time = "basin/time.arrow"
 [allocation]
 timestep = 86400
 use_allocation = true
-objective_type = "quadratic_relative"
+objective_type = "quadratic_relative"  # TODO add defaults
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
