@@ -38,7 +38,7 @@ from ribasim.config import (
 )
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
-from ribasim.input_base import FileModel, NodeModel, context_file_loading
+from ribasim.input_base import ChildModel, FileModel, NodeModel, context_file_loading
 from ribasim.types import FilePath
 
 
@@ -194,6 +194,16 @@ class Model(FileModel):
             v = datetime.timedelta(seconds=v)
         return v
 
+    @model_validator(mode="after")
+    def set_node_parent(self) -> "Model":
+        for (
+            k,
+            v,
+        ) in self.children().items():
+            setattr(v, "_parent", self)
+            setattr(v, "_parent_field", k)
+        return self
+
     @field_serializer("update_timestep")
     def serialize_dt(self, td: datetime.timedelta) -> int:
         return int(td.total_seconds())
@@ -245,6 +255,13 @@ class Model(FileModel):
             k: getattr(self, k)
             for k in self.model_fields.keys()
             if isinstance(getattr(self, k), NodeModel)
+        }
+
+    def children(self):
+        return {
+            k: getattr(self, k)
+            for k in self.model_fields.keys()
+            if isinstance(getattr(self, k), ChildModel)
         }
 
     def validate_model_node_field_ids(self):
