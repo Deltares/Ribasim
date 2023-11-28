@@ -240,9 +240,44 @@ class TableModel(FileModel, Generic[TableT]):
             SQLite connection to the database.
         """
         table = self.tablename()
+
+        # TODO incomplete
+        if table in ("Basin / profile", "TabulatedRatingCurve / static"):
+            # more than one primary key not supported
+            # dtype = {"node_id": "INTEGER PRIMARY KEY", "level": "REAL PRIMARY KEY"}
+            dtype = {"level": "REAL PRIMARY KEY"}
+        elif table in ("User / time", "Basin / time"):
+            dtype = {"time": "TIMESTAMP PRIMARY KEY", "node_id": "INTEGER PRIMARY KEY"}
+        # elif table in ("LinearResistance / static", "Pump / static"):
+        #     dtype = {
+        #         "node_id": "INTEGER PRIMARY KEY",
+        #         "control_state": "TEXT PRIMARY KEY",
+        #     }
+        elif table in (
+            "Basin / state",
+            "Basin / static",
+            "FlowBoundary / static",
+            "Terminal / static",
+            "User / static",
+            "LinearResistance / static",  # temp
+            "Pump / static",  # temp
+        ):
+            dtype = {"node_id": "INTEGER PRIMARY KEY"}
+        else:
+            dtype = {}
+
+        # self.df["meta_id"] = 1
+        # dtype = {"meta_id": "INTEGER PRIMARY KEY AUTOINCREMENT"}
+
         assert self.df is not None
         with closing(connect(temp_path)) as connection:
-            self.df.to_sql(table, connection, index=False, if_exists="replace")
+            self.df.to_sql(
+                table,
+                connection,
+                index=False,
+                if_exists="replace",
+                dtype=dtype,
+            )
 
             # Set geopackage attribute table
             with closing(connection.cursor()) as cursor:
