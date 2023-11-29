@@ -19,7 +19,7 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB)::MetaGraph
+function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     node_rows = execute(db, "select fid, type, allocation_network_id from Node")
     edge_rows = execute(
         db,
@@ -28,12 +28,16 @@ function create_graph(db::DB)::MetaGraph
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
     edges_source = Dict{Int, Set{EdgeMetadata}}()
+    flow_counter = 0
+    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    flow_vertical_counter = 0
+    flow_vertical_dict = Dict{NodeID, Int}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = EdgeMetadata,
-        graph_data = (; node_ids, edge_ids, edges_source),
+        graph_data = nothing,
     )
     for row in node_rows
         node_id = NodeID(row.fid)
@@ -48,6 +52,10 @@ function create_graph(db::DB)::MetaGraph
             push!(node_ids[allocation_network_id], node_id)
         end
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
+        if row.type in nonconservative_nodetypes
+            flow_vertical_counter += 1
+            flow_vertical_dict[node_id] = flow_vertical_counter
+        end
     end
     for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
         try
@@ -63,14 +71,33 @@ function create_graph(db::DB)::MetaGraph
         end
         edge_metadata =
             EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
+        graph[id_src, id_dst] = edge_metadata
+        flow_counter += 1
+        flow_dict[(id_src, id_dst)] = flow_counter
         if allocation_network_id != 0
             if !haskey(edges_source, allocation_network_id)
                 edges_source[allocation_network_id] = Set{EdgeMetadata}()
             end
             push!(edges_source[allocation_network_id], edge_metadata)
         end
-        graph[id_src, id_dst] = edge_metadata
     end
+
+    flow = zeros(flow_counter)
+    flow_vertical = zeros(flow_vertical_counter)
+    if config.solver.autodiff
+        flow = DiffCache(flow, chunk_size)
+        flow_vertical = DiffCache(flow_vertical, chunk_size)
+    end
+    graph_data = (;
+        node_ids,
+        edge_ids,
+        edges_source,
+        flow_dict,
+        flow,
+        flow_vertical_dict,
+        flow_vertical,
+    )
+    graph = @set graph.graph_data = graph_data
     return graph
 end
 
@@ -127,6 +154,58 @@ function Base.iterate(iter::OutNeighbors, state = 1)
         end
     end
     return label_out, state
+end
+
+"""
+Set the given flow q over the edge between the given nodes.
+"""
+function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    return nothing
+end
+
+"""
+Set the given flow q on the horizontal (self-loop) edge from id to id.
+"""
+function set_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] = q
+    return nothing
+end
+
+"""
+Add the given flow q to the existing flow over the edge between the given nodes.
+"""
+function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
+    (; flow_dict, flow) = graph[]
+    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
+    return nothing
+end
+
+"""
+Add the given flow q to the flow over the edge on the horizontal (self-loop) edge from id to id.
+"""
+function add_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] += q
+    return nothing
+end
+
+"""
+Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
+"""
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
+    (; flow_dict, flow) = graph[]
+    return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
+end
+
+"""
+Get the flow over the given horizontal (selfloop) edge (val is needed for get_tmp from ForwardDiff.jl).
+"""
+function get_flow(graph::MetaGraph, id::NodeID, val)::Number
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    return get_tmp(flow_vertical, val)[flow_vertical_dict[id]]
 end
 
 """
@@ -668,8 +747,7 @@ Check:
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
-    (; discrete_control, connectivity) = p
-    (; graph) = connectivity
+    (; discrete_control, graph) = p
     (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
@@ -733,7 +811,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     end
     for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = p.connectivity.graph[node_id].type
+            node_type = graph[node_id].type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
             if node_type ∉ [:flow_boundary, :level_boundary]
@@ -780,35 +858,37 @@ function expand_logic_mapping(
         control_state = logic_mapping[(node_id, truth_state)]
         n_wildcards = count(==('*'), truth_state)
 
-        if n_wildcards > 0
+        substitutions = if n_wildcards > 0
+            substitutions = Iterators.product(fill(['T', 'F'], n_wildcards)...)
+        else
+            [nothing]
+        end
 
-            # Loop over all substitution sets for the wildcards
-            for substitution in Iterators.product(fill(['T', 'F'], n_wildcards)...)
-                truth_state_new = ""
-                s_index = 0
+        # Loop over all substitution sets for the wildcards
+        for substitution in substitutions
+            truth_state_new = ""
+            s_index = 0
 
-                # If a wildcard is found replace it, otherwise take the old truth value
-                for truth_value in truth_state
-                    truth_state_new *= if truth_value == '*'
-                        s_index += 1
-                        substitution[s_index]
-                    else
-                        truth_value
-                    end
-                end
-
-                new_key = (node_id, truth_state_new)
-
-                if haskey(logic_mapping_expanded, new_key)
-                    control_state_existing = logic_mapping_expanded[new_key]
-                    msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_state, $control_state_existing."
-                    @assert control_state_existing == control_state msg
+            # If a wildcard is found replace it, otherwise take the old truth value
+            for truth_value in truth_state
+                truth_state_new *= if truth_value == '*'
+                    s_index += 1
+                    substitution[s_index]
                 else
-                    logic_mapping_expanded[new_key] = control_state
+                    truth_value
                 end
             end
-        else
-            logic_mapping_expanded[(node_id, truth_state)] = control_state
+
+            new_key = (node_id, truth_state_new)
+
+            if haskey(logic_mapping_expanded, new_key)
+                control_state_existing = logic_mapping_expanded[new_key]
+                control_states = sort([control_state, control_state_existing])
+                msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_states."
+                @assert control_state_existing == control_state msg
+            else
+                logic_mapping_expanded[new_key] = control_state
+            end
         end
     end
     return logic_mapping_expanded
@@ -856,8 +936,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::Union{LinearResistance, ManningResistance},
 )::Nothing
-    (; basin, connectivity) = p
-    (; graph) = connectivity
+    (; basin, graph) = p
 
     for id in node.node_id
         id_in = inflow_id(graph, id)
@@ -921,8 +1000,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::Union{Pump, Outlet, TabulatedRatingCurve, User},
 )::Nothing
-    (; basin, fractional_flow, connectivity) = p
-    (; graph) = connectivity
+    (; basin, fractional_flow, graph) = p
 
     for (i, id) in enumerate(node.node_id)
         id_in = inflow_id(graph, id)
@@ -971,8 +1049,7 @@ function update_jac_prototype!(
     p::Parameters,
     node::PidControl,
 )::Nothing
-    (; basin, connectivity, pump) = p
-    (; graph) = connectivity
+    (; basin, graph, pump) = p
 
     n_basins = length(basin.node_id)
 

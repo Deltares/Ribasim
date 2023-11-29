@@ -70,8 +70,7 @@ In general if the new node type dictates flow, the behaviour of the new node in 
 ```julia
 function formulate_flow!(new_node_type::NewNodeType, p::Parameters)::Nothing
     # Retrieve relevant parameters
-    (; connectivity) = p
-    (; flow) = connectivity
+    (; graph) = p
     (; node_id, param_1, param_2) = new_node_type
 
     # Loop over nodes of NewNodeType

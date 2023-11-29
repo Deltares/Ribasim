@@ -52,47 +52,6 @@ struct EdgeMetadata
     allocation_flow::Bool
 end
 
-"""
-Store the connectivity information
-
-graph: a directed metagraph with data of nodes (NodeMetadata):
-  - Node type (snake case)
-  - Allocation network ID
-  and data of edges (EdgeMetadata):
-  - type (flow/control)
-flow: store the flow on every flow edge
-
-if autodiff
-    T = DiffCache{SparseArrays.SparseMatrixCSC{Float64, Int64}, Vector{Float64}}
-else
-    T = SparseMatrixCSC{Float64, Int}
-end
-"""
-struct Connectivity{T}
-    graph::MetaGraph{
-        Int64,
-        DiGraph{Int64},
-        Ribasim.NodeID,
-        Ribasim.NodeMetadata,
-        Ribasim.EdgeMetadata,
-        @NamedTuple{
-            node_ids::Dict{Int, Set{NodeID}},
-            edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
-            edges_source::Dict{Int, Set{EdgeMetadata}},
-        },
-        MetaGraphsNext.var"#11#13",
-        Float64,
-    }
-    flow::T
-    allocation_models::Vector{AllocationModel}
-    function Connectivity(graph, flow::T, allocation_models) where {T}
-        if !valid_edges(graph)
-            error("Invalid connectivity.")
-        end
-        return new{T}(graph, flow, allocation_models)
-    end
-end
-
 abstract type AbstractParameterNode end
 
 """
@@ -466,9 +425,27 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, TSparse, C1, C2}
+struct Parameters{T, C1, C2}
     starttime::DateTime
-    connectivity::Connectivity{TSparse}
+    graph::MetaGraph{
+        Int64,
+        DiGraph{Int64},
+        NodeID,
+        NodeMetadata,
+        EdgeMetadata,
+        @NamedTuple{
+            node_ids::Dict{Int, Set{NodeID}},
+            edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
+            edges_source::Dict{Int, Set{EdgeMetadata}},
+            flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
+            flow::T,
+            flow_vertical_dict::Dict{NodeID, Int},
+            flow_vertical::T,
+        },
+        MetaGraphsNext.var"#11#13",
+        Float64,
+    }
+    allocation_models::Vector{AllocationModel}
     basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
@@ -491,8 +468,7 @@ Test for each node given its node type whether it has an allowed
 number of flow/control inneighbors and outneighbors
 """
 function valid_n_neighbors(p::Parameters)::Bool
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
 
     errors = false
 
@@ -563,7 +539,7 @@ Currently at less than 0.1 m.
 function formulate_basins!(
     du::AbstractVector,
     basin::Basin,
-    flow::AbstractMatrix,
+    graph::MetaGraph,
     storage::AbstractVector,
 )::Nothing
     (; node_id, current_level, current_area) = basin
@@ -587,7 +563,7 @@ function formulate_basins!(
 
         influx = precipitation - evaporation + drainage - infiltration
         du.storage[i] += influx
-        flow[id, id] = influx
+        set_flow!(graph, id, influx)
     end
     return nothing
 end
@@ -614,18 +590,16 @@ function continuous_control!(
     integral_value::SubArray,
     t::Float64,
 )::Nothing
-    (; connectivity, pump, outlet, basin, fractional_flow) = p
+    (; graph, pump, outlet, basin, fractional_flow) = p
     min_flow_rate_pump = pump.min_flow_rate
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; graph, flow) = connectivity
     (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
     (; current_area) = basin
 
     current_area = get_tmp(current_area, u)
     storage = u.storage
-    flow = get_tmp(flow, u)
     outlet_flow_rate = get_tmp(outlet.flow_rate, u)
     pump_flow_rate = get_tmp(pump.flow_rate, u)
     error = get_tmp(error, u)
@@ -744,8 +718,8 @@ function continuous_control!(
         src_id = inflow_id(graph, controlled_node_id)
         dst_id = outflow_id(graph, controlled_node_id)
 
-        flow[src_id, controlled_node_id] = flow_rate
-        flow[controlled_node_id, dst_id] = flow_rate
+        set_flow!(graph, src_id, controlled_node_id, flow_rate)
+        set_flow!(graph, controlled_node_id, dst_id, flow_rate)
 
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
@@ -779,11 +753,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity, basin) = p
-    (; graph, flow) = connectivity
+    (; graph, basin) = p
     (; node_id, allocated, demand, active, return_factor, min_level) = user
-
-    flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -816,11 +787,11 @@ function formulate_flow!(
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
 
-        flow[src_id, id] = q
+        set_flow!(graph, src_id, id, q)
 
         # Return flow is immediate
-        flow[id, dst_id] = q * return_factor[i]
-        flow[id, id] = -q * (1 - return_factor[i])
+        set_flow!(graph, id, dst_id, q * return_factor[i])
+        set_flow!(graph, id, -q * (1 - return_factor[i]))
     end
     return nothing
 end
@@ -834,10 +805,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph) = p
     (; node_id, active, resistance) = linear_resistance
-    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         basin_a_id = inflow_id(graph, id)
         basin_b_id = outflow_id(graph, id)
@@ -848,8 +817,8 @@ function formulate_flow!(
                     get_level(p, basin_a_id, t; storage) -
                     get_level(p, basin_b_id, t; storage)
                 ) / resistance[i]
-            flow[basin_a_id, id] = q
-            flow[id, basin_b_id] = q
+            set_flow!(graph, basin_a_id, id, q)
+            set_flow!(graph, id, basin_b_id, q)
         end
     end
     return nothing
@@ -864,10 +833,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; basin, connectivity) = p
-    (; graph, flow) = connectivity
+    (; basin, graph) = p
     (; node_id, active, tables) = tabulated_rating_curve
-    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         upstream_basin_id = inflow_id(graph, id)
         downstream_ids = outflow_ids(graph, id)
@@ -881,9 +848,9 @@ function formulate_flow!(
             q = 0.0
         end
 
-        flow[upstream_basin_id, id] = q
+        set_flow!(graph, upstream_basin_id, id, q)
         for downstream_id in downstream_ids
-            flow[id, downstream_id] = q
+            set_flow!(graph, id, downstream_id, q)
         end
     end
     return nothing
@@ -934,11 +901,9 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; basin, connectivity) = p
-    (; graph, flow) = connectivity
+    (; basin, graph) = p
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
-    flow = get_tmp(flow, storage)
     for (i, id) in enumerate(node_id)
         basin_a_id = inflow_id(graph, id)
         basin_b_id = outflow_id(graph, id)
@@ -979,8 +944,8 @@ function formulate_flow!(
 
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
-        flow[basin_a_id, id] = q
-        flow[id, basin_b_id] = q
+        set_flow!(graph, basin_a_id, id, q)
+        set_flow!(graph, id, basin_b_id, q)
     end
     return nothing
 end
@@ -991,18 +956,16 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph) = p
     (; node_id, fraction) = fractional_flow
-    flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         downstream_id = outflow_id(graph, id)
         upstream_id = inflow_id(graph, id)
         # overwrite the inflow such that flow is conserved over the FractionalFlow
-        outflow = flow[upstream_id, id] * fraction[i]
-        flow[upstream_id, id] = outflow
-        flow[id, downstream_id] = outflow
+        outflow = get_flow(graph, upstream_id, id, storage) * fraction[i]
+        set_flow!(graph, upstream_id, id, outflow)
+        set_flow!(graph, id, downstream_id, outflow)
     end
     return nothing
 end
@@ -1013,15 +976,13 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph) = p
     (; node_id) = terminal
-    flow = get_tmp(flow, storage)
 
     for id in node_id
         for upstream_id in inflow_ids(graph, id)
-            q = flow[upstream_id, id]
-            flow[id, id] -= q
+            q = get_flow(graph, upstream_id, id, storage)
+            add_flow!(graph, id, -q)
         end
     end
     return nothing
@@ -1033,19 +994,17 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph) = p
     (; node_id) = level_boundary
-    flow = get_tmp(flow, storage)
 
     for id in node_id
         for in_id in inflow_ids(graph, id)
-            q = flow[in_id, id]
-            flow[id, id] -= q
+            q = get_flow(graph, in_id, id, storage)
+            add_flow!(graph, id, -q)
         end
         for out_id in outflow_ids(graph, id)
-            q = flow[id, out_id]
-            flow[id, id] += q
+            q = get_flow(graph, id, out_id, storage)
+            add_flow!(graph, id, q)
         end
     end
     return nothing
@@ -1057,10 +1016,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity) = p
-    (; graph, flow) = connectivity
+    (; graph) = p
     (; node_id, active, flow_rate) = flow_boundary
-    flow = get_tmp(flow, storage)
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
@@ -1072,8 +1029,8 @@ function formulate_flow!(
             rate = flow_rate[i](t)
 
             # Adding water is always possible
-            flow[id, dst_id] = rate
-            flow[id, id] = rate
+            set_flow!(graph, id, dst_id, rate)
+            set_flow!(graph, id, rate)
         end
     end
 end
@@ -1084,10 +1041,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity, basin) = p
-    (; graph, flow) = connectivity
+    (; graph, basin) = p
     (; node_id, active, flow_rate, is_pid_controlled) = pump
-    flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (id, isactive, rate, pid_controlled) in
         zip(node_id, active, flow_rate, is_pid_controlled)
@@ -1107,8 +1062,8 @@ function formulate_flow!(
             q *= reduction_factor(storage[basin_idx], 10.0)
         end
 
-        flow[src_id, id] = q
-        flow[id, dst_id] = q
+        set_flow!(graph, src_id, id, q)
+        set_flow!(graph, id, dst_id, q)
     end
     return nothing
 end
@@ -1119,10 +1074,8 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Float64,
 )::Nothing
-    (; connectivity, basin) = p
-    (; graph, flow) = connectivity
+    (; graph, basin) = p
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
-    flow = get_tmp(flow, storage)
     flow_rate = get_tmp(flow_rate, storage)
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -1155,28 +1108,29 @@ function formulate_flow!(
             q *= reduction_factor(src_level - min_crest_level[i], 0.1)
         end
 
-        flow[src_id, id] = q
-        flow[id, dst_id] = q
+        set_flow!(graph, src_id, id, q)
+        set_flow!(graph, id, dst_id, q)
     end
     return nothing
 end
 
 function formulate_du!(
     du::ComponentVector,
-    connectivity::Connectivity,
-    flow::AbstractMatrix,
+    graph::MetaGraph,
     basin::Basin,
+    storage::AbstractVector,
 )::Nothing
+    (; flow_vertical_dict, flow_vertical) = graph[]
+    flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    (; graph) = connectivity
     for (i, basin_id) in enumerate(basin.node_id)
         for in_id in inflow_ids(graph, basin_id)
-            du[i] += flow[in_id, basin_id]
+            du[i] += get_flow(graph, in_id, basin_id, storage)
         end
         for out_id in outflow_ids(graph, basin_id)
-            du[i] -= flow[basin_id, out_id]
+            du[i] -= get_flow(graph, basin_id, out_id, storage)
         end
     end
     return nothing
@@ -1219,27 +1173,26 @@ function water_balance!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; connectivity, basin, pid_control) = p
+    (; graph, basin, pid_control) = p
 
     storage = u.storage
     integral = u.integral
 
     du .= 0.0
-    flow = get_tmp(connectivity.flow, u)
-    # use parent to avoid materializing the ReinterpretArray from FixedSizeDiffCache
-    parent(flow) .= 0.0
+    get_tmp(graph[].flow, storage) .= 0.0
+    get_tmp(graph[].flow_vertical, storage) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate_basins!(du, basin, flow, storage)
+    formulate_basins!(du, basin, graph, storage)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
 
     # Now formulate du
-    formulate_du!(du, connectivity, flow, basin)
+    formulate_du!(du, graph, basin, storage)
 
     # PID control (changes the du of PID controlled basins)
     continuous_control!(u, du, pid_control, p, integral, t)

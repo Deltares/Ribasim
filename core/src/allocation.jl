@@ -3,8 +3,7 @@ Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
 
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
@@ -69,8 +68,7 @@ function find_allocation_graph_edges!(
     p::Parameters,
     allocation_network_id::Int,
 )::Tuple{Vector{Vector{NodeID}}, SparseMatrixCSC{Float64, Int}}
-    (; connectivity, user) = p
-    (; graph) = connectivity
+    (; graph) = p
 
     edges_composite = Vector{NodeID}[]
     capacity = spzeros(nv(graph), nv(graph))
@@ -154,8 +152,7 @@ function process_allocation_graph_edges!(
     p::Parameters,
     allocation_network_id::Int,
 )::SparseMatrixCSC{Float64, Int}
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -248,8 +245,7 @@ end
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
 function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
 
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -283,8 +279,7 @@ end
 Remove allocation user return flow edges that are upstream of the user itself.
 """
 function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
     node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
@@ -338,8 +333,7 @@ function add_variables_flow!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     edge_ids = graph[].edge_ids[allocation_network_id]
     problem[:F] = JuMP.@variable(problem, F[edge_id = edge_ids,] >= 0.0)
     return nothing
@@ -357,8 +351,7 @@ function add_variables_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
     if startswith(config.allocation.objective_type, "linear")
@@ -381,8 +374,7 @@ function add_constraints_capacity!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
@@ -413,8 +405,7 @@ function add_constraints_source!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_source = [
         edge_id for edge_id in edge_ids if
@@ -470,8 +461,7 @@ function add_constraints_flow_conservation!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_basin = [node_id for node_id in node_ids if graph[node_id].type == :basin]
@@ -502,8 +492,7 @@ function add_constraints_user_returnflow!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; connectivity, user) = p
-    (; graph) = connectivity
+    (; graph, user) = p
     F = problem[:F]
 
     node_ids = graph[].node_ids[allocation_network_id]
@@ -535,8 +524,7 @@ function add_constraints_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
 
     objective_type = config.allocation.objective_type
@@ -662,8 +650,7 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; connectivity, user) = p
-    (; graph) = connectivity
+    (; graph, user) = p
     (; demand, node_id) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -735,12 +722,10 @@ function assign_allocations!(
     priority_idx::Int,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
-    (; connectivity, user) = p
-    (; graph, flow) = connectivity
+    (; graph, user) = p
     (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
     F = problem[:F]
-    flow = get_tmp(flow, 0)
     for edge_id in edge_ids
         user_node_id = edge_id[2]
         if graph[user_node_id].type != :user
@@ -759,7 +744,10 @@ function assign_allocations!(
         push!(record.allocated, allocated)
         # TODO: This is now the last abstraction before the allocation update,
         # should be the average abstraction since the last allocation solve
-        push!(record.abstracted, flow[inflow_id(graph, user_node_id), user_node_id])
+        push!(
+            record.abstracted,
+            get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
+        )
     end
     return nothing
 end
@@ -773,22 +761,22 @@ function adjust_source_flows!(
     priority_idx::Int,
 )::Nothing
     (; problem) = allocation_model
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     (; allocation_network_id) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     F = problem[:F]
 
     # It is assumed that the allocation procedure does not have to be differentiated.
-    flow = get_tmp(p.connectivity.flow, 0)
-
     for edge_id in edge_ids
         # If it is a source edge.
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
             if priority_idx == 1
                 # Reset the source to the current flow.
-                JuMP.set_normalized_rhs(source_constraints[edge_id], flow[edge_id...])
+                JuMP.set_normalized_rhs(
+                    source_constraints[edge_id],
+                    get_flow(graph, edge_id..., 0),
+                )
             else
                 # Subtract the allocated flow from the source.
                 JuMP.set_normalized_rhs(
@@ -813,8 +801,7 @@ function adjust_edge_capacities!(
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; connectivity) = p
-    (; graph) = connectivity
+    (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]

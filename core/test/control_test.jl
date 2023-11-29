@@ -6,7 +6,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control, connectivity) = p
+    (; discrete_control, graph) = p
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
@@ -42,7 +42,7 @@
     t_2_index = findfirst(timesteps .≈ t_2)
     @test level[2, t_2_index] ≈ discrete_control.greater_than[2]
 
-    flow = get_tmp(connectivity.flow, 0)
+    flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
 end
 

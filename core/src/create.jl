@@ -196,49 +196,8 @@ end
 const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
-function Connectivity(db::DB, config::Config, chunk_size::Int)::Connectivity
-    if !valid_edge_types(db)
-        error("Invalid edge types found.")
-    end
-
-    graph = create_graph(db)
-
-    # Build the sparsity structure of the flow matrix
-    flow = spzeros(nv(graph), nv(graph))
-    for e in edges(graph)
-        id_src = label_for(graph, e.src)
-        id_dst = label_for(graph, e.dst)
-        edge_metadata = graph[id_src, id_dst]
-        if edge_metadata.type == EdgeType.flow
-            flow[id_src, id_dst] = 1.0
-        end
-    end
-
-    # Add a self-loop, i.e. an entry on the diagonal, for all non-conservative node types.
-    # This is used to store the gain (positive) or loss (negative) for the water balance.
-    # Note that this only affects the sparsity structure.
-    # We want to do it here to avoid changing that during the simulation and keeping it predictable,
-    # e.g. if we wouldn't do this, inactive nodes can appear if control turns them on during runtime.
-    for (i, nodetype) in enumerate(get_nodetypes(db))
-        if nodetype in nonconservative_nodetypes
-            flow[i, i] = 1.0
-        end
-    end
-    flow .= 0.0
-
-    if config.solver.autodiff
-        # FixedSizeDiffCache performs better for sparse matrix
-        flow = FixedSizeDiffCache(flow, chunk_size)
-    end
-
-    allocation_models = AllocationModel[]
-
-    return Connectivity(graph, flow, allocation_models)
-end
-
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
-    (; connectivity) = p
-    (; allocation_models, graph) = connectivity
+    (; graph, allocation_models) = p
 
     for allocation_network_id in keys(graph[].node_ids)
         push!(
@@ -771,8 +730,6 @@ function User(db::DB, config::Config)::User
         abstracted = Vector{Float64}(),
     )
 
-    allocation_optimized = BitVector(zeros(UInt8, length(node_ids)))
-
     return User(
         NodeID.(node_ids),
         active,
@@ -821,8 +778,8 @@ end
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_size = pickchunksize(n_states)
-
-    connectivity = Connectivity(db, config, chunk_size)
+    graph = create_graph(db, config, chunk_size)
+    allocation_models = Vector{AllocationModel}()
 
     linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
@@ -842,8 +799,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
-        id_controlled =
-            only(outneighbor_labels_type(connectivity.graph, id, EdgeType.control))
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
         pump_idx = findsorted(pump.node_id, id_controlled)
         if pump_idx === nothing
             outlet_idx = findsorted(outlet.node_id, id_controlled)
@@ -855,7 +811,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     p = Parameters(
         config.starttime,
-        connectivity,
+        graph,
+        allocation_models,
         basin,
         linear_resistance,
         manning_resistance,
@@ -872,7 +829,6 @@ function Parameters(db::DB, config::Config)::Parameters
         Dict{Int, Symbol}(),
         subgrid_level,
     )
-
     # Allocation data structures
     if config.allocation.use_allocation
         generate_allocation_models!(p, config)

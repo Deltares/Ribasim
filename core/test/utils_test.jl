@@ -183,11 +183,9 @@ end
     new_key = (Ribasim.NodeID(1), "TTF")
     logic_mapping[new_key] = "bar"
 
-    # TODO investigate why this sometimes doesn't throw
-    # https://github.com/Deltares/Ribasim/issues/825
-    # @test_throws "Multiple control states found for DiscreteControl node #1 for truth state `TTF`: foo, bar." Ribasim.expand_logic_mapping(
-    #     logic_mapping,
-    # )
+    @test_throws "AssertionError: Multiple control states found for DiscreteControl node #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
+        logic_mapping,
+    )
 end
 
 @testitem "Jacobian sparsity" begin

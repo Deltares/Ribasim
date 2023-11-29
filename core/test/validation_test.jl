@@ -220,12 +220,12 @@ end
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, config)
-    (; connectivity, fractional_flow) = p
+    (; graph, fractional_flow) = p
 
     logger = TestLogger()
     with_logger(logger) do
         @test !Ribasim.valid_fractional_flow(
-            connectivity.graph,
+            graph,
             fractional_flow.node_id,
             fractional_flow.control_mapping,
         )

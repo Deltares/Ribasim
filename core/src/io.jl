@@ -181,29 +181,43 @@ function flow_table(
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; connectivity) = integrator.p
-    (; graph) = connectivity
+    (; graph) = integrator.p
+    (; flow_dict, flow_vertical_dict) = graph[]
 
-    I, J, _ = findnz(get_tmp(connectivity.flow, 0))
     # self-loops have no edge ID
-    # unique_edge_ids = [get(connectivity.edge_ids_flow, ij, missing) for ij in zip(I, J)]
+    from_node_id = Int[]
+    to_node_id = Int[]
     unique_edge_ids_flow = Union{Int, Missing}[]
-    for (i, j) in zip(I, J)
-        if i == j
-            push!(unique_edge_ids_flow, missing)
-        else
-            edge_metadata = metadata_from_edge(graph, Edge(i, j))
-            push!(unique_edge_ids_flow, edge_metadata.id)
-        end
+
+    vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
+    for (node_id, index) in flow_vertical_dict
+        vertical_flow_node_ids[index] = node_id
     end
 
-    nflow = length(I)
+    for id in vertical_flow_node_ids
+        push!(from_node_id, id.value)
+        push!(to_node_id, id.value)
+        push!(unique_edge_ids_flow, missing)
+    end
+
+    flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
+    for (edge_id, index) in flow_dict
+        flow_edge_ids[index] = edge_id
+    end
+
+    for (from_id, to_id) in flow_edge_ids
+        push!(from_node_id, from_id.value)
+        push!(to_node_id, to_id.value)
+        push!(unique_edge_ids_flow, graph[from_id, to_id].id)
+    end
+
+    nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
-    from_node_id = repeat(I; outer = ntsteps)
-    to_node_id = repeat(J; outer = ntsteps)
+    from_node_id = repeat(from_node_id; outer = ntsteps)
+    to_node_id = repeat(to_node_id; outer = ntsteps)
     flow = FlatVector(saveval)
 
     return (; time, edge_id, from_node_id, to_node_id, flow)
