@@ -195,6 +195,10 @@ function process_allocation_graph_edges!(
             continue
         end
 
+        if node_id_1 == node_id_2
+            continue
+        end
+
         # Find capacity of this composite allocation graph edge
         positive_flow = true
         negative_flow = true
