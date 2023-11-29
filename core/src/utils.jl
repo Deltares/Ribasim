@@ -66,9 +66,7 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
         end
         id_src = NodeID(from_node_id)
         id_dst = NodeID(to_node_id)
-        if ismissing(allocation_network_id)
-            allocation_network_id = 0
-        end
+        allocation_network_id = coalesce(allocation_network_id, 0)
         edge_metadata =
             EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
         graph[id_src, id_dst] = edge_metadata

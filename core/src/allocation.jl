@@ -9,11 +9,24 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     used_nodes = Set{NodeID}()
 
     for node_id in node_ids
-        node_type = graph[node_id].type
+        use_node = false
         if node_type in [:user, :basin]
-            push!(used_nodes, node_id)
+            use_node = true
         elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
             # use count since the length of the iterator is unknown
+            # TODO: Change this to nodes that have FractionalFlow outneighbors
+            use_node = true
+        else
+            # If this node connects to a different subnetwork
+            for outneighbor_id in outneighbor_labels(graph)
+                if graph[outneighbor_id].allocation_network_id ∉ [0, allocation_network_id]
+                    use_node = true
+                    break
+                end
+            end
+        end
+
+        if use_node
             push!(used_nodes, node_id)
         end
     end
