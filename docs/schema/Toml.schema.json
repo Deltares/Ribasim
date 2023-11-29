@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://deltares.github.io/Ribasim/schema/Config.schema.json",
-    "title": "Config",
-    "description": "A Config object based on Ribasim.config.Config",
+    "$id": "https://deltares.github.io/Ribasim/schema/Toml.schema.json",
+    "title": "Toml",
+    "description": "A Toml object based on Ribasim.config.Toml",
     "type": "object",
     "properties": {
         "starttime": {
@@ -15,17 +15,16 @@
         },
         "input_dir": {
             "format": "default",
-            "type": "string",
-            "default": "."
+            "type": "string"
         },
         "results_dir": {
             "format": "default",
-            "type": "string",
-            "default": "results"
+            "type": "string"
         },
         "database": {
             "format": "default",
-            "type": "string"
+            "type": "string",
+            "default": "database.gpkg"
         },
         "allocation": {
             "$ref": "https://deltares.github.io/Ribasim/schema/Allocation.schema.json",
@@ -39,7 +38,8 @@
             "$ref": "https://deltares.github.io/Ribasim/schema/Solver.schema.json",
             "default": {
                 "algorithm": "QNDF",
-                "saveat": [],
+                "saveat": [
+                ],
                 "adaptive": true,
                 "dt": null,
                 "dtmin": null,
@@ -64,13 +64,10 @@
         "results": {
             "$ref": "https://deltares.github.io/Ribasim/schema/Results.schema.json",
             "default": {
-                "basin": "results/basin.arrow",
-                "flow": "results/flow.arrow",
-                "control": "results/control.arrow",
-                "allocation": "results/allocation.arrow",
                 "outstate": null,
                 "compression": "zstd",
-                "compression_level": 6
+                "compression_level": 6,
+                "subgrid": false
             }
         },
         "terminal": {
@@ -126,6 +123,7 @@
                 "profile": null,
                 "state": null,
                 "static": null,
+                "subgrid": null,
                 "time": null
             }
         },

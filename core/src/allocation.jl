@@ -12,8 +12,8 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         node_type = graph[node_id].type
         if node_type in [:user, :basin]
             push!(used_nodes, node_id)
-
-        elseif length(inoutflow_ids(graph, node_id)) > 2
+        elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
+            # use count since the length of the iterator is unknown
             push!(used_nodes, node_id)
         end
     end
@@ -500,9 +500,9 @@ function add_constraints_user_returnflow!(
     problem[:return_flow] = JuMP.@constraint(
         problem,
         [node_id_user = node_ids_user_with_returnflow],
-        F[node_id_user.value, only(outflow_ids_allocation(graph, node_id_user)).value] <=
+        F[Int(node_id_user), Int(only(outflow_ids_allocation(graph, node_id_user)))] <=
         user.return_factor[findsorted(user.node_id, node_id)] *
-        F[only(inflow_ids_allocation(graph, node_id_user)).value, node_iduser.value],
+        F[Int(only(inflow_ids_allocation(graph, node_id_user))), Int(node_iduser)],
         base_name = "return_flow",
     )
     return nothing
@@ -734,7 +734,7 @@ function assign_allocations!(
         # Save allocations to record
         push!(record.time, t)
         push!(record.allocation_network_id, allocation_model.allocation_network_id)
-        push!(record.user_node_id, user_node_id.value)
+        push!(record.user_node_id, Int(user_node_id))
         push!(record.priority, user.priorities[priority_idx])
         push!(record.demand, user.demand[user_idx][priority_idx](t))
         push!(record.allocated, allocated)
@@ -749,22 +749,38 @@ function assign_allocations!(
 end
 
 """
-Set the source flows as capacities on threir edges in the allocation problem.
+Adjust the source flows.
 """
-function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
+function adjust_source_flows!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
     (; problem) = allocation_model
     (; graph) = p
     (; allocation_network_id) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
+    F = problem[:F]
 
     # It is assumed that the allocation procedure does not have to be differentiated.
     for edge_id in edge_ids
+        # If it is a source edge.
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
-            JuMP.set_normalized_rhs(
-                source_constraints[edge_id],
-                get_flow(graph, edge_id..., 0),
-            )
+            if priority_idx == 1
+                # Reset the source to the current flow.
+                JuMP.set_normalized_rhs(
+                    source_constraints[edge_id],
+                    get_flow(graph, edge_id..., 0),
+                )
+            else
+                # Subtract the allocated flow from the source.
+                JuMP.set_normalized_rhs(
+                    source_constraints[edge_id],
+                    JuMP.normalized_rhs(source_constraints[edge_id]) -
+                    JuMP.value(F[edge_id]),
+                )
+            end
         end
     end
     return nothing
@@ -818,14 +834,14 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
     (; problem) = allocation_model
     (; priorities) = user
 
-    set_source_flows!(allocation_model, p)
-
     # TODO: Compute basin flow from vertical fluxes and basin volume.
     # Set as basin demand if the net flow is negative, set as source
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
     for priority_idx in eachindex(priorities)
+        adjust_source_flows!(allocation_model, p, priority_idx)
+
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, p, priority_idx)

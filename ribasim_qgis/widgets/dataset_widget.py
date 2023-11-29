@@ -4,9 +4,12 @@ This widgets displays the available input layers in the GeoPackage.
 This widget also allows enabling or disabling individual elements for a
 computation.
 """
+from __future__ import annotations
+
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -25,16 +28,24 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qgis.core import QgsMapLayer, QgsProject
+from qgis.core import (
+    QgsFeature,
+    QgsMapLayer,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.core.additions.edit import edit
 
-import ribasim_qgis.tomllib as tomllib
-from ribasim_qgis.core.nodes import Edge, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.model import (
+    get_database_path_from_model_file,
+    get_directory_path_from_model_file,
+)
+from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
 from ribasim_qgis.core.topology import derive_connectivity, explode_lines
 
 
 class DatasetTreeWidget(QTreeWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None):
         super().__init__(parent)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setHeaderHidden(True)
@@ -56,16 +67,16 @@ class DatasetTreeWidget(QTreeWidget):
     def add_item(self, name: str, enabled: bool = True):
         item = QTreeWidgetItem()
         self.addTopLevelItem(item)
-        item.checkbox = QCheckBox()
-        item.checkbox.setChecked(True)
-        item.checkbox.setEnabled(enabled)
-        self.setItemWidget(item, 0, item.checkbox)
+        checkbox = QCheckBox()
+        checkbox.setChecked(True)
+        checkbox.setEnabled(enabled)
+        self.setItemWidget(item, 0, checkbox)
         item.setText(1, name)
         return item
 
-    def add_node_layer(self, element) -> None:
+    def add_node_layer(self, element: Input) -> None:
         # These are mandatory elements, cannot be unticked
-        item = self.add_item(name=element.name, enabled=True)
+        item = self.add_item(name=element.input_type(), enabled=True)
         item.element = element
 
     def remove_geopackage_layers(self) -> None:
@@ -93,8 +104,9 @@ class DatasetTreeWidget(QTreeWidget):
             return
 
         # Start deleting
-        elements = {item.element for item in selection}
+        elements = {item.element for item in selection}  # type: ignore[attr-defined] # TODO: dynamic item.element should be in some dict.
         qgs_instance = QgsProject.instance()
+        assert qgs_instance is not None
 
         for element in elements:
             layer = element.layer
@@ -124,10 +136,13 @@ class DatasetTreeWidget(QTreeWidget):
 
 
 class DatasetWidget(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget):
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
         super().__init__(parent)
-        self.parent = parent
-        self.dataset_tree = DatasetTreeWidget()
+
+        self.ribasim_widget = cast(RibasimWidget, parent)
+        self.dataset_tree = DatasetTreeWidget(self)
         self.dataset_tree.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.dataset_line_edit = QLineEdit()
         self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
@@ -141,8 +156,9 @@ class DatasetWidget(QWidget):
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
         self.add_button.clicked.connect(self.add_selection_to_qgis)
-        self.edge_layer = None
-        self.node_layer = None
+        self.edge_layer: QgsVectorLayer | None = None
+        self.node_layer: QgsVectorLayer | None = None
+
         # Layout
         dataset_layout = QVBoxLayout()
         dataset_row = QHBoxLayout()
@@ -159,13 +175,15 @@ class DatasetWidget(QWidget):
         self.setLayout(dataset_layout)
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         """Returns currently active path to Ribasim model (.toml)"""
-        return self.dataset_line_edit.text()
+        return Path(self.dataset_line_edit.text())
 
     def explode_and_connect(self) -> None:
         node = self.node_layer
         edge = self.edge_layer
+        assert edge is not None
+        assert node is not None
         explode_lines(edge)
 
         n_node = node.featureCount()
@@ -175,14 +193,16 @@ class DatasetWidget(QWidget):
 
         node_xy = np.empty((n_node, 2), dtype=float)
         node_index = np.empty(n_node, dtype=int)
-        for i, feature in enumerate(node.getFeatures()):
+        node_iterator = cast(Iterable[QgsFeature], node.getFeatures())
+        for i, feature in enumerate(node_iterator):
             point = feature.geometry().asPoint()
             node_xy[i, 0] = point.x()
             node_xy[i, 1] = point.y()
             node_index[i] = feature.attribute(0)  # Store the feature id
 
         edge_xy = np.empty((n_edge, 2, 2), dtype=float)
-        for i, feature in enumerate(edge.getFeatures()):
+        edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
+        for i, feature in enumerate(edge_iterator):
             geometry = feature.geometry().asPolyline()
             for j, point in enumerate(geometry):
                 edge_xy[i, j, 0] = point.x()
@@ -197,7 +217,8 @@ class DatasetWidget(QWidget):
             # Avoid infinite recursion
             edge.blockSignals(True)
             with edit(edge):
-                for feature, id1, id2 in zip(edge.getFeatures(), from_id, to_id):
+                edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
+                for feature, id1, id2 in zip(edge_iterator, from_id, to_id):
                     fid = feature.id()
                     # Nota bene: will fail with numpy integers, has to be Python type!
                     edge.changeAttributeValue(fid, field1, int(id1))
@@ -216,8 +237,8 @@ class DatasetWidget(QWidget):
         suppress: bool = False,
         on_top: bool = False,
         labels: Any = None,
-    ) -> QgsMapLayer:
-        return self.parent.add_layer(
+    ) -> QgsMapLayer | None:
+        return self.ribasim_widget.add_layer(
             layer,
             destination,
             renderer,
@@ -243,12 +264,12 @@ class DatasetWidget(QWidget):
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
-        geo_path = self._get_database_path_from_model_file()
+        geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
-        name = str(Path(self.path).stem)
-        self.parent.create_groups(name)
+        name = self.path.stem
+        self.ribasim_widget.create_groups(name)
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
 
@@ -258,33 +279,32 @@ class DatasetWidget(QWidget):
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
 
-    def _get_database_path_from_model_file(self) -> str:
-        with open(self.path, "rb") as f:
-            input_dir = Path(tomllib.load(f)["input_dir"])
-        # The .joinpath method (/) of pathlib.Path will take care of an absolute input_dir.
-        # No need to check it ourselves!
-        return str((Path(self.path).parent / input_dir / "database.gpkg").resolve())
-
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
-            geo_path = Path(self.path).parent.joinpath("database.gpkg")
-            self._write_new_model(geo_path.name)
+            geo_path = self.path.with_name("database.gpkg")
+            self._write_new_model()
+
             for input_type in (Node, Edge):
-                instance = input_type.create(str(geo_path), self.parent.crs, names=[])
+                instance = input_type.create(
+                    geo_path,
+                    self.ribasim_widget.crs,
+                    names=[],
+                )
                 instance.write()
             self.load_geopackage()
-            self.parent.toggle_node_buttons(True)
+            self.ribasim_widget.toggle_node_buttons(True)
 
-    def _write_new_model(self, database_name: str) -> None:
+    def _write_new_model(self) -> None:
         with open(self.path, "w") as f:
             f.writelines(
                 [
-                    f'database = "{database_name}"\n',
                     f"starttime = {datetime(2020, 1, 1)}\n",
-                    f"endtime = {datetime(2030, 1, 1)}\n",
+                    f"endtime = {datetime(2021, 1, 1)}\n",
+                    'input_dir = "."\n',
+                    'results_dir = "results"\n',
                 ]
             )
 
@@ -295,7 +315,8 @@ class DatasetWidget(QWidget):
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()
-            self.parent.toggle_node_buttons(True)
+            self.ribasim_widget.toggle_node_buttons(True)
+            self.refresh_results()
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     def remove_geopackage_layer(self) -> None:
@@ -325,7 +346,38 @@ class DatasetWidget(QWidget):
     def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        return {item.element.name for item in selection}
+        return {item.element.input_type() for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
 
-    def add_node_layer(self, element) -> None:
+    def add_node_layer(self, element: Input) -> None:
         self.dataset_tree.add_node_layer(element)
+
+    def refresh_results(self) -> None:
+        self.__set_node_results()
+        self.__set_edge_results()
+
+    def __set_node_results(self) -> None:
+        node_layer = self.ribasim_widget.node_layer
+        assert node_layer is not None
+        self.__set_results(node_layer, "node_id", "basin.arrow")
+
+    def __set_edge_results(self) -> None:
+        edge_layer = self.ribasim_widget.edge_layer
+        assert edge_layer is not None
+        self.__set_results(edge_layer, "edge_id", "flow.arrow")
+
+    def __set_results(
+        self,
+        layer: QgsVectorLayer,
+        column: str,
+        output_file_name: str,
+    ) -> None:
+        path = (
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
+            / output_file_name
+        )
+        if layer is not None:
+            layer.setCustomProperty("arrow_type", "timeseries")
+            layer.setCustomProperty("arrow_path", str(path))
+            layer.setCustomProperty("arrow_fid_column", column)

@@ -10,13 +10,16 @@ This module lightly wraps a few QGIS built in functions to:
 """
 import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 
-from qgis import processing
+# qgis is monkey patched by plugins.processing.
+# Importing from plugins directly for mypy
+from plugins import processing
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
 
 @contextmanager
-def sqlite3_cursor(path):
+def sqlite3_cursor(path: Path):
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     try:
@@ -26,13 +29,13 @@ def sqlite3_cursor(path):
         connection.close()
 
 
-def layers(path: str) -> list[str]:
+def layers(path: Path) -> list[str]:
     """
     Return all layers that are present in the geopackage.
 
     Parameters
     ----------
-    path: str
+    path: Path
         Path to the geopackage
 
     Returns
@@ -46,14 +49,14 @@ def layers(path: str) -> list[str]:
 
 
 def write_layer(
-    path: str, layer: QgsVectorLayer, layername: str, newfile: bool = False
+    path: Path, layer: QgsVectorLayer, layername: str, newfile: bool = False
 ) -> QgsVectorLayer:
     """
     Write a QgsVectorLayer to a GeoPackage database.
 
     Parameters
     ----------
-    path: str
+    path: Path
         Path to the GeoPackage file
     layer: QgsVectorLayer
         QGIS map layer (in-memory)
@@ -72,11 +75,13 @@ def write_layer(
     options.driverName = "gpkg"
     options.layerName = layername
     if not newfile:
-        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+        options.actionOnExistingFile = (
+            QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
+        )
     write_result, error_message = QgsVectorFileWriter.writeAsVectorFormat(
-        layer, path, options
+        layer, str(path), options
     )
-    if write_result != QgsVectorFileWriter.NoError:
+    if write_result != QgsVectorFileWriter.WriterError.NoError:
         raise RuntimeError(
             f"Layer {layername} could not be written to geopackage: {path}"
             f" with error: {error_message}"
@@ -85,7 +90,7 @@ def write_layer(
     return layer
 
 
-def remove_layer(path: str, layer: str) -> None:
+def remove_layer(path: Path, layer: str) -> None:
     query = {"DATABASE": f"{path}|layername={layer}", "SQL": f"drop table {layer}"}
     try:
         processing.run("native:spatialiteexecutesql", query)

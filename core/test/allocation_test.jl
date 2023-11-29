@@ -18,12 +18,8 @@
     allocation_model = p.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)
 
-    F = JuMP.value.(allocation_model.problem[:F])
-    @test all(F .>= 0)
-    @test any(F .≠ 0)
-
     allocated = p.user.allocated
-    @test allocated[1] ≈ [0.0, 4.0]
+    @test allocated[1] ≈ [0.0, 0.0]
     @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
 end

@@ -100,25 +100,21 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
-        errors = valid_profiles(node_id, level, area)
-        if isempty(errors)
-            return new{T, C}(
-                node_id,
-                precipitation,
-                potential_evaporation,
-                drainage,
-                infiltration,
-                current_level,
-                current_area,
-                area,
-                level,
-                storage,
-                time,
-            )
-        else
-            foreach(x -> @error(x), errors)
-            error("Errors occurred when parsing Basin data.")
-        end
+        is_valid = valid_profiles(node_id, level, area)
+        is_valid || error("Invalid Basin / profile table.")
+        return new{T, C}(
+            node_id,
+            precipitation,
+            potential_evaporation,
+            drainage,
+            infiltration,
+            current_level,
+            current_area,
+            area,
+            level,
+            storage,
+            time,
+        )
     end
 end
 
@@ -421,6 +417,13 @@ struct User <: AbstractParameterNode
     }
 end
 
+"Subgrid linearly interpolates basin levels."
+struct Subgrid
+    basin_index::Vector{Int}
+    interpolations::Vector{ScalarInterpolation}
+    level::Vector{Float64}
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, C1, C2}
     starttime::DateTime
@@ -456,6 +459,8 @@ struct Parameters{T, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
+    lookup::Dict{Int, Symbol}
+    subgrid::Subgrid
 end
 
 """
@@ -486,14 +491,8 @@ function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
     for id in node.node_id
         for (bounds, edge_type) in
             zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
-            n_inneighbors = length([
-                node_id for
-                node_id in inneighbor_labels_type(graph, id, edge_type) if node_id != id
-            ])
-            n_outneighbors = length([
-                node_id for node_id in outneighbor_labels_type(graph, id, edge_type) if
-                node_id != id
-            ])
+            n_inneighbors = count(x -> true, inneighbor_labels_type(graph, id, edge_type))
+            n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
                 @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."

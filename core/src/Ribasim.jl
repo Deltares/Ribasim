@@ -49,7 +49,13 @@ using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: current_logger, min_enabled_level, with_logger
 using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
 using MetaGraphsNext:
-    MetaGraphsNext, MetaGraph, label_for, labels, outneighbor_labels, inneighbor_labels
+    MetaGraphsNext,
+    MetaGraph,
+    label_for,
+    code_for,
+    labels,
+    outneighbor_labels,
+    inneighbor_labels
 using OrdinaryDiffEq
 using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase

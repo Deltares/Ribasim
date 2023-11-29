@@ -112,6 +112,7 @@ end
     outstate::Union{String, Nothing} = nothing
     compression::Compression = "zstd"
     compression_level::Int = 6
+    subgrid::Bool = false
 end
 
 @option struct Logging <: TableOption

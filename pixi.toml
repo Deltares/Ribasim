@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.3.0"
+version = "0.4.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -49,6 +49,7 @@ lint = { depends_on = [
     "mypy-ribasim-python",
     "mypy-ribasim-testmodels",
     "mypy-ribasim-api",
+    "mypy-ribasim-qgis",
 ] }
 # Build
 build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
@@ -94,13 +95,16 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 ] }
 # QGIS
 install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
-install-imod-qgis = "python ribasim_qgis/scripts/install_imod_qgis.py"
+install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
+install-plugin-reloader = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
 test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 install-qgis-plugins = { depends_on = [
+    "install-plugin-reloader",
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
+mypy-ribasim-qgis = "mypy ribasim_qgis"
 
 [dependencies]
 build = "*"
@@ -134,6 +138,8 @@ qgis = "3.28.*"
 platformdirs = "*"
 pyqt-stubs = "*"
 types-requests = "*"
+qgis-plugin-manager = "*"
+libgdal-arrow-parquet = "3.7.2.*"
 
 [target.win-64.dependencies]
 quarto = "*"

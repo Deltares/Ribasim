@@ -6,6 +6,10 @@
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
+
+    # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+    subgrid = model.integrator.p.subgrid
+    @test all(diff(subgrid.level) .≈ 1.0)
 end
 
 @testitem "bucket model" begin
@@ -191,7 +195,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    timesteps = model.saved_flow.t
+    timesteps = model.saved.flow.t
     flow = DataFrame(Ribasim.flow_table(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)

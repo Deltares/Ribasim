@@ -1,4 +1,5 @@
 import configparser
+import sys
 
 import platformdirs
 
@@ -27,3 +28,8 @@ def enable_plugin(plugin_name: str) -> None:
 
     with config_file.open("w") as f:
         config.write(f)
+
+
+if __name__ == "__main__":
+    print(f"Enabling QGIS plugin {sys.argv[1]}")
+    enable_plugin(sys.argv[1])

@@ -101,6 +101,61 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     return graph
 end
 
+abstract type AbstractNeighbors end
+
+"""
+Iterate over incoming neighbors of a given label in a MetaGraph, only for edges of edge_type
+"""
+struct InNeighbors{T} <: AbstractNeighbors
+    graph::T
+    label::NodeID
+    edge_type::EdgeType.T
+end
+
+"""
+Iterate over outgoing neighbors of a given label in a MetaGraph, only for edges of edge_type
+"""
+struct OutNeighbors{T} <: AbstractNeighbors
+    graph::T
+    label::NodeID
+    edge_type::EdgeType.T
+end
+
+Base.IteratorSize(::Type{<:AbstractNeighbors}) = Base.SizeUnknown()
+Base.eltype(::Type{<:AbstractNeighbors}) = NodeID
+
+function Base.iterate(iter::InNeighbors, state = 1)
+    (; graph, label, edge_type) = iter
+    code = code_for(graph, label)
+    local label_in
+    while true
+        x = iterate(inneighbors(graph, code), state)
+        x === nothing && return nothing
+        code_in, state = x
+        label_in = label_for(graph, code_in)
+        if graph[label_in, label].type == edge_type
+            break
+        end
+    end
+    return label_in, state
+end
+
+function Base.iterate(iter::OutNeighbors, state = 1)
+    (; graph, label, edge_type) = iter
+    code = code_for(graph, label)
+    local label_out
+    while true
+        x = iterate(outneighbors(graph, code), state)
+        x === nothing && return nothing
+        code_out, state = x
+        label_out = label_for(graph, code_out)
+        if graph[label, label_out].type == edge_type
+            break
+        end
+    end
+    return label_out, state
+end
+
 """
 Set the given flow q over the edge between the given nodes.
 """
@@ -161,11 +216,8 @@ function inneighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
     edge_type::EdgeType.T,
-)::Vector{NodeID}
-    return [
-        label_in for label_in in inneighbor_labels(graph, label) if
-        graph[label_in, label].type == edge_type
-    ]
+)::InNeighbors
+    return InNeighbors(graph, label, edge_type)
 end
 
 """
@@ -176,11 +228,8 @@ function outneighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
     edge_type::EdgeType.T,
-)::Vector{NodeID}
-    return [
-        label_out for label_out in outneighbor_labels(graph, label) if
-        graph[label, label_out].type == edge_type
-    ]
+)::OutNeighbors
+    return OutNeighbors(graph, label, edge_type)
 end
 
 """
@@ -191,31 +240,31 @@ function all_neighbor_labels_type(
     graph::MetaGraph,
     label::NodeID,
     edge_type::EdgeType.T,
-)::Vector{NodeID}
-    return [
-        outneighbor_labels_type(graph, label, edge_type)...,
-        inneighbor_labels_type(graph, label, edge_type)...,
-    ]
+)::Iterators.Flatten
+    return Iterators.flatten((
+        outneighbor_labels_type(graph, label, edge_type),
+        inneighbor_labels_type(graph, label, edge_type),
+    ))
 end
 
 """
 Get the outneighbors over flow edges.
 """
-function outflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+function outflow_ids(graph::MetaGraph, id::NodeID)::OutNeighbors
     return outneighbor_labels_type(graph, id, EdgeType.flow)
 end
 
 """
 Get the inneighbors over flow edges.
 """
-function inflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+function inflow_ids(graph::MetaGraph, id::NodeID)::InNeighbors
     return inneighbor_labels_type(graph, id, EdgeType.flow)
 end
 
 """
 Get the in- and outneighbors over flow edges.
 """
-function inoutflow_ids(graph::MetaGraph, id::NodeID)::Vector{NodeID}
+function inoutflow_ids(graph::MetaGraph, id::NodeID)::Iterators.Flatten
     return all_neighbor_labels_type(graph, id, EdgeType.flow)
 end
 

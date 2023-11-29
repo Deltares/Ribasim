@@ -1,3 +1,16 @@
+@testitem "NodeID" begin
+    using Ribasim: NodeID
+    id = NodeID(2)
+    @test sprint(show, id) === "#2"
+    @test id < NodeID(3)
+    @test Int(id) === 2
+    @test convert(Int, id) === 2
+    @test convert(NodeID, 2) === NodeID(2)
+    a = [1, 0, 3]
+    a[id] = id
+    @test a[2] === 2
+end
+
 @testitem "id_index" begin
     using Dictionaries: Indices
 

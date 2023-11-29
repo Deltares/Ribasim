@@ -70,6 +70,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
+
     finally
         # always close the database, also in case of an error
         close(db)
@@ -104,7 +105,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved_flow = create_callbacks(parameters, config; config.solver.saveat)
+    callback, saved = create_callbacks(parameters, config; config.solver.saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -138,7 +139,7 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
 
     set_initial_discrete_controlled_parameters!(integrator, storage)
 
-    return Model(integrator, config, saved_flow)
+    return Model(integrator, config, saved)
 end
 
 """
@@ -169,6 +170,11 @@ function BMI.finalize(model::Model)::Model
     # allocation
     table = allocation_table(model)
     path = results_path(config, RESULTS_FILENAME.allocation)
+    write_arrow(path, table, compress)
+
+    # exported levels
+    table = subgrid_level_table(model)
+    path = results_path(config, RESULTS_FILENAME.subgrid_levels)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
@@ -209,7 +215,7 @@ function create_callbacks(
     parameters::Parameters,
     config::Config;
     saveat,
-)::Tuple{CallbackSet, SavedValues{Float64, Vector{Float64}}}
+)::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
@@ -235,6 +241,20 @@ function create_callbacks(
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
+    # interpolate the levels
+    saved_subgrid_level = SavedValues(Float64, Vector{Float64})
+    if config.results.subgrid
+        export_cb = SavingCallback(
+            save_subgrid_level,
+            saved_subgrid_level;
+            saveat,
+            save_start = false,
+        )
+        push!(callbacks, export_cb)
+    end
+
+    saved = SavedResults(saved_flow, saved_subgrid_level)
+
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
         discrete_control_cb = VectorContinuousCallback(
@@ -247,7 +267,7 @@ function create_callbacks(
     end
     callback = CallbackSet(callbacks...)
 
-    return callback, saved_flow
+    return callback, saved
 end
 
 """
@@ -449,7 +469,7 @@ function discrete_control_affect!(
         record = discrete_control.record
 
         push!(record.time, integrator.t)
-        push!(record.control_node_id, discrete_control_node_id.value)
+        push!(record.control_node_id, Int(discrete_control_node_id))
         push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
@@ -484,6 +504,20 @@ function save_flow(u, t, integrator)
         get_tmp(integrator.p.graph[].flow_vertical, 0.0)...,
         get_tmp(integrator.p.graph[].flow, 0.0)...,
     ]
+end
+
+function update_subgrid_level!(integrator)::Nothing
+    basin_level = get_tmp(integrator.p.basin.current_level, 0)
+    subgrid = integrator.p.subgrid
+    for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
+        subgrid.level[i] = interp(basin_level[index])
+    end
+end
+
+"Interpolate the levels and save them to SavedValues"
+function save_subgrid_level(u, t, integrator)
+    update_subgrid_level!(integrator)
+    return copy(integrator.p.subgrid.level)
 end
 
 "Load updates from 'Basin / time' into the parameters"
@@ -567,6 +601,8 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
         model.integrator.p.basin.infiltration
     elseif name == "drainage"
         model.integrator.p.basin.drainage
+    elseif name == "subgrid_level"
+        model.integrator.p.subgrid.level
     else
         error("Unknown variable $name")
     end

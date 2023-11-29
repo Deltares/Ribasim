@@ -5,70 +5,94 @@ It ensures the underlying widgets can talk to each other.  It also manages the
 connection to the QGIS Layers Panel, and ensures there is a group for the
 Ribasim layers there.
 """
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
-from qgis.core import QgsEditFormConfig, QgsMapLayer, QgsProject
+from qgis.core import (
+    QgsAbstractVectorLayerLabeling,
+    QgsCoordinateReferenceSystem,
+    QgsEditFormConfig,
+    QgsFeatureRenderer,
+    QgsLayerTreeGroup,
+    QgsMapLayer,
+    QgsProject,
+    QgsVectorLayer,
+)
+from qgis.gui import QgisInterface
 
+from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
-from ribasim_qgis.widgets.results_widget import ResultsWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
 
 class RibasimWidget(QWidget):
-    def __init__(self, parent, iface):
+    def __init__(self, parent: QWidget, iface: QgisInterface):
         super().__init__(parent)
 
         self.iface = iface
         self.message_bar = self.iface.messageBar()
 
-        self.dataset_widget = DatasetWidget(self)
-        self.nodes_widget = NodesWidget(self)
-        self.results_widget = ResultsWidget(self)
+        self.__dataset_widget = DatasetWidget(self)
+        self.__nodes_widget = NodesWidget(self)
 
         # Layout
-        self.layout = QVBoxLayout()
+        layout = QVBoxLayout()
         self.tabwidget = QTabWidget()
-        self.layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.dataset_widget, "Model")
-        self.tabwidget.addTab(self.nodes_widget, "Nodes")
-        self.tabwidget.addTab(self.results_widget, "Results")
-        self.setLayout(self.layout)
+        layout.addWidget(self.tabwidget)
+        self.tabwidget.addTab(self.__dataset_widget, "Model")
+        self.tabwidget.addTab(self.__nodes_widget, "Nodes")
+        self.setLayout(layout)
 
         # QGIS Layers Panel groups
-        self.group = None
-        self.groups = {}
+        self.group: QgsLayerTreeGroup | None = None
+        self.groups: dict[str, QgsLayerTreeGroup] = {}
 
         return
 
     # Inter-widget communication
     # --------------------------
     @property
-    def path(self) -> str:
-        return self.dataset_widget.path
+    def path(self) -> Path:
+        return self.__dataset_widget.path
 
     @property
-    def crs(self) -> Any:
-        """Returns coordinate reference system of current mapview"""
-        return self.iface.mapCanvas().mapSettings().destinationCrs()
+    def node_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.node_layer
 
-    def add_node_layer(self, element: Any):
-        self.dataset_widget.add_node_layer(element)
+    @property
+    def edge_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.edge_layer
+
+    @property
+    def crs(self) -> QgsCoordinateReferenceSystem:
+        """Returns coordinate reference system of current mapview"""
+        map_canvas = self.iface.mapCanvas()
+        assert map_canvas is not None
+        map_settings = map_canvas.mapSettings()
+        assert map_settings is not None
+        return map_settings.destinationCrs()
+
+    def add_node_layer(self, element: Input):
+        self.__dataset_widget.add_node_layer(element)
 
     def toggle_node_buttons(self, state: bool) -> None:
-        self.nodes_widget.toggle_node_buttons(state)
+        self.__nodes_widget.toggle_node_buttons(state)
 
     def selection_names(self):
-        return self.dataset_widget.selection_names()
+        return self.__dataset_widget.selection_names()
 
     # QGIS layers
     # -----------
     def create_subgroup(self, name: str, part: str) -> None:
         try:
+            assert self.group is not None
             value = self.group.addGroup(f"{name}-{part}")
+            assert value is not None
             self.groups[part] = value
         except RuntimeError as e:
             if e.args[0] == PYQT_DELETED_ERROR:
@@ -78,7 +102,10 @@ class RibasimWidget(QWidget):
 
     def create_groups(self, name: str) -> None:
         """Create an empty legend group in the QGIS Layers Panel."""
-        root = QgsProject.instance().layerTreeRoot()
+        project = QgsProject.instance()
+        assert project is not None
+        root = project.layerTreeRoot()
+        assert root is not None
         self.group = root.addGroup(name)
         self.create_subgroup(name, "Ribasim Input")
 
@@ -104,13 +131,13 @@ class RibasimWidget(QWidget):
 
     def add_layer(
         self,
-        layer: Any,
-        destination: Any,
-        renderer: Any = None,
-        suppress: bool = None,
+        layer: QgsVectorLayer,
+        destination: str,
+        renderer: QgsFeatureRenderer | None = None,
+        suppress: bool | None = None,
         on_top: bool = False,
-        labels: Any = None,
-    ) -> QgsMapLayer:
+        labels: QgsAbstractVectorLayerLabeling | None = None,
+    ) -> QgsMapLayer | None:
         """
         Add a layer to the Layers Panel
 
@@ -137,15 +164,18 @@ class RibasimWidget(QWidget):
         maplayer: QgsMapLayer or None
         """
         if layer is None:
-            return
+            return None
         add_to_legend = self.group is None
-        maplayer = QgsProject.instance().addMapLayer(layer, add_to_legend)
+        project = QgsProject.instance()
+        assert project is not None
+        maplayer = cast(QgsVectorLayer, project.addMapLayer(layer, add_to_legend))
+        assert maplayer is not None
         if suppress is not None:
             config = maplayer.editFormConfig()
             config.setSuppress(
-                QgsEditFormConfig.SuppressOn
+                QgsEditFormConfig.FeatureFormSuppress.SuppressOn
                 if suppress
-                else QgsEditFormConfig.SuppressDefault
+                else QgsEditFormConfig.FeatureFormSuppress.SuppressDefault
             )
             maplayer.setEditFormConfig(config)
         if renderer is not None:

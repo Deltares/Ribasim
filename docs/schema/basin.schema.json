@@ -41,6 +41,18 @@
             ],
             "default": null
         },
+        "subgrid": {
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "default": null
+        },
         "time": {
             "format": "default",
             "anyOf": [

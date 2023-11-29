@@ -9,6 +9,7 @@ from ribasim.schemas import (  # type: ignore
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
+    BasinSubgridSchema,
     BasinTimeSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
@@ -46,6 +47,7 @@ class Results(BaseModel):
     outstate: str | None = None
     compression: Compression = Compression.zstd
     compression_level: int = 6
+    subgrid: bool = False
 
 
 class Solver(BaseModel):
@@ -158,10 +160,14 @@ class Basin(NodeModel):
     time: TableModel[BasinTimeSchema] = Field(
         default_factory=TableModel[BasinTimeSchema]
     )
+    subgrid: TableModel[BasinSubgridSchema] = Field(
+        default_factory=TableModel[BasinSubgridSchema]
+    )
 
     _sort_keys: dict[str, list[str]] = {
         "profile": ["node_id", "level"],
         "time": ["time", "node_id"],
+        "subgrid": ["subgrid_id", "basin_level"],
     }
 
 

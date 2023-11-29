@@ -1,3 +1,8 @@
+struct SavedResults
+    flow::SavedValues{Float64, Vector{Float64}}
+    subgrid_level::SavedValues{Float64, Vector{Float64}}
+end
+
 """
     Model(config_path::AbstractString)
     Model(config::Config)
@@ -11,13 +16,13 @@ A Model can be created from the path to a TOML configuration file, or a Config o
 struct Model{T}
     integrator::T
     config::Config
-    saved_flow::SavedValues{Float64, Vector{Float64}}
+    saved::SavedResults
     function Model(
         integrator::T,
         config,
-        saved_flow,
+        saved,
     ) where {T <: SciMLBase.AbstractODEIntegrator}
-        new{T}(integrator, config, saved_flow)
+        new{T}(integrator, config, saved)
     end
 end
 

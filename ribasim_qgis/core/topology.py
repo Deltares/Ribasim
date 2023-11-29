@@ -1,6 +1,19 @@
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
+
 import numpy as np
-from qgis import processing
-from qgis.core import QgsVectorLayer
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+else:
+    from collections.abc import Sequence
+
+    NDArray: type = Sequence
+
+# qgis is monkey patched by plugins.processing.
+# Importing from plugins directly for mypy
+from plugins import processing
+from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.core.additions.edit import edit
 
 
@@ -16,9 +29,11 @@ def explode_lines(edge: QgsVectorLayer) -> None:
         # Avoid infinite recursion and stackoverflow
         edge.blockSignals(True)
         provider = edge.dataProvider()
+        assert provider is not None
 
         with edit(edge):
-            provider.deleteFeatures([f.id() for f in edge.getFeatures()])
+            edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
+            provider.deleteFeatures([f.id() for f in edge_iterator])
             new_features = list(memory_layer.getFeatures())
             for i, feature in enumerate(new_features):
                 feature["fid"] = i + 1
@@ -29,7 +44,11 @@ def explode_lines(edge: QgsVectorLayer) -> None:
     return
 
 
-def derive_connectivity(node_index, node_xy, edge_xy) -> tuple[np.ndarray, np.ndarray]:
+def derive_connectivity(
+    node_index: NDArray[np.int_],
+    node_xy: NDArray[np.float_],
+    edge_xy: NDArray[np.float_],
+) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
     """
     Derive connectivity on the basis of xy locations.
 
