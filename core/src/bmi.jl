@@ -520,20 +520,6 @@ function save_subgrid_level(u, t, integrator)
     return copy(integrator.p.subgrid.level)
 end
 
-function update_subgrid_level!(integrator)::Nothing
-    basin_level = get_tmp(integrator.p.basin.current_level, 0)
-    subgrid = integrator.p.subgrid
-    for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
-        subgrid.level[i] = interp(basin_level[index])
-    end
-end
-
-"Interpolate the levels and save them to SavedValues"
-function save_subgrid_level(u, t, integrator)
-    update_subgrid_level!(integrator)
-    return copy(integrator.p.subgrid.level)
-end
-
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
     (; basin) = integrator.p
