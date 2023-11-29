@@ -19,7 +19,7 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
+function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
     node_rows = execute(db, "select fid, type, allocation_network_id from Node")
     edge_rows = execute(
         db,
@@ -85,8 +85,8 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     flow = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
     if config.solver.autodiff
-        flow = DiffCache(flow, chunk_size)
-        flow_vertical = DiffCache(flow_vertical, chunk_size)
+        flow = DiffCache(flow, chunk_sizes)
+        flow_vertical = DiffCache(flow_vertical, chunk_sizes)
     end
     graph_data = (;
         node_ids,
@@ -669,7 +669,7 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 function get_level(
     p::Parameters,
     node_id::NodeID,
-    t::Float64;
+    t::Number;
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
