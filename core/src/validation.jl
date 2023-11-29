@@ -85,7 +85,7 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
-    :fractioal_flow,
+    :fractional_flow,
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
@@ -446,7 +446,7 @@ function valid_edges(graph::MetaGraph)::Bool
 
         if !(type_dst in neighbortypes(type_src))
             errors = true
-            edge_id = graph[id_src, id_dst].id.value
+            edge_id = graph[id_src, id_dst].id
             @error "Cannot connect a $type_src to a $type_dst (edge #$edge_id from node $id_src to $id_dst)."
         end
     end
@@ -577,15 +577,15 @@ function valid_fractional_flow(
     src_ids = Set{NodeID}()
 
     for id in node_id
-        union!(src_ids, inneighbor_labels(graph, id))
+        union!(src_ids, inflow_ids(graph, id))
     end
 
     node_id_set = Set{NodeID}(node_id)
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outneighbor_labels(graph, src_id))
-        if src_outneighbor_ids ⊈ node_id
+        src_outneighbor_ids = Set(outflow_ids(graph, src_id))
+        if src_outneighbor_ids ⊈ node_id_set
             errors = true
             @error(
                 "Node $src_id combines fractional flow outneighbors with other outneigbor types."

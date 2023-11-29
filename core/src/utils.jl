@@ -940,10 +940,10 @@ function update_jac_prototype!(
         if has_index_in
             jac_prototype[idx_in, idx_in] = 1.0
 
-            _, idxs_out =
+            _, basin_idxs_out, has_fractional_flow_outneighbors =
                 get_fractional_flow_connected_basins(id, basin, fractional_flow, graph)
 
-            if isempty(idxs_out)
+            if !has_fractional_flow_outneighbors
                 id_out = outflow_id(graph, id)
                 has_index_out, idx_out = id_index(basin.node_id, id_out)
 
@@ -951,7 +951,7 @@ function update_jac_prototype!(
                     jac_prototype[idx_in, idx_out] = 1.0
                 end
             else
-                for idx_out in idxs_out
+                for idx_out in basin_idxs_out
                     jac_prototype[idx_in, idx_out] = 1.0
                 end
             end
@@ -1033,12 +1033,15 @@ function get_fractional_flow_connected_basins(
     basin::Basin,
     fractional_flow::FractionalFlow,
     graph::MetaGraph,
-)::Tuple{Vector{Int}, Vector{Int}}
+)::Tuple{Vector{Int}, Vector{Int}, Bool}
     fractional_flow_idxs = Int[]
     basin_idxs = Int[]
 
+    has_fractional_flow_outneighbors = false
+
     for first_outneighbor_id in outflow_ids(graph, node_id)
         if first_outneighbor_id in fractional_flow.node_id
+            has_fractional_flow_outneighbors = true
             second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
             has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
             if has_index
@@ -1050,7 +1053,7 @@ function get_fractional_flow_connected_basins(
             end
         end
     end
-    return fractional_flow_idxs, basin_idxs
+    return fractional_flow_idxs, basin_idxs, has_fractional_flow_outneighbors
 end
 
 """
