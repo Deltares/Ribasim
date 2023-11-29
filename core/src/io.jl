@@ -187,7 +187,7 @@ function flow_table(
     # self-loops have no edge ID
     from_node_id = Int[]
     to_node_id = Int[]
-    unique_edge_ids_flow = Vector{Union{Int, Missing}}()
+    unique_edge_ids_flow = Union{Int, Missing}[]
     flow_vertical_dict_inverse = Dict(value => key for (key, value) in flow_vertical_dict)
     flow_dict_inverse = Dict(value => key for (key, value) in flow_dict)
 
