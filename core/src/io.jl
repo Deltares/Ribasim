@@ -188,18 +188,24 @@ function flow_table(
     from_node_id = Int[]
     to_node_id = Int[]
     unique_edge_ids_flow = Union{Int, Missing}[]
-    flow_vertical_dict_inverse = Dict(value => key for (key, value) in flow_vertical_dict)
-    flow_dict_inverse = Dict(value => key for (key, value) in flow_dict)
 
-    for i in 1:length(flow_vertical_dict_inverse)
-        id = flow_vertical_dict_inverse[i]
+    vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
+    for (node_id, index) in flow_vertical_dict
+        vertical_flow_node_ids[index] = node_id
+    end
+
+    for id in vertical_flow_node_ids
         push!(from_node_id, id.value)
         push!(to_node_id, id.value)
         push!(unique_edge_ids_flow, missing)
     end
 
-    for i in 1:length(flow_dict_inverse)
-        from_id, to_id = flow_dict_inverse[i]
+    flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
+    for (edge_id, index) in flow_dict
+        flow_edge_ids[index] = edge_id
+    end
+
+    for (from_id, to_id) in flow_edge_ids
         push!(from_node_id, from_id.value)
         push!(to_node_id, to_id.value)
         push!(unique_edge_ids_flow, graph[from_id, to_id].id)
