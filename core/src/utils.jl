@@ -101,35 +101,53 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     return graph
 end
 
+"""
+Set the given flow q over the edge between the given nodes.
+"""
 function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
     (; flow_dict, flow) = graph[]
     get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
     return nothing
 end
 
+"""
+Set the given flow q on the horizontal (self-loop) edge from id to id.
+"""
 function set_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
     (; flow_vertical_dict, flow_vertical) = graph[]
     get_tmp(flow_vertical, q)[flow_vertical_dict[id]] = q
     return nothing
 end
 
+"""
+Add the given flow q to the existing flow over the edge between the given nodes.
+"""
 function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
     (; flow_dict, flow) = graph[]
     get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
     return nothing
 end
 
+"""
+Add the given flow q to the flow over the edge on the horizontal (self-loop) edge from id to id.
+"""
 function add_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
     (; flow_vertical_dict, flow_vertical) = graph[]
     get_tmp(flow_vertical, q)[flow_vertical_dict[id]] += q
     return nothing
 end
 
+"""
+Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
+"""
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
     (; flow_dict, flow) = graph[]
     return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
 end
 
+"""
+Get the flow over the given horizontal (selfloop) edge (val is needed for get_tmp from ForwardDiff.jl).
+"""
 function get_flow(graph::MetaGraph, id::NodeID, val)::Number
     (; flow_vertical_dict, flow_vertical) = graph[]
     return get_tmp(flow_vertical, val)[flow_vertical_dict[id]]
