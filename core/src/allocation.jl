@@ -761,22 +761,38 @@ function assign_allocations!(
 end
 
 """
-Set the source flows as capacities on threir edges in the allocation problem.
+Adjust the source flows.
 """
-function set_source_flows!(allocation_model::AllocationModel, p::Parameters)::Nothing
+function adjust_source_flows!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
     (; problem) = allocation_model
     (; connectivity) = p
     (; graph) = connectivity
     (; allocation_network_id) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
+    F = problem[:F]
 
     # It is assumed that the allocation procedure does not have to be differentiated.
     flow = get_tmp(p.connectivity.flow, 0)
 
     for edge_id in edge_ids
+        # If it is a source edge.
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
-            JuMP.set_normalized_rhs(source_constraints[edge_id], flow[edge_id...])
+            if priority_idx == 1
+                # Reset the source to the current flow.
+                JuMP.set_normalized_rhs(source_constraints[edge_id], flow[edge_id...])
+            else
+                # Subtract the allocated flow from the source.
+                JuMP.set_normalized_rhs(
+                    source_constraints[edge_id],
+                    JuMP.normalized_rhs(source_constraints[edge_id]) -
+                    JuMP.value(F[edge_id]),
+                )
+            end
         end
     end
     return nothing
@@ -831,14 +847,14 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
     (; problem) = allocation_model
     (; priorities) = user
 
-    set_source_flows!(allocation_model, p)
-
     # TODO: Compute basin flow from vertical fluxes and basin volume.
     # Set as basin demand if the net flow is negative, set as source
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
     for priority_idx in eachindex(priorities)
+        adjust_source_flows!(allocation_model, p, priority_idx)
+
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, p, priority_idx)
