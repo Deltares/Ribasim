@@ -358,7 +358,18 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         self.df.sort_index(inplace=True)
 
 
-class NodeModel(BaseModel):
+class ChildModel(BaseModel):
+    _parent: Any | None = None
+    _parent_field: str | None = None
+
+    @model_validator(mode="after")
+    def check_parent(self) -> "ChildModel":
+        if self._parent is not None:
+            self._parent.model_fields_set.update({self._parent_field})
+        return self
+
+
+class NodeModel(ChildModel):
     """Base class to handle combining the tables for a single node type."""
 
     _sort_keys: dict[str, list[str]] = {}

@@ -41,6 +41,20 @@ def test_invalid_node_type(basic):
         basic.validate_model_node_types()
 
 
+def test_parent_relationship(basic):
+    model = basic
+    assert model.pump._parent == model
+    assert model.pump._parent_field == "pump"
+
+
+def test_exclude_unset(basic):
+    model = basic
+    model.solver.saveat = 86400.0
+    d = model.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
+    assert "solver" in d
+    assert d["solver"]["saveat"] == 86400.0
+
+
 def test_invalid_node_id(basic):
     model = basic
 
