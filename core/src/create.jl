@@ -405,7 +405,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     )
 end
 
-function Pump(db::DB, config::Config, chunk_size::Int)::Pump
+function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
@@ -417,7 +417,7 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_size)
+        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
     else
         parsed_parameters.flow_rate
     end
@@ -433,7 +433,7 @@ function Pump(db::DB, config::Config, chunk_size::Int)::Pump
     )
 end
 
-function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
+function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
@@ -446,7 +446,7 @@ function Outlet(db::DB, config::Config, chunk_size::Int)::Outlet
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_size)
+        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
     else
         parsed_parameters.flow_rate
     end
@@ -468,15 +468,15 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(static.node_id))
 end
 
-function Basin(db::DB, config::Config, chunk_size::Int)::Basin
+function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
     current_area = zeros(n)
 
     if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_size)
-        current_area = DiffCache(current_area, chunk_size)
+        current_level = DiffCache(current_level, chunk_sizes)
+        current_area = DiffCache(current_area, chunk_sizes)
     end
 
     precipitation = fill(NaN, length(node_id))
@@ -555,7 +555,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 end
 
-function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
+function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
@@ -577,7 +577,7 @@ function PidControl(db::DB, config::Config, chunk_size::Int)::PidControl
     pid_error = zeros(length(node_ids))
 
     if config.solver.autodiff
-        pid_error = DiffCache(pid_error, chunk_size)
+        pid_error = DiffCache(pid_error, chunk_sizes)
     end
 
     # Combine PID parameters into one vector interpolation object
@@ -775,10 +775,23 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
+"""
+Get the chunk sizes for DiffCache; differentiation w.r.t. u
+and t (the latter only if a Rosenbrock algorithm is used).
+"""
+function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
+    chunk_sizes = [pickchunksize(n_states)]
+    if Ribasim.config.algorithms[config.solver.algorithm] <:
+       OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
+        push!(chunk_sizes, 1)
+    end
+    return chunk_sizes
+end
+
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
-    chunk_size = pickchunksize(n_states)
-    graph = create_graph(db, config, chunk_size)
+    chunk_sizes = get_chunk_sizes(config, n_states)
+    graph = create_graph(db, config, chunk_sizes)
     allocation_models = Vector{AllocationModel}()
 
     linear_resistance = LinearResistance(db, config)
@@ -787,14 +800,14 @@ function Parameters(db::DB, config::Config)::Parameters
     fractional_flow = FractionalFlow(db, config)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
-    pump = Pump(db, config, chunk_size)
-    outlet = Outlet(db, config, chunk_size)
+    pump = Pump(db, config, chunk_sizes)
+    outlet = Outlet(db, config, chunk_sizes)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
-    pid_control = PidControl(db, config, chunk_size)
+    pid_control = PidControl(db, config, chunk_sizes)
     user = User(db, config)
 
-    basin = Basin(db, config, chunk_size)
+    basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled

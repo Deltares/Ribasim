@@ -568,7 +568,7 @@ function formulate_basins!(
     return nothing
 end
 
-function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Float64)
+function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
     error = get_tmp(error, u)
@@ -588,7 +588,7 @@ function continuous_control!(
     pid_control::PidControl,
     p::Parameters,
     integral_value::SubArray,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph, pump, outlet, basin, fractional_flow) = p
     min_flow_rate_pump = pump.min_flow_rate
@@ -751,7 +751,7 @@ function formulate_flow!(
     user::User,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph, basin) = p
     (; node_id, allocated, demand, active, return_factor, min_level) = user
@@ -803,7 +803,7 @@ function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph) = p
     (; node_id, active, resistance) = linear_resistance
@@ -831,7 +831,7 @@ function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; basin, graph) = p
     (; node_id, active, tables) = tabulated_rating_curve
@@ -899,7 +899,7 @@ function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; basin, graph) = p
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
@@ -954,7 +954,7 @@ function formulate_flow!(
     fractional_flow::FractionalFlow,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph) = p
     (; node_id, fraction) = fractional_flow
@@ -974,7 +974,7 @@ function formulate_flow!(
     terminal::Terminal,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph) = p
     (; node_id) = terminal
@@ -992,7 +992,7 @@ function formulate_flow!(
     level_boundary::LevelBoundary,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph) = p
     (; node_id) = level_boundary
@@ -1014,7 +1014,7 @@ function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph) = p
     (; node_id, active, flow_rate) = flow_boundary
@@ -1039,7 +1039,7 @@ function formulate_flow!(
     pump::Pump,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph, basin) = p
     (; node_id, active, flow_rate, is_pid_controlled) = pump
@@ -1072,7 +1072,7 @@ function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     storage::AbstractVector,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph, basin) = p
     (; node_id, active, flow_rate, is_pid_controlled, min_crest_level) = outlet
@@ -1136,7 +1136,7 @@ function formulate_du!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector, t::Float64)::Nothing
+function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -1171,7 +1171,7 @@ function water_balance!(
     du::ComponentVector,
     u::ComponentVector,
     p::Parameters,
-    t::Float64,
+    t::Number,
 )::Nothing
     (; graph, basin, pid_control) = p
 
