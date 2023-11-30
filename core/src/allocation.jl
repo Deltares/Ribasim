@@ -3,14 +3,17 @@ Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; graph) = p
+    (; graph, basin, fractional_flow) = p
 
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
-
     for node_id in node_ids
+        has_fractional_flow_outneighbors =
+            get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type
         if node_type in [:user, :basin]
+            push!(used_nodes, node_id)
+        elseif has_fractional_flow_outneighbors
             push!(used_nodes, node_id)
         elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
             # use count since the length of the iterator is unknown
@@ -577,6 +580,30 @@ function add_constraints_absolute_value!(
     return nothing
 end
 
+function add_constraints_fractional_flow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+    edge_ids = graph[].edge_ids[allocation_network_id]
+    fraction = 1.0
+
+    edges_to_fractional_flow =
+        [edge_id for edge_id in edge_ids if graph[edge_id[2]].type == :fractional_flow]
+
+    if !isempty(edges_to_fractional_flow)
+        problem[:fractional_flow] = JuMP.@constraint(
+            problem,
+            [edge = edges_to_fractional_flow],
+            sum(F[(inflow_id, edge[1])] for inflow_id in inflow_ids(graph, edge[1])) <=
+            fraction * F[edge],
+            base_name = "fractional_flow"
+        )
+    end
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
@@ -600,7 +627,7 @@ function allocation_problem(
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value!(problem, p, allocation_network_id, config)
-    # TODO: The fractional flow constraints
+    add_constraints_fractional_flow!(problem, p, allocation_network_id)
 
     return problem
 end
