@@ -1184,7 +1184,7 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
 is_flow_direction_constraining(node::AbstractParameterNode) =
-    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve])
+    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
 
 """Find out whether a path exists between a start node and end node in the given allocation graph."""
 function allocation_path_exists_in_graph(

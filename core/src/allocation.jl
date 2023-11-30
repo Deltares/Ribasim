@@ -381,7 +381,7 @@ function add_constraints_capacity!(
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
-    for (i, edge) in enumerate(edge_ids)
+    for edge in edge_ids
         if !isinf(capacity[edge...])
             push!(edge_ids_finite_capacity, edge)
         end
@@ -580,6 +580,13 @@ function add_constraints_absolute_value!(
     return nothing
 end
 
+"""
+Add the fractional flow constraints to the allocation problem.
+The constraint indices are allocation edges over a fractional flow node.
+
+Constraint:
+flow after fractional_flow node <= fraction * inflow
+"""
 function add_constraints_fractional_flow!(
     problem::JuMP.Model,
     p::Parameters,
@@ -587,16 +594,29 @@ function add_constraints_fractional_flow!(
 )::Nothing
     (; graph, fractional_flow) = p
     F = problem[:F]
-    edge_ids = graph[].edge_ids[allocation_network_id]
+    node_ids = graph[].node_ids[allocation_network_id]
 
     edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
     fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
-    for edge_id in edge_ids
-        node_id_fractional_flow = edge_id[2]
-        if graph[node_id_fractional_flow] == :fractional_flow
-            push!(edges_to_fractional_flow, edge_id)
-            node_idx = findsorted(fractional_flow.node_id, node_id_fractional_flow)
-            fractions[edge_id] = fractional_flow.fraction[node_idx]
+    inflows = Dict{NodeID, JuMP.AffExpr}()
+    for node_id in node_ids
+        for outflow_id_ in outflow_ids(graph, node_id)
+            if graph[outflow_id_].type == :fractional_flow
+                # The fractional flow nodes themselves are not represented in
+                # the allocation graph
+                dst_id = outflow_id(graph, outflow_id_)
+                # For now only consider fractional flow nodes which end in a basin
+                if haskey(graph, node_id, dst_id) && graph[dst_id].type == :basin
+                    edge = (node_id, dst_id)
+                    push!(edges_to_fractional_flow, edge)
+                    node_idx = findsorted(fractional_flow.node_id, outflow_id_)
+                    fractions[edge] = fractional_flow.fraction[node_idx]
+                    inflows[node_id] = sum([
+                        F[(inflow_id_, node_id)] for
+                        inflow_id_ in inflow_ids(graph, node_id)
+                    ])
+                end
+            end
         end
     end
 
@@ -604,11 +624,11 @@ function add_constraints_fractional_flow!(
         problem[:fractional_flow] = JuMP.@constraint(
             problem,
             [edge = edges_to_fractional_flow],
-            sum(F[(inflow_id, edge[1])] for inflow_id in inflow_ids(graph, edge[1])) <=
-            fractions[edge] * F[edge],
+            F[edge] <= fractions[edge] * inflows[edge[1]],
             base_name = "fractional_flow"
         )
     end
+    return nothing
 end
 
 """

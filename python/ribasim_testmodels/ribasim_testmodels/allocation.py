@@ -667,3 +667,167 @@ def minimal_subnetwork_model():
     )
 
     return model
+
+
+def fractional_flow_subnetwork_model():
+    """Create a small subnetwork that contains fractional flow nodes."""
+
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: FlowBoundary
+            (0.0, 1.0),  # 2: Basin
+            (0.0, 2.0),  # 3: TabulatedRatingCurve
+            (-1.0, 3.0),  # 4: FractionalFlow
+            (-2.0, 4.0),  # 5: Basin
+            (-3.0, 5.0),  # 6: User
+            (1.0, 3.0),  # 7: FractionalFlow
+            (2.0, 4.0),  # 8: Basin
+            (3.0, 5.0),  # 9: User
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = [
+        "FlowBoundary",
+        "Basin",
+        "TabulatedRatingCurve",
+        "FractionalFlow",
+        "Basin",
+        "User",
+        "FractionalFlow",
+        "Basin",
+        "User",
+    ]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        df=gpd.GeoDataFrame(
+            data={"type": node_type, "allocation_network_id": 1},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array(
+        [1, 2, 3, 4, 5, 6, 3, 7, 8, 9],
+        dtype=np.int64,
+    )
+    to_id = np.array(
+        [2, 3, 4, 5, 6, 5, 7, 8, 9, 8],
+        dtype=np.int64,
+    )
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
+    lines = node.geometry_from_connectivity(from_id, to_id)
+    edge = ribasim.Edge(
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [2, 2, 5, 5, 8, 8],
+            "area": 1000.0,
+            "level": 3 * [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": [2, 5, 8],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": [2, 5, 8], "level": 1.0})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    # Setup the flow boundary:
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1],
+                "flow_rate": 2.0e-3,
+            }
+        )
+    )
+
+    # Setup the tabulated rating curve:
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": [3, 3],
+                "level": [0.0, 1.0],
+                "discharge": [0.0, 1e-4],
+            }
+        )
+    )
+
+    # Setup the users:
+    user = ribasim.User(
+        static=pd.DataFrame(
+            data={
+                "node_id": [6],
+                "demand": 1.0e-3,
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": 1,
+            }
+        ),
+        time=pd.DataFrame(
+            data={
+                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                "node_id": 9,
+                "demand": [1.0e-3, 2.0e-3],
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": 1,
+            }
+        ),
+    )
+
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
+    # Setup fractional flows:
+    fractional_flow = ribasim.FractionalFlow(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4, 7],
+                "fraction": [0.5, 0.5],
+            }
+        )
+    )
+
+    model = ribasim.Model(
+        network=ribasim.Network(
+            node=node,
+            edge=edge,
+        ),
+        basin=basin,
+        flow_boundary=flow_boundary,
+        tabulated_rating_curve=rating_curve,
+        user=user,
+        allocation=allocation,
+        fractional_flow=fractional_flow,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model

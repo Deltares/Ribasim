@@ -829,6 +829,11 @@ function Parameters(db::DB, config::Config)::Parameters
         Dict{Int, Symbol}(),
         subgrid_level,
     )
+
+    if !valid_n_neighbors(p)
+        error("Invalid number of connections for certain node types.")
+    end
+
     # Allocation data structures
     if config.allocation.use_allocation
         generate_allocation_models!(p, config)

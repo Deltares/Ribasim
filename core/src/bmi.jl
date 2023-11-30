@@ -32,10 +32,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     try
         parameters = Parameters(db, config)
 
-        if !valid_n_neighbors(parameters)
-            error("Invalid number of connections for certain node types.")
-        end
-
         if !valid_discrete_control(parameters, config)
             error("Invalid discrete control state definition(s).")
         end
