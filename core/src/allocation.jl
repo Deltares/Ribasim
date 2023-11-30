@@ -585,20 +585,27 @@ function add_constraints_fractional_flow!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph) = p
+    (; graph, fractional_flow) = p
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
-    fraction = 1.0
 
-    edges_to_fractional_flow =
-        [edge_id for edge_id in edge_ids if graph[edge_id[2]].type == :fractional_flow]
+    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
+    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
+    for edge_id in edge_ids
+        node_id_fractional_flow = edge_id[2]
+        if graph[node_id_fractional_flow] == :fractional_flow
+            push!(edges_to_fractional_flow, edge_id)
+            node_idx = findsorted(fractional_flow.node_id, node_id_fractional_flow)
+            fractions[edge_id] = fractional_flow.fraction[node_idx]
+        end
+    end
 
     if !isempty(edges_to_fractional_flow)
         problem[:fractional_flow] = JuMP.@constraint(
             problem,
             [edge = edges_to_fractional_flow],
             sum(F[(inflow_id, edge[1])] for inflow_id in inflow_ids(graph, edge[1])) <=
-            fraction * F[edge],
+            fractions[edge] * F[edge],
             base_name = "fractional_flow"
         )
     end
