@@ -404,26 +404,23 @@ class Model(FileModel):
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
-        if self.pid_control.static.df is not None:
-            static = self.pid_control.static.df
-            time = self.pid_control.time.df
-            node_static = self.network.node.static.df
+        for table in [self.pid_control.static.df, self.pid_control.time.df]:
+            if table is None:
+                continue
 
-            for table in [static, time]:
-                if table is None:
-                    continue
+            node = self.network.node.df
 
-                for node_id in table.node_id.unique():
-                    for listen_node_id in table.loc[
-                        table.node_id == node_id, "listen_node_id"
-                    ].unique():
-                        point_start = node_static.iloc[listen_node_id - 1].geometry
-                        x_start.append(point_start.x)
-                        y_start.append(point_start.y)
+            for node_id in table.node_id.unique():
+                for listen_node_id in table.loc[
+                    table.node_id == node_id, "listen_node_id"
+                ].unique():
+                    point_start = node.iloc[listen_node_id - 1].geometry
+                    x_start.append(point_start.x)
+                    y_start.append(point_start.y)
 
-                        point_end = node_static.iloc[node_id - 1].geometry
-                        x_end.append(point_end.x)
-                        y_end.append(point_end.y)
+                    point_end = node.iloc[node_id - 1].geometry
+                    x_end.append(point_end.x)
+                    y_end.append(point_end.y)
 
         if len(x_start) == 0:
             return
