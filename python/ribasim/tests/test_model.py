@@ -131,3 +131,7 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
     Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
+
+
+def test_plot(discrete_control_of_pid_control):
+    discrete_control_of_pid_control.plot()

@@ -27,3 +27,8 @@ def tabulated_rating_curve() -> ribasim.Model:
 @pytest.fixture()
 def backwater() -> ribasim.Model:
     return ribasim_testmodels.backwater_model()
+
+
+@pytest.fixture()
+def discrete_control_of_pid_control() -> ribasim.Model:
+    return ribasim_testmodels.discrete_control_of_pid_control_model()
