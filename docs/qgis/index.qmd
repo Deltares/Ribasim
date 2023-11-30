@@ -120,14 +120,6 @@ Now leave the edit mode and save the results to the layer.
 
 ## Run a model
 
-- Open a text editor and create an empty file next to your database, with the `.toml`
-  extension.
-- Add the following content to the TOML file:
-```{.TOML filename="ribasim.toml"}
-starttime = 2020-01-01 00:00:00
-endtime = 2021-01-01 00:00:00
-database = "database.gpkg"
-```
 - Unzip the Ribasim command line interface, `ribasim_cli.zip`
 - Open your terminal and go to the directory where your TOML is stored. Now run
   `path/to/ribasim_cli/ribasim ribasim.toml`. Adjust the path to the `ribasim_cli` folder to
@@ -137,38 +129,31 @@ database = "database.gpkg"
 
 ## Inspect results {#sec-results}
 
-### Associate results to iMOD time series window
-
-In QGIS select the model group.
-
-![](https://user-images.githubusercontent.com/4471859/224939378-a026aec7-419d-4e6e-8b20-df80aa415659.png){fig-align="left"}
-
-In the Ribasim plugin widget, select the Results tab and click "Associate Results".
-
-![](https://user-images.githubusercontent.com/4471859/224939389-17add58d-6701-49c5-a23a-ce367572d9cd.png){fig-align="left"}
-
-Select `results/basin.arrow`.
-
-![](https://user-images.githubusercontent.com/4471859/224939408-5c291840-90a4-4efa-a2f0-4fb5986b8779.png){fig-align="left"}
-
-This adds metadata to the model that the iMOD plugin can use to find the timeseries data
-that is associated to the model nodes.
-
-### Plot time series
+Before trying to inspect the results, verify that the run was successful and the output files are there.
 
 Click the "Time Series" button of the iMOD plugin.
 
 ![](https://user-images.githubusercontent.com/4471859/224939424-ec4c77ff-3d6b-4635-b407-ef18376587e9.png){fig-align="left"}
+
+Select the layer that you wish to plot.
+From the "Node" layer you can plot level or storage on Basin nodes.
+From the "Edge" layer you can plot flow over flow edges.
+Note that before switching between these, you typically have to click "Clear" to clear the selection.
+If you run a simulation with the model open in QGIS, you have to close and re-open the "iMOD Time Series Plot" panel for the new results to be loaded.
 
 Select the variables that you want to plot.
 
 ![](https://user-images.githubusercontent.com/4471859/224939436-a9643b68-dff0-49c3-899d-6ba13d9a6d52.png){fig-align="left"}
 
 Click "Select points" and select a node by dragging a rectangle around it on the map.
-Hold the Ctrl key to select multiple nodes. Currently only the Basin nodes can be plotted.
+Hold the Ctrl key to select multiple nodes.
 
 ![](https://user-images.githubusercontent.com/4471859/224939450-e369791d-3229-4621-87b0-7e1d34d0514d.png){fig-align="left"}
 
 The associated time series are shown the the graph.
 
 ![](https://user-images.githubusercontent.com/4471859/224939471-85a23936-6eb6-4a80-a5b7-8c9a55ddc7f7.png){fig-align="left"}
+
+Only the "basin.arrow" and "flow.arrow" can be inspected with the "iMOD Time Series Plot" panel.
+All Arrow files can be loaded as a layer by dragging the files onto QGIS.
+Right click the layer and select "Open Attribute Table" to view the contents.
