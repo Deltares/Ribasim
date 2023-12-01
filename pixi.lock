@@ -1,4 +1,3 @@
-version: 3
 metadata:
   content_hash:
     linux-64: e90c2ee71ad70fc0a1c8302029533a7d1498f2bffcd0eaa8d2934700e775dc1d
@@ -26429,6 +26428,70 @@ package:
   size: 144301
   timestamp: 1537755684331
 - platform: linux-64
+  name: ptvsd
+  version: 4.3.2
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  url: https://conda.anaconda.org/conda-forge/linux-64/ptvsd-4.3.2-py311hd4cff14_5.tar.bz2
+  hash:
+    md5: de6cfe6b1e9b99d66e3499da3f985e89
+    sha256: a1d77adcb56354386a1d2c0a9ab334f3bce53e8806b30ccf087a2ab13da6995a
+  build: py311hd4cff14_5
+  arch: x86_64
+  subdir: linux-64
+  build_number: 5
+  license: MIT
+  license_family: MIT
+  size: 5188803
+  timestamp: 1667488033769
+- platform: osx-64
+  name: ptvsd
+  version: 4.3.2
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  url: https://conda.anaconda.org/conda-forge/osx-64/ptvsd-4.3.2-py311h5547dcb_5.tar.bz2
+  hash:
+    md5: 902a012ddc1793f76d9b73cddaf69be5
+    sha256: 6b43d0d9463a07af898f0aa0df8cddb8a71d2dd2677459c3aca87294dfd3dddd
+  build: py311h5547dcb_5
+  arch: x86_64
+  subdir: osx-64
+  build_number: 5
+  license: MIT
+  license_family: MIT
+  size: 5181703
+  timestamp: 1667488317855
+- platform: win-64
+  name: ptvsd
+  version: 4.3.2
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vs2015_runtime >=14.29.30139
+  url: https://conda.anaconda.org/conda-forge/win-64/ptvsd-4.3.2-py311ha68e1ae_5.tar.bz2
+  hash:
+    md5: 8a6724a2063ef17923fe4972fb693b9a
+    sha256: 10a2418894edc0e75f04886522dc5d0d64484150200000ae392c9b7fbd55e4a8
+  build: py311ha68e1ae_5
+  arch: x86_64
+  subdir: win-64
+  build_number: 5
+  license: MIT
+  license_family: MIT
+  size: 5156913
+  timestamp: 1667488366633
+- platform: linux-64
   name: ptyprocess
   version: 0.7.0
   category: main
@@ -37693,3 +37756,4 @@ package:
   license_family: BSD
   size: 343428
   timestamp: 1693151615801
+version: 1
