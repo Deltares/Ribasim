@@ -99,7 +99,10 @@ def test_node_ids_misassigned(basic):
     model.pump.static.df.loc[0, "node_id"] = 8
     model.fractional_flow.static.df.loc[1, "node_id"] = 7
 
-    with pytest.raises(ValueError, match="The node IDs in the field static.+"):
+    with pytest.raises(
+        ValueError,
+        match="For FractionalFlow, the node IDs in the data tables don't match the node IDs in the network.+",
+    ):
         model.validate_model_node_ids()
 
 
