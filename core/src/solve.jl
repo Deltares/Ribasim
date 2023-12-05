@@ -641,21 +641,15 @@ function continuous_control!(
 
         if controls_pump
             controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
-
-            listened_basin_storage = u.storage[listened_node_idx]
-            factor_basin = reduction_factor(listened_basin_storage, 10.0)
+            factor_basin =
+                low_storage_factor(storage, basin.node_id, listened_node_id, 10.0)
         else
             controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
 
             # Upstream node of outlet does not have to be a basin
             upstream_node_id = inflow_id(graph, controlled_node_id)
-            has_index, upstream_basin_idx = id_index(basin.node_id, upstream_node_id)
-            if has_index
-                upstream_basin_storage = u.storage[upstream_basin_idx]
-                factor_basin = reduction_factor(upstream_basin_storage, 10.0)
-            else
-                factor_basin = 1.0
-            end
+            factor_basin =
+                low_storage_factor(storage, basin.node_id, upstream_node_id, 10.0)
         end
 
         factor = factor_basin * factor_outlet
@@ -776,8 +770,7 @@ function formulate_flow!(
         end
 
         # Smoothly let abstraction go to 0 as the source basin dries out
-        _, basin_idx = id_index(basin.node_id, src_id)
-        factor_basin = reduction_factor(storage[basin_idx], 10.0)
+        factor_basin = low_storage_factor(storage, basin.node_id, src_id, 10.0)
         q *= factor_basin
 
         # Smoothly let abstraction go to 0 as the source basin
@@ -817,6 +810,14 @@ function formulate_flow!(
                     get_level(p, basin_a_id, t; storage) -
                     get_level(p, basin_b_id, t; storage)
                 ) / resistance[i]
+
+            # add reduction_factor on highest level
+            if q > 0
+                q *= low_storage_factor(storage, p.basin.node_id, basin_a_id, 10.0)
+            else
+                q *= low_storage_factor(storage, p.basin.node_id, basin_b_id, 10.0)
+            end
+
             set_flow!(graph, basin_a_id, id, q)
             set_flow!(graph, id, basin_b_id, q)
         end
@@ -840,9 +841,7 @@ function formulate_flow!(
         downstream_ids = outflow_ids(graph, id)
 
         if active[i]
-            hasindex, basin_idx = id_index(basin.node_id, upstream_basin_id)
-            @assert hasindex "TabulatedRatingCurve must be downstream of a Basin"
-            factor = reduction_factor(storage[basin_idx], 10.0)
+            factor = low_storage_factor(storage, basin.node_id, upstream_basin_id, 10.0)
             q = factor * tables[i](get_level(p, upstream_basin_id, t; storage))
         else
             q = 0.0
@@ -1053,14 +1052,8 @@ function formulate_flow!(
             continue
         end
 
-        hasindex, basin_idx = id_index(basin.node_id, src_id)
-
-        q = rate
-
-        if hasindex
-            # Pumping from basin
-            q *= reduction_factor(storage[basin_idx], 10.0)
-        end
+        factor = low_storage_factor(storage, basin.node_id, src_id, 10.0)
+        q = rate * factor
 
         set_flow!(graph, src_id, id, q)
         set_flow!(graph, id, dst_id, q)
@@ -1085,14 +1078,8 @@ function formulate_flow!(
             continue
         end
 
-        hasindex, basin_idx = id_index(basin.node_id, src_id)
-
         q = flow_rate[i]
-
-        if hasindex
-            # Flowing from basin
-            q *= reduction_factor(storage[basin_idx], 10.0)
-        end
+        q *= low_storage_factor(storage, basin.node_id, src_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
         src_level = get_level(p, src_id, t; storage)
