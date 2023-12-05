@@ -336,7 +336,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     bottom = first(level_discrete)
 
     if level < bottom
-        node_id = basin.node_id[state_idx]
+        node_id = basin.node_id.values[state_idx]
         @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
         return NaN
     end
