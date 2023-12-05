@@ -1,10 +1,13 @@
 import re
+from sqlite3 import connect
 
 import pandas as pd
 import pytest
 from pydantic import ValidationError
 from ribasim import Model, Solver
 from shapely import Point
+
+from python.ribasim.ribasim.input_base import esc_id
 
 
 def test_repr(basic):
@@ -135,3 +138,14 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
 
 def test_plot(discrete_control_of_pid_control):
     discrete_control_of_pid_control.plot()
+
+
+def test_write_adds_fid_in_tables(basic, tmp_path):
+    model_orig = basic
+    model_orig.write(tmp_path / "basic/ribasim.toml")
+    with connect(tmp_path / "basic/database.gpkg") as connection:
+        query = f"select * from {esc_id('Basin / profile')}"
+        df = pd.read_sql_query(query, connection, parse_dates=["time"])
+        assert "fid" in df.columns
+        fids = df.get("fid")
+        assert fids.equals(pd.Series(range(1, len(fids) + 1)))
