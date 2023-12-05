@@ -313,7 +313,7 @@ class Model(FileModel):
             nodetype = node.get_input_type()
             if nodetype == "Network":
                 # skip the reference
-                pass
+                continue
             node_ids_data = set(node.node_ids())
             node_ids_network = set(
                 self.network.node.df.loc[self.network.node.df["type"] == nodetype].index
