@@ -256,11 +256,10 @@ class TableModel(FileModel, Generic[TableT]):
                 dtype={"fid": "INTEGER PRIMARY KEY AUTOINCREMENT"},
             )
 
+            # Set geopackage attribute table
             with closing(connection.cursor()) as cursor:
-                # Set geopackage attribute table
                 sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
                 cursor.execute(sql, (table, "attributes", table))
-
             connection.commit()
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
