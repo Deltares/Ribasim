@@ -9,9 +9,7 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <parameters>
-      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
