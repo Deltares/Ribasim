@@ -5,9 +5,8 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 from ribasim import Model, Solver
+from ribasim.input_base import esc_id
 from shapely import Point
-
-from python.ribasim.ribasim.input_base import esc_id
 
 
 def test_repr(basic):
