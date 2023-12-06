@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
-from sqlite3 import Connection, Cursor, connect
+from sqlite3 import Connection, connect
 from typing import (
     Any,
     Generic,
@@ -241,33 +241,27 @@ class TableModel(FileModel, Generic[TableT]):
         """
         table = self.tablename()
         assert self.df is not None
+
+        # Add `fid` to all tables as primary key
+        # Enables editing values manually in QGIS
+        df = self.df.copy()
+        df["fid"] = range(1, len(df) + 1)
+
         with closing(connect(temp_path)) as connection:
-            self.df.to_sql(table, connection, index=False, if_exists="replace")
+            df.to_sql(
+                table,
+                connection,
+                index=False,
+                if_exists="replace",
+                dtype={"fid": "INTEGER PRIMARY KEY AUTOINCREMENT"},
+            )
 
             with closing(connection.cursor()) as cursor:
-                # QGIS requires an fid column for each table, otherwise it is not possible to edit data.
-                cursor.execute(f'PRAGMA table_info("{table}")')
-                table_info = cursor.fetchall()
-                has_primary_key = any(row[5] == 1 for row in table_info)
-                column_names = [result[1] for result in table_info]
-                if not has_primary_key:
-                    self.__add_fid_column(table, cursor, column_names)
-
                 # Set geopackage attribute table
                 sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
                 cursor.execute(sql, (table, "attributes", table))
 
             connection.commit()
-
-    @staticmethod
-    def __add_fid_column(table: str, cursor: Cursor, column_names: list[str]) -> None:
-        column_list = ", ".join(column_names)
-        sql = f'CREATE TABLE "{table}_temp" (fid INTEGER PRIMARY KEY AUTOINCREMENT, {column_list})'
-        cursor.execute(sql)
-        sql = f'INSERT INTO "{table}_temp" ({column_list}) SELECT {column_list} FROM "{table}"'
-        cursor.execute(sql)
-        cursor.execute(f'DROP TABLE "{table}"')
-        cursor.execute(f'ALTER TABLE "{table}_temp" RENAME TO "{table}"')
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to a an arrow file."""
