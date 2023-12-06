@@ -20,7 +20,8 @@ jobs:
           - "~1.10.0-0"
         os:
           - ubuntu-latest
-          - macOS-latest
+          # https://github.com/Deltares/Ribasim/issues/825
+          # - macOS-latest
           - windows-latest
         arch:
           - x64
