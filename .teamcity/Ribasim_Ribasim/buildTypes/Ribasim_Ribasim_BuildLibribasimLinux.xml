@@ -26,6 +26,7 @@ pixi run install-without-pre-commit]]></param>
 # black magic
 source /usr/share/Modules/init/bash
 
+module load pixi
 module load julia
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
