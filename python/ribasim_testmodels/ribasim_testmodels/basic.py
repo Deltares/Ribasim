@@ -261,7 +261,6 @@ def basic_transient_model() -> ribasim.Model:
         data={
             "node_id": basin_ids,
             "level": 1.4,
-            "concentration": 0.0,
         }
     )
 
