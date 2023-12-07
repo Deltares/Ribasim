@@ -20,14 +20,6 @@
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_2508" name="Cleanup artifacts" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="pixi run remove-artifacts" />
-          <param name="teamcity.build.workingDir" value="ribasim" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_2420" name="Build binary" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
