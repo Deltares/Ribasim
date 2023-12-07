@@ -64,6 +64,8 @@ build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_bi
     "generate-testmodels",
     "instantiate-julia",
 ] }
+remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
+
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
