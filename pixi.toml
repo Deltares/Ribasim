@@ -154,3 +154,6 @@ ptvsd = "*"
 [target.osx-64.dependencies]
 quarto = "*"
 ptvsd = "*"
+
+[system-requirements]
+linux = "3.10.0"
