@@ -27,6 +27,11 @@ def __assert_equal(a: DataFrame, b: DataFrame, ignore_metas: bool = True) -> Non
         a["time"] = a.time.astype("datetime64[ns]")
         b["time"] = b.time.astype("datetime64[ns]")
 
+    if "fid" in a:
+        a.drop(columns=["fid"], inplace=True)
+    if "fid" in b:
+        b.drop(columns=["fid"], inplace=True)
+
     return assert_frame_equal(a, b)
 
 
