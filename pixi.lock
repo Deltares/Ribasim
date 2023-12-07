@@ -1,3 +1,4 @@
+version: 3
 metadata:
   content_hash:
     linux-64: e90c2ee71ad70fc0a1c8302029533a7d1498f2bffcd0eaa8d2934700e775dc1d
@@ -11825,6 +11826,82 @@ package:
   noarch: python
   size: 7268
   timestamp: 1700160104380
+- platform: linux-64
+  name: juliaup
+  version: 1.12.5
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  url: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.12.5-he8a937b_0.conda
+  hash:
+    md5: c4870df046513a30e44d7dc2be63a139
+    sha256: b13d8275f7e9e33e3e1a67682ce2db855fcf7a0b7d8e8d34c51b2614aba7e95e
+  build: he8a937b_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 3921032
+  timestamp: 1700708476678
+- platform: osx-64
+  name: juliaup
+  version: 1.12.5
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-64/juliaup-1.12.5-h63b85fc_0.conda
+  hash:
+    md5: 1481b0db0973837e46fcc4f40481b6bb
+    sha256: 9822289f6dc61870a47c970779f086c1bb4120a1806bbeda09be839e27e28834
+  build: h63b85fc_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 2175398
+  timestamp: 1700708939422
+- platform: osx-arm64
+  name: juliaup
+  version: 1.12.5
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/juliaup-1.12.5-h5ef7bb8_0.conda
+  hash:
+    md5: 7f3b83e3160b3590cf42db7a77f5cea1
+    sha256: 22af850735662d8314813fd91046962a721b489c6276c1be1a87631431a468f7
+  build: h5ef7bb8_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 2132572
+  timestamp: 1700709172349
+- platform: win-64
+  name: juliaup
+  version: 1.12.5
+  category: main
+  manager: conda
+  dependencies:
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  url: https://conda.anaconda.org/conda-forge/win-64/juliaup-1.12.5-h975169c_0.conda
+  hash:
+    md5: 6cdac6a328bdcc0ca6888f698839f1c7
+    sha256: c07bc6cb6990170bd7b6636464ce5a556d0919ca0a8150ada7bb49f8faa142c5
+  build: h975169c_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 1389695
+  timestamp: 1700709334996
 - platform: linux-64
   name: jupyter-lsp
   version: 2.2.1
@@ -37756,4 +37833,3 @@ package:
   license_family: BSD
   size: 343428
   timestamp: 1693151615801
-version: 1
