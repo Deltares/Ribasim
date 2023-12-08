@@ -151,16 +151,22 @@ juliaup = "*"
 quarto = "*"
 ptvsd = "*"
 
+[target.win-64.activation]
+scripts = ["env_setup.bat"]
+
 [target.linux-64.dependencies]
 quarto = "*"
 ptvsd = "*"
+
+[target.linux-64.activation]
+scripts = ["env_setup.sh"]
 
 [target.osx-64.dependencies]
 quarto = "*"
 ptvsd = "*"
 
+[target.osx-64.activation]
+scripts = ["env_setup.sh"]
+
 [system-requirements]
 linux = "3.10.0"
-
-[target.win-64.activation]
-scripts = ["env_setup.bat"]
