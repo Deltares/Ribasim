@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from ribasim import Pump
 
 
-def __assert_equal(a: DataFrame, b: DataFrame, ignore_metas: bool = True) -> None:
+def __assert_equal(a: DataFrame, b: DataFrame) -> None:
     """Like pandas.testing.assert_frame_equal, but ignoring the index."""
     if a is None and b is None:
         return True
@@ -17,15 +17,15 @@ def __assert_equal(a: DataFrame, b: DataFrame, ignore_metas: bool = True) -> Non
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
 
-    # Remove all meta columns
-    if ignore_metas:
-        a.drop(columns=[c for c in a.columns if c.startswith("meta_")], inplace=True)
-        b.drop(columns=[c for c in b.columns if c.startswith("meta_")], inplace=True)
-
     # avoid comparing datetime64[ns] with datetime64[ms]
     if "time" in a:
         a["time"] = a.time.astype("datetime64[ns]")
         b["time"] = b.time.astype("datetime64[ns]")
+
+    if "fid" in a:
+        a.drop(columns=["fid"], inplace=True)
+    if "fid" in b:
+        b.drop(columns=["fid"], inplace=True)
 
     return assert_frame_equal(a, b)
 
