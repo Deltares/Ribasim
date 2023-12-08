@@ -336,7 +336,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     bottom = first(level_discrete)
 
     if level < bottom
-        node_id = basin.node_id[NodeID(state_idx)]
+        node_id = basin.node_id.values[state_idx]
         @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
         return NaN
     end
@@ -1174,6 +1174,21 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     elseif x < threshold
         x_scaled = x / threshold
         (-2 * x_scaled + 3) * x_scaled^2
+    else
+        one(T)
+    end
+end
+
+"If id is a Basin with storage below the threshold, return a reduction factor != 1"
+function low_storage_factor(
+    storage::AbstractVector{T},
+    basin_ids::Indices{NodeID},
+    id::NodeID,
+    threshold::Real,
+)::T where {T <: Real}
+    hasindex, basin_idx = id_index(basin_ids, id)
+    return if hasindex
+        reduction_factor(storage[basin_idx], threshold)
     else
         one(T)
     end
