@@ -72,8 +72,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         edge_metadata =
             EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
         graph[id_src, id_dst] = edge_metadata
-        flow_counter += 1
-        flow_dict[(id_src, id_dst)] = flow_counter
+        if edge_type == EdgeType.flow
+            flow_counter += 1
+            flow_dict[(id_src, id_dst)] = flow_counter
+        end
         if allocation_network_id != 0
             if !haskey(edges_source, allocation_network_id)
                 edges_source[allocation_network_id] = Set{EdgeMetadata}()
