@@ -516,7 +516,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition_value = fill(false, length(condition.node_id))
     control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
-    rows = execute(db, "select from_node_id, edge_type from Edge")
+    rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
     for (; from_node_id, edge_type) in rows
         if edge_type == "control"
             control_state[NodeID(from_node_id)] = ("undefined_state", 0.0)
