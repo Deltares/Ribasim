@@ -19,8 +19,6 @@
 # black magic
 source /usr/share/Modules/init/bash
 
-echo ${XDG_CACHE_HOME}
-mkdir -p ${XDG_CACHE_HOME}
 module load pixi
 pixi --version
 pixi run install-without-pre-commit]]></param>
