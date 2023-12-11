@@ -19,10 +19,10 @@
 # black magic
 source /usr/share/Modules/init/bash
 
-module load pixi
-pixi --version
 echo ${XDG_CACHE_HOME}
 mkdir -p ${XDG_CACHE_HOME}
+module load pixi
+pixi --version
 pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
