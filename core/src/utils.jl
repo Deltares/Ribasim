@@ -1,6 +1,9 @@
 "Check that only supported edge types are declared."
 function valid_edge_types(db::DB)::Bool
-    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    edge_rows = execute(
+        db,
+        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+    )
     errors = false
 
     for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
@@ -20,10 +23,11 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows = execute(db, "select fid, type, allocation_network_id from Node")
+    node_rows =
+        execute(db, "SELECT fid, type, allocation_network_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
-        "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
+        "SELECT fid, from_node_id, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
     )
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
