@@ -21,6 +21,7 @@ source /usr/share/Modules/init/bash
 
 module load pixi
 pixi --version
+mkdir -p ${XDG_CACHE_HOME}
 pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
