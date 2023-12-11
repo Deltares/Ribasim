@@ -267,8 +267,6 @@ class Model(FileModel):
     def validate_model_node_field_ids(self):
         """Check whether the node IDs of the node_type fields are valid."""
 
-        n_nodes = self.network.n_nodes()
-
         # Check node IDs of node fields
         all_node_ids = set[int]()
         for node in self.nodes().values():
@@ -276,33 +274,19 @@ class Model(FileModel):
 
         unique, counts = np.unique(list(all_node_ids), return_counts=True)
 
-        node_ids_positive_integers = np.greater(unique, 0) & np.equal(
+        node_ids_non_negative_integers = np.greater(unique, -1) & np.equal(
             unique.astype(int), unique
         )
 
-        if not node_ids_positive_integers.all():
+        if not node_ids_non_negative_integers.all():
             raise ValueError(
-                f"Node IDs must be positive integers, got {unique[~node_ids_positive_integers]}."
+                f"Node IDs must be non-negative integers, got {unique[~node_ids_non_negative_integers]}."
             )
 
         if (counts > 1).any():
             raise ValueError(
                 f"These node IDs were assigned to multiple node types: {unique[(counts > 1)]}."
             )
-
-        if not np.array_equal(unique, np.arange(n_nodes) + 1):
-            node_ids_missing = set(np.arange(n_nodes) + 1) - set(unique)
-            node_ids_over = set(unique) - set(np.arange(n_nodes) + 1)
-            msg = [
-                f"Expected node IDs from 1 to {n_nodes} (the number of rows in self.network.node.df)."
-            ]
-            if len(node_ids_missing) > 0:
-                msg.append(f"These node IDs are missing: {node_ids_missing}.")
-
-            if len(node_ids_over) > 0:
-                msg.append(f"These node IDs are unexpected: {node_ids_over}.")
-
-            raise ValueError(" ".join(msg))
 
     def validate_model_node_ids(self):
         """Check whether the node IDs in the data tables correspond to the node IDs in the network."""

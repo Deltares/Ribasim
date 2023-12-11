@@ -112,7 +112,6 @@ def test_node_ids_unsequential(basic):
     model = basic
 
     basin = model.basin
-
     basin.profile = pd.DataFrame(
         data={
             "node_id": [1, 1, 3, 3, 6, 6, 1000, 1000],
@@ -120,16 +119,9 @@ def test_node_ids_unsequential(basic):
             "level": [0.0, 1.0] * 4,
         }
     )
-
     basin.static.df["node_id"] = [1, 3, 6, 1000]
 
-    with pytest.raises(ValueError) as excinfo:
-        model.validate_model_node_field_ids()
-
-    assert (
-        "Expected node IDs from 1 to 17 (the number of rows in self.network.node.df). These node IDs are missing: {9}. These node IDs are unexpected: {1000}."
-        in str(excinfo.value)
-    )
+    model.validate_model_node_field_ids()
 
 
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
