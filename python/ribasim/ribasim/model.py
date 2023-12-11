@@ -273,14 +273,13 @@ class Model(FileModel):
             all_node_ids.update(node.node_ids())
 
         unique, counts = np.unique(list(all_node_ids), return_counts=True)
-
-        node_ids_non_negative_integers = np.greater(unique, -1) & np.equal(
-            unique.astype(int), unique
+        node_ids_negative_integers = np.less(unique, 0) | np.not_equal(
+            unique.astype(np.int64), unique
         )
 
-        if not node_ids_non_negative_integers.all():
+        if node_ids_negative_integers.any():
             raise ValueError(
-                f"Node IDs must be non-negative integers, got {unique[~node_ids_non_negative_integers]}."
+                f"Node IDs must be non-negative integers, got {unique[node_ids_negative_integers]}."
             )
 
         if (counts > 1).any():

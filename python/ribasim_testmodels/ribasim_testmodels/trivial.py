@@ -7,12 +7,13 @@ import ribasim
 def trivial_model() -> ribasim.Model:
     """Trivial model with just a basin, tabulated rating curve and terminal node"""
 
-    # Set up the nodes:
+    # largest signed 64 bit integer, to check encoding
+    terminal_id = 9223372036854775807
     xy = np.array(
         [
             (400.0, 200.0),  # 6: Basin
-            (450.0, 200.0),  # 4: TabulatedRatingCurve
-            (500.0, 200.0),  # 8: Terminal
+            (450.0, 200.0),  # 0: TabulatedRatingCurve
+            (500.0, 200.0),  # <terminal_id>: Terminal
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -21,19 +22,18 @@ def trivial_model() -> ribasim.Model:
         "TabulatedRatingCurve",
         "Terminal",
     ]
-    # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type},
-            index=pd.Index([6, 4, 8], name="fid"),
+            index=pd.Index([6, 0, terminal_id], name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
     )
 
     # Setup the edges:
-    from_id = np.array([6, 4], dtype=np.int64)
-    to_id = np.array([4, 8], dtype=np.int64)
+    from_id = np.array([6, 0], dtype=np.int64)
+    to_id = np.array([0, terminal_id], dtype=np.int64)
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
@@ -76,13 +76,13 @@ def trivial_model() -> ribasim.Model:
 
     # Create a subgrid level interpolation from one basin to three elements. Scale one to one, but:
     #
-    # 1. start at -1.0
-    # 2. start at 0.0
-    # 3. start at 1.0
+    # 22. start at -1.0
+    # 11. start at 0.0
+    # 33. start at 1.0
     #
     subgrid = pd.DataFrame(
         data={
-            "subgrid_id": [11, 11, 22, 22, 33, 33],
+            "subgrid_id": [22, 22, 11, 11, 33, 33],
             "node_id": [6, 6, 6, 6, 6, 6],
             "basin_level": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
             "subgrid_level": [-1.0, 0.0, 0.0, 1.0, 1.0, 2.0],
@@ -97,7 +97,7 @@ def trivial_model() -> ribasim.Model:
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
-                "node_id": [4, 4],
+                "node_id": [0, 0],
                 "level": [0.0, 1.0],
                 "discharge": [0.0, q1000],
             }
@@ -107,7 +107,7 @@ def trivial_model() -> ribasim.Model:
     terminal = ribasim.Terminal(
         static=pd.DataFrame(
             data={
-                "node_id": [8],
+                "node_id": [terminal_id],
             }
         )
     )

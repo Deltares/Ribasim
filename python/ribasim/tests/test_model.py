@@ -71,7 +71,7 @@ def test_invalid_node_id(basic):
 
     with pytest.raises(
         ValueError,
-        match=re.escape("Node IDs must be positive integers, got [-1]."),
+        match=re.escape("Node IDs must be non-negative integers, got [-1]."),
     ):
         model.validate_model_node_field_ids()
 
