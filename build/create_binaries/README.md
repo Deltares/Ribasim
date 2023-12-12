@@ -18,4 +18,4 @@ Build both with:
 pixi run build
 ```
 
-> :warning: If the build is failing, because it cannot find certain .hpp files, chances are high that you need to enable long paths in Windows.
+> :warning: If the build is failing, because it cannot find certain files, chances are high that you need to enable long paths in Windows.
