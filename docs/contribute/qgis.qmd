@@ -14,7 +14,7 @@ On Windows you need to have Developer mode enabled.
 Otherwise you will not have enough access rights to create symlinks.
 For more info, see this [Windows blog](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/).
 
-We wanted to implement this via `pip install -e`, but QGIS doesn't find the `metadata.txt` and therefore cannot load the plugin on startup.
+We wanted to implement this via `pip install --editable`, but QGIS doesn't find the `metadata.txt` and therefore cannot load the plugin on startup.
 :::
 
 # Running QGIS
