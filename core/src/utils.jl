@@ -104,6 +104,11 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         flow_vertical,
     )
     graph = @set graph.graph_data = graph_data
+
+    if !valid_edges(graph)
+        error("The network topology is not valid.")
+    end
+
     return graph
 end
 
