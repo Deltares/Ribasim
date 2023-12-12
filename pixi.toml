@@ -14,7 +14,7 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Installation
-install-julia = "juliaup add 1.10.0-rc2 && juliaup default 1.10.0-rc2"
+install-julia = "echo JULIAUP PATH $JULIAUP_DEPOT_PATH && juliaup add 1.10.0-rc2 && juliaup default 1.10.0-rc2 && juliaup status"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
