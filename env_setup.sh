@@ -1,2 +1,3 @@
 #!/bin/bash
-export JULIAUP_DEPOT_PATH=$(dirname "$0")
+JULIAUP_DEPOT_PATH=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+export JULIAUP_DEPOT_PATH
