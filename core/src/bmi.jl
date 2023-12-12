@@ -32,6 +32,10 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     try
         parameters = Parameters(db, config)
 
+        if !valid_edges(parameters.graph)
+            error("Invalid edge(s) found.")
+        end
+
         if !valid_n_neighbors(parameters)
             error("Invalid number of connections for certain node types.")
         end
