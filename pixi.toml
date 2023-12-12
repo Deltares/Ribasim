@@ -27,7 +27,7 @@ install-without-pre-commit = { depends_on = [
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
+instantiate-julia = "julia --project=core"
 # Docs
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia",
