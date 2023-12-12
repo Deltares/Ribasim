@@ -27,11 +27,9 @@ install-without-pre-commit = { depends_on = [
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-instantiate-julia = "juliaup status"
+instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 # Docs
-build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
-    "instantiate-julia",
-] }
+build-julia-docs = { cmd = "julia --project=docs docs/make.jl" }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
     "quartodoc-build",
@@ -73,19 +71,15 @@ test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
-    "instantiate-julia",
     "generate-testmodels",
 ] }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
-    "instantiate-julia",
     "generate-testmodels",
 ] }
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl", depends_on = [
-    "instantiate-julia",
-] }
+generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl" }
 generate-python = "datamodel-codegen --output-model-type pydantic_v2.BaseModel --base-class ribasim.input_base.BaseModel --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 # Publish
