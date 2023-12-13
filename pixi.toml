@@ -29,7 +29,9 @@ install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
 instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 # Docs
-build-julia-docs = { cmd = "julia --project=docs docs/make.jl" }
+build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
+    "instantiate-julia",
+] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
     "quartodoc-build",
@@ -101,7 +103,9 @@ install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && 
 install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
 start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
-test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
+test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = [
+    "start-docker-qgis",
+] }
 install-qgis-plugins = { depends_on = [
     "install-plugin-reloader-qgis",
     "install-debugvs-qgis",
