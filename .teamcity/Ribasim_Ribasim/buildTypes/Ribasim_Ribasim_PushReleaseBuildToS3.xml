@@ -3,9 +3,6 @@
   <name>Push release build to S3</name>
   <description />
   <settings>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_537" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_537" name="Push release to S3" type="simpleRunner">
