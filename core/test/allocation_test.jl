@@ -19,7 +19,7 @@
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     allocated = p.user.allocated
-    @test allocated[1] ≈ [0.0, 0.0]
+    @test allocated[1] ≈ [0.0, 0.5]
     @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
 end
@@ -75,7 +75,14 @@ end
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
     F_abs = problem[:F_abs]
-    @test objective == F_abs[NodeID(5)] + F_abs[NodeID(6)]
+    @test string(objective) == string(
+        0.125 * F[(NodeID(4), NodeID(6))] +
+        0.125 * F[(NodeID(1), NodeID(2))] +
+        0.125 * F[(NodeID(4), NodeID(5))] +
+        0.125 * F[(NodeID(2), NodeID(4))] +
+        F_abs[NodeID(5)] +
+        F_abs[NodeID(6)],
+    )
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
@@ -85,5 +92,12 @@ end
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
     F_abs = problem[:F_abs]
-    @test objective == F_abs[NodeID(5)] + F_abs[NodeID(6)]
+    @test string(objective) == string(
+        62.585499316005475 * F[(NodeID(4), NodeID(6))] +
+        62.585499316005475 * F[(NodeID(1), NodeID(2))] +
+        62.585499316005475 * F[(NodeID(4), NodeID(5))] +
+        62.585499316005475 * F[(NodeID(2), NodeID(4))] +
+        F_abs[NodeID(5)] +
+        F_abs[NodeID(6)],
+    )
 end
