@@ -1,6 +1,9 @@
 "Check that only supported edge types are declared."
 function valid_edge_types(db::DB)::Bool
-    edge_rows = execute(db, "select fid, from_node_id, to_node_id, edge_type from Edge")
+    edge_rows = execute(
+        db,
+        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+    )
     errors = false
 
     for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
@@ -19,11 +22,12 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
-    node_rows = execute(db, "select fid, type, allocation_network_id from Node")
+function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
+    node_rows =
+        execute(db, "SELECT fid, type, allocation_network_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
-        "select fid, from_node_id, to_node_id, edge_type, allocation_network_id from Edge",
+        "SELECT fid, from_node_id, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
     )
     node_ids = Dict{Int, Set{NodeID}}()
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
@@ -72,8 +76,10 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
         edge_metadata =
             EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
         graph[id_src, id_dst] = edge_metadata
-        flow_counter += 1
-        flow_dict[(id_src, id_dst)] = flow_counter
+        if edge_type == EdgeType.flow
+            flow_counter += 1
+            flow_dict[(id_src, id_dst)] = flow_counter
+        end
         if allocation_network_id != 0
             if !haskey(edges_source, allocation_network_id)
                 edges_source[allocation_network_id] = Set{EdgeMetadata}()
@@ -85,8 +91,8 @@ function create_graph(db::DB, config::Config, chunk_size::Int)::MetaGraph
     flow = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
     if config.solver.autodiff
-        flow = DiffCache(flow, chunk_size)
-        flow_vertical = DiffCache(flow_vertical, chunk_size)
+        flow = DiffCache(flow, chunk_sizes)
+        flow_vertical = DiffCache(flow_vertical, chunk_sizes)
     end
     graph_data = (;
         node_ids,
@@ -336,7 +342,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     bottom = first(level_discrete)
 
     if level < bottom
-        node_id = basin.node_id[NodeID(state_idx)]
+        node_id = basin.node_id.values[state_idx]
         @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
         return NaN
     end
@@ -669,7 +675,7 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 function get_level(
     p::Parameters,
     node_id::NodeID,
-    t::Float64;
+    t::Number;
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
@@ -1174,6 +1180,21 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     elseif x < threshold
         x_scaled = x / threshold
         (-2 * x_scaled + 3) * x_scaled^2
+    else
+        one(T)
+    end
+end
+
+"If id is a Basin with storage below the threshold, return a reduction factor != 1"
+function low_storage_factor(
+    storage::AbstractVector{T},
+    basin_ids::Indices{NodeID},
+    id::NodeID,
+    threshold::Real,
+)::T where {T <: Real}
+    hasindex, basin_idx = id_index(basin_ids, id)
+    return if hasindex
+        reduction_factor(storage[basin_idx], threshold)
     else
         one(T)
     end

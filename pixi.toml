@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.4.0"
+version = "0.4.1"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -64,6 +64,8 @@ build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_bi
     "generate-testmodels",
     "instantiate-julia",
 ] }
+remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
+
 # Test
 test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
@@ -96,11 +98,13 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 # QGIS
 install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
 install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
-install-plugin-reloader = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
+install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
+install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
 start-docker-qgis = { cmd = "sh ./start.sh", cwd = ".docker" }
 test-ribasim-qgis = { cmd = "sh ./test.sh; sh ./stop.sh", cwd = ".docker", depends_on = ["start-docker-qgis"] }
 install-qgis-plugins = { depends_on = [
-    "install-plugin-reloader",
+    "install-plugin-reloader-qgis",
+    "install-debugvs-qgis",
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
@@ -143,9 +147,12 @@ libgdal-arrow-parquet = "3.7.2.*"
 
 [target.win-64.dependencies]
 quarto = "*"
+ptvsd = "*"
 
 [target.linux-64.dependencies]
 quarto = "*"
+ptvsd = "*"
 
 [target.osx-64.dependencies]
 quarto = "*"
+ptvsd = "*"

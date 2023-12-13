@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="f6699718-828b-4898-bfab-36de06ae4070" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Build libribasim - Windows</name>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="a7c17a38-6995-4b58-80f4-d91581b9b802" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Build libribasim - Linux</name>
   <description />
   <settings>
     <options>
@@ -9,16 +9,17 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RQ_271" />
-    </disabled-settings>
-    <parameters>
-      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install-without-pre-commit" />
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi --version
+pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -26,7 +27,12 @@
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+module load julia
 pixi run remove-artifacts
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
@@ -41,8 +47,7 @@ pixi run build-libribasim]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_275" name="env.OS" value="Windows_NT" />
-      <does-not-equal id="RQ_271" name="env.IsWindows11" value="True" />
+      <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">

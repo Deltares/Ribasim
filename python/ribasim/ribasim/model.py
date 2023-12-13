@@ -305,19 +305,28 @@ class Model(FileModel):
             raise ValueError(" ".join(msg))
 
     def validate_model_node_ids(self):
-        """Check whether the node IDs in the node field correspond to the node IDs on the node type fields."""
+        """Check whether the node IDs in the data tables correspond to the node IDs in the network."""
 
         error_messages = []
 
         for node in self.nodes().values():
-            node_ids_field = node.node_ids()
-            node_ids_from_node_field = self.network.node.df.loc[
-                self.network.node.df["type"] == node.get_input_type()
-            ].index
+            nodetype = node.get_input_type()
+            if nodetype == "Network":
+                # skip the reference
+                continue
+            node_ids_data = set(node.node_ids())
+            node_ids_network = set(
+                self.network.node.df.loc[self.network.node.df["type"] == nodetype].index
+            )
 
-            if not set(node_ids_from_node_field) == set(node_ids_field):
+            if not node_ids_network == node_ids_data:
+                extra_in_network = node_ids_network.difference(node_ids_data)
+                extra_in_data = node_ids_data.difference(node_ids_network)
                 error_messages.append(
-                    f"The node IDs in the field {node} {node_ids_field} do not correspond with the node IDs in the field node {node_ids_from_node_field.tolist()}."
+                    f"""For {nodetype}, the node IDs in the data tables don't match the node IDs in the network.
+    Node IDs only in the data tables: {extra_in_data}.
+    Node IDs only in the network: {extra_in_network}.
+                    """
                 )
 
         if len(error_messages) > 0:
@@ -404,26 +413,23 @@ class Model(FileModel):
                     x_end.append(point_end.x)
                     y_end.append(point_end.y)
 
-        if self.pid_control.static.df is not None:
-            static = self.pid_control.static.df
-            time = self.pid_control.time.df
-            node_static = self.network.node.static.df
+        for table in [self.pid_control.static.df, self.pid_control.time.df]:
+            if table is None:
+                continue
 
-            for table in [static, time]:
-                if table is None:
-                    continue
+            node = self.network.node.df
 
-                for node_id in table.node_id.unique():
-                    for listen_node_id in table.loc[
-                        table.node_id == node_id, "listen_node_id"
-                    ].unique():
-                        point_start = node_static.iloc[listen_node_id - 1].geometry
-                        x_start.append(point_start.x)
-                        y_start.append(point_start.y)
+            for node_id in table.node_id.unique():
+                for listen_node_id in table.loc[
+                    table.node_id == node_id, "listen_node_id"
+                ].unique():
+                    point_start = node.iloc[listen_node_id - 1].geometry
+                    x_start.append(point_start.x)
+                    y_start.append(point_start.y)
 
-                        point_end = node_static.iloc[node_id - 1].geometry
-                        x_end.append(point_end.x)
-                        y_end.append(point_end.y)
+                    point_end = node.iloc[node_id - 1].geometry
+                    x_end.append(point_end.x)
+                    y_end.append(point_end.y)
 
         if len(x_start) == 0:
             return

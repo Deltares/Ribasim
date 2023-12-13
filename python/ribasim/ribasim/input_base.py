@@ -241,8 +241,20 @@ class TableModel(FileModel, Generic[TableT]):
         """
         table = self.tablename()
         assert self.df is not None
+
+        # Add `fid` to all tables as primary key
+        # Enables editing values manually in QGIS
+        df = self.df.copy()
+        df["fid"] = range(1, len(df) + 1)
+
         with closing(connect(temp_path)) as connection:
-            self.df.to_sql(table, connection, index=False, if_exists="replace")
+            df.to_sql(
+                table,
+                connection,
+                index=False,
+                if_exists="replace",
+                dtype={"fid": "INTEGER PRIMARY KEY AUTOINCREMENT"},
+            )
 
             # Set geopackage attribute table
             with closing(connection.cursor()) as cursor:

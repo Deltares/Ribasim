@@ -496,10 +496,10 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    [
-        get_tmp(integrator.p.graph[].flow_vertical, 0.0)...,
-        get_tmp(integrator.p.graph[].flow, 0.0)...,
-    ]
+    vcat(
+        get_tmp(integrator.p.graph[].flow_vertical, 0.0),
+        get_tmp(integrator.p.graph[].flow, 0.0),
+    )
 end
 
 function update_subgrid_level!(integrator)::Nothing
