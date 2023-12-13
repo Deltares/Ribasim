@@ -98,12 +98,16 @@ end
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
     model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
-    fractional_flow_constraints =
-        model.integrator.p.allocation_models[1].problem[:fractional_flow]
-    @test string(fractional_flow_constraints[(NodeID(3), NodeID(5))]) ==
-          "fractional_flow[(#3, #5)] : -0.25 F[(#2, #3)] + F[(#3, #5)] <= 0"
-    @test string(fractional_flow_constraints[(NodeID(3), NodeID(8))]) ==
-          "fractional_flow[(#3, #8)] : -0.75 F[(#2, #3)] + F[(#3, #8)] <= 0"
+    problem = model.integrator.p.allocation_models[1].problem
+    F = problem[:F]
+    @test JuMP.normalized_coefficient(
+        problem[:fractional_flow][(NodeID(3), NodeID(5))],
+        F[(NodeID(2), NodeID(3))],
+    ) ≈ -0.25
+    @test JuMP.normalized_coefficient(
+        problem[:fractional_flow][(NodeID(3), NodeID(8))],
+        F[(NodeID(2), NodeID(3))],
+    ) ≈ -0.75
 
     solve!(model)
     record_allocation = DataFrame(model.integrator.p.user.record)
@@ -129,8 +133,12 @@ end
 
     fractional_flow_constraints =
         model.integrator.p.allocation_models[1].problem[:fractional_flow]
-    @test string(fractional_flow_constraints[(NodeID(3), NodeID(5))]) ==
-          "fractional_flow[(#3, #5)] : -0.75 F[(#2, #3)] + F[(#3, #5)] <= 0"
-    @test string(fractional_flow_constraints[(NodeID(3), NodeID(8))]) ==
-          "fractional_flow[(#3, #8)] : -0.25 F[(#2, #3)] + F[(#3, #8)] <= 0"
+    @test JuMP.normalized_coefficient(
+        problem[:fractional_flow][(NodeID(3), NodeID(5))],
+        F[(NodeID(2), NodeID(3))],
+    ) ≈ -0.75
+    @test JuMP.normalized_coefficient(
+        problem[:fractional_flow][(NodeID(3), NodeID(8))],
+        F[(NodeID(2), NodeID(3))],
+    ) ≈ -0.25
 end
