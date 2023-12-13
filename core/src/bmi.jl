@@ -481,6 +481,18 @@ function discrete_control_affect!(
     return control_state_change
 end
 
+function get_allocation_model(
+    p::Parameters,
+    allocation_network_id::Int,
+)::Union{AllocationModel, Nothing}
+    for allocation_model in p.allocation_models
+        if allocation_model.allocation_network_id == allocation_network_id
+            return allocation_model
+        end
+    end
+    return nothing
+end
+
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
     node = getfield(p, p.graph[node_id].type)
     idx = searchsortedfirst(node.node_id, node_id)
@@ -490,6 +502,22 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
         if !ismissing(value)
             vec = get_tmp(getfield(node, field), 0)
             vec[idx] = value
+        end
+
+        # Set new fractional flow fractions in allocation problem
+        if node isa FractionalFlow && field == :fraction
+            allocation_network_id = p.graph[node_id].allocation_network_id
+            # Get the allocation model this fractional flow node is in
+            allocation_model = get_allocation_model(p, allocation_network_id)
+            problem = allocation_model.problem
+            # The allocation edge which jumps over the fractional flow node
+            edge = (inflow_id(p.graph, node_id), outflow_id(p.graph, node_id))
+            if haskey(p.graph, edge...)
+                # The constraint for this fractional flow node
+                constraint = problem[:fractional_flow][edge]
+                # TODO: x = every flow term in the constraint that is not F[edge]
+                JuMP.set_normalized_coefficient(constraint, x, value)
+            end
         end
     end
 end
