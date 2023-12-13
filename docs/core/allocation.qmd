@@ -112,18 +112,20 @@ $$
 $$
     \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( 1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
 $$
-- `linear_absolute`:
+- `linear_absolute` (default):
 $$
-    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right| + c \sum_{e \in E_S} F_e
 $$
 - `linear_relative`:
 $$
-    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right|
+    \min \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right| + c \sum_{e \in E_S} F_e
 $$
 
 To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{ij}$ is set to $0$.
 
 For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a user, for `*_relative` objectives it cares about the fraction of the demand allocated to the user. For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
+
+The second sum in the `linear_*` objectives adds a small cost to using flows. This incentivizes the solver to use as little flow as possible. The cost $c > 0$ is small enough such that it is always better to bring water to users than to not use flow at all. This can be achieved for `linear_*` objectives but not for `quadratic_*` objectives, and therefore this cost term is only added to the former. Therefore the `linear_*` objectives make the solver more conservative with flow than the `quadratic_*` objectives.
 
 :::{.callout-note}
 These options for objectives for allocation to users have not been tested thoroughly, and might change in the future.
