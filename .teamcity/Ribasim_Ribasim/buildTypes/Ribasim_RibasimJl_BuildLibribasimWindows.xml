@@ -12,9 +12,6 @@
     <disabled-settings>
       <setting-ref ref="RQ_271" />
     </disabled-settings>
-    <parameters>
-      <param name="julia_dir" value="%env.JULIA_DIR_1_10%" />
-    </parameters>
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
@@ -26,8 +23,7 @@
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set Path=%julia_dir%;%env.Path%
-pixi run remove-artifacts
+          <param name="script.content"><![CDATA[pixi run remove-artifacts
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
