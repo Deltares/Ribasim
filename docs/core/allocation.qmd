@@ -164,10 +164,6 @@ $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
 
-:::{.callout-note}
-Currently the fractional flow constraints are not taken into account in the implementation.
-:::
-
 ## Final notes on the allocation problem
 
 ### Users using their own return flow
