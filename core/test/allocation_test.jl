@@ -92,6 +92,7 @@ end
     using DataFrames
     using Ribasim: NodeID
     using OrdinaryDiffEq: solve!
+    using JuMP
 
     toml_path = normpath(
         @__DIR__,
