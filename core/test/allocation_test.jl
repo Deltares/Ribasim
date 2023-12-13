@@ -90,7 +90,6 @@ end
 
 @testitem "Allocation with controlled fractional flow" begin
     using DataFrames
-    using SQLite
     using Ribasim: NodeID
     using OrdinaryDiffEq: solve!
 
@@ -99,7 +98,6 @@ end
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
     model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
-    close(db)
     fractional_flow_constraints =
         model.integrator.p.allocation_models[1].problem[:fractional_flow]
     @test string(fractional_flow_constraints[(NodeID(3), NodeID(5))]) ==
