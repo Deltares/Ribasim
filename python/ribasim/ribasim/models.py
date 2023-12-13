@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime, Field
+from datetime import datetime
+
+from pydantic import Field
 
 from ribasim.input_base import BaseModel
 
@@ -41,7 +43,7 @@ class BasinSubgrid(BaseModel):
 
 class BasinTime(BaseModel):
     node_id: int
-    time: AwareDatetime
+    time: datetime
     drainage: float
     potential_evaporation: float
     infiltration: float
@@ -85,7 +87,7 @@ class FlowBoundaryStatic(BaseModel):
 
 class FlowBoundaryTime(BaseModel):
     node_id: int
-    time: AwareDatetime
+    time: datetime
     flow_rate: float
     remarks: str = Field("", description="a hack for pandera")
 
@@ -106,7 +108,7 @@ class LevelBoundaryStatic(BaseModel):
 
 class LevelBoundaryTime(BaseModel):
     node_id: int
-    time: AwareDatetime
+    time: datetime
     level: float
     remarks: str = Field("", description="a hack for pandera")
 
@@ -164,7 +166,7 @@ class PidControlStatic(BaseModel):
 class PidControlTime(BaseModel):
     node_id: int
     listen_node_id: int
-    time: AwareDatetime
+    time: datetime
     target: float
     proportional: float
     integral: float
@@ -194,7 +196,7 @@ class TabulatedRatingCurveStatic(BaseModel):
 
 class TabulatedRatingCurveTime(BaseModel):
     node_id: int
-    time: AwareDatetime
+    time: datetime
     level: float
     discharge: float
     remarks: str = Field("", description="a hack for pandera")
@@ -217,7 +219,7 @@ class UserStatic(BaseModel):
 
 class UserTime(BaseModel):
     node_id: int
-    time: AwareDatetime
+    time: datetime
     demand: float
     return_factor: float
     min_level: float
