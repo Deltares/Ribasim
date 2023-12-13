@@ -661,7 +661,7 @@ function set_objective_priority!(
         ex = sum(problem[:F_abs])
     end
 
-    demand_max = 0
+    demand_max = 0.0
 
     for edge_id in edge_ids
         node_id_user = edge_id[2]
@@ -718,7 +718,7 @@ function set_objective_priority!(
             JuMP.add_to_expression!(ex, cost_per_flow * flow)
         end
     elseif objective_type == :linear_relative
-        if demand_max > 0
+        if demand_max > 0.0
             cost_per_flow = 0.5 / (demand_max * length(F))
             for flow in F
                 JuMP.add_to_expression!(ex, cost_per_flow * flow)
