@@ -810,7 +810,7 @@ def fractional_flow_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [4, 7],
-                "fraction": [0.5, 0.5],
+                "fraction": [0.25, 0.75],
             }
         )
     )

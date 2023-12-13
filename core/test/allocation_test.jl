@@ -87,3 +87,20 @@ end
     F_abs = problem[:F_abs]
     @test objective == F_abs[NodeID(5)] + F_abs[NodeID(6)]
 end
+
+@testitem "Allocation with fractional flow" begin
+    using DataFrames
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
+    )
+    model = Ribasim.run(toml_path)
+    record = DataFrame(model.integrator.p.user.record)
+    groups = groupby(record, [:user_node_id, :priority])
+    fractional_flow = model.integrator.p.fractional_flow
+    (; fraction) = fractional_flow
+    @test all(
+        groups[(9, 1)].allocated ./ groups[(6, 1)].allocated .<= fraction[2] / fraction[1],
+    )
+end
