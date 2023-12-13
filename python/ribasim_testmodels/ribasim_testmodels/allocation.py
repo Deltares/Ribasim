@@ -683,6 +683,7 @@ def fractional_flow_subnetwork_model():
             (1.0, 3.0),  # 7: FractionalFlow
             (2.0, 4.0),  # 8: Basin
             (3.0, 5.0),  # 9: User
+            (-1.0, 2.0),  # 10: DiscreteControl
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -697,6 +698,7 @@ def fractional_flow_subnetwork_model():
         "FractionalFlow",
         "Basin",
         "User",
+        "DiscreteControl",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -711,11 +713,11 @@ def fractional_flow_subnetwork_model():
 
     # Setup the edges:
     from_id = np.array(
-        [1, 2, 3, 4, 5, 6, 3, 7, 8, 9],
+        [1, 2, 3, 4, 5, 6, 3, 7, 8, 9, 10, 10],
         dtype=np.int64,
     )
     to_id = np.array(
-        [2, 3, 4, 5, 6, 5, 7, 8, 9, 8],
+        [2, 3, 4, 5, 6, 5, 7, 8, 9, 8, 4, 7],
         dtype=np.int64,
     )
     allocation_network_id = len(from_id) * [None]
@@ -726,7 +728,7 @@ def fractional_flow_subnetwork_model():
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
+                "edge_type": (len(from_id) - 2) * ["flow"] + 2 * ["control"],
                 "allocation_network_id": allocation_network_id,
             },
             geometry=lines,
@@ -760,10 +762,11 @@ def fractional_flow_subnetwork_model():
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(
+        time=pd.DataFrame(
             data={
-                "node_id": [1],
-                "flow_rate": 2.0e-3,
+                "node_id": [1, 1],
+                "flow_rate": [2.0e-3, 4.0e-3],
+                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
             }
         )
     )
@@ -809,11 +812,32 @@ def fractional_flow_subnetwork_model():
     fractional_flow = ribasim.FractionalFlow(
         static=pd.DataFrame(
             data={
-                "node_id": [4, 7],
-                "fraction": [0.25, 0.75],
+                "node_id": [4, 7, 4, 7],
+                "fraction": [0.25, 0.75, 0.75, 0.25],
+                "control_state": ["A", "A", "B", "B"],
             }
         )
     )
+
+    # Setup discrete control:
+    condition = pd.DataFrame(
+        data={
+            "node_id": [10],
+            "listen_feature_id": [1],
+            "variable": "flow_rate",
+            "greater_than": [3.0e-3],
+        }
+    )
+
+    logic = pd.DataFrame(
+        data={
+            "node_id": [10, 10],
+            "truth_state": ["F", "T"],
+            "control_state": ["A", "B"],
+        }
+    )
+
+    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
     model = ribasim.Model(
         network=ribasim.Network(
@@ -826,6 +850,7 @@ def fractional_flow_subnetwork_model():
         user=user,
         allocation=allocation,
         fractional_flow=fractional_flow,
+        discrete_control=discrete_control,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )

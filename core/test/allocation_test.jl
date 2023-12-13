@@ -88,19 +88,51 @@ end
     @test objective == F_abs[NodeID(5)] + F_abs[NodeID(6)]
 end
 
-@testitem "Allocation with fractional flow" begin
+@testitem "Allocation with controlled fractional flow" begin
     using DataFrames
+    using SQLite
+    using Ribasim: NodeID
+    using OrdinaryDiffEq: solve!
 
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
-    model = Ribasim.run(toml_path)
-    record = DataFrame(model.integrator.p.user.record)
-    groups = groupby(record, [:user_node_id, :priority])
+    model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
+    close(db)
+    fractional_flow_constraints =
+        model.integrator.p.allocation_models[1].problem[:fractional_flow]
+    @test string(fractional_flow_constraints[(NodeID(3), NodeID(5))]) ==
+          "fractional_flow[(#3, #5)] : -0.25 F[(#2, #3)] + F[(#3, #5)] <= 0"
+    @test string(fractional_flow_constraints[(NodeID(3), NodeID(8))]) ==
+          "fractional_flow[(#3, #8)] : -0.75 F[(#2, #3)] + F[(#3, #8)] <= 0"
+
+    solve!(model)
+    record_allocation = DataFrame(model.integrator.p.user.record)
+    record_control = model.integrator.p.discrete_control.record
+    groups = groupby(record_allocation, [:user_node_id, :priority])
     fractional_flow = model.integrator.p.fractional_flow
-    (; fraction) = fractional_flow
+    (; control_mapping) = fractional_flow
+    t_control = record_control.time[2]
+
+    allocated_6_before = groups[(6, 1)][groups[(6, 1)].time .< t_control, :].allocated
+    allocated_9_before = groups[(9, 1)][groups[(9, 1)].time .< t_control, :].allocated
+    allocated_6_after = groups[(6, 1)][groups[(6, 1)].time .> t_control, :].allocated
+    allocated_9_after = groups[(9, 1)][groups[(9, 1)].time .> t_control, :].allocated
     @test all(
-        groups[(9, 1)].allocated ./ groups[(6, 1)].allocated .<= fraction[2] / fraction[1],
+        allocated_9_before ./ allocated_6_before .<=
+        control_mapping[(NodeID(7), "A")].fraction /
+        control_mapping[(NodeID(4), "A")].fraction,
     )
+    @test all(allocated_9_after ./ allocated_6_after .<= 1.0)
+
+    @test record_control.truth_state == ["F", "T"]
+    @test record_control.control_state == ["A", "B"]
+
+    fractional_flow_constraints =
+        model.integrator.p.allocation_models[1].problem[:fractional_flow]
+    @test string(fractional_flow_constraints[(NodeID(3), NodeID(5))]) ==
+          "fractional_flow[(#3, #5)] : -0.75 F[(#2, #3)] + F[(#3, #5)] <= 0"
+    @test string(fractional_flow_constraints[(NodeID(3), NodeID(8))]) ==
+          "fractional_flow[(#3, #8)] : -0.25 F[(#2, #3)] + F[(#3, #8)] <= 0"
 end
