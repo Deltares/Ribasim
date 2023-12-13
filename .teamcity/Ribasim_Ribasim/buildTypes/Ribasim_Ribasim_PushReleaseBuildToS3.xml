@@ -26,10 +26,7 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
-. /usr/share/Modules/init/bash
-
-module load github
-gh pr list --repo https://github.com/Deltares/Ribasim.git]]></param>
+. /usr/share/Modules/init/bash]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
