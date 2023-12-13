@@ -22,16 +22,14 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_2523" name="Push release to S3 (1)" type="simpleRunner">
+      <runner id="RUNNER_2523" name="Push release to GitHub" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
 . /usr/share/Modules/init/bash
 
-module load aws
-aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/ribasim_cli.zip
-aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/ribasim_qgis.zip
-aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/]]></param>
+module load github
+gh pr list --repo https://github.com/Deltares/Ribasim.git]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
