@@ -630,6 +630,7 @@ function is_current_module(log)
 end
 
 function run(config::Config)::Model
+    global_logger(TeeLogger(FileLogger("ribasim.log"), TerminalLogger()))
     logger = current_logger()
 
     # Reconfigure the logger if necessary with the correct loglevel

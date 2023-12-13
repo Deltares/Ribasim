@@ -46,8 +46,8 @@ using Graphs:
     rem_edge!
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: current_logger, min_enabled_level, with_logger
-using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
+using Logging: current_logger, min_enabled_level, with_logger, global_logger
+using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger, TeeLogger, FileLogger
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,
