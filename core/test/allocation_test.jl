@@ -18,8 +18,13 @@
     allocation_model = p.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)
 
-    F = JuMP.value.(allocation_model.problem[:F])
-    @test F.data ≈ [0.0, 0.5, 0.0, 0.5, 0.0, 0.0]
+    F = allocation_model.problem[:F]
+    @test JuMP.value(F[(NodeID(2), NodeID(6))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(2), NodeID(10))]) ≈ 0.5
+    @test JuMP.value(F[(NodeID(8), NodeID(12))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(6), NodeID(8))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(1), NodeID(2))]) ≈ 0.5
+    @test JuMP.value(F[(NodeID(6), NodeID(11))]) ≈ 0.0
 
     allocated = p.user.allocated
     @test allocated[1] ≈ [0.0, 0.5]
@@ -77,15 +82,15 @@ end
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
+    F = problem[:F]
     F_abs = problem[:F_abs]
-    @test string(objective) == string(
-        0.125 * F[(NodeID(4), NodeID(6))] +
-        0.125 * F[(NodeID(1), NodeID(2))] +
-        0.125 * F[(NodeID(4), NodeID(5))] +
-        0.125 * F[(NodeID(2), NodeID(4))] +
-        F_abs[NodeID(5)] +
-        F_abs[NodeID(6)],
-    )
+
+    @test objective.terms[F_abs[NodeID(5)]] == 1.0
+    @test objective.terms[F_abs[NodeID(6)]] == 1.0
+    @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 0.125
+    @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 0.125
+    @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 0.125
+    @test objective.terms[F[(NodeID(2), NodeID(4))]] ≈ 0.125
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
@@ -94,13 +99,13 @@ end
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
+    F = problem[:F]
     F_abs = problem[:F_abs]
-    @test string(objective) == string(
-        62.585499316005475 * F[(NodeID(4), NodeID(6))] +
-        62.585499316005475 * F[(NodeID(1), NodeID(2))] +
-        62.585499316005475 * F[(NodeID(4), NodeID(5))] +
-        62.585499316005475 * F[(NodeID(2), NodeID(4))] +
-        F_abs[NodeID(5)] +
-        F_abs[NodeID(6)],
-    )
+
+    @test objective.terms[F_abs[NodeID(5)]] == 1.0
+    @test objective.terms[F_abs[NodeID(6)]] == 1.0
+    @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 62.585499316005475
+    @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 62.585499316005475
+    @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 62.585499316005475
+    @test objective.terms[F[(NodeID(2), NodeID(4))]] ≈ 62.585499316005475
 end
