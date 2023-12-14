@@ -3,9 +3,7 @@
   <name>Push successful nightly build to S3</name>
   <description />
   <settings>
-    <parameters>
-      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_537" name="Push to nightly S3" type="simpleRunner">
         <parameters>
