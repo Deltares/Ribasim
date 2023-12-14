@@ -7,20 +7,6 @@
       <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
     </parameters>
     <build-runners>
-      <runner id="RUNNER_537" name="Push release to S3" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[#!/usr/bin/env bash
-set -euxo pipefail
-. /usr/share/Modules/init/bash
-
-module load aws
-aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/ribasim_cli.zip
-aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/ribasim_qgis.zip
-aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/%teamcity.build.branch%/]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
-        </parameters>
-      </runner>
       <runner id="RUNNER_2523" name="Push release to GitHub" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
