@@ -3,9 +3,6 @@
   <name>Push release build to S3</name>
   <description />
   <settings>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_2523" />
-    </disabled-settings>
     <parameters>
       <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
     </parameters>
