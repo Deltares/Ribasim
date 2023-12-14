@@ -3,19 +3,13 @@
   <name>Push successful nightly build to S3</name>
   <description />
   <settings>
-    <parameters>
-      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_537" name="Push to nightly S3" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
 . /usr/share/Modules/init/bash
-
-module load github
-gh pr list --repo https://github.com/Deltares/Ribasim.git
-
 module load aws
 aws s3 cp ribasim_cli.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip
 aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip

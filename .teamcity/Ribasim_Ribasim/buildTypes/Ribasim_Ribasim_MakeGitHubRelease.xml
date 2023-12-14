@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="5fa3a42d-6a7b-4820-95c1-c550d6648ae7" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Push release build to S3</name>
+  <name>Make GitHub Release</name>
   <description />
   <settings>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_2523" />
-    </disabled-settings>
-    <parameters />
+    <parameters>
+      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
+    </parameters>
     <build-runners>
       <runner id="RUNNER_537" name="Push release to S3" type="simpleRunner">
         <parameters>
@@ -26,13 +25,35 @@ aws s3 cp ribasim*.whl s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWind
         <parameters>
           <param name="script.content"><![CDATA[#!/usr/bin/env bash
 set -euxo pipefail
-. /usr/share/Modules/init/bash]]></param>
+. /usr/share/Modules/init/bash
+
+module load github
+# Get the name of the currently checked out tag
+tag_name=$(git describe --tags --exact-match 2>/dev/null)
+
+# Check if a tag is checked out
+if [ -n "$tag_name" ]; then
+    echo "Currently checked out tag: $tag_name"
+    
+    # Create a release using gh
+    gh release create "$tag_name" \
+        ribasim*.whl \
+        ribasim_cli.zip \
+        ribasim_qgis.zip
+
+    echo "Release created successfully."
+
+else
+    echo "No tag is currently checked out."
+fi]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
     </build-runners>
-    <vcs-settings />
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
+    </vcs-settings>
     <requirements>
       <equals id="RQ_294" name="teamcity.agent.jvm.os.name" value="Linux" />
     </requirements>
