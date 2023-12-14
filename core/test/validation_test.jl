@@ -219,8 +219,8 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, config)
-    (; graph, fractional_flow) = p
+    graph = Ribasim.create_graph(db, config, [1, 1])
+    fractional_flow = Ribasim.FractionalFlow(db, config)
 
     logger = TestLogger()
     with_logger(logger) do
