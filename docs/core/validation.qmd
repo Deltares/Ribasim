@@ -2,26 +2,89 @@
 title: "Validation"
 ---
 
+The tables below show the validation rules applied to the input to the Julia core before running the model.
+
 # Connectivity
+
+In the table below, each column shows which node types are allowed to be downstream (or 'down-control') of the node type at the top of the column.
 
 ```{julia}
 # | code-fold: true
-using Ribasim: Parameters, neighbortypes
+using Ribasim
 using DataFrames: DataFrame
 using MarkdownTables
 
-node_names = Vector{Symbol}()
-for (node_name, node_type) in zip(fieldnames(Parameters), fieldtypes(Parameters))
+node_names_snake_case = Vector{Symbol}()
+node_names_camel_case = Vector{Symbol}()
+for (node_name, node_type) in zip(fieldnames(Ribasim.Parameters), fieldtypes(Ribasim.Parameters))
     if node_type <: Ribasim.AbstractParameterNode
-        push!(node_names, node_name)
+        push!(node_names_snake_case, node_name)
+        push!(node_names_camel_case, nameof(node_type))
     end
 end
 
-df = DataFrame()
-for node_name in node_names
-    df[!, node_name] =
-        [(node_name in neighbortypes(node_name_)) for node_name_ in node_names]
+function to_symbol(b::Bool)::String
+    return b ? "✓" : "x"
 end
+
+
+df = DataFrame()
+df[!, :downstream] = node_names_snake_case
+
+for node_name in node_names_snake_case
+    df[!, node_name] =
+        [(to_symbol(node_name_ in Ribasim.neighbortypes(node_name))) for node_name_ in node_names_snake_case]
+end
+
+markdown_table(df)
+```
+
+# Neighbor amounts
+
+The table below shows for each node type between which bounds the amount of in- and outneighbors must be, for both flow and control edges.
+
+```{julia}
+# | code-fold: true
+flow_in_min = Vector{String}()
+flow_in_max = Vector{String}()
+flow_out_min = Vector{String}()
+flow_out_max = Vector{String}()
+control_in_min = Vector{String}()
+control_in_max = Vector{String}()
+control_out_min = Vector{String}()
+control_out_max = Vector{String}()
+
+function unbounded(i::Int)::String
+    return i == typemax(Int) ? "∞" : string(i)
+end
+
+for node_name in node_names_camel_case
+    bounds_flow = Ribasim.n_neighbor_bounds_flow(node_name)
+    push!(flow_in_min, string(bounds_flow.in_min))
+    push!(flow_in_max, unbounded(bounds_flow.in_max))
+    push!(flow_out_min, string(bounds_flow.out_min))
+    push!(flow_out_max, unbounded(bounds_flow.out_max))
+
+    bounds_control = Ribasim.n_neighbor_bounds_control(node_name)
+    push!(control_in_min, string(bounds_control.in_min))
+    push!(control_in_max, unbounded(bounds_control.in_max))
+    push!(control_out_min, string(bounds_control.out_min))
+    push!(control_out_max, unbounded(bounds_control.out_max))
+
+end
+
+df = DataFrame(
+    ;
+    node_type = node_names_snake_case,
+    flow_in_min,
+    flow_in_max,
+    flow_out_min,
+    flow_out_max,
+    control_in_min,
+    control_in_max,
+    control_out_min,
+    control_out_max,
+)
 
 markdown_table(df)
 ```
