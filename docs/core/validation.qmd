@@ -1,0 +1,27 @@
+---
+title: "Validation"
+---
+
+# Connectivity
+
+```{julia}
+# | code-fold: true
+using Ribasim: Parameters, neighbortypes
+using DataFrames: DataFrame
+using MarkdownTables
+
+node_names = Vector{Symbol}()
+for (node_name, node_type) in zip(fieldnames(Parameters), fieldtypes(Parameters))
+    if node_type <: Ribasim.AbstractParameterNode
+        push!(node_names, node_name)
+    end
+end
+
+df = DataFrame()
+for node_name in node_names
+    df[!, node_name] =
+        [(node_name in neighbortypes(node_name_)) for node_name_ in node_names]
+end
+
+markdown_table(df)
+```
