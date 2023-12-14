@@ -116,11 +116,11 @@ mypy-ribasim-qgis = "mypy ribasim_qgis"
 
 [dependencies]
 build = "*"
-datamodel-code-generator = "*"
+datamodel-code-generator = "0.24.*"
 geopandas = "*"
 juliaup = "*"
 jupyterlab = "*"
-libgdal-arrow-parquet = "3.7.2.*"
+libgdal-arrow-parquet = "*"
 matplotlib = "*"
 mypy = "*"
 pandas = "*"
