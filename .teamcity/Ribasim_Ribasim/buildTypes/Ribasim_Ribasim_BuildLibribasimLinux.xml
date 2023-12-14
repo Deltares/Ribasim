@@ -32,7 +32,6 @@ pixi run install-without-pre-commit]]></param>
 source /usr/share/Modules/init/bash
 
 module load pixi
-module load julia
 pixi run remove-artifacts
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />

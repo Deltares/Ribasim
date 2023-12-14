@@ -4,22 +4,11 @@ title: "Python tooling development"
 
 # Set up the developer environment
 
-## Setting up pixi
-
-First, set up pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
-
-Then set up the environment by running the following commands:
-
-```
-pixi run install
-```
-
-
 ## Running the tests {#sec-test}
 
 In order to run tests on Ribasim Python execute
 
-```bash
+```sh
 pixi run test-ribasim-python
 ```
 
@@ -32,7 +21,7 @@ Make sure to run `Clear All Outputs` on the notebook before committing.
 Before running the Julia tests or building binaries, example model input needs to created.
 This is done by running the following:
 
-```
+```sh
 pixi run generate-testmodels
 ```
 
@@ -47,7 +36,7 @@ Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-pyth
 
 To run our linting suite locally, execute:
 
-```
+```sh
 pixi run lint
 ```
 
@@ -55,12 +44,12 @@ pixi run lint
 
 For new features new tests have to be added. To monitor how much of the code is covered by the tests we use [Codecov](https://about.codecov.io/).
 For a simple overview of the local code coverage run
-```
+```sh
 pixi shell
 pytest --cov=ribasim tests/
 ```
 from  `python/ribasim`. For an extensive overview in `html` format use
-```
+```sh
 pixi shell
 pytest --cov=ribasim --cov-report=html tests/
 ```

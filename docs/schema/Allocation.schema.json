@@ -25,7 +25,7 @@
         "objective_type": {
             "format": "default",
             "type": "string",
-            "default": "quadratic_relative"
+            "default": "linear_absolute"
         }
     },
     "required": [

@@ -1,15 +1,89 @@
 @testitem "trivial model" begin
     using SciMLBase: successful_retcode
+    using Tables: Tables
+    using Tables.DataAPI: nrow
+    using Dates: DateTime
+    import Arrow
+    using Ribasim: timesteps
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
+    (; p) = model.integrator
 
-    # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
-    subgrid = model.integrator.p.subgrid
-    @test all(diff(subgrid.level) .≈ 1.0)
+    # read all results as bytes first to avoid memory mapping
+    # which can have cleanup issues due to file locking
+    flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
+    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
+
+    flow = Arrow.Table(flow_bytes)
+    basin = Arrow.Table(basin_bytes)
+    control = Arrow.Table(control_bytes)
+    allocation = Arrow.Table(allocation_bytes)
+    subgrid = Arrow.Table(subgrid_bytes)
+
+    @testset "Schema" begin
+        @test Tables.schema(flow) == Tables.Schema(
+            (:time, :edge_id, :from_node_id, :to_node_id, :flow),
+            (DateTime, Union{Int, Missing}, Int, Int, Float64),
+        )
+        @test Tables.schema(basin) == Tables.Schema(
+            (:time, :node_id, :storage, :level),
+            (DateTime, Int, Float64, Float64),
+        )
+        @test Tables.schema(control) == Tables.Schema(
+            (:time, :control_node_id, :truth_state, :control_state),
+            (DateTime, Int, String, String),
+        )
+        @test Tables.schema(allocation) == Tables.Schema(
+            (
+                :time,
+                :allocation_network_id,
+                :user_node_id,
+                :priority,
+                :demand,
+                :allocated,
+                :abstracted,
+            ),
+            (DateTime, Int, Int, Int, Float64, Float64, Float64),
+        )
+        @test Tables.schema(subgrid) ==
+              Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
+    end
+
+    @testset "Results size" begin
+        nsaved = length(timesteps(model))
+        @test nsaved > 10
+        # t0 has no flow, 2 flow edges and 2 boundary condition flows
+        @test nrow(flow) == (nsaved - 1) * 4
+        @test nrow(basin) == nsaved
+        @test nrow(control) == 0
+        @test nrow(allocation) == 0
+        @test nrow(subgrid) == nsaved * length(p.subgrid.level)
+    end
+
+    @testset "Results values" begin
+        @test flow.time[1] > DateTime(2020)
+        @test coalesce.(flow.edge_id[1:4], -1) == [-1, -1, 9, 11]
+        @test flow.from_node_id[1:4] == [6, typemax(Int), 0, 6]
+        @test flow.to_node_id[1:4] == [6, typemax(Int), typemax(Int), 0]
+
+        @test basin.storage[1] == 1.0
+        @test basin.level[1] ≈ 0.044711584
+
+        # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+        @test length(p.subgrid.level) == 3
+        @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
+        # TODO The original subgrid IDs are lost and mapped to 1, 2, 3
+        @test subgrid.subgrid_id[1:3] == [11, 22, 33] broken = true
+        @test subgrid.subgrid_level[1:3] == [0.0, -1.0, 1.0]
+        @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level
+    end
 end
 
 @testitem "bucket model" begin
