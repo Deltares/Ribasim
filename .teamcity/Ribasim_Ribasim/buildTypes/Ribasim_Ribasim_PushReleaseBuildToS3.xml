@@ -6,7 +6,9 @@
     <disabled-settings>
       <setting-ref ref="RUNNER_2523" />
     </disabled-settings>
-    <parameters />
+    <parameters>
+      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
+    </parameters>
     <build-runners>
       <runner id="RUNNER_537" name="Push release to S3" type="simpleRunner">
         <parameters>
