@@ -51,6 +51,13 @@ fi]]></param>
           <param name="dependsOn" value="BuildRibasimCliWindows" />
         </parameters>
       </build-trigger>
+      <build-trigger id="TRIGGER_637" type="vcsTrigger">
+        <parameters>
+          <param name="branchFilter" value="+:v*" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
+        </parameters>
+      </build-trigger>
     </build-triggers>
     <build-extensions>
       <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
