@@ -23,6 +23,7 @@ if [ -n "$tag_name" ]; then
     
     # Create a release using gh
     gh release create "$tag_name" \
+        --generate-notes \
         ribasim*.whl \
         ribasim_cli.zip \
         ribasim_qgis.zip
