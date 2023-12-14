@@ -217,8 +217,8 @@ def subnetwork_model():
         time=pd.DataFrame(
             data={
                 "node_id": 1,
-                "flow_rate": np.arange(10, 0, -1),
-                "time": pd.to_datetime([f"2020-{i}-1 00:00:00" for i in range(1, 11)]),
+                "flow_rate": np.arange(10, 0, -2),
+                "time": pd.to_datetime([f"2020-{i}-1 00:00:00" for i in range(1, 6)]),
             },
         )
     )
