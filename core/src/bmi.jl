@@ -244,7 +244,7 @@ function create_callbacks(
             save_subgrid_level,
             saved_subgrid_level;
             saveat,
-            save_start = false,
+            save_start = true,
         )
         push!(callbacks, export_cb)
     end
