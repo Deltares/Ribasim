@@ -6,6 +6,7 @@ import ribasim
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
+    allocation_example_model,
     minimal_subnetwork_model,
     # looped_subnetwork_model,
     subnetwork_model,
@@ -49,6 +50,7 @@ from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
+    "allocation_example_model",
     "backwater_model",
     "basic_model",
     "basic_arrow_model",
