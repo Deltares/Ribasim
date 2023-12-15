@@ -20,9 +20,10 @@ tag_name=$(git describe --tags --exact-match 2>/dev/null)
 # Check if a tag is checked out
 if [ -n "$tag_name" ]; then
     echo "Currently checked out tag: $tag_name"
-    
+
     # Create a release using gh
     gh release create "$tag_name" \
+        --generate-notes \
         ribasim*.whl \
         ribasim_cli.zip \
         ribasim_qgis.zip
@@ -44,11 +45,11 @@ fi]]></param>
       <equals id="RQ_294" name="teamcity.agent.jvm.os.name" value="Linux" />
     </requirements>
     <build-triggers>
-      <build-trigger id="TRIGGER_492" type="buildDependencyTrigger">
+      <build-trigger id="TRIGGER_637" type="vcsTrigger">
         <parameters>
-          <param name="afterSuccessfulBuildOnly" value="true" />
           <param name="branchFilter" value="+:v*" />
-          <param name="dependsOn" value="BuildRibasimCliWindows" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
       </build-trigger>
     </build-triggers>
