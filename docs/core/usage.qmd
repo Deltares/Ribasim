@@ -113,6 +113,8 @@ Tables are also allowed to have rows for timestamps that are not part of the sim
 these will be ignored. That makes it easy to prepare data for a larger period, and test
 models on a shorted period.
 
+When preparing the model for simulation, input validation is performed in the Julia core. The validation rules are described in the [validation](validation.qmd) section.
+
 # Node
 
 Node is a table that specifies the ID and type of each node of a model. The ID must be
