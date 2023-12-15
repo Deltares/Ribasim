@@ -28,6 +28,7 @@ function main(ARGS)::Cint
         model = with_logger(logger) do
             Ribasim.run(config)
         end
+        Ribasim.close(logger)
         return if successful_retcode(model)
             println("The model finished successfully")
             0
