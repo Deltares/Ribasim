@@ -35,5 +35,10 @@
         ".pytest_cache": true,
         ".ruff_cache": true,
         "juliaup": true
-    }
+    },
+    "julia.lint.disabledDirs": [
+        ".pixi",
+        "juliaup"
+    ],
+    "julia.lint.run": true
 }
