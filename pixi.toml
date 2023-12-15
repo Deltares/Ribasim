@@ -118,11 +118,11 @@ ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
 
 [dependencies]
 build = "*"
-datamodel-code-generator = "*"
+datamodel-code-generator = "0.24.*"
 geopandas = "*"
 juliaup = "*"
 jupyterlab = "*"
-libgdal-arrow-parquet = "3.7.2.*"
+libgdal-arrow-parquet = "*"
 matplotlib = "*"
 mypy = "*"
 pandas = "*"

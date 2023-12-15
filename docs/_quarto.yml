@@ -29,6 +29,7 @@ website:
       contents:
         - core/index.qmd
         - core/usage.qmd
+        - core/validation.qmd
         - core/equations.qmd
         - core/allocation.qmd
         - core/numerics.qmd

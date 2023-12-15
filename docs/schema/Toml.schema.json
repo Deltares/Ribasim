@@ -31,7 +31,7 @@
             "default": {
                 "timestep": null,
                 "use_allocation": false,
-                "objective_type": "quadratic_relative"
+                "objective_type": "linear_absolute"
             }
         },
         "solver": {

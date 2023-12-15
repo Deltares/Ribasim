@@ -7,13 +7,16 @@ version = "0.1.0"
 
 [deps]
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterMarkdown = "997ab1e6-3595-5248-9280-8efb232c3433"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Legolas = "741b9549-f6ed-4911-9fbf-4a1c0c97f0cd"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+MarkdownTables = "1862ce21-31c7-451e-824c-f20fa3f90fa2"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 

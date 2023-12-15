@@ -661,6 +661,8 @@ function set_objective_priority!(
         ex = sum(problem[:F_abs])
     end
 
+    demand_max = 0.0
+
     for edge_id in edge_ids
         node_id_user = edge_id[2]
         if graph[node_id_user].type != :user
@@ -669,6 +671,7 @@ function set_objective_priority!(
 
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
+        demand_max = max(demand_max, d)
         F_edge = F[edge_id]
 
         if objective_type == :quadratic_absolute
@@ -707,6 +710,22 @@ function set_objective_priority!(
             error("Invalid allocation objective type $objective_type.")
         end
     end
+
+    # Add flow cost
+    if objective_type == :linear_absolute
+        cost_per_flow = 0.5 / length(F)
+        for flow in F
+            JuMP.add_to_expression!(ex, cost_per_flow * flow)
+        end
+    elseif objective_type == :linear_relative
+        if demand_max > 0.0
+            cost_per_flow = 0.5 / (demand_max * length(F))
+            for flow in F
+                JuMP.add_to_expression!(ex, cost_per_flow * flow)
+            end
+        end
+    end
+
     new_objective = JuMP.@expression(problem, ex)
     JuMP.@objective(problem, Min, new_objective)
     return nothing
