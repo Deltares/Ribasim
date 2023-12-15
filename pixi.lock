@@ -5288,7 +5288,7 @@ package:
   timestamp: 1683598954152
 - platform: linux-64
   name: datamodel-code-generator
-  version: 0.25.1
+  version: 0.24.2
   category: main
   manager: conda
   dependencies:
@@ -5305,10 +5305,10 @@ package:
   - pysnooper >=0.4.1,<2.0.0
   - python >=3.7,<4.0
   - toml >=0.10.0,<1.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.25.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.24.2-pyhd8ed1ab_0.conda
   hash:
-    md5: 7ed50a6117a6ca28e1a9936ee41d446c
-    sha256: dbe27f46852d9949d6b61ccc53e4bb252498e46f63fcbf30dce6042452d5d913
+    md5: e5be59447fcc64aa91e0cf4badd4cf9a
+    sha256: 41f8ec640e8e0d801fd1b20d5233d14cd9e373597bc0c88b287c9e4830db43be
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: linux-64
@@ -5316,11 +5316,11 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 73399
-  timestamp: 1701104862386
+  size: 69141
+  timestamp: 1700259947710
 - platform: osx-64
   name: datamodel-code-generator
-  version: 0.25.1
+  version: 0.24.2
   category: main
   manager: conda
   dependencies:
@@ -5337,10 +5337,10 @@ package:
   - pysnooper >=0.4.1,<2.0.0
   - python >=3.7,<4.0
   - toml >=0.10.0,<1.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.25.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.24.2-pyhd8ed1ab_0.conda
   hash:
-    md5: 7ed50a6117a6ca28e1a9936ee41d446c
-    sha256: dbe27f46852d9949d6b61ccc53e4bb252498e46f63fcbf30dce6042452d5d913
+    md5: e5be59447fcc64aa91e0cf4badd4cf9a
+    sha256: 41f8ec640e8e0d801fd1b20d5233d14cd9e373597bc0c88b287c9e4830db43be
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: osx-64
@@ -5348,11 +5348,11 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 73399
-  timestamp: 1701104862386
+  size: 69141
+  timestamp: 1700259947710
 - platform: osx-arm64
   name: datamodel-code-generator
-  version: 0.25.1
+  version: 0.24.2
   category: main
   manager: conda
   dependencies:
@@ -5369,10 +5369,10 @@ package:
   - pysnooper >=0.4.1,<2.0.0
   - python >=3.7,<4.0
   - toml >=0.10.0,<1.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.25.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.24.2-pyhd8ed1ab_0.conda
   hash:
-    md5: 7ed50a6117a6ca28e1a9936ee41d446c
-    sha256: dbe27f46852d9949d6b61ccc53e4bb252498e46f63fcbf30dce6042452d5d913
+    md5: e5be59447fcc64aa91e0cf4badd4cf9a
+    sha256: 41f8ec640e8e0d801fd1b20d5233d14cd9e373597bc0c88b287c9e4830db43be
   build: pyhd8ed1ab_0
   arch: aarch64
   subdir: osx-arm64
@@ -5380,11 +5380,11 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 73399
-  timestamp: 1701104862386
+  size: 69141
+  timestamp: 1700259947710
 - platform: win-64
   name: datamodel-code-generator
-  version: 0.25.1
+  version: 0.24.2
   category: main
   manager: conda
   dependencies:
@@ -5401,10 +5401,10 @@ package:
   - pysnooper >=0.4.1,<2.0.0
   - python >=3.7,<4.0
   - toml >=0.10.0,<1.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.25.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/datamodel-code-generator-0.24.2-pyhd8ed1ab_0.conda
   hash:
-    md5: 7ed50a6117a6ca28e1a9936ee41d446c
-    sha256: dbe27f46852d9949d6b61ccc53e4bb252498e46f63fcbf30dce6042452d5d913
+    md5: e5be59447fcc64aa91e0cf4badd4cf9a
+    sha256: 41f8ec640e8e0d801fd1b20d5233d14cd9e373597bc0c88b287c9e4830db43be
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: win-64
@@ -5412,8 +5412,8 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 73399
-  timestamp: 1701104862386
+  size: 69141
+  timestamp: 1700259947710
 - platform: linux-64
   name: dbus
   version: 1.13.6
