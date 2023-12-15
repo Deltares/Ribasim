@@ -794,6 +794,10 @@ function Parameters(db::DB, config::Config)::Parameters
     graph = create_graph(db, config, chunk_sizes)
     allocation_models = Vector{AllocationModel}()
 
+    if !valid_edges(graph)
+        error("Invalid edge(s) found.")
+    end
+
     linear_resistance = LinearResistance(db, config)
     manning_resistance = ManningResistance(db, config)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)

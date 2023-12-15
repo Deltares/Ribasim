@@ -108,6 +108,7 @@ def invalid_fractional_flow_model():
             (0.0, -2.0),  # 5: Terminal
             (0.0, 2.0),  # 6: Terminal
             (0.0, 0.0),  # 7: TabulatedRatingCurve
+            (-1.0, -1.0),  # 8: FractionalFlow
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -120,6 +121,7 @@ def invalid_fractional_flow_model():
         "Terminal",
         "Terminal",
         "TabulatedRatingCurve",
+        "FractionalFlow",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -134,8 +136,8 @@ def invalid_fractional_flow_model():
 
     # Setup the edges:
     # Invalid: Node #7 combines fractional flow outneighbors with other outneigbor types.
-    from_id = np.array([1, 7, 7, 3, 7, 4], dtype=np.int64)
-    to_id = np.array([7, 2, 3, 5, 4, 6], dtype=np.int64)
+    from_id = np.array([1, 7, 7, 3, 7, 4, 2], dtype=np.int64)
+    to_id = np.array([7, 2, 3, 5, 4, 6, 8], dtype=np.int64)
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
@@ -177,7 +179,8 @@ def invalid_fractional_flow_model():
     # Setup the fractional flow:
     fractional_flow = ribasim.FractionalFlow(
         # Invalid: fractions must be non-negative and add up to approximately 1
-        static=pd.DataFrame(data={"node_id": [3, 4], "fraction": [-0.1, 0.5]})
+        # Invalid: #8 comes from a Basin
+        static=pd.DataFrame(data={"node_id": [3, 4, 8], "fraction": [-0.1, 0.5, 1.0]})
     )
 
     # Setup the tabulated rating curve:
