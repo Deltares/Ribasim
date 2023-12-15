@@ -758,7 +758,7 @@ def allocation_example_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 5], "level": [0.01, 0.01]})
+    state = pd.DataFrame(data={"node_id": [2, 5], "level": [1.0, 1.0]})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
@@ -813,7 +813,7 @@ def allocation_example_model():
             "node_id": [11],
             "listen_feature_id": 5,
             "variable": "level",
-            "greater_than": 0.9,
+            "greater_than": 0.52,
         }
     )
 
@@ -830,11 +830,21 @@ def allocation_example_model():
     user = ribasim.User(
         static=pd.DataFrame(
             data={
-                "node_id": [3, 6],
+                "node_id": [6],
                 "demand": 1.5,
                 "return_factor": 0.0,
                 "min_level": -1.0,
-                "priority": [1, 1],
+                "priority": [1],
+            }
+        ),
+        time=pd.DataFrame(
+            data={
+                "node_id": [3, 3, 3, 3],
+                "demand": [0.0, 1.0, 1.2, 1.2],
+                "priority": [1, 1, 2, 2],
+                "return_factor": 0.0,
+                "min_level": -1.0,
+                "time": 2 * ["2020-01-01 00:00:00", "2020-01-20 00:00:00"],
             }
         ),
     )

@@ -10,7 +10,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
 
     for node_id in node_ids
         node_type = graph[node_id].type
-        if node_type in [:user, :basin]
+        if node_type in [:user, :basin, :terminal]
             push!(used_nodes, node_id)
         elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
             # use count since the length of the iterator is unknown
@@ -530,6 +530,9 @@ function add_constraints_absolute_value!(
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
         node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+        for node_id_user in node_ids_user
+            println(node_id_user, " ", inflow_ids_allocation(graph, node_id_user))
+        end
         node_ids_user_inflow = Dict(
             node_id_user => only(inflow_ids_allocation(graph, node_id_user)) for
             node_id_user in node_ids_user
