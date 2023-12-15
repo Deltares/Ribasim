@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [deps]
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterMarkdown = "997ab1e6-3595-5248-9280-8efb232c3433"

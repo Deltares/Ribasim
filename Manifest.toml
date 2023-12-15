@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0-rc2"
 manifest_format = "2.0"
-project_hash = "339ffbce52d0f841d46e730eaa815d4d8944d073"
+project_hash = "ffe3d5f3606c1f85a4bca07ee2df86a28560d8a2"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -301,6 +301,12 @@ version = "2.5.0"
 git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.15.0"
+
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "REPL", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "04c738083f29f86e62c8afc341f0967d8717bdb8"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.6.1"
 
 [[deps.DataInterpolations]]
 deps = ["LinearAlgebra", "PrettyTables", "RecipesBase", "RecursiveArrayTools", "Reexport", "Requires"]
@@ -652,6 +658,11 @@ deps = ["Test"]
 git-tree-sha1 = "68772f49f54b479fa88ace904f6127f0a3bb2e46"
 uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
 version = "0.1.12"
+
+[[deps.InvertedIndices]]
+git-tree-sha1 = "0dc7b50b8d436461be01300fd8cd45aa0274b038"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.3.0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -1607,7 +1618,7 @@ uuid = "3cfb6a46-05f0-43df-bb16-bf763deb14b4"
 version = "0.1.0"
 
 [[deps.docs]]
-deps = ["Configurations", "Dates", "Documenter", "DocumenterMarkdown", "IJulia", "InteractiveUtils", "JSON3", "Legolas", "Logging", "MarkdownTables", "OrderedCollections", "Ribasim"]
+deps = ["Configurations", "DataFrames", "Dates", "Documenter", "DocumenterMarkdown", "IJulia", "InteractiveUtils", "JSON3", "Legolas", "Logging", "MarkdownTables", "OrderedCollections", "Ribasim"]
 path = "docs"
 uuid = "8daea9ca-fc6c-4731-aa85-717fa0b706bc"
 version = "0.1.0"
