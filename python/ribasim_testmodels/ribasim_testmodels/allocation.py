@@ -685,6 +685,8 @@ def allocation_example_model():
             (4.5, 0.5),  # 9: FractionalFlow
             (5.0, 0.0),  # 10: Terminal
             (4.5, 0.25),  # 11: DiscreteControl
+            (4.5, 1.0),  # 12: Basin
+            (5.0, 1.0),  # 13: User
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -701,6 +703,8 @@ def allocation_example_model():
         "FractionalFlow",
         "Terminal",
         "DiscreteControl",
+        "Basin",
+        "User",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -715,11 +719,11 @@ def allocation_example_model():
 
     # Setup the edges:
     from_id = np.array(
-        [1, 2, 2, 4, 5, 5, 7, 3, 6, 7, 8, 9, 11, 11],
+        [1, 2, 2, 4, 5, 5, 7, 3, 6, 7, 8, 9, 12, 13, 11, 11],
         dtype=np.int64,
     )
     to_id = np.array(
-        [2, 3, 4, 5, 6, 7, 8, 2, 5, 9, 10, 10, 8, 9],
+        [2, 3, 4, 5, 6, 7, 8, 2, 5, 9, 10, 12, 13, 10, 8, 9],
         dtype=np.int64,
     )
     allocation_network_id = len(from_id) * [None]
@@ -741,15 +745,15 @@ def allocation_example_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [2, 2, 5, 5],
+            "node_id": [2, 2, 5, 5, 12, 12],
             "area": 300_000.0,
-            "level": [0.01, 1.01, 0.0, 1.0],
+            "level": 3 * [0.0, 1.0],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": [2, 5],
+            "node_id": [2, 5, 12],
             "drainage": 0.0,
             "potential_evaporation": 0.0,
             "infiltration": 0.0,
@@ -758,7 +762,7 @@ def allocation_example_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 5], "level": [1.0, 1.0]})
+    state = pd.DataFrame(data={"node_id": [2, 5, 12], "level": 1.0})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
@@ -830,11 +834,11 @@ def allocation_example_model():
     user = ribasim.User(
         static=pd.DataFrame(
             data={
-                "node_id": [6],
-                "demand": 1.5,
+                "node_id": [6, 13],
+                "demand": [1.5, 1.0],
                 "return_factor": 0.0,
                 "min_level": -1.0,
-                "priority": [1],
+                "priority": [1, 3],
             }
         ),
         time=pd.DataFrame(
