@@ -19,6 +19,7 @@ import BasicModelInterface as BMI
 import HiGHS
 import JuMP
 import TranscodingStreams
+import LoggingExtras
 
 using Accessors: @set
 using Arrow: Arrow, Table
@@ -46,8 +47,7 @@ using Graphs:
     rem_edge!
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: current_logger, min_enabled_level, with_logger, global_logger
-using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger, TeeLogger, FileLogger
+using Logging: with_logger, LogLevel, AbstractLogger
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,
@@ -75,6 +75,7 @@ include("validation.jl")
 include("solve.jl")
 include("config.jl")
 using .config
+include("logging.jl")
 include("allocation.jl")
 include("utils.jl")
 include("lib.jl")
@@ -82,49 +83,6 @@ include("io.jl")
 include("create.jl")
 include("bmi.jl")
 include("consts.jl")
-
-function help(x)::Cint
-    println(x)
-    println("Usage: ribasim path/to/model/ribasim.toml")
-    return 1
-end
-
-function main(ARGS)::Cint
-    n = length(ARGS)
-    if n != 1
-        return help("Exactly 1 argument expected, got $n")
-    end
-    arg = only(ARGS)
-
-    if arg == "--version"
-        version = pkgversion(Ribasim)
-        print(version)
-        return 0
-    end
-
-    if !isfile(arg)
-        return help("File not found: $arg")
-    end
-
-    try
-        # show progress bar in terminal
-        model = with_logger(TerminalLogger()) do
-            Ribasim.run(arg)
-        end
-        return if successful_retcode(model)
-            println("The model finished successfully")
-            0
-        else
-            t = Ribasim.datetime_since(model.integrator.t, model.config.starttime)
-            retcode = model.integrator.sol.retcode
-            println("The model exited at model time $t with return code $retcode")
-            println("See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes")
-            1
-        end
-    catch
-        Base.invokelatest(Base.display_error, current_exceptions())
-        return 1
-    end
-end
+include("main.jl")
 
 end  # module Ribasim
