@@ -348,8 +348,8 @@ Lets a fraction (in [0,1]) of the incoming flow trough.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+control_state | String  | -            | (optional) sorted per node_id
 fraction      | Float64 | -            | in the interval [0,1]
-control_state | String  | -            | (optional)
 
 # TabulatedRatingCurve
 
@@ -359,10 +359,10 @@ relation between the storage of a connected Basin (via the outlet level) and its
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
 level         | Float64 | $m$          | sorted per control_state
 discharge     | Float64 | $m^3 s^{-1}$ | non-negative
-control_state | String  | -            | (optional) sorted per node_id
 
 node_id | discharge  | level
 ------- |----------- |-------
@@ -382,8 +382,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
-time      | DateTime | -            | sorted
-node_id   | Int      | -            | sorted per time
+node_id   | Int      | -            | sorted
+time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
 discharge | Float64  | $m^3 s^{-1}$ | non-negative
 
@@ -398,11 +398,11 @@ When PID controlled, the pump must point away from the controlled basin in terms
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
+control_state         | String  | -            | (optional) sorted per node_id
 active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
-control_state         | String  | -            | (optional)
 
 # Outlet
 
@@ -412,12 +412,12 @@ When PID controlled, the outlet must point towards the controlled basin in terms
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
+control_state         | String  | -            | (optional) sorted per node_id
 active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
-control_state         | String  | -            | (optional)
 
 # User
 
@@ -454,11 +454,11 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 column        | type     | unit         | restriction
 ------------- | -------- | ------------ | -----------
 node_id       | Int      | -            | sorted
+priority      | Int      | -            | sorted per node id
 time          | DateTime | -            | sorted per priority per node id
 demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | (optional)
-priority      | Int      | -            | sorted per node id
 
 ## Allocation results
 
@@ -503,8 +503,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
-time      | DateTime | -            | sorted
-node_id   | Int      | -            | sorted per time
+node_id   | Int      | -            | sorted
+time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
 
 # FlowBoundary
@@ -534,8 +534,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
-time      | DateTime | -            | sorted
-node_id   | Int      | -            | sorted per time
+node_id   | Int      | -            | sorted
+time      | DateTime | -            | sorted per node_id
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 # LinearResistance
@@ -545,9 +545,9 @@ Flow proportional to the level difference between the connected basins.
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
 resistance    | Float64 | $sm^{-2}$    | -
-control_state | String  | -            | (optional)
 
 # ManningResistance
 
@@ -556,12 +556,12 @@ Flow through this connection is estimated by conservation of energy and the Mann
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int     | -            | sorted
+control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
 length        | Float64 | $m$          | positive
 manning_n     | Float64 | $s m^{-\frac{1}{3}}$          | positive
 profile_width | Float64 | $m$          | positive
 profile_slope | Float64 | -            | -
-control_state | String  | -            | (optional)
 
 # Terminal
 
@@ -606,8 +606,8 @@ DiscreteControl is applied in the Julia core as follows:
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
 node_id        | Int      | -    | sorted
+control_state  | String   | -    | sorted per node_id
 truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any)
-control_state  | String   | -    |
 
 ## DiscreteControl results
 
@@ -631,13 +631,13 @@ In the future controlling the flow on a particular edge could be supported.
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------
 node_id        | Int      | -        | sorted
+control_state  | String   | -        | (optional) sorted per node_id
 active         | Bool     | -        | (optional, default true)
 listen_node_id | Int      | -        | -
 target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -
 integral       | Float64  | $s^{-2}$ | -
 derivative     | Float64  | -        | -
-control_state  | String   | -        | -
 
 ## PidControl / time
 
@@ -651,8 +651,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column         | type     | unit     | restriction
 -------------- | -------- | -------- | -----------
-node_id        | Int      | -        | sorted per time
-time           | DateTime | -        | sorted
+node_id        | Int      | -        | sorted
+time           | DateTime | -        | sorted per node_id
 listen_node_id | Int      | -        | -
 target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -

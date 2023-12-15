@@ -394,6 +394,10 @@ class NodeModel(ChildModel):
         return dict(filter(lambda x: x[1], content.items()))
 
     @classmethod
+    def sort_keys(cls, field: str) -> list[str]:
+        return cls._sort_keys[field]
+
+    @classmethod
     def get_input_type(cls):
         return cls.__name__
 
@@ -426,7 +430,7 @@ class NodeModel(ChildModel):
             getattr(self, field)._save(
                 directory,
                 input_dir,
-                sort_keys=self._sort_keys.get("field", ["node_id"]),
+                sort_keys=self._sort_keys[field],
             )
 
     def _repr_content(self) -> str:
