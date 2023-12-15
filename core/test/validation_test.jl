@@ -219,8 +219,8 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, config)
-    (; graph, fractional_flow) = p
+    graph = Ribasim.create_graph(db, config, [1, 1])
+    fractional_flow = Ribasim.FractionalFlow(db, config)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -229,9 +229,10 @@ end
             fractional_flow.node_id,
             fractional_flow.control_mapping,
         )
+        @test !Ribasim.valid_edges(graph)
     end
 
-    @test length(logger.logs) == 3
+    @test length(logger.logs) == 4
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
           "Node #7 combines fractional flow outneighbors with other outneigbor types."
@@ -247,6 +248,11 @@ end
     @test logger.logs[3].kwargs[:node_id] == NodeID(7)
     @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
     @test logger.logs[3].kwargs[:control_state] == ""
+    @test logger.logs[4].level == Error
+    @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
+    @test logger.logs[4].kwargs[:edge_id] == 7
+    @test logger.logs[4].kwargs[:id_src] == NodeID(2)
+    @test logger.logs[4].kwargs[:id_dst] == NodeID(8)
 end
 
 @testitem "DiscreteControl logic validation" begin

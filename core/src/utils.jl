@@ -104,6 +104,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         flow_vertical,
     )
     graph = @set graph.graph_data = graph_data
+
     return graph
 end
 
