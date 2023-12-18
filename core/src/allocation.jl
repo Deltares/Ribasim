@@ -11,12 +11,9 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type
-        if node_type in [:user, :basin]
+        if node_type in [:user, :basin, :terminal]
             push!(used_nodes, node_id)
         elseif has_fractional_flow_outneighbors
-            push!(used_nodes, node_id)
-        elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
-            # use count since the length of the iterator is unknown
             push!(used_nodes, node_id)
         end
     end
@@ -503,13 +500,12 @@ function add_constraints_user_returnflow!(
         node_id for node_id in node_ids if
         graph[node_id].type == :user && !isempty(outflow_ids_allocation(graph, node_id))
     ]
-
     problem[:return_flow] = JuMP.@constraint(
         problem,
         [node_id_user = node_ids_user_with_returnflow],
-        F[Int(node_id_user), Int(only(outflow_ids_allocation(graph, node_id_user)))] <=
-        user.return_factor[findsorted(user.node_id, node_id)] *
-        F[Int(only(inflow_ids_allocation(graph, node_id_user))), Int(node_iduser)],
+        F[(node_id_user, only(outflow_ids_allocation(graph, node_id_user)))] <=
+        user.return_factor[findsorted(user.node_id, node_id_user)] *
+        F[(only(inflow_ids_allocation(graph, node_id_user)), node_id_user)],
         base_name = "return_flow",
     )
     return nothing

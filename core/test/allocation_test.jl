@@ -126,11 +126,11 @@ end
     @test JuMP.normalized_coefficient(
         problem[:fractional_flow][(NodeID(3), NodeID(5))],
         F[(NodeID(2), NodeID(3))],
-    ) ≈ -0.25
+    ) ≈ -0.75
     @test JuMP.normalized_coefficient(
         problem[:fractional_flow][(NodeID(3), NodeID(8))],
         F[(NodeID(2), NodeID(3))],
-    ) ≈ -0.75
+    ) ≈ -0.25
 
     solve!(model)
     record_allocation = DataFrame(model.integrator.p.user.record)

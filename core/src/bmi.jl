@@ -512,11 +512,14 @@ function set_fractional_flow_in_allocation!(
         edge = (inflow_id(graph, node_id), outflow_id(graph, node_id))
         if haskey(graph, edge...)
             # The constraint for this fractional flow node
-            constraint = problem[:fractional_flow][edge]
-            # Set the new fraction on all inflow terms in the constraint
-            for inflow_id in inflow_ids_allocation(graph, edge[1])
-                flow = problem[:F][(inflow_id, edge[1])]
-                JuMP.set_normalized_coefficient(constraint, flow, -fraction)
+            if edge in keys(problem[:fractional_flow])
+                constraint = problem[:fractional_flow][edge]
+
+                # Set the new fraction on all inflow terms in the constraint
+                for inflow_id in inflow_ids_allocation(graph, edge[1])
+                    flow = problem[:F][(inflow_id, edge[1])]
+                    JuMP.set_normalized_coefficient(constraint, flow, -fraction)
+                end
             end
         end
     end
