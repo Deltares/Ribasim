@@ -896,7 +896,7 @@ def allocation_example_model():
         "User",
     ]
 
-    # Make sure the feature id starts at 1: explicitly give an index.
+    # All nodes belong to allocation network id 1
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={"type": node_type, "allocation_network_id": 1},
@@ -906,7 +906,6 @@ def allocation_example_model():
         )
     )
 
-    # Setup the edges:
     from_id = np.array(
         [1, 2, 2, 4, 5, 5, 7, 3, 6, 7, 8, 9, 12, 13, 11, 11],
         dtype=np.int64,
@@ -915,6 +914,8 @@ def allocation_example_model():
         [2, 3, 4, 5, 6, 7, 8, 2, 5, 9, 10, 12, 13, 10, 8, 9],
         dtype=np.int64,
     )
+    # Denote the first edge, 1 => 2, as a source edge for
+    # allocation network 1
     allocation_network_id = len(from_id) * [None]
     allocation_network_id[0] = 1
     lines = node.geometry_from_connectivity(from_id, to_id)
