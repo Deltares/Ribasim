@@ -24,11 +24,12 @@ function main(ARGS)::Cint
     try
         # show progress bar in terminal
         config = Config(arg)
-        logger = setup_logger(config)
-        model = with_logger(logger) do
-            Ribasim.run(config)
+        open(results_path(config, "ribasim.log"), "w") do io
+            logger = Ribasim.setup_logger(; verbosity = config.verbosity, stream = io)
+            model = with_logger(logger) do
+                Ribasim.run(config)
+            end
         end
-        Ribasim.close(logger)
         return if successful_retcode(model)
             println("The model finished successfully")
             0

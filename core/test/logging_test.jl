@@ -8,13 +8,14 @@
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config, "."))
-        logger = Ribasim.setup_logger(config)
-        @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
-        @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
-        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
-        @test !Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
-
-        Ribasim.close(logger)
+        open(Ribasim.results_path(config, "ribasim.log"), "w") do io
+            logger =
+                Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
+            @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
+            @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
+            @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
+            @test !Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
+        end
     end
 end
 
@@ -28,13 +29,14 @@ end
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config, "."))
-        logger = Ribasim.setup_logger(config)
-        @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
-        @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
-        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
-        @test Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
-
-        Ribasim.close(logger)
+        open(Ribasim.results_path(config, "ribasim.log"), "w") do io
+            logger =
+                Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
+            @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
+            @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
+            @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
+            @test Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
+        end
     end
 end
 
@@ -49,19 +51,20 @@ end
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config, "."))
-        logger = Ribasim.setup_logger(
-            config;
-            module_filter_function = log::Ribasim.LogMessageType ->
-                log._module == @__MODULE__,
-        )
+        open(Ribasim.results_path(config, "ribasim.log"), "w") do io
+            logger = Ribasim.setup_logger(;
+                verbosity = Logging.Debug,
+                stream = io,
+                module_filter_function = log::Ribasim.LogMessageType ->
+                    log._module == @__MODULE__,
+            )
 
-        with_logger(logger) do
-            @info "foo"
-            @warn "bar"
-            @debug "baz"
+            with_logger(logger) do
+                @info "foo"
+                @warn "bar"
+                @debug "baz"
+            end
         end
-
-        Ribasim.close(logger)
 
         open(normpath(dir, "results", "ribasim.log"), "r") do io
             result = read(io, String)

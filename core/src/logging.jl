@@ -13,14 +13,12 @@ function is_current_module(log::LogMessageType)::Bool
         log._module == OrdinaryDiffEq# for the progress bar
 end
 
-function setup_logger(
-    config::Config;
+function setup_logger(;
+    verbosity::LogLevel,
+    stream::IOStream,
     module_filter_function::Function = is_current_module,
 )::AbstractLogger
-    file_logger = LoggingExtras.MinLevelLogger(
-        LoggingExtras.FileLogger(results_path(config, "ribasim.log")),
-        config.logging.verbosity,
-    )
+    file_logger = LoggingExtras.MinLevelLogger(LoggingExtras.FileLogger(stream), verbosity)
     terminal_logger = LoggingExtras.MinLevelLogger(
         TerminalLogger(),
         LogLevel(-1), # To include progress bar
@@ -29,14 +27,4 @@ function setup_logger(
         module_filter_function,
         LoggingExtras.TeeLogger(file_logger, terminal_logger),
     )
-end
-
-function close(logger::AbstractLogger)
-    if hasfield(typeof(logger), :logger)
-        close(logger.logger)
-    elseif hasfield(typeof(logger), :loggers)
-        foreach(close, logger.loggers)
-    elseif hasfield(typeof(logger), :stream) && logger isa SimpleLogger # FileLogger contains a SimpleLogger that contains the Stream.
-        Base.close(logger.stream)
-    end
 end
