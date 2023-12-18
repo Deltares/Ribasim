@@ -9,10 +9,10 @@
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config, "."))
         logger = Ribasim.setup_logger(config)
-        @test Logging.shouldlog(logger, Logging.Error, Ribasim, nothing, "message")
-        @test Logging.shouldlog(logger, Logging.Info, Ribasim, nothing, "message")
-        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, nothing, "message") # progress bar
-        @test !Logging.shouldlog(logger, Logging.Debug, Ribasim, nothing, "message")
+        @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
+        @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
+        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
+        @test !Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
 
         Ribasim.close(logger)
     end
@@ -29,10 +29,10 @@ end
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config, "."))
         logger = Ribasim.setup_logger(config)
-        @test Logging.shouldlog(logger, Logging.Error, Ribasim, nothing, "message")
-        @test Logging.shouldlog(logger, Logging.Info, Ribasim, nothing, "message")
-        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, nothing, "message") # progress bar
-        @test Logging.shouldlog(logger, Logging.Debug, Ribasim, nothing, "message")
+        @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
+        @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
+        @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
+        @test Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
 
         Ribasim.close(logger)
     end
@@ -62,8 +62,6 @@ end
         end
 
         Ribasim.close(logger)
-
-        println(@__MODULE__)
 
         open(normpath(dir, "results", "ribasim.log"), "r") do io
             result = read(io, String)

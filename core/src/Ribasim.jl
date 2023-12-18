@@ -47,7 +47,7 @@ using Graphs:
     rem_edge!
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: with_logger, LogLevel, AbstractLogger
+using Logging: with_logger, LogLevel, AbstractLogger, SimpleLogger
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,

@@ -8,7 +8,7 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
@@ -91,7 +91,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test model isa Ribasim.Model
     @test successful_retcode(model)
 end
@@ -107,7 +107,7 @@ end
 
     logger = TestLogger()
     model = with_logger(logger) do
-        Ribasim.run(toml_path)
+        Ribasim.run(Ribasim.Config(toml_path))
     end
 
     @test model isa Ribasim.Model
@@ -148,7 +148,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test model isa Ribasim.Model
     @test successful_retcode(model)
 end
@@ -159,7 +159,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test length(model.integrator.p.basin.precipitation) == 4
@@ -203,7 +203,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
@@ -267,7 +267,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
     @test ispath(toml_path)
 
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test successful_retcode(model)
     p = model.integrator.p
     (; level_boundary, outlet) = p
@@ -298,7 +298,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test successful_retcode(model)
 
     day = 86400.0
@@ -370,7 +370,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test successful_retcode(model)
 
     u = model.integrator.sol.u[end]

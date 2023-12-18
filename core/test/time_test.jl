@@ -6,7 +6,7 @@
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     @test successful_retcode(model)
 
     flow = DataFrame(Ribasim.flow_table(model))

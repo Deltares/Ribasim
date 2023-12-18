@@ -1,3 +1,9 @@
+"""
+    The type of message that is sent to is_current_module.
+    The information is generated in LoggingExtras.EarlyFilteredLogger.
+
+    See https://github.com/JuliaLogging/LoggingExtras.jl/blob/d35e7c8cfc197853ee336ace17182e6ed36dca24/src/CompositionalLoggers/earlyfiltered.jl#L39
+"""
 const LogMessageType =
     @NamedTuple{level::LogLevel, _module::Module, group::Symbol, id::Symbol}
 
@@ -30,7 +36,7 @@ function close(logger::AbstractLogger)
         close(logger.logger)
     elseif hasfield(typeof(logger), :loggers)
         foreach(close, logger.loggers)
-    elseif hasfield(typeof(logger), :stream) && !isa(logger, TerminalLogger)
+    elseif hasfield(typeof(logger), :stream) && logger isa SimpleLogger # FileLogger contains a SimpleLogger that contains the Stream.
         Base.close(logger.stream)
     end
 end
