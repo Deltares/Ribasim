@@ -11,11 +11,16 @@
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.fixAll": true
+            "source.fixAll": "explicit"
         }
     },
     "python.analysis.extraPaths": [
         ".pixi/env/Library/python"
     ],
-    "mypy-type-checker.importStrategy": "fromEnvironment"
+    "mypy-type-checker.importStrategy": "fromEnvironment",
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

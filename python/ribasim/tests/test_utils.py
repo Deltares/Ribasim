@@ -40,3 +40,4 @@ def test_prefix_column():
     assert utils.prefix_column("a", ["b"]) == "meta_a"
     assert utils.prefix_column("meta_a", ["b"]) == "meta_a"
     assert utils.prefix_column("a", ["a"]) == "a"
+    assert utils.prefix_column("fid", ["a"]) == "fid"

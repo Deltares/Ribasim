@@ -1,4 +1,4 @@
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from collections.abc import Callable
 
@@ -6,8 +6,9 @@ import ribasim
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
-    minimal_subnetwork_model,
     # looped_subnetwork_model,
+    fractional_flow_subnetwork_model,
+    minimal_subnetwork_model,
     subnetwork_model,
     user_model,
 )
@@ -78,6 +79,7 @@ __all__ = [
     "user_model",
     "subnetwork_model",
     "minimal_subnetwork_model",
+    "fractional_flow_subnetwork_model",
     # Disable until this issue is resolved:
     # https://github.com/Deltares/Ribasim/issues/692
     # "looped_subnetwork_model",

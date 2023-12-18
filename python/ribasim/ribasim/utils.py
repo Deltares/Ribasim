@@ -8,6 +8,7 @@ def prefix_column(
     if (
         len(record_columns) > 0
         and column not in record_columns
+        and column != "fid"
         and not column.startswith(prefix)
     ):
         column = f"{prefix}{column}"

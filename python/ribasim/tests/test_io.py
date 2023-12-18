@@ -2,12 +2,13 @@ import pandas as pd
 import pytest
 import ribasim
 from numpy.testing import assert_array_equal
+from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Pump
 
 
-def assert_equal(a, b):
+def __assert_equal(a: DataFrame, b: DataFrame) -> None:
     """Like pandas.testing.assert_frame_equal, but ignoring the index."""
     if a is None and b is None:
         return True
@@ -21,6 +22,11 @@ def assert_equal(a, b):
         a["time"] = a.time.astype("datetime64[ns]")
         b["time"] = b.time.astype("datetime64[ns]")
 
+    if "fid" in a:
+        a.drop(columns=["fid"], inplace=True)
+    if "fid" in b:
+        b.drop(columns=["fid"], inplace=True)
+
     return assert_frame_equal(a, b)
 
 
@@ -32,8 +38,8 @@ def test_basic(basic, tmp_path):
     index_a = model_orig.network.node.df.index.to_numpy(int)
     index_b = model_loaded.network.node.df.index.to_numpy(int)
     assert_array_equal(index_a, index_b)
-    assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
-    assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
+    __assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
+    __assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
     assert model_loaded.basin.time.df is None
 
 
@@ -42,7 +48,7 @@ def test_basic_arrow(basic_arrow, tmp_path):
     model_orig.write(tmp_path / "basic_arrow/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_arrow/ribasim.toml")
 
-    assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
+    __assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
 
 
 def test_basic_transient(basic_transient, tmp_path):
@@ -50,13 +56,13 @@ def test_basic_transient(basic_transient, tmp_path):
     model_orig.write(tmp_path / "basic_transient/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
 
-    assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
-    assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
+    __assert_equal(model_orig.network.node.df, model_loaded.network.node.df)
+    __assert_equal(model_orig.network.edge.df, model_loaded.network.edge.df)
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time[0] == time.df.time[0]
-    assert_equal(model_orig.basin.time.df, time.df)
-    assert time.df.shape == (1468, 8)
+    __assert_equal(model_orig.basin.time.df, time.df)
+    assert time.df.shape == (1468, 9)
 
 
 def test_pydantic():

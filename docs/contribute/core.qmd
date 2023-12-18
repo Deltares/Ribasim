@@ -71,13 +71,9 @@ sequenceDiagram
 
 # Set up the developer environment
 
-## Install Julia via Juliaup
+## Install optional Julia libraries
 
-Install Julia via Juliaup as described in its [README](https://github.com/JuliaLang/juliaup#installation).
-
-## Install Julia libraries
-
-Start the Julia [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) by executing `julia` in your terminal.
+Start the Julia [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) by executing `pixi run julia` in your terminal.
 Within the REPL type `]` to enter the Pkg REPL.
 For more information on how to use `Pkg`, see the [Getting Started](https://pkgdocs.julialang.org/v1/getting-started/) page in its documentation.
 There you can add `Revise` and `TestEnv` to your global environment.
@@ -91,31 +87,12 @@ pkg> add Revise TestEnv
 Revise.jl is a library that allows you to modify code and use the changes without restarting Julia.
 You can let it start automatically by following these [instructions](https://timholy.github.io/Revise.jl/stable/config/#Using-Revise-by-default-1).
 
-## Clone Ribasim
-
-In order to have the Ribasim repository locally available, you can clone it with Git.
-Git can be installed from [git-scm.com](https://git-scm.com/downloads).
-Once installed, run the following command at a directory of your choice:
-
-In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
-
-```bash
-git clone https://github.com/Deltares/Ribasim.git
-```
-
-To continue with the following steps, make the root of the repository your working directory by running
-
-```bash
-cd Ribasim
-```
-
 ## Install Visual Studio Code (optional)
 
 There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll down to see it.
 We use and recommend Microsoft's free editor [Visual Studio Code](https://code.visualstudio.com/).
 When combined with the [Julia extension](https://www.julia-vscode.org/) it provides a powerful and interactive development experience.
-
-
+Make sure to have the correct environment when opening your IDE by running `pixi run code .`, or opening a `pixi shell` and then calling the command to open the editor of your choice.
 
 # Developing on Ribasim
 

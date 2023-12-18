@@ -160,6 +160,7 @@ class Node(Input):
         return [
             QgsField("name", QVariant.String),
             QgsField("type", QVariant.String),
+            QgsField("allocation_network_id", QVariant.Int),
         ]
 
     @classmethod
@@ -250,6 +251,7 @@ class Edge(Input):
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
             QgsField("edge_type", QVariant.String),
+            QgsField("allocation_network_id", QVariant.Int),
         ]
 
     @classmethod
@@ -426,7 +428,6 @@ class BasinState(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("level", QVariant.Double),
-            QgsField("concentration", QVariant.Double),
         ]
 
 

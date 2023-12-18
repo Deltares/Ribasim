@@ -239,11 +239,23 @@ end
 end
 
 @testitem "reduction_factor" begin
-    @test Ribasim.reduction_factor(-2.0, 2.0) === 0.0
-    @test Ribasim.reduction_factor(0.0f0, 2.0) === 0.0f0
-    @test Ribasim.reduction_factor(0.0, 2.0) === 0.0
-    @test Ribasim.reduction_factor(1.0f0, 2.0) === 0.5f0
-    @test Ribasim.reduction_factor(1.0, 2.0) === 0.5
-    @test Ribasim.reduction_factor(3.0f0, 2.0) === 1.0f0
-    @test Ribasim.reduction_factor(3.0, 2.0) === 1.0
+    using Ribasim: reduction_factor
+    @test reduction_factor(-2.0, 2.0) === 0.0
+    @test reduction_factor(0.0f0, 2.0) === 0.0f0
+    @test reduction_factor(0.0, 2.0) === 0.0
+    @test reduction_factor(1.0f0, 2.0) === 0.5f0
+    @test reduction_factor(1.0, 2.0) === 0.5
+    @test reduction_factor(3.0f0, 2.0) === 1.0f0
+    @test reduction_factor(3.0, 2.0) === 1.0
+end
+
+@testitem "low_storage_factor" begin
+    using Ribasim: NodeID, low_storage_factor, Indices
+    @test low_storage_factor([-2.0], Indices(NodeID[5]), NodeID(5), 2.0) === 0.0
+    @test low_storage_factor([0.0f0], Indices(NodeID[5]), NodeID(5), 2.0) === 0.0f0
+    @test low_storage_factor([0.0], Indices(NodeID[5]), NodeID(5), 2.0) === 0.0
+    @test low_storage_factor([1.0f0], Indices(NodeID[5]), NodeID(5), 2.0) === 0.5f0
+    @test low_storage_factor([1.0], Indices(NodeID[5]), NodeID(5), 2.0) === 0.5
+    @test low_storage_factor([3.0f0], Indices(NodeID[5]), NodeID(5), 2.0) === 1.0f0
+    @test low_storage_factor([3.0], Indices(NodeID[5]), NodeID(5), 2.0) === 1.0
 end

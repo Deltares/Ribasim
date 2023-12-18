@@ -57,6 +57,7 @@ using MetaGraphsNext:
     outneighbor_labels,
     inneighbor_labels
 using OrdinaryDiffEq
+using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase
 using SparseArrays
