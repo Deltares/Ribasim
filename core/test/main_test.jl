@@ -1,6 +1,5 @@
 @testitem "version" begin
     using IOCapture: capture
-    using Logging: global_logger, ConsoleLogger
 
     (; value, output) = capture() do
         Ribasim.main(["--version"])
@@ -11,7 +10,6 @@ end
 
 @testitem "toml_path" begin
     using IOCapture: capture
-    using Logging: global_logger, ConsoleLogger
 
     model_path = normpath(@__DIR__, "../../generated_testmodels/basic/")
     toml_path = normpath(model_path, "ribasim.toml")
@@ -25,4 +23,24 @@ end
         @show error
         @show backtrace
     end
+end
+
+@testitem "too many arguments for main" begin
+    using IOCapture: capture
+
+    (; value, output) = capture() do
+        Ribasim.main(["too", "many"])
+    end
+    @test value == 1
+    @test occursin("Exactly 1 argument expected, got 2", output)
+end
+
+@testitem "non-existing file for main" begin
+    using IOCapture: capture
+
+    (; value, output) = capture() do
+        Ribasim.main(["non-existing-file.toml"])
+    end
+    @test value == 1
+    @test occursin("File not found: non-existing-file.toml", output)
 end
