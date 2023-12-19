@@ -4,7 +4,7 @@
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control, graph) = p
 
@@ -49,7 +49,7 @@ end
 @testitem "Flow condition control" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_condition/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
@@ -73,7 +73,7 @@ end
         "../../generated_testmodels/level_boundary_condition/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
@@ -138,7 +138,7 @@ end
         "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control) = p
     # it takes some months to fill the Basin above 0.5 m
@@ -157,7 +157,7 @@ end
         "../../generated_testmodels/level_setpoint_with_minmax/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control) = p
     (; record, greater_than) = discrete_control
@@ -187,7 +187,7 @@ end
         "../../generated_testmodels/discrete_control_of_pid_control/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; discrete_control, pid_control) = p
 
