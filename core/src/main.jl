@@ -24,6 +24,7 @@ function main(ARGS::Vector{String})::Cint
     try
         # show progress bar in terminal
         config = Config(arg)
+        mkpath(results_path(config, "."))
         open(results_path(config, "ribasim.log"), "w") do io
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
