@@ -94,7 +94,7 @@ end
 @testitem "PID control" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
     p = model.integrator.p
     (; basin, pid_control, flow_boundary) = p
 
