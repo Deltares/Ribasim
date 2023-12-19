@@ -4,7 +4,7 @@ function help(x::AbstractString)::Cint
     return 1
 end
 
-function main(ARGS::Vector{AbstractString})::Cint
+function main(ARGS::Vector{String})::Cint
     n = length(ARGS)
     if n != 1
         return help("Exactly 1 argument expected, got $n")
