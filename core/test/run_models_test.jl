@@ -169,6 +169,17 @@ end
         Sys.isapple()
 end
 
+@testitem "allocation example model" begin
+    using SciMLBase: successful_retcode
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(Ribasim.Config(toml_path))
+    @test model isa Ribasim.Model
+    @test successful_retcode(model)
+end
+
 @testitem "sparse and AD/FDM jac solver options" begin
     using SciMLBase: successful_retcode
 

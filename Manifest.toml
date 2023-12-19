@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0-rc2"
 manifest_format = "2.0"
-project_hash = "ffe3d5f3606c1f85a4bca07ee2df86a28560d8a2"
+project_hash = "e92257faf6a6264eb6078cd603308efd2e42b380"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -1050,9 +1050,9 @@ version = "6.59.3"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "f9392ab72832f4315220a853747ff3dba758c9d1"
+git-tree-sha1 = "8b880733c61c4a99a069302390de2d057ee166ce"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.1.15"
+version = "2.1.16"
 
 [[deps.PackageExtensionCompat]]
 git-tree-sha1 = "fb28e33b8a95c4cee25ce296c817d89cc2e53518"
