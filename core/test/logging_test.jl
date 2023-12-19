@@ -55,8 +55,7 @@ end
             logger = Ribasim.setup_logger(;
                 verbosity = Logging.Debug,
                 stream = io,
-                module_filter_function = log::Ribasim.LogMessageType ->
-                    log._module == @__MODULE__,
+                module_filter_function = log -> log._module == @__MODULE__,
             )
 
             with_logger(logger) do
