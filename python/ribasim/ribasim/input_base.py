@@ -212,7 +212,7 @@ class TableModel(FileModel, Generic[TableT]):
                 "node_id",
                 "from_node_id",
                 "to_node_id",
-                "listen_node_id",
+                "listen_feature_id",
             ]:
                 if hasattr(df, name_column):
                     df[name_column] += offset_node_id
