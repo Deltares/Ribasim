@@ -184,10 +184,9 @@ class Node(SpatialTableModel[NodeSchema]):
             ax.fill(
                 bounding_polygon_vertices[:, 0],
                 bounding_polygon_vertices[:, 1],
-                linestyle=":",
-                facecolor="none",
-                linewidth=2,
-                edgecolor="gray",
+                facecolor="gray",
+                alpha=0.5,
+                linewidth=0,
                 zorder=zorder,
             )
             if allocation_subnetwork_id == 1:

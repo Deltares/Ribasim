@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+from shapely.geometry import LineString
 
 from ribasim.config import (
     Allocation,
@@ -81,6 +83,47 @@ class Network(FileModel, NodeModel):
 
         network.node.offset_allocation_network_ids(offset_allocation_network_id)
         network.edge.offset_allocation_network_ids(offset_allocation_network_id)
+        return network
+
+    def add_edges(
+        self,
+        from_node_id: np.ndarray[int],
+        to_node_id: np.ndarray[int],
+        edge_type: list[str],
+        inplace: bool = True,
+    ) -> "Network":
+        if inplace:
+            network = self
+        else:
+            network = deepcopy(self)
+
+        df = pd.DataFrame(
+            data={
+                "from_node_id": from_node_id,
+                "to_node_id": to_node_id,
+                "edge_type": edge_type,
+            }
+        )
+
+        df["geometry"] = df.apply(
+            (
+                lambda row: LineString(
+                    [
+                        self.node.df.loc[row.from_node_id].geometry,
+                        self.node.df.loc[row.to_node_id].geometry,
+                    ]
+                )
+            ),
+            axis=1,
+        )
+        edges_added = gpd.GeoDataFrame(df, geometry=df.geometry)
+
+        network.edge.df = pd.concat(
+            [
+                network.edge.df,
+                edges_added,
+            ]
+        )
         return network
 
     @classmethod

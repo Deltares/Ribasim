@@ -1169,4 +1169,10 @@ def main_network_with_subnetworks_model():
     model.merge_model(fractional_flow_subnetwork_model(), offset_spacial=(14.0, 3.0))
     model.merge_model(looped_subnetwork_model(), offset_spacial=(26.0, 3.0))
 
+    # Connection edges
+    from_id = np.array([2, 6, 10])
+    to_id = np.array([11, 24, 38])
+    edge_type = 3 * ["flow"]
+    model.network.add_edges(from_id, to_id, edge_type)
+
     return model
