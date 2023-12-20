@@ -376,12 +376,29 @@ end
 """Compute the storages of the basins based on the water level of the basins."""
 function get_storages_from_levels(
     basin::Basin,
-    levels::Vector,
+    state_node_id::Vector{Int},
+    state_level::Vector{Float64},
 )::Tuple{Vector{Float64}, Bool}
-    storages = Float64[]
+    (; node_id) = basin
 
-    for (i, level) in enumerate(levels)
-        push!(storages, get_storage_from_level(basin, i, level))
+    storages = fill(1.0, length(node_id))
+    n_specified_states = length(state_node_id)
+
+    if n_specified_states > 0
+        basin_state_index = 1
+        basin_state_node_id = state_node_id[1]
+
+        for (i, id) in enumerate(node_id)
+            if basin_state_node_id == id.value
+                storages[i] =
+                    get_storage_from_level(basin, i, state_level[basin_state_index])
+                basin_state_index += 1
+                if basin_state_index > n_specified_states
+                    break
+                end
+                basin_state_node_id = state_node_id[basin_state_index]
+            end
+        end
     end
     return storages, any(isnan.(storages))
 end
