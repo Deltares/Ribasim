@@ -525,7 +525,7 @@ class Model(FileModel):
         self.plot_control_listen(ax)
         self.network.node.plot(ax=ax, zorder=3)
         if indicate_subnetworks:
-            self.network.node.plot_allocation_networks(ax=ax)
+            self.network.node.plot_allocation_networks(ax=ax, zorder=4)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
