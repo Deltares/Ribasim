@@ -1175,4 +1175,14 @@ def main_network_with_subnetworks_model():
     edge_type = 3 * ["flow"]
     model.network.add_edges(from_id, to_id, edge_type)
 
+    # Convert connecting flow boundaries to pumps
+    model.network.node.df.loc[to_id, "type"] = "Pump"
+    model.flow_boundary.delete_by_ids(to_id)
+    pump_added = ribasim.Pump(
+        static=pd.DataFrame(
+            data={"node_id": to_id, "flow_rate": 1e-3, "max_flow_rate": 1.0}
+        )
+    )
+    model.pump.merge_node(pump_added)
+
     return model

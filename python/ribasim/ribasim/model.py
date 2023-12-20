@@ -116,7 +116,9 @@ class Network(FileModel, NodeModel):
             ),
             axis=1,
         )
-        edges_added = gpd.GeoDataFrame(df, geometry=df.geometry)
+        edges_added = gpd.GeoDataFrame(
+            df, geometry=df.geometry, crs=network.edge.df.crs
+        )
 
         network.edge.df = pd.concat(
             [

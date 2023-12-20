@@ -13,6 +13,7 @@ from typing import (
 )
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -489,6 +490,25 @@ class NodeModel(ChildModel):
                         table_added = table_node.merge_table(table_added, inplace=False)
 
                     setattr(node, field, table_added)
+        return node
+
+    def delete_by_ids(
+        self, node_ids: np.ndarray[int], inplace: bool = True
+    ) -> "NodeModel":
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+
+        for field in node.fields():
+            attr = getattr(node, field)
+            if isinstance(attr, TableModel):
+                df = attr.df[~attr.df.node_id.isin(node_ids)]
+                if df.empty:
+                    attr.df = None
+                else:
+                    attr.df = df
+
         return node
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
