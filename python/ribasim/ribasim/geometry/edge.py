@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import LineString
 
 from ribasim.input_base import SpatialTableModel
 
@@ -37,6 +39,24 @@ class Edge(SpatialTableModel[EdgeSchema]):
     static : pandas.DataFrame
         Table describing the flow connections.
     """
+
+    def translate_spacially(
+        self, offset_spacial: tuple[float, float], inplace: bool = True
+    ) -> "Edge":
+        if inplace:
+            edge = self
+        else:
+            edge = deepcopy(self)
+
+        edge.df.geometry = edge.df.geometry.apply(
+            lambda linestring: LineString(
+                [
+                    (point[0] + offset_spacial[0], point[1] + offset_spacial[1])
+                    for point in linestring.coords
+                ]
+            )
+        )
+        return edge
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         return (self.df.edge_type == edge_type).to_numpy()

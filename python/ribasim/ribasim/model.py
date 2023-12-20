@@ -1,5 +1,6 @@
 import datetime
 import shutil
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,18 @@ class Network(FileModel, NodeModel):
             n = 0
 
         return n
+
+    def translate_spacially(
+        self, offset_spacial: tuple[float, float], inplace: bool = True
+    ) -> "Network":
+        if inplace:
+            network = self
+        else:
+            network = deepcopy(self)
+
+        network.node.translate_spacially(offset_spacial)
+        network.edge.translate_spacially(offset_spacial)
+        return network
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -375,6 +388,44 @@ class Model(FileModel):
         # Drop database info
         context_file_loading.set({})
         return self
+
+    def max_node_id(self) -> int:
+        return self.network.node.df.index.max()
+
+    def merge_model(
+        self,
+        model_added: "Model",
+        offset_node_id: int | None = None,
+        offset_spacial: tuple[float, float] = (0.0, 0.0),
+        inplace: bool = True,
+    ):
+        if inplace:
+            model = self
+        else:
+            model = deepcopy(self)
+
+        nodes_model = model.nodes()
+        nodes_added = model_added.nodes()
+        nodes_added["network"] = nodes_added["network"].translate_spacially(
+            offset_spacial, inplace=False
+        )
+        min_offset_node_id = model.max_node_id()
+
+        if offset_node_id is None:
+            offset_node_id = min_offset_node_id
+        else:
+            assert (
+                offset_node_id >= min_offset_node_id
+            ), f"The node id offset must be at least the maximum node ID of the main model ({min_offset_node_id}) to avoid conflicts."
+
+        for node_type, node_added in nodes_added.items():
+            node_added = node_added.offset_node_ids(offset_node_id)
+            if node_type in nodes_model:
+                node_added = nodes_model[node_type].merge_node(
+                    node_added, inplace=False
+                )
+
+            setattr(model, node_type, node_added)
 
     def plot_control_listen(self, ax):
         x_start, x_end = [], []

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ import shapely
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
 
@@ -58,6 +60,21 @@ class Node(SpatialTableModel[NodeSchema]):
         node_type = node_type.node_type.tolist()
 
         return node_id, node_type
+
+    def translate_spacially(
+        self, offset_spacial: tuple[float, float], inplace: bool = True
+    ) -> "Node":
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+
+        node.df.geometry = node.df.geometry.apply(
+            lambda point: Point(
+                point.x + offset_spacial[0], point.y + offset_spacial[1]
+            )
+        )
+        return node
 
     def geometry_from_connectivity(
         self, from_id: Sequence[int], to_id: Sequence[int]

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
 from contextvars import ContextVar
+from copy import deepcopy
 from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
@@ -201,6 +202,42 @@ class TableModel(FileModel, Generic[TableT]):
             node_ids.update(self.df["node_id"])
 
         return node_ids
+
+    def offset_node_ids(self, offset_node_id: int) -> "TableModel":
+        copy = deepcopy(self)
+        df = copy.df
+        if copy.df is not None:
+            df.index += offset_node_id
+            for name_column in [
+                "node_id",
+                "from_node_id",
+                "to_node_id",
+                "listen_node_id",
+            ]:
+                if hasattr(df, name_column):
+                    df[name_column] += offset_node_id
+        return copy
+
+    def merge_table(
+        self, table_added: "TableModel", inplace: bool = True
+    ) -> "TableModel":
+        assert type(self) == type(
+            table_added
+        ), "Can only merge tables of the same type."
+
+        if inplace:
+            table = self
+        else:
+            table = deepcopy(self)
+
+        table.df = pd.concat(
+            [
+                table.df,
+                table_added.df,
+            ]
+        )
+
+        return table
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -420,6 +457,39 @@ class NodeModel(ChildModel):
     def node_ids_and_types(self) -> tuple[list[int], list[str]]:
         ids = self.node_ids()
         return list(ids), len(ids) * [self.get_input_type()]
+
+    def offset_node_ids(self, offset_node_id: int) -> "NodeModel":
+        node_copy = deepcopy(self)
+        for field in node_copy.fields():
+            attr = getattr(node_copy, field)
+            if isinstance(attr, TableModel):
+                table = attr
+                setattr(
+                    node_copy,
+                    field,
+                    table.offset_node_ids(offset_node_id),
+                )
+        return node_copy
+
+    def merge_node(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
+        assert type(self) == type(node_added), "Can only merge nodes of the same type."
+
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+
+        for field in node_added.fields():
+            attr = getattr(node_added, field)
+            if isinstance(attr, TableModel):
+                table_added = attr
+                table_node = getattr(node, field)
+                if table_added.df is not None:
+                    if table_node.df is not None:
+                        table_added = table_node.merge_table(table_added, inplace=False)
+
+                    setattr(node, field, table_added)
+        return node
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
         for field in self.fields():
