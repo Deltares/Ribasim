@@ -10,6 +10,7 @@ import shapely
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from scipy.spatial import ConvexHull
 from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
@@ -157,6 +158,49 @@ class Node(SpatialTableModel[NodeSchema]):
         from_id = node_index[edge_node_id[:, 0]].to_numpy()
         to_id = node_index[edge_node_id[:, 1]].to_numpy()
         return from_id, to_id
+
+    def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
+        if ax is None:
+            _, ax = plt.subplots()
+            ax.axis("off")
+
+        for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
+            "allocation_network_id"
+        ):
+            points = np.stack(
+                (
+                    df_subnetwork.geometry.x.to_numpy(),
+                    df_subnetwork.geometry.y.to_numpy(),
+                ),
+                axis=1,
+            )
+            hull = ConvexHull(points)
+            bounding_polygon_vertices = points[hull.vertices, :]
+            hull_center = np.mean(bounding_polygon_vertices, axis=0)
+            bounding_polygon_vertices = (
+                bounding_polygon_vertices - hull_center
+            ) * 1.1 + hull_center
+
+            ax.fill(
+                bounding_polygon_vertices[:, 0],
+                bounding_polygon_vertices[:, 1],
+                linestyle=":",
+                facecolor="none",
+                linewidth=2,
+                edgecolor="gray",
+                zorder=zorder,
+            )
+            if allocation_subnetwork_id == 1:
+                text = "Main network"
+            else:
+                text = f"Subnetwork {allocation_subnetwork_id}"
+            ax.text(
+                *hull_center,
+                text,
+                horizontalalignment="center",
+                color="gray",
+                zorder=zorder,
+            )
 
     def plot(self, ax=None, zorder=None) -> Any:
         """

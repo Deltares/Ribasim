@@ -505,9 +505,9 @@ class Model(FileModel):
                 label="Listen edge" if i == 0 else None,
             )
 
-    def plot(self, ax=None) -> Any:
+    def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
         """
-        Plot the nodes and edges of the model.
+        Plot the nodes, edges and allocation networks of the model.
 
         Parameters
         ----------
@@ -524,6 +524,8 @@ class Model(FileModel):
         self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         self.network.node.plot(ax=ax, zorder=3)
+        if indicate_subnetworks:
+            self.network.node.plot_allocation_networks(ax=ax)
 
         ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
 
