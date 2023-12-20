@@ -76,6 +76,17 @@ class Node(SpatialTableModel[NodeSchema]):
         )
         return node
 
+    def offset_allocation_network_ids(
+        self, offset_allocation_network_id: int, inplace: bool = True
+    ) -> "Node":
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+
+        node.df.allocation_network_id += offset_allocation_network_id
+        return node
+
     def geometry_from_connectivity(
         self, from_id: Sequence[int], to_id: Sequence[int]
     ) -> NDArray[Any]:

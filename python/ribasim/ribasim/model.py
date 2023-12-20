@@ -71,6 +71,18 @@ class Network(FileModel, NodeModel):
         network.edge.translate_spacially(offset_spacial)
         return network
 
+    def offset_allocation_network_ids(
+        self, offset_allocation_network_id: int, inplace: bool = True
+    ) -> "Network":
+        if inplace:
+            network = self
+        else:
+            network = deepcopy(self)
+
+        network.node.offset_allocation_network_ids(offset_allocation_network_id)
+        network.edge.offset_allocation_network_ids(offset_allocation_network_id)
+        return network
+
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
         directory = context_file_loading.get().get("directory", None)
@@ -392,10 +404,14 @@ class Model(FileModel):
     def max_node_id(self) -> int:
         return self.network.node.df.index.max()
 
+    def max_allocation_network_id(self) -> int:
+        return self.network.node.df.allocation_network_id.max()
+
     def merge_model(
         self,
         model_added: "Model",
         offset_node_id: int | None = None,
+        offset_allocation_network_id: int | None = None,
         offset_spacial: tuple[float, float] = (0.0, 0.0),
         inplace: bool = True,
     ):
@@ -410,6 +426,17 @@ class Model(FileModel):
             offset_spacial, inplace=False
         )
         min_offset_node_id = model.max_node_id()
+        min_offset_allocation_network_id = model.max_allocation_network_id()
+
+        if offset_allocation_network_id is None:
+            offset_allocation_network_id = min_offset_allocation_network_id
+        else:
+            assert (
+                offset_allocation_network_id >= min_offset_allocation_network_id
+            ), f"The allocation network ID offset must be at least the maximum allocation network ID of the main model ({min_offset_allocation_network_id}) to avoid conflicts."
+        nodes_added["network"].offset_allocation_network_ids(
+            offset_allocation_network_id
+        )
 
         if offset_node_id is None:
             offset_node_id = min_offset_node_id
