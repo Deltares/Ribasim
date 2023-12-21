@@ -2,15 +2,16 @@ from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
+from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from scipy.spatial import ConvexHull
 from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
@@ -164,42 +165,41 @@ class Node(SpatialTableModel[NodeSchema]):
             _, ax = plt.subplots()
             ax.axis("off")
 
+        COLOR_SUBNETWORK = "black"
+        COLOR_MAIN_NETWORK = "blue"
+        ALPHA = 0.25
+
+        contains_main_network = False
+        contains_subnetworks = False
+
         for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
             "allocation_network_id"
         ):
-            points = np.stack(
-                (
-                    df_subnetwork.geometry.x.to_numpy(),
-                    df_subnetwork.geometry.y.to_numpy(),
-                ),
-                axis=1,
-            )
-            hull = ConvexHull(points)
-            bounding_polygon_vertices = points[hull.vertices, :]
-            hull_center = np.mean(bounding_polygon_vertices, axis=0)
-            bounding_polygon_vertices = (
-                bounding_polygon_vertices - hull_center
-            ) * 1.1 + hull_center
-
-            ax.fill(
-                bounding_polygon_vertices[:, 0],
-                bounding_polygon_vertices[:, 1],
-                facecolor="gray",
-                alpha=0.5,
-                linewidth=0,
-                zorder=zorder,
-            )
-            if allocation_subnetwork_id == 1:
-                text = "Main network"
+            if allocation_subnetwork_id is None:
+                continue
+            elif allocation_subnetwork_id == 1:
+                contains_main_network = True
+                color = COLOR_MAIN_NETWORK
             else:
-                text = f"Subnetwork {allocation_subnetwork_id}"
-            ax.text(
-                *hull_center,
-                text,
-                horizontalalignment="center",
-                color="gray",
-                zorder=zorder,
+                contains_subnetworks = True
+                color = COLOR_SUBNETWORK
+
+            hull = gpd.GeoDataFrame(
+                geometry=[df_subnetwork.geometry.unary_union.convex_hull]
             )
+            hull.plot(ax=ax, color=color, alpha=ALPHA, zorder=zorder)
+
+        handles = []
+        labels = []
+
+        if contains_main_network:
+            handles.append(Patch(facecolor=COLOR_MAIN_NETWORK, alpha=ALPHA))
+            labels.append("Main network")
+        if contains_subnetworks:
+            handles.append(Patch(facecolor=COLOR_SUBNETWORK, alpha=ALPHA))
+            labels.append("Subnetwork")
+
+        return handles, labels
 
     def plot(self, ax=None, zorder=None) -> Any:
         """

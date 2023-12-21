@@ -566,13 +566,22 @@ class Model(FileModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
+
         self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         self.network.node.plot(ax=ax, zorder=3)
-        if indicate_subnetworks:
-            self.network.node.plot_allocation_networks(ax=ax, zorder=4)
 
-        ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
+        handles, labels = ax.get_legend_handles_labels()
+
+        if indicate_subnetworks:
+            (
+                handles_subnetworks,
+                labels_subnetworks,
+            ) = self.network.node.plot_allocation_networks(ax=ax, zorder=1)
+            handles += handles_subnetworks
+            labels += labels_subnetworks
+
+        ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
 
