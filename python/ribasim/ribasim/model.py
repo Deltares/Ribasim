@@ -87,8 +87,8 @@ class Network(FileModel, NodeModel):
 
     def add_edges(
         self,
-        from_node_id: np.ndarray[int],
-        to_node_id: np.ndarray[int],
+        from_node_id: list[int],
+        to_node_id: list[int],
         edge_type: list[str],
         inplace: bool = True,
     ) -> "Network":

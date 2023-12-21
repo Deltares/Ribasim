@@ -13,7 +13,6 @@ from typing import (
 )
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -204,10 +203,10 @@ class TableModel(FileModel, Generic[TableT]):
 
         return node_ids
 
-    def offset_node_ids(self, offset_node_id: int) -> "TableModel":
+    def offset_node_ids(self, offset_node_id: int) -> "TableModel[TableT]":
         copy = deepcopy(self)
         df = copy.df
-        if copy.df is not None:
+        if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
             df.index += offset_node_id
             for name_column in [
                 "node_id",
@@ -220,8 +219,8 @@ class TableModel(FileModel, Generic[TableT]):
         return copy
 
     def merge_table(
-        self, table_added: "TableModel", inplace: bool = True
-    ) -> "TableModel":
+        self, table_added: "TableModel[TableT]", inplace: bool = True
+    ) -> "TableModel[TableT]":
         assert type(self) == type(
             table_added
         ), "Can only merge tables of the same type."
@@ -492,9 +491,7 @@ class NodeModel(ChildModel):
                     setattr(node, field, table_added)
         return node
 
-    def delete_by_ids(
-        self, node_ids: np.ndarray[int], inplace: bool = True
-    ) -> "NodeModel":
+    def delete_by_ids(self, node_ids: list[int], inplace: bool = True) -> "NodeModel":
         if inplace:
             node = self
         else:
@@ -503,11 +500,13 @@ class NodeModel(ChildModel):
         for field in node.fields():
             attr = getattr(node, field)
             if isinstance(attr, TableModel):
-                df = attr.df[~attr.df.node_id.isin(node_ids)]
-                if df.empty:
-                    attr.df = None
-                else:
-                    attr.df = df
+                df = attr.df
+                if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
+                    df = df[~df.node_id.isin(node_ids)]
+                    if df.empty:
+                        attr.df = None
+                    else:
+                        attr.df = df
 
         return node
 
