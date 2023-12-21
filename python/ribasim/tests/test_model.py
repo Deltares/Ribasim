@@ -131,8 +131,9 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
 
 
-def test_plot(discrete_control_of_pid_control):
+def test_plot(discrete_control_of_pid_control, main_network_with_subnetworks):
     discrete_control_of_pid_control.plot()
+    main_network_with_subnetworks.plot()
 
 
 def test_write_adds_fid_in_tables(basic, tmp_path):

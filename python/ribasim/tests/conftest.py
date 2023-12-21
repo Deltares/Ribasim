@@ -37,3 +37,8 @@ def discrete_control_of_pid_control() -> ribasim.Model:
 @pytest.fixture()
 def subnetwork() -> ribasim.Model:
     return ribasim_testmodels.subnetwork_model()
+
+
+@pytest.fixture()
+def main_network_with_subnetworks() -> ribasim.Model:
+    return ribasim_testmodels.main_network_with_subnetworks_model()
