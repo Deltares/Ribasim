@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from sqlite3 import connect
 
 import pandas as pd
@@ -143,3 +144,19 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         assert "fid" in df.columns
         fids = df.get("fid")
         assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
+
+def test_model_merging(basic, subnetwork, tmp_path):
+    model = deepcopy(basic)
+    model_added = deepcopy(subnetwork)
+    model.merge_model(model_added)
+    model.merge_model(model_added)
+    assert (model.network.node.df.index == range(1, 44)).all()
+    assert model.max_allocation_network_id() == 2
+    for node_type, node_added in model_added.nodes().items():
+        node_subnetwork = getattr(subnetwork, node_type)
+        for table_added, table_subnetwork in zip(
+            node_added.tables(), node_subnetwork.tables()
+        ):
+            assert table_added == table_subnetwork
+    model.write(tmp_path / "compound_model/ribasim.toml")

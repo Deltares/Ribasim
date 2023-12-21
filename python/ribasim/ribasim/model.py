@@ -450,7 +450,10 @@ class Model(FileModel):
         return self.network.node.df.index.max()
 
     def max_allocation_network_id(self) -> int:
-        return self.network.node.df.allocation_network_id.max()
+        m = self.network.node.df.allocation_network_id.max()
+        if pd.isna(m):
+            m = 0
+        return m
 
     def merge_model(
         self,

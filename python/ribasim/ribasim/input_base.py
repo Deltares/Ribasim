@@ -160,6 +160,19 @@ class FileModel(BaseModel, ABC):
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
+    def __eq__(self, other) -> bool:
+        if not type(self) == type(other):
+            return False
+        if self.filepath != other.filepath:
+            return False
+
+        if self.df is None and other.df is None:
+            return True
+        elif isinstance(self.df, (pd.DataFrame, gpd.GeoDataFrame)):
+            return self.df.equals(other.df)
+        else:
+            return False
+
     @field_validator("df")
     @classmethod
     def prefix_extra_columns(cls, v: DataFrame[TableT]):
