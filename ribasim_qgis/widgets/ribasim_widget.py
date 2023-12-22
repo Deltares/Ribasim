@@ -114,7 +114,12 @@ class RibasimWidget(QWidget):
         Try to add to a group; it might have been deleted. In that case, we add
         as many groups as required.
         """
-        group = self.groups[destination]
+        group = self.groups.get(destination)
+        if group is None:
+            name = str(Path(self.path).stem)
+            self.create_subgroup(name, destination)
+            group = self.groups[destination]
+
         try:
             if on_top:
                 group.insertLayer(0, maplayer)

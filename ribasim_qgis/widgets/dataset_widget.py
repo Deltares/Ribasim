@@ -37,6 +37,7 @@ from qgis.core import (
 from qgis.core.additions.edit import edit
 
 from ribasim_qgis.core.model import (
+    get_arrow_layers_from_model,
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
 )
@@ -123,16 +124,12 @@ class DatasetTreeWidget(QTreeWidget):
                     pass
                 else:
                     raise
-
-            # Geopackage
             element.remove_from_geopackage()
 
         for item in selection:
             # Dataset tree
             index = self.indexOfTopLevelItem(item)
             self.takeTopLevelItem(index)
-
-        return
 
 
 class DatasetWidget(QWidget):
@@ -223,11 +220,8 @@ class DatasetWidget(QWidget):
                     # Nota bene: will fail with numpy integers, has to be Python type!
                     edge.changeAttributeValue(fid, field1, int(id1))
                     edge.changeAttributeValue(fid, field2, int(id2))
-
         finally:
             edge.blockSignals(False)
-
-        return
 
     def add_layer(
         self,
@@ -254,7 +248,6 @@ class DatasetWidget(QWidget):
         self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
         element.set_editor_widget()
         element.set_read_only()
-        return
 
     def add_selection_to_qgis(self) -> None:
         selection = self.dataset_tree.selectedItems()
@@ -265,6 +258,7 @@ class DatasetWidget(QWidget):
         """Load the layers of a GeoPackage into the Layers Panel"""
         self.dataset_tree.clear()
         geo_path = get_database_path_from_model_file(self.path)
+        assert geo_path is not None
         nodes = load_nodes_from_geopackage(geo_path)
         for node_layer in nodes.values():
             self.dataset_tree.add_node_layer(node_layer)
@@ -273,11 +267,13 @@ class DatasetWidget(QWidget):
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
 
+        for layer in get_arrow_layers_from_model(self.path):
+            self.add_layer(layer, "Ribasim Input (read-only)")
+
         # Connect node and edge layer to derive connectivities.
         self.node_layer = nodes["Node"].layer
         self.edge_layer = nodes["Edge"].layer
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
-        return
 
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
@@ -371,13 +367,11 @@ class DatasetWidget(QWidget):
         column: str,
         output_file_name: str,
     ) -> None:
-        path = (
-            get_directory_path_from_model_file(
-                self.ribasim_widget.path, property="results_dir"
-            )
-            / output_file_name
+        results_path = get_directory_path_from_model_file(
+            self.ribasim_widget.path, directory_key="results_dir"
         )
-        if layer is not None:
-            layer.setCustomProperty("arrow_type", "timeseries")
-            layer.setCustomProperty("arrow_path", str(path))
-            layer.setCustomProperty("arrow_fid_column", column)
+        assert results_path is not None
+        path = results_path / output_file_name
+        layer.setCustomProperty("arrow_type", "timeseries")
+        layer.setCustomProperty("arrow_path", str(path))
+        layer.setCustomProperty("arrow_fid_column", column)
