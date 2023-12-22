@@ -1185,4 +1185,9 @@ def main_network_with_subnetworks_model():
     )
     model.pump.merge_node(pump_added)
 
+    # Fix control logic
+    df = model.discrete_control.condition.df
+    df.listen_feature_id = 25
+    df.variable = "level"
+
     return model
