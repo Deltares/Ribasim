@@ -78,7 +78,7 @@ class DatasetTreeWidget(QTreeWidget):
     def add_node_layer(self, element: Input) -> None:
         # These are mandatory elements, cannot be unticked
         item = self.add_item(name=element.input_type(), enabled=True)
-        item.element = element
+        item.setData(0, Qt.UserRole, element)
 
     def remove_geopackage_layers(self) -> None:
         """
@@ -105,7 +105,7 @@ class DatasetTreeWidget(QTreeWidget):
             return
 
         # Start deleting
-        elements = {item.element for item in selection}  # type: ignore[attr-defined] # TODO: dynamic item.element should be in some dict.
+        elements = {item.data(0, Qt.UserRole) for item in selection}
         qgs_instance = QgsProject.instance()
         assert qgs_instance is not None
 
@@ -242,7 +242,7 @@ class DatasetWidget(QWidget):
         )
 
     def add_item_to_qgis(self, item) -> None:
-        element = item.element
+        element = cast(Input, item.data(0, Qt.UserRole))
         layer, renderer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
         self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
@@ -330,7 +330,8 @@ class DatasetWidget(QWidget):
     def suppress_popup_changed(self):
         suppress = self.suppress_popup_checkbox.isChecked()
         for item in self.dataset_tree.items():
-            layer = item.element.layer
+            element = cast(Input, item.data(0, Qt.UserRole))
+            layer = element.layer
             if layer is not None:
                 config = layer.editFormConfig()
                 config.setSuppress(suppress)
@@ -345,7 +346,9 @@ class DatasetWidget(QWidget):
     def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
         # Append associated items
-        return {item.element.input_type() for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
+        return {
+            cast(Input, item.data(0, Qt.UserRole)).input_type() for item in selection
+        }
 
     def add_node_layer(self, element: Input) -> None:
         self.dataset_tree.add_node_layer(element)

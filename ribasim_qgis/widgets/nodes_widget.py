@@ -58,8 +58,10 @@ class NodesWidget(QWidget):
         """
         klass = NODES[node_type]
         names = self.ribasim_widget.selection_names()
+        model_path = get_database_path_from_model_file(self.ribasim_widget.path)
+        assert model_path is not None
         node = klass.create(
-            get_database_path_from_model_file(self.ribasim_widget.path),
+            model_path,
             self.ribasim_widget.crs,
             names,
         )
