@@ -267,8 +267,11 @@ class DatasetWidget(QWidget):
         for item in self.dataset_tree.items():
             self.add_item_to_qgis(item)
 
-        for layer in get_arrow_layers_from_model(self.path):
-            self.add_layer(layer, "Ribasim Input (read-only)")
+        for node_type, arrow_path in get_arrow_layers_from_model(self.path).items():
+            self.add_layer(
+                QgsVectorLayer(str(arrow_path), node_type, "ogr"),
+                "Ribasim Input (read-only)",
+            )
 
         # Connect node and edge layer to derive connectivities.
         self.node_layer = nodes["Node"].layer

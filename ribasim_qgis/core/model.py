@@ -2,8 +2,6 @@ from functools import reduce
 from pathlib import Path
 from typing import Any
 
-from qgis.core import QgsVectorLayer
-
 from .. import tomllib
 from .nodes import NODES
 
@@ -51,46 +49,30 @@ def get_database_path_from_model_file(model_path: Path) -> Path | None:
         return None
 
 
-def get_arrow_layers_from_model(model_path: Path) -> list[QgsVectorLayer]:
-    """Get the arrow layers from the model file.
+def get_arrow_layers_from_model(model_path: Path) -> dict[str, Path]:
+    """Get the arrow file paths from the model file.
 
     Args:
         model_path (Path): Path to the model (.toml) file.
 
     Returns_:
-        list[QgsVectorLayer]: List of arrow layers.
+        dict[str, Path]: Dictionary of existing arrow files with the node type as key.
     """
-    return [
-        layer
+    return {
+        node_type: layer
         for node_type in NODES.keys()
-        if (layer := __create_arrow_layer_from_model(model_path, node_type)) is not None
-    ]
+        if (layer := __get_existing_arrow_file_path(model_path, node_type))
+    }
 
 
-def __create_arrow_layer_from_model(
-    model_path: Path, node_type: str
-) -> QgsVectorLayer | None:
-    """Create an arrow layer from the model file.
-
-    Args:
-        model_path (Path): Path to the model (.toml) file.
-        node_type (str):
-            Node type to create the arrow layer for.
-            Should come from the NODES list, contains a / to separate table from entry.
-            See ribasim_qgis.core.nodes.NODES.
-
-    Returns_:
-        QgsVectorLayer: Arrow layer.
-    """
+def __get_existing_arrow_file_path(model_path: Path, node_type: str) -> Path | None:
     if "/" in node_type:
         table, node = node_type.lower().split(" / ", maxsplit=1)
         arrow_file_path = get_directory_path_from_model_file(
             model_path, table, node, directory_key="input_dir"
         )
-
         if arrow_file_path is not None and arrow_file_path.exists():
-            return QgsVectorLayer(str(arrow_file_path), node_type, "ogr")
-
+            return arrow_file_path
     return None
 
 
