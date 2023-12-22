@@ -64,6 +64,7 @@ class Network(FileModel, NodeModel):
     def translate_spacially(
         self, offset_spacial: tuple[float, float], inplace: bool = True
     ) -> "Network":
+        """Add the same spacial offset to all nodes and edges."""
         if inplace:
             network = self
         else:
@@ -92,6 +93,7 @@ class Network(FileModel, NodeModel):
         edge_type: list[str],
         inplace: bool = True,
     ) -> "Network":
+        """Add new edges to the network of the given type. Assumes no source edges are added."""
         if inplace:
             network = self
         else:
@@ -463,6 +465,12 @@ class Model(FileModel):
         offset_spacial: tuple[float, float] = (0.0, 0.0),
         inplace: bool = True,
     ):
+        """
+        Merge copies of the nodes and edges of an added model into this model.
+        The added model is not modified, but the following modificadions are made to the added data:
+        - Node IDs are shifted by at least the maximum node ID of this model
+        - Allocation network IDs are shifted by at least the maximum allocation network ID of this model.
+        """
         if inplace:
             model = self
         else:

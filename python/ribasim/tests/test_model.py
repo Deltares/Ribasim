@@ -154,6 +154,7 @@ def test_model_merging(basic, subnetwork, tmp_path):
     model.merge_model(model_added)
     assert (model.network.node.df.index == range(1, 44)).all()
     assert model.max_allocation_network_id() == 2
+    # Added model should not change
     for node_type, node_added in model_added.nodes().items():
         node_subnetwork = getattr(subnetwork, node_type)
         for table_added, table_subnetwork in zip(

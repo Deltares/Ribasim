@@ -43,6 +43,7 @@ class Edge(SpatialTableModel[EdgeSchema]):
     def translate_spacially(
         self, offset_spacial: tuple[float, float], inplace: bool = True
     ) -> "Edge":
+        """Add the same spacial offset to all edges."""
         if inplace:
             edge = self
         else:
@@ -61,6 +62,7 @@ class Edge(SpatialTableModel[EdgeSchema]):
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True
     ) -> "Edge":
+        """Add the same offset to all node IDs."""
         if inplace:
             edge = self
         else:

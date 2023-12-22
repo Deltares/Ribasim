@@ -217,6 +217,7 @@ class TableModel(FileModel, Generic[TableT]):
         return node_ids
 
     def offset_node_ids(self, offset_node_id: int) -> "TableModel[TableT]":
+        """Add the same offset to all node IDs."""
         copy = deepcopy(self)
         df = copy.df
         if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
@@ -234,6 +235,7 @@ class TableModel(FileModel, Generic[TableT]):
     def merge_table(
         self, table_added: "TableModel[TableT]", inplace: bool = True
     ) -> "TableModel[TableT]":
+        """Merge an added table of the same type into this table."""
         assert type(self) == type(
             table_added
         ), "Can only merge tables of the same type."
@@ -472,6 +474,7 @@ class NodeModel(ChildModel):
         return list(ids), len(ids) * [self.get_input_type()]
 
     def offset_node_ids(self, offset_node_id: int) -> "NodeModel":
+        """Add the same offset to all node IDs in all underlying tables."""
         node_copy = deepcopy(self)
         for field in node_copy.fields():
             attr = getattr(node_copy, field)
@@ -485,6 +488,7 @@ class NodeModel(ChildModel):
         return node_copy
 
     def merge_node(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
+        """Merge an added node of the same type into this node."""
         assert type(self) == type(node_added), "Can only merge nodes of the same type."
 
         if inplace:
@@ -505,6 +509,7 @@ class NodeModel(ChildModel):
         return node
 
     def delete_by_ids(self, node_ids: list[int], inplace: bool = True) -> "NodeModel":
+        """Delete all rows of the underlying tables whose node ID is in the given list."""
         if inplace:
             node = self
         else:

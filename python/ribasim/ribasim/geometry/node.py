@@ -66,6 +66,7 @@ class Node(SpatialTableModel[NodeSchema]):
     def translate_spacially(
         self, offset_spacial: tuple[float, float], inplace: bool = True
     ) -> "Node":
+        """Add the same spacial offset to all nodes."""
         if inplace:
             node = self
         else:
@@ -81,6 +82,7 @@ class Node(SpatialTableModel[NodeSchema]):
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True
     ) -> "Node":
+        """Add the same offset to all node IDs."""
         if inplace:
             node = self
         else:
