@@ -12,8 +12,12 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type
         if node_type in [:user, :basin, :terminal]
-            push!(used_nodes, node_id)
+            use_node = true
         elseif has_fractional_flow_outneighbors
+            use_node = true
+        end
+
+        if use_node
             push!(used_nodes, node_id)
         end
     end
@@ -68,7 +72,9 @@ function find_allocation_graph_edges!(
     p::Parameters,
     allocation_network_id::Int,
 )::Tuple{Vector{Vector{NodeID}}, SparseMatrixCSC{Float64, Int}}
-    (; graph) = p
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
+    main_network = (allocation_network_id == 1)
 
     edges_composite = Vector{NodeID}[]
     capacity = spzeros(nv(graph), nv(graph))
@@ -85,6 +91,15 @@ function find_allocation_graph_edges!(
 
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
+            # Find connections from main network to subnetworks
+            if main_network
+                for outneighbor_id in outneighbor_ids
+                    if graph[outneighbor_id].allocation_network_id != 1
+                        main_network_connections... = (node_id, outneighbor_id)
+                    end
+                end
+            end
+
             # Direct connections in the subnetwork between nodes that
             # are in the allocation graph
             for inneighbor_id in inneighbor_ids
