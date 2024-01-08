@@ -39,7 +39,7 @@ fi]]></param>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_RibasimWindows_Ribasim" />
+      <vcs-entry-ref root-id="Ribasim_Ribasim" />
     </vcs-settings>
     <requirements>
       <equals id="RQ_294" name="teamcity.agent.jvm.os.name" value="Linux" />
