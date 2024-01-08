@@ -197,9 +197,11 @@ const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
-    (; graph, allocation_models) = p
+    (; graph, allocation) = p
+    (; allocation_network_ids, allocation_models) = allocation
 
-    for allocation_network_id in keys(graph[].node_ids)
+    for allocation_network_id in sort(collect(keys(graph[].node_ids)))
+        push!(allocation_network_ids, allocation_network_id)
         push!(
             allocation_models,
             AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
@@ -792,7 +794,12 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation_models = Vector{AllocationModel}()
+    allocation = Allocation(
+        Int[],
+        AllocationModel[],
+        Vector{Tuple{NodeID, NodeID}}[],
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+    )
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
@@ -829,7 +836,7 @@ function Parameters(db::DB, config::Config)::Parameters
     p = Parameters(
         config.starttime,
         graph,
-        allocation_models,
+        allocation,
         basin,
         linear_resistance,
         manning_resistance,
