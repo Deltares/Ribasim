@@ -14,7 +14,9 @@
       </runner>
     </build-runners>
     <vcs-settings />
-    <requirements />
+    <requirements>
+      <not-exists id="RQ_289" name="env.IsWindows11" />
+    </requirements>
     <build-triggers />
     <cleanup />
   </settings>
