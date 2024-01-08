@@ -15,7 +15,7 @@
 
     graph = p.graph
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5) # Source flow
-    allocation_model = p.allocation_models[1]
+    allocation_model = p.allocation.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)
 
     F = allocation_model.problem[:F]
@@ -45,7 +45,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.allocation_models[1].problem
+    problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     F = problem[:F]
@@ -61,7 +61,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.allocation_models[1].problem
+    problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     @test objective.aff.constant == 2.0
@@ -78,7 +78,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.allocation_models[1].problem
+    problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
@@ -95,7 +95,7 @@ end
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
     @test successful_retcode(model)
-    problem = model.integrator.p.allocation_models[1].problem
+    problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
     @test :F_abs in keys(problem.obj_dict)
@@ -121,7 +121,7 @@ end
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
     model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
-    problem = model.integrator.p.allocation_models[1].problem
+    problem = model.integrator.p.allocation.allocation_models[1].problem
     F = problem[:F]
     @test JuMP.normalized_coefficient(
         problem[:fractional_flow][(NodeID(3), NodeID(5))],
@@ -155,7 +155,7 @@ end
     @test record_control.control_state == ["A", "B"]
 
     fractional_flow_constraints =
-        model.integrator.p.allocation_models[1].problem[:fractional_flow]
+        model.integrator.p.allocation.allocation_models[1].problem[:fractional_flow]
     @test JuMP.normalized_coefficient(
         problem[:fractional_flow][(NodeID(3), NodeID(5))],
         F[(NodeID(2), NodeID(3))],

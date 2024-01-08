@@ -29,12 +29,19 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         db,
         "SELECT fid, from_node_id, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
     )
+    # Node IDs per subnetwork
     node_ids = Dict{Int, Set{NodeID}}()
+    # Allocation edges per subnetwork
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
+    # Source edges per subnetwork
     edges_source = Dict{Int, Set{EdgeMetadata}}()
+    # The number of flow edges
     flow_counter = 0
+    # Dictionary from flow edge to index in flow vector
     flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    # The number of nodes with vertical flow (interaction with outside of model)
     flow_vertical_counter = 0
+    # Dictionary from node ID to index in vertical flow vector
     flow_vertical_dict = Dict{NodeID, Int}()
     graph = MetaGraph(
         DiGraph();
