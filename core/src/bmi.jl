@@ -481,16 +481,15 @@ function discrete_control_affect!(
     return control_state_change
 end
 
-function get_allocation_model(
-    p::Parameters,
-    allocation_network_id::Int,
-)::Union{AllocationModel, Nothing}
-    for allocation_model in p.allocation_models
-        if allocation_model.allocation_network_id == allocation_network_id
-            return allocation_model
-        end
+function get_allocation_model(p::Parameters, allocation_network_id::Int)::AllocationModel
+    (; allocation) = p
+    (; allocation_network_ids, allocation_models) = allocation
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    if isnothing(idx)
+        error("Invalid allocation network id $allocation_network_id.")
+    else
+        return allocation_models[idx]
     end
-    return nothing
 end
 
 """
@@ -594,7 +593,7 @@ end
 "Solve the allocation problem for all users and assign allocated abstractions to user nodes."
 function update_allocation!(integrator)::Nothing
     (; p, t) = integrator
-    for allocation_model in integrator.p.allocation_models
+    for allocation_model in integrator.p.allocation.allocation_models
         allocate!(p, allocation_model, t)
     end
 end
