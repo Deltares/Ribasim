@@ -19,7 +19,7 @@ zip -r ribasim_qgis.zip ribasim_qgis]]></param>
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_Ribasim_Ribasim" />
+      <vcs-entry-ref root-id="Ribasim_RibasimWindows_Ribasim" />
     </vcs-settings>
     <requirements>
       <does-not-equal id="RQ_338" name="env.OS" value="Windows_NT" />

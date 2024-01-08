@@ -22,7 +22,8 @@
         <param name="buildSettings" value="PREFER_VCS" />
         <param name="credentialsStorageType" value="credentialsJSON" />
         <param name="enabled" value="true" />
-        <param name="rootId" value="Ribasim_Ribasim_Ribasim" />
+        <param name="ignoreChangesInDependenciesAndVcsSettings" value="true" />
+        <param name="rootId" value="Ribasim_RibasimWindows_Ribasim" />
         <param name="showChanges" value="false" />
       </parameters>
     </extension>
