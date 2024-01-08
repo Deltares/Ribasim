@@ -16,6 +16,7 @@
     <vcs-settings />
     <requirements>
       <does-not-equal id="RQ_289" name="env.OS" value="Windows_NT" />
+      <equals id="RQ_349" name="teamcity.agent.name" value="c-teamcity18529" />
     </requirements>
     <build-triggers />
     <cleanup />
