@@ -4,7 +4,15 @@
   <description>Print the gcc version on the machine</description>
   <settings>
     <parameters />
-    <build-runners />
+    <build-runners>
+      <runner id="gccVersion" name="" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="gcc --version" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
     <vcs-settings />
     <requirements />
     <build-triggers />
