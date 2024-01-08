@@ -1165,9 +1165,9 @@ def main_network_with_subnetworks_model():
         endtime="2021-01-01 00:00:00",
     )
 
-    model.merge_model(subnetwork_model(), offset_spacial=(0.0, 3.0))
-    model.merge_model(fractional_flow_subnetwork_model(), offset_spacial=(14.0, 3.0))
-    model.merge_model(looped_subnetwork_model(), offset_spacial=(26.0, 3.0))
+    model.merge_model(subnetwork_model(), offset_spatial=(0.0, 3.0))
+    model.merge_model(fractional_flow_subnetwork_model(), offset_spatial=(14.0, 3.0))
+    model.merge_model(looped_subnetwork_model(), offset_spatial=(26.0, 3.0))
 
     # Connection edges
     from_id = np.array([2, 6, 10])

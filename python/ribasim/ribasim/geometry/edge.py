@@ -40,10 +40,10 @@ class Edge(SpatialTableModel[EdgeSchema]):
         Table describing the flow connections.
     """
 
-    def translate_spacially(
-        self, offset_spacial: tuple[float, float], inplace: bool = True
+    def translate_spatially(
+        self, offset_spatial: tuple[float, float], inplace: bool = True
     ) -> "Edge":
-        """Add the same spacial offset to all edges."""
+        """Add the same spatial offset to all edges."""
         if inplace:
             edge = self
         else:
@@ -52,7 +52,7 @@ class Edge(SpatialTableModel[EdgeSchema]):
         edge.df.geometry = edge.df.geometry.apply(
             lambda linestring: LineString(
                 [
-                    (point[0] + offset_spacial[0], point[1] + offset_spacial[1])
+                    (point[0] + offset_spatial[0], point[1] + offset_spatial[1])
                     for point in linestring.coords
                 ]
             )

@@ -61,17 +61,17 @@ class Network(FileModel, NodeModel):
 
         return n
 
-    def translate_spacially(
-        self, offset_spacial: tuple[float, float], inplace: bool = True
+    def translate_spatially(
+        self, offset_spatial: tuple[float, float], inplace: bool = True
     ) -> "Network":
-        """Add the same spacial offset to all nodes and edges."""
+        """Add the same spatial offset to all nodes and edges."""
         if inplace:
             network = self
         else:
             network = deepcopy(self)
 
-        network.node.translate_spacially(offset_spacial)
-        network.edge.translate_spacially(offset_spacial)
+        network.node.translate_spatially(offset_spatial)
+        network.edge.translate_spatially(offset_spatial)
         return network
 
     def offset_allocation_network_ids(
@@ -462,7 +462,7 @@ class Model(FileModel):
         model_added: "Model",
         offset_node_id: int | None = None,
         offset_allocation_network_id: int | None = None,
-        offset_spacial: tuple[float, float] = (0.0, 0.0),
+        offset_spatial: tuple[float, float] = (0.0, 0.0),
         inplace: bool = True,
     ):
         """
@@ -478,8 +478,8 @@ class Model(FileModel):
 
         nodes_model = model.nodes()
         nodes_added = model_added.nodes()
-        nodes_added["network"] = nodes_added["network"].translate_spacially(
-            offset_spacial, inplace=False
+        nodes_added["network"] = nodes_added["network"].translate_spatially(
+            offset_spatial, inplace=False
         )
         min_offset_node_id = model.max_node_id()
         min_offset_allocation_network_id = model.max_allocation_network_id()

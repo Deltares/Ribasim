@@ -63,10 +63,10 @@ class Node(SpatialTableModel[NodeSchema]):
 
         return node_id, node_type
 
-    def translate_spacially(
-        self, offset_spacial: tuple[float, float], inplace: bool = True
+    def translate_spatially(
+        self, offset_spatial: tuple[float, float], inplace: bool = True
     ) -> "Node":
-        """Add the same spacial offset to all nodes."""
+        """Add the same spatial offset to all nodes."""
         if inplace:
             node = self
         else:
@@ -74,7 +74,7 @@ class Node(SpatialTableModel[NodeSchema]):
 
         node.df.geometry = node.df.geometry.apply(
             lambda point: Point(
-                point.x + offset_spacial[0], point.y + offset_spacial[1]
+                point.x + offset_spatial[0], point.y + offset_spatial[1]
             )
         )
         return node
