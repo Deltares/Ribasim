@@ -15,7 +15,7 @@
     </build-runners>
     <vcs-settings />
     <requirements>
-      <not-exists id="RQ_289" name="env.IsWindows11" />
+      <does-not-equal id="RQ_289" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers />
     <cleanup />
