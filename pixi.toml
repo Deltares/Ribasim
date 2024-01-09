@@ -165,10 +165,10 @@ quarto = "*"
 ptvsd = "*"
 
 [activation]
-scripts = ["env_setup.sh"]
+scripts = ["utils/env_setup.sh"]
 
 [target.win-64.activation]
-scripts = ["env_setup.bat"]
+scripts = ["utils/env_setup.bat"]
 
 [system-requirements]
 linux = "3.10.0"
