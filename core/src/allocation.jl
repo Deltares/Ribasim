@@ -72,9 +72,7 @@ function find_allocation_graph_edges!(
     p::Parameters,
     allocation_network_id::Int,
 )::Tuple{Vector{Vector{NodeID}}, SparseMatrixCSC{Float64, Int}}
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
-    main_network = (allocation_network_id == 1)
+    (; graph) = p
 
     edges_composite = Vector{NodeID}[]
     capacity = spzeros(nv(graph), nv(graph))
@@ -92,13 +90,6 @@ function find_allocation_graph_edges!(
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
             # Find connections from main network to subnetworks
-            if main_network
-                for outneighbor_id in outneighbor_ids
-                    if graph[outneighbor_id].allocation_network_id != 1
-                        main_network_connections... = (node_id, outneighbor_id)
-                    end
-                end
-            end
 
             # Direct connections in the subnetwork between nodes that
             # are in the allocation graph
