@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         julia_version:
-          - "~1.10.0-0"
+          - "1.10"
         arch:
           - x64
     steps:
