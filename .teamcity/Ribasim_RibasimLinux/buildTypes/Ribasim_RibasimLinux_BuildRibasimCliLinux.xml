@@ -26,7 +26,12 @@ pixi run install-without-pre-commit]]></param>
       </runner>
       <runner id="RUNNER_2420" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[pixi run remove-artifacts
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi run remove-artifacts
 pixi run build-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
