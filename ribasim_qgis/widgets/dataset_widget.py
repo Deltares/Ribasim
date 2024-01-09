@@ -51,32 +51,26 @@ class DatasetTreeWidget(QTreeWidget):
         self.setHeaderHidden(True)
         self.setSortingEnabled(True)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        self.setHeaderLabels(["", ""])
+        self.setHeaderLabels([""])
         self.setHeaderHidden(False)
         header = self.header()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionsMovable(False)
-        self.setColumnCount(2)
-        self.setColumnWidth(0, 1)
-        self.setColumnWidth(2, 1)
+        self.setColumnCount(1)
 
     def items(self) -> list[QTreeWidgetItem]:
         root = self.invisibleRootItem()
         return [root.child(i) for i in range(root.childCount())]
 
-    def add_item(self, name: str, enabled: bool = True):
+    def add_item(self, name: str):
         item = QTreeWidgetItem()
         self.addTopLevelItem(item)
-        checkbox = QCheckBox()
-        checkbox.setChecked(True)
-        checkbox.setEnabled(enabled)
-        self.setItemWidget(item, 0, checkbox)
-        item.setText(1, name)
+        item.setText(0, name)
         return item
 
     def add_node_layer(self, element: Input) -> None:
         # These are mandatory elements, cannot be unticked
-        item = self.add_item(name=element.input_type(), enabled=True)
+        item = self.add_item(name=element.input_type())
         item.element = element
 
     def remove_geopackage_layers(self) -> None:
@@ -336,12 +330,6 @@ class DatasetWidget(QWidget):
                 config = layer.editFormConfig()
                 config.setSuppress(suppress)
                 layer.setEditFormConfig(config)
-
-    def active_nodes(self):
-        active_nodes = {}
-        for item in self.dataset_tree.items():
-            active_nodes[item.text(1)] = not (item.checkbox.isChecked() == 0)
-        return active_nodes
 
     def selection_names(self) -> set[str]:
         selection = self.dataset_tree.items()
