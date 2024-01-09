@@ -41,7 +41,7 @@
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
           <param name="branchFilter" value="+:&lt;default&gt;" />
-          <param name="dependsOn" value="Ribasim_RibasimJl_BuildLibribasimWindows" />
+          <param name="dependsOn" value="Ribasim_Windows_BuildLibribasimWindows" />
         </parameters>
       </build-trigger>
     </build-triggers>
@@ -64,7 +64,7 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimJl_BuildLibribasimWindows" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildLibribasimWindows" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
         <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
