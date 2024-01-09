@@ -179,6 +179,7 @@ class Basin(NodeModel):
 
     _sort_keys: dict[str, list[str]] = {
         "static": ["node_id"],
+        "state": ["node_id"],
         "profile": ["node_id", "level"],
         "time": ["node_id", "time"],
         "subgrid": ["subgrid_id", "basin_level"],
@@ -201,8 +202,10 @@ class DiscreteControl(NodeModel):
         default_factory=TableModel[DiscreteControlLogicSchema]
     )
 
-    # TODO complete the ordering, and make sure it aligns with truth_state
-    _sort_keys: dict[str, list[str]] = {"static": ["node_id"], "logic": ["node_id"]}
+    _sort_keys: dict[str, list[str]] = {
+        "condition": ["node_id", "listen_feature_id", "variable", "greater_than"],
+        "logic": ["node_id", "truth_state"],
+    }
 
 
 class Outlet(NodeModel):
