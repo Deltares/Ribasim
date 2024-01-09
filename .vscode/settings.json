@@ -25,7 +25,7 @@
     "python.testing.pytestEnabled": true,
     "julia.lint.disabledDirs": [
         ".pixi",
-        "juliaup"
+        "utils/juliaup"
     ],
     "julia.lint.run": true
 }
