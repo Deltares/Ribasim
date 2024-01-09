@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="462d0792-8baa-4071-b8e6-90cfafe9495e" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Build ribasim_cli - Linux</name>
+  <name>Build ribasim_cli</name>
   <description />
   <settings>
     <options>
