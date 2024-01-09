@@ -42,7 +42,7 @@ pixi run build-ribasim-cli]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_275" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
