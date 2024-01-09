@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" paused="true" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Test ribasim_api - Linux</name>
   <description />
   <settings>
@@ -13,7 +13,13 @@
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install-without-pre-commit" />
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi --version
+pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -21,7 +27,13 @@
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run test-ribasim-api" />
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi --version
+pixi run test-ribasim-api]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -29,12 +41,12 @@
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_RibasimLinux_Ribasim">
+      <vcs-entry-ref root-id="Ribasim_Ribasim">
         <checkout-rule rule=". =&gt; ribasim" />
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_315" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
@@ -52,7 +64,6 @@
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-          <param name="vcsRootId" value="Ribasim_RibasimLinux_Ribasim" />
         </parameters>
       </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
@@ -64,7 +75,7 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimLinux_BuildLibribasimWindows" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimLinux_BuildLibribasimLinux" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
         <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>

@@ -9,7 +9,7 @@
         <param name="credentialsStorageType" value="credentialsJSON" />
         <param name="enabled" value="true" />
         <param name="ignoreChangesInDependenciesAndVcsSettings" value="true" />
-        <param name="rootId" value="Ribasim_RibasimLinux_Ribasim" />
+        <param name="rootId" value="Ribasim_Ribasim" />
         <param name="showChanges" value="false" />
       </parameters>
     </extension>

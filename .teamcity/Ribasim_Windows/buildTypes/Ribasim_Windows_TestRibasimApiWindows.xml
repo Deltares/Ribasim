@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="d5e2515e-f7f0-4248-9df0-928bb0db1362" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Test ribasim_cli - Windows</name>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="27854ba1-bb78-4d7a-b9fd-fecfb86b0393" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test ribasim_api - Windows</name>
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build\ribasim_cli\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
       <option name="cleanBuild" value="true" />
     </options>
     <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
@@ -21,7 +21,7 @@
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run test-ribasim-cli" />
+          <param name="script.content" value="pixi run test-ribasim-api" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -34,14 +34,14 @@
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_310" name="env.OS" value="Windows_NT" />
+      <equals id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
           <param name="branchFilter" value="+:&lt;default&gt;" />
-          <param name="dependsOn" value="BuildRibasimCliWindows" />
+          <param name="dependsOn" value="Ribasim_Windows_BuildLibribasimWindows" />
         </parameters>
       </build-trigger>
     </build-triggers>
@@ -64,9 +64,9 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="BuildRibasimCliWindows" cleanDestination="true">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
-        <artifact sourcePath="ribasim_cli.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildLibribasimWindows" cleanDestination="true">
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
+        <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
