@@ -9,9 +9,6 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RQ_271" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
@@ -39,7 +36,6 @@ pixi run build-libribasim]]></param>
     </vcs-settings>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
-      <does-not-equal id="RQ_271" name="env.IsWindows11" value="True" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
