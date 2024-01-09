@@ -32,10 +32,6 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     try
         parameters = Parameters(db, config)
 
-        if !valid_n_neighbors(parameters)
-            error("Invalid number of connections for certain node types.")
-        end
-
         if !valid_discrete_control(parameters, config)
             error("Invalid discrete control state definition(s).")
         end
@@ -485,6 +481,51 @@ function discrete_control_affect!(
     return control_state_change
 end
 
+function get_allocation_model(
+    p::Parameters,
+    allocation_network_id::Int,
+)::Union{AllocationModel, Nothing}
+    for allocation_model in p.allocation_models
+        if allocation_model.allocation_network_id == allocation_network_id
+            return allocation_model
+        end
+    end
+    return nothing
+end
+
+"""
+Update the fractional flow fractions in an allocation problem.
+"""
+function set_fractional_flow_in_allocation!(
+    p::Parameters,
+    node_id::NodeID,
+    fraction::Number,
+)::Nothing
+    (; graph) = p
+
+    allocation_network_id = graph[node_id].allocation_network_id
+    # Get the allocation model this fractional flow node is in
+    allocation_model = get_allocation_model(p, allocation_network_id)
+    if !isnothing(allocation_model)
+        problem = allocation_model.problem
+        # The allocation edge which jumps over the fractional flow node
+        edge = (inflow_id(graph, node_id), outflow_id(graph, node_id))
+        if haskey(graph, edge...)
+            # The constraint for this fractional flow node
+            if edge in keys(problem[:fractional_flow])
+                constraint = problem[:fractional_flow][edge]
+
+                # Set the new fraction on all inflow terms in the constraint
+                for inflow_id in inflow_ids_allocation(graph, edge[1])
+                    flow = problem[:F][(inflow_id, edge[1])]
+                    JuMP.set_normalized_coefficient(constraint, flow, -fraction)
+                end
+            end
+        end
+    end
+    return nothing
+end
+
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
     node = getfield(p, p.graph[node_id].type)
     idx = searchsortedfirst(node.node_id, node_id)
@@ -494,6 +535,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
         if !ismissing(value)
             vec = get_tmp(getfield(node, field), 0)
             vec[idx] = value
+        end
+
+        # Set new fractional flow fractions in allocation problem
+        if node isa FractionalFlow && field == :fraction
+            set_fractional_flow_in_allocation!(p, node_id, value)
         end
     end
 end

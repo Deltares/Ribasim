@@ -3,17 +3,17 @@ Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; graph) = p
+    (; graph, basin, fractional_flow) = p
 
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
-
     for node_id in node_ids
+        has_fractional_flow_outneighbors =
+            get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type
-        if node_type in [:user, :basin]
+        if node_type in [:user, :basin, :terminal]
             push!(used_nodes, node_id)
-        elseif count(x -> true, inoutflow_ids(graph, node_id)) > 2
-            # use count since the length of the iterator is unknown
+        elseif has_fractional_flow_outneighbors
             push!(used_nodes, node_id)
         end
     end
@@ -378,7 +378,7 @@ function add_constraints_capacity!(
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
-    for (i, edge) in enumerate(edge_ids)
+    for edge in edge_ids
         if !isinf(capacity[edge...])
             push!(edge_ids_finite_capacity, edge)
         end
@@ -500,13 +500,12 @@ function add_constraints_user_returnflow!(
         node_id for node_id in node_ids if
         graph[node_id].type == :user && !isempty(outflow_ids_allocation(graph, node_id))
     ]
-
     problem[:return_flow] = JuMP.@constraint(
         problem,
         [node_id_user = node_ids_user_with_returnflow],
-        F[Int(node_id_user), Int(only(outflow_ids_allocation(graph, node_id_user)))] <=
-        user.return_factor[findsorted(user.node_id, node_id)] *
-        F[Int(only(inflow_ids_allocation(graph, node_id_user))), Int(node_iduser)],
+        F[(node_id_user, only(outflow_ids_allocation(graph, node_id_user)))] <=
+        user.return_factor[findsorted(user.node_id, node_id_user)] *
+        F[(only(inflow_ids_allocation(graph, node_id_user)), node_id_user)],
         base_name = "return_flow",
     )
     return nothing
@@ -578,6 +577,57 @@ function add_constraints_absolute_value!(
 end
 
 """
+Add the fractional flow constraints to the allocation problem.
+The constraint indices are allocation edges over a fractional flow node.
+
+Constraint:
+flow after fractional_flow node <= fraction * inflow
+"""
+function add_constraints_fractional_flow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph, fractional_flow) = p
+    F = problem[:F]
+    node_ids = graph[].node_ids[allocation_network_id]
+
+    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
+    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
+    inflows = Dict{NodeID, JuMP.AffExpr}()
+    for node_id in node_ids
+        for outflow_id_ in outflow_ids(graph, node_id)
+            if graph[outflow_id_].type == :fractional_flow
+                # The fractional flow nodes themselves are not represented in
+                # the allocation graph
+                dst_id = outflow_id(graph, outflow_id_)
+                # For now only consider fractional flow nodes which end in a basin
+                if haskey(graph, node_id, dst_id) && graph[dst_id].type == :basin
+                    edge = (node_id, dst_id)
+                    push!(edges_to_fractional_flow, edge)
+                    node_idx = findsorted(fractional_flow.node_id, outflow_id_)
+                    fractions[edge] = fractional_flow.fraction[node_idx]
+                    inflows[node_id] = sum([
+                        F[(inflow_id_, node_id)] for
+                        inflow_id_ in inflow_ids(graph, node_id)
+                    ])
+                end
+            end
+        end
+    end
+
+    if !isempty(edges_to_fractional_flow)
+        problem[:fractional_flow] = JuMP.@constraint(
+            problem,
+            [edge = edges_to_fractional_flow],
+            F[edge] <= fractions[edge] * inflows[edge[1]],
+            base_name = "fractional_flow"
+        )
+    end
+    return nothing
+end
+
+"""
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
@@ -600,7 +650,7 @@ function allocation_problem(
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value!(problem, p, allocation_network_id, config)
-    # TODO: The fractional flow constraints
+    add_constraints_fractional_flow!(problem, p, allocation_network_id)
 
     return problem
 end

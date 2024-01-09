@@ -6,8 +6,10 @@ import ribasim
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
-    minimal_subnetwork_model,
+    allocation_example_model,
     # looped_subnetwork_model,
+    fractional_flow_subnetwork_model,
+    minimal_subnetwork_model,
     subnetwork_model,
     user_model,
 )
@@ -49,6 +51,7 @@ from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
 
 __all__ = [
+    "allocation_example_model",
     "backwater_model",
     "basic_model",
     "basic_arrow_model",
@@ -78,6 +81,7 @@ __all__ = [
     "user_model",
     "subnetwork_model",
     "minimal_subnetwork_model",
+    "fractional_flow_subnetwork_model",
     # Disable until this issue is resolved:
     # https://github.com/Deltares/Ribasim/issues/692
     # "looped_subnetwork_model",

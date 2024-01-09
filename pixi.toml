@@ -14,7 +14,7 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Installation
-install-julia = "juliaup add 1.10.0-rc2 && juliaup default 1.10.0-rc2"
+install-julia = "juliaup add 1.10 && juliaup default 1.10"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
@@ -33,11 +33,11 @@ build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
     "instantiate-julia",
 ] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
-quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
+quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "julia --project=docs --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
@@ -163,10 +163,10 @@ quarto = "*"
 ptvsd = "*"
 
 [activation]
-scripts = ["env_setup.sh"]
+scripts = ["utils/env_setup.sh"]
 
 [target.win-64.activation]
-scripts = ["env_setup.bat"]
+scripts = ["utils/env_setup.bat"]
 
 [system-requirements]
 linux = "3.10.0"
