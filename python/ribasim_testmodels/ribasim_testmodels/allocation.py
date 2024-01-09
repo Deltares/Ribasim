@@ -1183,7 +1183,7 @@ def main_network_with_subnetworks_model():
             data={"node_id": to_id, "flow_rate": 1e-3, "max_flow_rate": 1.0}
         )
     )
-    model.pump.merge_node(pump_added)
+    model.pump.merge(pump_added)
 
     # Fix control logic
     df = model.discrete_control.condition.df

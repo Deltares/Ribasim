@@ -504,9 +504,7 @@ class Model(FileModel):
         for node_type, node_added in nodes_added.items():
             node_added = node_added.offset_node_ids(offset_node_id)
             if node_type in nodes_model:
-                node_added = nodes_model[node_type].merge_node(
-                    node_added, inplace=False
-                )
+                node_added = nodes_model[node_type].merge(node_added, inplace=False)
 
             setattr(model, node_type, node_added)
 

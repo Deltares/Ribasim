@@ -232,7 +232,7 @@ class TableModel(FileModel, Generic[TableT]):
                     df[name_column] += offset_node_id
         return copy
 
-    def merge_table(
+    def merge(
         self, table_added: "TableModel[TableT]", inplace: bool = True
     ) -> "TableModel[TableT]":
         """Merge an added table of the same type into this table."""
@@ -487,7 +487,7 @@ class NodeModel(ChildModel):
                 )
         return node_copy
 
-    def merge_node(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
+    def merge(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
         """Merge an added node of the same type into this node."""
         assert type(self) == type(node_added), "Can only merge nodes of the same type."
 
@@ -503,7 +503,7 @@ class NodeModel(ChildModel):
                 table_node = getattr(node, field)
                 if table_added.df is not None:
                     if table_node.df is not None:
-                        table_added = table_node.merge_table(table_added, inplace=False)
+                        table_added = table_node.merge(table_added, inplace=False)
 
                     setattr(node, field, table_added)
         return node
