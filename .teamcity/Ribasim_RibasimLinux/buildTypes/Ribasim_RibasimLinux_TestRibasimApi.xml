@@ -64,7 +64,7 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimLinux_BuildLibribasimWindows" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_RibasimLinux_BuildLibribasimLinux" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
         <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/create_binaries/libribasim&#xD;&#xA;" />
       </dependency>
