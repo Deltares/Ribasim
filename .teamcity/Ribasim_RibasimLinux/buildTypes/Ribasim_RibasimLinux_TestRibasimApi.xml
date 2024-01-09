@@ -27,7 +27,13 @@ pixi run install-without-pre-commit]]></param>
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run test-ribasim-api" />
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi --version
+pixi run test-ribasim-api]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
