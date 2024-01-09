@@ -1,29 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="f6699718-828b-4898-bfab-36de06ae4070" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Build libribasim - Windows</name>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="462d0792-8baa-4071-b8e6-90cfafe9495e" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Build ribasim_cli</name>
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build\create_binaries\libribasim =&gt; libribasim.zip" />
+      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
-      <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters />
     <build-runners>
-      <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
+      <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install-without-pre-commit" />
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+pixi --version
+pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
+      <runner id="RUNNER_2420" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[pixi run remove-artifacts
-pixi run build-libribasim]]></param>
+          <param name="script.content"><![CDATA[#!/bin/bash
+# black magic
+source /usr/share/Modules/init/bash
+
+module load pixi
+module load gcc/11.3.0
+pixi run remove-artifacts
+pixi run build-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_1932" name="Get version from Ribasim" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="./ribasim --version" />
+          <param name="teamcity.build.workingDir" value="ribasim/build/create_binaries/ribasim_cli/bin" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -35,7 +54,7 @@ pixi run build-libribasim]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_275" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_497" type="schedulingTrigger">
@@ -69,6 +88,12 @@ pixi run build-libribasim]]></param>
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
+        </parameters>
+      </extension>
+      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
+        <parameters>
+          <param name="awsConnectionId" value="awsConnection_1" />
+          <param name="awsSessionDuration" value="60" />
         </parameters>
       </extension>
     </build-extensions>
