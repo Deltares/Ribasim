@@ -660,6 +660,12 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
+"""
+    run(config_file::AbstractString)::Model
+    run(config::Config)::Model
+Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing results with [`BMI.finalize`](@ref).
+"""
 run(config_path::AbstractString)::Model = run(Config(config_path))
 
 function run(config::Config)::Model
