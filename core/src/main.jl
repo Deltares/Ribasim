@@ -4,6 +4,14 @@ function help(x::AbstractString)::Cint
     return 1
 end
 
+main(toml_path::AbstractString)::Cint = main([toml_path])
+
+"""
+    main(ARGS::Vector{String})::Cint
+This is the main entry point of the application.
+Performs argument parsing and sets up logging for both terminal and file.
+Calls Ribasim.run() and handles exceptions to convert to exit codes.
+"""
 function main(ARGS::Vector{String})::Cint
     n = length(ARGS)
     if n != 1
