@@ -21,7 +21,7 @@
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(Ribasim.Config(toml_path))
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     p = model.integrator.p
 
@@ -47,7 +47,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/rating_curve/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(Ribasim.Config(toml_path))
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     p = model.integrator.p
 
@@ -82,7 +82,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(Ribasim.Config(toml_path))
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     p = model.integrator.p
     (; manning_resistance) = p
@@ -119,7 +119,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pid_control_equation/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(Ribasim.Config(toml_path))
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     p = model.integrator.p
     (; basin, pid_control) = p
@@ -165,7 +165,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(Ribasim.Config(toml_path))
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p

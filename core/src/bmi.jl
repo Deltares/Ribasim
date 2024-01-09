@@ -660,6 +660,8 @@ BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.confi
 BMI.get_time_units(model::Model) = "s"
 BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
 
+run(config_path::AbstractString)::Model = run(Config(config_path))
+
 function run(config::Config)::Model
     model = Model(config)
     solve!(model)
