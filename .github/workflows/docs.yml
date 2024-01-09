@@ -14,16 +14,10 @@ permissions:
   contents: read
 jobs:
   publish:
-    name: Docs Julia ${{ matrix.julia_version }} - ${{ matrix.arch }}
+    name: Docs Julia
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    strategy:
-      matrix:
-        julia_version:
-          - "~1.10.0-0"
-        arch:
-          - x64
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/cache@v1
