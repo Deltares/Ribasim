@@ -150,8 +150,8 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 def test_model_merging(basic, subnetwork, tmp_path):
     model = deepcopy(basic)
     model_added = deepcopy(subnetwork)
-    model.merge_model(model_added)
-    model.merge_model(model_added)
+    model.merge(model_added)
+    model.merge(model_added)
     assert (model.network.node.df.index == range(1, 44)).all()
     assert model.max_allocation_network_id() == 2
     # Added model should not change

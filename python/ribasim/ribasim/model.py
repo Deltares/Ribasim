@@ -457,7 +457,7 @@ class Model(FileModel):
             m = 0
         return m
 
-    def merge_model(
+    def merge(
         self,
         model_added: "Model",
         offset_node_id: int | None = None,
@@ -467,7 +467,7 @@ class Model(FileModel):
     ):
         """
         Merge copies of the nodes and edges of an added model into this model.
-        The added model is not modified, but the following modificadions are made to the added data:
+        The added model is not modified, but the following modifications are made to the added data:
         - Node IDs are shifted by at least the maximum node ID of this model
         - Allocation network IDs are shifted by at least the maximum allocation network ID of this model.
         """

@@ -10,7 +10,6 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from shapely.geometry import LineString
 
 from ribasim.input_base import SpatialTableModel
 
@@ -49,14 +48,7 @@ class Edge(SpatialTableModel[EdgeSchema]):
         else:
             edge = deepcopy(self)
 
-        edge.df.geometry = edge.df.geometry.apply(
-            lambda linestring: LineString(
-                [
-                    (point[0] + offset_spatial[0], point[1] + offset_spatial[1])
-                    for point in linestring.coords
-                ]
-            )
-        )
+        edge.df.geometry = edge.df.geometry.translate(*offset_spatial)
         return edge
 
     def offset_allocation_network_ids(
