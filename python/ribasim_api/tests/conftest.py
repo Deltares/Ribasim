@@ -1,3 +1,4 @@
+import platform
 from pathlib import Path
 
 import pytest
@@ -9,8 +10,10 @@ from ribasim_testmodels import basic_model, basic_transient_model
 @pytest.fixture(scope="session")
 def libribasim_paths() -> tuple[Path, Path]:
     repo_root = Path(__file__).parents[3].resolve()
-    lib_folder = repo_root / "build" / "create_binaries" / "libribasim" / "bin"
-    lib_path = lib_folder / "libribasim"
+    lib_or_bin = "bin" if platform.system() == "Windows" else "lib"
+    extension = ".dll" if platform.system() == "Windows" else ".so"
+    lib_folder = repo_root / "build" / "create_binaries" / "libribasim" / lib_or_bin
+    lib_path = lib_folder / f"libribasim{extension}"
     return lib_path, lib_folder
 
 
