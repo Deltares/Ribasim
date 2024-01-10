@@ -1,3 +1,20 @@
+"""Find the edges from the main network to a subnetwork."""
+function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph)::Nothing
+    (; allocation_network_ids, main_network_connections) = allocation
+    for node_id in graph[].node_ids[1]
+        for outflow_id in outflow_ids(graph, node_id)
+            if graph[outflow_id].allocation_network_id != 1
+                idx = findsorted(
+                    allocation_network_ids,
+                    graph[outflow_id].allocation_network_id,
+                )
+            end
+            push!(main_network_connections[idx], (node_id, outflow_id))
+        end
+    end
+    return nothing
+end
+
 """
 Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
@@ -89,8 +106,6 @@ function find_allocation_graph_edges!(
 
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
-            # Find connections from main network to subnetworks
-
             # Direct connections in the subnetwork between nodes that
             # are in the allocation graph
             for inneighbor_id in inneighbor_ids
