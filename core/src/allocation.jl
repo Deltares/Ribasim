@@ -8,8 +8,8 @@ function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph):
                     allocation_network_ids,
                     graph[outflow_id].allocation_network_id,
                 )
+                push!(main_network_connections[idx], (node_id, outflow_id))
             end
-            push!(main_network_connections[idx], (node_id, outflow_id))
         end
     end
     return nothing
@@ -43,7 +43,8 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     # Add nodes in the allocation graph for nodes connected to the source edges
     # One of these nodes can be outside the subnetwork, as long as the edge
     # connects to the subnetwork
-    for edge_metadata in graph[].edges_source[allocation_network_id]
+    edges_source = graph[].edges_source
+    for edge_metadata in get(edges_source, allocation_network_id, Set{EdgeMetadata}())
         (; from_id, to_id) = edge_metadata
         push!(used_nodes, from_id)
         push!(used_nodes, to_id)

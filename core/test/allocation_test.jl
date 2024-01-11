@@ -168,6 +168,7 @@ end
 
 @testitem "main network to subnetwork connections" begin
     using SQLite
+    using Ribasim: NodeID
 
     toml_path = normpath(
         @__DIR__,
@@ -177,6 +178,10 @@ end
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
-
     p = Ribasim.Parameters(db, cfg)
+    (; main_network_connections) = p.allocation
+    @test isempty(main_network_connections[1])
+    @test only(main_network_connections[2]) == (NodeID(2), NodeID(11))
+    @test only(main_network_connections[3]) == (NodeID(6), NodeID(24))
+    @test only(main_network_connections[4]) == (NodeID(10), NodeID(38))
 end
