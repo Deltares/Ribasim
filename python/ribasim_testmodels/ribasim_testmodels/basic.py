@@ -175,7 +175,7 @@ def basic_model() -> ribasim.Model:
     to_id = np.array(
         [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
     )
-    lines = node.geometry_from_connectivity(from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -248,7 +248,9 @@ def basic_transient_model() -> ribasim.Model:
             "urban_runoff": 0.0,
         }
     )
-    basin_ids = model.basin.static.df["node_id"].to_numpy()
+    df = model.basin.static.df
+    assert df is not None
+    basin_ids = df["node_id"].to_numpy()
     forcing = (
         pd.concat(
             [timeseries.assign(node_id=id) for id in basin_ids], ignore_index=True
@@ -263,9 +265,8 @@ def basic_transient_model() -> ribasim.Model:
             "level": 1.4,
         }
     )
-
-    model.basin.time = forcing
-    model.basin.state = state
+    model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
+    model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
 
     return model
 
@@ -361,7 +362,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     # Setup the edges:
     from_id = np.array([1, 1, 2, 3], dtype=np.int64)
     to_id = np.array([2, 3, 4, 4], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
