@@ -5,7 +5,7 @@
     using Dates
 
     @testset "testrun" begin
-        config = Ribasim.Config(normpath(@__DIR__, "testrun.toml"))
+        config = Ribasim.Config(normpath(@__DIR__, "data", "config_test.toml"))
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)

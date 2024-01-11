@@ -3,7 +3,10 @@ authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 description = "Meta-project used to share the Manifest of Ribasim and its dependents"
 
 [deps]
+ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
+TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 create_binaries = "3cfb6a46-05f0-43df-bb16-bf763deb14b4"
 docs = "8daea9ca-fc6c-4731-aa85-717fa0b706bc"

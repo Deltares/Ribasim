@@ -8,7 +8,7 @@
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
-    logger = TestLogger()
+    logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
         @test !valid_profiles(node_id, level, area)
     end
@@ -124,7 +124,7 @@ end
     fractional_flow =
         Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
 
-    logger = TestLogger()
+    logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
         @test !Ribasim.valid_n_neighbors(fractional_flow, graph)
     end
