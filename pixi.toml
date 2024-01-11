@@ -151,6 +151,7 @@ types-requests = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
+hatchling = "*"
 
 [target.win-64.dependencies]
 quarto = "*"

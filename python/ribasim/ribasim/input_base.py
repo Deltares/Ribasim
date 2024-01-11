@@ -420,7 +420,7 @@ class NodeModel(ChildModel):
             if isinstance(attr, TableModel):
                 yield attr
 
-    def node_ids(self):
+    def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
         for table in self.tables():
             node_ids.update(table.node_ids())
