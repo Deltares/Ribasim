@@ -61,19 +61,6 @@ class Network(FileModel, NodeModel):
 
         return n
 
-    def translate_spatially(
-        self, offset_spatial: tuple[float, float], inplace: bool = True
-    ) -> "Network":
-        """Add the same spatial offset to all nodes and edges."""
-        if inplace:
-            network = self
-        else:
-            network = deepcopy(self)
-
-        network.node.translate_spatially(offset_spatial)
-        network.edge.translate_spatially(offset_spatial)
-        return network
-
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True
     ) -> "Network":
@@ -127,7 +114,7 @@ class Network(FileModel, NodeModel):
                 network.edge.df,
                 edges_added,
             ]
-        )
+        )  # type: ignore
         return network
 
     @classmethod
@@ -451,62 +438,45 @@ class Model(FileModel):
     def max_node_id(self) -> int:
         return self.network.node.df.index.max()
 
+    def max_edge_id(self) -> int:
+        return self.network.edge.df.index.max()
+
     def max_allocation_network_id(self) -> int:
         m = self.network.node.df.allocation_network_id.max()
         if pd.isna(m):
             m = 0
         return m
 
-    def merge(
+    def smart_merge(
         self,
         model_added: "Model",
-        offset_node_id: int | None = None,
-        offset_allocation_network_id: int | None = None,
-        offset_spatial: tuple[float, float] = (0.0, 0.0),
-        inplace: bool = True,
     ):
         """
         Merge copies of the nodes and edges of an added model into this model.
         The added model is not modified, but the following modifications are made to the added data:
-        - Node IDs are shifted by at least the maximum node ID of this model
-        - Allocation network IDs are shifted by at least the maximum allocation network ID of this model.
+        - Node IDs are shifted by the maximum node ID of this model
+        - Allocation network IDs are shifted by the maximum allocation network ID of this model
         """
-        if inplace:
-            model = self
-        else:
-            model = deepcopy(self)
 
-        nodes_model = model.nodes()
+        nodes_model = self.nodes()
         nodes_added = model_added.nodes()
-        nodes_added["network"] = nodes_added["network"].translate_spatially(
-            offset_spatial, inplace=False
-        )
-        min_offset_node_id = model.max_node_id()
-        min_offset_allocation_network_id = model.max_allocation_network_id()
 
-        if offset_allocation_network_id is None:
-            offset_allocation_network_id = min_offset_allocation_network_id
-        else:
-            assert (
-                offset_allocation_network_id >= min_offset_allocation_network_id
-            ), f"The allocation network ID offset must be at least the maximum allocation network ID of the main model ({min_offset_allocation_network_id}) to avoid conflicts."
-        nodes_added["network"].offset_allocation_network_ids(
-            offset_allocation_network_id
-        )
+        offset_node_id = self.max_node_id()
+        offset_edge_id = self.max_edge_id()
+        offset_allocation_network_id = self.max_allocation_network_id()
 
-        if offset_node_id is None:
-            offset_node_id = min_offset_node_id
-        else:
-            assert (
-                offset_node_id >= min_offset_node_id
-            ), f"The node id offset must be at least the maximum node ID of the main model ({min_offset_node_id}) to avoid conflicts."
+        network_added = nodes_added["network"].offset_allocation_network_ids(
+            offset_allocation_network_id, inplace=False
+        )
+        network_added.edge.offset_edge_ids(offset_edge_id)
+        nodes_added["network"] = network_added
 
         for node_type, node_added in nodes_added.items():
-            node_added = node_added.offset_node_ids(offset_node_id)
+            node_added = node_added.offset_node_ids(offset_node_id, inplace=False)
             if node_type in nodes_model:
                 node_added = nodes_model[node_type].merge(node_added, inplace=False)
 
-            setattr(model, node_type, node_added)
+            setattr(self, node_type, node_added)
 
     def plot_control_listen(self, ax):
         x_start, x_end = [], []

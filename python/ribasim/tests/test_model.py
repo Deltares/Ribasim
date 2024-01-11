@@ -151,37 +151,12 @@ def test_model_merging(basic, subnetwork, tmp_path):
     model = deepcopy(basic)
     model_added = deepcopy(subnetwork)
     # Add model twice to test adding multiple subnetworks
-    model.merge(model_added)
-    model.merge(model_added, offset_spatial=(1.0, 1.0))
+    model.smart_merge(model_added)
+    model.smart_merge(model_added)
     assert (model.network.node.df.index == range(1, 44)).all()
+    assert not model.network.edge.df.index.duplicated().any()
     assert model.max_allocation_network_id() == 2
-    n_nodes_basic = len(basic.network.node.df)
-    n_edges_basic = len(basic.network.edge.df)
-    n_nodes_subnetwork = len(subnetwork.network.node.df)
-    n_edges_subnetwork = len(subnetwork.network.edge.df)
-    node_geometry = model.network.node.df.geometry
-    edge_geometry = model.network.edge.df.geometry
-    assert (
-        node_geometry[n_nodes_basic : n_nodes_basic + n_nodes_subnetwork]
-        == subnetwork.network.node.df.geometry.to_numpy()
-    ).all()
-    assert (
-        node_geometry[
-            n_nodes_basic + n_nodes_subnetwork : n_nodes_basic + 2 * n_nodes_subnetwork
-        ]
-        == subnetwork.network.node.df.geometry.translate(1.0, 1.0).to_numpy()
-    ).all()
 
-    assert (
-        edge_geometry[n_edges_basic : n_edges_basic + n_edges_subnetwork]
-        == subnetwork.network.edge.df.geometry.to_numpy()
-    ).all()
-    assert (
-        edge_geometry[
-            n_edges_basic + n_edges_subnetwork : n_edges_basic + 2 * n_edges_subnetwork
-        ]
-        == subnetwork.network.edge.df.geometry.translate(1.0, 1.0).to_numpy()
-    ).all()
     # Added model should not change
     for node_type, node_added in model_added.nodes().items():
         node_subnetwork = getattr(subnetwork, node_type)

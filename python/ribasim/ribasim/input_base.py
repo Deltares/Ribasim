@@ -13,6 +13,7 @@ from typing import (
 )
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -216,10 +217,15 @@ class TableModel(FileModel, Generic[TableT]):
 
         return node_ids
 
-    def offset_node_ids(self, offset_node_id: int) -> "TableModel[TableT]":
+    def offset_node_ids(
+        self, offset_node_id: int, inplace: bool = True
+    ) -> "TableModel[TableT]":
         """Add the same offset to all node IDs."""
-        copy = deepcopy(self)
-        df = copy.df
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+        df = node.df
         if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
             df.index += offset_node_id
             for name_column in [
@@ -230,7 +236,22 @@ class TableModel(FileModel, Generic[TableT]):
             ]:
                 if hasattr(df, name_column):
                     df[name_column] += offset_node_id
-        return copy
+
+        return node
+
+    def offset_edge_ids(
+        self, offset_edge_id: int, inplace=True
+    ) -> "TableModel[TableT]":
+        if self.tablename() == "Edge" and isinstance(self.df, gpd.GeoDataFrame):
+            if inplace:
+                edge = self
+            else:
+                edge = deepcopy(self)
+            df = edge.df
+            if isinstance(df, gpd.GeoDataFrame):
+                df.index += offset_edge_id
+
+        return edge
 
     def merge(
         self, table_added: "TableModel[TableT]", inplace: bool = True
@@ -245,12 +266,29 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             table = deepcopy(self)
 
-        table.df = pd.concat(
-            [
-                table.df,
-                table_added.df,
-            ]
-        )
+        if table_added.df is not None and table.df is not None:
+            if isinstance(self.df, gpd.GeoDataFrame):
+                common_node_ids = np.intersect1d(
+                    table.df.index.to_numpy(), table_added.df.index.to_numpy()
+                )
+            else:
+                common_node_ids = np.intersect1d(
+                    table.df.node_id.to_numpy(), table_added.df.node_id.to_numpy()
+                )
+
+            assert (
+                common_node_ids.size == 0
+            ), f"Self and added table (of type {type(self)}) have common IDs: {common_node_ids}."
+
+            table.df = pd.concat(
+                [
+                    table.df,
+                    table_added.df,
+                ]
+            )  # type: ignore
+
+        elif table_added.df is not None:
+            table.df = table_added.df
 
         return table
 
@@ -463,7 +501,7 @@ class NodeModel(ChildModel):
             if isinstance(attr, TableModel):
                 yield attr
 
-    def node_ids(self):
+    def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
         for table in self.tables():
             node_ids.update(table.node_ids())
@@ -473,19 +511,22 @@ class NodeModel(ChildModel):
         ids = self.node_ids()
         return list(ids), len(ids) * [self.get_input_type()]
 
-    def offset_node_ids(self, offset_node_id: int) -> "NodeModel":
+    def offset_node_ids(self, offset_node_id: int, inplace: bool = True) -> "NodeModel":
         """Add the same offset to all node IDs in all underlying tables."""
-        node_copy = deepcopy(self)
-        for field in node_copy.fields():
-            attr = getattr(node_copy, field)
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+        for field in node.fields():
+            attr = getattr(node, field)
             if isinstance(attr, TableModel):
                 table = attr
                 setattr(
-                    node_copy,
+                    node,
                     field,
                     table.offset_node_ids(offset_node_id),
                 )
-        return node_copy
+        return node
 
     def merge(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
         """Merge an added node of the same type into this node."""
@@ -501,11 +542,8 @@ class NodeModel(ChildModel):
             if isinstance(attr, TableModel):
                 table_added = attr
                 table_node = getattr(node, field)
-                if table_added.df is not None:
-                    if table_node.df is not None:
-                        table_added = table_node.merge(table_added, inplace=False)
-
-                    setattr(node, field, table_added)
+                table_added = table_node.merge(table_added, inplace=False)
+                setattr(node, field, table_added)
         return node
 
     def delete_by_ids(self, node_ids: list[int], inplace: bool = True) -> "NodeModel":
@@ -520,7 +558,7 @@ class NodeModel(ChildModel):
             if isinstance(attr, TableModel):
                 df = attr.df
                 if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
-                    df = df[~df.node_id.isin(node_ids)]
+                    df = df[~df.node_id.isin(node_ids)]  # type: ignore
                     if df.empty:
                         attr.df = None
                     else:

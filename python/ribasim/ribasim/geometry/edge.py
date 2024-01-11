@@ -39,18 +39,6 @@ class Edge(SpatialTableModel[EdgeSchema]):
         Table describing the flow connections.
     """
 
-    def translate_spatially(
-        self, offset_spatial: tuple[float, float], inplace: bool = True
-    ) -> "Edge":
-        """Add the same spatial offset to all edges."""
-        if inplace:
-            edge = self
-        else:
-            edge = deepcopy(self)
-
-        edge.df.geometry = edge.df.geometry.translate(*offset_spatial)
-        return edge
-
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True
     ) -> "Edge":

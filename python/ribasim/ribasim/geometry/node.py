@@ -12,7 +12,6 @@ from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
 
@@ -62,22 +61,6 @@ class Node(SpatialTableModel[NodeSchema]):
         node_type = node_type.node_type.tolist()
 
         return node_id, node_type
-
-    def translate_spatially(
-        self, offset_spatial: tuple[float, float], inplace: bool = True
-    ) -> "Node":
-        """Add the same spatial offset to all nodes."""
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-
-        node.df.geometry = node.df.geometry.apply(
-            lambda point: Point(
-                point.x + offset_spatial[0], point.y + offset_spatial[1]
-            )
-        )
-        return node
 
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True

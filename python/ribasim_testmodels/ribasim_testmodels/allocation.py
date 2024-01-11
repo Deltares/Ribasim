@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import ribasim
 
+from ribasim_testmodels.utils import offset_spatial_inplace
+
 
 def user_model():
     """Create a user test model with static and dynamic users on the same basin."""
@@ -1165,9 +1167,17 @@ def main_network_with_subnetworks_model():
         endtime="2021-01-01 00:00:00",
     )
 
-    model.merge(subnetwork_model(), offset_spatial=(0.0, 3.0))
-    model.merge(fractional_flow_subnetwork_model(), offset_spatial=(14.0, 3.0))
-    model.merge(looped_subnetwork_model(), offset_spatial=(26.0, 3.0))
+    subnetwork_1 = subnetwork_model()
+    subnetwork_2 = fractional_flow_subnetwork_model()
+    subnetwork_3 = looped_subnetwork_model()
+
+    offset_spatial_inplace(subnetwork_1, (0.0, 3.0))
+    offset_spatial_inplace(subnetwork_2, (14.0, 3.0))
+    offset_spatial_inplace(subnetwork_3, (26.0, 3.0))
+
+    model.smart_merge(subnetwork_1)
+    model.smart_merge(subnetwork_2)
+    model.smart_merge(subnetwork_3)
 
     # Connection edges
     from_id = np.array([2, 6, 10])
