@@ -19,6 +19,7 @@ import BasicModelInterface as BMI
 import HiGHS
 import JuMP
 import TranscodingStreams
+import LoggingExtras
 
 using Accessors: @set
 using Arrow: Arrow, Table
@@ -46,8 +47,7 @@ using Graphs:
     rem_edge!
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: current_logger, min_enabled_level, with_logger
-using LoggingExtras: EarlyFilteredLogger, LevelOverrideLogger
+using Logging: with_logger, LogLevel, AbstractLogger
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,
@@ -60,6 +60,7 @@ using OrdinaryDiffEq
 using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
 using SciMLBase
+using SciMLBase: successful_retcode
 using SparseArrays
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
@@ -74,6 +75,7 @@ include("validation.jl")
 include("solve.jl")
 include("config.jl")
 using .config
+include("logging.jl")
 include("allocation.jl")
 include("utils.jl")
 include("lib.jl")
@@ -81,5 +83,6 @@ include("io.jl")
 include("create.jl")
 include("bmi.jl")
 include("consts.jl")
+include("main.jl")
 
 end  # module Ribasim

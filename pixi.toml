@@ -113,6 +113,8 @@ install-qgis-plugins = { depends_on = [
     "install-imod-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
+# Run
+ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
 
 [dependencies]
 build = "*"
