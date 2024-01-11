@@ -9,13 +9,13 @@ import ribasim_testmodels
 import matplotlib.pyplot as plt
 
 for model_name, model_constructor in ribasim_testmodels.constructors.items():
-    #print(f"Plotting {model_name}")
+    if model_name.startswith("invalid"):
+        continue
     model = model_constructor()
-    model.plot()
-
-    fig = plt.gcf()
-    #plt.gca().set_title(model_name)
-    plt.title(label=model_name,loc="left")
+    fig, ax = plt.subplots()
+    model.plot(ax)
+    ax.set_title(label=model_name,loc="left")
     fig.tight_layout()
-    #fig.savefig(r"path\to\Testmodel_graphs\\" + model_name + ".png")
+    plt.show()
+    plt.close(fig)
 ```
