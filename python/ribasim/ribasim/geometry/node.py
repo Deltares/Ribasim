@@ -1,11 +1,14 @@
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
+from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
@@ -58,6 +61,18 @@ class Node(SpatialTableModel[NodeSchema]):
         node_type = node_type.node_type.tolist()
 
         return node_id, node_type
+
+    def offset_allocation_network_ids(
+        self, offset_allocation_network_id: int, inplace: bool = True
+    ) -> "Node":
+        """Add the same offset to all node IDs."""
+        if inplace:
+            node = self
+        else:
+            node = deepcopy(self)
+
+        node.df.allocation_network_id += offset_allocation_network_id
+        return node
 
     def geometry_from_connectivity(
         self, from_id: Sequence[int], to_id: Sequence[int]
@@ -129,6 +144,47 @@ class Node(SpatialTableModel[NodeSchema]):
         from_id = node_index[edge_node_id[:, 0]].to_numpy()
         to_id = node_index[edge_node_id[:, 1]].to_numpy()
         return from_id, to_id
+
+    def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
+        if ax is None:
+            _, ax = plt.subplots()
+            ax.axis("off")
+
+        COLOR_SUBNETWORK = "black"
+        COLOR_MAIN_NETWORK = "blue"
+        ALPHA = 0.25
+
+        contains_main_network = False
+        contains_subnetworks = False
+
+        for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
+            "allocation_network_id"
+        ):
+            if allocation_subnetwork_id is None:
+                continue
+            elif allocation_subnetwork_id == 1:
+                contains_main_network = True
+                color = COLOR_MAIN_NETWORK
+            else:
+                contains_subnetworks = True
+                color = COLOR_SUBNETWORK
+
+            hull = gpd.GeoDataFrame(
+                geometry=[df_subnetwork.geometry.unary_union.convex_hull]
+            )
+            hull.plot(ax=ax, color=color, alpha=ALPHA, zorder=zorder)
+
+        handles = []
+        labels = []
+
+        if contains_main_network:
+            handles.append(Patch(facecolor=COLOR_MAIN_NETWORK, alpha=ALPHA))
+            labels.append("Main network")
+        if contains_subnetworks:
+            handles.append(Patch(facecolor=COLOR_SUBNETWORK, alpha=ALPHA))
+            labels.append("Subnetwork")
+
+        return handles, labels
 
     def plot(self, ax=None, zorder=None) -> Any:
         """

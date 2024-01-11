@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import ribasim
 
+from ribasim_testmodels.utils import offset_spatial_inplace
+
 
 def user_model():
     """Create a user test model with static and dynamic users on the same basin."""
@@ -123,7 +125,9 @@ def user_model():
 
 
 def subnetwork_model():
-    """Create a user testmodel representing a subnetwork."""
+    """Create a user testmodel representing a subnetwork.
+    This model is merged into main_network_with_subnetworks_model.
+    """
 
     # Setup the nodes:
     xy = np.array(
@@ -283,7 +287,9 @@ def subnetwork_model():
 
 
 def looped_subnetwork_model():
-    """Create a user testmodel representing a subnetwork containing a loop in the topology."""
+    """Create a user testmodel representing a subnetwork containing a loop in the topology.
+    This model is merged into main_network_with_subnetworks_model.
+    """
     # Setup the nodes:
     xy = np.array(
         [
@@ -670,7 +676,9 @@ def minimal_subnetwork_model():
 
 
 def fractional_flow_subnetwork_model():
-    """Create a small subnetwork that contains fractional flow nodes."""
+    """Create a small subnetwork that contains fractional flow nodes.
+    This model is merged into main_network_with_subnetworks_model.
+    """
 
     xy = np.array(
         [
@@ -1063,5 +1071,133 @@ def allocation_example_model():
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-20 00:00:00",
     )
+
+    return model
+
+
+def main_network_with_subnetworks_model():
+    """Generate a model with a main network with connected subnetworks which are other test models."""
+
+    # Main network
+    n_basins = 5
+    n_nodes = 2 * n_basins
+    xy = np.array([(3 * i, (-1) ** (i + 1)) for i in range(n_nodes)])
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["FlowBoundary", "Basin"] + (n_basins - 1) * [
+        "LinearResistance",
+        "Basin",
+    ]
+    node = ribasim.Node(
+        df=gpd.GeoDataFrame(
+            data={"type": node_type, "allocation_network_id": 1},
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    from_id = np.arange(1, n_nodes)
+    to_id = np.arange(2, n_nodes + 1)
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
+    lines = node.geometry_from_connectivity(from_id, to_id)
+    edge = ribasim.Edge(
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the basins:
+    basin_node_ids = np.arange(2, n_nodes + 1, 2)
+    profile = pd.DataFrame(
+        data={
+            "node_id": np.repeat(basin_node_ids, [2] * len(basin_node_ids)),
+            "area": 1000.0,
+            "level": n_basins * [0.0, 1.0],
+        }
+    )
+
+    static = pd.DataFrame(
+        data={
+            "node_id": basin_node_ids,
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+
+    state = pd.DataFrame(data={"node_id": basin_node_ids, "level": 1.0})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
+
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1],
+                "flow_rate": 1.0,
+            }
+        )
+    )
+
+    linear_resistance = ribasim.LinearResistance(
+        static=pd.DataFrame(
+            data={"node_id": np.arange(3, n_nodes + 1, 2), "resistance": 1e-3}
+        )
+    )
+
+    model = ribasim.Model(
+        network=ribasim.Network(
+            node=node,
+            edge=edge,
+        ),
+        basin=basin,
+        flow_boundary=flow_boundary,
+        linear_resistance=linear_resistance,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    subnetwork_1 = subnetwork_model()
+    subnetwork_2 = fractional_flow_subnetwork_model()
+    subnetwork_3 = looped_subnetwork_model()
+
+    offset_spatial_inplace(subnetwork_1, (0.0, 3.0))
+    offset_spatial_inplace(subnetwork_2, (14.0, 3.0))
+    offset_spatial_inplace(subnetwork_3, (26.0, 3.0))
+
+    model.smart_merge(subnetwork_1)
+    model.smart_merge(subnetwork_2)
+    model.smart_merge(subnetwork_3)
+
+    # Connection edges
+    from_id = np.array([2, 6, 10])
+    to_id = np.array([11, 24, 38])
+    edge_type = 3 * ["flow"]
+    model.network.add_edges(from_id, to_id, edge_type)
+
+    # Convert connecting flow boundaries to pumps
+    model.network.node.df.loc[to_id, "type"] = "Pump"
+    model.flow_boundary.delete_by_ids(to_id)
+    pump_added = ribasim.Pump(
+        static=pd.DataFrame(
+            data={"node_id": to_id, "flow_rate": 1e-3, "max_flow_rate": 1.0}
+        )
+    )
+    model.pump.merge(pump_added)
+
+    # Fix control logic
+    df = model.discrete_control.condition.df
+    df.listen_feature_id = 25
+    df.variable = "level"
 
     return model
