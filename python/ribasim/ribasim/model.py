@@ -61,6 +61,12 @@ class Network(FileModel, NodeModel):
 
         return n
 
+    def max_node_id(self) -> int:
+        return self.node.df.index.max()
+
+    def max_edge_id(self) -> int:
+        return self.edge.df.index.max()
+
     def offset_allocation_network_ids(
         self, offset_allocation_network_id: int, inplace: bool = True
     ) -> "Network":
@@ -86,13 +92,17 @@ class Network(FileModel, NodeModel):
         else:
             network = deepcopy(self)
 
+        offset_edge_id = self.max_edge_id() + 1
+
         df = pd.DataFrame(
             data={
                 "from_node_id": from_node_id,
                 "to_node_id": to_node_id,
                 "edge_type": edge_type,
-            }
+            },
+            index=np.arange(offset_edge_id, offset_edge_id + len(edge_type)),
         )
+        print(df)
 
         df["geometry"] = df.apply(
             (
@@ -435,12 +445,6 @@ class Model(FileModel):
         context_file_loading.set({})
         return self
 
-    def max_node_id(self) -> int:
-        return self.network.node.df.index.max()
-
-    def max_edge_id(self) -> int:
-        return self.network.edge.df.index.max()
-
     def max_allocation_network_id(self) -> int:
         m = self.network.node.df.allocation_network_id.max()
         if pd.isna(m):
@@ -461,8 +465,8 @@ class Model(FileModel):
         nodes_model = self.nodes()
         nodes_added = model_added.nodes()
 
-        offset_node_id = self.max_node_id()
-        offset_edge_id = self.max_edge_id()
+        offset_node_id = self.network.max_node_id()
+        offset_edge_id = self.network.max_edge_id()
         offset_allocation_network_id = self.max_allocation_network_id()
 
         network_added = nodes_added["network"].offset_allocation_network_ids(
