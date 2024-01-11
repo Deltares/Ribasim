@@ -25,6 +25,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
     for node_id in node_ids
+        use_node = false
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type

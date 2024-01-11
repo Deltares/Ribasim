@@ -198,7 +198,7 @@ const nonconservative_nodetypes =
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, allocation_models) = allocation
+    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
 
     for allocation_network_id in sort(collect(keys(graph[].node_ids)))
         push!(allocation_network_ids, allocation_network_id)

@@ -1155,6 +1155,9 @@ def main_network_with_subnetworks_model():
         )
     )
 
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
     model = ribasim.Model(
         network=ribasim.Network(
             node=node,
@@ -1163,6 +1166,7 @@ def main_network_with_subnetworks_model():
         basin=basin,
         flow_boundary=flow_boundary,
         linear_resistance=linear_resistance,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
