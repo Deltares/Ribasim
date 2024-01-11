@@ -34,7 +34,7 @@ def trivial_model() -> ribasim.Model:
     # Setup the edges:
     from_id = np.array([6, 0], dtype=np.int64)
     to_id = np.array([0, terminal_id], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
