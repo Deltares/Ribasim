@@ -74,7 +74,8 @@ class Edge(SpatialTableModel[EdgeSchema]):
         where_flow = self.get_where_edge_type("flow")
         where_control = self.get_where_edge_type("control")
 
-        self.df[where_flow].plot(**kwargs_flow)
+        if not self.df[where_flow].empty:
+            self.df[where_flow].plot(**kwargs_flow)
 
         if where_control.any():
             self.df[where_control].plot(**kwargs_control)
