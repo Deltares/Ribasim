@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "ribasim_api"
@@ -21,18 +21,9 @@ dynamic = ["version"]
 [project.optional-dependencies]
 tests = ["pytest", "ribasim", "ribasim_testmodels"]
 
-[tool.setuptools]
-zip-safe = true
-
-[tool.setuptools.dynamic]
-version = { attr = "ribasim_api.__version__" }
-
-[tool.setuptools.packages.find]
-include = ["ribasim_api", "ribasim_api.*"]
-
-[tool.setuptools.package-data]
-"ribasim_api" = ["py.typed"]
-
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim"
 Source = "https://github.com/Deltares/Ribasim"
+
+[tool.hatch.version]
+path = "ribasim_api/__init__.py"

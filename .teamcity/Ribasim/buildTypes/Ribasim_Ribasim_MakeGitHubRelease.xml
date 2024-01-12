@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="5fa3a42d-6a7b-4820-95c1-c550d6648ae7" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Make GitHub Release</name>
+  <description />
+  <settings>
+    <parameters>
+      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
+    </parameters>
+    <build-runners>
+      <runner id="RUNNER_2523" name="Push release to GitHub" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[#!/usr/bin/env bash
+set -euxo pipefail
+. /usr/share/Modules/init/bash
+
+module load github
+# Get the name of the currently checked out tag
+tag_name=$(git describe --tags --exact-match 2>/dev/null)
+
+# Check if a tag is checked out
+if [ -n "$tag_name" ]; then
+    echo "Currently checked out tag: $tag_name"
+
+    # Create a release using gh
+    gh release create "$tag_name" \
+        --generate-notes \
+        ribasim_cli_linux.zip \
+        ribasim_cli_windows.zip \
+        ribasim_qgis.zip
+
+    echo "Release created successfully."
+
+else
+    echo "No tag is currently checked out."
+fi]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim" />
+    </vcs-settings>
+    <requirements>
+      <equals id="RQ_294" name="teamcity.agent.jvm.os.name" value="Linux" />
+    </requirements>
+    <build-triggers>
+      <build-trigger id="TRIGGER_637" type="vcsTrigger">
+        <parameters>
+          <param name="branchFilter" value="+:v20*" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <build-extensions>
+      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
+        <parameters>
+          <param name="awsConnectionId" value="AmazonWebServicesAws" />
+          <param name="awsSessionDuration" value="60" />
+        </parameters>
+      </extension>
+      <extension id="KEEP_RULE_10" type="keepRules">
+        <parameters>
+          <param name="filters.1.status" value="successful" />
+          <param name="filters.1.type" value="buildStatus" />
+          <param name="keepData.1.type" value="everything" />
+          <param name="limit.type" value="all" />
+          <param name="partitions.1.type" value="perBranch" />
+          <param name="preserveArtifacts" value="true" />
+          <param name="ruleDisabled" value="false" />
+        </parameters>
+      </extension>
+    </build-extensions>
+    <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_603" sourceBuildTypeId="Ribasim_Ribasim_MakeQgisPlugin" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="ribasim_qgis.zip" />
+      </dependency>
+      <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="ribasim_cli.zip =&gt; ribasim_cli_linux.zip" />
+      </dependency>
+      <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="ribasim_cli.zip =&gt; ribasim_cli_windows.zip" />
+      </dependency>
+    </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Ribasim_MakeQgisPlugin">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
+    <cleanup>
+      <options>
+        <option name="disableCleanupPolicies" value="true" />
+      </options>
+    </cleanup>
+  </settings>
+</build-type>
+
