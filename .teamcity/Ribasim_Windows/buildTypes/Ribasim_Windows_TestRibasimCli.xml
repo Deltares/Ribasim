@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="d5e2515e-f7f0-4248-9df0-928bb0db1362" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test ribasim_cli</name>
+  <description />
+  <settings>
+    <options>
+      <option name="artifactRules" value="ribasim\build\ribasim_cli\tests\temp =&gt; test_output.zip" />
+      <option name="cleanBuild" value="true" />
+    </options>
+    <parameters>
+      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
+    </parameters>
+    <build-runners>
+      <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="pixi run install-without-pre-commit" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="pixi run test-ribasim-cli" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim">
+        <checkout-rule rule=". =&gt; ribasim" />
+      </vcs-entry-ref>
+    </vcs-settings>
+    <requirements>
+      <equals id="RQ_310" name="env.OS" value="Windows_NT" />
+    </requirements>
+    <build-triggers>
+      <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
+        <parameters>
+          <param name="afterSuccessfulBuildOnly" value="true" />
+          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="dependsOn" value="Ribasim_Windows_BuildRibasimCli" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <build-extensions>
+      <extension id="BUILD_EXT_142" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
+          <param name="vcsRootId" value="Ribasim_Ribasim" />
+        </parameters>
+      </extension>
+      <extension id="BUILD_EXT_145" type="xml-report-plugin">
+        <parameters>
+          <param name="xmlReportParsing.reportDirs" value="ribasim/report.xml" />
+          <param name="xmlReportParsing.reportType" value="junit" />
+          <param name="xmlReportParsing.verboseOutput" value="true" />
+        </parameters>
+      </extension>
+    </build-extensions>
+    <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="true">
+        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <artifact sourcePath="ribasim_cli.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
+      </dependency>
+    </artifact-dependencies>
+    <cleanup />
+  </settings>
+</build-type>
+
