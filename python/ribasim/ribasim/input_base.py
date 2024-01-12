@@ -7,6 +7,7 @@ from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
     Any,
+    ClassVar,
     Generic,
     TypeVar,
 )
@@ -158,6 +159,7 @@ class FileModel(BaseModel, ABC):
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    sort_keys: ClassVar[list[str]]
 
     @field_validator("df")
     @classmethod
@@ -215,19 +217,14 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {}
 
-    def _save(
-        self,
-        directory: DirectoryPath,
-        input_dir: DirectoryPath,
-        sort_keys: list[str] = ["node_id"],
-    ) -> None:
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.df is not None and self.filepath is not None:
-            self.sort(sort_keys)
+            self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
         elif self.df is not None and db_path is not None:
-            self.sort(sort_keys)
+            self.sort()
             self._write_table(db_path)
 
     def _write_table(self, temp_path: Path) -> None:
@@ -289,13 +286,13 @@ class TableModel(FileModel, Generic[TableT]):
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
 
-    def sort(self, sort_keys: list[str]):
+    def sort(self):
         """Sort the table as required.
 
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
 
     @classmethod
     def tableschema(cls) -> TableT:
@@ -374,7 +371,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf.to_file(path, layer=self.tablename(), driver="GPKG")
 
-    def sort(self, sort_keys: list[str]):
+    def sort(self):
         self.df.sort_index(inplace=True)
 
 
@@ -391,8 +388,6 @@ class ChildModel(BaseModel):
 
 class NodeModel(ChildModel):
     """Base class to handle combining the tables for a single node type."""
-
-    _sort_keys: dict[str, list[str]] = {}
 
     @model_serializer(mode="wrap")
     def set_modeld(
@@ -431,11 +426,7 @@ class NodeModel(ChildModel):
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
         for field in self.fields():
-            getattr(self, field)._save(
-                directory,
-                input_dir,
-                sort_keys=self._sort_keys[field],
-            )
+            getattr(self, field)._save(directory, input_dir)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.
