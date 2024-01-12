@@ -32,3 +32,8 @@ def backwater() -> ribasim.Model:
 @pytest.fixture()
 def discrete_control_of_pid_control() -> ribasim.Model:
     return ribasim_testmodels.discrete_control_of_pid_control_model()
+
+
+@pytest.fixture()
+def level_setpoint_with_minmax() -> ribasim.Model:
+    return ribasim_testmodels.level_setpoint_with_minmax_model()
