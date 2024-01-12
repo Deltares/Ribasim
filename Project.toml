@@ -6,6 +6,7 @@ description = "Meta-project used to share the Manifest of Ribasim and its depend
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
 MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
