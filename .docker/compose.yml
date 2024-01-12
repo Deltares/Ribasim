@@ -9,3 +9,5 @@ services:
     environment:
       - CI=true
       - DISPLAY=:99
+    ulimits:
+      stack: 8192 # This sets the stack size to 8MB
