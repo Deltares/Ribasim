@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.4.1"
+version = "0.5.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -113,6 +113,8 @@ install-qgis-plugins = { depends_on = [
     "install-imod-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
+# Run
+ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
 
 [dependencies]
 build = "*"
@@ -149,6 +151,7 @@ types-requests = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
+hatchling = "*"
 
 [target.win-64.dependencies]
 quarto = "*"

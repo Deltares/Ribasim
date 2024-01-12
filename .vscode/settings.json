@@ -14,13 +14,15 @@
             "source.fixAll": "explicit"
         }
     },
-    "python.analysis.extraPaths": [
-        ".pixi/env/Library/python"
-    ],
     "mypy-type-checker.importStrategy": "fromEnvironment",
     "python.testing.pytestArgs": [
         "."
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "julia.lint.disabledDirs": [
+        ".pixi",
+        "utils/juliaup"
+    ],
+    "julia.lint.run": true
 }

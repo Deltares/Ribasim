@@ -39,6 +39,7 @@ website:
         - python/index.qmd
         - python/examples.ipynb
         - python/reference/index.qmd
+        - python/test-models.qmd
     - title: "Coupled models"
       contents:
         - couple/index.qmd

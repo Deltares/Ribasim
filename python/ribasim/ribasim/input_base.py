@@ -163,7 +163,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def prefix_extra_columns(cls, v: DataFrame[TableT]):
         """Prefix extra columns with meta_."""
-        if isinstance(v, pd.DataFrame):
+        if isinstance(v, (pd.DataFrame, gpd.GeoDataFrame)):
             v.rename(
                 lambda x: prefix_column(x, cls.columns()), axis="columns", inplace=True
             )
@@ -352,6 +352,15 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
             return df
 
+    @classmethod
+    def columns(cls) -> list[str]:
+        """Retrieve column names"""
+        T = cls.tableschema()
+        if T is not None:
+            return list(T.to_schema().columns.keys())
+        else:
+            return []
+
     def _write_table(self, path: FilePath) -> None:
         """
         Write the contents of the input to a database.
@@ -415,7 +424,7 @@ class NodeModel(ChildModel):
             if isinstance(attr, TableModel):
                 yield attr
 
-    def node_ids(self):
+    def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
         for table in self.tables():
             node_ids.update(table.node_ids())

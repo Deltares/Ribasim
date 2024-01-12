@@ -98,6 +98,7 @@ end
 
 @testitem "basic model" begin
     using Logging: Debug, with_logger
+    using LoggingExtras
     using SciMLBase: successful_retcode
     import Tables
     using Dates
@@ -105,8 +106,9 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
 
-    logger = TestLogger()
-    model = with_logger(logger) do
+    logger = TestLogger(; min_level = Debug)
+    filtered_logger = LoggingExtras.EarlyFilteredLogger(Ribasim.is_current_module, logger)
+    model = with_logger(filtered_logger) do
         Ribasim.run(toml_path)
     end
 
