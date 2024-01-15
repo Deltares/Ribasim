@@ -151,3 +151,6 @@ build/ribasim_cli/tests/temp/
 python/ribasim_api/tests/temp/
 report.xml
 /utils/juliaup
+
+# Designated working dir for working on Ribasim models
+models/

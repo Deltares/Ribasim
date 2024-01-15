@@ -44,16 +44,9 @@
             "default": null
         },
         "dtmin": {
-            "format": "default",
-            "anyOf": [
-                {
-                    "type": "null"
-                },
-                {
-                    "type": "number"
-                }
-            ],
-            "default": null
+            "format": "double",
+            "type": "number",
+            "default": 0
         },
         "dtmax": {
             "format": "default",
@@ -102,6 +95,7 @@
         "algorithm",
         "saveat",
         "adaptive",
+        "dtmin",
         "force_dtmin",
         "abstol",
         "reltol",
