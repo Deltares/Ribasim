@@ -5,7 +5,7 @@ from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
-from ribasim import Pump
+from ribasim import Node, Pump
 
 
 def __assert_equal(a: DataFrame, b: DataFrame) -> None:
@@ -87,7 +87,7 @@ def test_repr():
     assert isinstance(pump_2.static._repr_html_(), str)
 
 
-def test_extra_columns():
+def test_extra_columns(basic_transient):
     static_data = pd.DataFrame(
         data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0], "id": [-1, -2, -3]}
     )
@@ -95,3 +95,10 @@ def test_extra_columns():
     pump_1 = Pump(static=static_data)
 
     assert "meta_id" in pump_1.static.df.columns
+
+    model_orig = basic_transient
+    df = model_orig.network.node.df.copy()
+    df["node_id"] = df.index
+    node = Node(df=df)
+
+    assert "meta_node_id" in node.df.columns

@@ -27,17 +27,14 @@ libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/s
 
 # Download {#sec-download}
 
-For most users the [latest release](https://github.com/Deltares/Ribasim/releases/latest) is recommended, it can be downloaded here:
-
-- Ribasim executable: [ribasim_cli.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli.zip).
-- Python package: [ribasim-0.6.1-py3-none-any.whl](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim-0.6.1-py3-none-any.whl)
+- Ribasim executable - Linux: [ribasim_cli_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_linux.zip)
+- Ribasim executable - Windows: [ribasim_cli_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_windows.zip)
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
 The nightly builds contain the latest developments and can be found below. It is important to either use the release or nightly for all components.
 
 - Ribasim executable: [ribasim_cli.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip).
-- Python package: [ribasim-0.6.1-py3-none-any.whl](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim-0.6.1-py3-none-any.whl)
 - QGIS plugin: [ribasim_qgis.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip).
 
 Currently only Windows builds for `ribasim_cli.zip` are available.

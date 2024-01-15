@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.4.1"
+version = "0.5.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -151,6 +151,7 @@ types-requests = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
+hatchling = "*"
 
 [target.win-64.dependencies]
 quarto = "*"

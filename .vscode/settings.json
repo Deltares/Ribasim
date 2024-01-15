@@ -14,9 +14,6 @@
             "source.fixAll": "explicit"
         }
     },
-    "python.analysis.extraPaths": [
-        ".pixi/env/Library/python"
-    ],
     "mypy-type-checker.importStrategy": "fromEnvironment",
     "python.testing.pytestArgs": [
         "."

@@ -1,0 +1,24 @@
+---
+title: "Test models"
+---
+
+Ribasim developers use the following models in its testbench and in order to test new features.
+
+```{python}
+# | code-fold: true
+import ribasim_testmodels
+import matplotlib.pyplot as plt
+
+for model_name, model_constructor in ribasim_testmodels.constructors.items():
+    if model_name.startswith("invalid"):
+        continue
+
+    model = model_constructor()
+    fig, ax = plt.subplots()
+    model.plot(ax)
+    ax.set_title(label=model_name, loc="left")
+    fig.text(0, 1, model_constructor.__doc__)
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+```

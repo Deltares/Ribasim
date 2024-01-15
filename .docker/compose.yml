@@ -9,3 +9,4 @@ services:
     environment:
       - CI=true
       - DISPLAY=:99
+    tty: true
