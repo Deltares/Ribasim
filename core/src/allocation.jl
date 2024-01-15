@@ -20,7 +20,8 @@ Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; graph, basin, fractional_flow) = p
+    (; graph, basin, fractional_flow, allocation) = p
+    (; main_network_connections) = allocation
 
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
@@ -48,6 +49,15 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         (; from_id, to_id) = edge_metadata
         push!(used_nodes, from_id)
         push!(used_nodes, to_id)
+    end
+
+    # For the main network, include nodes that connect the main network to a subnetwork
+    if allocation_network_id == 1
+        for connections_subnetwork in main_network_connections
+            for connection in connections_subnetwork
+                union!(used_nodes, connection)
+            end
+        end
     end
 
     filter!(in(used_nodes), node_ids)
