@@ -1,12 +1,6 @@
 version: '2'
 
 services:
-  dummy:
-    # Dummy service to wait for qgis to be ready
-    image: ubuntu:22.04
-    depends_on:
-      qgis:
-        condition: service_healthy
   qgis:
     image: qgis/qgis:release-3_28
     container_name: qgis
@@ -15,8 +9,4 @@ services:
     environment:
       - CI=true
       - DISPLAY=:99
-    # tty: true
-    healthcheck:
-      test: [ "CMD-SHELL", "xvfb-run exit 0" ]
-      interval: 1s
-      retries: 30
+    tty: true
