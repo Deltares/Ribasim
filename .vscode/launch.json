@@ -1,6 +1,15 @@
 {
     "version": "0.2.0",
     "configurations": [
+         {
+            "type": "julia",
+            "request": "launch",
+            "name": "Julia: current file",
+            "program": "${file}",
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "juliaEnv": "${command:activeJuliaEnvironment}"
+        },
         {
             "name": "Ribasim QGIS: Attach to QGIS",
             "type": "python",
