@@ -34,10 +34,21 @@ The nightly download links for the Ribasim Python wheels contain the version num
 
 ## Create a new release
 
-Create a [new release](https://github.com/Deltares/Ribasim/releases/new).
-Give it a tag like `v2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
+Create a new tag like `v2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
 This follows `vYYYY.0M.MICRO` from [calver](https://calver.org/).
-For [v2023.09.0](https://github.com/Deltares/Ribasim/releases/tag/v2023.09.0) I used the "Generate release notes" button, which I then manually edited to copy the most important changes for users to the top in the form of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+This can be done by executing:
+```bash
+git tag <tagname>
+```
+Then push the tags:
+```bash
+git push --tags
+```
+
+This will trigger a workflow on TeamCity that will publish a new release on GitHub as soon as it is finished.
+You can follow the progress [here](https://dpcbuild.deltares.nl/buildConfiguration/Ribasim_Ribasim_MakeGitHubRelease?mode=builds).
+It also auto-generates a changelog.
+You'll probably want to curate that by rearranging the most important changes for users to the top in the form of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 The possibly long list of generated release notes can put below an "All changes" collapsed item as such:
 
 ```
