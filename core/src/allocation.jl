@@ -384,10 +384,21 @@ function add_variables_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph) = p
-    node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
+        node_ids = graph[].node_ids[allocation_network_id]
+        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+
+        # For the main network, connections to subnetworks are treated as users
+        if allocation_network_id == 1
+            for connections_subnetwork in main_network_connections
+                for connection in connections_subnetwork
+                    push!(node_ids_user, connection[2])
+                end
+            end
+        end
+
         problem[:F_abs] = JuMP.@variable(problem, F_abs[node_id = node_ids_user])
     end
     return nothing
