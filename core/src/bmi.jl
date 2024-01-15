@@ -83,6 +83,9 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
         end
         storages
     end
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, storage)
+
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
