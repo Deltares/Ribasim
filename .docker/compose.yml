@@ -2,7 +2,7 @@ version: '2'
 
 services:
   qgis:
-    image: qgis/qgis:final-3_28_14
+    image: qgis/qgis:release-3_28
     container_name: qgis
     volumes:
       - ../ribasim_qgis/:/tests_directory/${PLUGIN_NAME}
