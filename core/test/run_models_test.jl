@@ -77,11 +77,13 @@
         @test basin.level[1] ≈ 0.044711584
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+        basin_level = basin.level[1]
         @test length(p.subgrid.level) == 3
         @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
         # TODO The original subgrid IDs are lost and mapped to 1, 2, 3
         @test subgrid.subgrid_id[1:3] == [11, 22, 33] broken = true
-        @test subgrid.subgrid_level[1:3] == [0.0, -1.0, 1.0]
+        @test subgrid.subgrid_level[1:3] ≈
+              [basin_level, basin_level - 1.0, basin_level + 1.0]
         @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level
     end
 end
