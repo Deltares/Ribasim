@@ -102,7 +102,6 @@ class Network(FileModel, NodeModel):
             },
             index=np.arange(offset_edge_id, offset_edge_id + len(edge_type)),
         )
-        print(df)
 
         df["geometry"] = df.apply(
             (
