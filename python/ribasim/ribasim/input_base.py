@@ -7,7 +7,6 @@ from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
     Any,
-    ClassVar,
     Generic,
     TypeVar,
 )
@@ -159,7 +158,7 @@ class FileModel(BaseModel, ABC):
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
-    sort_keys: ClassVar[list[str]]
+    sort_keys: list[str] = Field(init_var=True, exclude=True, repr=False)
 
     @field_validator("df")
     @classmethod
@@ -292,7 +291,7 @@ class TableModel(FileModel, Generic[TableT]):
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
+            self.df.sort_values(self._sort_keys, ignore_index=True, inplace=True)
 
     @classmethod
     def tableschema(cls) -> TableT:
