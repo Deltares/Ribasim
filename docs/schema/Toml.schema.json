@@ -42,7 +42,7 @@
                 ],
                 "adaptive": true,
                 "dt": null,
-                "dtmin": null,
+                "dtmin": 0,
                 "dtmax": null,
                 "force_dtmin": false,
                 "abstol": 1.0e-6,
