@@ -300,7 +300,7 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
             else
                 from_main_network = graph[id_source].allocation_network_id == 1
 
-                if !from_source_node & !from_main_network
+                if !from_source_node && !from_main_network
                     errors = true
                     @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
                 end
