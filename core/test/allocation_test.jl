@@ -179,9 +179,19 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
-    (; main_network_connections) = p.allocation
+    (; allocation, graph) = p
+    (; main_network_connections) = allocation
     @test isempty(main_network_connections[1])
     @test only(main_network_connections[2]) == (NodeID(2), NodeID(11))
     @test only(main_network_connections[3]) == (NodeID(6), NodeID(24))
     @test only(main_network_connections[4]) == (NodeID(10), NodeID(38))
+
+    allocation_edges_main_network = graph[].edge_ids[1]
+    @test Tuple{NodeID, NodeID}[(2, 11), (6, 24), (10, 38)] ⊆ allocation_edges_main_network
+
+    allocation_model_main_network = Ribasim.get_allocation_model(p, 1)
+    problem = allocation_model_main_network.problem
+    @test problem[:F_abs].axes[1] == NodeID[11, 24, 38]
+    @test problem[:abs_positive].axes[1] == NodeID[11, 24, 38]
+    @test problem[:abs_negative].axes[1] == NodeID[11, 24, 38]
 end
