@@ -28,7 +28,7 @@ install-without-pre-commit = { depends_on = [
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
-update-registry-julia = "julia --project --eval='using Pkg; Registry.update()'"
+update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
 instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 initialize-julia = { depends_on = [
     "update-registry-julia",
