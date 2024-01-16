@@ -15,8 +15,6 @@ website:
         file: python/index.qmd
       - text: "QGIS plugin"
         file: qgis/index.qmd
-      - text: "Coupled models"
-        file: couple/index.qmd
       - text: "Contributing"
         file: contribute/index.qmd
     right:
@@ -40,11 +38,6 @@ website:
         - python/examples.ipynb
         - python/reference/index.qmd
         - python/test-models.qmd
-    - title: "Coupled models"
-      contents:
-        - couple/index.qmd
-        - couple/modflow.qmd
-        - couple/modflow-demo.qmd
     - title: "Contributing"
       contents:
         - contribute/index.qmd
