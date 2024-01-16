@@ -1204,4 +1204,9 @@ def main_network_with_subnetworks_model():
     df.listen_feature_id = 25
     df.variable = "level"
 
+    # Fix sources
+    df = model.network.edge.df
+    df.loc[[18, 55], "allocation_network_id"] = None
+    df.loc[128:130, "allocation_network_id"] = [2, 3, 4]
+
     return model

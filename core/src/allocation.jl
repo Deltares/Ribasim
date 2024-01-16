@@ -51,16 +51,17 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         push!(used_nodes, to_id)
     end
 
+    filter!(in(used_nodes), node_ids)
+
     # For the main network, include nodes that connect the main network to a subnetwork
+    # (also includes nodes not in the main network in the input)
     if allocation_network_id == 1
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
-                union!(used_nodes, connection)
+                union!(node_ids, connection)
             end
         end
     end
-
-    filter!(in(used_nodes), node_ids)
     return nothing
 end
 
@@ -274,6 +275,8 @@ function process_allocation_graph_edges!(
     return capacity
 end
 
+const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
+
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
@@ -284,24 +287,23 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
 
     errors = false
 
-    for (id_source, id_dst) in edge_ids
+    for edge in edge_ids
+        (id_source, id_dst) = edge
         if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            ids_allocation_in = [
-                label for label in inneighbor_labels(graph, id_source) if
-                graph[label, id_source].allocation_flow
-            ]
-            if length(ids_allocation_in) !== 0
-                errors = true
-                @error "Source edge ($id_source, $id_dst) is not an entry point of subnetwork $allocation_network_id"
-            end
+            from_source_node = graph[id_source].type in allocation_source_nodetypes
 
-            ids_allocation_out = [
-                label for label in outneighbor_labels(graph, id_source) if
-                graph[id_source, label].allocation_flow
-            ]
-            if length(ids_allocation_out) !== 1
-                errors = true
-                @error "Source edge ($id_source, $id_dst) is not the only allocation edge coming from $id_source"
+            if allocation_network_id == 1
+                if !from_source_node
+                    errors = true
+                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
+                end
+            else
+                from_main_network = graph[id_source].allocation_network_id == 1
+
+                if !from_source_node & !from_main_network
+                    errors = true
+                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                end
             end
         end
     end
@@ -567,7 +569,8 @@ function add_constraints_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph) = p
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
 
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")

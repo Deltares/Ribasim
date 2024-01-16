@@ -166,7 +166,7 @@ end
     ) ≈ -0.25
 end
 
-@testitem "main network to subnetwork connections" begin
+@testitem "main allocation network initialization" begin
     using SQLite
     using Ribasim: NodeID
 
