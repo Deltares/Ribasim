@@ -1,5 +1,6 @@
 import configparser
 import sys
+from pathlib import Path
 
 import platformdirs
 
@@ -14,7 +15,17 @@ def enable_plugin(plugin_name: str) -> None:
         / "QGIS"
         / "QGIS3.ini"
     )
+    config_file = (
+        platformdirs.user_state_path(roaming=True)
+        / "QGIS"
+        / "QGIS3"
+        / "profiles"
+        / "default"
+        / "qgis.org"
+        / "QGIS3.ini"
+    )
 
+    config_file = Path(".pixi/env/QGIS3.ini")
     config_file.touch()
 
     config = configparser.ConfigParser()

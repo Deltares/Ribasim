@@ -7,6 +7,7 @@ from pathlib import Path
 
 def install_qgis_plugin(plugin_name: str):
     plugin_path = Path(".pixi/env/Library/python/plugins")
+    plugin_path = Path(".pixi/env/share/qgis/python/plugins")
 
     try:
         subprocess.check_call(["qgis-plugin-manager", "init"], cwd=plugin_path)
