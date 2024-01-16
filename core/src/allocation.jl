@@ -333,6 +333,26 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
 end
 
 """
+Add the edges connecting the main network work to a subnetwork to both the main network
+and subnetwork allocation graph.
+"""
+function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int)::Nothing
+    (; graph, allocation) = p
+    (; allocation_network_ids, main_network_connections) = allocation
+    edge_ids = graph[].edge_ids[allocation_network_id]
+
+    if allocation_network_id == 1
+        for connections in main_network_connections
+            union!(edge_ids, connections)
+        end
+    else
+        idx = findsorted(allocation_network_ids, allocation_network_id)
+        union!(edge_ids, main_network_connections[idx])
+    end
+    return nothing
+end
+
+"""
 Build the graph used for the allocation problem.
 """
 function allocation_graph(
@@ -347,6 +367,7 @@ function allocation_graph(
 
     # Process the edges in the allocation graph
     process_allocation_graph_edges!(capacity, edges_composite, p, allocation_network_id)
+    add_subnetwork_connections!(p, allocation_network_id)
 
     if !valid_sources(p, allocation_network_id)
         error("Errors in sources in allocation graph.")

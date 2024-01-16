@@ -194,4 +194,11 @@ end
     @test problem[:F_abs].axes[1] == NodeID[11, 24, 38]
     @test problem[:abs_positive].axes[1] == NodeID[11, 24, 38]
     @test problem[:abs_negative].axes[1] == NodeID[11, 24, 38]
+
+    @test Ribasim.get_allocation_model(p, 2).problem[:source].axes[1] ==
+          Tuple{NodeID, NodeID}[(2, 11)]
+    @test Ribasim.get_allocation_model(p, 3).problem[:source].axes[1] ==
+          Tuple{NodeID, NodeID}[(6, 24)]
+    @test Ribasim.get_allocation_model(p, 4).problem[:source].axes[1] ==
+          Tuple{NodeID, NodeID}[(10, 38)]
 end
