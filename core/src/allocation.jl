@@ -1,19 +1,42 @@
+"""Find the edges from the main network to a subnetwork."""
+function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph)::Nothing
+    (; allocation_network_ids, main_network_connections) = allocation
+    for node_id in graph[].node_ids[1]
+        for outflow_id in outflow_ids(graph, node_id)
+            if graph[outflow_id].allocation_network_id != 1
+                idx = findsorted(
+                    allocation_network_ids,
+                    graph[outflow_id].allocation_network_id,
+                )
+                push!(main_network_connections[idx], (node_id, outflow_id))
+            end
+        end
+    end
+    return nothing
+end
+
 """
 Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
 function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
-    (; graph, basin, fractional_flow) = p
+    (; graph, basin, fractional_flow, allocation) = p
+    (; main_network_connections) = allocation
 
     node_ids = graph[].node_ids[allocation_network_id]
     used_nodes = Set{NodeID}()
     for node_id in node_ids
+        use_node = false
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
         node_type = graph[node_id].type
         if node_type in [:user, :basin, :terminal]
-            push!(used_nodes, node_id)
+            use_node = true
         elseif has_fractional_flow_outneighbors
+            use_node = true
+        end
+
+        if use_node
             push!(used_nodes, node_id)
         end
     end
@@ -21,13 +44,24 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
     # Add nodes in the allocation graph for nodes connected to the source edges
     # One of these nodes can be outside the subnetwork, as long as the edge
     # connects to the subnetwork
-    for edge_metadata in graph[].edges_source[allocation_network_id]
+    edges_source = graph[].edges_source
+    for edge_metadata in get(edges_source, allocation_network_id, Set{EdgeMetadata}())
         (; from_id, to_id) = edge_metadata
         push!(used_nodes, from_id)
         push!(used_nodes, to_id)
     end
 
     filter!(in(used_nodes), node_ids)
+
+    # For the main network, include nodes that connect the main network to a subnetwork
+    # (also includes nodes not in the main network in the input)
+    if allocation_network_id == 1
+        for connections_subnetwork in main_network_connections
+            for connection in connections_subnetwork
+                union!(node_ids, connection)
+            end
+        end
+    end
     return nothing
 end
 
@@ -241,6 +275,8 @@ function process_allocation_graph_edges!(
     return capacity
 end
 
+const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
+
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
@@ -251,24 +287,23 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
 
     errors = false
 
-    for (id_source, id_dst) in edge_ids
+    for edge in edge_ids
+        (id_source, id_dst) = edge
         if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            ids_allocation_in = [
-                label for label in inneighbor_labels(graph, id_source) if
-                graph[label, id_source].allocation_flow
-            ]
-            if length(ids_allocation_in) !== 0
-                errors = true
-                @error "Source edge ($id_source, $id_dst) is not an entry point of subnetwork $allocation_network_id"
-            end
+            from_source_node = graph[id_source].type in allocation_source_nodetypes
 
-            ids_allocation_out = [
-                label for label in outneighbor_labels(graph, id_source) if
-                graph[id_source, label].allocation_flow
-            ]
-            if length(ids_allocation_out) !== 1
-                errors = true
-                @error "Source edge ($id_source, $id_dst) is not the only allocation edge coming from $id_source"
+            if allocation_network_id == 1
+                if !from_source_node
+                    errors = true
+                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
+                end
+            else
+                from_main_network = graph[id_source].allocation_network_id == 1
+
+                if !from_source_node && !from_main_network
+                    errors = true
+                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                end
             end
         end
     end
@@ -298,6 +333,26 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
 end
 
 """
+Add the edges connecting the main network work to a subnetwork to both the main network
+and subnetwork allocation graph.
+"""
+function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int)::Nothing
+    (; graph, allocation) = p
+    (; allocation_network_ids, main_network_connections) = allocation
+    edge_ids = graph[].edge_ids[allocation_network_id]
+
+    if allocation_network_id == 1
+        for connections in main_network_connections
+            union!(edge_ids, connections)
+        end
+    else
+        idx = findsorted(allocation_network_ids, allocation_network_id)
+        union!(edge_ids, main_network_connections[idx])
+    end
+    return nothing
+end
+
+"""
 Build the graph used for the allocation problem.
 """
 function allocation_graph(
@@ -312,6 +367,7 @@ function allocation_graph(
 
     # Process the edges in the allocation graph
     process_allocation_graph_edges!(capacity, edges_composite, p, allocation_network_id)
+    add_subnetwork_connections!(p, allocation_network_id)
 
     if !valid_sources(p, allocation_network_id)
         error("Errors in sources in allocation graph.")
@@ -351,10 +407,21 @@ function add_variables_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph) = p
-    node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
+        node_ids = graph[].node_ids[allocation_network_id]
+        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+
+        # For the main network, connections to subnetworks are treated as users
+        if allocation_network_id == 1
+            for connections_subnetwork in main_network_connections
+                for connection in connections_subnetwork
+                    push!(node_ids_user, connection[2])
+                end
+            end
+        end
+
         problem[:F_abs] = JuMP.@variable(problem, F_abs[node_id = node_ids_user])
     end
     return nothing
@@ -523,12 +590,23 @@ function add_constraints_absolute_value!(
     allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph) = p
-    node_ids = graph[].node_ids[allocation_network_id]
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
 
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
+        node_ids = graph[].node_ids[allocation_network_id]
         node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+
+        # For the main network, connections to subnetworks are treated as users
+        if allocation_network_id == 1
+            for connections_subnetwork in main_network_connections
+                for connection in connections_subnetwork
+                    push!(node_ids_user, connection[2])
+                end
+            end
+        end
+
         node_ids_user_inflow = Dict(
             node_id_user => only(inflow_ids_allocation(graph, node_id_user)) for
             node_id_user in node_ids_user

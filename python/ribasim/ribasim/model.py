@@ -1,8 +1,10 @@
 import datetime
 import shutil
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,6 +18,7 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+from shapely.geometry import LineString
 
 from ribasim.config import (
     Allocation,
@@ -57,6 +60,71 @@ class Network(FileModel, NodeModel):
             n = 0
 
         return n
+
+    def max_node_id(self) -> int:
+        return self.node.df.index.max()
+
+    def max_edge_id(self) -> int:
+        return self.edge.df.index.max()
+
+    def offset_allocation_network_ids(
+        self, offset_allocation_network_id: int, inplace: bool = True
+    ) -> "Network":
+        if inplace:
+            network = self
+        else:
+            network = deepcopy(self)
+
+        network.node.offset_allocation_network_ids(offset_allocation_network_id)
+        network.edge.offset_allocation_network_ids(offset_allocation_network_id)
+        return network
+
+    def add_edges(
+        self,
+        from_node_id: list[int],
+        to_node_id: list[int],
+        edge_type: list[str],
+        inplace: bool = True,
+    ) -> "Network":
+        """Add new edges to the network of the given type. Assumes no source edges are added."""
+        if inplace:
+            network = self
+        else:
+            network = deepcopy(self)
+
+        offset_edge_id = self.max_edge_id() + 1
+
+        df = pd.DataFrame(
+            data={
+                "from_node_id": from_node_id,
+                "to_node_id": to_node_id,
+                "edge_type": edge_type,
+            },
+            index=np.arange(offset_edge_id, offset_edge_id + len(edge_type)),
+        )
+
+        df["geometry"] = df.apply(
+            (
+                lambda row: LineString(
+                    [
+                        self.node.df.loc[row.from_node_id].geometry,
+                        self.node.df.loc[row.to_node_id].geometry,
+                    ]
+                )
+            ),
+            axis=1,
+        )
+        edges_added = gpd.GeoDataFrame(
+            df, geometry=df.geometry, crs=network.edge.df.crs
+        )
+
+        network.edge.df = pd.concat(
+            [
+                network.edge.df,
+                edges_added,
+            ]
+        )  # type: ignore
+        return network
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -376,6 +444,43 @@ class Model(FileModel):
         context_file_loading.set({})
         return self
 
+    def max_allocation_network_id(self) -> int:
+        m = self.network.node.df.allocation_network_id.max()
+        if pd.isna(m):
+            m = 0
+        return m
+
+    def smart_merge(
+        self,
+        model_added: "Model",
+    ):
+        """
+        Merge copies of the nodes and edges of an added model into this model.
+        The added model is not modified, but the following modifications are made to the added data:
+        - Node IDs are shifted by the maximum node ID of this model
+        - Allocation network IDs are shifted by the maximum allocation network ID of this model
+        """
+
+        nodes_model = self.nodes()
+        nodes_added = model_added.nodes()
+
+        offset_node_id = self.network.max_node_id()
+        offset_edge_id = self.network.max_edge_id()
+        offset_allocation_network_id = self.max_allocation_network_id()
+
+        network_added = nodes_added["network"].offset_allocation_network_ids(
+            offset_allocation_network_id, inplace=False
+        )
+        network_added.edge.offset_edge_ids(offset_edge_id)
+        nodes_added["network"] = network_added
+
+        for node_type, node_added in nodes_added.items():
+            node_added = node_added.offset_node_ids(offset_node_id, inplace=False)
+            if node_type in nodes_model:
+                node_added = nodes_model[node_type].merge(node_added, inplace=False)
+
+            setattr(self, node_type, node_added)
+
     def plot_control_listen(self, ax):
         x_start, x_end = [], []
         y_start, y_end = [], []
@@ -427,9 +532,9 @@ class Model(FileModel):
                 label="Listen edge" if i == 0 else None,
             )
 
-    def plot(self, ax=None) -> Any:
+    def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
         """
-        Plot the nodes and edges of the model.
+        Plot the nodes, edges and allocation networks of the model.
 
         Parameters
         ----------
@@ -443,11 +548,22 @@ class Model(FileModel):
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
+
         self.network.edge.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         self.network.node.plot(ax=ax, zorder=3)
 
-        ax.legend(loc="lower left", bbox_to_anchor=(1, 0.5))
+        handles, labels = ax.get_legend_handles_labels()
+
+        if indicate_subnetworks:
+            (
+                handles_subnetworks,
+                labels_subnetworks,
+            ) = self.network.node.plot_allocation_networks(ax=ax, zorder=1)
+            handles += handles_subnetworks
+            labels += labels_subnetworks
+
+        ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
 

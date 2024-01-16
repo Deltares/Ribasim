@@ -110,24 +110,26 @@ end
     ]
     storage = Ribasim.profile_storage(level, area)
     basin = Ribasim.Basin(
-        Indices(Ribasim.NodeID[1]),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        [area],
-        [level],
-        [storage],
+        Indices(Ribasim.NodeID[1, 2]),
+        zeros(2),
+        zeros(2),
+        zeros(2),
+        zeros(2),
+        zeros(2),
+        zeros(2),
+        [area, area],
+        [level, level],
+        [storage, storage],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     logger = TestLogger()
     with_logger(logger) do
-        storages, errors = Ribasim.get_storages_from_levels(basin, [-1.0])
+        storages, errors = Ribasim.get_storages_from_levels(basin, [1], [-1.0])
         @test isnan(storages[1])
         @test errors
+        # Storage for basin with unspecified level is set to 1.0
+        @test storages[2] == 1.0
     end
 
     @test length(logger.logs) == 1

@@ -196,12 +196,19 @@ end
 const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
-function generate_allocation_models!(p::Parameters, config::Config)::Nothing
+function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, allocation_models) = allocation
+    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
+    allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
 
-    for allocation_network_id in sort(collect(keys(graph[].node_ids)))
+    for allocation_network_id in allocation_network_ids_
         push!(allocation_network_ids, allocation_network_id)
+        push!(main_network_connections, Tuple{NodeID, NodeID}[])
+    end
+
+    find_subnetwork_connections!(allocation, graph)
+
+    for allocation_network_id in allocation_network_ids_
         push!(
             allocation_models,
             AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
@@ -860,7 +867,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.allocation.use_allocation
-        generate_allocation_models!(p, config)
+        initialize_allocation!(p, config)
     end
     return p
 end
