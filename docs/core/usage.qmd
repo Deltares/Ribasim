@@ -95,6 +95,8 @@ apply [dictionary
 encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
 those columns.
 
+## Table requirements
+
 Below we give details per file, in which we describe the schema of the table using a syntax
 like this:
 
@@ -112,7 +114,18 @@ Tables are also allowed to have rows for timestamps that are not part of the sim
 these will be ignored. That makes it easy to prepare data for a larger period, and test
 models on a shorted period.
 
-When preparing the model for simulation, input validation is performed in the Julia core. The validation rules are described in the [validation](validation.qmd) section.
+When preparing the model for simulation, input validation is performed in the Julia core.
+The validation rules are described in the [validation](validation.qmd) section.
+
+## Custom metadata
+
+It may be advantageous to add metadata to rows. For example, basin areas might have names and
+objects such as weirs might have specific identification codes. Additional columns can be freely
+added to tables. The column names should be prefixed with `meta_`. They will not be used in
+computations or validated by the Julia core.
+
+The ribasim-python library will automatically add the `meta_` prefix to non-standard columns.
+Column names already prefixed with `meta_` will not be updated.
 
 # Node
 
