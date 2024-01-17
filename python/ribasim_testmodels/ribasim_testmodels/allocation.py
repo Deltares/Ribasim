@@ -428,12 +428,15 @@ def looped_subnetwork_model():
         dtype=np.int64,
     )
     lines = node.geometry_from_connectivity(from_id, to_id)
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -460,13 +463,13 @@ def looped_subnetwork_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 7, 9, 15, 17, 21], "level": 1.0})
+    state = pd.DataFrame(data={"node_id": [2, 7, 9, 11, 15, 17, 21], "level": 1.0})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5]})
+        static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5e-3]})
     )
 
     # Setup the users:
@@ -474,7 +477,7 @@ def looped_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [1, 12, 18, 20, 24],
-                "demand": 1.0,
+                "demand": 1.0e-3,
                 "return_factor": 0.9,
                 "min_level": 0.9,
                 "priority": [2, 1, 3, 3, 2],
@@ -487,8 +490,8 @@ def looped_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [6, 16],
-                "flow_rate": 4.0,
-                "max_flow_rate": 4.0,
+                "flow_rate": 4.0e-3,
+                "max_flow_rate": 4.0e-3,
             }
         )
     )
@@ -496,7 +499,7 @@ def looped_subnetwork_model():
     # Setup the outlets:
     outlet = ribasim.Outlet(
         static=pd.DataFrame(
-            data={"node_id": [3, 8, 10, 22], "flow_rate": 3.0, "max_flow_rate": 3.0}
+            data={"node_id": [3, 8, 10, 22], "flow_rate": 3.0e-3, "max_flow_rate": 3.0}
         )
     )
 
@@ -520,6 +523,9 @@ def looped_subnetwork_model():
         )
     )
 
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
@@ -529,6 +535,7 @@ def looped_subnetwork_model():
         outlet=outlet,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
