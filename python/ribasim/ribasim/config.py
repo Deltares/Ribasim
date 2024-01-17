@@ -82,6 +82,8 @@ class Terminal(NodeModel):
         default_factory=TableModel[TerminalStaticSchema]
     )
 
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id"]}
+
 
 class PidControl(NodeModel):
     static: TableModel[PidControlStaticSchema] = Field(
@@ -91,7 +93,10 @@ class PidControl(NodeModel):
         default_factory=TableModel[PidControlTimeSchema]
     )
 
-    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {
+        "static": ["node_id", "control_state"],
+        "time": ["node_id", "time"],
+    }
 
 
 class LevelBoundary(NodeModel):
@@ -102,13 +107,18 @@ class LevelBoundary(NodeModel):
         default_factory=TableModel[LevelBoundaryTimeSchema]
     )
 
-    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {
+        "static": ["node_id"],
+        "time": ["node_id", "time"],
+    }
 
 
 class Pump(NodeModel):
     static: TableModel[PumpStaticSchema] = Field(
         default_factory=TableModel[PumpStaticSchema]
     )
+
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id", "control_state"]}
 
 
 class TabulatedRatingCurve(NodeModel):
@@ -119,8 +129,8 @@ class TabulatedRatingCurve(NodeModel):
         default_factory=TableModel[TabulatedRatingCurveTimeSchema]
     )
     _sort_keys: dict[str, list[str]] = {
-        "static": ["node_id", "level"],
-        "time": ["time", "node_id", "level"],
+        "static": ["node_id", "control_state", "level"],
+        "time": ["node_id", "time", "level"],
     }
 
 
@@ -144,7 +154,10 @@ class FlowBoundary(NodeModel):
         default_factory=TableModel[FlowBoundaryTimeSchema]
     )
 
-    _sort_keys: dict[str, list[str]] = {"time": ["time", "node_id"]}
+    _sort_keys: dict[str, list[str]] = {
+        "static": ["node_id"],
+        "time": ["node_id", "time"],
+    }
 
 
 class Basin(NodeModel):
@@ -165,8 +178,10 @@ class Basin(NodeModel):
     )
 
     _sort_keys: dict[str, list[str]] = {
+        "static": ["node_id"],
+        "state": ["node_id"],
         "profile": ["node_id", "level"],
-        "time": ["time", "node_id"],
+        "time": ["node_id", "time"],
         "subgrid": ["subgrid_id", "basin_level"],
     }
 
@@ -175,6 +190,8 @@ class ManningResistance(NodeModel):
     static: TableModel[ManningResistanceStaticSchema] = Field(
         default_factory=TableModel[ManningResistanceStaticSchema]
     )
+
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id", "control_state"]}
 
 
 class DiscreteControl(NodeModel):
@@ -185,11 +202,18 @@ class DiscreteControl(NodeModel):
         default_factory=TableModel[DiscreteControlLogicSchema]
     )
 
+    _sort_keys: dict[str, list[str]] = {
+        "condition": ["node_id", "listen_feature_id", "variable", "greater_than"],
+        "logic": ["node_id", "truth_state"],
+    }
+
 
 class Outlet(NodeModel):
     static: TableModel[OutletStaticSchema] = Field(
         default_factory=TableModel[OutletStaticSchema]
     )
+
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id", "control_state"]}
 
 
 class LinearResistance(NodeModel):
@@ -197,8 +221,12 @@ class LinearResistance(NodeModel):
         default_factory=TableModel[LinearResistanceStaticSchema]
     )
 
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id", "control_state"]}
+
 
 class FractionalFlow(NodeModel):
     static: TableModel[FractionalFlowStaticSchema] = Field(
         default_factory=TableModel[FractionalFlowStaticSchema]
     )
+
+    _sort_keys: dict[str, list[str]] = {"static": ["node_id", "control_state"]}
