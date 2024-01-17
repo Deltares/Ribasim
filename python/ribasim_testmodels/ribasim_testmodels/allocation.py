@@ -454,13 +454,13 @@ def looped_subnetwork_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": [2, 7, 9, 15, 17, 21], "level": 1.0})
+    state = pd.DataFrame(data={"node_id": [2, 7, 9, 11, 15, 17, 21], "level": 1.0})
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5]})
+        static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5e-3]})
     )
 
     # Setup the users:
@@ -468,7 +468,7 @@ def looped_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [1, 12, 18, 20, 24],
-                "demand": 1.0,
+                "demand": 1.0e-3,
                 "return_factor": 0.9,
                 "min_level": 0.9,
                 "priority": [2, 1, 3, 3, 2],
@@ -481,8 +481,8 @@ def looped_subnetwork_model():
         static=pd.DataFrame(
             data={
                 "node_id": [6, 16],
-                "flow_rate": 4.0,
-                "max_flow_rate": 4.0,
+                "flow_rate": 4.0e-3,
+                "max_flow_rate": 4.0e-3,
             }
         )
     )
@@ -490,7 +490,7 @@ def looped_subnetwork_model():
     # Setup the outlets:
     outlet = ribasim.Outlet(
         static=pd.DataFrame(
-            data={"node_id": [3, 8, 10, 22], "flow_rate": 3.0, "max_flow_rate": 3.0}
+            data={"node_id": [3, 8, 10, 22], "flow_rate": 3.0e-3, "max_flow_rate": 3.0}
         )
     )
 
