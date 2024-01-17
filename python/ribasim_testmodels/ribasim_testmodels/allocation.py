@@ -422,12 +422,15 @@ def looped_subnetwork_model():
         dtype=np.int64,
     )
     lines = node.geometry_from_connectivity(from_id, to_id)
+    allocation_network_id = len(from_id) * [None]
+    allocation_network_id[0] = 1
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": len(from_id) * ["flow"],
+                "allocation_network_id": allocation_network_id,
             },
             geometry=lines,
             crs="EPSG:28992",
@@ -514,6 +517,9 @@ def looped_subnetwork_model():
         )
     )
 
+    # Setup allocation:
+    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
@@ -523,6 +529,7 @@ def looped_subnetwork_model():
         outlet=outlet,
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
