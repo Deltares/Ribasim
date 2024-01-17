@@ -590,6 +590,10 @@ end
 "Solve the allocation problem for all users and assign allocated abstractions to user nodes."
 function update_allocation!(integrator)::Nothing
     (; p, t) = integrator
+
+    if has_main_network(p.allocation)
+    end
+
     for allocation_model in integrator.p.allocation.allocation_models
         allocate!(p, allocation_model, t)
     end
