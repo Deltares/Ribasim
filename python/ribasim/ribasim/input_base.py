@@ -379,10 +379,9 @@ class TableModel(FileModel, Generic[TableT]):
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
 
-    def sort(self, sort_keys: list[str] = ["node_id"]):
-        """Sort all input tables as required.
+    def sort(self, sort_keys: list[str]):
+        """Sort the table as required.
 
-        Tables are sorted by "node_id", unless otherwise specified.
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
@@ -465,7 +464,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf.to_file(path, layer=self.tablename(), driver="GPKG")
 
-    def sort(self, sort_keys: list[str] = ["node_id"]):
+    def sort(self, sort_keys: list[str]):
         self.df.sort_index(inplace=True)
 
 
@@ -580,7 +579,7 @@ class NodeModel(ChildModel):
             getattr(self, field)._save(
                 directory,
                 input_dir,
-                sort_keys=self._sort_keys.get("field", ["node_id"]),
+                sort_keys=self._sort_keys[field],
             )
 
     def _repr_content(self) -> str:

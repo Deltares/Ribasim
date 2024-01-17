@@ -42,3 +42,7 @@ def subnetwork() -> ribasim.Model:
 @pytest.fixture()
 def main_network_with_subnetworks() -> ribasim.Model:
     return ribasim_testmodels.main_network_with_subnetworks_model()
+
+
+def level_setpoint_with_minmax() -> ribasim.Model:
+    return ribasim_testmodels.level_setpoint_with_minmax_model()
