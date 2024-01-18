@@ -17,16 +17,6 @@
         <param name="secure:awsSecretAccessKey" value="credentialsJSON:dba90026-9856-4f87-94d9-bab91f3f2d5c" />
       </parameters>
     </extension>
-    <extension id="PROJECT_EXT_108" type="versionedSettings">
-      <parameters>
-        <param name="buildSettings" value="PREFER_VCS" />
-        <param name="credentialsStorageType" value="credentialsJSON" />
-        <param name="enabled" value="true" />
-        <param name="ignoreChangesInDependenciesAndVcsSettings" value="true" />
-        <param name="rootId" value="Ribasim_Ribasim" />
-        <param name="showChanges" value="false" />
-      </parameters>
-    </extension>
   </project-extensions>
   <cleanup />
 </project>

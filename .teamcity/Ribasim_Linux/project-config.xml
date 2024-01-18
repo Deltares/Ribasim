@@ -3,16 +3,6 @@
   <name>Linux</name>
   <parameters />
   <project-extensions>
-    <extension id="PROJECT_EXT_89" type="versionedSettings">
-      <parameters>
-        <param name="buildSettings" value="PREFER_VCS" />
-        <param name="credentialsStorageType" value="credentialsJSON" />
-        <param name="enabled" value="true" />
-        <param name="ignoreChangesInDependenciesAndVcsSettings" value="true" />
-        <param name="rootId" value="Ribasim_Ribasim" />
-        <param name="showChanges" value="false" />
-      </parameters>
-    </extension>
     <extension id="awsConnection_1" type="OAuthProvider">
       <parameters>
         <param name="awsAccessKeyId" value="AKIAQBIN2MPWXSD2IZ5F" />

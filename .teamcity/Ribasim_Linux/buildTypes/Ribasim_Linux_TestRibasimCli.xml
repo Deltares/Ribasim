@@ -77,7 +77,7 @@ pixi run test-ribasim-cli]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
-        <artifact sourcePath="ribasim_cli.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_cli_linux.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
