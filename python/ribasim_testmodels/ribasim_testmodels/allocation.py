@@ -168,7 +168,7 @@ def subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={"type": node_type, "allocation_network_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -181,7 +181,7 @@ def subnetwork_model():
     )
     to_id = np.array([2, 3, 4, 10, 5, 6, 7, 8, 11, 12, 13, 9, 2, 6, 8], dtype=np.int64)
     allocation_network_id = len(from_id) * [None]
-    allocation_network_id[0] = 1
+    allocation_network_id[0] = 2
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
@@ -351,7 +351,7 @@ def looped_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={"type": node_type, "allocation_network_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -429,7 +429,7 @@ def looped_subnetwork_model():
     )
     lines = node.geometry_from_connectivity(from_id, to_id)
     allocation_network_id = len(from_id) * [None]
-    allocation_network_id[0] = 1
+    allocation_network_id[0] = 2
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
@@ -562,7 +562,7 @@ def minimal_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={"type": node_type, "allocation_network_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -579,7 +579,7 @@ def minimal_subnetwork_model():
         dtype=np.int64,
     )
     allocation_network_id = len(from_id) * [None]
-    allocation_network_id[0] = 1
+    allocation_network_id[0] = 2
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
@@ -719,7 +719,7 @@ def fractional_flow_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={"type": node_type, "allocation_network_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -736,7 +736,7 @@ def fractional_flow_subnetwork_model():
         dtype=np.int64,
     )
     allocation_network_id = len(from_id) * [None]
-    allocation_network_id[0] = 1
+    allocation_network_id[0] = 2
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
@@ -911,10 +911,10 @@ def allocation_example_model():
         "User",
     ]
 
-    # All nodes belong to allocation network id 1
+    # All nodes belong to allocation network id 2
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={"type": node_type, "allocation_network_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -932,7 +932,7 @@ def allocation_example_model():
     # Denote the first edge, 1 => 2, as a source edge for
     # allocation network 1
     allocation_network_id = len(from_id) * [None]
-    allocation_network_id[0] = 1
+    allocation_network_id[0] = 2
     lines = node.geometry_from_connectivity(from_id, to_id)
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
