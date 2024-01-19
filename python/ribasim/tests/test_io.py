@@ -111,7 +111,7 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     # apply a wrong sort, then call the sort method to restore order
     table.df.sort_values("greater_than", ascending=False, inplace=True)
     assert table.df.iloc[0]["greater_than"] == 15.0
-    assert table.sort_keys == [
+    assert table._sort_keys == [
         "node_id",
         "listen_feature_id",
         "variable",

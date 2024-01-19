@@ -20,6 +20,7 @@ from pydantic import (
     ConfigDict,
     DirectoryPath,
     Field,
+    PrivateAttr,
     ValidationInfo,
     field_validator,
     model_serializer,
@@ -159,7 +160,7 @@ class FileModel(BaseModel, ABC):
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
-    sort_keys: list[str] = Field(default=[], exclude=True, repr=False)
+    _sort_keys: list[str] = PrivateAttr(default=[])
 
     @field_validator("df")
     @classmethod
@@ -296,7 +297,7 @@ class TableModel(FileModel, Generic[TableT]):
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
+            self.df.sort_values(self._sort_keys, ignore_index=True, inplace=True)
 
     @classmethod
     def tableschema(cls) -> TableT:
@@ -408,7 +409,7 @@ class NodeModel(ChildModel):
             field = cls.model_fields[getattr(info, "field_name")]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
-                v.sort_keys = extra.get("sort_keys", [])  # type: ignore
+                v._sort_keys = extra.get("sort_keys", [])  # type: ignore
         return v
 
     @classmethod
