@@ -20,6 +20,7 @@ from pydantic import (
     ConfigDict,
     DirectoryPath,
     Field,
+    ValidationInfo,
     field_validator,
     model_serializer,
     model_validator,
@@ -158,6 +159,7 @@ class FileModel(BaseModel, ABC):
 
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    sort_keys: list[str] = Field(default=[], exclude=True, repr=False)
 
     @field_validator("df")
     @classmethod
@@ -219,15 +221,14 @@ class TableModel(FileModel, Generic[TableT]):
         self,
         directory: DirectoryPath,
         input_dir: DirectoryPath,
-        sort_keys: list[str] = ["node_id"],
     ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.df is not None and self.filepath is not None:
-            self.sort(sort_keys)
+            self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
         elif self.df is not None and db_path is not None:
-            self.sort(sort_keys)
+            self.sort()
             self._write_table(db_path)
 
     def _write_table(self, temp_path: Path) -> None:
@@ -289,13 +290,13 @@ class TableModel(FileModel, Generic[TableT]):
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
 
-    def sort(self, sort_keys: list[str]):
+    def sort(self):
         """Sort the table as required.
 
         Sorting is done automatically before writing the table.
         """
         if self.df is not None:
-            self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+            self.df.sort_values(self.sort_keys, ignore_index=True, inplace=True)
 
     @classmethod
     def tableschema(cls) -> TableT:
@@ -374,7 +375,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf.to_file(path, layer=self.tablename(), driver="GPKG")
 
-    def sort(self, sort_keys: list[str]):
+    def sort(self):
         self.df.sort_index(inplace=True)
 
 
@@ -392,14 +393,22 @@ class ChildModel(BaseModel):
 class NodeModel(ChildModel):
     """Base class to handle combining the tables for a single node type."""
 
-    _sort_keys: dict[str, list[str]] = {}
-
     @model_serializer(mode="wrap")
     def set_modeld(
         self, serializer: Callable[[type["NodeModel"]], dict[str, Any]]
     ) -> dict[str, Any]:
         content = serializer(self)
         return dict(filter(lambda x: x[1], content.items()))
+
+    @field_validator("*")
+    @classmethod
+    def set_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
+        """Set sort keys for all TableModels if present in FieldInfo."""
+        if isinstance(v, (TableModel,)):
+            field = cls.model_fields[info.field_name]
+            if getattr(field, "json_schema_extra", None) is not None:
+                v.sort_keys = field.json_schema_extra.get("sort_keys", [])
+        return v
 
     @classmethod
     def get_input_type(cls):
@@ -434,7 +443,6 @@ class NodeModel(ChildModel):
             getattr(self, field)._save(
                 directory,
                 input_dir,
-                sort_keys=self._sort_keys[field],
             )
 
     def _repr_content(self) -> str:
