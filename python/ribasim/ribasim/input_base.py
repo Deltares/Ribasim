@@ -9,6 +9,7 @@ from typing import (
     Any,
     Generic,
     TypeVar,
+    cast,
 )
 
 import geopandas as gpd
@@ -409,7 +410,9 @@ class NodeModel(ChildModel):
             field = cls.model_fields[getattr(info, "field_name")]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
-                v._sort_keys = extra.get("sort_keys", [])  # type: ignore
+                # We set sort_keys ourselves as list[str] in json_schema_extra
+                # but mypy doesn't know.
+                v._sort_keys = cast(list[str], extra.get("sort_keys", []))
         return v
 
     @classmethod
