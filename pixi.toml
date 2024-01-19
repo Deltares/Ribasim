@@ -18,7 +18,6 @@ install-julia = "juliaup add 1.10 && juliaup default 1.10"
 install-ribasim-python = "pip install --no-deps --editable python/ribasim"
 install-ribasim-api = "pip install --no-deps --editable python/ribasim_api"
 install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_testmodels"
-install-qgis-testrunner = """python -c "from urllib.request import urlretrieve; urlretrieve('https://raw.githubusercontent.com/qgis/QGIS/master/.docker/qgis_resources/test_runner/qgis_testrunner.py', 'qgis_testrunner.py')" """
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-julia",
@@ -108,11 +107,9 @@ install-qgis-plugins = { depends_on = [
     "install-debugvs-qgis",
     "install-ribasim-qgis",
     "install-imod-qgis",
-    "install-qgis-testrunner",
 ] }
 test-ribasim-qgis = { cmd = "QGIS_TEST_MODULE=ribasim_qgis.tests qgis --profiles-path .pixi/qgis_env --version-migration --nologo --code qgis_testrunner.py ribasim_qgis.tests", depends_on = [
     "install-ribasim-qgis",
-    "install-qgis-testrunner",
 ] }
 qgis = "qgis --profiles-path .pixi/qgis_env"
 #test-ribasim-qgis-cov = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests"
