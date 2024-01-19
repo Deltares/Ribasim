@@ -1,6 +1,6 @@
 """Find the edges from the main network to a subnetwork."""
 function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph)::Nothing
-    (; allocation_network_ids, main_network_connections) = allocation
+    (; allocation_network_ids, main_network_connections, subnetwork_demands) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
             if graph[outflow_id].allocation_network_id != 1
@@ -8,7 +8,9 @@ function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph):
                     allocation_network_ids,
                     graph[outflow_id].allocation_network_id,
                 )
-                push!(main_network_connections[idx], (node_id, outflow_id))
+                edge = (node_id, outflow_id)
+                push!(main_network_connections[idx], edge)
+                subnetwork_demands[edge] = 0.0
             end
         end
     end
@@ -866,35 +868,40 @@ function assign_allocations!(
     allocation_model::AllocationModel,
     p::Parameters,
     t::Float64,
-    priority_idx::Int,
+    priority_idx::Int;
+    collect_demands::Bool = false,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
-    (; graph, user) = p
+    (; graph, user, allocation) = p
+    (; subnetwork_demands) = allocation
     (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
     F = problem[:F]
     for edge_id in edge_ids
-        user_node_id = edge_id[2]
-        if graph[user_node_id].type != :user
-            continue
+        if collect_demands &&
+           graph[edge_id...].allocation_network_id_source == allocation_network_id
+            subnetwork_demands[edge_id] += allocated
         end
-        user_idx = findsorted(user.node_id, user_node_id)
-        allocated = JuMP.value(F[edge_id])
-        user.allocated[user_idx][priority_idx] = allocated
 
-        # Save allocations to record
-        push!(record.time, t)
-        push!(record.allocation_network_id, allocation_model.allocation_network_id)
-        push!(record.user_node_id, Int(user_node_id))
-        push!(record.priority, user.priorities[priority_idx])
-        push!(record.demand, user.demand[user_idx][priority_idx](t))
-        push!(record.allocated, allocated)
-        # TODO: This is now the last abstraction before the allocation update,
-        # should be the average abstraction since the last allocation solve
-        push!(
-            record.abstracted,
-            get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
-        )
+        if graph[edge_id[2]].type == :user
+            allocated = JuMP.value(F[edge_id])
+            user_idx = findsorted(user.node_id, user_node_id)
+            user.allocated[user_idx][priority_idx] = allocated
+
+            # Save allocations to record
+            push!(record.time, t)
+            push!(record.allocation_network_id, allocation_model.allocation_network_id)
+            push!(record.user_node_id, Int(user_node_id))
+            push!(record.priority, user.priorities[priority_idx])
+            push!(record.demand, user.demand[user_idx][priority_idx](t))
+            push!(record.allocated, allocated)
+            # TODO: This is now the last abstraction before the allocation update,
+            # should be the average abstraction since the last allocation solve
+            push!(
+                record.abstracted,
+                get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
+            )
+        end
     end
     return nothing
 end
@@ -905,7 +912,8 @@ Adjust the source flows.
 function adjust_source_flows!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int,
+    priority_idx::Int;
+    collect_demands::Bool = false,
 )::Nothing
     (; problem) = allocation_model
     (; graph) = p
@@ -914,15 +922,22 @@ function adjust_source_flows!(
     source_constraints = problem[:source]
     F = problem[:F]
 
-    # It is assumed that the allocation procedure does not have to be differentiated.
     for edge_id in edge_ids
-        # If it is a source edge.
+        # If it is a source edge for this allocation problem
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
             if priority_idx == 1
-                # Reset the source to the current flow.
+                source_flow = if collect_demands
+                    # Set the flow to effectively unlimited
+                    prevfloat(Inf)
+                else
+                    # Reset the source to the current flow from the physical layer.
+                    get_flow(graph, edge_id..., 0)
+                end
+
                 JuMP.set_normalized_rhs(
                     source_constraints[edge_id],
-                    get_flow(graph, edge_id..., 0),
+                    # It is assumed that the allocation procedure does not have to be differentiated.
+                    source_flow,
                 )
             else
                 # Subtract the allocated flow from the source.
@@ -980,18 +995,30 @@ end
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the users.
 """
-function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
-    (; user) = p
+function allocate!(
+    p::Parameters,
+    allocation_model::AllocationModel,
+    t::Float64;
+    collect_demands::Bool = false,
+)::Nothing
+    (; user, allocation) = p
     (; problem) = allocation_model
     (; priorities) = user
+    (; subnetwork_demands) = allocation
 
     # TODO: Compute basin flow from vertical fluxes and basin volume.
     # Set as basin demand if the net flow is negative, set as source
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
+    if collect_demands
+        for main_network_connection in keys(subnetwork_demands)
+            subnetwork_demands[main_network_connection] = 0.0
+        end
+    end
+
     for priority_idx in eachindex(priorities)
-        adjust_source_flows!(allocation_model, p, priority_idx)
+        adjust_source_flows!(allocation_model, p, priority_idx; collect_demands)
 
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
@@ -1012,6 +1039,6 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
         end
 
         # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p, t, priority_idx)
+        assign_allocations!(allocation_model, p, t, priority_idx; collect_demands)
     end
 end
