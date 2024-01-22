@@ -125,9 +125,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        storages, errors = Ribasim.get_storages_from_levels(basin, [-1.0])
-        @test isnan(storages[1])
-        @test errors
+        @test_throws ErrorException Ribasim.get_storages_from_levels(basin, [-1.0])
     end
 
     @test length(logger.logs) == 1
