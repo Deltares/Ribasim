@@ -74,6 +74,8 @@ def trivial_model() -> ribasim.Model:
         }
     )
 
+    state = pd.DataFrame(data={"node_id": [6], "level": 0.04471158417652035})
+
     # Create a subgrid level interpolation from one basin to three elements. Scale one to one, but:
     #
     # 22. start at -1.0
@@ -88,7 +90,7 @@ def trivial_model() -> ribasim.Model:
             "subgrid_level": [-1.0, 0.0, 0.0, 1.0, 1.0, 2.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static, subgrid=subgrid)
+    basin = ribasim.Basin(profile=profile, static=static, state=state, subgrid=subgrid)
 
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 1000.0.
