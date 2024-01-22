@@ -7,8 +7,8 @@ import ribasim
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
-    # looped_subnetwork_model,
     fractional_flow_subnetwork_model,
+    looped_subnetwork_model,
     minimal_subnetwork_model,
     subnetwork_model,
     user_model,
@@ -82,9 +82,7 @@ __all__ = [
     "subnetwork_model",
     "minimal_subnetwork_model",
     "fractional_flow_subnetwork_model",
-    # Disable until this issue is resolved:
-    # https://github.com/Deltares/Ribasim/issues/692
-    # "looped_subnetwork_model",
+    "looped_subnetwork_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models

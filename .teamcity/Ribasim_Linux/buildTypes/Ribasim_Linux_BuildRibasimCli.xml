@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
+      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli_linux.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
     </options>
