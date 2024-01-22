@@ -11,7 +11,7 @@ jobs:
     test-qgis:
         name: "Test"
         runs-on: ubuntu-latest
-        if: false
+        if: false # Disable tests until we have time to fix them
         defaults:
           run:
             working-directory: .docker
