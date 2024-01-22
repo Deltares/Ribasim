@@ -1,5 +1,7 @@
 """Find the edges from the main network to a subnetwork."""
-function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph)::Nothing
+function find_subnetwork_connections!(p::Parameters)::Nothing
+    (; allocation, graph, user) = p
+    n_priorities = length(user.demand[1][1].t)
     (; allocation_network_ids, main_network_connections, subnetwork_demands) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -10,7 +12,7 @@ function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph):
                 )
                 edge = (node_id, outflow_id)
                 push!(main_network_connections[idx], edge)
-                subnetwork_demands[edge] = 0.0
+                subnetwork_demands[edge] = zeros(n_priorities)
             end
         end
     end
@@ -880,10 +882,13 @@ function assign_allocations!(
     for edge_id in edge_ids
         if collect_demands &&
            graph[edge_id...].allocation_network_id_source == allocation_network_id
-            subnetwork_demands[edge_id] += allocated
+            source_flow = JuMP.value(F[edge_id])
+            subnetwork_demands[edge_id][priority_index] += source_flow
         end
 
-        if graph[edge_id[2]].type == :user
+        user_node_id = edge_id[2]
+
+        if graph[user_node_id].type == :user
             allocated = JuMP.value(F[edge_id])
             user_idx = findsorted(user.node_id, user_node_id)
             user.allocated[user_idx][priority_idx] = allocated
@@ -1013,7 +1018,7 @@ function allocate!(
 
     if collect_demands
         for main_network_connection in keys(subnetwork_demands)
-            subnetwork_demands[main_network_connection] = 0.0
+            subnetwork_demands[main_network_connection] .= 0.0
         end
     end
 

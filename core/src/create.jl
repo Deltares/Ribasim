@@ -206,7 +206,9 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
     end
 
-    find_subnetwork_connections!(allocation, graph)
+    if first(allocation_network_ids_) == 1
+        find_subnetwork_connections!(p)
+    end
 
     for allocation_network_id in allocation_network_ids_
         push!(
@@ -637,7 +639,7 @@ function User(db::DB, config::Config)::User
         error("Problems encountered when parsing User static and time node IDs.")
     end
 
-    # The highest priority number given, which corresponds to the least important demands
+    # All provided priorities
     priorities = sort(unique(union(static.priority, time.priority)))
 
     active = BitVector()
