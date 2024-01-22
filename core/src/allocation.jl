@@ -1,7 +1,7 @@
 """Find the edges from the main network to a subnetwork."""
 function find_subnetwork_connections!(p::Parameters)::Nothing
     (; allocation, graph, user) = p
-    n_priorities = length(user.demand[1][1].t)
+    n_priorities = length(user.demand[1])
     (; allocation_network_ids, main_network_connections, subnetwork_demands) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -780,8 +780,12 @@ function add_user_term!(
     edge::Tuple{NodeID, NodeID},
     objective_type::Symbol,
     demand::Float64,
+    model::AllocationModel,
 )::Nothing
+    (; problem) = model
+    F = problem[:F]
     F_edge = F[edge]
+    node_id_user = edge[2]
 
     if objective_type == :quadratic_absolute
         # Objective function ∑ (F - d)^2
@@ -846,11 +850,13 @@ function set_objective_priority!(
     demand_max = 0.0
 
     # Terms for subnetworks as users
-    for connections_subnetwork in main_network_connections
-        for connection in connections_subnetwork
-            d = subnetwork_demands[connection]
-            demand_max = max(demand_max, d)
-            add_user_term!(ex, connection, objective_type, d)
+    if allocation_network_id == 1
+        for connections_subnetwork in main_network_connections
+            for connection in connections_subnetwork
+                d = subnetwork_demands[connection][priority_idx]
+                demand_max = max(demand_max, d)
+                add_user_term!(ex, connection, objective_type, d, allocation_model)
+            end
         end
     end
 
@@ -863,7 +869,7 @@ function set_objective_priority!(
 
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
-        add_user_term!(ex, edge_id, objective_type, d)
+        add_user_term!(ex, edge_id, objective_type, d, allocation_model)
     end
 
     # Add flow cost
@@ -944,28 +950,41 @@ function adjust_source_flows!(
     collect_demands::Bool = false,
 )::Nothing
     (; problem) = allocation_model
-    (; graph) = p
+    (; graph, allocation) = p
     (; allocation_network_id) = allocation_model
+    (; allocation_models, main_network_connections) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     F = problem[:F]
 
+    idx = findsorted(
+        p.allocation.allocation_network_ids,
+        allocation_model.allocation_network_id,
+    )
+    main_network_sources = main_network_connections[idx]
+
     for edge_id in edge_ids
-        # If it is a source edge for this allocation problem
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
+            # If it is a source edge for this allocation problem
             if priority_idx == 1
-                source_flow = if collect_demands
-                    # Set the flow to effectively unlimited
-                    prevfloat(Inf)
+                # If the optimization was just started, i.e. sources have to be reset
+                if edge_id in main_network_sources
+                    if collect_demands
+                        # Set the source capacity to effectively unlimited if subnetwork demands are being collected
+                        source_capacity = prevfloat(Inf)
+                    else
+                        # Set the source capacity to the value allocated to the subnetwork over this edge
+                        source_capacity =
+                            JuMP.value(allocation_models[1].problem[:F][edge_id])
+                    end
                 else
                     # Reset the source to the current flow from the physical layer.
-                    get_flow(graph, edge_id..., 0)
+                    source_capacity = get_flow(graph, edge_id..., 0)
                 end
-
                 JuMP.set_normalized_rhs(
                     source_constraints[edge_id],
                     # It is assumed that the allocation procedure does not have to be differentiated.
-                    source_flow,
+                    source_capacity,
                 )
             else
                 # Subtract the allocated flow from the source.
