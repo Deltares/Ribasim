@@ -795,7 +795,7 @@ function add_user_term!(
 
     elseif objective_type == :quadratic_relative
         # Objective function ∑ (1 - F/d)^2
-        if d ≈ 0
+        if demand ≈ 0
             return nothing
         end
         JuMP.add_to_expression!(ex, 1.0 / demand^2, F_edge, F_edge)
@@ -812,16 +812,17 @@ function add_user_term!(
         JuMP.set_normalized_coefficient(
             problem[:abs_positive][node_id_user],
             F_edge,
-            iszero(d) ? 0 : 1 / demand,
+            iszero(demand) ? 0 : 1 / demand,
         )
         JuMP.set_normalized_coefficient(
             problem[:abs_negative][node_id_user],
             F_edge,
-            iszero(d) ? 0 : -1 / demand,
+            iszero(demand) ? 0 : -1 / demand,
         )
     else
         error("Invalid allocation objective type $objective_type.")
     end
+    return nothing
 end
 
 """
@@ -869,6 +870,7 @@ function set_objective_priority!(
 
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
+        demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
     end
 

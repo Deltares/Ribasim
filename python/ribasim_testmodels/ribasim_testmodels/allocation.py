@@ -1214,6 +1214,6 @@ def main_network_with_subnetworks_model():
     # Fix sources
     df = model.network.edge.df
     df.loc[[18, 55, 99], "allocation_network_id"] = None
-    df.loc[128:130, "allocation_network_id"] = [2, 3, 4]
+    df.loc[128:130, "allocation_network_id"] = [3, 5, 7]
 
     return model

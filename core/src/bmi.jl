@@ -483,7 +483,7 @@ function get_allocation_model(p::Parameters, allocation_network_id::Int)::Alloca
     (; allocation_network_ids, allocation_models) = allocation
     idx = findsorted(allocation_network_ids, allocation_network_id)
     if isnothing(idx)
-        error("Invalid allocation network id $allocation_network_id.")
+        error("Invalid allocation network ID $allocation_network_id.")
     else
         return allocation_models[idx]
     end
