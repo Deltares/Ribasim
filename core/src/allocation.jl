@@ -772,6 +772,55 @@ function AllocationModel(
 end
 
 """
+Add a term to the expression of the objective function corresponding to
+the demand of a user.
+"""
+function add_user_term!(
+    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
+    edge::Tuple{NodeID, NodeID},
+    objective_type::Symbol,
+    demand::Float64,
+)::Nothing
+    F_edge = F[edge]
+
+    if objective_type == :quadratic_absolute
+        # Objective function ∑ (F - d)^2
+        JuMP.add_to_expression!(ex, 1, F_edge, F_edge)
+        JuMP.add_to_expression!(ex, -2 * demand, F_edge)
+        JuMP.add_to_expression!(ex, demand^2)
+
+    elseif objective_type == :quadratic_relative
+        # Objective function ∑ (1 - F/d)^2
+        if d ≈ 0
+            return nothing
+        end
+        JuMP.add_to_expression!(ex, 1.0 / demand^2, F_edge, F_edge)
+        JuMP.add_to_expression!(ex, -2.0 / demand, F_edge)
+        JuMP.add_to_expression!(ex, 1.0)
+
+    elseif objective_type == :linear_absolute
+        # Objective function ∑ |F - d|
+        JuMP.set_normalized_rhs(problem[:abs_positive][node_id_user], -demand)
+        JuMP.set_normalized_rhs(problem[:abs_negative][node_id_user], demand)
+
+    elseif objective_type == :linear_relative
+        # Objective function ∑ |1 - F/d|
+        JuMP.set_normalized_coefficient(
+            problem[:abs_positive][node_id_user],
+            F_edge,
+            iszero(d) ? 0 : 1 / demand,
+        )
+        JuMP.set_normalized_coefficient(
+            problem[:abs_negative][node_id_user],
+            F_edge,
+            iszero(d) ? 0 : -1 / demand,
+        )
+    else
+        error("Invalid allocation objective type $objective_type.")
+    end
+end
+
+"""
 Set the objective for the given priority.
 For an objective with absolute values this also involves adjusting constraints.
 """
@@ -782,8 +831,9 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user) = p
+    (; graph, user, allocation) = p
     (; demand, node_id) = user
+    (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
     F = problem[:F]
@@ -795,6 +845,16 @@ function set_objective_priority!(
 
     demand_max = 0.0
 
+    # Terms for subnetworks as users
+    for connections_subnetwork in main_network_connections
+        for connection in connections_subnetwork
+            d = subnetwork_demands[connection]
+            demand_max = max(demand_max, d)
+            add_user_term!(ex, connection, objective_type, d)
+        end
+    end
+
+    # Terms for user nodes
     for edge_id in edge_ids
         node_id_user = edge_id[2]
         if graph[node_id_user].type != :user
@@ -803,44 +863,7 @@ function set_objective_priority!(
 
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
-        demand_max = max(demand_max, d)
-        F_edge = F[edge_id]
-
-        if objective_type == :quadratic_absolute
-            # Objective function ∑ (F - d)^2
-            JuMP.add_to_expression!(ex, 1, F_edge, F_edge)
-            JuMP.add_to_expression!(ex, -2 * d, F_edge)
-            JuMP.add_to_expression!(ex, d^2)
-
-        elseif objective_type == :quadratic_relative
-            # Objective function ∑ (1 - F/d)^2S
-            if d ≈ 0
-                continue
-            end
-            JuMP.add_to_expression!(ex, 1.0 / d^2, F_edge, F_edge)
-            JuMP.add_to_expression!(ex, -2.0 / d, F_edge)
-            JuMP.add_to_expression!(ex, 1.0)
-
-        elseif objective_type == :linear_absolute
-            # Objective function ∑ |F - d|
-            JuMP.set_normalized_rhs(problem[:abs_positive][node_id_user], -d)
-            JuMP.set_normalized_rhs(problem[:abs_negative][node_id_user], d)
-
-        elseif objective_type == :linear_relative
-            # Objective function ∑ |1 - F/d|
-            JuMP.set_normalized_coefficient(
-                problem[:abs_positive][node_id_user],
-                F_edge,
-                iszero(d) ? 0 : 1 / d,
-            )
-            JuMP.set_normalized_coefficient(
-                problem[:abs_negative][node_id_user],
-                F_edge,
-                iszero(d) ? 0 : -1 / d,
-            )
-        else
-            error("Invalid allocation objective type $objective_type.")
-        end
+        add_user_term!(ex, edge_id, objective_type, d)
     end
 
     # Add flow cost
