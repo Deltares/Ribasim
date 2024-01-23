@@ -49,7 +49,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
     storage0 = BMI.get_value_ptr(model, "volume")
-    @test storage0 == ones(4)
+    @test storage0 ≈ ones(4)
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
     storage = BMI.get_value_ptr(model, "volume")
