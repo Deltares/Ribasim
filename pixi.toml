@@ -159,9 +159,6 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 hatchling = "*"
-xugrid = ">=0.8.1,<0.9"
-netCDF4 = ">=1.6.5,<1.7"
-zarr = ">=2.16.1,<2.17"
 
 [target.win-64.dependencies]
 quarto = "*"
