@@ -1,6 +1,8 @@
 """Find the edges from the main network to a subnetwork."""
-function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph)::Nothing
-    (; allocation_network_ids, main_network_connections) = allocation
+function find_subnetwork_connections!(p::Parameters)::Nothing
+    (; allocation, graph, user) = p
+    n_priorities = length(user.demand[1])
+    (; allocation_network_ids, main_network_connections, subnetwork_demands) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
             if graph[outflow_id].allocation_network_id != 1
@@ -8,7 +10,9 @@ function find_subnetwork_connections!(allocation::Allocation, graph::MetaGraph):
                     allocation_network_ids,
                     graph[outflow_id].allocation_network_id,
                 )
-                push!(main_network_connections[idx], (node_id, outflow_id))
+                edge = (node_id, outflow_id)
+                push!(main_network_connections[idx], edge)
+                subnetwork_demands[edge] = zeros(n_priorities)
             end
         end
     end

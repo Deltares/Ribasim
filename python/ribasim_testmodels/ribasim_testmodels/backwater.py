@@ -52,16 +52,17 @@ def backwater_model():
     )
 
     # Rectangular profile, width of 1.0 m.
+    basin_ids = ids[node_type == "Basin"]
     profile = pd.DataFrame(
         data={
-            "node_id": np.repeat(ids[node_type == "Basin"], 2),
+            "node_id": np.repeat(basin_ids, 2),
             "area": [20.0, 20.0] * n_basin,
             "level": [0.0, 1.0] * n_basin,
         }
     )
     static = pd.DataFrame(
         data={
-            "node_id": ids[node_type == "Basin"],
+            "node_id": basin_ids,
             "drainage": 0.0,
             "potential_evaporation": 0.0,
             "infiltration": 0.0,
@@ -69,7 +70,8 @@ def backwater_model():
             "urban_runoff": 0.0,
         }
     )
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(data={"node_id": basin_ids, "level": 0.05})
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     manning_resistance = ribasim.ManningResistance(
         static=pd.DataFrame(

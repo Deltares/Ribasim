@@ -179,6 +179,7 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     (; allocation, graph) = p
     (; main_network_connections) = allocation
 
@@ -202,10 +203,10 @@ end
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
-    @test Ribasim.get_allocation_model(p, 2).problem[:source].axes[1] ==
-          Tuple{NodeID, NodeID}[(2, 11)]
     @test Ribasim.get_allocation_model(p, 3).problem[:source].axes[1] ==
+          Tuple{NodeID, NodeID}[(2, 11)]
+    @test Ribasim.get_allocation_model(p, 5).problem[:source].axes[1] ==
           Tuple{NodeID, NodeID}[(6, 24)]
-    @test Ribasim.get_allocation_model(p, 4).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, 7).problem[:source].axes[1] ==
           Tuple{NodeID, NodeID}[(10, 38)]
 end

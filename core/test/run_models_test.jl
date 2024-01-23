@@ -73,7 +73,7 @@
         @test flow.from_node_id[1:4] == [6, typemax(Int), 0, 6]
         @test flow.to_node_id[1:4] == [6, typemax(Int), typemax(Int), 0]
 
-        @test basin.storage[1] == 1.0
+        @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.

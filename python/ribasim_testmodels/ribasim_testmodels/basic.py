@@ -36,8 +36,10 @@ def basic_model() -> ribasim.Model:
     )
     static = static.iloc[[0, 0, 0, 0]]
     static["node_id"] = [1, 3, 6, 9]
-
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(
+        data={"node_id": static["node_id"], "level": 0.04471158417652035}
+    )
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
@@ -303,8 +305,11 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             "urban_runoff": 0.0,
         }
     )
+    state = pd.DataFrame(
+        data={"node_id": static["node_id"], "level": 0.04471158417652035}
+    )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 1000.0.

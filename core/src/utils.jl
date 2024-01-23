@@ -381,33 +381,28 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
-function get_storages_from_levels(
-    basin::Basin,
-    state_node_id::Vector{Int},
-    state_level::Vector{Float64},
-)::Tuple{Vector{Float64}, Bool}
-    (; node_id) = basin
-
-    storages = fill(1.0, length(node_id))
-    n_specified_states = length(state_node_id)
-
-    if n_specified_states > 0
-        basin_state_index = 1
-        basin_state_node_id = state_node_id[1]
-
-        for (i, id) in enumerate(node_id)
-            if basin_state_node_id == id.value
-                storages[i] =
-                    get_storage_from_level(basin, i, state_level[basin_state_index])
-                basin_state_index += 1
-                if basin_state_index > n_specified_states
-                    break
-                end
-                basin_state_node_id = state_node_id[basin_state_index]
-            end
-        end
+function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
+    errors = false
+    state_length = length(levels)
+    basin_length = length(basin.level)
+    if state_length != basin_length
+        @error "Unexpected 'Basin / state' length." state_length basin_length
+        errors = true
     end
-    return storages, any(isnan.(storages))
+    storages = zeros(state_length)
+
+    for (i, level) in enumerate(levels)
+        storage = get_storage_from_level(basin, i, level)
+        if isnan(storage)
+            errors = true
+        end
+        storages[i] = storage
+    end
+    if errors
+        error("Encountered errors while parsing the initial levels of basins.")
+    end
+
+    return storages
 end
 
 """

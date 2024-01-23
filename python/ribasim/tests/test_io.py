@@ -111,9 +111,13 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     # apply a wrong sort, then call the sort method to restore order
     table.df.sort_values("greater_than", ascending=False, inplace=True)
     assert table.df.iloc[0]["greater_than"] == 15.0
-    sort_keys = model.discrete_control._sort_keys["condition"]
-    assert sort_keys == ["node_id", "listen_feature_id", "variable", "greater_than"]
-    table.sort(sort_keys)
+    assert table._sort_keys == [
+        "node_id",
+        "listen_feature_id",
+        "variable",
+        "greater_than",
+    ]
+    table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0
 
     # re-apply wrong sort, then check if it gets sorted on write
