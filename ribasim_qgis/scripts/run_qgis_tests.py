@@ -18,3 +18,5 @@ qgis_process = subprocess.run(
 
 print(qgis_process.stdout)
 qgis_process.check_returncode()
+if any(s in qgis_process.stdout for s in ["QGIS died on signal", "FAILED"]):
+    exit(1)
