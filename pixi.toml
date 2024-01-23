@@ -21,16 +21,23 @@ install-ribasim-testmodels = "pip install --no-deps --editable python/ribasim_te
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-julia",
+    "update-registry-julia",
     "install-ribasim-python",
     "install-ribasim-api",
     "install-ribasim-testmodels",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
+update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
+update-manifest-julia = "julia --eval='using Pkg; Pkg.update()'"
 instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
+initialize-julia = { depends_on = [
+    "update-registry-julia",
+    "instantiate-julia",
+] }
 # Docs
 build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
-    "instantiate-julia",
+    "initialize-julia",
 ] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
@@ -56,22 +63,22 @@ lint = { depends_on = [
 # Build
 build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
-    "instantiate-julia",
+    "initialize-julia",
 ] }
 build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
-    "instantiate-julia",
+    "initialize-julia",
 ] }
 build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_binaries", depends_on = [
     "generate-testmodels",
-    "instantiate-julia",
+    "initialize-julia",
 ] }
 remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 
 # Test
-test-ribasim-python = "pytest --numprocesses=auto python/ribasim/tests"
+test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
-test-ribasim-cli = "pytest --numprocesses=auto --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
@@ -140,7 +147,7 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.10"
-qgis = "3.28.*"
+qgis = "*"
 qgis-plugin-manager = "*"
 quartodoc = "*"
 ruff = "*"

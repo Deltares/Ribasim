@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
+      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli_linux.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
     </options>
@@ -88,12 +88,6 @@ pixi run build-ribasim-cli]]></param>
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-        </parameters>
-      </extension>
-      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
-        <parameters>
-          <param name="awsConnectionId" value="awsConnection_1" />
-          <param name="awsSessionDuration" value="60" />
         </parameters>
       </extension>
     </build-extensions>

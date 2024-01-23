@@ -338,30 +338,6 @@ function variable_nt(s::Any)
     NamedTuple{names}((getfield(s, x) for x in names))
 end
 
-function is_consistent(node, edge, state, static, profile, time)
-
-    # Check that node ids exist
-    # TODO Do we need to check the reverse as well? All ids in use?
-    ids = node.fid
-    @assert edge.from_node_id ⊆ ids "Edge from_node_id not in node ids"
-    @assert edge.to_node_id ⊆ ids "Edge to_node_id not in node ids"
-    @assert state.node_id ⊆ ids "State id not in node ids"
-    @assert static.node_id ⊆ ids "Static id not in node ids"
-    @assert profile.node_id ⊆ ids "Profile id not in node ids"
-    @assert time.node_id ⊆ ids "Time id not in node ids"
-
-    # Check edges for uniqueness
-    @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
-
-    # TODO Check states
-
-    # TODO Check statics
-
-    # TODO Check forcings
-
-    true
-end
-
 # functions used by sort(x; by)
 sort_by_fid(row) = row.fid
 sort_by_id(row) = row.node_id

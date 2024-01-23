@@ -37,3 +37,9 @@ Sim --> Finished
 Finished -->|no| Con
 Finished -->|yes| Done
 ```
+
+
+# Coupling
+
+Ribasim can also be coupled to other kernels with the help of iMOD Coupler.
+The corresponding documentation can be found within the [iMOD Suite Documentation](https://deltares.github.io/iMOD-Documentation/coupler.html).
