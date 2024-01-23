@@ -29,7 +29,7 @@ install-without-pre-commit = { depends_on = [
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
 update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
-update-manifest-julia = "julia --eval='using Pkg; Pkg.update()'"
+update-manifest-julia = "julia --project --eval='using Pkg; Pkg.update()'"
 instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 initialize-julia = { depends_on = [
     "update-registry-julia",
@@ -159,6 +159,9 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 hatchling = "*"
+xugrid = ">=0.8.1,<0.9"
+netCDF4 = ">=1.6.5,<1.7"
+zarr = ">=2.16.1,<2.17"
 
 [target.win-64.dependencies]
 quarto = "*"
