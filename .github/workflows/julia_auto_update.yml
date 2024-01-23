@@ -17,7 +17,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.4.3
         with:
           pixi-version: "latest"
-      - name: Update pixi lock file
+      - name: Update Julia manifest file
         run: |
           pixi run update-manifest-julia
           pixi install
