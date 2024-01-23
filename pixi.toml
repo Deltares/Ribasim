@@ -108,7 +108,7 @@ install-qgis-plugins = { depends_on = [
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
-test-ribasim-qgis = { cmd = "QGIS_TEST_MODULE=ribasim_qgis.tests qgis --profiles-path .pixi/qgis_env --version-migration --nologo --code qgis_testrunner.py ribasim_qgis.tests", depends_on = [
+test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_tests.py", depends_on = [
     "install-ribasim-qgis",
 ] }
 qgis = "qgis --profiles-path .pixi/qgis_env"

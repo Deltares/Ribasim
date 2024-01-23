@@ -45,6 +45,7 @@ __author__ = "Alessandro Pasotti"
 __date__ = "May 2016"
 
 import importlib
+import logging
 import os
 import signal
 import sys
@@ -53,10 +54,6 @@ import traceback
 from qgis.utils import iface
 
 assert iface is not None
-
-
-def eprint(text):
-    sys.__stderr__.write(text + "\n")
 
 
 def __get_test_function(test_module_name):
@@ -100,7 +97,7 @@ from console.console_output import writeOut
 
 
 def _write(self, m):
-    sys.__stdout__.write(m)
+    sys.stdout.write(m)
 
 
 writeOut.write = _write
@@ -109,22 +106,27 @@ writeOut.write = _write
 sys.path.append(QDir.current().path())
 
 
+def __exit_qgis(error_code: int):
+    app = QgsApplication.instance()
+    os.kill(app.applicationPid(), error_code)
+
+
 def __run_test():
     """Run the test specified as last argument in the command line."""
     # Disable modal handler for bad layers
     QgsProject.instance().setBadLayerHandler(QgsProjectBadLayerDefaultHandler())
-    eprint("QGIS Test Runner Inside - starting the tests ...")
+    print("QGIS Test Runner Inside - starting the tests ...")
     try:
         test_module_name = QgsApplication.instance().arguments()[-1]
         function_name = __get_test_function(test_module_name)
-        eprint("QGIS Test Runner Inside - executing function %s" % function_name)
+        print("QGIS Test Runner Inside - executing function %s" % function_name)
         function_name()
+        __exit_qgis(signal.SIG_DFL)
     except Exception as e:
-        eprint("QGIS Test Runner Inside - [FAILED] Exception: %s" % e)
+        logging.error("QGIS Test Runner Inside - [FAILED] Exception: %s" % e)
         # Print tb
-        traceback.print_exc(file=sys.stdout)
-    app = QgsApplication.instance()
-    os.kill(app.applicationPid(), signal.SIGTERM)
+        traceback.print_exc(file=sys.stderr)
+        __exit_qgis(signal.SIGTERM)
 
 
 iface.initializationCompleted.connect(__run_test)
