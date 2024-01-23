@@ -1,5 +1,0 @@
-[run]
-omit =
-    ribasim_qgis/resources.py
-    ribasim_qgis/tomllib/*
-    ribasim_qgis/tests/*

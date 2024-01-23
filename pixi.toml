@@ -105,6 +105,7 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
     "build-ribasim-api-wheel",
 ] }
 # QGIS
+qgis = "qgis --profiles-path .pixi/qgis_env"
 install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
 install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
 install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
@@ -118,8 +119,6 @@ install-qgis-plugins = { depends_on = [
 test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_tests.py", depends_on = [
     "install-ribasim-qgis",
 ] }
-qgis = "qgis --profiles-path .pixi/qgis_env"
-#test-ribasim-qgis-cov = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests"
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
 ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
@@ -138,7 +137,7 @@ pandas-stubs = "*"
 pandera = "*"
 pip = "*"
 platformdirs = "*"
-pre-commit = "3.5.*"
+pre-commit = "*"
 pyarrow = "*"
 pydantic = ">=2"
 pyogrio = "*"

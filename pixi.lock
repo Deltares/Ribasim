@@ -26949,20 +26949,20 @@ package:
   timestamp: 1687715290169
 - platform: linux-64
   name: pre-commit
-  version: 3.6.0
+  version: 3.5.0
   category: main
   manager: conda
   dependencies:
   - cfgv >=2.0.0
   - identify >=1.0.0
   - nodeenv >=0.11.1
-  - python >=3.9
+  - python >=3.8
   - pyyaml >=5.1
   - virtualenv >=20.10.0
-  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.6.0-pyha770c72_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.5.0-pyha770c72_0.conda
   hash:
-    md5: 473a7cfca197da0a10cff3f6dded7d4b
-    sha256: 7d1f4b4a2eb4946b5808769642c5f643788c3a9e090f1c02a6c63f8794fb3d54
+    md5: 964e3d762e427661c59263435a14c492
+    sha256: 51a4a17334a15ec92805cd075776563ff93b3b6c20732c4cb607c98a761ae02f
   build: pyha770c72_0
   arch: x86_64
   subdir: linux-64
@@ -26970,24 +26970,24 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 179538
-  timestamp: 1702177397758
+  size: 179349
+  timestamp: 1697222328615
 - platform: osx-64
   name: pre-commit
-  version: 3.6.0
+  version: 3.5.0
   category: main
   manager: conda
   dependencies:
   - cfgv >=2.0.0
   - identify >=1.0.0
   - nodeenv >=0.11.1
-  - python >=3.9
+  - python >=3.8
   - pyyaml >=5.1
   - virtualenv >=20.10.0
-  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.6.0-pyha770c72_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.5.0-pyha770c72_0.conda
   hash:
-    md5: 473a7cfca197da0a10cff3f6dded7d4b
-    sha256: 7d1f4b4a2eb4946b5808769642c5f643788c3a9e090f1c02a6c63f8794fb3d54
+    md5: 964e3d762e427661c59263435a14c492
+    sha256: 51a4a17334a15ec92805cd075776563ff93b3b6c20732c4cb607c98a761ae02f
   build: pyha770c72_0
   arch: x86_64
   subdir: osx-64
@@ -26995,24 +26995,24 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 179538
-  timestamp: 1702177397758
+  size: 179349
+  timestamp: 1697222328615
 - platform: osx-arm64
   name: pre-commit
-  version: 3.6.0
+  version: 3.5.0
   category: main
   manager: conda
   dependencies:
   - cfgv >=2.0.0
   - identify >=1.0.0
   - nodeenv >=0.11.1
-  - python >=3.9
+  - python >=3.8
   - pyyaml >=5.1
   - virtualenv >=20.10.0
-  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.6.0-pyha770c72_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.5.0-pyha770c72_0.conda
   hash:
-    md5: 473a7cfca197da0a10cff3f6dded7d4b
-    sha256: 7d1f4b4a2eb4946b5808769642c5f643788c3a9e090f1c02a6c63f8794fb3d54
+    md5: 964e3d762e427661c59263435a14c492
+    sha256: 51a4a17334a15ec92805cd075776563ff93b3b6c20732c4cb607c98a761ae02f
   build: pyha770c72_0
   arch: aarch64
   subdir: osx-arm64
@@ -27020,24 +27020,24 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 179538
-  timestamp: 1702177397758
+  size: 179349
+  timestamp: 1697222328615
 - platform: win-64
   name: pre-commit
-  version: 3.6.0
+  version: 3.5.0
   category: main
   manager: conda
   dependencies:
   - cfgv >=2.0.0
   - identify >=1.0.0
   - nodeenv >=0.11.1
-  - python >=3.9
+  - python >=3.8
   - pyyaml >=5.1
   - virtualenv >=20.10.0
-  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.6.0-pyha770c72_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/pre-commit-3.5.0-pyha770c72_0.conda
   hash:
-    md5: 473a7cfca197da0a10cff3f6dded7d4b
-    sha256: 7d1f4b4a2eb4946b5808769642c5f643788c3a9e090f1c02a6c63f8794fb3d54
+    md5: 964e3d762e427661c59263435a14c492
+    sha256: 51a4a17334a15ec92805cd075776563ff93b3b6c20732c4cb607c98a761ae02f
   build: pyha770c72_0
   arch: x86_64
   subdir: win-64
@@ -27045,8 +27045,8 @@ package:
   license: MIT
   license_family: MIT
   noarch: python
-  size: 179538
-  timestamp: 1702177397758
+  size: 179349
+  timestamp: 1697222328615
 - platform: linux-64
   name: proj
   version: 9.3.1
