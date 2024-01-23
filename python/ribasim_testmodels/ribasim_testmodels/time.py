@@ -66,7 +66,14 @@ def flow_boundary_time_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(
+        data={
+            "node_id": [2],
+            "level": 0.04471158417652035,
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     n_times = 100
     time = pd.date_range(

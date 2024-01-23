@@ -511,7 +511,9 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static)
+    state = pd.DataFrame(data={"node_id": [1], "level": 0.04471158417652035})
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 100.0.

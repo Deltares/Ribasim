@@ -73,10 +73,8 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Read database into memory."
 
-    storage, errors = get_storages_from_levels(parameters.basin, state.node_id, state.level)
-    if errors
-        error("Encountered errors while parsing the initial levels of basins.")
-    end
+    storage = get_storages_from_levels(parameters.basin, state.level)
+
     # Synchronize level with storage
     set_current_basin_properties!(parameters.basin, storage)
 

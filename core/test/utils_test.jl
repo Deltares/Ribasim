@@ -125,16 +125,14 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        storages, errors = Ribasim.get_storages_from_levels(basin, [1], [-1.0])
-        @test isnan(storages[1])
-        @test errors
-        # Storage for basin with unspecified level is set to 1.0
-        @test storages[2] == 1.0
+        @test_throws ErrorException Ribasim.get_storages_from_levels(basin, [-1.0])
     end
 
-    @test length(logger.logs) == 1
+    @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
+    @test logger.logs[1].message == "Unexpected 'Basin / state' length."
+    @test logger.logs[2].level == Error
+    @test logger.logs[2].message ==
           "The level -1.0 of basin #1 is lower than the bottom of this basin 0.0."
 
     # Converting from storages to levels and back should return the same storages

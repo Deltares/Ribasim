@@ -179,6 +179,7 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     (; allocation, graph) = p
     (; main_network_connections) = allocation
 
