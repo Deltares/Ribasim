@@ -209,3 +209,26 @@ end
     @test Ribasim.get_allocation_model(p, 7).problem[:source].axes[1] ==
           Tuple{NodeID, NodeID}[(10, 38)]
 end
+
+@testitem "allocation with main network optimization problem" begin
+    using SQLite
+    using Ribasim: NodeID
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+    p = Ribasim.Parameters(db, cfg)
+
+    allocation_model_main_network = p.allocation.allocation_models[1]
+
+    # Collecting demands
+
+    # Setting objective function for main network
+
+    # Running model until endtime
+end

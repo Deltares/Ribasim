@@ -155,7 +155,7 @@ def test_model_merging(basic, subnetwork, tmp_path):
     model.smart_merge(model_added)
     assert (model.network.node.df.index == range(1, 44)).all()
     assert not model.network.edge.df.index.duplicated().any()
-    assert model.max_allocation_network_id() == 2
+    assert model.max_allocation_network_id() == 4  # 0 + 2 + 2
 
     # Added model should not change
     for node_type, node_added in model_added.nodes().items():
