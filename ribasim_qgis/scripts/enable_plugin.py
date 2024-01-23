@@ -5,6 +5,7 @@ from pathlib import Path
 
 def enable_plugin(plugin_name: str) -> None:
     config_file = Path(".pixi/qgis_env/profiles/default/QGIS/QGIS3.ini")
+    config_file.parent.mkdir(parents=True, exist_ok=True)
     config_file.touch()
 
     config = configparser.ConfigParser()
