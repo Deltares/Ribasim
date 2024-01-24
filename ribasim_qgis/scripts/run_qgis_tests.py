@@ -3,7 +3,7 @@ import subprocess
 qgis_process = subprocess.run(
     [
         "xvfb-run",
-        '--server-args="-screen 0 1024x768x24"',
+        "-a",
         "qgis",
         "--profiles-path",
         ".pixi/qgis_env",
