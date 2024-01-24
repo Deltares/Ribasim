@@ -3,6 +3,7 @@ authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 description = "Meta-project used to share the Manifest of Ribasim and its dependents"
 
 [deps]
+ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
 Dictionaries = "85a47980-9c8c-11e8-2b9f-f7ca1fa99fb4"

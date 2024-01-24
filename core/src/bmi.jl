@@ -591,12 +591,16 @@ function update_allocation!(integrator)::Nothing
     (; allocation) = p
     (; allocation_models) = allocation
 
+    # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in allocation_models[2:end]
             allocate!(p, allocation_model, t; collect_demands = true)
         end
     end
 
+    # Solve the allocation problems
+    # If a main network is present this is solved first,
+    # which provides allocation to the subnetworks
     for allocation_model in allocation_models
         allocate!(p, allocation_model, t)
     end

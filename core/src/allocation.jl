@@ -445,12 +445,15 @@ function add_constraints_capacity!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph) = p
+    (; graph, allocation) = p
+    (; main_network_connections, allocation_network_ids) = allocation
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    main_network_source_edges = main_network_connections[idx]
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
     for edge in edge_ids
-        if !isinf(capacity[edge...])
+        if !isinf(capacity[edge...]) && edge ∉ main_network_source_edges
             push!(edge_ids_finite_capacity, edge)
         end
     end
@@ -532,13 +535,21 @@ function add_constraints_flow_conservation!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph) = p
+    (; graph, allocation) = p
+    (; main_network_connections, allocation_network_ids) = allocation
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_basin = [node_id for node_id in node_ids if graph[node_id].type == :basin]
+    node_ids_conservation =
+        [node_id for node_id in node_ids if graph[node_id].type == :basin]
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    main_network_source_edges = main_network_connections[idx]
+    for edge in main_network_source_edges
+        push!(node_ids_conservation, edge[2])
+    end
+    unique!(node_ids_conservation)
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_basin],
+        [node_id = node_ids_conservation],
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
@@ -906,15 +917,20 @@ function assign_allocations!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user, allocation) = p
-    (; subnetwork_demands) = allocation
+    (; subnetwork_demands, main_network_connections, allocation_network_ids) = allocation
     (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    main_network_source_edges = main_network_connections[idx]
     F = problem[:F]
     for edge_id in edge_ids
+        # If this edge is a source edge from the main network to a subnetwork,
+        # and demands are being collected, add its flow to the demand of this edge
         if collect_demands &&
-           graph[edge_id...].allocation_network_id_source == allocation_network_id
-            source_flow = JuMP.value(F[edge_id])
-            subnetwork_demands[edge_id][priority_index] += source_flow
+           graph[edge_id...].allocation_network_id_source == allocation_network_id &&
+           edge_id ∈ main_network_source_edges
+            allocated = JuMP.value(F[edge_id])
+            subnetwork_demands[edge_id][priority_idx] += allocated
         end
 
         user_node_id = edge_id[2]
@@ -945,9 +961,10 @@ end
 """
 Adjust the source flows.
 """
-function adjust_source_flows!(
+function adjust_source_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
+    t::Float64,
     priority_idx::Int;
     collect_demands::Bool = false,
 )::Nothing
@@ -1012,17 +1029,23 @@ function adjust_edge_capacities!(
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; graph) = p
+    (; graph, allocation) = p
     (; problem, capacity, allocation_network_id) = allocation_model
+    (; main_network_connections, allocation_network_ids) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    main_network_sources = main_network_connections[idx]
+
     for edge_id in edge_ids
         c = capacity[edge_id...]
 
-        # Edges with infinite capacity have no capacity constraints
-        if isinf(c)
+        # These edges have no capacity constraints:
+        # - With infinite capacity
+        # - Being a source from the main network to a subnetwork
+        if isinf(c) || edge_id ∈ main_network_sources
             continue
         end
 
@@ -1051,7 +1074,8 @@ function allocate!(
     collect_demands::Bool = false,
 )::Nothing
     (; user, allocation) = p
-    (; problem) = allocation_model
+    (; problem, allocation_network_id) = allocation_model
+    (; allocation_network_ids, main_network_connections) = allocation
     (; priorities) = user
     (; subnetwork_demands) = allocation
 
@@ -1060,14 +1084,19 @@ function allocate!(
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    main_network_source_edges = main_network_connections[idx]
+
     if collect_demands
         for main_network_connection in keys(subnetwork_demands)
-            subnetwork_demands[main_network_connection] .= 0.0
+            if main_network_connection in main_network_source_edges
+                subnetwork_demands[main_network_connection] .= 0.0
+            end
         end
     end
 
     for priority_idx in eachindex(priorities)
-        adjust_source_flows!(allocation_model, p, priority_idx; collect_demands)
+        adjust_source_capacities!(allocation_model, p, t, priority_idx; collect_demands)
 
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
@@ -1084,7 +1113,11 @@ function allocate!(
         JuMP.optimize!(problem)
         @debug JuMP.solution_summary(problem)
         if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-            error("Allocation coudn't find optimal solution.")
+            (; allocation_network_id) = allocation_model
+            priority = priorities[priority_index]
+            error(
+                "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
+            )
         end
 
         # Assign the allocations to the users for this priority
