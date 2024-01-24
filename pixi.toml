@@ -167,6 +167,7 @@ ptvsd = "*"
 [target.linux-64.dependencies]
 quarto = "*"
 ptvsd = "*"
+draco = "*"
 
 [target.osx-64.dependencies]
 quarto = "*"
