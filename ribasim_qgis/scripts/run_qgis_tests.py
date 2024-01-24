@@ -2,6 +2,8 @@ import subprocess
 
 qgis_process = subprocess.run(
     [
+        "xvfb-run",
+        '--server-args="-screen 0 1024x768x24"',
         "qgis",
         "--profiles-path",
         ".pixi/qgis_env",
@@ -14,7 +16,6 @@ qgis_process = subprocess.run(
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
-    env={"DISPLAY": "0"},
 )
 
 print(qgis_process.stdout)
