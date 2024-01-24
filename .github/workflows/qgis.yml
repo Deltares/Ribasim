@@ -22,6 +22,10 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install xvfb
+        if: runner.os == 'Linux'
+        shell: bash
+        run: sudo apt update && sudo apt install -y xvfb
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: "latest"
