@@ -14,6 +14,7 @@ qgis_process = subprocess.run(
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
+    env={"DISPLAY": "0"},
 )
 
 print(qgis_process.stdout)
