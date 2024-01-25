@@ -116,7 +116,7 @@ install-qgis-plugins = { depends_on = [
     "install-ribasim-qgis",
     "install-imod-qgis",
 ] }
-test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_tests.py", depends_on = [
+test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends_on = [
     "install-ribasim-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
@@ -167,7 +167,6 @@ ptvsd = "*"
 [target.linux-64.dependencies]
 quarto = "*"
 ptvsd = "*"
-draco = "*"
 
 [target.osx-64.dependencies]
 quarto = "*"
