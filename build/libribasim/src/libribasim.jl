@@ -100,6 +100,12 @@ Base.@ccallable function update_until(time::Cdouble)::Cint
     end
 end
 
+Base.@ccallable function update_subgrid_level()::Cint
+    @try_c begin
+        Ribasim.update_subgrid_level(model)
+    end
+end
+
 Base.@ccallable function get_current_time(time::Ptr{Cdouble})::Cint
     @try_c begin
         t = BMI.get_current_time(model)
