@@ -98,6 +98,14 @@ Similarly the filename of the Ribasim Python wheel needs to be updated as in @se
 
 Our continuous integration (CI) should have caught most issues.
 A current weak spot in our testing is the QGIS plugin, so it is a good idea to do some manual checks to see if it works properly.
+Start with running the automated task to see if it can be correctly installed.
+
+```sh
+# This test might give a fatal error on the first run, this is most likely a timing issue.
+# Try to run it again when that happens.
+pixi run test-ribasim-qgis-ui
+```
+
 It is a good idea to load new test models if there are any, or test any other changed functionality.
 
 ## Generate and upload test models
@@ -105,7 +113,7 @@ It is a good idea to load new test models if there are any, or test any other ch
 The test models are currently not automatically uploaded.
 Create them locally with:
 
-```
+```sh
 pixi run generate-testmodels
 ```
 
