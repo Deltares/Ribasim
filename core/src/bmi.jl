@@ -633,7 +633,7 @@ function BMI.update_until(model::Model, time)::Model
     return model
 end
 
-function BMI.update_subgrid_level(model::Model)::Model
+function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
     return model
 end
