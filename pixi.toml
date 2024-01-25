@@ -119,6 +119,12 @@ install-qgis-plugins = { depends_on = [
 test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends_on = [
     "install-ribasim-qgis",
 ] }
+test-ribasim-qgis = { cmd = "pytest --numprocesses=auto ribasim_qgis/tests", depends_on = [
+    "install-ribasim-qgis",
+]}
+test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests", depends_on = [
+    "install-ribasim-qgis",
+]}
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
 ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
