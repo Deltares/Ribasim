@@ -633,6 +633,11 @@ function BMI.update_until(model::Model, time)::Model
     return model
 end
 
+function BMI.update_subgrid_level(model::Model)::Model
+    update_subgrid_level!(model.integrator)
+    return model
+end
+
 function BMI.get_value_ptr(model::Model, name::AbstractString)
     if name == "volume"
         model.integrator.u.storage

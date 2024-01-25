@@ -39,7 +39,16 @@ def basic_model() -> ribasim.Model:
     state = pd.DataFrame(
         data={"node_id": static["node_id"], "level": 0.04471158417652035}
     )
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    # This is a 1:1 translation.
+    subgrid = pd.DataFrame(
+        data={
+            "node_id": profile["node_id"],
+            "subgrid_id": profile["node_id"],
+            "basin_level": profile["level"],
+            "subgrid_level": profile["level"],
+        }
+    )
+    basin = ribasim.Basin(profile=profile, static=static, state=state, subgrid=subgrid)
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
