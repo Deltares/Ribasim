@@ -69,7 +69,7 @@ def two_basin_model() -> ribasim.Model:
             data={
                 "node_id": [4, 4],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, 0.01],
+                "flow_rate": [0.0, 0.01],
             }
         )
     )
