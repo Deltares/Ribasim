@@ -98,13 +98,6 @@ fi]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
-        <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimApi">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
@@ -130,6 +123,12 @@ fi]]></param>
         </options>
       </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimApi">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
