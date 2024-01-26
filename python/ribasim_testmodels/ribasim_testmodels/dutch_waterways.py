@@ -105,8 +105,8 @@ def dutch_waterways_model():
                     7.46,
                     4.45,
                     4.46,
-                ],  # The level and discharge for "pump_low", "pump_high" are irrelevant
-                "discharge": [0.0, 0.0]
+                ],  # The level and flow rate for "pump_low", "pump_high" are irrelevant
+                "flow_rate": [0.0, 0.0]
                 + 2 * [418, 420.15],  # since the rating curve is not active here
             }
         )

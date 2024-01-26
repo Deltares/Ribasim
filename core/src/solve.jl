@@ -121,7 +121,7 @@ end
 """
     struct TabulatedRatingCurve{C}
 
-Rating curve from level to discharge. The rating curve is a lookup table with linear
+Rating curve from level to flow rate. The rating curve is a lookup table with linear
 interpolation in between. Relation can be updated in time, which is done by moving data from
 the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
 callback.

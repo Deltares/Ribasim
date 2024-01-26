@@ -79,7 +79,7 @@ def basic_model() -> ribasim.Model:
             data={
                 "node_id": [4, 4],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, q1000],
+                "flow_rate": [0.0, q1000],
             }
         )
     )
@@ -329,7 +329,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             data={
                 "node_id": [2, 2],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, q1000],
+                "flow_rate": [0.0, q1000],
             }
         ),
         time=pd.DataFrame(
@@ -345,7 +345,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
                     pd.Timestamp("2020-03"),
                 ],
                 "level": [0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
-                "discharge": [0.0, q1000, 0.0, q1000, 0.0, q1000],
+                "flow_rate": [0.0, q1000, 0.0, q1000, 0.0, q1000],
             }
         ),
     )

@@ -335,12 +335,12 @@ end
 
     See: https://en.wikipedia.org/wiki/Standard_step_method
 
-    * The left boundary has a fixed discharge `Q`.
+    * The left boundary has a fixed flow rate `Q`.
     * The right boundary has a fixed level `h_right`.
     * Channel profile is rectangular.
 
     # Arguments
-    - `Q`: discharge entering in the left boundary (m3/s)
+    - `Q`: flow rate entering in the left boundary (m3/s)
     - `w`: width (m)
     - `n`: Manning roughness
     - `h_right`: water level on the right boundary

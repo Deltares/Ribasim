@@ -189,7 +189,7 @@ class TabulatedRatingCurveStatic(BaseModel):
     node_id: int
     active: bool | None = None
     level: float
-    discharge: float
+    flow_rate: float
     control_state: str | None = None
     remarks: str = Field("", description="a hack for pandera")
 
@@ -198,7 +198,7 @@ class TabulatedRatingCurveTime(BaseModel):
     node_id: int
     time: datetime
     level: float
-    discharge: float
+    flow_rate: float
     remarks: str = Field("", description="a hack for pandera")
 
 

@@ -24,7 +24,7 @@
             "format": "double",
             "type": "number"
         },
-        "discharge": {
+        "flow_rate": {
             "format": "double",
             "type": "number"
         },
@@ -49,6 +49,6 @@
     "required": [
         "node_id",
         "level",
-        "discharge"
+        "flow_rate"
     ]
 }

@@ -101,7 +101,7 @@ def trivial_model() -> ribasim.Model:
             data={
                 "node_id": [0, 0],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, q1000],
+                "flow_rate": [0.0, q1000],
             }
         )
     )
