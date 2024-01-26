@@ -607,9 +607,9 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         # update the existing LinearInterpolation
         id = first(group).node_id
         level = [row.level for row in group]
-        discharge = [row.discharge for row in group]
+        flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(id))
-        tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
+        tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing
 end

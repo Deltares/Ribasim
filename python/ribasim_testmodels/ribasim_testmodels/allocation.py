@@ -503,7 +503,7 @@ def looped_subnetwork_model():
             data={
                 "node_id": [13, 13, 14, 14, 19, 19],
                 "level": 3 * [0.0, 1.0],
-                "discharge": 3 * [0.0, 2.0],
+                "flow_rate": 3 * [0.0, 2.0],
             }
         )
     )
@@ -784,7 +784,7 @@ def fractional_flow_subnetwork_model():
             data={
                 "node_id": [3, 3],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, 1e-4],
+                "flow_rate": [0.0, 1e-4],
             }
         )
     )
@@ -986,7 +986,7 @@ def allocation_example_model():
             data={
                 "node_id": 7,
                 "level": [0.0, 0.5, 1.0],
-                "discharge": [0.0, 0.0, 2.0],
+                "flow_rate": [0.0, 0.0, 2.0],
             }
         )
     )
