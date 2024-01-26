@@ -49,6 +49,7 @@ from ribasim_testmodels.pid_control import (
 )
 from ribasim_testmodels.time import flow_boundary_time_model
 from ribasim_testmodels.trivial import trivial_model
+from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
     "allocation_example_model",
@@ -83,6 +84,7 @@ __all__ = [
     "minimal_subnetwork_model",
     "fractional_flow_subnetwork_model",
     "looped_subnetwork_model",
+    "two_basin_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models
