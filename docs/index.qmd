@@ -9,7 +9,7 @@ climate change. RIBASIM provides a free software tool to visualize, evaluate and
 This provides insights to decision makers, enabling them to build consensus amongst water users and make smart decisions about how to manage
 water resources optimally considering uncertainties now and in the future.
 
-RIBASIM is a water resources simulator composed of 3 conceptual layers:
+Ribasim is a water resources simulator composed of three conceptual layers:
     a physical layer representing water bodies and associated infrastructure,
     a rule-based control layer to manage the infrastructure, and
     a priority-based allocation layer to take centralized decisions on user abstractions.
