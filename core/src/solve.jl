@@ -34,6 +34,7 @@ struct Allocation
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
 end
 
 @enumx EdgeType flow control none

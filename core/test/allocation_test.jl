@@ -227,7 +227,7 @@ end
     close(db)
 
     (; allocation, user, graph) = p
-    (; allocation_models, subnetwork_demands) = allocation
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
     t = 0.0
 
     # Collecting demands
@@ -254,7 +254,13 @@ end
     @test F_abs[NodeID(38)] ∈ objective_variables
 
     # Running full allocation algorithm
-    # Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5)
-    # Ribasim.update_allocation!((; p, t))
-    # user.allocated
+    Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5)
+    Ribasim.update_allocation!((; p, t))
+
+    @test subnetwork_allocateds[NodeID(2), NodeID(11)] ≈ [4.0, 0.49766666, 0.0]
+    @test subnetwork_allocateds[NodeID(6), NodeID(24)] ≈ [0.00133333333, 0.0, 0.0]
+    @test subnetwork_allocateds[NodeID(10), NodeID(38)] ≈ [0.001, 0.0, 0.0]
+
+    @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
+    @test user.allocated[7] ≈ [0.001, 0.0, 0.0]
 end

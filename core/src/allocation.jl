@@ -2,7 +2,7 @@
 function find_subnetwork_connections!(p::Parameters)::Nothing
     (; allocation, graph, user) = p
     n_priorities = length(user.demand[1])
-    (; allocation_network_ids, main_network_connections, subnetwork_demands) = allocation
+    (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
             if graph[outflow_id].allocation_network_id != 1
@@ -11,6 +11,7 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
                 edge = (node_id, outflow_id)
                 push!(main_network_source_edges, edge)
                 subnetwork_demands[edge] = zeros(n_priorities)
+                subnetwork_allocateds[edge] = zeros(n_priorities)
             end
         end
     end
@@ -911,7 +912,12 @@ function assign_allocations!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user, allocation) = p
-    (; subnetwork_demands) = allocation
+    (;
+        subnetwork_demands,
+        subnetwork_allocateds,
+        allocation_network_ids,
+        main_network_connections,
+    ) = allocation
     (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
@@ -948,6 +954,20 @@ function assign_allocations!(
             )
         end
     end
+
+    # Write the flows to the subnetworks as allocated flows
+    # in the allocation object
+    if allocation_network_id == 1
+        for (allocation_network_id, main_network_source_edges) in
+            zip(allocation_network_ids, main_network_connections)
+            if allocation_network_id == 1
+                continue
+            end
+            for edge_id in main_network_source_edges
+                subnetwork_allocateds[edge_id][priority_idx] = JuMP.value(F[edge_id])
+            end
+        end
+    end
     return nothing
 end
 
@@ -964,7 +984,7 @@ function adjust_source_capacities!(
     (; problem) = allocation_model
     (; graph, allocation) = p
     (; allocation_network_id) = allocation_model
-    (; allocation_models) = allocation
+    (; subnetwork_allocateds) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     F = problem[:F]
@@ -982,8 +1002,7 @@ function adjust_source_capacities!(
                         source_capacity = prevfloat(Inf)
                     else
                         # Set the source capacity to the value allocated to the subnetwork over this edge
-                        source_capacity =
-                            JuMP.value(allocation_models[1].problem[:F][edge_id])
+                        source_capacity = subnetwork_allocateds[edge_id][priority_idx]
                     end
                 else
                     # Reset the source to the current flow from the physical layer.

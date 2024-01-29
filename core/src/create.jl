@@ -808,6 +808,7 @@ function Parameters(db::DB, config::Config)::Parameters
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
     )
 
     if !valid_edges(graph)
