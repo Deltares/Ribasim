@@ -175,7 +175,7 @@ end
 
 Base.@ccallable function get_version(version::Cstring)::Cint
     @try_c_uninitialized begin
-        ribasim_version = pkgversion(Ribasim)
+        ribasim_version = Ribasim.pkgversion(Ribasim)
         unsafe_write_to_cstring!(version, string(ribasim_version))
     end
 end
