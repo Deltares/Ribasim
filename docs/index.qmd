@@ -124,16 +124,6 @@ allocation_subNetwork->>user: allocated
 user->>basin: abstracted
 ```
 
-# Development planning {#sec-planning}
-Remember: reality may deviate from this planning
-
-- Online coupling with MODFLOW6-Metaswap - 2024
-- Offline coupling with Delwaq - 2024
-- Online coupling with Delwaq – 2024
-- Release ready for project application – 2nd half 2024
-- Offline coupling with wflow
-- Online coupling with wflow
-
 # About the code {#sec-code}
 The figure below illustrates the relation between the various components of the Ribasim software package.
 
