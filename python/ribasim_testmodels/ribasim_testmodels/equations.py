@@ -175,14 +175,14 @@ def rating_curve_model():
     level_min = 1.0
     node_id = np.full(n_datapoints, 2)
     level = np.linspace(0, 12, 100)
-    discharge = np.square(level - level_min) / (60 * 60 * 24)
+    flow_rate = np.square(level - level_min) / (60 * 60 * 24)
 
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
                 "node_id": node_id,
                 "level": level,
-                "discharge": discharge,
+                "flow_rate": flow_rate,
             }
         )
     )

@@ -374,8 +374,9 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf = gpd.GeoDataFrame(data=self.df)
         gdf = gdf.set_geometry("geometry")
+        gdf.index.name = "fid"
 
-        gdf.to_file(path, layer=self.tablename(), driver="GPKG")
+        gdf.to_file(path, layer=self.tablename(), driver="GPKG", index=True)
 
     def sort(self):
         self.df.sort_index(inplace=True)
