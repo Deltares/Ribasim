@@ -93,7 +93,7 @@ This section needs to be updated and extended after once [this issue](https://gi
 `TabulatedRatingCurve` nodes contribute to $\mathbf{f}$ with terms of the following form:
 
 $$
-    Q(h(S))
+    Q(h(u))
 $$
 
 where the continuity of this term is given by the least continuous of $Q$ and $h$.
