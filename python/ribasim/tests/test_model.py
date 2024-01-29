@@ -141,10 +141,22 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
-        df = pd.read_sql_query(query, connection, parse_dates=["time"])
+        df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
-        fids = df.get("fid")
+        fids = df["fid"]
         assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
+        query = "select fid from Node"
+        df = pd.read_sql_query(query, connection)
+        assert "fid" in df.columns
+        fids = df["fid"]
+        assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
+        query = "select fid from Edge"
+        df = pd.read_sql_query(query, connection)
+        assert "fid" in df.columns
+        fids = df["fid"]
+        assert fids.equals(pd.Series(range(0, len(fids))))
 
 
 def test_model_merging(basic, subnetwork, tmp_path):
