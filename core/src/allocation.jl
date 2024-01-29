@@ -6,12 +6,10 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
             if graph[outflow_id].allocation_network_id != 1
-                idx = findsorted(
-                    allocation_network_ids,
-                    graph[outflow_id].allocation_network_id,
-                )
+                main_network_source_edges =
+                    get_main_network_connections(p, graph[outflow_id].allocation_network_id)
                 edge = (node_id, outflow_id)
-                push!(main_network_connections[idx], edge)
+                push!(main_network_source_edges, edge)
                 subnetwork_demands[edge] = zeros(n_priorities)
             end
         end
@@ -342,7 +340,7 @@ and subnetwork allocation graph.
 """
 function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, main_network_connections) = allocation
+    (; main_network_connections) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
     if allocation_network_id == 1
@@ -350,8 +348,7 @@ function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int):
             union!(edge_ids, connections)
         end
     else
-        idx = findsorted(allocation_network_ids, allocation_network_id)
-        union!(edge_ids, main_network_connections[idx])
+        union!(edge_ids, get_main_network_connections(p, allocation_network_id))
     end
     return nothing
 end
@@ -445,10 +442,8 @@ function add_constraints_capacity!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections, allocation_network_ids) = allocation
-    idx = findsorted(allocation_network_ids, allocation_network_id)
-    main_network_source_edges = main_network_connections[idx]
+    (; graph) = p
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
@@ -541,8 +536,7 @@ function add_constraints_flow_conservation!(
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
         [node_id for node_id in node_ids if graph[node_id].type == :basin]
-    idx = findsorted(allocation_network_ids, allocation_network_id)
-    main_network_source_edges = main_network_connections[idx]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     for edge in main_network_source_edges
         push!(node_ids_conservation, edge[2])
     end
@@ -917,11 +911,10 @@ function assign_allocations!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user, allocation) = p
-    (; subnetwork_demands, main_network_connections, allocation_network_ids) = allocation
+    (; subnetwork_demands) = allocation
     (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
-    idx = findsorted(allocation_network_ids, allocation_network_id)
-    main_network_source_edges = main_network_connections[idx]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
     for edge_id in edge_ids
         # If this edge is a source edge from the main network to a subnetwork,
@@ -971,23 +964,19 @@ function adjust_source_capacities!(
     (; problem) = allocation_model
     (; graph, allocation) = p
     (; allocation_network_id) = allocation_model
-    (; allocation_models, main_network_connections) = allocation
+    (; allocation_models) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     F = problem[:F]
 
-    idx = findsorted(
-        p.allocation.allocation_network_ids,
-        allocation_model.allocation_network_id,
-    )
-    main_network_sources = main_network_connections[idx]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
     for edge_id in edge_ids
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
             # If it is a source edge for this allocation problem
             if priority_idx == 1
                 # If the optimization was just started, i.e. sources have to be reset
-                if edge_id in main_network_sources
+                if edge_id in main_network_source_edges
                     if collect_demands
                         # Set the source capacity to effectively unlimited if subnetwork demands are being collected
                         source_capacity = prevfloat(Inf)
@@ -1036,8 +1025,7 @@ function adjust_edge_capacities!(
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
-    idx = findsorted(allocation_network_ids, allocation_network_id)
-    main_network_sources = main_network_connections[idx]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
     for edge_id in edge_ids
         c = capacity[edge_id...]
@@ -1045,7 +1033,7 @@ function adjust_edge_capacities!(
         # These edges have no capacity constraints:
         # - With infinite capacity
         # - Being a source from the main network to a subnetwork
-        if isinf(c) || edge_id ∈ main_network_sources
+        if isinf(c) || edge_id ∈ main_network_source_edges
             continue
         end
 
@@ -1084,8 +1072,7 @@ function allocate!(
     # in the flow_conservation constraints if the net flow is positive.
     # Solve this as a separate problem before the priorities below
 
-    idx = findsorted(allocation_network_ids, allocation_network_id)
-    main_network_source_edges = main_network_connections[idx]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
     if collect_demands
         for main_network_connection in keys(subnetwork_demands)

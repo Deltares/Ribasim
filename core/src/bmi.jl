@@ -487,6 +487,21 @@ function get_allocation_model(p::Parameters, allocation_network_id::Int)::Alloca
     end
 end
 
+function get_main_network_connections(
+    p::Parameters,
+    allocation_network_id::Int,
+)::Vector{Tuple{NodeID, NodeID}}
+    (; allocation) = p
+    (; allocation_network_ids, main_network_connections) = allocation
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    if isnothing(idx)
+        error("Invalid allocation network ID $allocation_network_id.")
+    else
+        return main_network_connections[idx]
+    end
+    return
+end
+
 """
 Update the fractional flow fractions in an allocation problem.
 """
