@@ -193,13 +193,6 @@ See [Usage](https://deltares.github.io/Ribasim/core/usage.html) for more informa
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
-The nightly builds contain the latest developments and can be found below. It is important to either use the release or nightly for all components.
-
-- Ribasim executable: [ribasim_cli.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_cli.zip).
-- QGIS plugin: [ribasim_qgis.zip](https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip).
-
-Currently only Windows builds for `ribasim_cli.zip` are available.
-
 The Ribasim python package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
 be installed with [pip](https://docs.python.org/3/installing/index.html):
 ```
