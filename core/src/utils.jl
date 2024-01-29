@@ -1,15 +1,14 @@
 "Get the package version of a given module"
 function pkgversion(m::Module)::VersionNumber
     version = Base.pkgversion(Ribasim)
-    if !isnothing(version)
-        return version
-    else
-        # Base.pkgversion doesn't work with compiled binaries
-        rootmodule = Base.moduleroot(m)
-        pkg = Base.PkgId(rootmodule)
-        pkgorigin = get(Base.pkgorigins, pkg, nothing)
-        return pkgorigin.version
-    end
+    !isnothing(version) && return version
+
+    # Base.pkgversion doesn't work with compiled binaries
+    # If it returns `nothing`, we try a different way
+    rootmodule = Base.moduleroot(m)
+    pkg = Base.PkgId(rootmodule)
+    pkgorigin = get(Base.pkgorigins, pkg, nothing)
+    return pkgorigin.version
 end
 
 "Check that only supported edge types are declared."
