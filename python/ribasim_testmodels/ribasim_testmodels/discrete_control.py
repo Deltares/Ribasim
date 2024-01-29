@@ -524,7 +524,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
             data={
                 "node_id": [2, 2, 2, 2],
                 "level": [0.0, 1.2, 0.0, 1.0],
-                "discharge": [0.0, q100, 0.0, q100],
+                "flow_rate": [0.0, q100, 0.0, q100],
                 "control_state": ["low", "low", "high", "high"],
             }
         ),
@@ -665,7 +665,7 @@ def level_setpoint_with_minmax_model():
     # Setup the rating curve
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
-            data={"node_id": 2 * [5], "level": [2.0, 15.0], "discharge": [0.0, 1e-3]}
+            data={"node_id": 2 * [5], "level": [2.0, 15.0], "flow_rate": [0.0, 1e-3]}
         )
     )
 

@@ -393,9 +393,9 @@ node_id       | Int     | -            | sorted
 control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
 level         | Float64 | $m$          | sorted per control_state
-discharge     | Float64 | $m^3 s^{-1}$ | non-negative
+flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
 
-node_id | discharge  | level
+node_id | flow_rate  | level
 ------- |----------- |-------
       2 | 0.0        | -0.105
       2 | 0.0        |  0.095
@@ -416,7 +416,7 @@ column    | type     | unit         | restriction
 node_id   | Int      | -            | sorted
 time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
-discharge | Float64  | $m^3 s^{-1}$ | non-negative
+flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 # Pump
 

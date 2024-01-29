@@ -446,7 +446,7 @@ class TabulatedRatingCurveStatic(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("active", QVariant.Bool),
             QgsField("level", QVariant.Double),
-            QgsField("discharge", QVariant.Double),
+            QgsField("flow_rate", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -466,7 +466,7 @@ class TabulatedRatingCurveTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
             QgsField("level", QVariant.Double),
-            QgsField("discharge", QVariant.Double),
+            QgsField("flow_rate", QVariant.Double),
         ]
 
 

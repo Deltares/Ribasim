@@ -28,10 +28,6 @@ You can use [PR #623](https://github.com/Deltares/Ribasim/pull/623) as an exampl
 
 In general for Python packages the version number is in `__init__.py`, for Julia it is `Project.toml`, and for QGIS `metadata.txt`
 
-## Update the wheel links {#sec-wheel-links}
-
-The nightly download links for the Ribasim Python wheels contain the version number. Search for "any.whl" and update these to the new version number of Ribasim Python.
-
 ## Create a new release
 
 Create a new tag like `v2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
@@ -76,47 +72,12 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 
 4) Publish on PyPI with `pixi run publish-ribasim-python` or `pixi run publish-ribasim-api`
 
-## Wait for TeamCity to build the new release {#sec-teamcity}
-
-Currently TeamCity is set to build a release at the night after it has been tagged.
-
-If this succeeds, the release assets are uploaded to an S3 link with the version number in the URL, as show here:
-
-```
-https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_cli.zip
-https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim-0.6.2-py3-none-any.whl
-https://ribasim.s3.eu-west-3.amazonaws.com/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/v2023.07.0/ribasim_qgis.zip
-```
-
-::: {.callout-note}
-A non-existent version number `v2023.07.0` is used in these links.
-Replace with the version number of the new release.
-Similarly the filename of the Ribasim Python wheel needs to be updated as in @sec-wheel-links.
-:::
 
 ## Do manual checks
 
 Our continuous integration (CI) should have caught most issues.
 A current weak spot in our testing is the QGIS plugin, so it is a good idea to do some manual checks to see if it works properly.
 It is a good idea to load new test models if there are any, or test any other changed functionality.
-
-## Generate and upload test models
-
-The test models are currently not automatically uploaded.
-Create them locally with:
-
-```
-pixi run generate-testmodels
-```
-
-Note that this only includes the test model data, no results.
-And zip the `generated_testmodels` directory to `generated_testmodels.zip`, and add these to the [release assets](https://github.com/Deltares/Ribasim/releases/latest).
-Click the edit pencil icon to be able to upload it.
-
-## Upload artifacts from S3 to GitHub release assets
-
-Again edit the [release assets](https://github.com/Deltares/Ribasim/releases/latest).
-Now upload the files downloaded from S3 as mentioned in @sec-teamcity.
 
 ## Announce release
 

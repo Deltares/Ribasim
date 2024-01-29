@@ -260,10 +260,6 @@ discharge. It can be understood as an empirical description of a basin's
 properties. This can include an outlet, but also the lumped hydraulic behavior of the
 upstream channels.
 
-<!-- Is this still true? -->
-The Tabulated Rating Curve should indicate at which volume no discharge occurs (the dead
-storage volume).
-
 :::{.callout-note}
 Currently, the discharge relies only on the basin's level; it could also use
 the volume of both connected basins to simulate backwater effects, submersion
