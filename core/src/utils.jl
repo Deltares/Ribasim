@@ -1,3 +1,11 @@
+"Get the package version of a given module"
+function pkgversion(m::Module)::VersionNumber
+    rootmodule = Base.moduleroot(m)
+    pkg = Base.PkgId(rootmodule)
+    pkgorigin = get(Base.pkgorigins, pkg, nothing)
+    return pkgorigin.version
+end
+
 "Check that only supported edge types are declared."
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
