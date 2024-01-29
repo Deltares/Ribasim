@@ -10,9 +10,9 @@ This provides insights to decision makers, enabling them to build consensus amon
 water resources optimally considering uncertainties now and in the future.
 
 Ribasim is a water resources simulator composed of three conceptual layers:
-    a physical layer representing water bodies and associated infrastructure,
-    a rule-based control layer to manage the infrastructure, and
-    a priority-based allocation layer to take centralized decisions on user abstractions.
+- a physical layer representing water bodies and associated infrastructure,
+- a rule-based control layer to manage the infrastructure, and
+- a priority-based allocation layer to take centralized decisions on user abstractions.
 
 Typically hydrological processes on land will be represented by other models which can be coupled (online) to Ribasim. Currently, an online
 coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.
