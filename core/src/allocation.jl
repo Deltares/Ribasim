@@ -58,7 +58,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
 
     # For the main network, include nodes that connect the main network to a subnetwork
     # (also includes nodes not in the main network in the input)
-    if allocation_network_id == 1
+    if is_main_network(allocation_network_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 union!(node_ids, connection)
@@ -295,13 +295,13 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
         if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
             from_source_node = graph[id_source].type in allocation_source_nodetypes
 
-            if allocation_network_id == 1
+            if is_main_network(allocation_network_id)
                 if !from_source_node
                     errors = true
                     @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
-                from_main_network = graph[id_source].allocation_network_id == 1
+                from_main_network = is_main_network(graph[id_source].allocation_network_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
@@ -344,7 +344,7 @@ function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int):
     (; main_network_connections) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
-    if allocation_network_id == 1
+    if is_main_network(allocation_network_id)
         for connections in main_network_connections
             union!(edge_ids, connections)
         end
@@ -416,7 +416,7 @@ function add_variables_absolute_value!(
         node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
 
         # For the main network, connections to subnetworks are treated as users
-        if allocation_network_id == 1
+        if is_main_network(allocation_network_id)
             for connections_subnetwork in main_network_connections
                 for connection in connections_subnetwork
                     push!(node_ids_user, connection[2])
@@ -532,7 +532,6 @@ function add_constraints_flow_conservation!(
     allocation_network_id::Int,
 )::Nothing
     (; graph, allocation) = p
-    (; main_network_connections, allocation_network_ids) = allocation
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
@@ -609,7 +608,7 @@ function add_constraints_absolute_value!(
         node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
 
         # For the main network, connections to subnetworks are treated as users
-        if allocation_network_id == 1
+        if is_main_network(allocation_network_id)
             for connections_subnetwork in main_network_connections
                 for connection in connections_subnetwork
                     push!(node_ids_user, connection[2])
@@ -857,7 +856,7 @@ function set_objective_priority!(
     demand_max = 0.0
 
     # Terms for subnetworks as users
-    if allocation_network_id == 1
+    if is_main_network(allocation_network_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
@@ -957,10 +956,10 @@ function assign_allocations!(
 
     # Write the flows to the subnetworks as allocated flows
     # in the allocation object
-    if allocation_network_id == 1
+    if is_main_network(allocation_network_id)
         for (allocation_network_id, main_network_source_edges) in
             zip(allocation_network_ids, main_network_connections)
-            if allocation_network_id == 1
+            if is_main_network(allocation_network_id)
                 continue
             end
             for edge_id in main_network_source_edges
@@ -977,7 +976,6 @@ Adjust the source flows.
 function adjust_source_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
-    t::Float64,
     priority_idx::Int;
     collect_demands::Bool = false,
 )::Nothing
@@ -999,7 +997,7 @@ function adjust_source_capacities!(
                 if edge_id in main_network_source_edges
                     if collect_demands
                         # Set the source capacity to effectively unlimited if subnetwork demands are being collected
-                        source_capacity = prevfloat(Inf)
+                        source_capacity = Inf
                     else
                         # Set the source capacity to the value allocated to the subnetwork over this edge
                         source_capacity = subnetwork_allocateds[edge_id][priority_idx]
@@ -1037,9 +1035,8 @@ function adjust_edge_capacities!(
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; graph, allocation) = p
+    (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
-    (; main_network_connections, allocation_network_ids) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     F = problem[:F]
@@ -1082,7 +1079,6 @@ function allocate!(
 )::Nothing
     (; user, allocation) = p
     (; problem, allocation_network_id) = allocation_model
-    (; allocation_network_ids, main_network_connections) = allocation
     (; priorities) = user
     (; subnetwork_demands) = allocation
 
@@ -1102,7 +1098,7 @@ function allocate!(
     end
 
     for priority_idx in eachindex(priorities)
-        adjust_source_capacities!(allocation_model, p, t, priority_idx; collect_demands)
+        adjust_source_capacities!(allocation_model, p, priority_idx; collect_demands)
 
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1

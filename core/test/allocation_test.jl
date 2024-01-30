@@ -180,7 +180,9 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
     (; allocation, graph) = p
-    (; main_network_connections) = allocation
+    (; main_network_connections, allocation_network_ids) = allocation
+    @test Ribasim.has_main_network(allocation)
+    @test Ribasim.is_main_network(first(allocation_network_ids))
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
