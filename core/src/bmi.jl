@@ -481,10 +481,25 @@ function get_allocation_model(p::Parameters, allocation_network_id::Int)::Alloca
     (; allocation_network_ids, allocation_models) = allocation
     idx = findsorted(allocation_network_ids, allocation_network_id)
     if isnothing(idx)
-        error("Invalid allocation network id $allocation_network_id.")
+        error("Invalid allocation network ID $allocation_network_id.")
     else
         return allocation_models[idx]
     end
+end
+
+function get_main_network_connections(
+    p::Parameters,
+    allocation_network_id::Int,
+)::Vector{Tuple{NodeID, NodeID}}
+    (; allocation) = p
+    (; allocation_network_ids, main_network_connections) = allocation
+    idx = findsorted(allocation_network_ids, allocation_network_id)
+    if isnothing(idx)
+        error("Invalid allocation network ID $allocation_network_id.")
+    else
+        return main_network_connections[idx]
+    end
+    return
 end
 
 """
@@ -588,7 +603,20 @@ end
 "Solve the allocation problem for all users and assign allocated abstractions to user nodes."
 function update_allocation!(integrator)::Nothing
     (; p, t) = integrator
-    for allocation_model in integrator.p.allocation.allocation_models
+    (; allocation) = p
+    (; allocation_models) = allocation
+
+    # If a main network is present, collect demands of subnetworks
+    if has_main_network(allocation)
+        for allocation_model in Iterators.drop(allocation_models, 1)
+            allocate!(p, allocation_model, t; collect_demands = true)
+        end
+    end
+
+    # Solve the allocation problems
+    # If a main network is present this is solved first,
+    # which provides allocation to the subnetworks
+    for allocation_model in allocation_models
         allocate!(p, allocation_model, t)
     end
 end

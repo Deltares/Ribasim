@@ -157,6 +157,12 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         fids = df["fid"]
         assert fids.equals(pd.Series(range(1, len(fids) + 1)))
 
+        query = "select fid from Node"
+        df = pd.read_sql_query(query, connection)
+        assert "fid" in df.columns
+        fids = df["fid"]
+        assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
         query = "select fid from Edge"
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns

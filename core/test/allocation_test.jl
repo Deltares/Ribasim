@@ -1,5 +1,4 @@
 @testitem "Allocation solve" begin
-    using PreallocationTools: get_tmp
     using Ribasim: NodeID
     import SQLite
     import JuMP
@@ -181,7 +180,9 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
     (; allocation, graph) = p
-    (; main_network_connections) = allocation
+    (; main_network_connections, allocation_network_ids) = allocation
+    @test Ribasim.has_main_network(allocation)
+    @test Ribasim.is_main_network(first(allocation_network_ids))
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
@@ -209,4 +210,59 @@ end
           Tuple{NodeID, NodeID}[(6, 24)]
     @test Ribasim.get_allocation_model(p, 7).problem[:source].axes[1] ==
           Tuple{NodeID, NodeID}[(10, 38)]
+end
+
+@testitem "allocation with main network optimization problem" begin
+    using SQLite
+    using Ribasim: NodeID
+    using JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+    p = Ribasim.Parameters(db, cfg)
+    close(db)
+
+    (; allocation, user, graph) = p
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    t = 0.0
+
+    # Collecting demands
+    for allocation_model in allocation_models[2:end]
+        Ribasim.allocate!(p, allocation_model, t; collect_demands = true)
+    end
+
+    @test subnetwork_demands[(NodeID(2), NodeID(11))] ≈ [4.0, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(6), NodeID(24))] ≈ [0.001333333333, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(10), NodeID(38))] ≈ [0.001, 0.002, 0.002]
+
+    # Solving for the main network,
+    # containing subnetworks as users
+    allocation_model = allocation_models[1]
+    (; problem) = allocation_model
+    Ribasim.allocate!(p, allocation_model, t)
+
+    # Main network objective function
+    objective = JuMP.objective_function(problem)
+    objective_variables = keys(objective.terms)
+    F_abs = problem[:F_abs]
+    @test F_abs[NodeID(11)] ∈ objective_variables
+    @test F_abs[NodeID(24)] ∈ objective_variables
+    @test F_abs[NodeID(38)] ∈ objective_variables
+
+    # Running full allocation algorithm
+    Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5)
+    Ribasim.update_allocation!((; p, t))
+
+    @test subnetwork_allocateds[NodeID(2), NodeID(11)] ≈ [4.0, 0.49766666, 0.0]
+    @test subnetwork_allocateds[NodeID(6), NodeID(24)] ≈ [0.00133333333, 0.0, 0.0]
+    @test subnetwork_allocateds[NodeID(10), NodeID(38)] ≈ [0.001, 0.0, 0.0]
+
+    @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
+    @test user.allocated[7] ≈ [0.001, 0.0, 0.0]
 end

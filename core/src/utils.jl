@@ -1263,3 +1263,11 @@ function allocation_path_exists_in_graph(
     end
     return false
 end
+
+function has_main_network(allocation::Allocation)::Bool
+    return first(allocation.allocation_network_ids) == 1
+end
+
+function is_main_network(allocation_network_id::Int)::Bool
+    return allocation_network_id == 1
+end
