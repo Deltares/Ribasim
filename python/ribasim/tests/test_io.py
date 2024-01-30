@@ -1,3 +1,5 @@
+import sqlite3
+
 import pandas as pd
 import pytest
 import ribasim
@@ -129,3 +131,33 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
     __assert_equal(table.df, table_loaded.df)
+
+
+def test_roundtrip(trivial, tmp_path):
+    model1 = trivial
+    model1dir = tmp_path / "model1"
+    model2dir = tmp_path / "model2"
+    # read a model and then write it to a different path
+    model1.write(model1dir / "ribasim.toml")
+    model2 = ribasim.Model(filepath=model1dir / "ribasim.toml")
+    model2.write(model2dir / "ribasim.toml")
+
+    assert (model1dir / "database.gpkg").is_file()
+    assert (model2dir / "database.gpkg").is_file()
+
+    # gpkg_contents contains a last_change column that causes a binary diff
+    # remove that table so we can check if the rest is the same
+    for modeldir in [model1dir, model2dir]:
+        conn = sqlite3.connect(modeldir / "database.gpkg")
+        cursor = conn.cursor()
+        cursor.execute("DROP TABLE gpkg_contents")
+        cursor.execute("VACUUM")
+        conn.commit()
+        conn.close()
+
+    assert (model1dir / "ribasim.toml").read_text() == (
+        model2dir / "ribasim.toml"
+    ).read_text()
+    assert (model1dir / "database.gpkg").read_bytes() == (
+        model2dir / "database.gpkg"
+    ).read_bytes()
