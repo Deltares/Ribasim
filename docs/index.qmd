@@ -4,47 +4,40 @@ title: Ribasim
 
 # Introduction {#sec-introduction}
 
-Decision makers need to balance the supply and demand of water in complex situations at the river basin scale and under increasing pressure from
-climate change. Ribasim provides a free software tool to visualize, evaluate and prioritize water allocation strategies based on their impact.
-This provides insights to decision makers, enabling them to build consensus amongst water users and make smart decisions about how to manage
-water resources optimally considering uncertainties now and in the future.
+Decision makers need to balance the supply and demand of water in complex situations at the river basin scale and under increasing pressure from climate change.
+Ribasim provides a free software tool to visualize, evaluate and prioritize water allocation strategies based on their impact.
+This provides insights to decision makers, enabling them to build consensus amongst water users and make smart decisions about how to manage water resources optimally considering uncertainties now and in the future.
 
 Ribasim is a water resources simulator composed of three conceptual layers:
 - a physical layer representing water bodies and associated infrastructure,
 - a rule-based control layer to manage the infrastructure, and
 - a priority-based allocation layer to take centralized decisions on user abstractions.
 
-Typically hydrological processes on land will be represented by other models which can be coupled (online) to Ribasim. Currently, an online
-coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.
-This version of Ribasim is the follow up of the legacy fortran kernel of Ribasim (version 7) applied world wide, the fortran kernel SIMRES
-applied in the Netherlands, and the surface water models Distribution Model and Mozart of the Dutch National Hydrologhical Instrument.
-
+Typically hydrological processes on land will be represented by other models which can be coupled (online) to Ribasim.
+Currently, an online coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.
+This version of Ribasim is the follow up of the legacy fortran kernel of Ribasim (version 7) applied world wide, the fortran kernel SIMRES applied in the Netherlands, and the surface water models Distribution Model and Mozart of the Dutch National Hydrologhical Instrument.
 
 # Conceptualization {#sec-conceptualization}
 
 ## The physical layer {#sec-physical}
 
-To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected
-representative elementary watersheds ([Reggiani, Sivapalan, and Majid Hassanizadeh 1998](https://deltares.github.io/Ribasim/#ref-REGGIANI1998367)).
-Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an
-area. Basins are chained in a graph with connector nodes determining the exchange of water between the basins. These connector nodes can represent
-open water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or
-weirs.
+To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected representative elementary watersheds ([Reggiani, Sivapalan, and Majid Hassanizadeh 1998](https://deltares.github.io/Ribasim/#ref-REGGIANI1998367)).
+Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an area.
+Basins are chained in a graph with connector nodes determining the exchange of water between the basins.
+These connector nodes can representvopen water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or weirs.
 
 ## The control layer {#sec-control}
 
-Infrastructure elements are often controlled by humans to implement a certain water management strategy. Ribasim allows the configuration of
-conditional rules to influence the exchange of water between basins, either by setting inflow or outflow, or by controlling a water level.
+Infrastructure elements are often controlled by humans to implement a certain water management strategy.
+Ribasim allows the configuration of conditional rules to influence the exchange of water between basins, either by setting inflow or outflow, or by controlling a water level.
 Control rules evaluate one or multiple conditions to change a parameter setting of an infrastructure element when the conditional criteria are met.
-Conditions can be either calculated values within the network as well as boundary conditions or (todo) external observations, i.e. observation
-values external to the model.
+Conditions can be either calculated values within the network as well as boundary conditions or (todo) external observations, i.e. observation values external to the model.
 
 ## The allocation layer {#sec-allocation}
 
-Ribasim allows water users (water demands) to abstract water from the basins (i.e. from the physical layer) unless the water level drops below a
-minimum level. Under dry conditions, water managers may want to prioritize some abstractions over other abstractions. The Ribasim allocation layer
-can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available
-in the system for the higher-priority demands.
+Ribasim allows water users (water demands) to abstract water from the basins (i.e. from the physical layer) unless the water level drops below a minimum level.
+Under dry conditions, water managers may want to prioritize some abstractions over other abstractions.
+The Ribasim allocation layer can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available in the system for the higher-priority demands.
 
 The layers and the main components and dataflows between the layers are shown in the next figure:
 
@@ -87,15 +80,15 @@ classDef layer fill:transparent,stroke-dasharray:5 5
 **Nested allocation**
 
 Since water systems may be extensive, like in the Netherlands, Ribasim models may become massive networks with multiple 10,000’s of nodes.
-To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a main network
-and multiple sub-networks. The allocation will then be conducted in three steps:
+To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a main network and multiple sub-networks.
+The allocation will then be conducted in three steps:
 
 1. conduct an inventory of demands from the sub-networks to inlets from the main network,
 2. allocate the available water in the main network to the subnetworks inlets,
 3. allocate the assigned water within each subnetwork to the individual water users.
 
-The users then will request this updated demand from the rule-based simulation. Whether this updated demand is indeed abstracted depends on
-all dry-fall control mechanism implemented in the rule-based simulation.
+The users then will request this updated demand from the rule-based simulation.
+Whether this updated demand is indeed abstracted depends on all dry-fall control mechanism implemented in the rule-based simulation.
 
 The following sequence diagram illustrates this calculation process.
 
@@ -160,19 +153,16 @@ classDef system_ext fill:#D2D2D2
 classDef boundary fill:transparent,stroke-dasharray:5 5
 ```
 
-The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source
-Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
+The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
-Ribasim has two API’s, both written in the Python programming language. The [Ribasim python package](https://deltares.github.io/Ribasim/python/)
-offers an API to build, update and analyze Ribasim models programmatically.
-For runtime data exchange and coupling with other models, ribasim_api is utilized which implements the Basic Modelling Interface
-[BMI](https://bmi-spec.readthedocs.io/en/latest/).
+Ribasim has two API’s, both written in the Python programming language.
+The [Ribasim python package](https://deltares.github.io/Ribasim/python/) offers an API to build, update and analyze Ribasim models programmatically.
+For runtime data exchange and coupling with other models, ribasim_api is utilized which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
 
 The Ribasim QGIS plugin allows users to construct a model from scratch without programming.
 For specific tasks, like adding observed rainfall timeseries, it can be faster to use Python instead.
 
-One can also use Ribasim Python to build entire models from base data, such that your model
-setup is fully reproducible.
+One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
 See [Usage](https://deltares.github.io/Ribasim/core/usage.html) for more information.
 
@@ -183,8 +173,7 @@ See [Usage](https://deltares.github.io/Ribasim/core/usage.html) for more informa
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
-The Ribasim python package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
-be installed with [pip](https://docs.python.org/3/installing/index.html):
+The Ribasim python package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html):
 ```
 pip install ribasim
 ```
