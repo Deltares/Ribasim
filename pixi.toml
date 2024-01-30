@@ -41,11 +41,11 @@ build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
 ] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
-    "quartodoc-build",
+    "quartodoc-build", "generate-testmodels"
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
 quarto-render = { cmd = "julia --project=docs --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
-    "quartodoc-build",
+    "quartodoc-build", "generate-testmodels"
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
 # Lint
