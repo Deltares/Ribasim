@@ -67,7 +67,7 @@ def invalid_qh_model():
 
     rating_curve_static = pd.DataFrame(
         # Invalid: levels must not be repeated
-        data={"node_id": [1, 1], "level": [0.0, 0.0], "discharge": [1.0, 2.0]}
+        data={"node_id": [1, 1], "level": [0.0, 0.0], "flow_rate": [1.0, 2.0]}
     )
     rating_curve_time = pd.DataFrame(
         data={
@@ -78,7 +78,7 @@ def invalid_qh_model():
             ],
             # Invalid: levels must not be repeated
             "level": [0.0, 0.0],
-            "discharge": [1.0, 2.0],
+            "flow_rate": [1.0, 2.0],
         }
     )
 
@@ -195,7 +195,7 @@ def invalid_fractional_flow_model():
     # Setup the tabulated rating curve:
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
-            data={"node_id": [7, 7], "level": [0.0, 1.0], "discharge": [0.0, 50.0]}
+            data={"node_id": [7, 7], "level": [0.0, 1.0], "flow_rate": [0.0, 50.0]}
         )
     )
 

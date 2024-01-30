@@ -7,7 +7,7 @@
 name=Ribasim-QGIS
 qgisMinimumVersion=3.0
 description=QGIS plugin to setup Ribasim models
-version=0.6
+version=0.7
 author=Deltares and contributors
 email=ribasim.info@deltares.nl
 

@@ -57,6 +57,17 @@ def test_update_until(libribasim, basic, tmp_path):
     assert actual_time == pytest.approx(expected_time)
 
 
+def test_update_subgrid_level(libribasim, basic, tmp_path):
+    basic.write(tmp_path / "ribasim.toml")
+    config_file = str(tmp_path / "ribasim.toml")
+    libribasim.initialize(config_file)
+    libribasim.update_subgrid_level()
+    level = libribasim.get_value_ptr("subgrid_level")
+    # The subgrid levels are initialized with NaN.
+    # After calling update, they should have regular values.
+    assert np.isfinite(level).all()
+
+
 def test_get_var_type(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
@@ -115,7 +126,6 @@ def test_get_component_name(libribasim):
     assert libribasim.get_component_name() == "Ribasim"
 
 
-@pytest.mark.skip("https://github.com/Deltares/Ribasim/issues/364")
 def test_get_version(libribasim):
     toml_path = Path(__file__).parents[3] / "core" / "Project.toml"
     with open(toml_path, mode="rb") as fp:

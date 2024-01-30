@@ -261,7 +261,7 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
     control_state::Union{Missing, String}
 end
 
@@ -269,7 +269,7 @@ end
     node_id::Int
     time::DateTime
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
 end
 
 @version TerminalStaticV1 begin
