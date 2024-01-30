@@ -446,6 +446,17 @@ struct Parameters{T, C1, C2}
         Float64,
     }
     allocation_models::Vector{AllocationModel}
+    # TODO: Move to p.allocation
+    allocation_record::@NamedTuple{
+        time::Vector{Float64},
+        edge_id::Vector{Int},
+        from_node_id::Vector{Int},
+        to_node_id::Vector{Int},
+        allocation_network_id::Vector{Int},
+        priority::Vector{Int},
+        flow::Vector{Float64},
+        # gathering_demands::BitVector
+    }
     basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance

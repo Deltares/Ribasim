@@ -793,6 +793,16 @@ function Parameters(db::DB, config::Config)::Parameters
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
     allocation_models = Vector{AllocationModel}()
+    allocation_record = (;
+        time = Float64[],
+        edge_id = Int[],
+        from_node_id = Int[],
+        to_node_id = Int[],
+        allocation_network_id = Int[],
+        priority = Int[],
+        flow = Float64[],
+        # BitVector()
+    )
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
@@ -830,6 +840,7 @@ function Parameters(db::DB, config::Config)::Parameters
         config.starttime,
         graph,
         allocation_models,
+        allocation_record,
         basin,
         linear_resistance,
         manning_resistance,

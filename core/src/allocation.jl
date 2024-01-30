@@ -898,6 +898,28 @@ function adjust_edge_capacities!(
     end
 end
 
+function save_allocation_flows!(
+    p::Parameters,
+    t::Float64,
+    allocation_model::AllocationModel,
+    priority::Int,
+)::Nothing
+    (; problem, allocation_network_id) = allocation_model
+    (; allocation_record, graph) = p
+    F = problem[:F]
+
+    for allocation_edge in first(F.axes)
+        push!(allocation_record.time, t)
+        push!(allocation_record.edge_id, graph[allocation_edge...].id)
+        push!(allocation_record.from_node_id, allocation_edge[1])
+        push!(allocation_record.to_node_id, allocation_edge[2])
+        push!(allocation_record.allocation_network_id, allocation_network_id)
+        push!(allocation_record.priority, priority)
+        push!(allocation_record.flow, JuMP.value(F[allocation_edge]))
+    end
+    return nothing
+end
+
 """
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the users.
@@ -935,5 +957,8 @@ function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)
 
         # Assign the allocations to the users for this priority
         assign_allocations!(allocation_model, p, t, priority_idx)
+
+        # Save the flows over all edges in the subnetwork
+        save_allocation_flows!(p, t, allocation_model, priorities[priority_idx])
     end
 end
