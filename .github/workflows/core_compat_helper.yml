@@ -40,7 +40,6 @@ jobs:
           CompatHelper.main(; subdirs=[
               "core",
               "build/libribasim",
-              "build/ribasim_cli"
           ])
         shell: julia --color=yes {0}
         env:

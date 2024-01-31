@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "b7b3a6a72e674f9d721af279d67faf1f8110aa05"
+project_hash = "6fe4cbe89d85dfdb47577a7dbbb0ab70f3d1a748"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -1682,9 +1682,3 @@ version = "1.52.0+1"
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 version = "17.4.0+2"
-
-[[deps.ribasim_cli]]
-deps = ["Dates", "Logging", "Ribasim", "SciMLBase", "TOML", "TerminalLoggers"]
-path = "build/ribasim_cli"
-uuid = "e45c999e-e944-4589-a8e6-7d0b7a60140a"
-version = "0.1.0"

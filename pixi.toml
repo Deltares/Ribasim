@@ -78,7 +78,7 @@ remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\")
 # Test
 test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
-test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/create_binaries/tests/temp --junitxml=report.xml build/create_binaries/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
