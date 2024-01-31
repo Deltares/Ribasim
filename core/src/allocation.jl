@@ -45,14 +45,17 @@ If the edge does not exist, it is created.
 """
 function indicate_allocation_flow!(
     graph::MetaGraph,
-    id_src::NodeID,
-    id_dst::NodeID,
+    node_ids::AbstractVector{NodeID},
 )::Nothing
+    id_src = first(node_ids)
+    id_dst = last(node_ids)
+
     if !haskey(graph, id_src, id_dst)
-        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true)
+        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true, node_ids)
     else
         edge_metadata = graph[id_src, id_dst]
         edge_metadata = @set edge_metadata.allocation_flow = true
+        edge_metadata = @set edge_metadata.node_ids = node_ids
     end
     graph[id_src, id_dst] = edge_metadata
     return nothing
@@ -93,7 +96,7 @@ function find_allocation_graph_edges!(
                     if is_allocation_source(graph, node_id, inneighbor_id)
                         continue
                     end
-                    indicate_allocation_flow!(graph, inneighbor_id, node_id)
+                    indicate_allocation_flow!(graph, [inneighbor_id, node_id])
                     push!(edge_ids, (inneighbor_id, node_id))
                     # These direct connections cannot have capacity constraints
                     capacity[node_id, inneighbor_id] = Inf
@@ -107,7 +110,7 @@ function find_allocation_graph_edges!(
                     if is_allocation_source(graph, outneighbor_id, node_id)
                         continue
                     end
-                    indicate_allocation_flow!(graph, node_id, outneighbor_id)
+                    indicate_allocation_flow!(graph, [node_id, outneighbor_id])
                     push!(edge_ids, (node_id, outneighbor_id))
                     # if subnetwork_outneighbor_id in user.node_id: Capacity depends on user demand at a given priority
                     # else: These direct connections cannot have capacity constraints
@@ -227,13 +230,13 @@ function process_allocation_graph_edges!(
 
         # Add composite allocation graph edge(s)
         if positive_flow
-            indicate_allocation_flow!(graph, node_id_1, node_id_2)
+            indicate_allocation_flow!(graph, edge_composite)
             capacity[node_id_1, node_id_2] = edge_capacity
             push!(edge_ids, (node_id_1, node_id_2))
         end
 
         if negative_flow
-            indicate_allocation_flow!(graph, node_id_2, node_id_1)
+            indicate_allocation_flow!(graph, reverse(edge_composite))
             capacity[node_id_2, node_id_1] = edge_capacity
             push!(edge_ids, (node_id_2, node_id_1))
         end
@@ -290,6 +293,7 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
             edge_metadata = graph[node_id_user, node_id_return_flow]
             graph[node_id_user, node_id_return_flow] =
                 @set edge_metadata.allocation_flow = false
+            empty!(edge_metadata.node_ids)
             delete!(edge_ids, (node_id_user, node_id_return_flow))
             @debug "The outflow of user $node_id_user is upstream of the user itself and thus ignored in allocation solves."
         end
@@ -898,6 +902,9 @@ function adjust_edge_capacities!(
     end
 end
 
+"""
+Save the allocation flows per physical edge.
+"""
 function save_allocation_flows!(
     p::Parameters,
     t::Float64,
@@ -909,13 +916,19 @@ function save_allocation_flows!(
     F = problem[:F]
 
     for allocation_edge in first(F.axes)
-        push!(allocation_record.time, t)
-        push!(allocation_record.edge_id, graph[allocation_edge...].id)
-        push!(allocation_record.from_node_id, allocation_edge[1])
-        push!(allocation_record.to_node_id, allocation_edge[2])
-        push!(allocation_record.allocation_network_id, allocation_network_id)
-        push!(allocation_record.priority, priority)
-        push!(allocation_record.flow, JuMP.value(F[allocation_edge]))
+        flow = JuMP.value(F[allocation_edge])
+        edge_metadata = graph[allocation_edge...]
+        (; node_ids) = edge_metadata
+
+        for i in eachindex(node_ids)[1:(end - 1)]
+            push!(allocation_record.time, t)
+            push!(allocation_record.edge_id, edge_metadata.id)
+            push!(allocation_record.from_node_id, node_ids[i])
+            push!(allocation_record.to_node_id, node_ids[i + 1])
+            push!(allocation_record.allocation_network_id, allocation_network_id)
+            push!(allocation_record.priority, priority)
+            push!(allocation_record.flow, flow)
+        end
     end
     return nothing
 end

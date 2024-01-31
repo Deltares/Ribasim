@@ -42,6 +42,8 @@ allocation_network_id_source: ID of allocation network where this edge is a sour
 from_id: the node ID of the source node
 to_id: the node ID of the destination node
 allocation_flow: whether this edge has a flow in an allocation graph
+node_ids: if this edge has allocation flow, these are all the
+    nodes from the physical layer this edge consists of
 """
 struct EdgeMetadata
     id::Int
@@ -50,6 +52,7 @@ struct EdgeMetadata
     from_id::NodeID
     to_id::NodeID
     allocation_flow::Bool
+    node_ids::Vector{NodeID}
 end
 
 abstract type AbstractParameterNode end
