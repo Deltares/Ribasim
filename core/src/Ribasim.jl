@@ -68,6 +68,8 @@ using Tables: Tables, AbstractRow, columntable, getcolumn
 using TerminalLoggers: TerminalLogger
 using TimerOutputs
 
+export libribasim
+
 const to = TimerOutput()
 TimerOutputs.complement!()
 
@@ -84,5 +86,6 @@ include("create.jl")
 include("bmi.jl")
 include("consts.jl")
 include("main.jl")
+include("libribasim.jl")
 
 end  # module Ribasim
