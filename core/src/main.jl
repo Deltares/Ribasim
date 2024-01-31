@@ -8,6 +8,7 @@ main(toml_path::AbstractString)::Cint = main([toml_path])
 
 """
     main(ARGS::Vector{String})::Cint
+
 This is the main entry point of the application.
 Performs argument parsing and sets up logging for both terminal and file.
 Calls Ribasim.run() and handles exceptions to convert to exit codes.

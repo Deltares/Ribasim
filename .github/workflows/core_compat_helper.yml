@@ -39,8 +39,6 @@ jobs:
           import CompatHelper
           CompatHelper.main(; subdirs=[
               "core",
-              "docs",
-              "build/create_binaries",
               "build/libribasim",
               "build/ribasim_cli"
           ])
