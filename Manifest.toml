@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "fb706d7cc7064ca9c29d0467e5734f8d1d58738d"
+project_hash = "1a68754569dae741c9232c9ae2db3512f52c2b80"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -1660,12 +1660,6 @@ version = "1.5.5+0"
 deps = ["Artifacts", "LibGit2", "PackageCompiler", "TOML", "TimeZones"]
 path = "build/create_binaries"
 uuid = "3cfb6a46-05f0-43df-bb16-bf763deb14b4"
-version = "0.1.0"
-
-[[deps.docs]]
-deps = ["Configurations", "DataFrames", "Dates", "Documenter", "DocumenterMarkdown", "IJulia", "InteractiveUtils", "JSON3", "Legolas", "Logging", "MarkdownTables", "OrderedCollections", "Ribasim"]
-path = "docs"
-uuid = "8daea9ca-fc6c-4731-aa85-717fa0b706bc"
 version = "0.1.0"
 
 [[deps.libblastrampoline_jll]]
