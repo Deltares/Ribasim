@@ -4,9 +4,11 @@ title: Ribasim
 
 # Introduction {#sec-introduction}
 
-Decision makers need to balance the supply and demand of water in complex situations at the river basin scale and under increasing pressure from climate change.
-Ribasim provides a free software tool to visualize, evaluate and prioritize water allocation strategies based on their impact.
-This provides insights to decision makers, enabling them to build consensus amongst water users and make smart decisions about how to manage water resources optimally considering uncertainties now and in the future.
+Decision makers need to balance the supply and demand of water at the river basin scale, under increasing environmental pressure.
+Ribasim allows users to model basins under current and changing conditions to evaluate and design the water system.
+It is available as free and open source software under the MIT license.
+Besides a model simulation core, Ribasim also includes tooling to assit in building models from basic datasets and visualize results.
+The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.
 
 Ribasim is a water resources simulator composed of three conceptual layers:
 - a physical layer representing water bodies and associated infrastructure,
