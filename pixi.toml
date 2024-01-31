@@ -36,7 +36,7 @@ initialize-julia = { depends_on = [
     "instantiate-julia",
 ] }
 # Docs
-build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
+build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
     "initialize-julia",
 ] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
@@ -44,7 +44,7 @@ quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build", "generate-testmodels"
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project=docs --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build", "generate-testmodels"
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
@@ -88,7 +88,7 @@ test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.tes
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl" }
+generate-schema = { cmd = "julia --project docs/gen_schema.jl" }
 generate-python = "datamodel-codegen --output-model-type pydantic_v2.BaseModel --base-class ribasim.input_base.BaseModel --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 # Publish
