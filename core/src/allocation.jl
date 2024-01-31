@@ -693,11 +693,12 @@ end
 Set the objective for the given priority.
 For an objective with absolute values this also involves adjusting constraints.
 """
-function set_objective_priority!(
+function set_objective!(
     allocation_model::AllocationModel,
     p::Parameters,
     t::Float64,
     priority_idx::Int,
+    demand_type::Symbol,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
     (; graph, user) = p
@@ -721,6 +722,9 @@ function set_objective_priority!(
 
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
+
+        end
+
         demand_max = max(demand_max, d)
         F_edge = F[edge_id]
 
@@ -827,7 +831,7 @@ Adjust the source flows.
 function adjust_source_flows!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int,
+    is_first::Bool,
 )::Nothing
     (; problem) = allocation_model
     (; graph) = p
@@ -840,7 +844,7 @@ function adjust_source_flows!(
     for edge_id in edge_ids
         # If it is a source edge.
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
-            if priority_idx == 1
+            if is_first
                 # Reset the source to the current flow.
                 JuMP.set_normalized_rhs(
                     source_constraints[edge_id],
@@ -868,7 +872,7 @@ Set the values of the edge capacities. 2 cases:
 function adjust_edge_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int,
+    is_first::Bool,
 )::Nothing
     (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
@@ -884,7 +888,7 @@ function adjust_edge_capacities!(
             continue
         end
 
-        if priority_idx == 1
+        if is_first
             # Before the first allocation solve, set the edge capacities to their full capacity
             JuMP.set_normalized_rhs(constraints_capacity[edge_id], c)
         else
@@ -898,42 +902,52 @@ function adjust_edge_capacities!(
     end
 end
 
+function optimize!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+    priority_idx::Int,
+    demand_type::Symbol;
+    is_first::Bool = false,
+)::Nothing
+    (; problem) = allocation_model
+
+    adjust_source_flows!(allocation_model, p, is_first)
+
+    # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
+    # or set edge capacities if priority_idx = 1
+    adjust_edge_capacities!(allocation_model, p, is_first)
+
+    # Set the objective depending on the demands
+    # A new objective function is set instead of modifying the coefficients
+    # of an existing objective function because this is not supported for
+    # quadratic terms:
+    # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
+    set_objective!(allocation_model, p, t, priority_idx, demand_type)
+
+    # Solve the allocation problem for this priority
+    JuMP.optimize!(problem)
+    @debug JuMP.solution_summary(problem)
+    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+        error("Allocation coudn't find optimal solution.")
+    end
+
+    # Assign the allocations to the users for this priority
+    assign_allocations!(allocation_model, p, t, priority_idx)
+    return nothing
+end
+
 """
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the users.
 """
 function allocate!(p::Parameters, allocation_model::AllocationModel, t::Float64)::Nothing
     (; user) = p
-    (; problem) = allocation_model
     (; priorities) = user
 
-    # TODO: Compute basin flow from vertical fluxes and basin volume.
-    # Set as basin demand if the net flow is negative, set as source
-    # in the flow_conservation constraints if the net flow is positive.
-    # Solve this as a separate problem before the priorities below
+    optimize!(allocation_model, p, t, 0, :basin; is_first = true)
 
     for priority_idx in eachindex(priorities)
-        adjust_source_flows!(allocation_model, p, priority_idx)
-
-        # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
-        # or set edge capacities if priority_idx = 1
-        adjust_edge_capacities!(allocation_model, p, priority_idx)
-
-        # Set the objective depending on the demands
-        # A new objective function is set instead of modifying the coefficients
-        # of an existing objective function because this is not supported for
-        # quadratic terms:
-        # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_priority!(allocation_model, p, t, priority_idx)
-
-        # Solve the allocation problem for this priority
-        JuMP.optimize!(problem)
-        @debug JuMP.solution_summary(problem)
-        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-            error("Allocation coudn't find optimal solution.")
-        end
-
-        # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p, t, priority_idx)
+        optimize!(allocation_model, p, t, priority_idx, :user)
     end
 end

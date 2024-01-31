@@ -5,6 +5,7 @@ description = "Meta-project used to share the Manifest of Ribasim and its depend
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
