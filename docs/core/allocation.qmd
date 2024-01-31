@@ -32,7 +32,7 @@ Sources are indicated by a set of edges in the subnetwork
 $$
 E_S^\text{source} \subset \left(S \times S\right) \cap E.
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model description](equations.qmd#formal-model-description)) is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level- or flowboundary) or connect the main network to a subnetwork.
+That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model description](equations.qmd#formal-model-description)) is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork.
 
 ### User demands
 
@@ -236,11 +236,7 @@ using Ribasim
 using SQLite
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-cfg = Ribasim.Config(toml_path)
-db_path = Ribasim.input_path(cfg, cfg.database)
-db = SQLite.DB(db_path)
-p = Ribasim.Parameters(db, cfg)
-close(db)
+p = Ribasim.Model(toml_path).integrator.p
 
 allocation_model = p.allocation_models[1]
 t = 0.0
