@@ -35,10 +35,10 @@ Out[6]: 0
 ```
 """
 function build_lib()
-    project_dir = "../../core"
-    license_file = "../../LICENSE"
+    project_dir = "../core"
+    license_file = "../LICENSE"
     output_dir = "libribasim"
-    git_repo = "../.."
+    git_repo = ".."
 
     create_library(
         project_dir,

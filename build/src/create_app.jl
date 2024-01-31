@@ -24,10 +24,10 @@ ribasim path/to/model/ribasim.toml
 ```
 """
 function build_app()
-    project_dir = "../../core"
-    license_file = "../../LICENSE"
+    project_dir = "../core"
+    license_file = "../LICENSE"
     output_dir = "ribasim_cli"
-    git_repo = "../.."
+    git_repo = ".."
 
     create_app(
         project_dir,

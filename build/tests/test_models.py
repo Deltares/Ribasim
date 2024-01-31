@@ -18,13 +18,7 @@ def test_ribasim_cli(model_constructor, tmp_path):
 
     extension = ".exe" if platform.system() == "Windows" else ""
 
-    executable = (
-        Path(__file__).parents[2]
-        / "create_binaries"
-        / "ribasim_cli"
-        / "bin"
-        / f"ribasim{extension}"
-    )
+    executable = Path(__file__).parent / "ribasim_cli" / "bin" / f"ribasim{extension}"
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
     if model_constructor.__name__.startswith("invalid_"):

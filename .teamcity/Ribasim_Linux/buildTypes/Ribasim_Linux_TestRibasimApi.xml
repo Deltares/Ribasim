@@ -77,7 +77,7 @@ pixi run test-ribasim-api]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildLibribasim" cleanDestination="true">
         <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" branch="+:&lt;default&gt;&#xD;&#xA;+:ref" />
-        <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/create_binaries/libribasim&#xD;&#xA;" />
+        <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/libribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
