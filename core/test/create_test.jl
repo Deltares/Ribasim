@@ -64,7 +64,6 @@ end
     push!(node_ids[2], Ribasim.NodeID(4))
     push!(node_ids[2], Ribasim.NodeID(5))
     push!(node_ids[2], Ribasim.NodeID(6))
-    #node_ids = Dict([(1, Set(NodeID(1))), (2, Set(NodeID(2)))])
 
     graph[Ribasim.NodeID(1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
     graph[Ribasim.NodeID(2)] = Ribasim.NodeMetadata(Symbol(:denhaag), 1)
