@@ -38,11 +38,8 @@ jobs:
         run: |
           import CompatHelper
           CompatHelper.main(; subdirs=[
+              ".",
               "core",
-              "docs",
-              "build/create_binaries",
-              "build/libribasim",
-              "build/ribasim_cli"
           ])
         shell: julia --color=yes {0}
         env:

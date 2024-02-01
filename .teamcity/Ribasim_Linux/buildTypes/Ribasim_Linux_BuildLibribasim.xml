@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build\create_binaries\libribasim =&gt; libribasim.zip" />
+      <option name="artifactRules" value="ribasim\build\libribasim =&gt; libribasim.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />

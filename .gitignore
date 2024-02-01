@@ -10,8 +10,8 @@ docs/build/
 docs/site/
 
 /generated_testmodels
-build/create_binaries/ribasim_cli/
-build/create_binaries/libribasim/
+build/ribasim_cli/
+build/libribasim/
 
 JuliaSysimage.dll
 LocalPreferences.toml
@@ -147,7 +147,7 @@ dmypy.json
 .pyre/
 
 /.luarc.json
-build/ribasim_cli/tests/temp/
+build/tests/temp/
 python/ribasim_api/tests/temp/
 report.xml
 /utils/juliaup

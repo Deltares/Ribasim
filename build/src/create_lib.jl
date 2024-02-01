@@ -1,13 +1,14 @@
+"""
 # Libribasim
 
 Libribasim is a shared library that exposes Ribasim functionality to external (non-Julian)
 programs. It can be compiled using [PackageCompiler's
-create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html) , which is set
-up in this directory. The C API that is offered to control Ribasim is the C API of the [Basic
-Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
+create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html), which is set
+up in this directory. The C API that is offered to control Ribasim is the C API of the
+[Basic Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
 
 Not all BMI functions are implemented yet, this has been set up as a proof of concept to
-demonstrate that we could use other software such as
+demonstrate that we can use other software such as
 [`imod_coupler`](https://github.com/Deltares/imod_coupler) to control Ribasim and couple it to
 other models.
 
@@ -30,3 +31,22 @@ Out[5]: 0
 In [6]: c_dll.update()
 Out[6]: 0
 ```
+"""
+function build_lib()
+    project_dir = "../core"
+    license_file = "../LICENSE"
+    output_dir = "libribasim"
+    git_repo = ".."
+
+    create_library(
+        project_dir,
+        output_dir;
+        lib_name = "libribasim",
+        precompile_execution_file = "precompile.jl",
+        include_lazy_artifacts = true,
+        force = true,
+    )
+
+    readme = @doc(build_app)
+    add_metadata(project_dir, license_file, output_dir, git_repo, readme)
+end
