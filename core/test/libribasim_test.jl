@@ -1,8 +1,4 @@
 @testitem "libribasim" begin
-    import BasicModelInterface as BMI
-
-    include("../../build/libribasim/src/libribasim.jl")
-
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     # data from which we create pointers for libribasim

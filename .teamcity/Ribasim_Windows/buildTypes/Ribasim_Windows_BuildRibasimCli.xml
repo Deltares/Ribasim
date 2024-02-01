@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli_windows.zip" />
+      <option name="artifactRules" value="ribasim\build/ribasim_cli =&gt; ribasim_cli_windows.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
     </options>
@@ -30,7 +30,7 @@ pixi run build-ribasim-cli]]></param>
       <runner id="RUNNER_1932" name="Get version from Ribasim" type="simpleRunner">
         <parameters>
           <param name="script.content" value="ribasim --version" />
-          <param name="teamcity.build.workingDir" value="ribasim/build/create_binaries/ribasim_cli" />
+          <param name="teamcity.build.workingDir" value="ribasim/build/ribasim_cli" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>

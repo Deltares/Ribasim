@@ -1,7 +1,7 @@
 module libribasim
 
 import BasicModelInterface as BMI
-using Ribasim
+import ..Ribasim
 
 # globals
 model::Union{Ribasim.Model, Nothing} = nothing

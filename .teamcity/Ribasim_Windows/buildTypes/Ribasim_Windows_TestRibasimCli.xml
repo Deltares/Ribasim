@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build\ribasim_cli\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\build\tests\temp =&gt; test_output.zip" />
       <option name="cleanBuild" value="true" />
     </options>
     <parameters>
@@ -82,7 +82,7 @@
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_windows.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_cli_windows.zip!** =&gt; ribasim/build/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>

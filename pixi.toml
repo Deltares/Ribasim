@@ -61,15 +61,15 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
+build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build/create_binaries", depends_on = [
+build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_binaries", depends_on = [
+build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -78,7 +78,7 @@ remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\")
 # Test
 test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
-test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
