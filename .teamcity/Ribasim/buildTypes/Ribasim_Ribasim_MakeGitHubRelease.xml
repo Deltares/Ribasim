@@ -13,27 +13,9 @@
 set -euxo pipefail
 . /usr/share/Modules/init/bash
 
-module load github
-# Get the name of the currently checked out tag
-tag_name=$(git describe --tags --exact-match 2>/dev/null)
-
-# Check if a tag is checked out
-if [ -n "$tag_name" ]; then
-    echo "Currently checked out tag: $tag_name"
-
-    # Create a release using gh
-    gh release create "$tag_name" \
-        --generate-notes \
-        ribasim_cli_linux.zip \
-        ribasim_cli_windows.zip \
-        ribasim_qgis.zip \
-        generated_testmodels.zip
-
-    echo "Release created successfully."
-
-else
-    echo "No tag is currently checked out."
-fi]]></param>
+module load pixi
+pixi run github-release
+]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -130,4 +112,3 @@ fi]]></param>
     </cleanup>
   </settings>
 </build-type>
-

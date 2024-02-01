@@ -122,6 +122,8 @@ install-qgis-plugins = { depends_on = [
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
 ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
+# Release
+github-release = "python utils/github-release.py"
 
 [dependencies]
 build = "*"
@@ -161,6 +163,7 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
+gh = "2.43.1.*"
 
 [target.win-64.dependencies]
 quarto = "*"
