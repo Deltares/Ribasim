@@ -673,7 +673,7 @@ function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int, Set{NodeID}
     return errors
 end
 
-function non_positive_id(graph::MetaGraph)::Bool
+function non_positive_allocation_network_id(graph::MetaGraph)::Bool
     errors = false
     for allocation_network_id in keys(graph[].node_ids)
         if (allocation_network_id <= 0)

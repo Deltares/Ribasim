@@ -34,7 +34,7 @@
 
     logger = TestLogger()
     with_logger(logger) do
-        Ribasim.non_positive_id(graph)
+        Ribasim.non_positive_allocation_network_id(graph)
     end
 
     @test length(logger.logs) == 2

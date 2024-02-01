@@ -199,7 +199,7 @@ const nonconservative_nodetypes =
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; graph, allocation_models) = p
 
-    errors = non_positive_id(graph)
+    errors = non_positive_allocation_network_id(graph)
 
     if errors
         error("Allocation network initialization failed.")
