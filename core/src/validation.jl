@@ -660,3 +660,50 @@ function valid_subgrid(
 
     return !errors
 end
+
+function valid_demand(
+    node_id::Vector{NodeID},
+    demand::Vector{
+        Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
+    },
+    priorities::Vector{Int},
+)::Bool
+    errors = false
+
+    for (col, id) in zip(demand, node_id)
+        for (demand_p_itp, p_itp) in zip(col, priorities)
+            if any(demand_p_itp.u .< 0.0)
+                @error "Demand of user node $id with priority $p_itp should be non-negative"
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+function valid_connection(graph::MetaGraph)::Bool
+    return is_connected(graph)
+end
+
+function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int, Set{NodeID}})::Bool
+    errors = false
+    for (allocation_network_id, subnetwork_node_ids) in node_ids
+        subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
+        if (!is_connected(subnetwork))
+            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            errors = true
+        end
+    end
+    return errors
+end
+
+function non_positive_id(graph::MetaGraph)::Bool
+    errors = false
+    for allocation_network_id in keys(graph[].node_ids)
+        if (allocation_network_id <= 0)
+            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+            errors = true
+        end
+    end
+    return errors
+end

@@ -199,6 +199,12 @@ const nonconservative_nodetypes =
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; graph, allocation_models) = p
 
+    errors = non_positive_id(graph)
+
+    if errors
+        error("Allocation network initialization failed.")
+    end
+
     for allocation_network_id in keys(graph[].node_ids)
         push!(
             allocation_models,
@@ -691,7 +697,7 @@ function User(db::DB, config::Config)::User
             first_row = time[first_row_idx]
             is_active = true
         else
-            @error "User node #$node_id data not in any table."
+            @error "User node $node_id data not in any table."
             errors = true
         end
 

@@ -3,6 +3,9 @@ authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 description = "Meta-project used to share the Manifest of Ribasim and its dependents"
 
 [deps]
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
