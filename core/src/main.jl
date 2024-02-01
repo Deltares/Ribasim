@@ -5,9 +5,12 @@ function help(x::AbstractString)::Cint
 end
 
 main(toml_path::AbstractString)::Cint = main([toml_path])
+main()::Cint = main(ARGS)
 
 """
+    main(toml_path::AbstractString)::Cint
     main(ARGS::Vector{String})::Cint
+    main()::Cint
 
 This is the main entry point of the application.
 Performs argument parsing and sets up logging for both terminal and file.
