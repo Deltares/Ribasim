@@ -32,7 +32,7 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     # put the LICENSE in the top level directory
     cp(license_file, normpath(output_dir, "LICENSE"); force = true)
     open(normpath(output_dir, "README.md"), "w") do io
-        println(readme)
+        println(io, readme)
 
         # since the exact Ribasim version may be hard to find in the Manifest.toml file
         # we can also extract that information, and add it to the README.md
