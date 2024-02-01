@@ -39,7 +39,8 @@
     <build-triggers>
       <build-trigger id="TRIGGER_631" type="schedulingTrigger">
         <parameters>
-          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="branchFilter"><![CDATA[+:<default>
++:v*]]></param>
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
