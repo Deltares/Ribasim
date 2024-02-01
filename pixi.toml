@@ -163,7 +163,7 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
-gh = "2.43.1.*"
+gh = "*"
 
 [target.win-64.dependencies]
 quarto = "*"
