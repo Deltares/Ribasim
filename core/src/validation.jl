@@ -657,15 +657,11 @@ function valid_demand(
     return !errors
 end
 
-function valid_connection(graph::MetaGraph)::Bool
-    return is_connected(graph)
-end
-
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int, Set{NodeID}})::Bool
     errors = false
     for (allocation_network_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
-        if (!is_connected(subnetwork))
+        if !is_connected(subnetwork)
             @error "All nodes in subnetwork $allocation_network_id should be connected"
             errors = true
         end

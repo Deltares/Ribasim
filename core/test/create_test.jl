@@ -5,21 +5,16 @@
     using Ribasim
     using Accessors: @set
 
-    struct NodeMetadata
-        type::Symbol
-        allocation_network_id::Int
-    end
-
     graph = MetaGraph(
         DiGraph();
         label_type = Ribasim.NodeID,
-        vertex_data_type = NodeMetadata,
+        vertex_data_type = Ribasim.NodeMetadata,
         edge_data_type = Symbol,
         graph_data = Tuple,
     )
 
-    graph[Ribasim.NodeID(1)] = NodeMetadata(Symbol(:delft), 1)
-    graph[Ribasim.NodeID(2)] = NodeMetadata(Symbol(:denhaag), -1)
+    graph[Ribasim.NodeID(1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
+    graph[Ribasim.NodeID(2)] = Ribasim.NodeMetadata(Symbol(:denhaag), -1)
 
     graph[1, 2] = :yes
 
@@ -52,15 +47,10 @@ end
     using Logging
     using Ribasim
 
-    struct NodeMetadata
-        type::Symbol
-        allocation_network_id::Int
-    end
-
     graph = MetaGraph(
         DiGraph();
         label_type = Ribasim.NodeID,
-        vertex_data_type = NodeMetadata,
+        vertex_data_type = Ribasim.NodeMetadata,
         edge_data_type = Symbol,
         graph_data = Tuple,
     )
@@ -73,15 +63,15 @@ end
     node_ids[2] = Set{Ribasim.NodeID}()
     push!(node_ids[2], Ribasim.NodeID(4))
     push!(node_ids[2], Ribasim.NodeID(5))
-    push!(node_ids[2], Ribasim.NodeID(5))
+    push!(node_ids[2], Ribasim.NodeID(6))
     #node_ids = Dict([(1, Set(NodeID(1))), (2, Set(NodeID(2)))])
 
-    graph[Ribasim.NodeID(1)] = NodeMetadata(Symbol(:delft), 1)
-    graph[Ribasim.NodeID(2)] = NodeMetadata(Symbol(:denhaag), 1)
-    graph[Ribasim.NodeID(3)] = NodeMetadata(Symbol(:rdam), 1)
-    graph[Ribasim.NodeID(4)] = NodeMetadata(Symbol(:adam), 2)
-    graph[Ribasim.NodeID(5)] = NodeMetadata(Symbol(:utrecht), 2)
-    graph[Ribasim.NodeID(6)] = NodeMetadata(Symbol(:leiden), 2)
+    graph[Ribasim.NodeID(1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
+    graph[Ribasim.NodeID(2)] = Ribasim.NodeMetadata(Symbol(:denhaag), 1)
+    graph[Ribasim.NodeID(3)] = Ribasim.NodeMetadata(Symbol(:rdam), 1)
+    graph[Ribasim.NodeID(4)] = Ribasim.NodeMetadata(Symbol(:adam), 2)
+    graph[Ribasim.NodeID(5)] = Ribasim.NodeMetadata(Symbol(:utrecht), 2)
+    graph[Ribasim.NodeID(6)] = Ribasim.NodeMetadata(Symbol(:leiden), 2)
 
     graph[Ribasim.NodeID(1), Ribasim.NodeID(2)] = :yes
     graph[Ribasim.NodeID(1), Ribasim.NodeID(3)] = :yes

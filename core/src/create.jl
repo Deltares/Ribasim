@@ -697,7 +697,7 @@ function User(db::DB, config::Config)::User
             first_row = time[first_row_idx]
             is_active = true
         else
-            @error "User node $node_id data not in any table."
+            @error "User node #$node_id data not in any table."
             errors = true
         end
 
