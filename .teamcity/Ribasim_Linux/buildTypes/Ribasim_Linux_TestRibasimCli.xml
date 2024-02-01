@@ -49,11 +49,27 @@ pixi run test-ribasim-cli]]></param>
       <does-not-equal id="RQ_310" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
-      <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
+      <build-trigger id="TRIGGER_645" type="schedulingTrigger">
         <parameters>
-          <param name="afterSuccessfulBuildOnly" value="true" />
-          <param name="branchFilter" value="+:&lt;default&gt;" />
-          <param name="dependsOn" value="Ribasim_Linux_BuildRibasimCli" />
+          <param name="branchFilter"><![CDATA[+:<default>
++:v*]]></param>
+          <param name="cronExpression_dm" value="*" />
+          <param name="cronExpression_dw" value="?" />
+          <param name="cronExpression_hour" value="*" />
+          <param name="cronExpression_min" value="0" />
+          <param name="cronExpression_month" value="*" />
+          <param name="cronExpression_sec" value="0" />
+          <param name="cronExpression_year" value="*" />
+          <param name="dayOfWeek" value="Sunday" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="hour" value="3" />
+          <param name="minute" value="0" />
+          <param name="promoteWatchedBuild" value="true" />
+          <param name="revisionRule" value="lastFinished" />
+          <param name="revisionRuleBuildBranch" value="+:&lt;default&gt;" />
+          <param name="schedulingPolicy" value="daily" />
+          <param name="timezone" value="SERVER" />
+          <param name="triggerBuildWithPendingChangesOnly" value="true" />
         </parameters>
       </build-trigger>
     </build-triggers>
@@ -76,10 +92,19 @@ pixi run test-ribasim-cli]]></param>
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="true">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim_cli_linux.zip!** =&gt; ribasim/build/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
     <cleanup />
   </settings>
 </build-type>
