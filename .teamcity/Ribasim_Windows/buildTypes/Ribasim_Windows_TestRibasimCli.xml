@@ -64,7 +64,7 @@
     </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="true">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim_cli_windows.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
