@@ -73,15 +73,17 @@
         @test flow.from_node_id[1:4] == [6, typemax(Int), 0, 6]
         @test flow.to_node_id[1:4] == [6, typemax(Int), typemax(Int), 0]
 
-        @test basin.storage[1] == 1.0
+        @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+        basin_level = basin.level[1]
         @test length(p.subgrid.level) == 3
         @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
         # TODO The original subgrid IDs are lost and mapped to 1, 2, 3
         @test subgrid.subgrid_id[1:3] == [11, 22, 33] broken = true
-        @test subgrid.subgrid_level[1:3] == [0.0, -1.0, 1.0]
+        @test subgrid.subgrid_level[1:3] ≈
+              [basin_level, basin_level - 1.0, basin_level + 1.0]
         @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level
     end
 end
@@ -333,12 +335,12 @@ end
 
     See: https://en.wikipedia.org/wiki/Standard_step_method
 
-    * The left boundary has a fixed discharge `Q`.
+    * The left boundary has a fixed flow rate `Q`.
     * The right boundary has a fixed level `h_right`.
     * Channel profile is rectangular.
 
     # Arguments
-    - `Q`: discharge entering in the left boundary (m3/s)
+    - `Q`: flow rate entering in the left boundary (m3/s)
     - `w`: width (m)
     - `n`: Manning roughness
     - `h_right`: water level on the right boundary

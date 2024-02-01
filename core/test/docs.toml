@@ -23,7 +23,7 @@ algorithm = "QNDF"  # optional, default "QNDF"
 saveat = []         # optional, default [], which saves every timestep
 adaptive = true     # optional, default true
 dt = 0.0            # optional when adaptive = true, default automatically determined
-dtmin = 0.0         # optional, default automatically determined
+dtmin = 0.0         # optional, default 0.0
 dtmax = 0.0         # optional, default length of simulation
 force_dtmin = false # optional, default false
 abstol = 1e-6       # optional, default 1e-6

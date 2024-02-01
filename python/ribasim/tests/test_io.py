@@ -102,3 +102,30 @@ def test_extra_columns(basic_transient):
     node = Node(df=df)
 
     assert "meta_node_id" in node.df.columns
+
+
+def test_sort(level_setpoint_with_minmax, tmp_path):
+    model = level_setpoint_with_minmax
+    table = model.discrete_control.condition
+
+    # apply a wrong sort, then call the sort method to restore order
+    table.df.sort_values("greater_than", ascending=False, inplace=True)
+    assert table.df.iloc[0]["greater_than"] == 15.0
+    assert table._sort_keys == [
+        "node_id",
+        "listen_feature_id",
+        "variable",
+        "greater_than",
+    ]
+    table.sort()
+    assert table.df.iloc[0]["greater_than"] == 5.0
+
+    # re-apply wrong sort, then check if it gets sorted on write
+    table.df.sort_values("greater_than", ascending=False, inplace=True)
+    model.write(tmp_path / "basic/ribasim.toml")
+    # write sorts the model in place
+    assert table.df.iloc[0]["greater_than"] == 5.0
+    model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
+    table_loaded = model_loaded.discrete_control.condition
+    assert table_loaded.df.iloc[0]["greater_than"] == 5.0
+    __assert_equal(table.df, table_loaded.df)

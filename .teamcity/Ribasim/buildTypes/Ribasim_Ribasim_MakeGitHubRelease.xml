@@ -26,7 +26,8 @@ if [ -n "$tag_name" ]; then
         --generate-notes \
         ribasim_cli_linux.zip \
         ribasim_cli_windows.zip \
-        ribasim_qgis.zip
+        ribasim_qgis.zip \
+        generated_testmodels.zip
 
     echo "Release created successfully."
 
@@ -54,12 +55,6 @@ fi]]></param>
       </build-trigger>
     </build-triggers>
     <build-extensions>
-      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
-        <parameters>
-          <param name="awsConnectionId" value="AmazonWebServicesAws" />
-          <param name="awsSessionDuration" value="60" />
-        </parameters>
-      </extension>
       <extension id="KEEP_RULE_10" type="keepRules">
         <parameters>
           <param name="filters.1.status" value="successful" />
@@ -73,17 +68,21 @@ fi]]></param>
       </extension>
     </build-extensions>
     <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_685" sourceBuildTypeId="Ribasim_GenerateTestmodels" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="generated_testmodels.zip" />
+      </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_603" sourceBuildTypeId="Ribasim_Ribasim_MakeQgisPlugin" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim_qgis.zip" />
       </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli.zip =&gt; ribasim_cli_linux.zip" />
+        <artifact sourcePath="ribasim_cli_linux.zip" />
       </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli.zip =&gt; ribasim_cli_windows.zip" />
+        <artifact sourcePath="ribasim_cli_windows.zip" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
@@ -99,9 +98,26 @@ fi]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimCli">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_GenerateTestmodels">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
         <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
+        <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>

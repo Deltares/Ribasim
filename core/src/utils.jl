@@ -1,3 +1,16 @@
+"Get the package version of a given module"
+function pkgversion(m::Module)::VersionNumber
+    version = Base.pkgversion(Ribasim)
+    !isnothing(version) && return version
+
+    # Base.pkgversion doesn't work with compiled binaries
+    # If it returns `nothing`, we try a different way
+    rootmodule = Base.moduleroot(m)
+    pkg = Base.PkgId(rootmodule)
+    pkgorigin = get(Base.pkgorigins, pkg, nothing)
+    return pkgorigin.version
+end
+
 "Check that only supported edge types are declared."
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
@@ -378,16 +391,28 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
-function get_storages_from_levels(
-    basin::Basin,
-    levels::Vector,
-)::Tuple{Vector{Float64}, Bool}
-    storages = Float64[]
+function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
+    errors = false
+    state_length = length(levels)
+    basin_length = length(basin.level)
+    if state_length != basin_length
+        @error "Unexpected 'Basin / state' length." state_length basin_length
+        errors = true
+    end
+    storages = zeros(state_length)
 
     for (i, level) in enumerate(levels)
-        push!(storages, get_storage_from_level(basin, i, level))
+        storage = get_storage_from_level(basin, i, level)
+        if isnan(storage)
+            errors = true
+        end
+        storages[i] = storage
     end
-    return storages, any(isnan.(storages))
+    if errors
+        error("Encountered errors while parsing the initial levels of basins.")
+    end
+
+    return storages
 end
 
 """
@@ -562,14 +587,14 @@ end
 
 function qh_interpolation(
     level::AbstractVector,
-    discharge::AbstractVector,
+    flow_rate::AbstractVector,
 )::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(discharge, level; extrapolate = true), allunique(level)
+    return LinearInterpolation(flow_rate, level; extrapolate = true), allunique(level)
 end
 
 """
-From a table with columns node_id, discharge (Q) and level (h),
-create a LinearInterpolation from level to discharge for a given node_id.
+From a table with columns node_id, flow_rate (Q) and level (h),
+create a LinearInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(
     node_id::Int,
@@ -577,7 +602,7 @@ function qh_interpolation(
 )::Tuple{LinearInterpolation, Bool}
     rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
-    return qh_interpolation(table.level[rowrange], table.discharge[rowrange])
+    return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
 end
 
 """

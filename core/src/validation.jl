@@ -261,7 +261,7 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
     control_state::Union{Missing, String}
 end
 
@@ -269,7 +269,7 @@ end
     node_id::Int
     time::DateTime
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
 end
 
 @version TerminalStaticV1 begin
@@ -336,30 +336,6 @@ end
 function variable_nt(s::Any)
     names = variable_names(typeof(s))
     NamedTuple{names}((getfield(s, x) for x in names))
-end
-
-function is_consistent(node, edge, state, static, profile, time)
-
-    # Check that node ids exist
-    # TODO Do we need to check the reverse as well? All ids in use?
-    ids = node.fid
-    @assert edge.from_node_id ⊆ ids "Edge from_node_id not in node ids"
-    @assert edge.to_node_id ⊆ ids "Edge to_node_id not in node ids"
-    @assert state.node_id ⊆ ids "State id not in node ids"
-    @assert static.node_id ⊆ ids "Static id not in node ids"
-    @assert profile.node_id ⊆ ids "Profile id not in node ids"
-    @assert time.node_id ⊆ ids "Time id not in node ids"
-
-    # Check edges for uniqueness
-    @assert allunique(edge, [:from_node_id, :to_node_id]) "Duplicate edge found"
-
-    # TODO Check states
-
-    # TODO Check statics
-
-    # TODO Check forcings
-
-    true
 end
 
 # functions used by sort(x; by)

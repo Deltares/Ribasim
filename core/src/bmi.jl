@@ -73,16 +73,11 @@ function BMI.initialize(T::Type{Model}, config::Config)::Model
     end
     @debug "Read database into memory."
 
-    storage = if isempty(state)
-        # default to nearly empty basins, perhaps make required input
-        fill(1.0, n)
-    else
-        storages, errors = get_storages_from_levels(parameters.basin, state.level)
-        if errors
-            error("Encountered errors while parsing the initial levels of basins.")
-        end
-        storages
-    end
+    storage = get_storages_from_levels(parameters.basin, state.level)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, storage)
+
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
@@ -612,9 +607,9 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         # update the existing LinearInterpolation
         id = first(group).node_id
         level = [row.level for row in group]
-        discharge = [row.discharge for row in group]
+        flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(id))
-        tables[i] = LinearInterpolation(discharge, level; extrapolate = true)
+        tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing
 end
@@ -635,6 +630,11 @@ function BMI.update_until(model::Model, time)::Model
     else
         step!(integrator, dt, true)
     end
+    return model
+end
+
+function update_subgrid_level(model::Model)::Model
+    update_subgrid_level!(model.integrator)
     return model
 end
 

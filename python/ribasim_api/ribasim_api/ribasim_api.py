@@ -27,3 +27,6 @@ class RibasimApi(XmiWrapper):
 
     def shutdown_julia(self) -> None:
         self.lib.shutdown_julia(c_int(0))
+
+    def update_subgrid_level(self) -> None:
+        self.lib.update_subgrid_level()

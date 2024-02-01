@@ -4,7 +4,7 @@ on:
   pull_request:
   merge_group:
   push:
-    branches: [main, update/pre-commit-hooks]
+    branches: [main, update/pre-commit-hooks, update/pixi-lock]
 
 jobs:
   check:

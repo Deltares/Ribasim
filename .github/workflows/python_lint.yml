@@ -1,7 +1,7 @@
 name: Python Lint
 on:
   push:
-    branches: [main]
+    branches: [main, update/pixi-lock]
     paths-ignore: [".teamcity/**"]
     tags: ["*"]
   pull_request:
@@ -16,7 +16,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.4.3
         with:
           pixi-version: "latest"
       - name: Prepare pixi

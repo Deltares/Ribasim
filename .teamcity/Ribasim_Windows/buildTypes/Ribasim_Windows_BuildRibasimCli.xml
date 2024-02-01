@@ -4,7 +4,7 @@
   <description />
   <settings>
     <options>
-      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli.zip" />
+      <option name="artifactRules" value="ribasim\build/create_binaries/ribasim_cli =&gt; ribasim_cli_windows.zip" />
       <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
     </options>
@@ -44,31 +44,7 @@ pixi run build-ribasim-cli]]></param>
     <requirements>
       <equals id="RQ_275" name="env.OS" value="Windows_NT" />
     </requirements>
-    <build-triggers>
-      <build-trigger id="TRIGGER_497" type="schedulingTrigger">
-        <parameters>
-          <param name="branchFilter"><![CDATA[+:<default>
-+:v*]]></param>
-          <param name="cronExpression_dm" value="*" />
-          <param name="cronExpression_dw" value="?" />
-          <param name="cronExpression_hour" value="*" />
-          <param name="cronExpression_min" value="0" />
-          <param name="cronExpression_month" value="*" />
-          <param name="cronExpression_sec" value="0" />
-          <param name="cronExpression_year" value="*" />
-          <param name="dayOfWeek" value="Sunday" />
-          <param name="enableQueueOptimization" value="true" />
-          <param name="hour" value="3" />
-          <param name="minute" value="0" />
-          <param name="promoteWatchedBuild" value="true" />
-          <param name="revisionRule" value="lastFinished" />
-          <param name="revisionRuleBuildBranch" value="+:&lt;default&gt;" />
-          <param name="schedulingPolicy" value="daily" />
-          <param name="timezone" value="SERVER" />
-          <param name="triggerBuildWithPendingChangesOnly" value="true" />
-        </parameters>
-      </build-trigger>
-    </build-triggers>
+    <build-triggers />
     <build-extensions>
       <extension id="BUILD_EXT_295" type="commit-status-publisher">
         <parameters>
@@ -76,12 +52,6 @@ pixi run build-ribasim-cli]]></param>
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-        </parameters>
-      </extension>
-      <extension id="PROVIDE_AWS_CREDS" type="PROVIDE_AWS_CREDS">
-        <parameters>
-          <param name="awsConnectionId" value="AmazonWebServicesAws" />
-          <param name="awsSessionDuration" value="60" />
         </parameters>
       </extension>
     </build-extensions>

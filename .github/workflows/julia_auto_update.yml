@@ -1,0 +1,31 @@
+name: Julia auto update
+
+on:
+  schedule:
+  # At 03:00 on day 1 of the month
+    - cron: "0 3 1 * *"
+  # on demand
+  workflow_dispatch:
+
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - uses: prefix-dev/setup-pixi@v0.4.3
+        with:
+          pixi-version: "latest"
+      - name: Update Julia manifest file
+        run: |
+          pixi run update-manifest-julia
+          pixi install
+      - uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update/julia-manifest
+          title: Update Julia manifest
+          commit-message: "Update Julia manifest"
+          body: Update Julia dependencies to the latest version.
+          author: "GitHub <noreply@github.com>"
