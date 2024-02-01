@@ -44,7 +44,9 @@ using Graphs:
     inneighbors,
     nv,
     outneighbors,
-    rem_edge!
+    rem_edge!,
+    induced_subgraph,
+    is_connected
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: with_logger, LogLevel, AbstractLogger
