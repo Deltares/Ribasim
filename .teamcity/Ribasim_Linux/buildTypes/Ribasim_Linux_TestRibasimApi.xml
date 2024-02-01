@@ -52,7 +52,6 @@ pixi run test-ribasim-api]]></param>
       <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
         <parameters>
           <param name="afterSuccessfulBuildOnly" value="true" />
-          <param name="branchFilter" value="+:&lt;default&gt;" />
           <param name="dependsOn" value="Ribasim_Linux_BuildLibribasim" />
         </parameters>
       </build-trigger>
