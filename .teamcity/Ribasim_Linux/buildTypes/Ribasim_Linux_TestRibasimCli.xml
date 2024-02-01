@@ -95,6 +95,15 @@ pixi run test-ribasim-cli]]></param>
         <artifact sourcePath="ribasim_cli_linux.zip!** =&gt; ribasim/build/create_binaries/ribasim_cli&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
     <cleanup />
   </settings>
 </build-type>
