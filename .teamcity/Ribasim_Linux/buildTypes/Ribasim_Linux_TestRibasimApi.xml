@@ -48,14 +48,7 @@ pixi run test-ribasim-api]]></param>
     <requirements>
       <does-not-equal id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
-    <build-triggers>
-      <build-trigger id="TRIGGER_64" type="buildDependencyTrigger">
-        <parameters>
-          <param name="afterSuccessfulBuildOnly" value="true" />
-          <param name="dependsOn" value="Ribasim_Linux_BuildLibribasim" />
-        </parameters>
-      </build-trigger>
-    </build-triggers>
+    <build-triggers />
     <build-extensions>
       <extension id="BUILD_EXT_142" type="commit-status-publisher">
         <parameters>
