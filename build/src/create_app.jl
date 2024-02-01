@@ -1,10 +1,10 @@
 """
-    build_app()
+# Ribasim CLI
 
-Build the Ribasim CLI using PackageCompiler.
-
-This builds the `main` function from the Ribasim Julia package into a command line interface
-(cli) application using PackageCompiler.jl.
+This is a [Julia](https://julialang.org/) project that uses the
+[Ribasim](https://github.com/Deltares/Ribasim) Julia package, puts a simple command line
+interface (cli) on top, and packages this into a standalone application using
+[PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl).
 
 This enables using Ribasim without having to install Julia, and thus makes it more
 convenient to use in certain settings where installation must be simple and no interactive
@@ -39,7 +39,8 @@ function build_app()
         force = true,
     )
 
-    add_metadata(project_dir, license_file, output_dir, git_repo)
+    readme = @doc(build_app)
+    add_metadata(project_dir, license_file, output_dir, git_repo, readme)
 
     # On Windows, write ribasim.cmd in the output_dir, that starts ribasim.exe.
     # Since the bin dir contains a julia.exe and many DLLs that you may not want in your path,

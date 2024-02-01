@@ -1,13 +1,11 @@
 """
-    build_lib()
-
-Build libribasim using PackageCompiler
+# Libribasim
 
 Libribasim is a shared library that exposes Ribasim functionality to external (non-Julian)
 programs. It can be compiled using [PackageCompiler's
 create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html), which is set
-up in this directory. The C API that is offered to control Ribasim is the C API of the [Basic
-Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
+up in this directory. The C API that is offered to control Ribasim is the C API of the
+[Basic Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
 
 Not all BMI functions are implemented yet, this has been set up as a proof of concept to
 demonstrate that we can use other software such as
@@ -49,5 +47,6 @@ function build_lib()
         force = true,
     )
 
-    add_metadata(project_dir, license_file, output_dir, git_repo)
+    readme = @doc(build_app)
+    add_metadata(project_dir, license_file, output_dir, git_repo, readme)
 end
