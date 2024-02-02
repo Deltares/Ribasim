@@ -276,21 +276,22 @@ function allocation_flow_table(
     allocation_network_id::Vector{Int},
     priority::Vector{Int},
     flow::Vector{Float64},
-    # gathering_demands::BitVector
+    collect_demands::BitVector,
 }
     (; config) = model
-    (; allocation_record) = model.integrator.p
+    (; record) = model.integrator.p.allocation
 
-    time = datetime_since.(allocation_record.time, config.starttime)
+    time = datetime_since.(record.time, config.starttime)
 
     return (;
         time,
-        allocation_record.edge_id,
-        allocation_record.from_node_id,
-        allocation_record.to_node_id,
-        allocation_record.allocation_network_id,
-        allocation_record.priority,
-        allocation_record.flow,
+        record.edge_id,
+        record.from_node_id,
+        record.to_node_id,
+        record.allocation_network_id,
+        record.priority,
+        record.flow,
+        record.collect_demands,
     )
 end
 

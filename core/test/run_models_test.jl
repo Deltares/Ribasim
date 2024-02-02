@@ -113,6 +113,42 @@ end
     @test successful_retcode(model)
 end
 
+@testitem "leaky bucket model" begin
+    using SciMLBase: successful_retcode
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    @test model isa Ribasim.Model
+
+    stor = model.integrator.u.storage
+    prec = model.integrator.p.basin.precipitation
+    evap = model.integrator.p.basin.potential_evaporation
+    drng = model.integrator.p.basin.drainage
+    infl = model.integrator.p.basin.infiltration
+    # The dynamic data has missings, but these are not set.
+    @test prec == [0.0]
+    @test evap == [0.0]
+    @test drng == [0.003]
+    @test infl == [0.0]
+    init_stor = 1000.0
+    @test stor == [init_stor]
+    BMI.update_until(model, 1.5 * 86400)
+    @test prec == [0.0]
+    @test evap == [0.0]
+    @test drng == [0.003]
+    @test infl == [0.001]
+    stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
+    BMI.update_until(model, 2.5 * 86400)
+    @test prec == [0.00]
+    @test evap == [0.0]
+    @test drng == [0.001]
+    @test infl == [0.002]
+    stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
+    @test successful_retcode(Ribasim.solve!(model))
+end
+
 @testitem "basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras

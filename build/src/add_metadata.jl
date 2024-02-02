@@ -7,7 +7,7 @@ Add the following metadata files to the newly created build:
 - README.md
 - LICENSE
 """
-function add_metadata(project_dir, license_file, output_dir, git_repo)
+function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     # save some environment variables in a Build.toml file for debugging purposes
     vars = ["BUILD_NUMBER", "BUILD_VCS_NUMBER"]
     dict = Dict(var => ENV[var] for var in vars if haskey(ENV, var))
@@ -31,8 +31,9 @@ function add_metadata(project_dir, license_file, output_dir, git_repo)
 
     # put the LICENSE in the top level directory
     cp(license_file, normpath(output_dir, "LICENSE"); force = true)
-    cp(normpath(project_dir, "README.md"), normpath(output_dir, "README.md"); force = true)
-    open(normpath(output_dir, "README.md"), "a") do io
+    open(normpath(output_dir, "README.md"), "w") do io
+        println(io, readme)
+
         # since the exact Ribasim version may be hard to find in the Manifest.toml file
         # we can also extract that information, and add it to the README.md
         manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))

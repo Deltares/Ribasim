@@ -21,6 +21,34 @@ struct AllocationModel
     Δt_allocation::Float64
 end
 
+"""
+Object for all information about allocation
+allocation_network_ids: The unique sorted allocation network IDs
+allocation models: The allocation models for the main network and subnetworks corresponding to
+    allocation_network_ids
+main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+subnetwork_demands: The demand of an edge from the main network to a subnetwork
+record: A record of all flows computed by allocation optimization, eventually saved to
+    output file
+"""
+struct Allocation
+    allocation_network_ids::Vector{Int}
+    allocation_models::Vector{AllocationModel}
+    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    record::@NamedTuple{
+        time::Vector{Float64},
+        edge_id::Vector{Int},
+        from_node_id::Vector{Int},
+        to_node_id::Vector{Int},
+        allocation_network_id::Vector{Int},
+        priority::Vector{Int},
+        flow::Vector{Float64},
+        collect_demands::BitVector,
+    }
+end
+
 @enumx EdgeType flow control none
 
 """
@@ -418,6 +446,32 @@ struct User <: AbstractParameterNode
         allocated::Vector{Float64},
         abstracted::Vector{Float64},
     }
+
+    function User(
+        node_id,
+        active,
+        demand,
+        allocated,
+        return_factor,
+        min_level,
+        priorities,
+        record,
+    )
+        if valid_demand(node_id, demand, priorities)
+            return new(
+                node_id,
+                active,
+                demand,
+                allocated,
+                return_factor,
+                min_level,
+                priorities,
+                record,
+            )
+        else
+            error("Invalid demand")
+        end
+    end
 end
 
 "Subgrid linearly interpolates basin levels."
@@ -448,18 +502,7 @@ struct Parameters{T, C1, C2}
         MetaGraphsNext.var"#11#13",
         Float64,
     }
-    allocation_models::Vector{AllocationModel}
-    # TODO: Move to p.allocation
-    allocation_record::@NamedTuple{
-        time::Vector{Float64},
-        edge_id::Vector{Int},
-        from_node_id::Vector{Int},
-        to_node_id::Vector{Int},
-        allocation_network_id::Vector{Int},
-        priority::Vector{Int},
-        flow::Vector{Float64},
-        # gathering_demands::BitVector
-    }
+    allocation::Allocation
     basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance

@@ -196,10 +196,26 @@ end
 const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
 
-function generate_allocation_models!(p::Parameters, config::Config)::Nothing
-    (; graph, allocation_models) = p
+function initialize_allocation!(p::Parameters, config::Config)::Nothing
+    (; graph, allocation) = p
+    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
+    allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
 
-    for allocation_network_id in keys(graph[].node_ids)
+    errors = non_positive_allocation_network_id(graph)
+    if errors
+        error("Allocation network initialization failed.")
+    end
+
+    for allocation_network_id in allocation_network_ids_
+        push!(allocation_network_ids, allocation_network_id)
+        push!(main_network_connections, Tuple{NodeID, NodeID}[])
+    end
+
+    if first(allocation_network_ids_) == 1
+        find_subnetwork_connections!(p)
+    end
+
+    for allocation_network_id in allocation_network_ids_
         push!(
             allocation_models,
             AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
@@ -479,10 +495,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         current_area = DiffCache(current_area, chunk_sizes)
     end
 
-    precipitation = fill(NaN, length(node_id))
-    potential_evaporation = fill(NaN, length(node_id))
-    drainage = fill(NaN, length(node_id))
-    infiltration = fill(NaN, length(node_id))
+    precipitation = zeros(length(node_id))
+    potential_evaporation = zeros(length(node_id))
+    drainage = zeros(length(node_id))
+    infiltration = zeros(length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
@@ -628,7 +644,7 @@ function User(db::DB, config::Config)::User
         error("Problems encountered when parsing User static and time node IDs.")
     end
 
-    # The highest priority number given, which corresponds to the least important demands
+    # All provided priorities
     priorities = sort(unique(union(static.priority, time.priority)))
 
     active = BitVector()
@@ -792,16 +808,22 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation_models = Vector{AllocationModel}()
-    allocation_record = (;
-        time = Float64[],
-        edge_id = Int[],
-        from_node_id = Int[],
-        to_node_id = Int[],
-        allocation_network_id = Int[],
-        priority = Int[],
-        flow = Float64[],
-        # BitVector()
+    allocation = Allocation(
+        Int[],
+        AllocationModel[],
+        Vector{Tuple{NodeID, NodeID}}[],
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        (;
+            time = Float64[],
+            edge_id = Int[],
+            from_node_id = Int[],
+            to_node_id = Int[],
+            allocation_network_id = Int[],
+            priority = Int[],
+            flow = Float64[],
+            collect_demands = BitVector(),
+        ),
     )
 
     if !valid_edges(graph)
@@ -839,8 +861,7 @@ function Parameters(db::DB, config::Config)::Parameters
     p = Parameters(
         config.starttime,
         graph,
-        allocation_models,
-        allocation_record,
+        allocation,
         basin,
         linear_resistance,
         manning_resistance,
@@ -864,7 +885,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.allocation.use_allocation
-        generate_allocation_models!(p, config)
+        initialize_allocation!(p, config)
     end
     return p
 end
