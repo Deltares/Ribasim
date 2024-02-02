@@ -80,6 +80,7 @@ class Node(SpatialTableModel[NodeSchema]):
         edge_geometry : np.ndarray
             Array of shapely LineStrings.
         """
+        assert self.df is not None
         geometry = self.df["geometry"]
         from_points = shapely.get_coordinates(geometry.loc[from_id])
         to_points = shapely.get_coordinates(geometry.loc[to_id])
@@ -109,6 +110,7 @@ class Node(SpatialTableModel[NodeSchema]):
         from_node_id : np.ndarray of int
         to_node_id : np.ndarray of int
         """
+        assert self.df is not None
         node_index = self.df.index
         node_xy = shapely.get_coordinates(self.df.geometry.values)
         edge_xy = shapely.get_coordinates(lines)
@@ -143,6 +145,7 @@ class Node(SpatialTableModel[NodeSchema]):
 
         contains_main_network = False
         contains_subnetworks = False
+        assert self.df is not None
 
         for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
             "allocation_network_id"
@@ -223,6 +226,7 @@ class Node(SpatialTableModel[NodeSchema]):
             "User": "g",
             "": "k",
         }
+        assert self.df is not None
 
         for nodetype, df in self.df.groupby("type"):
             assert isinstance(nodetype, str)
@@ -237,6 +241,7 @@ class Node(SpatialTableModel[NodeSchema]):
                 label=nodetype,
             )
 
+        assert self.df is not None
         geometry = self.df["geometry"]
         for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")

@@ -468,6 +468,8 @@ class Model(FileModel):
         node_attrs, node_instances = zip(*self.nodes().items())
         node_clss = [node_cls.get_input_type() for node_cls in node_instances]
         truth_dict = {"T": ">", "F": "<"}
+        assert self.network.node.df is not None
+        assert self.network.edge.df is not None
 
         if self.discrete_control.condition.df is None:
             raise ValueError("This model has no control input.")
