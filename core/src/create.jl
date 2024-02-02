@@ -201,6 +201,11 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; allocation_network_ids, allocation_models, main_network_connections) = allocation
     allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
 
+    errors = non_positive_allocation_network_id(graph)
+    if errors
+        error("Allocation network initialization failed.")
+    end
+
     for allocation_network_id in allocation_network_ids_
         push!(allocation_network_ids, allocation_network_id)
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
@@ -490,10 +495,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         current_area = DiffCache(current_area, chunk_sizes)
     end
 
-    precipitation = fill(NaN, length(node_id))
-    potential_evaporation = fill(NaN, length(node_id))
-    drainage = fill(NaN, length(node_id))
-    infiltration = fill(NaN, length(node_id))
+    precipitation = zeros(length(node_id))
+    potential_evaporation = zeros(length(node_id))
+    drainage = zeros(length(node_id))
+    infiltration = zeros(length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)

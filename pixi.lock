@@ -9870,6 +9870,80 @@ package:
   size: 82263
   timestamp: 1594304231182
 - platform: linux-64
+  name: gh
+  version: 2.43.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/linux-64/gh-2.43.1-ha8f183a_0.conda
+  hash:
+    md5: adaa9131473d962cc1521d2169d59c60
+    sha256: f7a7918096362a9f197c1b043a6e1d524fc8e077be6797972be910b4482c7693
+  build: ha8f183a_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 16858494
+  timestamp: 1706752640334
+- platform: osx-64
+  name: gh
+  version: 2.43.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-64/gh-2.43.1-h990441c_0.conda
+  hash:
+    md5: 620d1c108bc7f37c22102d181816eb19
+    sha256: 8087704d81711ea3e9254d84cab3cf560ac2e79a668e2e2f9d875f1053707e70
+  build: h990441c_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  constrains:
+  - __osx>=10.12
+  license: Apache-2.0
+  license_family: APACHE
+  size: 16650708
+  timestamp: 1706752915101
+- platform: osx-arm64
+  name: gh
+  version: 2.43.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/gh-2.43.1-h75b854d_0.conda
+  hash:
+    md5: 2fafc8df33219ebcc5a3eb69afef5f12
+    sha256: 34783d293ab1db89469faa156e0c8e28fd213fa1d2414fdaaa008f7e4e31b45e
+  build: h75b854d_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 16033884
+  timestamp: 1706752975233
+- platform: win-64
+  name: gh
+  version: 2.43.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/win-64/gh-2.43.1-hd02998f_0.conda
+  hash:
+    md5: 229cbf4b096a468d30085cb9eead7a20
+    sha256: 210b5dc8dcf91a9d528922b0ed9697a75a332f6c501dc95b806ee0f1ee6eda10
+  build: hd02998f_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 16789533
+  timestamp: 1706753295429
+- platform: linux-64
   name: giflib
   version: 5.2.1
   category: main
