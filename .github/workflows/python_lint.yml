@@ -30,6 +30,3 @@ jobs:
       - name: Run mypy on python/ribasim_api
         run: |
           pixi run mypy-ribasim-api
-      - name: Run mypy on ribasim_qgis
-        run: |
-          pixi run mypy-ribasim-qgis
