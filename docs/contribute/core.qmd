@@ -4,7 +4,7 @@ title: "Julia core development"
 
 # Julia core overview
 
-The computational core is one of the components of Ribasim as illustrated in the [component overview](index.qmd##sec-components).
+The computational core is one of the components of Ribasim as illustrated in the [component overview](../index.qmd#sec-components).
 
 The computational process can be divided in three phases:
 
@@ -12,7 +12,7 @@ The computational process can be divided in three phases:
 - Running the simulation loop
 - Writing the output files
 
-A more detailed sequence diagram of the simulation loop is available at the [Core](./index.qmd#sec-simulationloop) home page.
+A more detailed sequence diagram of the simulation loop is available at the [core](index.qmd#sec-simulationloop) home page.
 
 # Set up the developer environment
 
@@ -46,7 +46,7 @@ Make sure to have the correct environment when opening your IDE by running `pixi
 You will want to run the testsuite on a regular basis to check if your changes had unexpected side effects.
 It is also a good way to find out if your development environment is set up correctly.
 
-Before the tests can run, you need to [prepare model input](./python.qmd#prepare-model-input).
+Before the tests can run, you need to [prepare model input](python.qmd#prepare-model-input).
 
 With the root of the repository as your working directory you can start the REPL with activated `Ribasim` environment by running the following:
 
