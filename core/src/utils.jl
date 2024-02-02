@@ -625,12 +625,12 @@ end
 Update `table` at row index `i`, with the values of a given row.
 `table` must be a NamedTuple of vectors with all variables that must be loaded.
 The row must contain all the column names that are present in the table.
-If a value is NaN, it is not set.
+If a value is missing, it is not set.
 """
 function set_table_row!(table::NamedTuple, row, i::Int)::NamedTuple
     for (symbol, vector) in pairs(table)
         val = getproperty(row, symbol)
-        if !isnan(val)
+        if !ismissing(val)
             vector[i] = val
         end
     end
@@ -672,7 +672,7 @@ function set_current_value!(
     for (i, id) in enumerate(node_id)
         for (symbol, vector) in pairs(table)
             idx = findlast(
-                row -> row.node_id == id && !isnan(getproperty(row, symbol)),
+                row -> row.node_id == id && !ismissing(getproperty(row, symbol)),
                 pre_table,
             )
             if idx !== nothing

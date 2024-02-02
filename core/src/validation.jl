@@ -185,11 +185,11 @@ end
 @version BasinTimeV1 begin
     node_id::Int
     time::DateTime
-    drainage::Float64
-    potential_evaporation::Float64
-    infiltration::Float64
-    precipitation::Float64
-    urban_runoff::Float64
+    drainage::Union{Missing, Float64}
+    potential_evaporation::Union{Missing, Float64}
+    infiltration::Union{Missing, Float64}
+    precipitation::Union{Missing, Float64}
+    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinProfileV1 begin

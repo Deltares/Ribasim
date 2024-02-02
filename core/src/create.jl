@@ -485,10 +485,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         current_area = DiffCache(current_area, chunk_sizes)
     end
 
-    precipitation = fill(NaN, length(node_id))
-    potential_evaporation = fill(NaN, length(node_id))
-    drainage = fill(NaN, length(node_id))
-    infiltration = fill(NaN, length(node_id))
+    precipitation = zeros(length(node_id))
+    potential_evaporation = zeros(length(node_id))
+    drainage = zeros(length(node_id))
+    infiltration = zeros(length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
