@@ -57,6 +57,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [compat]
+Arrow = "2"
 Artifacts = "<0.0.1,1"
 BasicModelInterface = "0.1"
 Configurations = "0.17"
