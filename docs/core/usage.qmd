@@ -23,6 +23,7 @@ Usage: ribasim 'path/to/model/ribasim.toml'
 
 Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
 format. It contains settings, as well as paths to other input and output files.
+Ribasim expects the geo-package database [database.gpkg](./usage.qmd#sec-geopackage) as well as any (optional) arrow input files to be available in the input_dir.
 
 ```{.toml include="../../core/test/docs.toml"}
 ```
@@ -89,7 +90,7 @@ entry             | type   | description
 verbosity         | String | Verbosity level: debug, info, warn, or error.
 timing            | Bool   | Enable timings.
 
-# GeoPackage database and Arrow tables
+# GeoPackage database and Arrow tables {#sec-geopackage}
 
 The input and output tables described below all share that they are tabular files. The Node
 and Edge tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
@@ -146,7 +147,7 @@ computations or validated by the Julia core.
 The ribasim-python library will automatically add the `meta_` prefix to non-standard columns.
 Column names already prefixed with `meta_` will not be updated.
 
-# Node
+# Node {#sec-node}
 
 Node is a table that specifies the ID and type of each node of a model. The ID must be
 unique among all nodes, and the type must be one of the available node types listed below.
@@ -210,7 +211,7 @@ Adding a geometry to the node table can be helpful to examine models in
 [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map. The
 geometry is not used by Ribasim.
 
-# Edge
+# Edge {#sec-edge}
 
 Edges define connections between nodes. The only thing that defines an edge is the nodes it connects, and in what direction.
 There are currently 2 possible edge types:
@@ -240,7 +241,7 @@ allocation_network_id | Int      | (optional, denotes source in allocation netwo
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
 
-# Basin
+# Basin {#sec-basin}
 
 The Basin table can be used to set the static value of variables. The time table has a
 similar schema, with the time column added. A static value for a variable is only used if
@@ -372,7 +373,7 @@ The table is sorted by time, and per time the same `edge_id` order is used, thou
 Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
 Flows out of the model always have a negative sign, and additions a positive sign.
 
-# FractionalFlow
+# FractionalFlow {#sec-fractionalflow}
 
 Lets a fraction (in [0,1]) of the incoming flow trough.
 
@@ -382,7 +383,7 @@ node_id       | Int     | -            | sorted
 control_state | String  | -            | (optional) sorted per node_id
 fraction      | Float64 | -            | in the interval [0,1]
 
-# TabulatedRatingCurve
+# TabulatedRatingCurve {#sec-tabulatedratingcurve}
 
 This table is similar in structure to the Basin profile. The TabulatedRatingCurve gives a
 relation between the storage of a connected Basin (via the outlet level) and its outflow.
@@ -418,7 +419,7 @@ time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
-# Pump
+# Pump {#sec-pump}
 
 Pump water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
@@ -435,7 +436,7 @@ flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 
-# Outlet
+# Outlet {#sec-outlet}
 
 The outlet is very similar to the pump. The outlet has two additional physical constraints: water only flows trough the outlet when the head difference is positive (i.e. water flows down by gravity), and the upstream level must be above the minimum crest level if the upstream level is defined.
 When PID controlled, the outlet must point towards the controlled basin in terms of edges.
@@ -450,7 +451,7 @@ min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
 
-# User
+# User {#sec-user}
 
 A user can demand a certain flow from the basin that supplies it,
 distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
@@ -509,7 +510,7 @@ abstracted            | Float64
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
 :::
 
-# LevelBoundary
+# LevelBoundary {#sec-levelboundary}
 
 Acts like an infinitely large basin where the level does not change by flow.
 This can be connected to a basin via a `LinearResistance`.
@@ -538,7 +539,7 @@ node_id   | Int      | -            | sorted
 time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
 
-# FlowBoundary
+# FlowBoundary {#sec-flowboundary}
 
 Pump water to a destination node.
 We require that the edge connecting the flow boundary to the Basin should point towards the basin,
@@ -569,7 +570,7 @@ node_id   | Int      | -            | sorted
 time      | DateTime | -            | sorted per node_id
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
-# LinearResistance
+# LinearResistance {#sec-linearresistance}
 
 Flow proportional to the level difference between the connected basins.
 
@@ -580,7 +581,7 @@ control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
 resistance    | Float64 | $sm^{-2}$    | -
 
-# ManningResistance
+# ManningResistance {#sec-manningresistance}
 
 Flow through this connection is estimated by conservation of energy and the Manning-Gauckler formula to estimate friction losses.
 
@@ -594,7 +595,7 @@ manning_n     | Float64 | $s m^{-\frac{1}{3}}$          | positive
 profile_width | Float64 | $m$          | positive
 profile_slope | Float64 | -            | -
 
-# Terminal
+# Terminal {#sec-terminal}
 
 A terminal is a water sink without state or properties.
 Any water that flows into a terminal node is removed from the model.
@@ -605,7 +606,7 @@ column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int     | -            | sorted
 
-# DisceteControl
+# DisceteControl {#sec-discretecontrol}
 
 DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
@@ -621,7 +622,7 @@ variable          | String   | -       | must be "level" or "flow_rate", sorted 
 greater_than      | Float64  | various | sorted per variable
 look_ahead        | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0)
 
-## DiscreteControl / logic
+## DiscreteControl / logic {#sec-logic}
 
 The logic schema defines which control states are triggered based on the truth of the conditions a discrete_control node listens to.
 DiscreteControl is applied in the Julia core as follows:
@@ -651,7 +652,7 @@ control_node_id | Int
 truth_state     | String
 control_state   | String
 
-# PidControl
+# PidControl {#sec-pidcontrol}
 
 The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
 
