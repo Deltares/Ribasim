@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from copy import deepcopy
 from typing import Any
 
 import geopandas as gpd
@@ -61,18 +60,6 @@ class Node(SpatialTableModel[NodeSchema]):
         node_type = node_type.node_type.tolist()
 
         return node_id, node_type
-
-    def offset_allocation_network_ids(
-        self, offset_allocation_network_id: int, inplace: bool = True
-    ) -> "Node":
-        """Add the same offset to all node IDs."""
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-
-        node.df.allocation_network_id += offset_allocation_network_id
-        return node
 
     def geometry_from_connectivity(
         self, from_id: Sequence[int], to_id: Sequence[int]

@@ -110,16 +110,16 @@ end
     ]
     storage = Ribasim.profile_storage(level, area)
     basin = Ribasim.Basin(
-        Indices(Ribasim.NodeID[1, 2]),
-        zeros(2),
-        zeros(2),
-        zeros(2),
-        zeros(2),
-        zeros(2),
-        zeros(2),
-        [area, area],
-        [level, level],
-        [storage, storage],
+        Indices(Ribasim.NodeID[1]),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        zeros(1),
+        [area],
+        [level],
+        [storage],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
@@ -128,11 +128,9 @@ end
         @test_throws ErrorException Ribasim.get_storages_from_levels(basin, [-1.0])
     end
 
-    @test length(logger.logs) == 2
+    @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message == "Unexpected 'Basin / state' length."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
+    @test logger.logs[1].message ==
           "The level -1.0 of basin #1 is lower than the bottom of this basin 0.0."
 
     # Converting from storages to levels and back should return the same storages

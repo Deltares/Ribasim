@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -39,18 +38,6 @@ class Edge(SpatialTableModel[EdgeSchema]):
     static : pandas.DataFrame
         Table describing the flow connections.
     """
-
-    def offset_allocation_network_ids(
-        self, offset_allocation_network_id: int, inplace: bool = True
-    ) -> "Edge":
-        """Add the same offset to all node IDs."""
-        if inplace:
-            edge = self
-        else:
-            edge = deepcopy(self)
-
-        edge.df.allocation_network_id += offset_allocation_network_id
-        return edge
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         return (self.df.edge_type == edge_type).to_numpy()

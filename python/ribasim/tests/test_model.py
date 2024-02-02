@@ -1,5 +1,4 @@
 import re
-from copy import deepcopy
 from sqlite3 import connect
 
 import pandas as pd
@@ -131,9 +130,8 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
 
 
-def test_plot(discrete_control_of_pid_control, main_network_with_subnetworks):
+def test_plot(discrete_control_of_pid_control):
     discrete_control_of_pid_control.plot()
-    main_network_with_subnetworks.plot()
 
 
 def test_write_adds_fid_in_tables(basic, tmp_path):
@@ -168,23 +166,3 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         assert "fid" in df.columns
         fids = df["fid"]
         assert fids.equals(pd.Series(range(0, len(fids))))
-
-
-def test_model_merging(basic, subnetwork, tmp_path):
-    model = deepcopy(basic)
-    model_added = deepcopy(subnetwork)
-    # Add model twice to test adding multiple subnetworks
-    model.smart_merge(model_added)
-    model.smart_merge(model_added)
-    assert (model.network.node.df.index == range(1, 44)).all()
-    assert not model.network.edge.df.index.duplicated().any()
-    assert model.max_allocation_network_id() == 4  # 0 + 2 + 2
-
-    # Added model should not change
-    for node_type, node_added in model_added.nodes().items():
-        node_subnetwork = getattr(subnetwork, node_type)
-        for table_added, table_subnetwork in zip(
-            node_added.tables(), node_subnetwork.tables()
-        ):
-            assert table_added == table_subnetwork
-    model.write(tmp_path / "compound_model/ribasim.toml")

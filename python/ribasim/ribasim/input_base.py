@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
 from contextvars import ContextVar
-from copy import deepcopy
 from pathlib import Path
 from sqlite3 import Connection, connect
 from typing import (
@@ -14,7 +13,6 @@ from typing import (
 )
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -165,19 +163,6 @@ class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
-    def __eq__(self, other) -> bool:
-        if not type(self) == type(other):
-            return False
-        if self.filepath != other.filepath:
-            return False
-
-        if self.df is None and other.df is None:
-            return True
-        elif isinstance(self.df, (pd.DataFrame, gpd.GeoDataFrame)):
-            return self.df.equals(other.df)
-        else:
-            return False
-
     @field_validator("df")
     @classmethod
     def prefix_extra_columns(cls, v: DataFrame[TableT]):
@@ -220,81 +205,6 @@ class TableModel(FileModel, Generic[TableT]):
             node_ids.update(self.df["node_id"])
 
         return node_ids
-
-    def offset_node_ids(
-        self, offset_node_id: int, inplace: bool = True
-    ) -> "TableModel[TableT]":
-        """Add the same offset to all node IDs."""
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-        df = node.df
-        if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
-            df.index += offset_node_id
-            for name_column in [
-                "node_id",
-                "from_node_id",
-                "to_node_id",
-                "listen_feature_id",
-            ]:
-                if hasattr(df, name_column):
-                    df[name_column] += offset_node_id
-
-        return node
-
-    def offset_edge_ids(
-        self, offset_edge_id: int, inplace=True
-    ) -> "TableModel[TableT]":
-        if self.tablename() == "Edge" and isinstance(self.df, gpd.GeoDataFrame):
-            if inplace:
-                edge = self
-            else:
-                edge = deepcopy(self)
-            df = edge.df
-            if isinstance(df, gpd.GeoDataFrame):
-                df.index += offset_edge_id
-
-        return edge
-
-    def merge(
-        self, table_added: "TableModel[TableT]", inplace: bool = True
-    ) -> "TableModel[TableT]":
-        """Merge an added table of the same type into this table."""
-        assert type(self) == type(
-            table_added
-        ), "Can only merge tables of the same type."
-
-        if inplace:
-            table = self
-        else:
-            table = deepcopy(self)
-
-        if table_added.df is not None and table.df is not None:
-            if isinstance(self.df, gpd.GeoDataFrame):
-                common_node_ids = np.intersect1d(
-                    table.df.index.to_numpy(), table_added.df.index.to_numpy()
-                )
-            else:
-                common_node_ids = np.intersect1d(
-                    table.df.node_id.to_numpy(), table_added.df.node_id.to_numpy()
-                )
-
-            assert (
-                common_node_ids.size == 0
-            ), f"Self and added table (of type {type(self)}) have common IDs: {common_node_ids}."
-
-            table.df = pd.concat(
-                [
-                    table.df,
-                    table_added.df,
-                ]
-            )  # type: ignore
-
-        elif table_added.df is not None:
-            table.df = table_added.df
-
-        return table
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -533,61 +443,6 @@ class NodeModel(ChildModel):
     def node_ids_and_types(self) -> tuple[list[int], list[str]]:
         ids = self.node_ids()
         return list(ids), len(ids) * [self.get_input_type()]
-
-    def offset_node_ids(self, offset_node_id: int, inplace: bool = True) -> "NodeModel":
-        """Add the same offset to all node IDs in all underlying tables."""
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-        for field in node.fields():
-            attr = getattr(node, field)
-            if isinstance(attr, TableModel):
-                table = attr
-                setattr(
-                    node,
-                    field,
-                    table.offset_node_ids(offset_node_id),
-                )
-        return node
-
-    def merge(self, node_added: "NodeModel", inplace: bool = True) -> "NodeModel":
-        """Merge an added node of the same type into this node."""
-        assert type(self) == type(node_added), "Can only merge nodes of the same type."
-
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-
-        for field in node_added.fields():
-            attr = getattr(node_added, field)
-            if isinstance(attr, TableModel):
-                table_added = attr
-                table_node = getattr(node, field)
-                table_added = table_node.merge(table_added, inplace=False)
-                setattr(node, field, table_added)
-        return node
-
-    def delete_by_ids(self, node_ids: list[int], inplace: bool = True) -> "NodeModel":
-        """Delete all rows of the underlying tables whose node ID is in the given list."""
-        if inplace:
-            node = self
-        else:
-            node = deepcopy(self)
-
-        for field in node.fields():
-            attr = getattr(node, field)
-            if isinstance(attr, TableModel):
-                df = attr.df
-                if isinstance(df, (pd.DataFrame, gpd.GeoDataFrame)):
-                    df = df[~df.node_id.isin(node_ids)]  # type: ignore
-                    if df.empty:
-                        attr.df = None
-                    else:
-                        attr.df = df
-
-        return node
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
         for field in self.fields():
