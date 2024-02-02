@@ -126,7 +126,7 @@ classDef boundary fill:transparent,stroke-dasharray:5 5
 
 The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
-The [Ribasim python package](https://deltares.github.io/Ribasim/python/) is available to build, update and analyze Ribasim models programmatically.
+The [Ribasim Python package](https://deltares.github.io/Ribasim/python/) is available to build, update and analyze Ribasim models programmatically.
 For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a python API (ribasim_api) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
 
 The Ribasim QGIS plugin allows users to construct a model from scratch without programming.
