@@ -1161,7 +1161,7 @@ function allocate!(
         end
 
         # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p, t, priority_idx)
+        assign_allocations!(allocation_model, p, t, priority_idx; collect_demands)
 
         # Save the flows over all edges in the subnetwork
         save_allocation_flows!(

@@ -64,8 +64,9 @@
                 :allocation_network_id,
                 :priority,
                 :flow,
+                :collect_demands,
             ),
-            (DateTime, Int, Int, Int, Int, Int, Float64),
+            (DateTime, Int, Int, Int, Int, Int, Float64, Bool),
         )
         @test Tables.schema(subgrid) ==
               Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
