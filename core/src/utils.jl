@@ -101,6 +101,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         end
     end
 
+    if incomplete_subnetwork(graph, node_ids)
+        error("Incomplete connectivity in subnetwork")
+    end
+
     flow = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
     if config.solver.autodiff

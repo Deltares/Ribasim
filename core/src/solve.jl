@@ -415,6 +415,32 @@ struct User <: AbstractParameterNode
         allocated::Vector{Float64},
         abstracted::Vector{Float64},
     }
+
+    function User(
+        node_id,
+        active,
+        demand,
+        allocated,
+        return_factor,
+        min_level,
+        priorities,
+        record,
+    )
+        if valid_demand(node_id, demand, priorities)
+            return new(
+                node_id,
+                active,
+                demand,
+                allocated,
+                return_factor,
+                min_level,
+                priorities,
+                record,
+            )
+        else
+            error("Invalid demand")
+        end
+    end
 end
 
 "Subgrid linearly interpolates basin levels."
