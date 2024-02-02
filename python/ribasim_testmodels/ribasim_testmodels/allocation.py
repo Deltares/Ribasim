@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import ribasim
 
-from ribasim_testmodels.utils import offset_spatial_inplace
-
 
 def user_model():
     """Create a user test model with static and dynamic users on the same basin."""
@@ -1083,38 +1081,312 @@ def allocation_example_model():
 
 
 def main_network_with_subnetworks_model():
-    """Generate a model with a main network with connected subnetworks which are other test models."""
-
-    # Main network
-    n_basins = 5
-    n_nodes = 2 * n_basins
-    xy = np.array([(3 * i, (-1) ** (i + 1)) for i in range(n_nodes)])
+    # Set ip the nodes:
+    xy = np.array(
+        [
+            (0.0, -1.0),
+            (3.0, 1.0),
+            (6.0, -1.0),
+            (9.0, 1.0),
+            (12.0, -1.0),
+            (15.0, 1.0),
+            (18.0, -1.0),
+            (21.0, 1.0),
+            (24.0, -1.0),
+            (27.0, 1.0),
+            (3.0, 4.0),
+            (2.0, 4.0),
+            (1.0, 4.0),
+            (0.0, 4.0),
+            (2.0, 5.0),
+            (2.0, 6.0),
+            (1.0, 6.0),
+            (0.0, 6.0),
+            (2.0, 8.0),
+            (2.0, 3.0),
+            (3.0, 6.0),
+            (0.0, 7.0),
+            (2.0, 7.0),
+            (14.0, 3.0),
+            (14.0, 4.0),
+            (14.0, 5.0),
+            (13.0, 6.0),
+            (12.0, 7.0),
+            (11.0, 8.0),
+            (15.0, 6.0),
+            (16.0, 7.0),
+            (17.0, 8.0),
+            (13.0, 5.0),
+            (26.0, 3.0),
+            (26.0, 4.0),
+            (25.0, 4.0),
+            (24.0, 4.0),
+            (28.0, 4.0),
+            (26.0, 5.0),
+            (24.0, 6.0),
+            (25.0, 6.0),
+            (26.0, 6.0),
+            (27.0, 6.0),
+            (28.0, 6.0),
+            (24.0, 7.0),
+            (26.0, 7.0),
+            (28.0, 7.0),
+            (26.0, 8.0),
+            (27.0, 8.0),
+            (28.0, 8.0),
+            (25.0, 9.0),
+            (26.0, 9.0),
+            (28.0, 9.0),
+            (26.0, 10.0),
+            (26.0, 11.0),
+            (26.0, 12.0),
+            (29.0, 6.0),
+        ]
+    )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["FlowBoundary", "Basin"] + (n_basins - 1) * [
+    node_type = [
+        "FlowBoundary",
+        "Basin",
         "LinearResistance",
         "Basin",
+        "LinearResistance",
+        "Basin",
+        "LinearResistance",
+        "Basin",
+        "LinearResistance",
+        "Basin",
+        "Pump",
+        "Basin",
+        "Outlet",
+        "Terminal",
+        "Pump",
+        "Basin",
+        "Outlet",
+        "Basin",
+        "Terminal",
+        "User",
+        "User",
+        "User",
+        "Outlet",
+        "Pump",
+        "Basin",
+        "TabulatedRatingCurve",
+        "FractionalFlow",
+        "Basin",
+        "User",
+        "FractionalFlow",
+        "Basin",
+        "User",
+        "DiscreteControl",
+        "User",
+        "Basin",
+        "Outlet",
+        "Terminal",
+        "Pump",
+        "Pump",
+        "Basin",
+        "Outlet",
+        "Basin",
+        "Outlet",
+        "Basin",
+        "User",
+        "TabulatedRatingCurve",
+        "TabulatedRatingCurve",
+        "Basin",
+        "Pump",
+        "Basin",
+        "User",
+        "TabulatedRatingCurve",
+        "User",
+        "Basin",
+        "Outlet",
+        "Terminal",
+        "User",
     ]
+
+    allocation_network_id = np.ones(57, dtype=int)
+    allocation_network_id[10:23] = 3
+    allocation_network_id[23:33] = 5
+    allocation_network_id[33:] = 7
+
+    # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "allocation_network_id": 1},
+            data={
+                "type": node_type,
+                "allocation_network_id": allocation_network_id,
+            },
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
     )
 
-    from_id = np.arange(1, n_nodes)
-    to_id = np.arange(2, n_nodes + 1)
-    allocation_network_id = len(from_id) * [None]
+    # Setup the edges:
+    from_id = np.array(
+        [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            12,
+            12,
+            15,
+            16,
+            17,
+            16,
+            18,
+            16,
+            23,
+            20,
+            21,
+            22,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            26,
+            30,
+            31,
+            32,
+            33,
+            33,
+            38,
+            35,
+            36,
+            35,
+            35,
+            39,
+            42,
+            41,
+            40,
+            42,
+            46,
+            48,
+            49,
+            50,
+            48,
+            52,
+            48,
+            51,
+            54,
+            55,
+            42,
+            43,
+            44,
+            47,
+            34,
+            45,
+            53,
+            44,
+            57,
+            2,
+            6,
+            10,
+        ],
+        dtype=np.int64,
+    )
+    to_id = np.array(
+        [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            12,
+            13,
+            14,
+            20,
+            15,
+            16,
+            17,
+            18,
+            21,
+            22,
+            23,
+            19,
+            12,
+            16,
+            18,
+            25,
+            26,
+            27,
+            28,
+            29,
+            28,
+            30,
+            31,
+            32,
+            31,
+            27,
+            30,
+            35,
+            36,
+            37,
+            34,
+            39,
+            42,
+            41,
+            40,
+            45,
+            46,
+            48,
+            49,
+            50,
+            53,
+            52,
+            54,
+            51,
+            54,
+            55,
+            56,
+            43,
+            44,
+            47,
+            50,
+            35,
+            40,
+            50,
+            57,
+            44,
+            11,
+            24,
+            38,
+        ],
+        dtype=np.int64,
+    )
+
+    edge_type = 68 * ["flow"]
+    edge_type[34] = "control"
+    edge_type[35] = "control"
+    allocation_network_id = 68 * [None]
     allocation_network_id[0] = 1
-    lines = node.geometry_from_connectivity(from_id, to_id)
+    allocation_network_id[65] = 3
+    allocation_network_id[66] = 5
+    allocation_network_id[67] = 7
+
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
+                "edge_type": edge_type,
                 "allocation_network_id": allocation_network_id,
             },
             geometry=lines,
@@ -1123,18 +1395,147 @@ def main_network_with_subnetworks_model():
     )
 
     # Setup the basins:
-    basin_node_ids = np.arange(2, n_nodes + 1, 2)
     profile = pd.DataFrame(
         data={
-            "node_id": np.repeat(basin_node_ids, [2] * len(basin_node_ids)),
-            "area": 1000.0,
-            "level": n_basins * [0.0, 1.0],
+            "node_id": [
+                2,
+                2,
+                4,
+                4,
+                6,
+                6,
+                8,
+                8,
+                10,
+                10,
+                12,
+                12,
+                16,
+                16,
+                18,
+                18,
+                25,
+                25,
+                28,
+                28,
+                31,
+                31,
+                35,
+                35,
+                40,
+                40,
+                42,
+                42,
+                44,
+                44,
+                48,
+                48,
+                50,
+                50,
+                54,
+                54,
+            ],
+            "area": [
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                100000.0,
+                100000.0,
+                100000.0,
+                100000.0,
+                100000.0,
+                100000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+                1000.0,
+            ],
+            "level": [
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+            ],
         }
     )
 
     static = pd.DataFrame(
         data={
-            "node_id": basin_node_ids,
+            "node_id": [
+                2,
+                4,
+                6,
+                8,
+                10,
+                12,
+                16,
+                18,
+                25,
+                28,
+                31,
+                35,
+                40,
+                44,
+                42,
+                48,
+                50,
+                54,
+            ],
             "drainage": 0.0,
             "potential_evaporation": 0.0,
             "infiltration": 0.0,
@@ -1143,77 +1544,194 @@ def main_network_with_subnetworks_model():
         }
     )
 
-    state = pd.DataFrame(data={"node_id": basin_node_ids, "level": 1.0})
+    state = pd.DataFrame(
+        data={
+            "node_id": [
+                2,
+                4,
+                6,
+                8,
+                10,
+                12,
+                16,
+                18,
+                25,
+                28,
+                31,
+                35,
+                40,
+                42,
+                44,
+                48,
+                50,
+                54,
+            ],
+            "level": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                10.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+            ],
+        }
+    )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(
+        profile=profile,
+        static=static,
+        state=state,
+    )
 
+    # Setup the discrete control:
+    condition = pd.DataFrame(
+        data={
+            "node_id": [33],
+            "listen_feature_id": [25],
+            "variable": ["level"],
+            "greater_than": [0.003],
+        }
+    )
+
+    logic = pd.DataFrame(
+        data={
+            "node_id": [33, 33],
+            "truth_state": ["F", "T"],
+            "control_state": ["A", "B"],
+        }
+    )
+
+    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
+
+    # Setup flow boundary
     flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [1.0]})
+    )
+
+    # Setup fractional flow
+    fractional_flow = ribasim.FractionalFlow(
         static=pd.DataFrame(
             data={
-                "node_id": [1],
-                "flow_rate": 1.0,
+                "node_id": [27, 30, 27, 30],
+                "fraction": [0.25, 0.75, 0.75, 0.25],
+                "control_state": ["A", "A", "B", "B"],
             }
         )
     )
 
+    # Setup linear resistance
     linear_resistance = ribasim.LinearResistance(
+        static=pd.DataFrame(data={"node_id": [3, 5, 7, 9], "resistance": 0.001})
+    )
+
+    # Setup outlet
+    outlet = ribasim.Outlet(
         static=pd.DataFrame(
-            data={"node_id": np.arange(3, n_nodes + 1, 2), "resistance": 1e-3}
+            data={
+                "node_id": [13, 17, 23, 36, 41, 43, 55],
+                "flow_rate": [3.0, 3.0, 3.0, 0.003, 0.003, 0.003, 0.003],
+                "max_flow_rate": 3.0,
+            }
         )
+    )
+
+    # Setup pump
+    pump = ribasim.Pump(
+        static=pd.DataFrame(
+            data={
+                "node_id": [15, 39, 49, 11, 24, 38],
+                "flow_rate": [4.0e00, 4.0e-03, 4.0e-03, 1.0e-03, 1.0e-03, 1.0e-03],
+                "max_flow_rate": [4.0, 0.004, 0.004, 1.0, 1.0, 1.0],
+            }
+        )
+    )
+
+    # Setup tabulated rating curve
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": [26, 26, 46, 46, 47, 47, 52, 52],
+                "level": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+                "flow_rate": [
+                    0.0e00,
+                    1.0e-04,
+                    0.0e00,
+                    2.0e00,
+                    0.0e00,
+                    2.0e00,
+                    0.0e00,
+                    2.0e00,
+                ],
+            }
+        )
+    )
+
+    # Setup terminal node
+    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [14, 19, 37, 56]}))
+
+    # Setup the user
+    user = ribasim.User(
+        static=pd.DataFrame(
+            data={
+                "node_id": [20, 21, 22, 29, 34, 45, 51, 53, 57],
+                "demand": [
+                    4.0e00,
+                    5.0e00,
+                    3.0e00,
+                    1.0e-03,
+                    1.0e-03,
+                    1.0e-03,
+                    1.0e-03,
+                    1.0e-03,
+                    1.0e-03,
+                ],
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": [2, 1, 2, 1, 2, 1, 3, 3, 2],
+            }
+        ),
+        time=pd.DataFrame(
+            data={
+                "node_id": [32, 32],
+                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                "demand": [0.001, 0.002],
+                "return_factor": 0.9,
+                "min_level": 0.9,
+                "priority": 1,
+            }
+        ),
     )
 
     # Setup allocation:
     allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
 
     model = ribasim.Model(
-        network=ribasim.Network(
-            node=node,
-            edge=edge,
-        ),
+        network=ribasim.Network(node=node, edge=edge),
         basin=basin,
+        discrete_control=discrete_control,
         flow_boundary=flow_boundary,
+        fractional_flow=fractional_flow,
         linear_resistance=linear_resistance,
+        outlet=outlet,
+        pump=pump,
+        terminal=terminal,
+        user=user,
+        tabulated_rating_curve=rating_curve,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
-
-    subnetwork_1 = subnetwork_model()
-    subnetwork_2 = fractional_flow_subnetwork_model()
-    subnetwork_3 = looped_subnetwork_model()
-
-    offset_spatial_inplace(subnetwork_1, (0.0, 3.0))
-    offset_spatial_inplace(subnetwork_2, (14.0, 3.0))
-    offset_spatial_inplace(subnetwork_3, (26.0, 3.0))
-
-    model.smart_merge(subnetwork_1)
-    model.smart_merge(subnetwork_2)
-    model.smart_merge(subnetwork_3)
-
-    # Connection edges
-    from_id = np.array([2, 6, 10])
-    to_id = np.array([11, 24, 38])
-    edge_type = 3 * ["flow"]
-    model.network.add_edges(from_id, to_id, edge_type)
-
-    # Convert connecting flow boundaries to pumps
-    model.network.node.df.loc[to_id, "type"] = "Pump"
-    model.flow_boundary.delete_by_ids(to_id)
-    pump_added = ribasim.Pump(
-        static=pd.DataFrame(
-            data={"node_id": to_id, "flow_rate": 1e-3, "max_flow_rate": 1.0}
-        )
-    )
-    model.pump.merge(pump_added)
-
-    # Fix control logic
-    df = model.discrete_control.condition.df
-    df.listen_feature_id = 25
-    df.variable = "level"
-
-    # Fix sources
-    df = model.network.edge.df
-    df.loc[[18, 55, 99], "allocation_network_id"] = None
-    df.loc[128:130, "allocation_network_id"] = [3, 5, 7]
 
     return model
