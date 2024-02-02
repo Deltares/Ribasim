@@ -199,6 +199,12 @@ const nonconservative_nodetypes =
 function generate_allocation_models!(p::Parameters, config::Config)::Nothing
     (; graph, allocation_models) = p
 
+    errors = non_positive_allocation_network_id(graph)
+
+    if errors
+        error("Allocation network initialization failed.")
+    end
+
     for allocation_network_id in keys(graph[].node_ids)
         push!(
             allocation_models,
@@ -479,10 +485,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         current_area = DiffCache(current_area, chunk_sizes)
     end
 
-    precipitation = fill(NaN, length(node_id))
-    potential_evaporation = fill(NaN, length(node_id))
-    drainage = fill(NaN, length(node_id))
-    infiltration = fill(NaN, length(node_id))
+    precipitation = zeros(length(node_id))
+    potential_evaporation = zeros(length(node_id))
+    drainage = zeros(length(node_id))
+    infiltration = zeros(length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)

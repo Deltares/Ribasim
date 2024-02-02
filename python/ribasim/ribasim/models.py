@@ -44,11 +44,11 @@ class BasinSubgrid(BaseModel):
 class BasinTime(BaseModel):
     node_id: int
     time: datetime
-    drainage: float
-    potential_evaporation: float
-    infiltration: float
-    precipitation: float
-    urban_runoff: float
+    drainage: float | None = None
+    potential_evaporation: float | None = None
+    infiltration: float | None = None
+    precipitation: float | None = None
+    urban_runoff: float | None = None
     remarks: str = Field("", description="a hack for pandera")
 
 
