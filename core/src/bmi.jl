@@ -681,6 +681,8 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
         model.integrator.p.basin.drainage
     elseif name == "subgrid_level"
         model.integrator.p.subgrid.level
+    elseif name == "demand"
+        model.integrator.p.demand
     else
         error("Unknown variable $name")
     end

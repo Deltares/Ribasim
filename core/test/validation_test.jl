@@ -411,7 +411,9 @@ end
         @test_throws "Invalid demand" Ribasim.User(
             [Ribasim.NodeID(1)],
             [true],
+            [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
+            [true],
             [0.0, -0.0],
             [0.9],
             [0.9],

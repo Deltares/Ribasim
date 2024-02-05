@@ -637,7 +637,7 @@ function User(db::DB, config::Config)::User
     static = load_structvector(db, config, UserStaticV1)
     time = load_structvector(db, config, UserTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
+    static_node_ids, time_node_ids, node_ids, _, valid =
         static_and_time_node_ids(db, static, time, "User")
 
     if !valid
@@ -650,7 +650,7 @@ function User(db::DB, config::Config)::User
     active = BitVector()
     min_level = Float64[]
     return_factor = Float64[]
-    interpolations = Vector{ScalarInterpolation}[]
+    demand_itp = Vector{ScalarInterpolation}[]
 
     errors = false
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
@@ -662,25 +662,34 @@ function User(db::DB, config::Config)::User
         group in IterTools.groupby(row -> row.priority, time)
     )
 
+    demand = Float64[]
+
+    # Whether the demand of a user node is given by a timeseries
+    demand_from_timeseries = BitVector()
+
     for node_id in node_ids
         first_row = nothing
-        demand = Vector{ScalarInterpolation}()
+        demand_itp_node_id = Vector{ScalarInterpolation}()
 
         if node_id in static_node_ids
+            push!(demand_from_timeseries, false)
             rows = searchsorted(static.node_id, node_id)
             static_id = view(static, rows)
             for p in priorities
                 idx = findsorted(static_id.priority, p)
                 demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
                 demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
-                push!(demand, demand_p_itp)
+                push!(demand_itp_node_id, demand_p_itp)
+                push!(demand, demand_p)
             end
-            push!(interpolations, demand)
+            push!(demand_itp, demand_itp_node_id)
             first_row = first(static_id)
             is_active = coalesce(first_row.active, true)
 
         elseif node_id in time_node_ids
+            push!(demand_from_timeseries, true)
             for p in priorities
+                push!(demand, 0.0)
                 if p in keys(time_priority_dict)
                     demand_p_itp, is_valid = get_scalar_interpolation(
                         config.starttime,
@@ -691,17 +700,17 @@ function User(db::DB, config::Config)::User
                         default_value = 0.0,
                     )
                     if is_valid
-                        push!(demand, demand_p_itp)
+                        push!(demand_itp_node_id, demand_p_itp)
                     else
                         @error "The demand(t) relationship for User #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
                         errors = true
                     end
                 else
                     demand_p_itp = LinearInterpolation([0.0, 0.0], trivial_timespan)
-                    push!(demand, demand_p_itp)
+                    push!(demand_itp_node_id, demand_p_itp)
                 end
             end
-            push!(interpolations, demand)
+            push!(demand_itp, demand_itp_node_id)
 
             first_row_idx = searchsortedfirst(time.node_id, node_id)
             first_row = time[first_row_idx]
@@ -736,26 +745,22 @@ function User(db::DB, config::Config)::User
         abstracted = Float64[],
     )
 
-    record = (
-        time = Vector{Float64}(),
-        allocation_network_id = Vector{Int}(),
-        user_node_id = Vector{Int}(),
-        priority = Vector{Int}(),
-        demand = Vector{Float64}(),
-        allocated = Vector{Float64}(),
-        abstracted = Vector{Float64}(),
-    )
+    node_ids = NodeID.(node_ids)
 
-    return User(
-        NodeID.(node_ids),
+    user = User(
+        node_ids,
         active,
-        interpolations,
+        demand,
+        demand_itp,
+        demand_from_timeseries,
         allocated,
         return_factor,
         min_level,
         priorities,
         record,
     )
+
+    return user
 end
 
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid

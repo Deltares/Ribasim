@@ -639,14 +639,14 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand::Vector{
+    demand_itp::Vector{
         Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
     },
     priorities::Vector{Int},
 )::Bool
     errors = false
 
-    for (col, id) in zip(demand, node_id)
+    for (col, id) in zip(demand_itp, node_id)
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
                 @error "Demand of user node $id with priority $p_itp should be non-negative"
