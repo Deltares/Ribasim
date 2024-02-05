@@ -43,4 +43,4 @@ jobs:
         run: pytest --numprocesses=auto --cov=ribasim --cov-report=xml python/ribasim/tests
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
