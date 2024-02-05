@@ -10,9 +10,19 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    graph = p.graph
     close(db)
 
-    graph = p.graph
+    # Test compound allocation edge data
+    for edge_metadata in values(graph.edge_data)
+        if edge_metadata.allocation_flow
+            @test first(edge_metadata.node_ids) == edge_metadata.from_id
+            @test last(edge_metadata.node_ids) == edge_metadata.to_id
+        else
+            @test isempty(edge_metadata.node_ids)
+        end
+    end
+
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)

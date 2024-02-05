@@ -163,6 +163,11 @@ function BMI.finalize(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.allocation)
     write_arrow(path, table, compress)
 
+    # allocation flow
+    table = allocation_flow_table(model)
+    path = results_path(config, RESULTS_FILENAME.allocation_flow)
+    write_arrow(path, table, compress)
+
     # exported levels
     table = subgrid_level_table(model)
     path = results_path(config, RESULTS_FILENAME.subgrid_levels)

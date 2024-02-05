@@ -1731,7 +1731,7 @@ def main_network_with_subnetworks_model():
         tabulated_rating_curve=rating_curve,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-03-01 00:00:00",
     )
 
     return model

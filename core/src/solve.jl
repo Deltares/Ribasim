@@ -28,6 +28,8 @@ allocation models: The allocation models for the main network and subnetworks co
     allocation_network_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
+record: A record of all flows computed by allocation optimization, eventually saved to
+    output file
 """
 struct Allocation
     allocation_network_ids::Vector{Int}
@@ -35,6 +37,16 @@ struct Allocation
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    record::@NamedTuple{
+        time::Vector{Float64},
+        edge_id::Vector{Int},
+        from_node_id::Vector{Int},
+        to_node_id::Vector{Int},
+        allocation_network_id::Vector{Int},
+        priority::Vector{Int},
+        flow::Vector{Float64},
+        collect_demands::BitVector,
+    }
 end
 
 @enumx EdgeType flow control none
@@ -58,6 +70,8 @@ allocation_network_id_source: ID of allocation network where this edge is a sour
 from_id: the node ID of the source node
 to_id: the node ID of the destination node
 allocation_flow: whether this edge has a flow in an allocation graph
+node_ids: if this edge has allocation flow, these are all the
+    nodes from the physical layer this edge consists of
 """
 struct EdgeMetadata
     id::Int
@@ -66,6 +80,7 @@ struct EdgeMetadata
     from_id::NodeID
     to_id::NodeID
     allocation_flow::Bool
+    node_ids::Vector{NodeID}
 end
 
 abstract type AbstractParameterNode end
