@@ -154,6 +154,3 @@ report.xml
 
 # Designated working dir for working on Ribasim models
 models/
-
-# Result of build steps.
-build/
