@@ -1,0 +1,9 @@
+from pydantic import Field
+from ribasim.input_base import BaseModel
+
+
+class {{class_type}}(BaseModel):
+{% for f in fields %}
+    {{ f[1] }}: {{ f[2] }}
+{% end %}
+    remarks: str = Field("", description="a hack for pandera")
