@@ -111,6 +111,11 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
+    @test model.integrator.u.storage ≈ [1000]
+    @test model.integrator.p.basin.precipitation == [0.0]
+    @test model.integrator.p.basin.potential_evaporation == [0.0]
+    @test model.integrator.p.basin.drainage == [0.0]
+    @test model.integrator.p.basin.infiltration == [0.0]
     @test successful_retcode(model)
 end
 
