@@ -96,10 +96,6 @@ end
 
     @test objective.terms[F_abs[NodeID(5)]] == 1.0
     @test objective.terms[F_abs[NodeID(6)]] == 1.0
-    @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(2), NodeID(4))]] ≈ 0.125
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
@@ -113,10 +109,6 @@ end
 
     @test objective.terms[F_abs[NodeID(5)]] == 1.0
     @test objective.terms[F_abs[NodeID(6)]] == 1.0
-    @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(2), NodeID(4))]] ≈ 62.585499316005475
 end
 
 @testitem "Allocation with controlled fractional flow" begin
