@@ -149,19 +149,21 @@ plt.show()
 The precipitation term is given by
 
 $$
-    Q_P = P \cdot A(u).
+    Q_P = P \cdot A
 $$ {#eq-precip}
 
-Here $P = P(t)$ is the precipitation rate and $A$ is the wetted area. $A$ is a
-function of the storage $u = u(t)$: as the volume of water changes, the area of the free water
-surface may change as well, depending on the slopes of the surface waters.
+Here $P = P(t)$ is the precipitation rate and $A$ is the maximum area given in the `Basin / profile` table.
+Precipitation in the Basin area is assumed to be directly added to the Basin storage.
+The modeler needs to ensure all precipitation enters the model, and there is no overlap in the maximum profile areas, else extra water is created.
+If a part of the catchment is not in any Basin profile, the modeler has to verify that water source is not forgotten.
+It can for instance be converted to a flow rate and added to a Basin as a FlowBoundary.
 
 ## Evaporation
 
 The evaporation term is given by
 
 $$
-    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1).
+    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1)
 $$ {#eq-evap}
 
 Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $\phi$ is the [reduction factor](equations.qmd#sec-reduction_factor) which depends on the depth $d$. It provides a smooth gradient as $u \rightarrow 0$.
