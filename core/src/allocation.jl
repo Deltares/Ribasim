@@ -402,6 +402,24 @@ function add_variables_flow!(
 end
 
 """
+Add the variables for supply/demand of a basin to the problem.
+The variable indices are the node_ids of the basins in the subnetwork.
+"""
+function add_variables_basin!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    node_ids_basin = [
+        node_id for node_id in graph[].node_ids[allocation_network_id] if
+        graph[node_id].type == :basin
+    ]
+    problem[:F_basin] = JuMP.@variable(problem, F_basin[node_id = node_ids_basin,])
+    return nothing
+end
+
+"""
 Certain allocation distribution types use absolute values in the objective function.
 Since most optimization packages do not support the absolute value function directly,
 New variables are introduced that act as the absolute value of an expression by
@@ -523,6 +541,18 @@ function outflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     return outflow_ids
 end
 
+function get_basin_flow(
+    problem::JuMP.Model,
+    node_id::NodeID,
+)::Union{JuMP.VariableRef, Float64}
+    F_basin = problem[:F_basin]
+    return if node_id in only(F_basin.axes)
+        F_basin[node_id]
+    else
+        0.0
+    end
+end
+
 """
 Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
@@ -535,8 +565,9 @@ function add_constraints_flow_conservation!(
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph, allocation) = p
+    (; graph) = p
     F = problem[:F]
+    F_basin = problem[:F_basin]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
         [node_id for node_id in node_ids if graph[node_id].type == :basin]
@@ -551,10 +582,11 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) <= sum([
+        ]) <=
+        sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
-        ]),
+        ]) + get_basin_flow(problem, node_id),
         base_name = "flow_conservation",
     )
     return nothing
@@ -732,6 +764,7 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, p, allocation_network_id)
+    add_variables_basin!(problem, p, allocation_network_id)
     add_variables_absolute_value!(problem, p, allocation_network_id, config)
     # TODO: Add variables for allocation to basins
 
