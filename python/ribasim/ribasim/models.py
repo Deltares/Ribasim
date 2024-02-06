@@ -10,6 +10,21 @@ from pydantic import Field
 from ribasim.input_base import BaseModel
 
 
+class AllocationLevelControlStatic(BaseModel):
+    node_id: int
+    target_level: float
+    priority: int
+    remarks: str = Field("", description="a hack for pandera")
+
+
+class AllocationLevelControlTime(BaseModel):
+    node_id: int
+    time: datetime
+    target_level: float
+    priority: int
+    remarks: str = Field("", description="a hack for pandera")
+
+
 class BasinProfile(BaseModel):
     node_id: int
     area: float
@@ -228,6 +243,8 @@ class UserTime(BaseModel):
 
 
 class Root(BaseModel):
+    allocationlevelcontrolstatic: AllocationLevelControlStatic | None = None
+    allocationlevelcontroltime: AllocationLevelControlTime | None = None
     basinprofile: BasinProfile | None = None
     basinstate: BasinState | None = None
     basinstatic: BasinStatic | None = None

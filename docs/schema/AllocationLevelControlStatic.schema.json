@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://deltares.github.io/Ribasim/schema/AllocationLevelControlStatic.schema.json",
+    "title": "AllocationLevelControlStatic",
+    "description": "A AllocationLevelControlStatic object based on Ribasim.AllocationLevelControlStaticV1",
+    "type": "object",
+    "properties": {
+        "node_id": {
+            "format": "default",
+            "type": "integer"
+        },
+        "target_level": {
+            "format": "double",
+            "type": "number"
+        },
+        "priority": {
+            "format": "default",
+            "type": "integer"
+        },
+        "remarks": {
+            "description": "a hack for pandera",
+            "type": "string",
+            "format": "default",
+            "default": ""
+        }
+    },
+    "required": [
+        "node_id",
+        "target_level",
+        "priority"
+    ]
+}

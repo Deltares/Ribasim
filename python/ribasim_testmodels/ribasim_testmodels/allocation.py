@@ -1735,3 +1735,7 @@ def main_network_with_subnetworks_model():
     )
 
     return model
+
+
+def allocation_level_control_model():
+    return

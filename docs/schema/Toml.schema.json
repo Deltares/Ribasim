@@ -76,6 +76,13 @@
                 "static": null
             }
         },
+        "allocation_level_control": {
+            "$ref": "https://deltares.github.io/Ribasim/schema/allocation_level_control.schema.json",
+            "default": {
+                "static": null,
+                "time": null
+            }
+        },
         "pid_control": {
             "$ref": "https://deltares.github.io/Ribasim/schema/pid_control.schema.json",
             "default": {
@@ -170,6 +177,7 @@
         "logging",
         "results",
         "terminal",
+        "allocation_level_control",
         "pid_control",
         "level_boundary",
         "pump",
