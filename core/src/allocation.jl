@@ -551,7 +551,7 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) <= sum([
+        ]) == sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
