@@ -1,5 +1,6 @@
 class {{class_type}}(BaseModel):
 {% for f in fields %}
-    {{ f[1] }}: {{ f[2] }}{% if f[3] != nothing %} = {{ f[3] }}{% end %}
+    {{ f[1] }}: {{ f[2] }}{% if f[3] != nothing %} = {{ f[3] }} {% end %}
+
 {% end %}
     remarks: str = Field("", description="a hack for pandera")

@@ -1,7 +1,8 @@
 using Configurations
 using Dates
-using OteraEngine
+using InteractiveUtils
 using Legolas
+using OteraEngine
 using Ribasim
 
 pythontype(x) = pythontype(typeof(x))
@@ -57,7 +58,7 @@ end
 
 model_template = Template(
     normpath(@__DIR__, "templates", "model.py.jinja");
-    config = Dict("autoescape" => false, "trim_blocks" => true, "lstrip_blocks" => true),
+    config = Dict("trim_blocks" => true, "lstrip_blocks" => true),
 )
 
 open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "models.py"), "w") do io
