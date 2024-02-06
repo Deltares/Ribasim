@@ -101,7 +101,7 @@ def backwater_model():
         flow_boundary=flow_boundary,
         manning_resistance=manning_resistance,
         starttime="2020-01-01 00:00:00",
-        endtime="2030-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
     )
 
     return model

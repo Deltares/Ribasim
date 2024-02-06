@@ -266,6 +266,35 @@ function allocation_table(
     )
 end
 
+function allocation_flow_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    edge_id::Vector{Int},
+    from_node_id::Vector{Int},
+    to_node_id::Vector{Int},
+    allocation_network_id::Vector{Int},
+    priority::Vector{Int},
+    flow::Vector{Float64},
+    collect_demands::BitVector,
+}
+    (; config) = model
+    (; record) = model.integrator.p.allocation
+
+    time = datetime_since.(record.time, config.starttime)
+
+    return (;
+        time,
+        record.edge_id,
+        record.from_node_id,
+        record.to_node_id,
+        record.allocation_network_id,
+        record.priority,
+        record.flow,
+        record.collect_demands,
+    )
+end
+
 function subgrid_level_table(
     model::Model,
 )::@NamedTuple{

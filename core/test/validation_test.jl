@@ -82,7 +82,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -174,7 +174,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -400,4 +400,28 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
+end
+
+@testitem "negative demand" begin
+    using Logging
+    using DataInterpolations: LinearInterpolation
+    logger = TestLogger()
+
+    with_logger(logger) do
+        @test_throws "Invalid demand" Ribasim.User(
+            [Ribasim.NodeID(1)],
+            [true],
+            [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
+            [0.0, -0.0],
+            [0.9],
+            [0.9],
+            [1],
+            [],
+        )
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Demand of user node #1 with priority 1 should be non-negative"
 end

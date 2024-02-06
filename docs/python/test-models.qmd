@@ -2,7 +2,7 @@
 title: "Test models"
 ---
 
-Ribasim developers use the following models in its testbench and in order to test new features.
+Ribasim developers use the following models in their testbench and in order to test new features.
 
 ```{python}
 # | code-fold: true

@@ -38,7 +38,7 @@ node_id: node ID of the NewNodeType node
 end
 ```
 
-Here `Static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](../core/usage.qmd#node).
+Here `Static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](../core/usage.qmd#sec-node).
 
 `validation.jl` also deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see `sort_by_function` and `sorted_table!`.
 
