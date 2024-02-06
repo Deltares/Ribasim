@@ -121,6 +121,6 @@ def two_basin_model() -> ribasim.Model:
         tabulated_rating_curve=rating_curve,
         terminal=terminal,
         starttime="2020-01-01 00:00:00",
-        endtime="2030-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
     )
     return ribasim_model
