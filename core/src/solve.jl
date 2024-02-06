@@ -474,6 +474,13 @@ struct User <: AbstractParameterNode
     end
 end
 
+struct AllocationLevelControl
+    node_id::Vector{NodeID}
+    target_level::Vector{Float64}
+    target_level_itp::Vector{LinearInterpolation}
+    priority::Vector{Int}
+end
+
 "Subgrid linearly interpolates basin levels."
 struct Subgrid
     basin_index::Vector{Int}
@@ -516,6 +523,7 @@ struct Parameters{T, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
+    allocation_level_control::AllocationLevelControl
     lookup::Dict{Int, Symbol}
     subgrid::Subgrid
 end

@@ -758,6 +758,33 @@ function User(db::DB, config::Config)::User
     )
 end
 
+function AllocationLevelControl(db::DB, config::Config)::AllocationLevelControl
+    static = load_structvector(db, config, AllocationLevelControlStaticV1)
+    time = load_structvector(db, config, AllocationLevelControlTimeV1)
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "AllocationLevelControl";
+        static,
+        time,
+        time_interpolatables = [:target_level],
+    )
+
+    if !valid
+        error("Errors occurred when parsing AllocationLevelControl data.")
+    end
+
+    target_level = zeros(length(parsed_parameters.node_id))
+
+    return AllocationLevelControl(
+        NodeID.(parsed_parameters.node_id),
+        target_level,
+        parsed_parameters.target_level,
+        parsed_parameters.priority,
+    )
+end
+
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
@@ -842,6 +869,7 @@ function Parameters(db::DB, config::Config)::Parameters
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
     user = User(db, config)
+    allocation_level_control = AllocationLevelControl(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
@@ -875,6 +903,7 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
+        allocation_level_control,
         Dict{Int, Symbol}(),
         subgrid_level,
     )
