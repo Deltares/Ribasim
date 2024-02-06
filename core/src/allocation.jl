@@ -854,7 +854,8 @@ function set_objective_priority!(
     if objective_type in [:quadratic_absolute, :quadratic_relative]
         ex = JuMP.QuadExpr()
     elseif objective_type in [:linear_absolute, :linear_relative]
-        ex = sum(problem[:F_abs])
+        ex = JuMP.AffExpr()
+        ex += sum(problem[:F_abs])
     end
 
     demand_max = 0.0

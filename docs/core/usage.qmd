@@ -470,7 +470,7 @@ node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
 demand        | Float64 | $m^3 s^{-1}$ | -
 return_factor | Float64 | -            | between [0 - 1]
-min_level     | Float64 | $m$          | (optional)
+min_level     | Float64 | $m$          | -
 priority      | Int     | -            | sorted per node id
 
 ## User / time
