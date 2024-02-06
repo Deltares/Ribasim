@@ -41,6 +41,9 @@ function main(ARGS::Vector{String})::Cint
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
+                ribasim_version = pkgversion(Ribasim)
+                (; starttime, endtime) = config
+                @info "Starting a Ribasim simulation." ribasim_version starttime endtime
                 model = Ribasim.run(config)
                 if successful_retcode(model)
                     @info "The model finished successfully"

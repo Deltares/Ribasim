@@ -5,8 +5,8 @@ title: "Release process"
 # What is a release
 
 The [Ribasim repository](https://github.com/Deltares/Ribasim) contains several components, e.g., the Julia core, the Python tooling and QGIS plugin.
-The components are currently only guaranteed to work together if they are built at the same time.
-Therefore we release Ribasim as a collection of all the components at once.
+The components are currently only guaranteed to work together if they have the same version number.
+Therefore we release Ribasim as a collection of all the components at once, all carrying the same version number.
 For maximum interoperability it is suggested to only release all components together, and not individually.
 
 For these releases we use [Calender Versioning](https://calver.org/), which makes it clear in which month the release was made.
@@ -19,19 +19,28 @@ This section provides a guide for developers to follow when preparing a new rele
 
 Before starting the release process, ensure that all tests are passing and that all features intended for the release are complete and merged into the main branch.
 
-## Update version numbers of the components as needed
+## Update version numbers of the components
 
-The components have their own version number which generally uses [Semantic Versioning](https://semver.org/), with minor version signifying a breaking release for pre-1.0 versions, as [documented here](https://pkgdocs.julialang.org/v1/compatibility/#compat-pre-1.0). If a component did not change at all between releases, the version number can stay the same.
+Determine the new version number like `2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
+This follows `YYYY.0M.MICRO` from [calver](https://calver.org/).
 
-Now submit a pull request which updates the version numbers of the components as needed.
-You can use [PR #623](https://github.com/Deltares/Ribasim/pull/623) as an example.
+Update the version numbers in the repository to the new version number.
+A single find and replace can update all 5 locations:
 
-In general for Python packages the version number is in `__init__.py`, for Julia it is `Project.toml`, and for QGIS `metadata.txt`
+- `pixi.toml`
+- `core/Project.toml`
+- `python/ribasim/ribasim/__init__.py`
+- `python/ribasim_api/ribasim_api/__init__.py`
+- `ribasim_qgis/metadata.txt`
+
+Now submit a pull request to update the version numbers.
 
 ## Create a new release
 
-Create a new tag like `v2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
-This follows `vYYYY.0M.MICRO` from [calver](https://calver.org/).
+When the pull request is merged to main, checkout the commit that updates the version numbers.
+
+Create a new tag, which is the letter `v` followed by the version number, like, `v2023.08.0`.
+
 This can be done by executing:
 ```bash
 git tag <tagname>
@@ -59,19 +68,14 @@ All changes
 
 ```
 
-## Release Ribasim Python to PyPI
+## Release the Ribasim Python packages to PyPI
 
 To be able to install packages with `pip`, they need to be released on the Python Package Index (PyPI).
 In order to publish Ribasim Python or Ribasim API follow the following steps:
 
-1) Update `__version__` in `__init__.py`
+1) Open a terminal and run `pixi run publish-ribasim-python`
 
-2) Open a terminal and run `pixi run build-ribasim-python-wheel` or `pixi run build-ribasim-api-wheel`
-
-3) Make a new commit with the updated version number, and push to remote
-
-4) Publish on PyPI with `pixi run publish-ribasim-python` or `pixi run publish-ribasim-api`
-
+2) Open a terminal and run `pixi run publish-ribasim-api`
 
 ## Do manual checks
 
