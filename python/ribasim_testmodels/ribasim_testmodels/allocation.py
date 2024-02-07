@@ -1747,18 +1747,19 @@ def allocation_level_control_model():
             (1.0, 0.0),  # 2: Basin
             (2.0, 0.0),  # 3: User
             (1.0, -1.0),  # 4: AllocationLevelControl
+            (2.0, -1.0),  # 5: Basin
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["FlowBoundary", "Basin", "User", "AllocationLevelControl"]
+    node_type = ["FlowBoundary", "Basin", "User", "AllocationLevelControl", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={
                 "type": node_type,
-                "allocation_network_id": 4 * [1],
+                "allocation_network_id": 5 * [2],
             },
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
@@ -1767,10 +1768,10 @@ def allocation_level_control_model():
     )
 
     # Setup the edges:
-    from_id = np.array([1, 2, 4, 3])
-    to_id = np.array([2, 3, 2, 2])
-    edge_type = ["flow", "flow", "control", "flow"]
-    allocation_network_id = [1, None, None, None]
+    from_id = np.array([1, 2, 4, 3, 4])
+    to_id = np.array([2, 3, 2, 5, 5])
+    edge_type = ["flow", "flow", "control", "flow", "control"]
+    allocation_network_id = [1, None, None, None, None]
 
     lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
@@ -1787,23 +1788,25 @@ def allocation_level_control_model():
     )
 
     # Setup basin
-    profile = pd.DataFrame(data={"node_id": 2, "area": 1e3, "level": [0.0, 1.0]})
+    profile = pd.DataFrame(
+        data={"node_id": [2, 2, 5, 5], "area": 1e3, "level": [0.0, 1.0, 0.0, 1.0]}
+    )
     static = pd.DataFrame(
         data={
-            "node_id": [2],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
+            "node_id": [2, 5],
+            "drainage": 0.1e-3,
+            "potential_evaporation": 0.2e-3,
+            "infiltration": 0.3e-3,
+            "precipitation": 0.4e-3,
             "urban_runoff": 0.0,
         }
     )
-    state = pd.DataFrame(data={"node_id": [2], "level": 0.5})
+    state = pd.DataFrame(data={"node_id": [2, 5], "level": 0.5})
     basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup flow boundary
     flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": 1.0})
+        static=pd.DataFrame(data={"node_id": [1], "flow_rate": 1e-3})
     )
 
     # Setup allocation level control
@@ -1820,7 +1823,7 @@ def allocation_level_control_model():
                 "node_id": [3],
                 "priority": [2],
                 "demand": [1.0],
-                "return_factor": [0.0],
+                "return_factor": [0.2],
                 "min_level": [0.2],
             }
         )
