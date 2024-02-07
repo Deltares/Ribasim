@@ -751,6 +751,25 @@ function add_constraints_fractional_flow!(
 end
 
 """
+Add the basin flow constraints to the allocation problem.
+The constraint indices are the basin node IDs.
+NOTE: negative basin flow means flow out of the basin.
+
+Constraint:
+flow basin >= - basin capacity
+"""
+function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
+    F_basin = problem[:F_basin]
+    problem[:basin_flow] = JuMP.@constraint(
+        problem,
+        [node_id = only(F_basin.axes)],
+        F_basin[node_id] >= 0.0,
+        base_name = "basin_flow"
+    )
+    return nothing
+end
+
+"""
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
@@ -766,7 +785,6 @@ function allocation_problem(
     add_variables_flow!(problem, p, allocation_network_id)
     add_variables_basin!(problem, p, allocation_network_id)
     add_variables_absolute_value!(problem, p, allocation_network_id, config)
-    # TODO: Add variables for allocation to basins
 
     # Add constraints to problem
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
@@ -775,6 +793,7 @@ function allocation_problem(
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value!(problem, p, allocation_network_id, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
+    add_constraints_basin_flow!(problem)
 
     return problem
 end
@@ -1105,6 +1124,43 @@ function adjust_edge_capacities!(
     end
 end
 
+function get_basin_capacity(
+    allocation_model::AllocationModel,
+    u::ComponentVector,
+    p::Parameters,
+    node_id::NodeID,
+)::Float64
+    (; graph, user, basin) = p
+    (; Δt_allocation) = allocation_model
+    influx = get_flow(graph, node_id, 0.0)
+    basin_idx = findsorted(user.node_id, node_id)
+    storage_basin = u.storage[basin_idx]
+    level_max = ...
+    storage_max = get_storage_from_level(basin, basin_idx, level_max)
+
+    return min(0.0, ())
+end
+
+function adjust_basin_capacities!(
+    allocation_model::AllocationModel,
+    u::ComponentVector,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
+    (; problem) = allocation_model
+    constraints_basin_flow = problem[:basin_flow]
+
+    if priority_idx == 1
+        for node_id in only(constraints_basin_flow.axes)
+            JuMP.set_normalized_rhs(
+                constraints_basin_flow[node_id],
+                -get_basin_capacity(allocation_model, u),
+            )
+        end
+    end
+    return nothing
+end
+
 """
 Save the allocation flows per physical edge.
 """
@@ -1146,18 +1202,14 @@ and flows, solve the allocation problem and assign the results to the users.
 function allocate!(
     p::Parameters,
     allocation_model::AllocationModel,
-    t::Float64;
+    t::Float64,
+    u::ComponentVector;
     collect_demands::Bool = false,
 )::Nothing
     (; user, allocation) = p
     (; problem, allocation_network_id) = allocation_model
     (; priorities) = user
     (; subnetwork_demands) = allocation
-
-    # TODO: Compute basin flow from vertical fluxes and basin volume.
-    # Set as basin demand if the net flow is negative, set as source
-    # in the flow_conservation constraints if the net flow is positive.
-    # Solve this as a separate problem before the priorities below
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
@@ -1175,6 +1227,8 @@ function allocate!(
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, p, priority_idx)
+
+        adjust_basin_capacities!(allocation_model, u, p, priority_idx)
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients
