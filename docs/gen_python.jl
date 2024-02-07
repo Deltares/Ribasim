@@ -6,25 +6,21 @@ using OteraEngine
 using Ribasim
 
 pythontype(x) = pythontype(typeof(x))
-pythontype(::Type{<:AbstractString}) = "str"
-pythontype(::Type{<:Integer}) = "int"
-pythontype(::Type{<:AbstractFloat}) = "float"
-pythontype(::Type{<:Number}) = "float"
-pythontype(::Type{<:AbstractVector}) = "List"
-pythontype(::Type{<:Bool}) = "bool"
-pythontype(::Type{<:Enum}) = "str"
+pythontype(::Type{<:AbstractString}) = "Series[str]"
+pythontype(::Type{<:Integer}) = "Series[int]"
+pythontype(::Type{<:AbstractFloat}) = "Series[float]"
+pythontype(::Type{<:Number}) = "Series[float]"
+pythontype(::Type{<:Bool}) = "Series[bool]"
+pythontype(::Type{<:Enum}) = "Series[str]"
 pythontype(::Type{<:Missing}) = "None"
-pythontype(::Type{<:DateTime}) = "datetime"
+pythontype(::Type{<:DateTime}) = "Series[str]"
 pythontype(::Type{<:Nothing}) = "None"
-pythontype(::Type{<:Any}) = "Any"
+pythontype(::Type{<:Any}) = "Series[Any]"
 function pythontype(T::Union)
-    t = Base.uniontypes(T)
-    join(pythontype.(t), " | ")
-end
-
-pythondefault(_) = nothing
-function pythondefault(T::Union)
-    return typeintersect(T, Missing) == Missing ? "None" : nothing
+    optional = typeintersect(T, Missing) == Missing
+    nonmissingtypes = filter(x -> x != Missing, Base.uniontypes(T))
+    pythontypes = join(map(pythontype, nonmissingtypes), " | ")
+    return optional ? "Optional[$pythontypes]" : pythontypes
 end
 
 function strip_prefix(T::DataType)
@@ -33,37 +29,21 @@ function strip_prefix(T::DataType)
     return string(last(rsplit(p, '.'; limit = 2)))
 end
 
-function attributes(T::DataType)
-    return zip(
-        fieldnames(T),
-        map(pythontype, fieldtypes(T)),
-        map(pythondefault, fieldtypes(T)),
-    )
-end
-
-function generate_header(io::IO)
-    header_template = Template(normpath(@__DIR__, "templates", "header.py.jinja"))
-    println(io, header_template())
-    println(io)
-    println(io)
-end
-
-function gen_python(io::IO, tmp::Template, T::DataType)
-    name = strip_prefix(T)
-    init = Dict("class_type" => name, "fields" => attributes(T))
-    println(io, tmp(; init = init))
-    println(io)
-    println(io)
+function get_models()
+    [
+        (
+            name = strip_prefix(T),
+            fields = zip(fieldnames(T), map(pythontype, fieldtypes(T))),
+        ) for T in subtypes(Legolas.AbstractRecord)
+    ]
 end
 
 model_template = Template(
     normpath(@__DIR__, "templates", "model.py.jinja");
-    config = Dict("trim_blocks" => true, "lstrip_blocks" => true),
+    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
-open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "models.py"), "w") do io
-    generate_header(io)
-    for T in subtypes(Legolas.AbstractRecord)
-        gen_python(io, model_template, T)
-    end
+open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
+    init = Dict("models" => get_models())
+    println(io, model_template(; init = init))
 end

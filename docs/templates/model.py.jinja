@@ -1,6 +1,19 @@
-class {{class_type}}(BaseModel):
-{% for f in fields %}
-    {{ f[1] }}: {{ f[2] }}{% if f[3] != nothing %} = {{ f[3] }} {% end %}
+# Automatically generated file.
+# DO NOT MODIFY.
+
+from typing import Optional
+
+import pandera as pa
+from pandera.typing import Series
+
+
+{% for m in models %}
+class {{m[:name]}}Schema(pa.DataFrameModel):
+{% for f in m[:fields] %}
+    {{ f[1] }}: {{ f[2] }}
+{% end %}
+    class Config:
+        add_missing_columns = True
+        coerce = True
 
 {% end %}
-    remarks: str = Field("", description="a hack for pandera")
