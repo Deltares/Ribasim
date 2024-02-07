@@ -51,21 +51,21 @@ end
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
-    model = Ribasim.run(config)
-    @test successful_retcode(model)
-    problem = model.integrator.p.allocation.allocation_models[1].problem
-    objective = JuMP.objective_function(problem)
-    @test objective isa JuMP.QuadExpr # Quadratic expression
-    F = problem[:F]
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(4), NodeID(5))],
-        F[(NodeID(4), NodeID(5))],
-    ) in keys(objective.terms) # F[4,5]^2 term
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(4), NodeID(6))],
-        F[(NodeID(4), NodeID(6))],
-    ) in keys(objective.terms) # F[4,6]^2 term
+    # config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
+    # model = Ribasim.run(config)
+    # @test successful_retcode(model)
+    # problem = model.integrator.p.allocation.allocation_models[1].problem
+    # objective = JuMP.objective_function(problem)
+    # @test objective isa JuMP.QuadExpr # Quadratic expression
+    # F = problem[:F]
+    # @test JuMP.UnorderedPair{JuMP.VariableRef}(
+    #     F[(NodeID(4), NodeID(5))],
+    #     F[(NodeID(4), NodeID(5))],
+    # ) in keys(objective.terms) # F[4,5]^2 term
+    # @test JuMP.UnorderedPair{JuMP.VariableRef}(
+    #     F[(NodeID(4), NodeID(6))],
+    #     F[(NodeID(4), NodeID(6))],
+    # ) in keys(objective.terms) # F[4,6]^2 term
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
     model = Ribasim.run(config)

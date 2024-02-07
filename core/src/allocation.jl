@@ -528,7 +528,7 @@ Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
 
 Constraint:
-sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
+sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
 """
 function add_constraints_flow_conservation!(
     problem::JuMP.Model,
