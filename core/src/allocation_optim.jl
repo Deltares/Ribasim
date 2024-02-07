@@ -63,10 +63,11 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation) = p
+    (; graph, user, allocation, basin) = p
     (; demand, node_id) = user
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
+    node_ids = graph[].node_ids[allocation_network_id]
 
     F = problem[:F]
     if objective_type in [:quadratic_absolute, :quadratic_relative]
@@ -114,6 +115,14 @@ function set_objective_priority!(
             for flow in F
                 JuMP.add_to_expression!(ex, cost_per_flow * flow)
             end
+        end
+    end
+
+    # Add
+    F_basin = problem[:F_basin]
+    for node_id in only(F_basin.axes)
+        if priority_idx == findsorted
+            d = get_basin_demand(allocation_model, u, p, t, node_id)
         end
     end
 
@@ -165,7 +174,7 @@ function assign_allocations!(
             push!(record.time, t)
             push!(record.allocation_network_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
-            push!(record.priority, user.priorities[priority_idx])
+            push!(record.priority, allocation.priorities[priority_idx])
             push!(record.demand, user.demand[user_idx][priority_idx](t))
             push!(record.allocated, allocated)
             # TODO: This is now the last abstraction before the allocation update,
@@ -290,13 +299,12 @@ function adjust_edge_capacities!(
     end
 end
 
-function get_basin_capacity(
+function get_basin_data(
     allocation_model::AllocationModel,
-    u::ComponentVector,
     p::Parameters,
-    t::Float64,
+    u::ComponentVector,
     node_id::NodeID,
-)::Float64
+)
     (; graph, basin, allocation_level_control) = p
     (; Δt_allocation) = allocation_model
     influx = get_flow(graph, node_id, 0.0)
@@ -306,10 +314,37 @@ function get_basin_capacity(
         first(inneighbor_labels_type(graph, node_id, EdgeType.control))
     allocation_level_control_idx =
         findsorted(allocation_level_control.node_id, allocation_level_control_node_id)
-    level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
-    storage_max = get_storage_from_level(basin, basin_idx, level_max)
+    return storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx
+end
 
+function get_basin_capacity(
+    allocation_model::AllocationModel,
+    u::ComponentVector,
+    p::Parameters,
+    t::Float64,
+    node_id::NodeID,
+)::Float64
+    (; allocation_level_control) = p
+    storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
+        get_basin_data(allocation_model, p, u, node_id)
+    level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
+    storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
     return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
+end
+
+function get_basin_demand(
+    allocation_model::AllocationModel,
+    u::ComponentVector,
+    p::Parameters,
+    t::Float64,
+    node_id::NodeID,
+)::Float64
+    (; allocation_level_control) = p
+    storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
+        get_basin_data(allocation_model, p, u, node_id)
+    level_min = allocation_level_control.min_level[allocation_level_control_idx](t)
+    storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
+    return max(0.0, (storage_basin - storage_min) / Δt_allocation - influx)
 end
 
 function adjust_basin_capacities!(
@@ -386,10 +421,9 @@ function allocate!(
     u::ComponentVector;
     collect_demands::Bool = false,
 )::Nothing
-    (; user, allocation) = p
+    (; allocation) = p
     (; problem, allocation_network_id) = allocation_model
-    (; priorities) = user
-    (; subnetwork_demands) = allocation
+    (; priorities, subnetwork_demands) = allocation
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
@@ -422,7 +456,7 @@ function allocate!(
         @debug JuMP.solution_summary(problem)
         if JuMP.termination_status(problem) !== JuMP.OPTIMAL
             (; allocation_network_id) = allocation_model
-            priority = priorities[priority_index]
+            priority = priorities[priority_idx]
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )

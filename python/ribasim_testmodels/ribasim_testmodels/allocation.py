@@ -1822,7 +1822,7 @@ def allocation_level_control_model():
             data={
                 "node_id": [3],
                 "priority": [2],
-                "demand": [1.0],
+                "demand": [1e-3],
                 "return_factor": [0.2],
                 "min_level": [0.2],
             }
