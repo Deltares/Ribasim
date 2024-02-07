@@ -338,14 +338,16 @@ end
 
 @version AllocationLevelControlStaticV1 begin
     node_id::Int
-    target_level::Float64
+    min_level::Float64
+    max_level::Float64
     priority::Int
 end
 
 @version AllocationLevelControlTimeV1 begin
     node_id::Int
     time::DateTime
-    target_level::Float64
+    min_level::Float64
+    max_level::Float64
     priority::Int
 end
 

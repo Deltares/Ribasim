@@ -768,19 +768,22 @@ function AllocationLevelControl(db::DB, config::Config)::AllocationLevelControl
         "AllocationLevelControl";
         static,
         time,
-        time_interpolatables = [:target_level],
+        time_interpolatables = [:min_level, :max_level],
     )
 
     if !valid
         error("Errors occurred when parsing AllocationLevelControl data.")
     end
 
-    target_level = zeros(length(parsed_parameters.node_id))
+    min_level = zeros(length(parsed_parameters.node_id))
+    max_level = zeros(length(parsed_parameters.node_id))
 
     return AllocationLevelControl(
         NodeID.(parsed_parameters.node_id),
-        target_level,
-        parsed_parameters.target_level,
+        min_level,
+        max_level,
+        parsed_parameters.min_level,
+        parsed_parameters.max_level,
         parsed_parameters.priority,
     )
 end

@@ -476,8 +476,10 @@ end
 
 struct AllocationLevelControl
     node_id::Vector{NodeID}
-    target_level::Vector{Float64}
-    target_level_itp::Vector{LinearInterpolation}
+    min_level::Vector{Float64}
+    max_level::Vector{Float64}
+    min_level_itp::Vector{LinearInterpolation}
+    max_level_itp::Vector{LinearInterpolation}
     priority::Vector{Int}
 end
 

@@ -12,7 +12,8 @@ from ribasim.input_base import BaseModel
 
 class AllocationLevelControlStatic(BaseModel):
     node_id: int
-    target_level: float
+    min_level: float
+    max_level: float
     priority: int
     remarks: str = Field("", description="a hack for pandera")
 
@@ -20,7 +21,8 @@ class AllocationLevelControlStatic(BaseModel):
 class AllocationLevelControlTime(BaseModel):
     node_id: int
     time: datetime
-    target_level: float
+    min_level: float
+    max_level: float
     priority: int
     remarks: str = Field("", description="a hack for pandera")
 

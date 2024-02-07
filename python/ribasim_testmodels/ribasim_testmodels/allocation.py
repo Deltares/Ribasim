@@ -1808,7 +1808,9 @@ def allocation_level_control_model():
 
     # Setup allocation level control
     allocation_level_control = ribasim.AllocationLevelControl(
-        static=pd.DataFrame(data={"node_id": [4], "priority": 1, "target_level": 1.0})
+        static=pd.DataFrame(
+            data={"node_id": [4], "priority": 1, "min_level": 1.0, "max_level": 1.0}
+        )
     )
 
     # Setup user

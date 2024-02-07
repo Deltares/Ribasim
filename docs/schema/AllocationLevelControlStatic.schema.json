@@ -9,7 +9,11 @@
             "format": "default",
             "type": "integer"
         },
-        "target_level": {
+        "min_level": {
+            "format": "double",
+            "type": "number"
+        },
+        "max_level": {
             "format": "double",
             "type": "number"
         },
@@ -26,7 +30,8 @@
     },
     "required": [
         "node_id",
-        "target_level",
+        "min_level",
+        "max_level",
         "priority"
     ]
 }

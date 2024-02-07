@@ -13,7 +13,11 @@
             "format": "date-time",
             "type": "string"
         },
-        "target_level": {
+        "min_level": {
+            "format": "double",
+            "type": "number"
+        },
+        "max_level": {
             "format": "double",
             "type": "number"
         },
@@ -31,7 +35,8 @@
     "required": [
         "node_id",
         "time",
-        "target_level",
+        "min_level",
+        "max_level",
         "priority"
     ]
 }
