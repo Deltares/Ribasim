@@ -132,7 +132,6 @@ github-release = "python utils/github-release.py"
 
 [dependencies]
 build = "*"
-datamodel-code-generator = "0.24.*"
 geopandas = "*"
 gh = "*"
 hatchling = "*"
