@@ -11,7 +11,7 @@ pythontype(::Type{<:AbstractFloat}) = "Series[float]"
 pythontype(::Type{<:Number}) = "Series[float]"
 pythontype(::Type{<:Bool}) = "Series[bool]"
 pythontype(::Type{<:Enum}) = "Series[str]"
-pythontype(::Type{<:DateTime}) = "Series[str]"
+pythontype(::Type{<:DateTime}) = "Series[datetime]"
 pythontype(::Type{<:Any}) = "Series[Any]"
 function pythontype(T::Union)
     nonmissingtypes = filter(x -> x != Missing, Base.uniontypes(T))

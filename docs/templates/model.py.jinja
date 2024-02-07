@@ -1,9 +1,10 @@
 # Automatically generated file.
 # DO NOT MODIFY.
 
+from datetime import datetime
+
 import pandera as pa
 from pandera.typing import Series
-
 
 {% for m in models %}
 class {{m[:name]}}Schema(pa.DataFrameModel):

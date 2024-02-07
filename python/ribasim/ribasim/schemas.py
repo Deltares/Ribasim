@@ -1,6 +1,8 @@
 # Automatically generated file.
 # DO NOT MODIFY.
 
+from datetime import datetime
+
 import pandera as pa
 from pandera.typing import Series
 
@@ -50,7 +52,7 @@ class BasinSubgridSchema(pa.DataFrameModel):
 
 class BasinTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     drainage: Series[float] = pa.Field(nullable=True)
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
@@ -109,7 +111,7 @@ class FlowBoundaryStaticSchema(pa.DataFrameModel):
 
 class FlowBoundaryTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
     class Config:
@@ -139,7 +141,7 @@ class LevelBoundaryStaticSchema(pa.DataFrameModel):
 
 class LevelBoundaryTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
     class Config:
@@ -215,7 +217,7 @@ class PidControlStaticSchema(pa.DataFrameModel):
 class PidControlTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
     listen_node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
     integral: Series[float] = pa.Field(nullable=False)
@@ -254,7 +256,7 @@ class TabulatedRatingCurveStaticSchema(pa.DataFrameModel):
 
 class TabulatedRatingCurveTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
@@ -286,7 +288,7 @@ class UserStaticSchema(pa.DataFrameModel):
 
 class UserTimeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[str] = pa.Field(nullable=False)
+    time: Series[datetime] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
