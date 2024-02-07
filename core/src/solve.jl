@@ -35,6 +35,7 @@ struct Allocation
     allocation_network_ids::Vector{Int}
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+    priorities::Vector{Int}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     record::@NamedTuple{
@@ -436,7 +437,6 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    priorities::Vector{Int}
     record::@NamedTuple{
         time::Vector{Float64},
         allocation_network_id::Vector{Int},
@@ -458,16 +458,7 @@ struct User <: AbstractParameterNode
         record,
     )
         if valid_demand(node_id, demand, priorities)
-            return new(
-                node_id,
-                active,
-                demand,
-                allocated,
-                return_factor,
-                min_level,
-                priorities,
-                record,
-            )
+            return new(node_id, active, demand, allocated, return_factor, min_level, record)
         else
             error("Invalid demand")
         end

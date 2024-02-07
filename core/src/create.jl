@@ -644,8 +644,8 @@ function User(db::DB, config::Config)::User
         error("Problems encountered when parsing User static and time node IDs.")
     end
 
-    # All provided priorities
-    priorities = sort(unique(union(static.priority, time.priority)))
+    # All priorities used in the model
+    priorities = get_all_priorities(db, config)
 
     active = BitVector()
     min_level = Float64[]
@@ -837,6 +837,7 @@ function Parameters(db::DB, config::Config)::Parameters
         Int[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
+        get_all_priorities(db, config),
         Dict{Tuple{NodeID, NodeID}, Float64}(),
         Dict{Tuple{NodeID, NodeID}, Float64}(),
         (;

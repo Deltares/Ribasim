@@ -1282,3 +1282,18 @@ end
 function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
+
+function get_all_priorities(db::DB, config::Config)::Vector{Int}
+    priorities = Set{Int}()
+
+    # TODO: Is there a way to automatically grab all tables with a priority column?
+    for type in [
+        UserStaticV1,
+        UserTimeV1,
+        AllocationLevelControlStaticV1,
+        AllocationLevelControlTimeV1,
+    ]
+        union!(priorities, load_structvector(db, config, type).priority)
+    end
+    return sort(unique(priorities))
+end
