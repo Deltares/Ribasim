@@ -1128,36 +1128,50 @@ function get_basin_capacity(
     allocation_model::AllocationModel,
     u::ComponentVector,
     p::Parameters,
+    t::Float64,
     node_id::NodeID,
 )::Float64
-    (; graph, user, basin) = p
+    (; graph, basin, allocation_level_control) = p
     (; Δt_allocation) = allocation_model
     influx = get_flow(graph, node_id, 0.0)
-    basin_idx = findsorted(user.node_id, node_id)
+    _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
-    level_max = ...
+    allocation_level_control_node_id =
+        first(inneighbor_labels_type(graph, node_id, EdgeType.control))
+    allocation_level_control_idx =
+        findsorted(allocation_level_control.node_id, allocation_level_control_node_id)
+    level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
     storage_max = get_storage_from_level(basin, basin_idx, level_max)
 
-    return min(0.0, ())
+    return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
 end
 
 function adjust_basin_capacities!(
     allocation_model::AllocationModel,
     u::ComponentVector,
     p::Parameters,
+    t::Float64,
     priority_idx::Int,
 )::Nothing
     (; problem) = allocation_model
     constraints_basin_flow = problem[:basin_flow]
+    F_basin = problem[:F_basin]
 
-    if priority_idx == 1
-        for node_id in only(constraints_basin_flow.axes)
+    for node_id in only(constraints_basin_flow.axes)
+        constraint = constraints_basin_flow[node_id]
+        if priority_idx == 1
             JuMP.set_normalized_rhs(
-                constraints_basin_flow[node_id],
-                -get_basin_capacity(allocation_model, u),
+                constraint,
+                -get_basin_capacity(allocation_model, u, p, t, node_id),
+            )
+        else
+            JuMP.set_normalized_rhs(
+                constraint,
+                JuMP.normalized_rhs(constraint) - JuMP.value(F_basin[node_id]),
             )
         end
     end
+
     return nothing
 end
 
@@ -1228,7 +1242,7 @@ function allocate!(
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, p, priority_idx)
 
-        adjust_basin_capacities!(allocation_model, u, p, priority_idx)
+        adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients

@@ -476,10 +476,8 @@ end
 
 struct AllocationLevelControl
     node_id::Vector{NodeID}
-    min_level::Vector{Float64}
-    max_level::Vector{Float64}
-    min_level_itp::Vector{LinearInterpolation}
-    max_level_itp::Vector{LinearInterpolation}
+    min_level::Vector{LinearInterpolation}
+    max_level::Vector{LinearInterpolation}
     priority::Vector{Int}
 end
 
@@ -1174,7 +1172,7 @@ function formulate_du!(
     basin::Basin,
     storage::AbstractVector,
 )::Nothing
-    (; flow_vertical_dict, flow_vertical) = graph[]
+    (; flow_vertical) = graph[]
     flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows
