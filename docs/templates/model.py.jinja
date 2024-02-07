@@ -1,8 +1,6 @@
 # Automatically generated file.
 # DO NOT MODIFY.
 
-from typing import Optional
-
 import pandera as pa
 from pandera.typing import Series
 
@@ -10,7 +8,7 @@ from pandera.typing import Series
 {% for m in models %}
 class {{m[:name]}}Schema(pa.DataFrameModel):
 {% for f in m[:fields] %}
-    {{ f[1] }}: {{ f[2] }}
+    {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})
 {% end %}
     class Config:
         add_missing_columns = True

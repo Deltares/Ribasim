@@ -5,23 +5,21 @@ using Legolas
 using OteraEngine
 using Ribasim
 
-pythontype(x) = pythontype(typeof(x))
 pythontype(::Type{<:AbstractString}) = "Series[str]"
 pythontype(::Type{<:Integer}) = "Series[int]"
 pythontype(::Type{<:AbstractFloat}) = "Series[float]"
 pythontype(::Type{<:Number}) = "Series[float]"
 pythontype(::Type{<:Bool}) = "Series[bool]"
 pythontype(::Type{<:Enum}) = "Series[str]"
-pythontype(::Type{<:Missing}) = "None"
 pythontype(::Type{<:DateTime}) = "Series[str]"
-pythontype(::Type{<:Nothing}) = "None"
 pythontype(::Type{<:Any}) = "Series[Any]"
 function pythontype(T::Union)
-    optional = typeintersect(T, Missing) == Missing
     nonmissingtypes = filter(x -> x != Missing, Base.uniontypes(T))
-    pythontypes = join(map(pythontype, nonmissingtypes), " | ")
-    return optional ? "Optional[$pythontypes]" : pythontypes
+    return join(map(pythontype, nonmissingtypes), " | ")
 end
+
+isnullable(_) = "False"
+isnullable(T::Union) = typeintersect(T, Missing) == Missing ? "True" : "False"
 
 function strip_prefix(T::DataType)
     n = string(T)
@@ -33,7 +31,11 @@ function get_models()
     [
         (
             name = strip_prefix(T),
-            fields = zip(fieldnames(T), map(pythontype, fieldtypes(T))),
+            fields = zip(
+                fieldnames(T),
+                map(pythontype, fieldtypes(T)),
+                map(isnullable, fieldtypes(T)),
+            ),
         ) for T in subtypes(Legolas.AbstractRecord)
     ]
 end

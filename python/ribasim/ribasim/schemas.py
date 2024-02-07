@@ -1,16 +1,14 @@
 # Automatically generated file.
 # DO NOT MODIFY.
 
-from typing import Optional
-
 import pandera as pa
 from pandera.typing import Series
 
 
 class BasinProfileSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    area: Series[float]
-    level: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    area: Series[float] = pa.Field(nullable=False)
+    level: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -18,8 +16,8 @@ class BasinProfileSchema(pa.DataFrameModel):
 
 
 class BasinStateSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    level: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    level: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -27,12 +25,12 @@ class BasinStateSchema(pa.DataFrameModel):
 
 
 class BasinStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    drainage: Optional[Series[float]]
-    potential_evaporation: Optional[Series[float]]
-    infiltration: Optional[Series[float]]
-    precipitation: Optional[Series[float]]
-    urban_runoff: Optional[Series[float]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    drainage: Series[float] = pa.Field(nullable=True)
+    potential_evaporation: Series[float] = pa.Field(nullable=True)
+    infiltration: Series[float] = pa.Field(nullable=True)
+    precipitation: Series[float] = pa.Field(nullable=True)
+    urban_runoff: Series[float] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -40,10 +38,10 @@ class BasinStaticSchema(pa.DataFrameModel):
 
 
 class BasinSubgridSchema(pa.DataFrameModel):
-    subgrid_id: Series[int]
-    node_id: Series[int]
-    basin_level: Series[float]
-    subgrid_level: Series[float]
+    subgrid_id: Series[int] = pa.Field(nullable=False)
+    node_id: Series[int] = pa.Field(nullable=False)
+    basin_level: Series[float] = pa.Field(nullable=False)
+    subgrid_level: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -51,13 +49,13 @@ class BasinSubgridSchema(pa.DataFrameModel):
 
 
 class BasinTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    time: Series[str]
-    drainage: Optional[Series[float]]
-    potential_evaporation: Optional[Series[float]]
-    infiltration: Optional[Series[float]]
-    precipitation: Optional[Series[float]]
-    urban_runoff: Optional[Series[float]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    drainage: Series[float] = pa.Field(nullable=True)
+    potential_evaporation: Series[float] = pa.Field(nullable=True)
+    infiltration: Series[float] = pa.Field(nullable=True)
+    precipitation: Series[float] = pa.Field(nullable=True)
+    urban_runoff: Series[float] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -65,11 +63,11 @@ class BasinTimeSchema(pa.DataFrameModel):
 
 
 class DiscreteControlConditionSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    listen_feature_id: Series[int]
-    variable: Series[str]
-    greater_than: Series[float]
-    look_ahead: Optional[Series[float]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    listen_feature_id: Series[int] = pa.Field(nullable=False)
+    variable: Series[str] = pa.Field(nullable=False)
+    greater_than: Series[float] = pa.Field(nullable=False)
+    look_ahead: Series[float] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -77,9 +75,9 @@ class DiscreteControlConditionSchema(pa.DataFrameModel):
 
 
 class DiscreteControlLogicSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    truth_state: Series[str]
-    control_state: Series[str]
+    node_id: Series[int] = pa.Field(nullable=False)
+    truth_state: Series[str] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -87,12 +85,12 @@ class DiscreteControlLogicSchema(pa.DataFrameModel):
 
 
 class EdgeSchema(pa.DataFrameModel):
-    fid: Series[int]
-    name: Series[str]
-    from_node_id: Series[int]
-    to_node_id: Series[int]
-    edge_type: Series[str]
-    allocation_network_id: Optional[Series[int]]
+    fid: Series[int] = pa.Field(nullable=False)
+    name: Series[str] = pa.Field(nullable=False)
+    from_node_id: Series[int] = pa.Field(nullable=False)
+    to_node_id: Series[int] = pa.Field(nullable=False)
+    edge_type: Series[str] = pa.Field(nullable=False)
+    allocation_network_id: Series[int] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -100,9 +98,9 @@ class EdgeSchema(pa.DataFrameModel):
 
 
 class FlowBoundaryStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    flow_rate: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    flow_rate: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -110,9 +108,9 @@ class FlowBoundaryStaticSchema(pa.DataFrameModel):
 
 
 class FlowBoundaryTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    time: Series[str]
-    flow_rate: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    flow_rate: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -120,9 +118,9 @@ class FlowBoundaryTimeSchema(pa.DataFrameModel):
 
 
 class FractionalFlowStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    fraction: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    fraction: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -130,9 +128,9 @@ class FractionalFlowStaticSchema(pa.DataFrameModel):
 
 
 class LevelBoundaryStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    level: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    level: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -140,9 +138,9 @@ class LevelBoundaryStaticSchema(pa.DataFrameModel):
 
 
 class LevelBoundaryTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    time: Series[str]
-    level: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    level: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -150,10 +148,10 @@ class LevelBoundaryTimeSchema(pa.DataFrameModel):
 
 
 class LinearResistanceStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    resistance: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    resistance: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -161,13 +159,13 @@ class LinearResistanceStaticSchema(pa.DataFrameModel):
 
 
 class ManningResistanceStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    length: Series[float]
-    manning_n: Series[float]
-    profile_width: Series[float]
-    profile_slope: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    length: Series[float] = pa.Field(nullable=False)
+    manning_n: Series[float] = pa.Field(nullable=False)
+    profile_width: Series[float] = pa.Field(nullable=False)
+    profile_slope: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -175,10 +173,10 @@ class ManningResistanceStaticSchema(pa.DataFrameModel):
 
 
 class NodeSchema(pa.DataFrameModel):
-    fid: Series[int]
-    name: Series[str]
-    type: Series[str]
-    allocation_network_id: Optional[Series[int]]
+    fid: Series[int] = pa.Field(nullable=False)
+    name: Series[str] = pa.Field(nullable=False)
+    type: Series[str] = pa.Field(nullable=False)
+    allocation_network_id: Series[int] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -186,13 +184,13 @@ class NodeSchema(pa.DataFrameModel):
 
 
 class OutletStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    flow_rate: Series[float]
-    min_flow_rate: Optional[Series[float]]
-    max_flow_rate: Optional[Series[float]]
-    min_crest_level: Optional[Series[float]]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    min_flow_rate: Series[float] = pa.Field(nullable=True)
+    max_flow_rate: Series[float] = pa.Field(nullable=True)
+    min_crest_level: Series[float] = pa.Field(nullable=True)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -200,14 +198,14 @@ class OutletStaticSchema(pa.DataFrameModel):
 
 
 class PidControlStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    listen_node_id: Series[int]
-    target: Series[float]
-    proportional: Series[float]
-    integral: Series[float]
-    derivative: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    listen_node_id: Series[int] = pa.Field(nullable=False)
+    target: Series[float] = pa.Field(nullable=False)
+    proportional: Series[float] = pa.Field(nullable=False)
+    integral: Series[float] = pa.Field(nullable=False)
+    derivative: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -215,14 +213,14 @@ class PidControlStaticSchema(pa.DataFrameModel):
 
 
 class PidControlTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    listen_node_id: Series[int]
-    time: Series[str]
-    target: Series[float]
-    proportional: Series[float]
-    integral: Series[float]
-    derivative: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    listen_node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    target: Series[float] = pa.Field(nullable=False)
+    proportional: Series[float] = pa.Field(nullable=False)
+    integral: Series[float] = pa.Field(nullable=False)
+    derivative: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -230,12 +228,12 @@ class PidControlTimeSchema(pa.DataFrameModel):
 
 
 class PumpStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    flow_rate: Series[float]
-    min_flow_rate: Optional[Series[float]]
-    max_flow_rate: Optional[Series[float]]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    min_flow_rate: Series[float] = pa.Field(nullable=True)
+    max_flow_rate: Series[float] = pa.Field(nullable=True)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -243,11 +241,11 @@ class PumpStaticSchema(pa.DataFrameModel):
 
 
 class TabulatedRatingCurveStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    level: Series[float]
-    flow_rate: Series[float]
-    control_state: Optional[Series[str]]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    level: Series[float] = pa.Field(nullable=False)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    control_state: Series[str] = pa.Field(nullable=True)
 
     class Config:
         add_missing_columns = True
@@ -255,10 +253,10 @@ class TabulatedRatingCurveStaticSchema(pa.DataFrameModel):
 
 
 class TabulatedRatingCurveTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    time: Series[str]
-    level: Series[float]
-    flow_rate: Series[float]
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    level: Series[float] = pa.Field(nullable=False)
+    flow_rate: Series[float] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -266,7 +264,7 @@ class TabulatedRatingCurveTimeSchema(pa.DataFrameModel):
 
 
 class TerminalStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
+    node_id: Series[int] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -274,12 +272,12 @@ class TerminalStaticSchema(pa.DataFrameModel):
 
 
 class UserStaticSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    active: Optional[Series[bool]]
-    demand: Series[float]
-    return_factor: Series[float]
-    min_level: Series[float]
-    priority: Series[int]
+    node_id: Series[int] = pa.Field(nullable=False)
+    active: Series[bool] = pa.Field(nullable=True)
+    demand: Series[float] = pa.Field(nullable=False)
+    return_factor: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
@@ -287,12 +285,12 @@ class UserStaticSchema(pa.DataFrameModel):
 
 
 class UserTimeSchema(pa.DataFrameModel):
-    node_id: Series[int]
-    time: Series[str]
-    demand: Series[float]
-    return_factor: Series[float]
-    min_level: Series[float]
-    priority: Series[int]
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[str] = pa.Field(nullable=False)
+    demand: Series[float] = pa.Field(nullable=False)
+    return_factor: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
 
     class Config:
         add_missing_columns = True
