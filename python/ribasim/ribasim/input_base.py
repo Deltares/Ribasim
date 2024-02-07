@@ -281,7 +281,9 @@ class TableModel(FileModel, Generic[TableT]):
         with connect(path) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
-                df = pd.read_sql_query(query, connection, parse_dates=["time"])
+                df = pd.read_sql_query(
+                    query, connection, parse_dates={"time": {"format": "ISO8601"}}
+                )
             else:
                 df = None
 

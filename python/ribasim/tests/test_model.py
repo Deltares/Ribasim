@@ -127,7 +127,11 @@ def test_node_ids_unsequential(basic):
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
-    Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
+    model_new = Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
+    pd.testing.assert_series_equal(
+        model_orig.tabulated_rating_curve.time.df.time,
+        model_new.tabulated_rating_curve.time.df.time,
+    )
 
 
 def test_plot(discrete_control_of_pid_control):
