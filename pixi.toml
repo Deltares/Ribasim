@@ -88,7 +88,7 @@ test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.tes
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-python = { cmd = "julia --project docs/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py"}
+generate-python = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py"}
 codegen = { depends_on = ["generate-python", "lint"] }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
