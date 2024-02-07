@@ -28,6 +28,9 @@ function strip_prefix(T::DataType)
 end
 
 function get_models()
+    """
+    Set up models including field properties for all subtypes of Legolas.AbstractRecord.
+    """
     [
         (
             name = strip_prefix(T),
@@ -40,11 +43,14 @@ function get_models()
     ]
 end
 
+# Setup template with whitespace settings that mainly strips whitespace.
+# See model.py.jinja for the layout of the template.
 model_template = Template(
     normpath(@__DIR__, "templates", "model.py.jinja");
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
+# Write schemas.py
 open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
     init = Dict("models" => get_models())
     println(io, model_template(; init = init))
