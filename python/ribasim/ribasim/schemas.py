@@ -100,7 +100,7 @@ class EdgeSchema(pa.DataFrameModel):
 
 class FlowBoundaryStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
     class Config:
@@ -130,7 +130,7 @@ class FractionalFlowStaticSchema(pa.DataFrameModel):
 
 class LevelBoundaryStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
 
     class Config:
@@ -150,7 +150,7 @@ class LevelBoundaryTimeSchema(pa.DataFrameModel):
 
 class LinearResistanceStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     resistance: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
@@ -161,7 +161,7 @@ class LinearResistanceStaticSchema(pa.DataFrameModel):
 
 class ManningResistanceStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     length: Series[float] = pa.Field(nullable=False)
     manning_n: Series[float] = pa.Field(nullable=False)
     profile_width: Series[float] = pa.Field(nullable=False)
@@ -186,7 +186,7 @@ class NodeSchema(pa.DataFrameModel):
 
 class OutletStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
@@ -200,7 +200,7 @@ class OutletStaticSchema(pa.DataFrameModel):
 
 class PidControlStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
@@ -230,7 +230,7 @@ class PidControlTimeSchema(pa.DataFrameModel):
 
 class PumpStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
@@ -243,7 +243,7 @@ class PumpStaticSchema(pa.DataFrameModel):
 
 class TabulatedRatingCurveStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
@@ -274,7 +274,7 @@ class TerminalStaticSchema(pa.DataFrameModel):
 
 class UserStaticSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(nullable=False)
-    active: Series[bool] = pa.Field(nullable=True)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
     demand: Series[float] = pa.Field(nullable=False)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
