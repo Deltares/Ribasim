@@ -1282,3 +1282,23 @@ end
 function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
+
+function get_user_demand(user::User, node_id::NodeID, priority_idx::Int)::Float64
+    (; demand) = user
+    user_idx = findsorted(user.node_id, node_id)
+    n_priorities = length(user.priorities)
+    return demand[(user_idx - 1) * n_priorities + priority_idx]
+end
+
+function set_user_demand!(
+    user::User,
+    node_id::NodeID,
+    priority_idx::Int,
+    value::Float64,
+)::Nothing
+    (; demand) = user
+    user_idx = findsorted(user.node_id, node_id)
+    n_priorities = length(user.priorities)
+    demand[(user_idx - 1) * n_priorities + priority_idx] = value
+    return nothing
+end

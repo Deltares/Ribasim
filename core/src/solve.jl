@@ -432,7 +432,9 @@ record: Collected data of allocation optimizations for output file.
 struct User <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
-    demand::Vector{Vector{ScalarInterpolation}}
+    demand::Vector{Float64}
+    demand_itp::Vector{Vector{ScalarInterpolation}}
+    demand_from_timeseries::BitVector
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
@@ -451,17 +453,21 @@ struct User <: AbstractParameterNode
         node_id,
         active,
         demand,
+        demand_itp,
+        demand_from_timeseries,
         allocated,
         return_factor,
         min_level,
         priorities,
         record,
     )
-        if valid_demand(node_id, demand, priorities)
+        if valid_demand(node_id, demand_itp, priorities)
             return new(
                 node_id,
                 active,
                 demand,
+                demand_itp,
+                demand_from_timeseries,
                 allocated,
                 return_factor,
                 min_level,
@@ -805,7 +811,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, allocated, demand, active, return_factor, min_level) = user
+    (; node_id, allocated, active, demand_itp, return_factor, min_level) = user
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -822,7 +828,7 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
-            alloc = min(allocated[i][priority_idx], demand[i][priority_idx](t))
+            alloc = min(allocated[i][priority_idx], demand_itp[i][priority_idx](t))
             q += alloc
         end
 
