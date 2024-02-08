@@ -747,7 +747,7 @@ function User(db::DB, config::Config)::User
 
     node_ids = NodeID.(node_ids)
 
-    user = User(
+    return User(
         node_ids,
         active,
         demand,
@@ -759,8 +759,6 @@ function User(db::DB, config::Config)::User
         priorities,
         record,
     )
-
-    return user
 end
 
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
