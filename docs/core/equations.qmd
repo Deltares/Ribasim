@@ -271,15 +271,15 @@ of outlets, or even reversal of flows for high precipitation events.
 ### LinearResistance
 
 A `LinearResistance` connects two basins together. The flow between the two basins
-is determined by a linear relationship:
+is determined by a linear relationship, up to an optional maximum flow rate:
 
 $$
-    Q = \frac{h_a - h_b}{R}
+    Q = \mathrm{clamp}(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max})
 $$ {#eq-basinflow}
 
-Here $h_a$ is the water level in the first basin, $h_b$ is the water level in
-the second basin, and $R$ is the resistance of the link. A `LinearResistance` makes
-no assumptions about the direction of the flow: water flows from high to low.
+Here $h_a$ is the water level in the first basin, $h_b$ is the water level in the second basin.
+$R$ is the resistance of the link, and $Q_{\max}$ is the maximum flow rate.
+A `LinearResistance` makes no assumptions about the direction of the flow: water flows from high to low.
 
 ### Terminal
 

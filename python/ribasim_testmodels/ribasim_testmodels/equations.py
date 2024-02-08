@@ -76,7 +76,9 @@ def linear_resistance_model():
 
     # setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(data={"node_id": [2], "resistance": [5e4]})
+        static=pd.DataFrame(
+            data={"node_id": [2], "resistance": [5e4], "max_flow_rate": [6e-5]}
+        )
     )
 
     # Setup level boundary:

@@ -31,6 +31,7 @@
     # The storage of the basin when it has the same level as the level boundary
     limit_storage = 450.0
     decay_rate = -1 / (basin_area * p.linear_resistance.resistance[1])
+    # TODO adapt for max_flow_rate of 6e-5
     storage_analytic =
         @. limit_storage + (storage[1] - limit_storage) * exp.(decay_rate * t)
 
