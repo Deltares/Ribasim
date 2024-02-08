@@ -377,7 +377,7 @@ function adjust_basin_capacities!(
 end
 
 """
-Save the allocation flows per physical edge.
+Save the allocation flows per basin physical edge.
 """
 function save_allocation_flows!(
     p::Parameters,
@@ -391,6 +391,7 @@ function save_allocation_flows!(
     (; record) = allocation
     F = problem[:F]
 
+    # Edge flows
     for allocation_edge in first(F.axes)
         flow = JuMP.value(F[allocation_edge])
         edge_metadata = graph[allocation_edge...]
@@ -407,6 +408,22 @@ function save_allocation_flows!(
             push!(record.collect_demands, collect_demands)
         end
     end
+
+    # Basin flows
+    for node_id in graph[].node_id[allocation_network_id]
+        if graph[node_id].type == :basin
+            flow = ...
+            push!(record.time, t)
+            push!(record.edge_id, 0)
+            push!(record.from_node_id, node_id)
+            push!(record.to_node_id, node_id)
+            push!(record.allocation_network_id, allocation_network_id)
+            push!(record.priority, priority)
+            push!(record.flow, flow)
+            push!(record.collect_demands, collect_demands)
+        end
+    end
+
     return nothing
 end
 
