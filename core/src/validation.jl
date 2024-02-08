@@ -175,21 +175,21 @@ end
 
 @version BasinStaticV1 begin
     node_id::Int
-    drainage::Float64
-    potential_evaporation::Float64
-    infiltration::Float64
-    precipitation::Float64
-    urban_runoff::Float64
+    drainage::Union{Missing, Float64}
+    potential_evaporation::Union{Missing, Float64}
+    infiltration::Union{Missing, Float64}
+    precipitation::Union{Missing, Float64}
+    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinTimeV1 begin
     node_id::Int
     time::DateTime
-    drainage::Float64
-    potential_evaporation::Float64
-    infiltration::Float64
-    precipitation::Float64
-    urban_runoff::Float64
+    drainage::Union{Missing, Float64}
+    potential_evaporation::Union{Missing, Float64}
+    infiltration::Union{Missing, Float64}
+    precipitation::Union{Missing, Float64}
+    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinProfileV1 begin
@@ -261,7 +261,7 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
     control_state::Union{Missing, String}
 end
 
@@ -269,7 +269,7 @@ end
     node_id::Int
     time::DateTime
     level::Float64
-    discharge::Float64
+    flow_rate::Float64
 end
 
 @version TerminalStaticV1 begin
@@ -635,4 +635,47 @@ function valid_subgrid(
     end
 
     return !errors
+end
+
+function valid_demand(
+    node_id::Vector{NodeID},
+    demand::Vector{
+        Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
+    },
+    priorities::Vector{Int},
+)::Bool
+    errors = false
+
+    for (col, id) in zip(demand, node_id)
+        for (demand_p_itp, p_itp) in zip(col, priorities)
+            if any(demand_p_itp.u .< 0.0)
+                @error "Demand of user node $id with priority $p_itp should be non-negative"
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int, Set{NodeID}})::Bool
+    errors = false
+    for (allocation_network_id, subnetwork_node_ids) in node_ids
+        subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
+        if !is_connected(subnetwork)
+            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            errors = true
+        end
+    end
+    return errors
+end
+
+function non_positive_allocation_network_id(graph::MetaGraph)::Bool
+    errors = false
+    for allocation_network_id in keys(graph[].node_ids)
+        if (allocation_network_id <= 0)
+            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+            errors = true
+        end
+    end
+    return errors
 end

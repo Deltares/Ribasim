@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "0.5.0"
+version = "2024.02.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -29,23 +29,23 @@ install-without-pre-commit = { depends_on = [
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
 update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
-update-manifest-julia = "julia --eval='using Pkg; Pkg.update()'"
+update-manifest-julia = "julia --project --eval='using Pkg; Pkg.update()'"
 instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
 initialize-julia = { depends_on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
 # Docs
-build-julia-docs = { cmd = "julia --project=docs docs/make.jl", depends_on = [
+build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
     "initialize-julia",
 ] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
-    "quartodoc-build",
+    "quartodoc-build", "generate-testmodels"
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project=docs --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
-    "quartodoc-build",
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
+    "quartodoc-build", "generate-testmodels"
 ] }
 docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
 # Lint
@@ -61,15 +61,15 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build/create_binaries", depends_on = [
+build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build/create_binaries", depends_on = [
+build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build/create_binaries", depends_on = [
+build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -78,7 +78,7 @@ remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\")
 # Test
 test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
-test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/ribasim_cli/tests/temp --junitxml=report.xml build/ribasim_cli/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
@@ -88,7 +88,7 @@ test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.tes
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-schema = { cmd = "julia --project=docs docs/gen_schema.jl" }
+generate-schema = { cmd = "julia --project docs/gen_schema.jl" }
 generate-python = "datamodel-codegen --output-model-type pydantic_v2.BaseModel --base-class ribasim.input_base.BaseModel --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
 codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
 # Publish
@@ -128,17 +128,22 @@ test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis -
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
 ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
+# Release
+github-release = "python utils/github-release.py"
 
 [dependencies]
 build = "*"
 datamodel-code-generator = "0.24.*"
 geopandas = "*"
+gh = "*"
+hatchling = "*"
 juliaup = "*"
 jupyterlab = "*"
 libgdal-arrow-parquet = "*"
 matplotlib = "*"
 mypy = "*"
-pandas = "*"
+netCDF4 = "*"
+pandas = "==2.1.4"  # Avoid excessive deprecation warnings from pandera (#984)
 pandas-stubs = "*"
 pandera = "*"
 pip = "*"
@@ -164,7 +169,7 @@ types-requests = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
-hatchling = "*"
+xugrid = "*"
 
 [target.win-64.dependencies]
 quarto = "*"

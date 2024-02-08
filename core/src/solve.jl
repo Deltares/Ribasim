@@ -21,6 +21,34 @@ struct AllocationModel
     Δt_allocation::Float64
 end
 
+"""
+Object for all information about allocation
+allocation_network_ids: The unique sorted allocation network IDs
+allocation models: The allocation models for the main network and subnetworks corresponding to
+    allocation_network_ids
+main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+subnetwork_demands: The demand of an edge from the main network to a subnetwork
+record: A record of all flows computed by allocation optimization, eventually saved to
+    output file
+"""
+struct Allocation
+    allocation_network_ids::Vector{Int}
+    allocation_models::Vector{AllocationModel}
+    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    record::@NamedTuple{
+        time::Vector{Float64},
+        edge_id::Vector{Int},
+        from_node_id::Vector{Int},
+        to_node_id::Vector{Int},
+        allocation_network_id::Vector{Int},
+        priority::Vector{Int},
+        flow::Vector{Float64},
+        collect_demands::BitVector,
+    }
+end
+
 @enumx EdgeType flow control none
 
 """
@@ -42,6 +70,8 @@ allocation_network_id_source: ID of allocation network where this edge is a sour
 from_id: the node ID of the source node
 to_id: the node ID of the destination node
 allocation_flow: whether this edge has a flow in an allocation graph
+node_ids: if this edge has allocation flow, these are all the
+    nodes from the physical layer this edge consists of
 """
 struct EdgeMetadata
     id::Int
@@ -50,6 +80,7 @@ struct EdgeMetadata
     from_id::NodeID
     to_id::NodeID
     allocation_flow::Bool
+    node_ids::Vector{NodeID}
 end
 
 abstract type AbstractParameterNode end
@@ -121,7 +152,7 @@ end
 """
     struct TabulatedRatingCurve{C}
 
-Rating curve from level to discharge. The rating curve is a lookup table with linear
+Rating curve from level to flow rate. The rating curve is a lookup table with linear
 interpolation in between. Relation can be updated in time, which is done by moving data from
 the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
 callback.
@@ -415,6 +446,32 @@ struct User <: AbstractParameterNode
         allocated::Vector{Float64},
         abstracted::Vector{Float64},
     }
+
+    function User(
+        node_id,
+        active,
+        demand,
+        allocated,
+        return_factor,
+        min_level,
+        priorities,
+        record,
+    )
+        if valid_demand(node_id, demand, priorities)
+            return new(
+                node_id,
+                active,
+                demand,
+                allocated,
+                return_factor,
+                min_level,
+                priorities,
+                record,
+            )
+        else
+            error("Invalid demand")
+        end
+    end
 end
 
 "Subgrid linearly interpolates basin levels."
@@ -445,7 +502,7 @@ struct Parameters{T, C1, C2}
         MetaGraphsNext.var"#11#13",
         Float64,
     }
-    allocation_models::Vector{AllocationModel}
+    allocation::Allocation
     basin::Basin{T, C1}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance

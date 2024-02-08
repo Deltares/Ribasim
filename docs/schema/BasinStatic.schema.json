@@ -10,24 +10,59 @@
             "type": "integer"
         },
         "drainage": {
-            "format": "double",
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "potential_evaporation": {
-            "format": "double",
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "infiltration": {
-            "format": "double",
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "precipitation": {
-            "format": "double",
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "urban_runoff": {
-            "format": "double",
-            "type": "number"
+            "format": "default",
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                }
+            ]
         },
         "remarks": {
             "description": "a hack for pandera",
@@ -37,11 +72,6 @@
         }
     },
     "required": [
-        "node_id",
-        "drainage",
-        "potential_evaporation",
-        "infiltration",
-        "precipitation",
-        "urban_runoff"
+        "node_id"
     ]
 }

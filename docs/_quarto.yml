@@ -26,6 +26,7 @@ website:
     - title: "Julia core"
       contents:
         - core/index.qmd
+        - core/modelconcept.qmd
         - core/usage.qmd
         - core/validation.qmd
         - core/equations.qmd

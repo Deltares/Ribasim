@@ -5,9 +5,13 @@ function help(x::AbstractString)::Cint
 end
 
 main(toml_path::AbstractString)::Cint = main([toml_path])
+main()::Cint = main(ARGS)
 
 """
+    main(toml_path::AbstractString)::Cint
     main(ARGS::Vector{String})::Cint
+    main()::Cint
+
 This is the main entry point of the application.
 Performs argument parsing and sets up logging for both terminal and file.
 Calls Ribasim.run() and handles exceptions to convert to exit codes.
@@ -37,6 +41,9 @@ function main(ARGS::Vector{String})::Cint
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
+                ribasim_version = pkgversion(Ribasim)
+                (; starttime, endtime) = config
+                @info "Starting a Ribasim simulation." ribasim_version starttime endtime
                 model = Ribasim.run(config)
                 if successful_retcode(model)
                     @info "The model finished successfully"

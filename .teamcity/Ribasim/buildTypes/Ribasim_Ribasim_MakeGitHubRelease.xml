@@ -13,27 +13,9 @@
 set -euxo pipefail
 . /usr/share/Modules/init/bash
 
-module load github
-# Get the name of the currently checked out tag
-tag_name=$(git describe --tags --exact-match 2>/dev/null)
-
-# Check if a tag is checked out
-if [ -n "$tag_name" ]; then
-    echo "Currently checked out tag: $tag_name"
-
-    # Create a release using gh
-    gh release create "$tag_name" \
-        --generate-notes \
-        ribasim_cli_linux.zip \
-        ribasim_cli_windows.zip \
-        ribasim_qgis.zip \
-        generated_testmodels.zip
-
-    echo "Release created successfully."
-
-else
-    echo "No tag is currently checked out."
-fi]]></param>
+module load pixi
+pixi run github-release
+]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -98,44 +80,26 @@ fi]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_GenerateTestmodels">
-        <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimApi">
-        <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimCli">
         <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_GenerateTestmodels">
         <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
         <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimApi">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
         <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
@@ -148,4 +112,3 @@ fi]]></param>
     </cleanup>
   </settings>
 </build-type>
-

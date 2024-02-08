@@ -1,3 +1,16 @@
+"Get the package version of a given module"
+function pkgversion(m::Module)::VersionNumber
+    version = Base.pkgversion(Ribasim)
+    !isnothing(version) && return version
+
+    # Base.pkgversion doesn't work with compiled binaries
+    # If it returns `nothing`, we try a different way
+    rootmodule = Base.moduleroot(m)
+    pkg = Base.PkgId(rootmodule)
+    pkgorigin = get(Base.pkgorigins, pkg, nothing)
+    return pkgorigin.version
+end
+
 "Check that only supported edge types are declared."
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
@@ -29,12 +42,19 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         db,
         "SELECT fid, from_node_id, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
     )
+    # Node IDs per subnetwork
     node_ids = Dict{Int, Set{NodeID}}()
+    # Allocation edges per subnetwork
     edge_ids = Dict{Int, Set{Tuple{NodeID, NodeID}}}()
+    # Source edges per subnetwork
     edges_source = Dict{Int, Set{EdgeMetadata}}()
+    # The number of flow edges
     flow_counter = 0
+    # Dictionary from flow edge to index in flow vector
     flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    # The number of nodes with vertical flow (interaction with outside of model)
     flow_vertical_counter = 0
+    # Dictionary from node ID to index in vertical flow vector
     flow_vertical_dict = Dict{NodeID, Int}()
     graph = MetaGraph(
         DiGraph();
@@ -73,8 +93,15 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(allocation_network_id)
             allocation_network_id = 0
         end
-        edge_metadata =
-            EdgeMetadata(fid, edge_type, allocation_network_id, id_src, id_dst, false)
+        edge_metadata = EdgeMetadata(
+            fid,
+            edge_type,
+            allocation_network_id,
+            id_src,
+            id_dst,
+            false,
+            NodeID[],
+        )
         graph[id_src, id_dst] = edge_metadata
         if edge_type == EdgeType.flow
             flow_counter += 1
@@ -86,6 +113,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(edges_source[allocation_network_id], edge_metadata)
         end
+    end
+
+    if incomplete_subnetwork(graph, node_ids)
+        error("Incomplete connectivity in subnetwork")
     end
 
     flow = zeros(flow_counter)
@@ -570,14 +601,14 @@ end
 
 function qh_interpolation(
     level::AbstractVector,
-    discharge::AbstractVector,
+    flow_rate::AbstractVector,
 )::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(discharge, level; extrapolate = true), allunique(level)
+    return LinearInterpolation(flow_rate, level; extrapolate = true), allunique(level)
 end
 
 """
-From a table with columns node_id, discharge (Q) and level (h),
-create a LinearInterpolation from level to discharge for a given node_id.
+From a table with columns node_id, flow_rate (Q) and level (h),
+create a LinearInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(
     node_id::Int,
@@ -585,7 +616,7 @@ function qh_interpolation(
 )::Tuple{LinearInterpolation, Bool}
     rowrange = findlastgroup(node_id, table.node_id)
     @assert !isempty(rowrange) "timeseries starts after model start time"
-    return qh_interpolation(table.level[rowrange], table.discharge[rowrange])
+    return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
 end
 
 """
@@ -608,12 +639,12 @@ end
 Update `table` at row index `i`, with the values of a given row.
 `table` must be a NamedTuple of vectors with all variables that must be loaded.
 The row must contain all the column names that are present in the table.
-If a value is NaN, it is not set.
+If a value is missing, it is not set.
 """
 function set_table_row!(table::NamedTuple, row, i::Int)::NamedTuple
     for (symbol, vector) in pairs(table)
         val = getproperty(row, symbol)
-        if !isnan(val)
+        if !ismissing(val)
             vector[i] = val
         end
     end
@@ -655,7 +686,7 @@ function set_current_value!(
     for (i, id) in enumerate(node_id)
         for (symbol, vector) in pairs(table)
             idx = findlast(
-                row -> row.node_id == id && !isnan(getproperty(row, symbol)),
+                row -> row.node_id == id && !ismissing(getproperty(row, symbol)),
                 pre_table,
             )
             if idx !== nothing
@@ -1242,4 +1273,12 @@ function allocation_path_exists_in_graph(
         end
     end
     return false
+end
+
+function has_main_network(allocation::Allocation)::Bool
+    return first(allocation.allocation_network_ids) == 1
+end
+
+function is_main_network(allocation_network_id::Int)::Bool
+    return allocation_network_id == 1
 end

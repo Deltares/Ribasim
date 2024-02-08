@@ -19,12 +19,15 @@
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
     control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
     allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
+    allocation_flow_bytes =
+        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
     control = Arrow.Table(control_bytes)
     allocation = Arrow.Table(allocation_bytes)
+    allocation_flow = Arrow.Table(allocation_flow_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
 
     @testset "Schema" begin
@@ -51,6 +54,19 @@
                 :abstracted,
             ),
             (DateTime, Int, Int, Int, Float64, Float64, Float64),
+        )
+        @test Tables.schema(allocation_flow) == Tables.Schema(
+            (
+                :time,
+                :edge_id,
+                :from_node_id,
+                :to_node_id,
+                :allocation_network_id,
+                :priority,
+                :flow,
+                :collect_demands,
+            ),
+            (DateTime, Int, Int, Int, Int, Int, Float64, Bool),
         )
         @test Tables.schema(subgrid) ==
               Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
@@ -95,7 +111,48 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
+    @test model.integrator.u.storage ≈ [1000]
+    @test model.integrator.p.basin.precipitation == [0.0]
+    @test model.integrator.p.basin.potential_evaporation == [0.0]
+    @test model.integrator.p.basin.drainage == [0.0]
+    @test model.integrator.p.basin.infiltration == [0.0]
     @test successful_retcode(model)
+end
+
+@testitem "leaky bucket model" begin
+    using SciMLBase: successful_retcode
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    @test model isa Ribasim.Model
+
+    stor = model.integrator.u.storage
+    prec = model.integrator.p.basin.precipitation
+    evap = model.integrator.p.basin.potential_evaporation
+    drng = model.integrator.p.basin.drainage
+    infl = model.integrator.p.basin.infiltration
+    # The dynamic data has missings, but these are not set.
+    @test prec == [0.0]
+    @test evap == [0.0]
+    @test drng == [0.003]
+    @test infl == [0.0]
+    init_stor = 1000.0
+    @test stor == [init_stor]
+    BMI.update_until(model, 1.5 * 86400)
+    @test prec == [0.0]
+    @test evap == [0.0]
+    @test drng == [0.003]
+    @test infl == [0.001]
+    stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
+    BMI.update_until(model, 2.5 * 86400)
+    @test prec == [0.00]
+    @test evap == [0.0]
+    @test drng == [0.001]
+    @test infl == [0.002]
+    stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
+    @test successful_retcode(Ribasim.solve!(model))
 end
 
 @testitem "basic model" begin
@@ -335,12 +392,12 @@ end
 
     See: https://en.wikipedia.org/wiki/Standard_step_method
 
-    * The left boundary has a fixed discharge `Q`.
+    * The left boundary has a fixed flow rate `Q`.
     * The right boundary has a fixed level `h_right`.
     * Channel profile is rectangular.
 
     # Arguments
-    - `Q`: discharge entering in the left boundary (m3/s)
+    - `Q`: flow rate entering in the left boundary (m3/s)
     - `w`: width (m)
     - `n`: Manning roughness
     - `h_right`: water level on the right boundary

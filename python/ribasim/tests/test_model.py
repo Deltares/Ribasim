@@ -136,10 +136,33 @@ def test_plot(discrete_control_of_pid_control):
 
 def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig = basic
+    # for node an explicit index was provided
+    nrow = len(model_orig.network.node.df)
+    assert model_orig.network.node.df.index.name == "fid"
+    assert model_orig.network.node.df.index.equals(
+        pd.RangeIndex(start=1, stop=nrow + 1)
+    )
+    # for edge no index was provided, but it still needs to write it to file
+    nrow = len(model_orig.network.edge.df)
+    assert model_orig.network.edge.df.index.name is None
+    assert model_orig.network.edge.df.index.equals(pd.RangeIndex(start=0, stop=nrow))
+
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
-        df = pd.read_sql_query(query, connection, parse_dates=["time"])
+        df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
-        fids = df.get("fid")
+        fids = df["fid"]
         assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
+        query = "select fid from Node"
+        df = pd.read_sql_query(query, connection)
+        assert "fid" in df.columns
+        fids = df["fid"]
+        assert fids.equals(pd.Series(range(1, len(fids) + 1)))
+
+        query = "select fid from Edge"
+        df = pd.read_sql_query(query, connection)
+        assert "fid" in df.columns
+        fids = df["fid"]
+        assert fids.equals(pd.Series(range(0, len(fids))))

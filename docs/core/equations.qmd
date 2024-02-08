@@ -42,7 +42,7 @@ $\mathbf{u}(t)$ is given by all the states of the model, which are (currently) t
 Given a single basin with node ID $i \in B$, the equation that dictates the change of its storage over time is given by
 
 $$
-\frac{\text{d}S_i}{\text{d}t} =
+\frac{\text{d}u_i}{\text{d}t} =
 \sum_{(i',j') \in E | j' = i} Q_{i',j'} - \sum_{(i',j') \in E | i' = i} Q_{i',j'} + F_i(p,t).
 $$
 
@@ -74,15 +74,15 @@ $$
 
 Most of these terms are always $0$, because a flow over an edge only depends on a small number of states. Therefore the matrix $J$ is very sparse.
 
-For many contributions to the Jacobian the derivative of the level $l(S)$ of a basin with respect to its storage $S$ is required. To get an expression for this, we first look at the storage as a function of the level:
+For many contributions to the Jacobian the derivative of the level $l(u)$ of a basin with respect to its storage $u$ is required. To get an expression for this, we first look at the storage as a function of the level:
 
 $$
-S(l) = \int_{l_0}^l A(\ell)d\ell.
+u(l) = \int_{l_0}^l A(\ell)d\ell.
 $$
 
-From this we obtain $S'(l) = A(l)$ and thus
+From this we obtain $u'(l) = A(l)$ and thus
 $$
-\frac{\text{d}l}{\text{d}S} = \frac{1}{A(S)}.
+\frac{\text{d}l}{\text{d}u} = \frac{1}{A(u)}.
 $$
 
 :::{.callout-note}
@@ -149,11 +149,11 @@ plt.show()
 The precipitation term is given by
 
 $$
-    Q_P = P \cdot A(S).
+    Q_P = P \cdot A(u).
 $$ {#eq-precip}
 
 Here $P = P(t)$ is the precipitation rate and $A$ is the wetted area. $A$ is a
-function of the storage $S = S(t)$: as the volume of water changes, the area of the free water
+function of the storage $u = u(t)$: as the volume of water changes, the area of the free water
 surface may change as well, depending on the slopes of the surface waters.
 
 ## Evaporation
@@ -161,13 +161,13 @@ surface may change as well, depending on the slopes of the surface waters.
 The evaporation term is given by
 
 $$
-    Q_E = E_\text{pot} \cdot A(S) \cdot \phi(d;0.1).
+    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1).
 $$ {#eq-evap}
 
-Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $\phi$ is the [reduction factor](equations.qmd#sec-reduction_factor) which depends on the depth $d$. It provides a smooth gradient as $S \rightarrow 0$.
+Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $\phi$ is the [reduction factor](equations.qmd#sec-reduction_factor) which depends on the depth $d$. It provides a smooth gradient as $u \rightarrow 0$.
 
-A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(S),
-0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}S}(S=0)$ is then not well-defined.
+A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(u),
+0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}u}(u=0)$ is then not well-defined.
 
 <!--
 A hyperbolic tangent is a commonly used activation function
@@ -181,7 +181,7 @@ its timestepping. In a physical interpretation, evaporation is switched on or
 off per individual droplet of water. In general, the effect of the reduction term
 is negligible, or not even necessary. As a surface water dries, its wetted area
 decreases and so does the evaporative flux. However, for (simplified) cases with
-constant wetted surface (a rectangular profile), evaporation only stops at $S =
+constant wetted surface (a rectangular profile), evaporation only stops at $u =
 0$.
 
 ## Infiltration and Drainage
@@ -259,10 +259,6 @@ a piecewise linear relationship between the basin's level and its
 discharge. It can be understood as an empirical description of a basin's
 properties. This can include an outlet, but also the lumped hydraulic behavior of the
 upstream channels.
-
-<!-- Is this still true? -->
-The Tabulated Rating Curve should indicate at which volume no discharge occurs (the dead
-storage volume).
 
 :::{.callout-note}
 Currently, the discharge relies only on the basin's level; it could also use

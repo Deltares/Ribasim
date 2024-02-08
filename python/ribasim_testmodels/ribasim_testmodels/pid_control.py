@@ -256,7 +256,7 @@ def discrete_control_of_pid_control_model():
             data={
                 "node_id": [4, 4],
                 "level": [0.0, 1.0],
-                "discharge": [0.0, q1000],
+                "flow_rate": [0.0, q1000],
             }
         )
     )

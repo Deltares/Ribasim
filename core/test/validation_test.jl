@@ -82,7 +82,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -174,7 +174,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -250,7 +250,7 @@ end
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
-    @test logger.logs[4].kwargs[:edge_id] == 7
+    @test logger.logs[4].kwargs[:edge_id] == 6
     @test logger.logs[4].kwargs[:id_src] == NodeID(2)
     @test logger.logs[4].kwargs[:id_dst] == NodeID(8)
 end
@@ -358,10 +358,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
+          "Invalid edge type 'foo' for edge #0 from node #1 to node #2."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
+          "Invalid edge type 'bar' for edge #1 from node #2 to node #3."
 end
 
 @testitem "Subgrid validation" begin
@@ -400,4 +400,28 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
+end
+
+@testitem "negative demand" begin
+    using Logging
+    using DataInterpolations: LinearInterpolation
+    logger = TestLogger()
+
+    with_logger(logger) do
+        @test_throws "Invalid demand" Ribasim.User(
+            [Ribasim.NodeID(1)],
+            [true],
+            [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
+            [0.0, -0.0],
+            [0.9],
+            [0.9],
+            [1],
+            [],
+        )
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Demand of user node #1 with priority 1 should be non-negative"
 end
