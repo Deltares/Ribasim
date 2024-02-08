@@ -415,7 +415,10 @@ function add_variables_basin!(
         node_id for node_id in graph[].node_ids[allocation_network_id] if
         graph[node_id].type == :basin
     ]
-    problem[:F_basin] = JuMP.@variable(problem, F_basin[node_id = node_ids_basin,])
+    problem[:F_basin_in] =
+        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
+    problem[:F_basin_out] =
+        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
     return nothing
 end
 
@@ -541,13 +544,25 @@ function outflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     return outflow_ids
 end
 
-function get_basin_flow(
+function get_basin_inflow(
     problem::JuMP.Model,
     node_id::NodeID,
 )::Union{JuMP.VariableRef, Float64}
-    F_basin = problem[:F_basin]
-    return if node_id in only(F_basin.axes)
-        F_basin[node_id]
+    F_basin_in = problem[:F_basin_in]
+    return if node_id in only(F_basin_in.axes)
+        F_basin_in[node_id]
+    else
+        0.0
+    end
+end
+
+function get_basin_outflow(
+    problem::JuMP.Model,
+    node_id::NodeID,
+)::Union{JuMP.VariableRef, Float64}
+    F_basin_out = problem[:F_basin_out]
+    return if node_id in only(F_basin_out.axes)
+        F_basin_out[node_id]
     else
         0.0
     end
@@ -582,11 +597,11 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) <=
+        ]) + get_basin_outflow(problem, node_id) <=
         sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
-        ]) + get_basin_flow(problem, node_id),
+        ]) + get_basin_inflow(problem, node_id),
         base_name = "flow_conservation",
     )
     return nothing
@@ -759,12 +774,19 @@ Constraint:
 flow basin >= - basin capacity
 """
 function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
-    F_basin = problem[:F_basin]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
     problem[:basin_flow] = JuMP.@constraint(
         problem,
         [node_id = only(F_basin.axes)],
-        F_basin[node_id] >= 0.0,
-        base_name = "basin_flow"
+        F_basin_in[node_id] <= 0.0,
+        base_name = "basin_inflow"
+    )
+    problem[:basin_flow] = JuMP.@constraint(
+        problem,
+        [node_id = only(F_basin.axes)],
+        F_basin_out[node_id] <= 0.0,
+        base_name = "basin_outflow"
     )
     return nothing
 end

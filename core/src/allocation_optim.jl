@@ -363,7 +363,7 @@ function adjust_basin_capacities!(
         if priority_idx == 1
             JuMP.set_normalized_rhs(
                 constraint,
-                -get_basin_capacity(allocation_model, u, p, t, node_id),
+                get_basin_capacity(allocation_model, u, p, t, node_id),
             )
         else
             JuMP.set_normalized_rhs(
