@@ -1,23 +1,16 @@
-"""
-Add a term to the expression of the objective function corresponding to
-the demand of a user.
-"""
-function add_user_term!(
+function add_objective_term!(
     ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
-    edge::Tuple{NodeID, NodeID},
-    objective_type::Symbol,
+    problem::JuMP.Model,
+    F_variable::JuMP.VariableRef,
     demand::Float64,
-    model::AllocationModel,
+    objective_type::Symbol;
+    constraint_abs_positive::Union{JuMP.ConstraintRef, Nothing} = nothing,
+    constraint_abs_negative::Union{JuMP.ConstraintRef, Nothing} = nothing,
 )::Nothing
-    (; problem) = model
-    F = problem[:F]
-    F_edge = F[edge]
-    node_id_user = edge[2]
-
     if objective_type == :quadratic_absolute
         # Objective function ∑ (F - d)^2
-        JuMP.add_to_expression!(ex, 1, F_edge, F_edge)
-        JuMP.add_to_expression!(ex, -2 * demand, F_edge)
+        JuMP.add_to_expression!(ex, 1, F_variable, F_variable)
+        JuMP.add_to_expression!(ex, -2 * demand, F_variable)
         JuMP.add_to_expression!(ex, demand^2)
 
     elseif objective_type == :quadratic_relative
@@ -25,24 +18,24 @@ function add_user_term!(
         if demand ≈ 0
             return nothing
         end
-        JuMP.add_to_expression!(ex, 1.0 / demand^2, F_edge, F_edge)
-        JuMP.add_to_expression!(ex, -2.0 / demand, F_edge)
+        JuMP.add_to_expression!(ex, 1.0 / demand^2, F_variable, F_variable)
+        JuMP.add_to_expression!(ex, -2.0 / demand, F_variable)
         JuMP.add_to_expression!(ex, 1.0)
 
     elseif objective_type == :linear_absolute
         # Objective function ∑ |F - d|
-        JuMP.set_normalized_rhs(problem[:abs_positive][node_id_user], -demand)
-        JuMP.set_normalized_rhs(problem[:abs_negative][node_id_user], demand)
+        JuMP.set_normalized_rhs(constraint_abs_positive, -demand)
+        JuMP.set_normalized_rhs(constraint_abs_negative, demand)
 
     elseif objective_type == :linear_relative
         # Objective function ∑ |1 - F/d|
         JuMP.set_normalized_coefficient(
-            problem[:abs_positive][node_id_user],
+            constraint_abs_positive,
             F_edge,
             iszero(demand) ? 0 : 1 / demand,
         )
         JuMP.set_normalized_coefficient(
-            problem[:abs_negative][node_id_user],
+            constraint_abs_negative,
             F_edge,
             iszero(demand) ? 0 : -1 / demand,
         )
@@ -53,19 +46,88 @@ function add_user_term!(
 end
 
 """
+Add a term to the expression of the objective function corresponding to
+the demand of a user.
+"""
+function add_user_term!(
+    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
+    edge::Tuple{NodeID, NodeID},
+    objective_type::Symbol,
+    demand::Float64,
+    problem::JuMP.Model,
+)::Nothing
+    F = problem[:F]
+    F_edge = F[edge]
+    node_id_user = edge[2]
+
+    if objective_type in [:linear_absolute, :linear_relative]
+        constraint_abs_positive = problem[:abs_positive][node_id_user]
+        constraint_abs_negative = problem[:abs_negative][node_id_user]
+    else
+        constraint_abs_positive = nothing
+        constraint_abs_negative = nothing
+    end
+
+    add_objective_term!(
+        ex,
+        problem,
+        F_edge,
+        demand,
+        objective_type;
+        constraint_abs_positive,
+        constraint_abs_negative,
+    )
+end
+
+"""
+Add a term to the expression of the objective function corresponding to
+the demand of a basin.
+"""
+function add_basin_term!(
+    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
+    problem::JuMP.Model,
+    demand::Float64,
+    objective_type::Symbol,
+    node_id::NodeID,
+)::Nothing
+    F_basin_in = problem[:F_basin_in]
+    F_basin = F_basin_in[node_id]
+
+    if objective_type in [:linear_absolute, :linear_relative]
+        constraint_abs_positive = problem[:abs_positive][node_id_user]
+        constraint_abs_negative = problem[:abs_negative][node_id_user]
+    else
+        constraint_abs_positive = nothing
+        constraint_abs_negative = nothing
+    end
+
+    add_objective_term!(
+        ex,
+        problem,
+        F_basin,
+        demand,
+        objective_type;
+        constraint_abs_positive,
+        constraint_abs_negative,
+    )
+    return nothing
+end
+
+"""
 Set the objective for the given priority.
 For an objective with absolute values this also involves adjusting constraints.
 """
 function set_objective_priority!(
     allocation_model::AllocationModel,
     p::Parameters,
+    u::ComponentVector,
     t::Float64,
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
     (; graph, user, allocation, basin) = p
     (; demand, node_id) = user
-    (; main_network_connections, subnetwork_demands) = allocation
+    (; main_network_connections, subnetwork_demands, priorities) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     node_ids = graph[].node_ids[allocation_network_id]
 
@@ -85,7 +147,7 @@ function set_objective_priority!(
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
                 demand_max = max(demand_max, d)
-                add_user_term!(ex, connection, objective_type, d, allocation_model)
+                add_user_term!(ex, connection, objective_type, d, problem)
             end
         end
     end
@@ -100,7 +162,7 @@ function set_objective_priority!(
         user_idx = findsorted(node_id, node_id_user)
         d = demand[user_idx][priority_idx](t)
         demand_max = max(demand_max, d)
-        add_user_term!(ex, edge_id, objective_type, d, allocation_model)
+        add_user_term!(ex, edge_id, objective_type, d, problem)
     end
 
     # Add flow cost
@@ -118,12 +180,18 @@ function set_objective_priority!(
         end
     end
 
-    # Add
-    F_basin = problem[:F_basin]
-    for node_id in only(F_basin.axes)
-        if priority_idx == findsorted
-            d = get_basin_demand(allocation_model, u, p, t, node_id)
-        end
+    # Terms for basins
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
+    for node_id in only(F_basin_in.axes)
+        priority_basin = get_basin_priority(p, node_id)
+        priority_now = priorities[priority_idx]
+
+        d =
+            priority_basin == priority_now ?
+            get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
+
+        #add_objective_term()
     end
 
     new_objective = JuMP.@expression(problem, ex)
@@ -355,11 +423,11 @@ function adjust_basin_capacities!(
     priority_idx::Int,
 )::Nothing
     (; problem) = allocation_model
-    constraints_basin_flow = problem[:basin_flow]
-    F_basin = problem[:F_basin]
+    constraints_outflow = problem[:basin_outflow]
+    F_basin_out = problem[:F_basin_out]
 
-    for node_id in only(constraints_basin_flow.axes)
-        constraint = constraints_basin_flow[node_id]
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
         if priority_idx == 1
             JuMP.set_normalized_rhs(
                 constraint,
@@ -368,7 +436,7 @@ function adjust_basin_capacities!(
         else
             JuMP.set_normalized_rhs(
                 constraint,
-                JuMP.normalized_rhs(constraint) - JuMP.value(F_basin[node_id]),
+                JuMP.normalized_rhs(constraint) - JuMP.value(F_basin_out[node_id]),
             )
         end
     end
@@ -390,6 +458,8 @@ function save_allocation_flows!(
     (; allocation, graph) = p
     (; record) = allocation
     F = problem[:F]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
 
     # Edge flows
     for allocation_edge in first(F.axes)
@@ -410,9 +480,9 @@ function save_allocation_flows!(
     end
 
     # Basin flows
-    for node_id in graph[].node_id[allocation_network_id]
+    for node_id in graph[].node_ids[allocation_network_id]
         if graph[node_id].type == :basin
-            flow = ...
+            flow = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             push!(record.time, t)
             push!(record.edge_id, 0)
             push!(record.from_node_id, node_id)
@@ -466,7 +536,7 @@ function allocate!(
         # of an existing objective function because this is not supported for
         # quadratic terms:
         # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_priority!(allocation_model, p, t, priority_idx)
+        set_objective_priority!(allocation_model, p, u, t, priority_idx)
 
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)

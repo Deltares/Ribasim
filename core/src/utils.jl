@@ -1297,3 +1297,14 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     end
     return sort(unique(priorities))
 end
+
+function get_basin_priority(p::Parameters, node_id::NodeID)::Int
+    (; graph, allocation_level_control) = p
+    inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(inneighbors_control)
+        return 0
+    else
+        idx = findsorted(allocation_level_control.node_id, first(inneighbors_control))
+        return allocation_level_control.priority[idx]
+    end
+end

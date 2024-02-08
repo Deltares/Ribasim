@@ -582,7 +582,6 @@ function add_constraints_flow_conservation!(
 )::Nothing
     (; graph) = p
     F = problem[:F]
-    F_basin = problem[:F_basin]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
         [node_id for node_id in node_ids if graph[node_id].type == :basin]
@@ -776,15 +775,9 @@ flow basin >= - basin capacity
 function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
-    problem[:basin_flow] = JuMP.@constraint(
+    problem[:basin_outflow] = JuMP.@constraint(
         problem,
-        [node_id = only(F_basin.axes)],
-        F_basin_in[node_id] <= 0.0,
-        base_name = "basin_inflow"
-    )
-    problem[:basin_flow] = JuMP.@constraint(
-        problem,
-        [node_id = only(F_basin.axes)],
+        [node_id = only(F_basin_out.axes)],
         F_basin_out[node_id] <= 0.0,
         base_name = "basin_outflow"
     )
