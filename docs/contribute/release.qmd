@@ -21,7 +21,7 @@ Before starting the release process, ensure that all tests are passing and that 
 
 ## Update version numbers of the components
 
-Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for major updates or breaking changes and a bumped `MICRO` number for small, non-breaking changes.
+Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
 Update the version numbers in the repository to the new version number.
