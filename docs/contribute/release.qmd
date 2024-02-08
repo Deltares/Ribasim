@@ -21,8 +21,8 @@ Before starting the release process, ensure that all tests are passing and that 
 
 ## Update version numbers of the components
 
-Determine the new version number like `2023.08.0`, filling in the current year, month and a sequential "MICRO" number.
-This follows `YYYY.0M.MICRO` from [calver](https://calver.org/).
+Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
+This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
 Update the version numbers in the repository to the new version number.
 A single find and replace can update all 5 locations:
@@ -39,7 +39,7 @@ Now submit a pull request to update the version numbers.
 
 When the pull request is merged to main, checkout the commit that updates the version numbers.
 
-Create a new tag, which is the letter `v` followed by the version number, like, `v2023.08.0`.
+Create a new tag, which is the letter `v` followed by the version number, like, `v2023.8.0`.
 
 This can be done by executing:
 ```bash
