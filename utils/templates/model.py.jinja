@@ -1,5 +1,4 @@
-# Automatically generated file.
-# DO NOT MODIFY.
+# Automatically generated file. Do not modify.
 
 import pandera as pa
 from pandera.dtypes import Timestamp
