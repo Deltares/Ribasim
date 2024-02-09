@@ -197,13 +197,15 @@ Requirements:
 
 node_id: node ID of the LinearResistance node
 active: whether this node is active and thus contributes flows
-resistance: the resistance to flow; Q = Δh/resistance
+resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
+max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
+    max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
