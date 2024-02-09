@@ -1,5 +1,6 @@
 @testitem "Allocation solve" begin
     using Ribasim: NodeID
+    using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
 
@@ -23,9 +24,10 @@
         end
     end
 
+    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
-    Ribasim.allocate!(p, allocation_model, 0.0)
+    Ribasim.allocate!(p, allocation_model, 0.0, u)
 
     F = allocation_model.problem[:F]
     @test JuMP.value(F[(NodeID(2), NodeID(6))]) ≈ 0.0
@@ -90,12 +92,12 @@ end
     problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
-    @test :F_abs in keys(problem.obj_dict)
+    @test :F_abs_user in keys(problem.obj_dict)
     F = problem[:F]
-    F_abs = problem[:F_abs]
+    F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs[NodeID(5)]] == 1.0
-    @test objective.terms[F_abs[NodeID(6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(6)]] == 1.0
     @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 0.125
     @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 0.125
     @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 0.125
@@ -107,12 +109,12 @@ end
     problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
-    @test :F_abs in keys(problem.obj_dict)
+    @test :F_abs_user in keys(problem.obj_dict)
     F = problem[:F]
-    F_abs = problem[:F_abs]
+    F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs[NodeID(5)]] == 1.0
-    @test objective.terms[F_abs[NodeID(6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(6)]] == 1.0
     @test objective.terms[F[(NodeID(4), NodeID(6))]] ≈ 62.585499316005475
     @test objective.terms[F[(NodeID(1), NodeID(2))]] ≈ 62.585499316005475
     @test objective.terms[F[(NodeID(4), NodeID(5))]] ≈ 62.585499316005475
@@ -208,7 +210,7 @@ end
     # support absolute value expressions in the objective function
     allocation_model_main_network = Ribasim.get_allocation_model(p, 1)
     problem = allocation_model_main_network.problem
-    @test problem[:F_abs].axes[1] == NodeID[11, 24, 38]
+    @test problem[:F_abs_user].axes[1] == NodeID[11, 24, 38]
     @test problem[:abs_positive].axes[1] == NodeID[11, 24, 38]
     @test problem[:abs_negative].axes[1] == NodeID[11, 24, 38]
 
@@ -260,10 +262,10 @@ end
     # Main network objective function
     objective = JuMP.objective_function(problem)
     objective_variables = keys(objective.terms)
-    F_abs = problem[:F_abs]
-    @test F_abs[NodeID(11)] ∈ objective_variables
-    @test F_abs[NodeID(24)] ∈ objective_variables
-    @test F_abs[NodeID(38)] ∈ objective_variables
+    F_abs_user = problem[:F_abs_user]
+    @test F_abs_user[NodeID(11)] ∈ objective_variables
+    @test F_abs_user[NodeID(24)] ∈ objective_variables
+    @test F_abs_user[NodeID(38)] ∈ objective_variables
 
     # Running full allocation algorithm
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5)

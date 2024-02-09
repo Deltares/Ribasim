@@ -438,7 +438,17 @@ function add_variables_absolute_value!(
     (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+        node_ids_user = NodeID[]
+        node_ids_basin = NodeID[]
+
+        for node_id in node_ids
+            type = graph[node_id].type
+            if type == :user
+                push!(node_ids_user, node_id)
+            elseif type == :basin
+                push!(node_ids_basin, node_id)
+            end
+        end
 
         # For the main network, connections to subnetworks are treated as users
         if is_main_network(allocation_network_id)
@@ -449,7 +459,9 @@ function add_variables_absolute_value!(
             end
         end
 
-        problem[:F_abs] = JuMP.@variable(problem, F_abs[node_id = node_ids_user])
+        problem[:F_abs_user] = JuMP.@variable(problem, F_abs_user[node_id = node_ids_user])
+        problem[:F_abs_basin] =
+            JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
     end
     return nothing
 end
@@ -671,40 +683,40 @@ function add_constraints_absolute_value!(
             node_id_user in node_ids_user
         )
         F = problem[:F]
-        F_abs = problem[:F_abs]
+        F_abs_user = problem[:F_abs_user]
         d = 2.0
 
         if config.allocation.objective_type == "linear_absolute"
-            # These constraints together make sure that F_abs acts as the absolute
-            # value F_abs = |x| where x = F-d (here for example d = 2)
+            # These constraints together make sure that F_abs_user acts as the absolute
+            # value F_abs_user = |x| where x = F-d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
                 problem,
                 [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
+                F_abs_user[node_id_user] >=
                 (F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
                 base_name = "abs_positive"
             )
             problem[:abs_negative] = JuMP.@constraint(
                 problem,
                 [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
+                F_abs_user[node_id_user] >=
                 -(F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
                 base_name = "abs_negative"
             )
         elseif config.allocation.objective_type == "linear_relative"
-            # These constraints together make sure that F_abs acts as the absolute
-            # value F_abs = |x| where x = 1-F/d (here for example d = 2)
+            # These constraints together make sure that F_abs_user acts as the absolute
+            # value F_abs_user = |x| where x = 1-F/d (here for example d = 2)
             problem[:abs_positive] = JuMP.@constraint(
                 problem,
                 [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
+                F_abs_user[node_id_user] >=
                 (1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
                 base_name = "abs_positive"
             )
             problem[:abs_negative] = JuMP.@constraint(
                 problem,
                 [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
+                F_abs_user[node_id_user] >=
                 -(1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
                 base_name = "abs_negative"
             )

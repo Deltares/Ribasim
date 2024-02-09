@@ -136,7 +136,7 @@ function set_objective_priority!(
         ex = JuMP.QuadExpr()
     elseif objective_type in [:linear_absolute, :linear_relative]
         ex = JuMP.AffExpr()
-        ex += sum(problem[:F_abs])
+        ex += sum(problem[:F_abs_user])
     end
 
     demand_max = 0.0
@@ -378,10 +378,14 @@ function get_basin_data(
     influx = get_flow(graph, node_id, 0.0)
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
-    allocation_level_control_node_id =
-        first(inneighbor_labels_type(graph, node_id, EdgeType.control))
-    allocation_level_control_idx =
-        findsorted(allocation_level_control.node_id, allocation_level_control_node_id)
+    control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(control_inneighbors)
+        allocation_level_control_idx = 0
+    else
+        allocation_level_control_node_id = first(control_inneighbors)
+        allocation_level_control_idx =
+            findsorted(allocation_level_control.node_id, allocation_level_control_node_id)
+    end
     return storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx
 end
 
@@ -395,9 +399,13 @@ function get_basin_capacity(
     (; allocation_level_control) = p
     storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
-    storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
-    return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
+    if iszero(allocation_level_control_idx)
+        return 0.0
+    else
+        level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
+        storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
+        return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
+    end
 end
 
 function get_basin_demand(
@@ -410,9 +418,13 @@ function get_basin_demand(
     (; allocation_level_control) = p
     storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    level_min = allocation_level_control.min_level[allocation_level_control_idx](t)
-    storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
-    return max(0.0, (storage_basin - storage_min) / Δt_allocation - influx)
+    if iszero(allocation_level_control_idx)
+        return 0.0
+    else
+        level_min = allocation_level_control.min_level[allocation_level_control_idx](t)
+        storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
+        return max(0.0, (storage_basin - storage_min) / Δt_allocation - influx)
+    end
 end
 
 function adjust_basin_capacities!(
