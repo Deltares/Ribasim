@@ -232,6 +232,7 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+        self.network._save(directory, input_dir)
         for sub in self.nodes().values():
             sub._save(directory, input_dir)
 
@@ -239,7 +240,7 @@ class Model(FileModel):
         return {
             k: getattr(self, k)
             for k in self.model_fields.keys()
-            if isinstance(getattr(self, k), NodeModel)
+            if isinstance(getattr(self, k), NodeModel) and k != "network"
         }
 
     def children(self):
@@ -279,9 +280,6 @@ class Model(FileModel):
 
         for node in self.nodes().values():
             nodetype = node.get_input_type()
-            if nodetype == "Network":
-                # skip the reference
-                continue
             node_ids_data = set(node.node_ids())
             node_ids_network = set(
                 self.network.node.df.loc[self.network.node.df["type"] == nodetype].index
