@@ -88,9 +88,8 @@ test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.tes
 generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
-generate-schema = { cmd = "julia --project docs/gen_schema.jl" }
-generate-python = "datamodel-codegen --output-model-type pydantic_v2.BaseModel --base-class ribasim.input_base.BaseModel --use-union-operator --use-title-as-name --use-double-quotes --disable-timestamp --use-default --strict-nullable --input-file-type=jsonschema --input docs/schema/root.schema.json --output python/ribasim/ribasim/models.py"
-codegen = { depends_on = ["generate-schema", "generate-python", "lint"] }
+generate-python = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py"}
+codegen = { depends_on = ["generate-python", "lint"] }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
@@ -133,7 +132,6 @@ github-release = "python utils/github-release.py"
 
 [dependencies]
 build = "*"
-datamodel-code-generator = "0.24.*"
 geopandas = "*"
 gh = "*"
 hatchling = "*"

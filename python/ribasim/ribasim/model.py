@@ -159,7 +159,6 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
@@ -513,7 +512,7 @@ class Model(FileModel):
 
                 names_and_values = []
                 for var in static.columns:
-                    if var not in ["remarks", "node_id", "control_state"]:
+                    if var not in ["node_id", "control_state"]:
                         value = row[var]
                         if value is not None:
                             names_and_values.append(f"{var} = {value}")
