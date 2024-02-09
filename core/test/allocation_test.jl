@@ -217,8 +217,8 @@ end
     allocation_model_main_network = Ribasim.get_allocation_model(p, 1)
     problem = allocation_model_main_network.problem
     @test problem[:F_abs_user].axes[1] == NodeID[11, 24, 38]
-    @test problem[:abs_positive].axes[1] == NodeID[11, 24, 38]
-    @test problem[:abs_negative].axes[1] == NodeID[11, 24, 38]
+    @test problem[:abs_positive_user].axes[1] == NodeID[11, 24, 38]
+    @test problem[:abs_negative_user].axes[1] == NodeID[11, 24, 38]
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
@@ -233,6 +233,7 @@ end
 @testitem "allocation with main network optimization problem" begin
     using SQLite
     using Ribasim: NodeID
+    using ComponentArrays: ComponentVector
     using JuMP
 
     toml_path = normpath(
@@ -246,13 +247,14 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
 
-    (; allocation, user, graph) = p
+    (; allocation, user, graph, basin) = p
     (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
     t = 0.0
 
     # Collecting demands
+    u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t; collect_demands = true)
+        Ribasim.allocate!(p, allocation_model, t, u; collect_demands = true)
     end
 
     @test subnetwork_demands[(NodeID(2), NodeID(11))] ≈ [4.0, 4.0, 0.0]
@@ -263,7 +265,7 @@ end
     # containing subnetworks as users
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    Ribasim.allocate!(p, allocation_model, t)
+    Ribasim.allocate!(p, allocation_model, t, u)
 
     # Main network objective function
     objective = JuMP.objective_function(problem)
@@ -275,7 +277,7 @@ end
 
     # Running full allocation algorithm
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5)
-    Ribasim.update_allocation!((; p, t))
+    Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(2), NodeID(11)] ≈ [4.0, 0.49766666, 0.0]
     @test subnetwork_allocateds[NodeID(6), NodeID(24)] ≈ [0.00133333333, 0.0, 0.0]

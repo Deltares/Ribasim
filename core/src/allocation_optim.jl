@@ -30,12 +30,12 @@ function add_objective_term!(
         # Objective function ∑ |1 - F/d|
         JuMP.set_normalized_coefficient(
             constraint_abs_positive,
-            F_edge,
+            F_variable,
             iszero(demand) ? 0 : 1 / demand,
         )
         JuMP.set_normalized_coefficient(
             constraint_abs_negative,
-            F_edge,
+            F_variable,
             iszero(demand) ? 0 : -1 / demand,
         )
     else

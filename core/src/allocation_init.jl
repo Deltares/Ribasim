@@ -665,7 +665,7 @@ function add_constraints_absolute_value!(
         problem[Symbol(base_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
-            F_abs[node_id_user] >= -(1 - flow_per_node[node_id] / d),
+            F_abs[node_id] >= -(1 - flow_per_node[node_id] / d),
             base_name = base_name
         )
     end
