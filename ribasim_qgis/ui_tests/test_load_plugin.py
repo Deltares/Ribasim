@@ -8,10 +8,8 @@ class TestPlugin(unittest.TestCase):
         plugin = plugins.get("ribasim_qgis")
         self.assertTrue(plugin, "Ribasim plugin not loaded")
 
-
-class TestDock(unittest.TestCase):
     def test_load_dock(self):
-        """Triggers Ribasim button and checks that Dock is added"""
+        """Triggers Ribasim button and checks that Dock is added."""
 
         # This checks the *actual* QGIS interface, not just a stub
         self.assertTrue(iface is not None, "QGIS interface not available")

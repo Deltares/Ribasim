@@ -637,7 +637,7 @@ function User(db::DB, config::Config)::User
     static = load_structvector(db, config, UserStaticV1)
     time = load_structvector(db, config, UserTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
+    static_node_ids, time_node_ids, node_ids, _, valid =
         static_and_time_node_ids(db, static, time, "User")
 
     if !valid
@@ -650,7 +650,7 @@ function User(db::DB, config::Config)::User
     active = BitVector()
     min_level = Float64[]
     return_factor = Float64[]
-    interpolations = Vector{ScalarInterpolation}[]
+    demand_itp = Vector{ScalarInterpolation}[]
 
     errors = false
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
@@ -662,25 +662,34 @@ function User(db::DB, config::Config)::User
         group in IterTools.groupby(row -> row.priority, time)
     )
 
+    demand = Float64[]
+
+    # Whether the demand of a user node is given by a timeseries
+    demand_from_timeseries = BitVector()
+
     for node_id in node_ids
         first_row = nothing
-        demand = Vector{ScalarInterpolation}()
+        demand_itp_node_id = Vector{ScalarInterpolation}()
 
         if node_id in static_node_ids
+            push!(demand_from_timeseries, false)
             rows = searchsorted(static.node_id, node_id)
             static_id = view(static, rows)
             for p in priorities
                 idx = findsorted(static_id.priority, p)
                 demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
                 demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
-                push!(demand, demand_p_itp)
+                push!(demand_itp_node_id, demand_p_itp)
+                push!(demand, demand_p)
             end
-            push!(interpolations, demand)
+            push!(demand_itp, demand_itp_node_id)
             first_row = first(static_id)
             is_active = coalesce(first_row.active, true)
 
         elseif node_id in time_node_ids
+            push!(demand_from_timeseries, true)
             for p in priorities
+                push!(demand, 0.0)
                 if p in keys(time_priority_dict)
                     demand_p_itp, is_valid = get_scalar_interpolation(
                         config.starttime,
@@ -691,17 +700,17 @@ function User(db::DB, config::Config)::User
                         default_value = 0.0,
                     )
                     if is_valid
-                        push!(demand, demand_p_itp)
+                        push!(demand_itp_node_id, demand_p_itp)
                     else
                         @error "The demand(t) relationship for User #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
                         errors = true
                     end
                 else
                     demand_p_itp = LinearInterpolation([0.0, 0.0], trivial_timespan)
-                    push!(demand, demand_p_itp)
+                    push!(demand_itp_node_id, demand_p_itp)
                 end
             end
-            push!(interpolations, demand)
+            push!(demand_itp, demand_itp_node_id)
 
             first_row_idx = searchsortedfirst(time.node_id, node_id)
             first_row = time[first_row_idx]
@@ -736,20 +745,14 @@ function User(db::DB, config::Config)::User
         abstracted = Float64[],
     )
 
-    record = (
-        time = Vector{Float64}(),
-        allocation_network_id = Vector{Int}(),
-        user_node_id = Vector{Int}(),
-        priority = Vector{Int}(),
-        demand = Vector{Float64}(),
-        allocated = Vector{Float64}(),
-        abstracted = Vector{Float64}(),
-    )
+    node_ids = NodeID.(node_ids)
 
     return User(
-        NodeID.(node_ids),
+        node_ids,
         active,
-        interpolations,
+        demand,
+        demand_itp,
+        demand_from_timeseries,
         allocated,
         return_factor,
         min_level,
@@ -903,7 +906,6 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user,
         allocation_level_control,
-        Dict{Int, Symbol}(),
         subgrid_level,
     )
 
@@ -916,4 +918,152 @@ function Parameters(db::DB, config::Config)::Parameters
         initialize_allocation!(p, config)
     end
     return p
+end
+
+function get_nodetypes(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
+end
+
+function get_ids(db::DB)::Vector{Int}
+    return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
+end
+
+function get_ids(db::DB, nodetype)::Vector{Int}
+    sql = "SELECT fid FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
+    return only(execute(columntable, db, sql))
+end
+
+function get_names(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT name FROM Node ORDER BY fid"))
+end
+
+function get_names(db::DB, nodetype)::Vector{String}
+    sql = "SELECT name FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
+    return only(execute(columntable, db, sql))
+end
+
+function exists(db::DB, tablename::String)
+    query = execute(
+        db,
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
+    )
+    return !isempty(query)
+end
+
+"""
+    seconds_since(t::DateTime, t0::DateTime)::Float64
+
+Convert a DateTime to a float that is the number of seconds since the start of the
+simulation. This is used to convert between the solver's inner float time, and the calendar.
+"""
+seconds_since(t::DateTime, t0::DateTime)::Float64 = 0.001 * Dates.value(t - t0)
+
+"""
+    datetime_since(t::Real, t0::DateTime)::DateTime
+
+Convert a Real that represents the seconds passed since the simulation start to the nearest
+DateTime. This is used to convert between the solver's inner float time, and the calendar.
+"""
+datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
+
+"""
+    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
+
+Load data from Arrow files if available, otherwise the database.
+Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
+"""
+function load_data(
+    db::DB,
+    config::Config,
+    record::Type{<:Legolas.AbstractRecord},
+)::Union{Table, Query, Nothing}
+    # TODO load_data doesn't need both config and db, use config to check which one is needed
+
+    schema = Legolas._schema_version_from_record_type(record)
+
+    node, kind = nodetype(schema)
+    path = if isnothing(kind)
+        nothing
+    else
+        toml = getfield(config, :toml)
+        getfield(getfield(toml, snake_case(node)), kind)
+    end
+    sqltable = tablename(schema)
+
+    table = if !isnothing(path)
+        table_path = input_path(config, path)
+        Table(read(table_path))
+    elseif exists(db, sqltable)
+        execute(db, "select * from $(esc_id(sqltable))")
+    else
+        nothing
+    end
+
+    return table
+end
+
+"""
+    load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
+
+Load data from Arrow files if available, otherwise the database.
+Always returns a StructVector of the given struct type T, which is empty if the table is
+not found. This function validates the schema, and enforces the required sort order.
+"""
+function load_structvector(
+    db::DB,
+    config::Config,
+    ::Type{T},
+)::StructVector{T} where {T <: AbstractRow}
+    table = load_data(db, config, T)
+
+    if table === nothing
+        return StructVector{T}(undef, 0)
+    end
+
+    nt = Tables.columntable(table)
+    if table isa Query && haskey(nt, :time)
+        # time has type timestamp and is stored as a String in the database
+        # currently SQLite.jl does not automatically convert it to DateTime
+        nt = merge(
+            nt,
+            (;
+                time = DateTime.(
+                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                    dateformat"yyyy-mm-dd HH:MM:SS.s",
+                )
+            ),
+        )
+    end
+
+    table = StructVector{T}(nt)
+    sv = Legolas._schema_version_from_record_type(T)
+    tableschema = Tables.schema(table)
+    if declared(sv) && tableschema !== nothing
+        validate(tableschema, sv)
+    else
+        @warn "No (validation) schema declared for $T"
+    end
+
+    return sorted_table!(table)
+end
+
+"Read the Basin / profile table and return all area and level and computed storage values"
+function create_storage_tables(
+    db::DB,
+    config::Config,
+)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
+    profiles = load_structvector(db, config, BasinProfileV1)
+    area = Vector{Vector{Float64}}()
+    level = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = profile_storage(group_level, group_area)
+        push!(area, group_area)
+        push!(level, group_level)
+        push!(storage, group_storage)
+    end
+    return area, level, storage
 end

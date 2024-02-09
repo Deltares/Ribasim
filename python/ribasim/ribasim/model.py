@@ -12,7 +12,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     field_serializer,
-    field_validator,
     model_serializer,
     model_validator,
 )
@@ -112,8 +111,6 @@ class Model(FileModel):
     endtime : datetime.datetime
         End time of the simulation.
 
-    update_timestep: datetime.timedelta = timedelta(seconds=86400)
-        The output time step of the simulation in seconds (default of 1 day)
     input_dir: Path = Path(".")
         The directory of the input files.
     results_dir: Path = Path("results")
@@ -191,13 +188,6 @@ class Model(FileModel):
     pid_control: PidControl = Field(default_factory=PidControl)
     user: User = Field(default_factory=User)
 
-    @field_validator("update_timestep")
-    @classmethod
-    def timestep_in_seconds(cls, v: Any) -> datetime.timedelta:
-        if not isinstance(v, datetime.timedelta):
-            v = datetime.timedelta(seconds=v)
-        return v
-
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":
         for (
@@ -207,10 +197,6 @@ class Model(FileModel):
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
         return self
-
-    @field_serializer("update_timestep")
-    def serialize_dt(self, td: datetime.timedelta) -> int:
-        return int(td.total_seconds())
 
     @field_serializer("input_dir", "results_dir")
     def serialize_path(self, path: Path) -> str:

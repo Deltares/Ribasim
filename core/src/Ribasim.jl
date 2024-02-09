@@ -10,7 +10,7 @@ For more granular access, see:
 - [`Config`](@ref)
 - [`Model`](@ref)
 - [`solve!`](@ref)
-- [`BMI.finalize`](@ref)
+- [`write_results`](@ref)
 """
 module Ribasim
 
@@ -75,19 +75,23 @@ export libribasim
 const to = TimerOutput()
 TimerOutputs.complement!()
 
-include("validation.jl")
-include("solve.jl")
+include("schema.jl")
 include("config.jl")
 using .config
+include("parameter.jl")
+include("validation.jl")
+include("solve.jl")
 include("logging.jl")
 include("allocation_init.jl")
 include("allocation_optim.jl")
-include("utils.jl")
-include("lib.jl")
-include("io.jl")
-include("create.jl")
+include("util.jl")
+include("sparsity.jl")
+include("graph.jl")
+include("model.jl")
+include("read.jl")
+include("write.jl")
 include("bmi.jl")
-include("consts.jl")
+include("callback.jl")
 include("main.jl")
 include("libribasim.jl")
 

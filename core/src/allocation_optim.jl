@@ -126,7 +126,7 @@ function set_objective_priority!(
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
     (; graph, user, allocation, basin) = p
-    (; demand, node_id) = user
+    (; demand, demand_itp, demand_from_timeseries, node_id) = user
     (; main_network_connections, subnetwork_demands, priorities) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     node_ids = graph[].node_ids[allocation_network_id]
@@ -160,7 +160,12 @@ function set_objective_priority!(
         end
 
         user_idx = findsorted(node_id, node_id_user)
-        d = demand[user_idx][priority_idx](t)
+        if demand_from_timeseries[user_idx]
+            d = demand_itp[user_idx][priority_idx](t)
+            set_user_demand!(user, node_id_user, priority_idx, d)
+        else
+            d = get_user_demand(user, node_id_user, priority_idx)
+        end
         demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, problem)
     end
@@ -243,7 +248,7 @@ function assign_allocations!(
             push!(record.allocation_network_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
             push!(record.priority, allocation.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx][priority_idx](t))
+            push!(record.demand, user.demand[user_idx])
             push!(record.allocated, allocated)
             # TODO: This is now the last abstraction before the allocation update,
             # should be the average abstraction since the last allocation solve
