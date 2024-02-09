@@ -61,8 +61,8 @@ function add_user_term!(
     node_id_user = edge[2]
 
     if objective_type in [:linear_absolute, :linear_relative]
-        constraint_abs_positive = problem[:abs_positive][node_id_user]
-        constraint_abs_negative = problem[:abs_negative][node_id_user]
+        constraint_abs_positive = problem[:abs_positive_user][node_id_user]
+        constraint_abs_negative = problem[:abs_negative_user][node_id_user]
     else
         constraint_abs_positive = nothing
         constraint_abs_negative = nothing

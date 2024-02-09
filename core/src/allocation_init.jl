@@ -624,6 +624,56 @@ expr_abs >= -expr
 """
 function add_constraints_absolute_value!(
     problem::JuMP.Model,
+    flow_per_node::Dict{NodeID, JuMP.VariableRef},
+    F_abs::JuMP.Containers.DenseAxisArray,
+    objective_type::String,
+    variable_type::String,
+)::Nothing
+    # Example demand
+    d = 2.0
+
+    node_ids = only(F_abs.axes)
+
+    if objective_type == "linear_absolute"
+        # These constraints together make sure that F_abs_* acts as the absolute
+        # value F_abs_* = |x| where x = F-d (here for example d = 2)
+        base_name = "abs_positive_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= (flow_per_node[node_id] - d),
+            base_name = base_name
+        )
+        base_name = "abs_negative_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= -(flow_per_node[node_id] - d),
+            base_name = base_name
+        )
+    elseif objective_type == "linear_relative"
+        # These constraints together make sure that F_abs_user acts as the absolute
+        # value F_abs_user = |x| where x = 1-F/d (here for example d = 2)
+        base_name = "abs_positive_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= (1 - flow_per_node[node_id] / d),
+            base_name = base_name
+        )
+        base_name = "abs_negative_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id_user] >= -(1 - flow_per_node[node_id] / d),
+            base_name = base_name
+        )
+    end
+    return nothing
+end
+
+function add_constraints_absolute_value_user!(
+    problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
     config::Config,
@@ -633,61 +683,48 @@ function add_constraints_absolute_value!(
 
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
-        node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
-
-        # For the main network, connections to subnetworks are treated as users
-        if is_main_network(allocation_network_id)
-            for connections_subnetwork in main_network_connections
-                for connection in connections_subnetwork
-                    push!(node_ids_user, connection[2])
-                end
-            end
-        end
-
-        node_ids_user_inflow = Dict(
-            node_id_user => only(inflow_ids_allocation(graph, node_id_user)) for
-            node_id_user in node_ids_user
-        )
         F = problem[:F]
         F_abs_user = problem[:F_abs_user]
-        d = 2.0
 
-        if config.allocation.objective_type == "linear_absolute"
-            # These constraints together make sure that F_abs_user acts as the absolute
-            # value F_abs_user = |x| where x = F-d (here for example d = 2)
-            problem[:abs_positive] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs_user[node_id_user] >=
-                (F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
-                base_name = "abs_positive"
-            )
-            problem[:abs_negative] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs_user[node_id_user] >=
-                -(F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
-                base_name = "abs_negative"
-            )
-        elseif config.allocation.objective_type == "linear_relative"
-            # These constraints together make sure that F_abs_user acts as the absolute
-            # value F_abs_user = |x| where x = 1-F/d (here for example d = 2)
-            problem[:abs_positive] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs_user[node_id_user] >=
-                (1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
-                base_name = "abs_positive"
-            )
-            problem[:abs_negative] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs_user[node_id_user] >=
-                -(1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
-                base_name = "abs_negative"
-            )
-        end
+        flow_per_node = Dict(
+            node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
+            node_id in only(F_abs_user.axes)
+        )
+
+        add_constraints_absolute_value!(
+            problem,
+            flow_per_node,
+            F_abs_user,
+            objective_type,
+            "user",
+        )
+    end
+    return nothing
+end
+
+function add_constraints_absolute_value_basin!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+    config::Config,
+)::Nothing
+    (; graph, allocation) = p
+    (; main_network_connections) = allocation
+
+    objective_type = config.allocation.objective_type
+    if startswith(objective_type, "linear")
+        F_basin_in = problem[:F_basin_in]
+        F_abs_basin = problem[:F_abs_basin]
+        flow_per_node =
+            Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
+
+        add_constraints_absolute_value!(
+            problem,
+            flow_per_node,
+            F_abs_basin,
+            objective_type,
+            "basin",
+        )
     end
     return nothing
 end
@@ -785,7 +822,8 @@ function allocation_problem(
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value!(problem, p, allocation_network_id, config)
+    add_constraints_absolute_value_user!(problem, p, allocation_network_id, config)
+    add_constraints_absolute_value_basin!(problem, p, allocation_network_id, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
 
