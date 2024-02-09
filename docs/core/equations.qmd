@@ -149,7 +149,7 @@ plt.show()
 The precipitation term is given by
 
 $$
-    Q_P = P \cdot A
+    Q_P = P \cdot A.
 $$ {#eq-precip}
 
 Here $P = P(t)$ is the precipitation rate and $A$ is the maximum area given in the `Basin / profile` table.
@@ -163,7 +163,7 @@ It can for instance be converted to a flow rate and added to a Basin as a FlowBo
 The evaporation term is given by
 
 $$
-    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1)
+    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1).
 $$ {#eq-evap}
 
 Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area. $\phi$ is the [reduction factor](equations.qmd#sec-reduction_factor) which depends on the depth $d$. It provides a smooth gradient as $u \rightarrow 0$.
@@ -194,7 +194,7 @@ MODFLOW 6 boundary conditions in the basin:
 
 $$
     Q_\text{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
-$$ {#eq-inf}.
+$$ {#eq-inf}
 
 Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index,
 $n$ the number of boundary conditions, and $m$ the number of MODFLOW 6 cells in
