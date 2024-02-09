@@ -164,6 +164,7 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     resistance::Float64
+    max_flow_rate::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 

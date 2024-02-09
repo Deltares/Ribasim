@@ -277,7 +277,7 @@ $$
     Q = \mathrm{clamp}(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max})
 $$ {#eq-basinflow}
 
-Here $h_a$ is the water level in the first basin, $h_b$ is the water level in the second basin.
+Here $h_a$ is the water level in the first basin and $h_b$ is the water level in the second basin.
 $R$ is the resistance of the link, and $Q_{\max}$ is the maximum flow rate.
 A `LinearResistance` makes no assumptions about the direction of the flow: water flows from high to low.
 
