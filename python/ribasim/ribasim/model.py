@@ -158,7 +158,6 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
