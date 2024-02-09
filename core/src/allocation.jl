@@ -883,21 +883,6 @@ function set_objective_priority!(
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
     end
 
-    # # Add flow cost
-    # if objective_type == :linear_absolute
-    #     cost_per_flow = 0.5 / length(F)
-    #     for flow in F
-    #         JuMP.add_to_expression!(ex, cost_per_flow * flow) #
-    #     end
-    # elseif objective_type == :linear_relative
-    #     if demand_max > 0.0
-    #         cost_per_flow = 0.5 / (demand_max * length(F))
-    #         for flow in F
-    #             JuMP.add_to_expression!(ex, cost_per_flow * flow) #
-    #         end
-    #     end
-    # end
-
     new_objective = JuMP.@expression(problem, ex)
     JuMP.@objective(problem, Min, new_objective)
     return nothing
