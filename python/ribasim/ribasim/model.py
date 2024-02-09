@@ -508,7 +508,7 @@ class Model(FileModel):
 
                 names_and_values = []
                 for var in static.columns:
-                    if var not in ["remarks", "node_id", "control_state"]:
+                    if var not in ["node_id", "control_state"]:
                         value = row[var]
                         if value is not None:
                             names_and_values.append(f"{var} = {value}")
