@@ -1,3 +1,7 @@
+"""
+Add a term to the objective function given by the objective type,
+depending in the provided flow variable and the associated demand.
+"""
 function add_objective_term!(
     ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
     F_variable::JuMP.VariableRef,
@@ -366,6 +370,15 @@ function adjust_edge_capacities!(
     end
 end
 
+"""
+Get several variables associated with a basin:
+- Its current storage
+- The allocation update interval
+- The influx (sum of instantaneous vertical fluxes of the basin)
+- The index of the connected allocation_level_control node (0 if such a
+  node does not exist)
+- The index of the basin
+"""
 function get_basin_data(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -388,6 +401,13 @@ function get_basin_data(
     return storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx
 end
 
+"""
+Get the capacity of the basin, i.e. the maximum
+flow that can be abstracted from the basin if it is in a
+state of surplus storage (0 if no reference levels are provided by
+a allocation_level_control node).
+Storages are converted to flows by dividing by the allocation timestep.
+"""
 function get_basin_capacity(
     allocation_model::AllocationModel,
     u::ComponentVector,
@@ -407,6 +427,12 @@ function get_basin_capacity(
     end
 end
 
+"""
+Get the demand of the basin, i.e. how large a flow the
+basin needs to get to its minimum target level (0 if no
+reference levels are provided by a allocation_level_control node).
+Storages are converted to flows by dividing by the allocation timestep.
+"""
 function get_basin_demand(
     allocation_model::AllocationModel,
     u::ComponentVector,
@@ -426,6 +452,12 @@ function get_basin_demand(
     end
 end
 
+"""
+Set the values of the basin outflows. 2 cases:
+- Before the first allocation solve, set the capacities to their full capacity if there is surplus storage;
+- Before an allocation solve, subtract the flow used by allocation for the previous priority
+  from the capacities.
+"""
 function adjust_basin_capacities!(
     allocation_model::AllocationModel,
     u::ComponentVector,

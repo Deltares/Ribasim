@@ -672,14 +672,16 @@ function add_constraints_absolute_value!(
     return nothing
 end
 
+"""
+Add constraints so that variables F_abs_user act as the
+absolute value of the expression comparing flow to an user to its demand.
+"""
 function add_constraints_absolute_value_user!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
+    (; graph) = p
 
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
@@ -702,15 +704,11 @@ function add_constraints_absolute_value_user!(
     return nothing
 end
 
-function add_constraints_absolute_value_basin!(
-    problem::JuMP.Model,
-    p::Parameters,
-    allocation_network_id::Int,
-    config::Config,
-)::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
-
+"""
+Add constraints so that variables F_abs_basin act as the
+absolute value of the expression comparing flow to a basin to its demand.
+"""
+function add_constraints_absolute_value_basin!(problem::JuMP.Model, config::Config)::Nothing
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
         F_basin_in = problem[:F_basin_in]
@@ -822,8 +820,8 @@ function allocation_problem(
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value_user!(problem, p, allocation_network_id, config)
-    add_constraints_absolute_value_basin!(problem, p, allocation_network_id, config)
+    add_constraints_absolute_value_user!(problem, p, config)
+    add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
 

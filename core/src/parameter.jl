@@ -496,6 +496,12 @@ struct User <: AbstractParameterNode
     end
 end
 
+"""
+node_id: node ID of the AllocationLevelControl node
+min_level: The minimum target level of the connected basin(s)
+max_level: The maximum target level of the connected basin(s)
+priority: If in a shortage state, the priority of the demand of the connected basin(s)
+"""
 struct AllocationLevelControl
     node_id::Vector{NodeID}
     min_level::Vector{LinearInterpolation}
