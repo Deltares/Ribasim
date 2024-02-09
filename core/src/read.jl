@@ -892,3 +892,151 @@ function Parameters(db::DB, config::Config)::Parameters
     end
     return p
 end
+
+function get_nodetypes(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
+end
+
+function get_ids(db::DB)::Vector{Int}
+    return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
+end
+
+function get_ids(db::DB, nodetype)::Vector{Int}
+    sql = "SELECT fid FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
+    return only(execute(columntable, db, sql))
+end
+
+function get_names(db::DB)::Vector{String}
+    return only(execute(columntable, db, "SELECT name FROM Node ORDER BY fid"))
+end
+
+function get_names(db::DB, nodetype)::Vector{String}
+    sql = "SELECT name FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
+    return only(execute(columntable, db, sql))
+end
+
+function exists(db::DB, tablename::String)
+    query = execute(
+        db,
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
+    )
+    return !isempty(query)
+end
+
+"""
+    seconds_since(t::DateTime, t0::DateTime)::Float64
+
+Convert a DateTime to a float that is the number of seconds since the start of the
+simulation. This is used to convert between the solver's inner float time, and the calendar.
+"""
+seconds_since(t::DateTime, t0::DateTime)::Float64 = 0.001 * Dates.value(t - t0)
+
+"""
+    datetime_since(t::Real, t0::DateTime)::DateTime
+
+Convert a Real that represents the seconds passed since the simulation start to the nearest
+DateTime. This is used to convert between the solver's inner float time, and the calendar.
+"""
+datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
+
+"""
+    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
+
+Load data from Arrow files if available, otherwise the database.
+Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
+"""
+function load_data(
+    db::DB,
+    config::Config,
+    record::Type{<:Legolas.AbstractRecord},
+)::Union{Table, Query, Nothing}
+    # TODO load_data doesn't need both config and db, use config to check which one is needed
+
+    schema = Legolas._schema_version_from_record_type(record)
+
+    node, kind = nodetype(schema)
+    path = if isnothing(kind)
+        nothing
+    else
+        toml = getfield(config, :toml)
+        getfield(getfield(toml, snake_case(node)), kind)
+    end
+    sqltable = tablename(schema)
+
+    table = if !isnothing(path)
+        table_path = input_path(config, path)
+        Table(read(table_path))
+    elseif exists(db, sqltable)
+        execute(db, "select * from $(esc_id(sqltable))")
+    else
+        nothing
+    end
+
+    return table
+end
+
+"""
+    load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
+
+Load data from Arrow files if available, otherwise the database.
+Always returns a StructVector of the given struct type T, which is empty if the table is
+not found. This function validates the schema, and enforces the required sort order.
+"""
+function load_structvector(
+    db::DB,
+    config::Config,
+    ::Type{T},
+)::StructVector{T} where {T <: AbstractRow}
+    table = load_data(db, config, T)
+
+    if table === nothing
+        return StructVector{T}(undef, 0)
+    end
+
+    nt = Tables.columntable(table)
+    if table isa Query && haskey(nt, :time)
+        # time has type timestamp and is stored as a String in the database
+        # currently SQLite.jl does not automatically convert it to DateTime
+        nt = merge(
+            nt,
+            (;
+                time = DateTime.(
+                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                    dateformat"yyyy-mm-dd HH:MM:SS.s",
+                )
+            ),
+        )
+    end
+
+    table = StructVector{T}(nt)
+    sv = Legolas._schema_version_from_record_type(T)
+    tableschema = Tables.schema(table)
+    if declared(sv) && tableschema !== nothing
+        validate(tableschema, sv)
+    else
+        @warn "No (validation) schema declared for $T"
+    end
+
+    return sorted_table!(table)
+end
+
+"Read the Basin / profile table and return all area and level and computed storage values"
+function create_storage_tables(
+    db::DB,
+    config::Config,
+)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
+    profiles = load_structvector(db, config, BasinProfileV1)
+    area = Vector{Vector{Float64}}()
+    level = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = profile_storage(group_level, group_area)
+        push!(area, group_area)
+        push!(level, group_level)
+        push!(storage, group_storage)
+    end
+    return area, level, storage
+end

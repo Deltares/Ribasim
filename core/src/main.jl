@@ -1,3 +1,19 @@
+"""
+    run(config_file::AbstractString)::Model
+    run(config::Config)::Model
+
+Run a [`Model`](@ref), given a path to a TOML configuration file, or a Config object.
+Running a model includes initialization, solving to the end with `[`solve!`](@ref)` and writing results with [`write_results`](@ref).
+"""
+run(config_path::AbstractString)::Model = run(Config(config_path))
+
+function run(config::Config)::Model
+    model = Model(config)
+    solve!(model)
+    write_results(model)
+    return model
+end
+
 function help(x::AbstractString)::Cint
     println(x)
     println("Usage: ribasim path/to/model/ribasim.toml")

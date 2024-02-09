@@ -284,39 +284,6 @@ end
 const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
 
 """
-The source nodes must only have one allocation outneighbor and no allocation inneighbors.
-"""
-function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
-    (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
-
-    errors = false
-
-    for edge in edge_ids
-        (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            from_source_node = graph[id_source].type in allocation_source_nodetypes
-
-            if is_main_network(allocation_network_id)
-                if !from_source_node
-                    errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
-                end
-            else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
-
-                if !from_source_node && !from_main_network
-                    errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
-                end
-            end
-        end
-    end
-    return !errors
-end
-
-"""
 Remove allocation user return flow edges that are upstream of the user itself.
 """
 function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
