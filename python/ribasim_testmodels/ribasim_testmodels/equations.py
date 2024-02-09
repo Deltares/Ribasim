@@ -48,9 +48,9 @@ def linear_resistance_model():
     # Setup the basins:
     profile = pd.DataFrame(
         data={
-            "node_id": [1, 1, 1],
-            "area": [0.01, 100.0, 100.0],
-            "level": [0.0, 1.0, 2.0],
+            "node_id": [1, 1],
+            "area": [100.0, 100.0],
+            "level": [0.0, 10.0],
         }
     )
 
@@ -68,7 +68,7 @@ def linear_resistance_model():
     state = pd.DataFrame(
         data={
             "node_id": [1],
-            "level": [10.5],
+            "level": [10.0],
         }
     )
 

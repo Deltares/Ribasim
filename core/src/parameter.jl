@@ -205,6 +205,7 @@ struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
+    max_flow_rate::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 

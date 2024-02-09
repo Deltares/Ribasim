@@ -23,19 +23,24 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    p = model.integrator.p
+    (; p) = model.integrator
 
     t = Ribasim.timesteps(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    basin_area = p.basin.area[1][2] # Considered constant
-    # The storage of the basin when it has the same level as the level boundary
-    limit_storage = 450.0
-    decay_rate = -1 / (basin_area * p.linear_resistance.resistance[1])
-    # TODO adapt for max_flow_rate of 6e-5
-    storage_analytic =
-        @. limit_storage + (storage[1] - limit_storage) * exp.(decay_rate * t)
+    A = p.basin.area[1][2]  # needs to be constant
+    u0 = A * 10.0
+    L = p.level_boundary.level[1].u[1]
+    R = p.linear_resistance.resistance[1]
+    Q_max = p.linear_resistance.max_flow_rate[1]
 
-    @test all(isapprox.(storage, storage_analytic; rtol = 0.005)) # Fails with '≈'
+    # derivation in https://github.com/Deltares/Ribasim/pull/1100#issuecomment-1934799342
+    t_shift = (u0 - A * (L + R * Q_max)) / Q_max
+    pre_shift = t .< t_shift
+    u_pre(t) = u0 - Q_max * t
+    u_post(t) = A * L + A * R * Q_max * exp(-(t - t_shift) / (A * R))
+
+    @test all(isapprox.(storage[pre_shift], u_pre.(t[pre_shift]); rtol = 1e-4))
+    @test all(isapprox.(storage[.~pre_shift], u_post.(t[.~pre_shift]); rtol = 1e-4))
 end
 
 # Equation: storage' = -Q(level(storage)), storage(t0) = storage0,
