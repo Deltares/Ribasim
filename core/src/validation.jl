@@ -1,63 +1,3 @@
-# These schemas define the name of database tables and the configuration file structure
-# The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-@schema "ribasim.node" Node
-@schema "ribasim.edge" Edge
-@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
-@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.basin.static" BasinStatic
-@schema "ribasim.basin.time" BasinTime
-@schema "ribasim.basin.profile" BasinProfile
-@schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.subgrid" BasinSubgrid
-@schema "ribasim.terminal.static" TerminalStatic
-@schema "ribasim.fractionalflow.static" FractionalFlowStatic
-@schema "ribasim.flowboundary.static" FlowBoundaryStatic
-@schema "ribasim.flowboundary.time" FlowBoundaryTime
-@schema "ribasim.levelboundary.static" LevelBoundaryStatic
-@schema "ribasim.levelboundary.time" LevelBoundaryTime
-@schema "ribasim.linearresistance.static" LinearResistanceStatic
-@schema "ribasim.manningresistance.static" ManningResistanceStatic
-@schema "ribasim.pidcontrol.static" PidControlStatic
-@schema "ribasim.pidcontrol.time" PidControlTime
-@schema "ribasim.pump.static" PumpStatic
-@schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
-@schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.outlet.static" OutletStatic
-@schema "ribasim.user.static" UserStatic
-@schema "ribasim.user.time" UserTime
-
-const delimiter = " / "
-tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
-tablename(sv::SchemaVersion{T, N}) where {T, N} =
-    join(filter(!isnothing, nodetype(sv)), delimiter)
-isnode(sv::Type{SchemaVersion{T, N}}) where {T, N} = isnode(sv())
-isnode(::SchemaVersion{T, N}) where {T, N} = length(split(string(T), '.'; limit = 3)) == 3
-nodetype(sv::Type{SchemaVersion{T, N}}) where {T, N} = nodetype(sv())
-
-"""
-From a SchemaVersion("ribasim.flowboundary.static", 1) return (:FlowBoundary, :static)
-"""
-function nodetype(
-    sv::SchemaVersion{T, N},
-)::Tuple{Symbol, Union{Nothing, Symbol}} where {T, N}
-    # Names derived from a schema are in underscores (basintime),
-    # so we parse the related record Ribasim.BasinTimeV1
-    # to derive BasinTime from it.
-    record = Legolas.record_type(sv)
-    node = last(split(string(Symbol(record)), '.'; limit = 3))
-
-    elements = split(string(T), '.'; limit = 3)
-    if isnode(sv)
-        n = elements[2]
-        k = Symbol(elements[3])
-    else
-        n = last(elements)
-        k = nothing
-    end
-
-    return Symbol(node[begin:length(n)]), k
-end
-
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
@@ -138,198 +78,6 @@ n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
-@version NodeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
-    allocation_network_id::Union{Missing, Int}
-end
-
-@version EdgeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    from_node_id::Int
-    to_node_id::Int
-    edge_type::String
-    allocation_network_id::Union{Missing, Int}
-end
-
-@version PumpStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    flow_rate::Float64
-    min_flow_rate::Union{Missing, Float64}
-    max_flow_rate::Union{Missing, Float64}
-    control_state::Union{Missing, String}
-end
-
-@version OutletStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    flow_rate::Float64
-    min_flow_rate::Union{Missing, Float64}
-    max_flow_rate::Union{Missing, Float64}
-    min_crest_level::Union{Missing, Float64}
-    control_state::Union{Missing, String}
-end
-
-@version BasinStaticV1 begin
-    node_id::Int
-    drainage::Float64
-    potential_evaporation::Float64
-    infiltration::Float64
-    precipitation::Float64
-    urban_runoff::Float64
-end
-
-@version BasinTimeV1 begin
-    node_id::Int
-    time::DateTime
-    drainage::Union{Missing, Float64}
-    potential_evaporation::Union{Missing, Float64}
-    infiltration::Union{Missing, Float64}
-    precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
-end
-
-@version BasinProfileV1 begin
-    node_id::Int
-    area::Float64
-    level::Float64
-end
-
-@version BasinStateV1 begin
-    node_id::Int
-    level::Float64
-end
-
-@version BasinSubgridV1 begin
-    subgrid_id::Int
-    node_id::Int
-    basin_level::Float64
-    subgrid_level::Float64
-end
-
-@version FractionalFlowStaticV1 begin
-    node_id::Int
-    fraction::Float64
-    control_state::Union{Missing, String}
-end
-
-@version LevelBoundaryStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    level::Float64
-end
-
-@version LevelBoundaryTimeV1 begin
-    node_id::Int
-    time::DateTime
-    level::Float64
-end
-
-@version FlowBoundaryStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    flow_rate::Float64
-end
-
-@version FlowBoundaryTimeV1 begin
-    node_id::Int
-    time::DateTime
-    flow_rate::Float64
-end
-
-@version LinearResistanceStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    resistance::Float64
-    control_state::Union{Missing, String}
-end
-
-@version ManningResistanceStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    length::Float64
-    manning_n::Float64
-    profile_width::Float64
-    profile_slope::Float64
-    control_state::Union{Missing, String}
-end
-
-@version TabulatedRatingCurveStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    level::Float64
-    flow_rate::Float64
-    control_state::Union{Missing, String}
-end
-
-@version TabulatedRatingCurveTimeV1 begin
-    node_id::Int
-    time::DateTime
-    level::Float64
-    flow_rate::Float64
-end
-
-@version TerminalStaticV1 begin
-    node_id::Int
-end
-
-@version DiscreteControlConditionV1 begin
-    node_id::Int
-    listen_feature_id::Int
-    variable::String
-    greater_than::Float64
-    look_ahead::Union{Missing, Float64}
-end
-
-@version DiscreteControlLogicV1 begin
-    node_id::Int
-    truth_state::String
-    control_state::String
-end
-
-@version PidControlStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    listen_node_id::Int
-    target::Float64
-    proportional::Float64
-    integral::Float64
-    derivative::Float64
-    control_state::Union{Missing, String}
-end
-
-@version PidControlTimeV1 begin
-    node_id::Int
-    listen_node_id::Int
-    time::DateTime
-    target::Float64
-    proportional::Float64
-    integral::Float64
-    derivative::Float64
-    control_state::Union{Missing, String}
-end
-
-@version UserStaticV1 begin
-    node_id::Int
-    active::Union{Missing, Bool}
-    demand::Float64
-    return_factor::Float64
-    min_level::Float64
-    priority::Int
-end
-
-@version UserTimeV1 begin
-    node_id::Int
-    time::DateTime
-    demand::Float64
-    return_factor::Float64
-    min_level::Float64
-    priority::Int
-end
-
 function variable_names(s::Any)
     filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
 end
@@ -391,22 +139,6 @@ function sorted_table!(
     end
     return table
 end
-
-struct NodeID
-    value::Int
-end
-
-Base.Int(id::NodeID) = id.value
-Base.convert(::Type{NodeID}, value::Int) = NodeID(value)
-Base.convert(::Type{Int}, id::NodeID) = id.value
-Base.broadcastable(id::NodeID) = Ref(id)
-Base.show(io::IO, id::NodeID) = print(io, '#', Int(id))
-
-function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
-    return Int(id_1) < Int(id_2)
-end
-
-Base.to_index(id::NodeID) = Int(id)
 
 """
 Test for each node given its node type whether the nodes that
@@ -639,14 +371,14 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand::Vector{
+    demand_itp::Vector{
         Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
     },
     priorities::Vector{Int},
 )::Bool
     errors = false
 
-    for (col, id) in zip(demand, node_id)
+    for (col, id) in zip(demand_itp, node_id)
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
                 @error "Demand of user node $id with priority $p_itp should be non-negative"
@@ -678,4 +410,209 @@ function non_positive_allocation_network_id(graph::MetaGraph)::Bool
         end
     end
     return errors
+end
+
+"""
+Test for each node given its node type whether it has an allowed
+number of flow/control inneighbors and outneighbors
+"""
+function valid_n_neighbors(p::Parameters)::Bool
+    (; graph) = p
+
+    errors = false
+
+    for nodefield in nodefields(p)
+        errors |= !valid_n_neighbors(getfield(p, nodefield), graph)
+    end
+
+    return !errors
+end
+
+function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
+    node_type = typeof(node)
+    node_name = nameof(node_type)
+
+    bounds_flow = n_neighbor_bounds_flow(node_name)
+    bounds_control = n_neighbor_bounds_control(node_name)
+
+    errors = false
+
+    for id in node.node_id
+        for (bounds, edge_type) in
+            zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
+            n_inneighbors = count(x -> true, inneighbor_labels_type(graph, id, edge_type))
+            n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
+
+            if n_inneighbors < bounds.in_min
+                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                errors = true
+            end
+
+            if n_inneighbors > bounds.in_max
+                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                errors = true
+            end
+
+            if n_outneighbors < bounds.out_min
+                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                errors = true
+            end
+
+            if n_outneighbors > bounds.out_max
+                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+"Check that only supported edge types are declared."
+function valid_edge_types(db::DB)::Bool
+    edge_rows = execute(
+        db,
+        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+    )
+    errors = false
+
+    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+        if edge_type ∉ ["flow", "control"]
+            errors = true
+            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+        end
+    end
+    return !errors
+end
+
+"""
+Check:
+- whether control states are defined for discrete controlled nodes;
+- Whether the supplied truth states have the proper length;
+- Whether look_ahead is only supplied for condition variables given by a time-series.
+"""
+function valid_discrete_control(p::Parameters, config::Config)::Bool
+    (; discrete_control, graph) = p
+    (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
+
+    t_end = seconds_since(config.endtime, config.starttime)
+    errors = false
+
+    for id in unique(node_id)
+        # The control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
+
+        # The truth states of this DiscreteControl node with the wrong length
+        truth_states_wrong_length = String[]
+
+        # The number of conditions of this DiscreteControl node
+        n_conditions = length(searchsorted(node_id, id))
+
+        for (key, control_state) in logic_mapping
+            id_, truth_state = key
+
+            if id_ == id
+                push!(control_states_discrete_control, control_state)
+
+                if length(truth_state) != n_conditions
+                    push!(truth_states_wrong_length, truth_state)
+                end
+            end
+        end
+
+        if !isempty(truth_states_wrong_length)
+            errors = true
+            @error "DiscreteControl node $id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+        end
+
+        # Check whether these control states are defined for the
+        # control outneighbors
+        for id_outneighbor in outneighbor_labels_type(graph, id, EdgeType.control)
+
+            # Node object for the outneighbor node type
+            node = getfield(p, graph[id_outneighbor].type)
+
+            # Get control states of the controlled node
+            control_states_controlled = Set{String}()
+
+            # It is known that this node type has a control mapping, otherwise
+            # connectivity validation would have failed.
+            for (controlled_id, control_state) in keys(node.control_mapping)
+                if controlled_id == id_outneighbor
+                    push!(control_states_controlled, control_state)
+                end
+            end
+
+            undefined_control_states =
+                setdiff(control_states_discrete_control, control_states_controlled)
+
+            if !isempty(undefined_control_states)
+                undefined_list = collect(undefined_control_states)
+                node_type = typeof(node).name.name
+                @error "These control states from DiscreteControl node $id are not defined for controlled $node_type $id_outneighbor: $undefined_list."
+                errors = true
+            end
+        end
+    end
+    for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
+        if !iszero(Δt)
+            node_type = graph[node_id].type
+            # TODO: If more transient listen variables must be supported, this validation must be more specific
+            # (e.g. for some node some variables are transient, some not).
+            if node_type ∉ [:flow_boundary, :level_boundary]
+                errors = true
+                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
+            else
+                if Δt < 0
+                    errors = true
+                    @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                else
+                    node = getfield(p, node_type)
+                    idx = if node_type == :Basin
+                        id_index(node.node_id, node_id)
+                    else
+                        searchsortedfirst(node.node_id, node_id)
+                    end
+                    interpolation = getfield(node, Symbol(var))[idx]
+                    if t_end + Δt > interpolation.t[end]
+                        errors = true
+                        @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                    end
+                end
+            end
+        end
+    end
+    return !errors
+end
+
+"""
+The source nodes must only have one allocation outneighbor and no allocation inneighbors.
+"""
+function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
+    (; graph) = p
+
+    edge_ids = graph[].edge_ids[allocation_network_id]
+
+    errors = false
+
+    for edge in edge_ids
+        (id_source, id_dst) = edge
+        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
+            from_source_node = graph[id_source].type in allocation_source_nodetypes
+
+            if is_main_network(allocation_network_id)
+                if !from_source_node
+                    errors = true
+                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
+                end
+            else
+                from_main_network = is_main_network(graph[id_source].allocation_network_id)
+
+                if !from_source_node && !from_main_network
+                    errors = true
+                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                end
+            end
+        end
+    end
+    return !errors
 end

@@ -39,7 +39,7 @@ Then simply call `pixi run test-ribasim-qgis`.
 After installing the plugins via `pixi run install-qgis-plugins`.
 Extra debugging tools are also installed in QGIS that is installed within your pixi environment.
 
-After you have started `pixi run qgis`, you can make alterations to the python code and use the [Plugin Reloader](https://github.com/borysiasty/plugin_reloader) to reload the plugin without restarting QGIS.
+After you have started `pixi run qgis`, you can make alterations to the Python code and use the [Plugin Reloader](https://github.com/borysiasty/plugin_reloader) to reload the plugin without restarting QGIS.
 The shortcut in QGIS is `CTRL+F5`.
 
 It is also possible to connect the debugger of Visual Studio Code.

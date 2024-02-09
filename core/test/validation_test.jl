@@ -82,7 +82,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -174,7 +174,7 @@ end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false)
+            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
         return nothing
     end
 
@@ -411,7 +411,9 @@ end
         @test_throws "Invalid demand" Ribasim.User(
             [Ribasim.NodeID(1)],
             [true],
+            [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
+            [true],
             [0.0, -0.0],
             [0.9],
             [0.9],

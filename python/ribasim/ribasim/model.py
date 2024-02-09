@@ -12,7 +12,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     field_serializer,
-    field_validator,
     model_serializer,
     model_validator,
 )
@@ -111,8 +110,6 @@ class Model(FileModel):
     endtime : datetime.datetime
         End time of the simulation.
 
-    update_timestep: datetime.timedelta = timedelta(seconds=86400)
-        The output time step of the simulation in seconds (default of 1 day)
     input_dir: Path = Path(".")
         The directory of the input files.
     results_dir: Path = Path("results")
@@ -161,7 +158,6 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    update_timestep: datetime.timedelta = datetime.timedelta(seconds=86400)
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
@@ -187,13 +183,6 @@ class Model(FileModel):
     pid_control: PidControl = Field(default_factory=PidControl)
     user: User = Field(default_factory=User)
 
-    @field_validator("update_timestep")
-    @classmethod
-    def timestep_in_seconds(cls, v: Any) -> datetime.timedelta:
-        if not isinstance(v, datetime.timedelta):
-            v = datetime.timedelta(seconds=v)
-        return v
-
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":
         for (
@@ -203,10 +192,6 @@ class Model(FileModel):
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
         return self
-
-    @field_serializer("update_timestep")
-    def serialize_dt(self, td: datetime.timedelta) -> int:
-        return int(td.total_seconds())
 
     @field_serializer("input_dir", "results_dir")
     def serialize_path(self, path: Path) -> str:
@@ -468,6 +453,8 @@ class Model(FileModel):
         node_attrs, node_instances = zip(*self.nodes().items())
         node_clss = [node_cls.get_input_type() for node_cls in node_instances]
         truth_dict = {"T": ">", "F": "<"}
+        assert self.network.node.df is not None
+        assert self.network.edge.df is not None
 
         if self.discrete_control.condition.df is None:
             raise ValueError("This model has no control input.")
@@ -521,7 +508,7 @@ class Model(FileModel):
 
                 names_and_values = []
                 for var in static.columns:
-                    if var not in ["remarks", "node_id", "control_state"]:
+                    if var not in ["node_id", "control_state"]:
                         value = row[var]
                         if value is not None:
                             names_and_values.append(f"{var} = {value}")

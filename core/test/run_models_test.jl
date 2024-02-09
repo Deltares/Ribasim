@@ -19,12 +19,15 @@
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
     control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
     allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
+    allocation_flow_bytes =
+        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
     control = Arrow.Table(control_bytes)
     allocation = Arrow.Table(allocation_bytes)
+    allocation_flow = Arrow.Table(allocation_flow_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
 
     @testset "Schema" begin
@@ -51,6 +54,19 @@
                 :abstracted,
             ),
             (DateTime, Int, Int, Int, Float64, Float64, Float64),
+        )
+        @test Tables.schema(allocation_flow) == Tables.Schema(
+            (
+                :time,
+                :edge_id,
+                :from_node_id,
+                :to_node_id,
+                :allocation_network_id,
+                :priority,
+                :flow,
+                :collect_demands,
+            ),
+            (DateTime, Int, Int, Int, Int, Int, Float64, Bool),
         )
         @test Tables.schema(subgrid) ==
               Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
@@ -95,6 +111,11 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
+    @test model.integrator.u.storage ≈ [1000]
+    @test model.integrator.p.basin.precipitation == [0.0]
+    @test model.integrator.p.basin.potential_evaporation == [0.0]
+    @test model.integrator.p.basin.drainage == [0.0]
+    @test model.integrator.p.basin.infiltration == [0.0]
     @test successful_retcode(model)
 end
 

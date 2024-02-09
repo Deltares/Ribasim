@@ -1,7 +1,7 @@
 """Find the edges from the main network to a subnetwork."""
 function find_subnetwork_connections!(p::Parameters)::Nothing
     (; allocation, graph, user) = p
-    n_priorities = length(user.demand[1])
+    n_priorities = length(user.priorities)
     (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -82,14 +82,17 @@ If the edge does not exist, it is created.
 """
 function indicate_allocation_flow!(
     graph::MetaGraph,
-    id_src::NodeID,
-    id_dst::NodeID,
+    node_ids::AbstractVector{NodeID},
 )::Nothing
+    id_src = first(node_ids)
+    id_dst = last(node_ids)
+
     if !haskey(graph, id_src, id_dst)
-        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true)
+        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true, node_ids)
     else
         edge_metadata = graph[id_src, id_dst]
         edge_metadata = @set edge_metadata.allocation_flow = true
+        edge_metadata = @set edge_metadata.node_ids = node_ids
     end
     graph[id_src, id_dst] = edge_metadata
     return nothing
@@ -130,7 +133,7 @@ function find_allocation_graph_edges!(
                     if is_allocation_source(graph, node_id, inneighbor_id)
                         continue
                     end
-                    indicate_allocation_flow!(graph, inneighbor_id, node_id)
+                    indicate_allocation_flow!(graph, [inneighbor_id, node_id])
                     push!(edge_ids, (inneighbor_id, node_id))
                     # These direct connections cannot have capacity constraints
                     capacity[node_id, inneighbor_id] = Inf
@@ -144,7 +147,7 @@ function find_allocation_graph_edges!(
                     if is_allocation_source(graph, outneighbor_id, node_id)
                         continue
                     end
-                    indicate_allocation_flow!(graph, node_id, outneighbor_id)
+                    indicate_allocation_flow!(graph, [node_id, outneighbor_id])
                     push!(edge_ids, (node_id, outneighbor_id))
                     # if subnetwork_outneighbor_id in user.node_id: Capacity depends on user demand at a given priority
                     # else: These direct connections cannot have capacity constraints
@@ -264,13 +267,13 @@ function process_allocation_graph_edges!(
 
         # Add composite allocation graph edge(s)
         if positive_flow
-            indicate_allocation_flow!(graph, node_id_1, node_id_2)
+            indicate_allocation_flow!(graph, edge_composite)
             capacity[node_id_1, node_id_2] = edge_capacity
             push!(edge_ids, (node_id_1, node_id_2))
         end
 
         if negative_flow
-            indicate_allocation_flow!(graph, node_id_2, node_id_1)
+            indicate_allocation_flow!(graph, reverse(edge_composite))
             capacity[node_id_2, node_id_1] = edge_capacity
             push!(edge_ids, (node_id_2, node_id_1))
         end
@@ -279,39 +282,6 @@ function process_allocation_graph_edges!(
 end
 
 const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
-
-"""
-The source nodes must only have one allocation outneighbor and no allocation inneighbors.
-"""
-function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
-    (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
-
-    errors = false
-
-    for edge in edge_ids
-        (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            from_source_node = graph[id_source].type in allocation_source_nodetypes
-
-            if is_main_network(allocation_network_id)
-                if !from_source_node
-                    errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
-                end
-            else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
-
-                if !from_source_node && !from_main_network
-                    errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
-                end
-            end
-        end
-    end
-    return !errors
-end
 
 """
 Remove allocation user return flow edges that are upstream of the user itself.
@@ -328,6 +298,7 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
             edge_metadata = graph[node_id_user, node_id_return_flow]
             graph[node_id_user, node_id_return_flow] =
                 @set edge_metadata.allocation_flow = false
+            empty!(edge_metadata.node_ids)
             delete!(edge_ids, (node_id_user, node_id_return_flow))
             @debug "The outflow of user $node_id_user is upstream of the user itself and thus ignored in allocation solves."
         end
@@ -842,7 +813,7 @@ function set_objective_priority!(
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
     (; graph, user, allocation) = p
-    (; demand, node_id) = user
+    (; demand, demand_itp, demand_from_timeseries, node_id) = user
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -874,7 +845,14 @@ function set_objective_priority!(
         end
 
         user_idx = findsorted(node_id, node_id_user)
-        d = demand[user_idx][priority_idx](t)
+
+        if demand_from_timeseries[user_idx]
+            d = demand_itp[user_idx][priority_idx](t)
+            set_user_demand!(user, node_id_user, priority_idx, d)
+        else
+            d = get_user_demand(user, node_id_user, priority_idx)
+        end
+
         demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
     end
@@ -943,7 +921,7 @@ function assign_allocations!(
             push!(record.allocation_network_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
             push!(record.priority, user.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx][priority_idx](t))
+            push!(record.demand, user.demand[user_idx])
             push!(record.allocated, allocated)
             # TODO: This is now the last abstraction before the allocation update,
             # should be the average abstraction since the last allocation solve
@@ -1068,6 +1046,40 @@ function adjust_edge_capacities!(
 end
 
 """
+Save the allocation flows per physical edge.
+"""
+function save_allocation_flows!(
+    p::Parameters,
+    t::Float64,
+    allocation_model::AllocationModel,
+    priority::Int,
+    collect_demands::Bool,
+)::Nothing
+    (; problem, allocation_network_id) = allocation_model
+    (; allocation, graph) = p
+    (; record) = allocation
+    F = problem[:F]
+
+    for allocation_edge in first(F.axes)
+        flow = JuMP.value(F[allocation_edge])
+        edge_metadata = graph[allocation_edge...]
+        (; node_ids) = edge_metadata
+
+        for i in eachindex(node_ids)[1:(end - 1)]
+            push!(record.time, t)
+            push!(record.edge_id, edge_metadata.id)
+            push!(record.from_node_id, node_ids[i])
+            push!(record.to_node_id, node_ids[i + 1])
+            push!(record.allocation_network_id, allocation_network_id)
+            push!(record.priority, priority)
+            push!(record.flow, flow)
+            push!(record.collect_demands, collect_demands)
+        end
+    end
+    return nothing
+end
+
+"""
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the users.
 """
@@ -1124,5 +1136,14 @@ function allocate!(
 
         # Assign the allocations to the users for this priority
         assign_allocations!(allocation_model, p, t, priority_idx; collect_demands)
+
+        # Save the flows over all edges in the subnetwork
+        save_allocation_flows!(
+            p,
+            t,
+            allocation_model,
+            priorities[priority_idx],
+            collect_demands,
+        )
     end
 end

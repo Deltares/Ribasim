@@ -40,12 +40,14 @@ class Edge(SpatialTableModel[EdgeSchema]):
     """
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
+        assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:
         ax = kwargs.get("ax", None)
         color_flow = kwargs.get("color_flow", None)
         color_control = kwargs.get("color_control", None)
+        assert self.df is not None
 
         if ax is None:
             _, ax = plt.subplots()

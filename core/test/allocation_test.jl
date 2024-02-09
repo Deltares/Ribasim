@@ -10,9 +10,19 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    graph = p.graph
     close(db)
 
-    graph = p.graph
+    # Test compound allocation edge data
+    for edge_metadata in values(graph.edge_data)
+        if edge_metadata.allocation_flow
+            @test first(edge_metadata.node_ids) == edge_metadata.from_id
+            @test last(edge_metadata.node_ids) == edge_metadata.to_id
+        else
+            @test isempty(edge_metadata.node_ids)
+        end
+    end
+
     Ribasim.set_flow!(graph, NodeID(1), NodeID(2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     Ribasim.allocate!(p, allocation_model, 0.0)
@@ -29,6 +39,12 @@
     @test allocated[1] ≈ [0.0, 0.5]
     @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
+
+    # Test getting and setting user demands
+    (; user) = p
+    Ribasim.set_user_demand!(user, NodeID(11), 2, Float64(π))
+    @test user.demand[4] ≈ π
+    @test Ribasim.get_user_demand(user, NodeID(11), 2) ≈ π
 end
 
 @testitem "Allocation objective types" begin
