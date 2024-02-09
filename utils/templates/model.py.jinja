@@ -5,13 +5,14 @@ import pandera as pa
 from pandera.dtypes import Timestamp
 from pandera.typing import Series
 
-{% for m in models %}
-class {{m[:name]}}Schema(pa.DataFrameModel):
-{% for f in m[:fields] %}
-    {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})
-{% end %}
+class _BaseSchema(pa.DataFrameModel):
     class Config:
         add_missing_columns = True
         coerce = True
 
+{% for m in models %}
+class {{m[:name]}}Schema(_BaseSchema):
+{% for f in m[:fields] %}
+    {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})
+{% end %}
 {% end %}

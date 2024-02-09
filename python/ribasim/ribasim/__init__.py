@@ -42,7 +42,6 @@ __all__ = [
     "Logging",
     "ManningResistance",
     "Model",
-    "models",
     "Network",
     "Node",
     "NodeSchema",

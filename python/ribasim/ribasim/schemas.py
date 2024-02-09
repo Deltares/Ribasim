@@ -6,26 +6,24 @@ from pandera.dtypes import Timestamp
 from pandera.typing import Series
 
 
-class BasinProfileSchema(pa.DataFrameModel):
+class _BaseSchema(pa.DataFrameModel):
+    class Config:
+        add_missing_columns = True
+        coerce = True
+
+
+class BasinProfileSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     area: Series[float] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class BasinStateSchema(pa.DataFrameModel):
+class BasinStateSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class BasinStaticSchema(pa.DataFrameModel):
+class BasinStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     drainage: Series[float] = pa.Field(nullable=True)
     potential_evaporation: Series[float] = pa.Field(nullable=True)
@@ -33,23 +31,15 @@ class BasinStaticSchema(pa.DataFrameModel):
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class BasinSubgridSchema(pa.DataFrameModel):
+class BasinSubgridSchema(_BaseSchema):
     subgrid_id: Series[int] = pa.Field(nullable=False)
     node_id: Series[int] = pa.Field(nullable=False)
     basin_level: Series[float] = pa.Field(nullable=False)
     subgrid_level: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class BasinTimeSchema(pa.DataFrameModel):
+class BasinTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     drainage: Series[float] = pa.Field(nullable=True)
@@ -58,34 +48,22 @@ class BasinTimeSchema(pa.DataFrameModel):
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class DiscreteControlConditionSchema(pa.DataFrameModel):
+class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     listen_feature_id: Series[int] = pa.Field(nullable=False)
     variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
     look_ahead: Series[float] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class DiscreteControlLogicSchema(pa.DataFrameModel):
+class DiscreteControlLogicSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     truth_state: Series[str] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class EdgeSchema(pa.DataFrameModel):
+class EdgeSchema(_BaseSchema):
     fid: Series[int] = pa.Field(nullable=False)
     name: Series[str] = pa.Field(nullable=False)
     from_node_id: Series[int] = pa.Field(nullable=False)
@@ -93,73 +71,45 @@ class EdgeSchema(pa.DataFrameModel):
     edge_type: Series[str] = pa.Field(nullable=False)
     allocation_network_id: Series[int] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class FlowBoundaryStaticSchema(pa.DataFrameModel):
+class FlowBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class FlowBoundaryTimeSchema(pa.DataFrameModel):
+class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class FractionalFlowStaticSchema(pa.DataFrameModel):
+class FractionalFlowStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     fraction: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class LevelBoundaryStaticSchema(pa.DataFrameModel):
+class LevelBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class LevelBoundaryTimeSchema(pa.DataFrameModel):
+class LevelBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class LinearResistanceStaticSchema(pa.DataFrameModel):
+class LinearResistanceStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     resistance: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class ManningResistanceStaticSchema(pa.DataFrameModel):
+class ManningResistanceStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     length: Series[float] = pa.Field(nullable=False)
@@ -168,23 +118,15 @@ class ManningResistanceStaticSchema(pa.DataFrameModel):
     profile_slope: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class NodeSchema(pa.DataFrameModel):
+class NodeSchema(_BaseSchema):
     fid: Series[int] = pa.Field(nullable=False)
     name: Series[str] = pa.Field(nullable=False)
     type: Series[str] = pa.Field(nullable=False)
     allocation_network_id: Series[int] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class OutletStaticSchema(pa.DataFrameModel):
+class OutletStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
@@ -193,12 +135,8 @@ class OutletStaticSchema(pa.DataFrameModel):
     min_crest_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class PidControlStaticSchema(pa.DataFrameModel):
+class PidControlStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
@@ -208,12 +146,8 @@ class PidControlStaticSchema(pa.DataFrameModel):
     derivative: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class PidControlTimeSchema(pa.DataFrameModel):
+class PidControlTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
@@ -223,12 +157,8 @@ class PidControlTimeSchema(pa.DataFrameModel):
     derivative: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class PumpStaticSchema(pa.DataFrameModel):
+class PumpStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
@@ -236,43 +166,27 @@ class PumpStaticSchema(pa.DataFrameModel):
     max_flow_rate: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class TabulatedRatingCurveStaticSchema(pa.DataFrameModel):
+class TabulatedRatingCurveStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class TabulatedRatingCurveTimeSchema(pa.DataFrameModel):
+class TabulatedRatingCurveTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class TerminalStaticSchema(pa.DataFrameModel):
+class TerminalStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class UserStaticSchema(pa.DataFrameModel):
+class UserStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     demand: Series[float] = pa.Field(nullable=False)
@@ -280,19 +194,11 @@ class UserStaticSchema(pa.DataFrameModel):
     min_level: Series[float] = pa.Field(nullable=False)
     priority: Series[int] = pa.Field(nullable=False)
 
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
-
-class UserTimeSchema(pa.DataFrameModel):
+class UserTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
     priority: Series[int] = pa.Field(nullable=False)
-
-    class Config:
-        add_missing_columns = True
-        coerce = True
