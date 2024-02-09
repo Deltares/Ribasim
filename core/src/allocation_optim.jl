@@ -1,6 +1,5 @@
 function add_objective_term!(
     ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
-    problem::JuMP.Model,
     F_variable::JuMP.VariableRef,
     demand::Float64,
     objective_type::Symbol;
@@ -70,7 +69,6 @@ function add_user_term!(
 
     add_objective_term!(
         ex,
-        problem,
         F_edge,
         demand,
         objective_type;
@@ -94,8 +92,8 @@ function add_basin_term!(
     F_basin = F_basin_in[node_id]
 
     if objective_type in [:linear_absolute, :linear_relative]
-        constraint_abs_positive = problem[:abs_positive][node_id_user]
-        constraint_abs_negative = problem[:abs_negative][node_id_user]
+        constraint_abs_positive = problem[:abs_positive_basin][node_id]
+        constraint_abs_negative = problem[:abs_negative_basin][node_id]
     else
         constraint_abs_positive = nothing
         constraint_abs_negative = nothing
@@ -103,7 +101,6 @@ function add_basin_term!(
 
     add_objective_term!(
         ex,
-        problem,
         F_basin,
         demand,
         objective_type;
@@ -125,11 +122,10 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation, basin) = p
-    (; demand, demand_itp, demand_from_timeseries, node_id) = user
+    (; graph, user, allocation) = p
+    (; demand_itp, demand_from_timeseries, node_id) = user
     (; main_network_connections, subnetwork_demands, priorities) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
-    node_ids = graph[].node_ids[allocation_network_id]
 
     F = problem[:F]
     if objective_type in [:quadratic_absolute, :quadratic_relative]
@@ -137,6 +133,7 @@ function set_objective_priority!(
     elseif objective_type in [:linear_absolute, :linear_relative]
         ex = JuMP.AffExpr()
         ex += sum(problem[:F_abs_user])
+        ex += sum(problem[:F_abs_basin])
     end
 
     demand_max = 0.0
@@ -187,16 +184,13 @@ function set_objective_priority!(
 
     # Terms for basins
     F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
     for node_id in only(F_basin_in.axes)
         priority_basin = get_basin_priority(p, node_id)
         priority_now = priorities[priority_idx]
-
         d =
             priority_basin == priority_now ?
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
-
-        #add_objective_term()
+        add_basin_term!(ex, problem, d, objective_type, node_id)
     end
 
     new_objective = JuMP.@expression(problem, ex)
