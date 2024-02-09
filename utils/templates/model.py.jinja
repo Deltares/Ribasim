@@ -13,7 +13,11 @@ class _BaseSchema(pa.DataFrameModel):
 
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
-{% for f in m[:fields] %}
+  {% for f in m[:fields] %}
+    {% if (f[2] == "Series[int]") %}
+    {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }}, default=0)
+    {% else %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})
-{% end %}
+    {% end %}
+  {% end %}
 {% end %}

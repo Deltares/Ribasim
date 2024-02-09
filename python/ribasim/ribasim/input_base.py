@@ -1,4 +1,5 @@
 import re
+import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -358,9 +359,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf = gpd.GeoDataFrame(data=self.df)
         gdf = gdf.set_geometry("geometry")
-        gdf.index.name = "fid"
-
-        gdf.to_file(path, layer=self.tablename(), driver="GPKG", index=True)
+        gdf.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
         self.df.sort_index(inplace=True)
@@ -408,10 +407,6 @@ class NodeModel(ChildModel):
     def _layername(cls, field: str) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def add(*args, **kwargs):
-        # TODO This is the new API
-        pass
-
     def tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
@@ -429,11 +424,15 @@ class NodeModel(ChildModel):
         return list(ids), len(ids) * [self.get_input_type()]
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
-        for field in self.fields():
-            getattr(self, field)._save(
-                directory,
-                input_dir,
-            )
+        # TODO: stop sorting loop so that "node" comes first
+        for field in sorted(self.fields(), key=lambda x: x != "node"):
+            attr = getattr(self, field)
+            # TODO
+            if hasattr(attr, "_save"):
+                attr._save(
+                    directory,
+                    input_dir,
+                )
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

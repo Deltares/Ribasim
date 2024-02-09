@@ -35,14 +35,6 @@ class NodeSchema(pa.SchemaModel):
 class Node(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
 
-    # TODO: Remove as soon as add api has been merged
-    @field_validator("df", mode="before")
-    @classmethod
-    def add_node_id_column(cls, df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-        if "node_id" not in df.columns:
-            df.insert(0, "node_id", df.index)
-        return df
-
     @staticmethod
     def node_ids_and_types(*nodes):
         # TODO Not sure if this staticmethod belongs here
@@ -237,7 +229,8 @@ class Node(SpatialTableModel[NodeSchema]):
             "LevelDemand": "k",
             "": "k",
         }
-        assert self.df is not None
+        if self.df is None:
+            return
 
         for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
@@ -254,7 +247,9 @@ class Node(SpatialTableModel[NodeSchema]):
 
         assert self.df is not None
         geometry = self.df["geometry"]
-        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
+        for text, xy in zip(
+            self.df["node_id"], np.column_stack((geometry.x, geometry.y))
+        ):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax

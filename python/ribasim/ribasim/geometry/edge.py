@@ -1,18 +1,26 @@
-from typing import Any
+from typing import Any, NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
+from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
 
 __all__ = ("Edge",)
+
+
+class NodeData(NamedTuple):
+    node_id: int
+    node_type: str
+    geometry: Point
 
 
 class EdgeSchema(pa.SchemaModel):
@@ -40,6 +48,39 @@ class Edge(SpatialTableModel[EdgeSchema]):
     static : pandas.DataFrame
         Table describing the flow connections.
     """
+
+    def add(
+        self,
+        from_node: NodeData,
+        to_node: NodeData,
+        edge_type: str,
+        geometry: LineString | MultiLineString | None = None,
+        name: str = "",
+        subnetwork_id: int | None = None,
+    ):
+        geometry_to_append = (
+            [LineString([from_node.geometry, to_node.geometry])]
+            if geometry is None
+            else [geometry]
+        )
+        table_to_append = GeoDataFrame(
+            data={
+                "from_node_type": [from_node.node_type],
+                "from_node_id": [from_node.node_id],
+                "to_node_type": [to_node.node_type],
+                "to_node_id": [to_node.node_id],
+                "edge_type": [edge_type],
+                "name": [name],
+                "subnetwork_id": [subnetwork_id],
+            },
+            geometry=geometry_to_append,
+            crs="EPSG:28992",
+        )
+
+        if self.df is None:
+            self.df = table_to_append
+        else:
+            self.df = pd.concat([self.df, table_to_append])
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
