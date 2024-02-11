@@ -98,8 +98,6 @@ sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{NodeV1}) = sort_by_fid
-sort_by_function(table::StructVector{EdgeV1}) = sort_by_fid
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority

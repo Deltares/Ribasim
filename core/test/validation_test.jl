@@ -4,7 +4,7 @@
     using DataInterpolations: LinearInterpolation
     using Logging
 
-    node_id = Indices([NodeID(1)])
+    node_id = Indices([NodeID(:Basin, 1)])
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
@@ -20,7 +20,7 @@
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(1)
+    @test logger.logs[2].kwargs[:node_id] == NodeID(:Basin, 1)
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
@@ -76,13 +76,26 @@ end
     )
 
     for i in 1:6
-        type = i in [1, 6] ? :pump : :other
-        graph[NodeID(i)] = NodeMetadata(type, 9)
+        if i in [1, 6]
+            type = :pump
+            node_id = NodeID(:Pump, i)
+        else
+            type = :other
+            node_id = NodeID(:Basin, i)
+        end
+        graph[node_id] = NodeMetadata(type, 9)
     end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
+        graph[NodeID(:Basin, id_1), NodeID(:Basin, id_2)] = EdgeMetadata(
+            0,
+            edge_type,
+            0,
+            NodeID(:Basin, id_1),
+            NodeID(:Basin, id_2),
+            false,
+            NodeID[],
+        )
         return nothing
     end
 
@@ -92,12 +105,12 @@ end
     set_edge_metadata!(5, 6, EdgeType.control)
 
     pump = Ribasim.Pump(
-        Ribasim.NodeID[1, 6],
+        NodeID.(:Pump, [1, 6]),
         [true, true],
         [0.0, 0.0],
         [0.0, 0.0],
         [1.0, 1.0],
-        Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
+        Dict{Tuple{NodeID, String}, NamedTuple}(),
         falses(2),
     )
 
@@ -121,8 +134,11 @@ end
     set_edge_metadata!(5, 3, EdgeType.flow)
     set_edge_metadata!(5, 4, EdgeType.flow)
 
-    fractional_flow =
-        Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
+    fractional_flow = Ribasim.FractionalFlow(
+        [NodeID(:FractionalFlow, 5)],
+        [1.0],
+        Dict{Tuple{Int, String}, NamedTuple}(),
+    )
 
     logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
@@ -152,9 +168,9 @@ end
     using MetaGraphsNext: MetaGraph
     using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
 
-    pid_control_node_id = NodeID[1, 6]
-    pid_control_listen_node_id = NodeID[3, 5]
-    pump_node_id = NodeID[2, 4]
+    pid_control_node_id = NodeID.(:PidControl, [1, 6])
+    pid_control_listen_node_id = [NodeID(:Terminal, 3), NodeID(:Basin, 5)]
+    pump_node_id = NodeID.(:Pump, [2, 4])
 
     graph = MetaGraph(
         DiGraph();
@@ -164,27 +180,26 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(6)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(2)] = NodeMetadata(:pump, 0)
-    graph[NodeID(4)] = NodeMetadata(:pump, 0)
-    graph[NodeID(3)] = NodeMetadata(:something_else, 0)
-    graph[NodeID(5)] = NodeMetadata(:basin, 0)
-    graph[NodeID(7)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:PidControl, 1)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:PidControl, 6)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:Pump, 2)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Pump, 4)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Terminal, 3)] = NodeMetadata(:something_else, 0)
+    graph[NodeID(:Basin, 5)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
         return nothing
     end
 
-    set_edge_metadata!(3, 4, EdgeType.flow)
-    set_edge_metadata!(7, 2, EdgeType.flow)
+    set_edge_metadata!(NodeID(:Terminal, 3), NodeID(:Pump, 4), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 7), NodeID(:Pump, 2), EdgeType.flow)
 
-    set_edge_metadata!(1, 4, EdgeType.control)
-    set_edge_metadata!(6, 2, EdgeType.control)
+    set_edge_metadata!(NodeID(:PidControl, 1), NodeID(:Pump, 4), EdgeType.control)
+    set_edge_metadata!(NodeID(:PidControl, 6), NodeID(:Pump, 2), EdgeType.control)
 
-    basin_node_id = Indices(NodeID[5, 7])
+    basin_node_id = Indices(NodeID.(:Basin, [5, 7]))
 
     logger = TestLogger()
     with_logger(logger) do
@@ -239,20 +254,20 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(3)
+    @test logger.logs[2].kwargs[:node_id] == NodeID(:FractionalFlow, 3)
     @test logger.logs[2].kwargs[:fraction] ≈ -0.1
     @test logger.logs[2].kwargs[:control_state] == ""
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "The sum of fractional flow fractions leaving a node must be ≈1."
-    @test logger.logs[3].kwargs[:node_id] == NodeID(7)
+    @test logger.logs[3].kwargs[:node_id] == NodeID(:TabulatedRatingCurve, 7)
     @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
     @test logger.logs[4].kwargs[:edge_id] == 6
-    @test logger.logs[4].kwargs[:id_src] == NodeID(2)
-    @test logger.logs[4].kwargs[:id_dst] == NodeID(8)
+    @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2)
+    @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8)
 end
 
 @testitem "DiscreteControl logic validation" begin
@@ -295,18 +310,19 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
+    using Ribasim: NodeID
 
     logger = TestLogger()
 
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
-            [Ribasim.NodeID(1)],
+            [NodeID(:Outlet, 1)],
             [true],
             [-1.0],
             [NaN],
             [NaN],
             [NaN],
-            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
+            Dict{Tuple{NodeID, String}, NamedTuple}(),
             [false],
         )
     end
@@ -320,13 +336,13 @@ end
 
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
-            Ribasim.NodeID[1],
+            [NodeID(:Pump, 1)],
             [true],
             [-1.0],
             [NaN],
             [NaN],
-            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(
-                (Ribasim.NodeID(1), "foo") => (; flow_rate = -1.0),
+            Dict{Tuple{NodeID, String}, NamedTuple}(
+                (NodeID(:Pump, 1), "foo") => (; flow_rate = -1.0),
             ),
             [false],
         )
@@ -368,25 +384,25 @@ end
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(NodeID(9) => 1)
+    node_to_basin = Dict(NodeID(:Basin, 9) => 1)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(1, NodeID(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(1, NodeID(:Basin, 10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
           "The node_id of the Basin / subgrid_level does not refer to a basin."
-    @test logger.logs[1].kwargs[:node_id] == NodeID(10)
+    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             1,
-            NodeID(9),
+            NodeID(:Basin, 9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
             [-1.0, 0.0, 0.0],
@@ -405,11 +421,13 @@ end
 @testitem "negative demand" begin
     using Logging
     using DataInterpolations: LinearInterpolation
+    using Ribasim: NodeID
+
     logger = TestLogger()
 
     with_logger(logger) do
         @test_throws "Invalid demand" Ribasim.User(
-            [Ribasim.NodeID(1)],
+            [NodeID(:User, 1)],
             [true],
             [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],

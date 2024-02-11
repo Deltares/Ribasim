@@ -418,7 +418,7 @@ function update_basin(integrator)::Nothing
     )
 
     for row in timeblock
-        hasindex, i = id_index(node_id, NodeID(row.node_id))
+        hasindex, i = id_index(node_id, NodeID(NodeType.Basin, row.node_id))
         @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
         set_table_row!(table, row, i)
     end
@@ -461,7 +461,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         id = first(group).node_id
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
-        i = searchsortedfirst(node_id, NodeID(id))
+        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
         tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing

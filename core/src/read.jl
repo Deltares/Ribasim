@@ -124,7 +124,7 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                control_mapping[(NodeID(node_id), control_state_key)] =
+                control_mapping[(NodeID(nodetype, node_id), control_state_key)] =
                     NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
@@ -237,7 +237,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
     end
 
     return LinearResistance(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.LinearResistance, parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -279,8 +279,10 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 is_active = coalesce(first(group).active, true)
                 interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
                 if !ismissing(control_state)
-                    control_mapping[(NodeID(node_id), control_state)] =
-                        (; tables = interpolation, active = is_active)
+                    control_mapping[(
+                        NodeID(NodeType.TabulatedRatingCurve, node_id),
+                        control_state,
+                    )] = (; tables = interpolation, active = is_active)
                 end
             end
             push!(interpolations, interpolation)
@@ -308,7 +310,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     end
 
     return TabulatedRatingCurve(
-        NodeID.(node_ids),
+        NodeID.(NodeType.TabulatedRatingCurve, node_ids),
         active,
         interpolations,
         time,
@@ -326,7 +328,7 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
     end
 
     return ManningResistance(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.ManningResistance, parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
@@ -345,7 +347,7 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
     end
 
     return FractionalFlow(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -377,7 +379,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     end
 
     return LevelBoundary(
-        NodeID.(node_ids),
+        NodeID.(NodeType.LevelBoundary, node_ids),
         parsed_parameters.active,
         parsed_parameters.level,
     )
@@ -418,7 +420,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     end
 
     return FlowBoundary(
-        NodeID.(node_ids),
+        NodeID.(NodeType.FlowBoundary, node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
     )
@@ -428,7 +430,7 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
-    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
+    is_pid_controlled = falses(length(NodeID.(NodeType.Pump, parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -442,7 +444,7 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
     end
 
     return Pump(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.Pump, parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -457,7 +459,7 @@ function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
-    is_pid_controlled = falses(length(NodeID.(parsed_parameters.node_id)))
+    is_pid_controlled = falses(length(NodeID.(NodeType.Outlet, parsed_parameters.node_id)))
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -471,7 +473,7 @@ function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
     end
 
     return Outlet(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.Outlet, parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -484,7 +486,7 @@ end
 
 function Terminal(db::DB, config::Config)::Terminal
     static = load_structvector(db, config, TerminalStaticV1)
-    return Terminal(NodeID.(static.node_id))
+    return Terminal(NodeID.(NodeType.Terminal, static.node_id))
 end
 
 function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
@@ -515,7 +517,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     check_no_nans(table, "Basin")
 
     return Basin(
-        Indices(NodeID.(node_id)),
+        Indices(NodeID.(NodeType.Basin, node_id)),
         precipitation,
         potential_evaporation,
         drainage,
@@ -538,7 +540,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
     for (; from_node_id, edge_type) in rows
         if edge_type == "control"
-            control_state[NodeID(from_node_id)] = ("undefined_state", 0.0)
+            control_state[NodeID(NodeType.DiscreteControl, from_node_id)] =
+                ("undefined_state", 0.0)
         end
     end
 
@@ -548,7 +551,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[(NodeID(node_id), truth_state)] = control_state_
+        logic_mapping[(NodeID(NodeType.DiscreteControl, node_id), truth_state)] =
+            control_state_
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
@@ -562,8 +566,8 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        NodeID.(condition.node_id), # Not unique
-        NodeID.(condition.listen_feature_id),
+        NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
+        NodeID.(condition.listen_feature_type, condition.listen_feature_id),
         condition.variable,
         look_ahead,
         condition.greater_than,
@@ -626,9 +630,9 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     end
 
     return PidControl(
-        NodeID.(node_ids),
+        NodeID.(NodeType.PidControl, node_ids),
         BitVector(parsed_parameters.active),
-        NodeID.(parsed_parameters.listen_node_id),
+        NodeID.(parsed_parameters.listen_node_type, parsed_parameters.listen_node_id),
         parsed_parameters.target,
         pid_parameters,
         pid_error,
@@ -748,7 +752,7 @@ function User(db::DB, config::Config)::User
         abstracted = Float64[],
     )
 
-    node_ids = NodeID.(node_ids)
+    node_ids = NodeID.(NodeType.User, node_ids)
 
     return User(
         node_ids,
@@ -773,7 +777,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
         subgrid_id = first(getproperty.(group, :subgrid_id))
-        node_id = NodeID(first(getproperty.(group, :node_id)))
+        node_id = NodeID(NodeType.Basin, first(getproperty.(group, :node_id)))
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
