@@ -243,7 +243,7 @@ function valid_pid_connectivity(
     for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
         has_index, _ = id_index(basin_node_id, listen_id)
         if !has_index
-            @error "Listen node $listen_id of PidControl node $id is not a Basin"
+            @error "Listen node $listen_id of $id is not a Basin"
             errors = true
         end
 
@@ -252,7 +252,7 @@ function valid_pid_connectivity(
         if controlled_id in pump_node_id
             pump_intake_id = inflow_id(graph, controlled_id)
             if pump_intake_id != listen_id
-                @error "Listen node $listen_id of PidControl node $id is not upstream of controlled pump $controlled_id"
+                @error "Listen node $listen_id of $id is not upstream of controlled $controlled_id"
                 errors = true
             end
         else
@@ -293,7 +293,7 @@ function valid_fractional_flow(
         if src_outneighbor_ids ⊈ node_id_set
             errors = true
             @error(
-                "Node $src_id combines fractional flow outneighbors with other outneigbor types."
+                "$src_id combines fractional flow outneighbors with other outneigbor types."
             )
         end
 
@@ -441,22 +441,22 @@ function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
             n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                @error "$id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                @error "$id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                @error "$id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                @error "$id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end
@@ -518,7 +518,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "DiscreteControl node $id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the
@@ -545,7 +545,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node).name.name
-                @error "These control states from DiscreteControl node $id are not defined for controlled $node_type $id_outneighbor: $undefined_list."
+                @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
             end
         end

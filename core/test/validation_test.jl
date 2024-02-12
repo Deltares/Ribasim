@@ -87,22 +87,14 @@ end
     end
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[NodeID(:Basin, id_1), NodeID(:Basin, id_2)] = EdgeMetadata(
-            0,
-            edge_type,
-            0,
-            NodeID(:Basin, id_1),
-            NodeID(:Basin, id_2),
-            false,
-            NodeID[],
-        )
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
         return nothing
     end
 
-    set_edge_metadata!(2, 1, EdgeType.flow)
-    set_edge_metadata!(3, 1, EdgeType.flow)
-    set_edge_metadata!(6, 2, EdgeType.flow)
-    set_edge_metadata!(5, 6, EdgeType.control)
+    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:Pump, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 3), NodeID(:Pump, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 5), NodeID(:Pump, 6), EdgeType.control)
 
     pump = Ribasim.Pump(
         NodeID.(:Pump, [1, 6]),
@@ -121,18 +113,17 @@ end
 
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} can have at most 1 flow inneighbor(s) (got 2 for node #1)."
+    @test logger.logs[1].message == "Pump #1 can have at most 1 flow inneighbor(s) (got 2)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow outneighbor(s) (got 0 for node #1)."
+          "Pump #1 must have at least 1 flow outneighbor(s) (got 0)."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
+          "Pump #6 must have at least 1 flow inneighbor(s) (got 0)."
 
-    set_edge_metadata!(2, 5, EdgeType.flow)
-    set_edge_metadata!(5, 3, EdgeType.flow)
-    set_edge_metadata!(5, 4, EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:FractionalFlow, 5), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 3), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 4), EdgeType.flow)
 
     fractional_flow = Ribasim.FractionalFlow(
         [NodeID(:FractionalFlow, 5)],
@@ -214,10 +205,11 @@ end
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
+    @test logger.logs[1].message ==
+          "Listen node Terminal #3 of PidControl #1 is not a Basin"
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Listen node #5 of PidControl node #6 is not upstream of controlled pump #2"
+          "Listen node Basin #5 of PidControl #6 is not upstream of controlled Pump #2"
 end
 
 @testitem "FractionalFlow validation" begin
@@ -250,7 +242,7 @@ end
     @test length(logger.logs) == 4
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Node #7 combines fractional flow outneighbors with other outneigbor types."
+          "TabulatedRatingCurve #7 combines fractional flow outneighbors with other outneigbor types."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
@@ -293,19 +285,19 @@ end
     @test length(logger.logs) == 5
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "DiscreteControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
+          "DiscreteControl #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "These control states from DiscreteControl node #5 are not defined for controlled Pump #2: [\"foo\"]."
+          "These control states from DiscreteControl #5 are not defined for controlled Pump #2: [\"foo\"]."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Look ahead supplied for non-timeseries listen variable 'level' from listen node #1."
+          "Look ahead supplied for non-timeseries listen variable 'level' from listen node Basin #1."
     @test logger.logs[4].level == Error
     @test logger.logs[4].message ==
-          "Look ahead for listen variable 'flow_rate' from listen node #4 goes past timeseries end during simulation."
+          "Look ahead for listen variable 'flow_rate' from listen node FlowBoundary #4 goes past timeseries end during simulation."
     @test logger.logs[5].level == Error
     @test logger.logs[5].message ==
-          "Negative look ahead supplied for listen variable 'flow_rate' from listen node #4."
+          "Negative look ahead supplied for listen variable 'flow_rate' from listen node FlowBoundary #4."
 end
 
 @testitem "Pump/outlet flow rate sign validation" begin
