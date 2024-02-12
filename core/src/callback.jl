@@ -123,29 +123,27 @@ function get_value(
     (; basin, flow_boundary, level_boundary) = p
 
     if variable == "level"
-        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
-        level_boundary_idx = findsorted(level_boundary.node_id, node_id)
-
-        if hasindex_basin
+        if node_id.type == NodeType.Basin
+            _, basin_idx = id_index(basin.node_id, node_id)
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif level_boundary_idx !== nothing
+        elseif node_id.type == NodeType.LevelBoundary
+            level_boundary_idx = findsorted(level_boundary.node_id, node_id)
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
             )
         end
-
         value = level
 
     elseif variable == "flow_rate"
-        flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
-
-        if flow_boundary_idx === nothing
+        if node_id.type == NodeType.FlowBoundary
+            flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
+            value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+        else
             error("Flow condition node $node_id is not a flow boundary.")
         end
 
-        value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
     else
         error("Unsupported condition variable $variable.")
     end
@@ -418,7 +416,7 @@ function update_basin(integrator)::Nothing
     )
 
     for row in timeblock
-        hasindex, i = id_index(node_id, NodeID(row.node_id))
+        hasindex, i = id_index(node_id, NodeID(NodeType.Basin, row.node_id))
         @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
         set_table_row!(table, row, i)
     end
@@ -461,7 +459,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         id = first(group).node_id
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
-        i = searchsortedfirst(node_id, NodeID(id))
+        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
         tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing
