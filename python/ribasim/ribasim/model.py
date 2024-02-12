@@ -332,7 +332,7 @@ class Model(FileModel):
         )
 
     @classmethod
-    def read(cls, filepath: FilePath) -> "Model":
+    def read(cls, filepath: FilePath) -> Self:
         """Read model from TOML file."""
         return cls(filepath=filepath)  # type: ignore
 
