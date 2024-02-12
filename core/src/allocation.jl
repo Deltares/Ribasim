@@ -1142,7 +1142,6 @@ function allocate!(
             priority = priorities[priority_idx]
             println(JuMP.solution_summary(problem))
             println(problem)
-            println(termination_status(problem))
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )
