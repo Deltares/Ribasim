@@ -75,16 +75,12 @@ end
         graph_data = nothing,
     )
 
-    for i in 1:6
-        if i in [1, 6]
-            type = :pump
-            node_id = NodeID(:Pump, i)
-        else
-            type = :other
-            node_id = NodeID(:Basin, i)
-        end
-        graph[node_id] = NodeMetadata(type, 9)
-    end
+    graph[NodeID(:Pump, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 2)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 3)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 4)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:FractionalFlow, 5)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
@@ -94,7 +90,7 @@ end
     set_edge_metadata!(NodeID(:Basin, 2), NodeID(:Pump, 1), EdgeType.flow)
     set_edge_metadata!(NodeID(:Basin, 3), NodeID(:Pump, 1), EdgeType.flow)
     set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 5), NodeID(:Pump, 6), EdgeType.control)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Pump, 6), EdgeType.control)
 
     pump = Ribasim.Pump(
         NodeID.(:Pump, [1, 6]),

@@ -35,7 +35,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 
     if level < bottom
         node_id = basin.node_id.values[state_idx]
-        @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
+        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
         return NaN
     end
 

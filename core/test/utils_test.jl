@@ -71,7 +71,7 @@ end
         NodeID(:Basin, 7),
         NodeID(:Pump, 6),
     ) === (4.0, 4.0)
-    @test_throws "No bottom defined on either side of #6" Ribasim.basin_bottoms(
+    @test_throws "No bottom defined on either side of Pump #6" Ribasim.basin_bottoms(
         basin,
         NodeID(:Basin, 0),
         NodeID(:Basin, 1),
@@ -132,7 +132,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "The level -1.0 of basin #1 is lower than the bottom of this basin 0.0."
+          "The level -1.0 of Basin #1 is lower than the bottom of this basin; 0.0."
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage[end], 50)
