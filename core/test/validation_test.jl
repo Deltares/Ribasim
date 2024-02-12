@@ -329,8 +329,7 @@ end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Outlet flow rates must be non-negative, found -1.0 for static #1."
+    @test logger.logs[1].message == "Outlet #1 flow rates must be non-negative, found -1.0."
 
     logger = TestLogger()
 
@@ -352,7 +351,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Pump flow rates must be non-negative, found -1.0 for control state 'foo' of #1."
+          "Pump #1 flow rates must be non-negative, found -1.0 for control state 'foo'."
 end
 
 @testitem "Edge type validation" begin
@@ -393,8 +392,7 @@ end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "The node_id of the Basin / subgrid_level does not refer to a basin."
+    @test logger.logs[1].message == "The node_id of the Basin / subgrid does not exist."
     @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
@@ -412,10 +410,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Basin / subgrid_level subgrid_id 1 has repeated basin levels, this cannot be interpolated."
+          "Basin / subgrid subgrid_id 1 has repeated basin levels, this cannot be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
+          "Basin / subgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
 end
 
 @testitem "negative demand" begin
@@ -443,5 +441,5 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Demand of user node #1 with priority 1 should be non-negative"
+          "Demand of User #1 with priority 1 should be non-negative"
 end

@@ -209,7 +209,11 @@ end
 
     # main-sub connections are part of main network allocation graph
     allocation_edges_main_network = graph[].edge_ids[1]
-    @test Tuple{NodeID, NodeID}[(2, 11), (6, 24), (10, 38)] ⊆ allocation_edges_main_network
+    @test [
+        (NodeID(:Basin, 2), NodeID(:Pump, 11)),
+        (NodeID(:Basin, 6), NodeID(:Pump, 24)),
+        (NodeID(:Basin, 10), NodeID(:Pump, 38)),
+    ] ⊆ allocation_edges_main_network
 
     # Subnetworks interpreted as users require variables and constraints to
     # support absolute value expressions in the objective function
@@ -222,11 +226,11 @@ end
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
     @test Ribasim.get_allocation_model(p, 3).problem[:source].axes[1] ==
-          Tuple{NodeID, NodeID}[(2, 11)]
+          [(NodeID(:Basin, 2), NodeID(:Pump, 11))]
     @test Ribasim.get_allocation_model(p, 5).problem[:source].axes[1] ==
-          Tuple{NodeID, NodeID}[(6, 24)]
+          [(NodeID(:Basin, 6), NodeID(:Pump, 24))]
     @test Ribasim.get_allocation_model(p, 7).problem[:source].axes[1] ==
-          Tuple{NodeID, NodeID}[(10, 38)]
+          [(NodeID(:Basin, 10), NodeID(:Pump, 38))]
 end
 
 @testitem "allocation with main network optimization problem" begin
@@ -275,7 +279,7 @@ end
     @test F_abs[NodeID(:Pump, 38)] ∈ objective_variables
 
     # Running full allocation algorithm
-    Ribasim.set_flow!(graph, NodeID(1), NodeID(:Basin, 2), 4.5)
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
     Ribasim.update_allocation!((; p, t))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈

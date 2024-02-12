@@ -337,7 +337,7 @@ struct Pump{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Pump)
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
                 active,
@@ -382,7 +382,7 @@ struct Outlet{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Outlet)
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
                 active,

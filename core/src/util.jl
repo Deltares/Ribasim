@@ -383,17 +383,15 @@ function get_level(
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-    hasindex, i = id_index(basin.node_id, node_id)
-    current_level = get_tmp(basin.current_level, storage)
-    return if hasindex
+    return if node_id.type == NodeType.Basin
+        _, i = id_index(basin.node_id, node_id)
+        current_level = get_tmp(basin.current_level, storage)
         current_level[i]
-    else
+    elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
-        if i === nothing
-            nothing
-        else
-            level_boundary.level[i](t)
-        end
+        level_boundary.level[i](t)
+    else
+        nothing
     end
 end
 
@@ -479,7 +477,7 @@ function expand_logic_mapping(
             if haskey(logic_mapping_expanded, new_key)
                 control_state_existing = logic_mapping_expanded[new_key]
                 control_states = sort([control_state, control_state_existing])
-                msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_states."
+                msg = "Multiple control states found for $node_id for truth state `$truth_state_new`: $control_states."
                 @assert control_state_existing == control_state msg
             else
                 logic_mapping_expanded[new_key] = control_state

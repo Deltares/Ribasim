@@ -123,29 +123,27 @@ function get_value(
     (; basin, flow_boundary, level_boundary) = p
 
     if variable == "level"
-        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
-        level_boundary_idx = findsorted(level_boundary.node_id, node_id)
-
-        if hasindex_basin
+        if node_id.type == NodeType.Basin
+            _, basin_idx = id_index(basin.node_id, node_id)
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif level_boundary_idx !== nothing
+        elseif node_id.type == NodeType.LevelBoundary
+            level_boundary_idx = findsorted(level_boundary.node_id, node_id)
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
             )
         end
-
         value = level
 
     elseif variable == "flow_rate"
-        flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
-
-        if flow_boundary_idx === nothing
+        if node_id.type == NodeType.FlowBoundary
+            flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
+            value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+        else
             error("Flow condition node $node_id is not a flow boundary.")
         end
 
-        value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
     else
         error("Unsupported condition variable $variable.")
     end

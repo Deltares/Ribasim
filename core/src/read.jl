@@ -859,12 +859,16 @@ function Parameters(db::DB, config::Config)::Parameters
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
         id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        pump_idx = findsorted(pump.node_id, id_controlled)
-        if pump_idx === nothing
+        if id_controlled.type == NodeType.Pump
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            pump.is_pid_controlled[pump_idx] = true
+        elseif id_controlled.type == NodeType.Outlet
             outlet_idx = findsorted(outlet.node_id, id_controlled)
             outlet.is_pid_controlled[outlet_idx] = true
         else
-            pump.is_pid_controlled[pump_idx] = true
+            error(
+                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
+            )
         end
     end
 

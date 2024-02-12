@@ -184,7 +184,7 @@ end
     new_key = (NodeID(:DiscreteControl, 1), "TTF")
     logic_mapping[new_key] = "bar"
 
-    @test_throws "AssertionError: Multiple control states found for DiscreteControl node #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
+    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
         logic_mapping,
     )
 end

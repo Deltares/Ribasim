@@ -199,7 +199,6 @@ function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector,
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
-    node_type::Symbol,
 )::Bool
     errors = false
 
@@ -215,7 +214,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of $id_controlled."
+            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
         end
     end
 
@@ -225,7 +224,7 @@ function valid_flow_rates(
         end
         if flow_rate_ < 0.0
             errors = true
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static $id."
+            @error "$id flow rates must be non-negative, found $flow_rate_."
         end
     end
 
@@ -351,17 +350,17 @@ function valid_subgrid(
 
     if !(node_id in keys(node_to_basin))
         errors = true
-        @error "The node_id of the Basin / subgrid_level does not refer to a basin." node_id subgrid_id
+        @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
     end
 
     if !allunique(basin_level)
         errors = true
-        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
+        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
     end
 
     if !allunique(subgrid_level)
         errors = true
-        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
+        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
     end
 
     return !errors
@@ -379,7 +378,7 @@ function valid_demand(
     for (col, id) in zip(demand_itp, node_id)
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
-                @error "Demand of user node $id with priority $p_itp should be non-negative"
+                @error "Demand of $id with priority $p_itp should be non-negative"
                 errors = true
             end
         end
