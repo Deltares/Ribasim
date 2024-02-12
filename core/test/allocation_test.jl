@@ -39,6 +39,12 @@
     @test allocated[1] ≈ [0.0, 0.5]
     @test allocated[2] ≈ [4.0, 0.0]
     @test allocated[3] ≈ [0.0, 0.0]
+
+    # Test getting and setting user demands
+    (; user) = p
+    Ribasim.set_user_demand!(user, NodeID(11), 2, Float64(π))
+    @test user.demand[4] ≈ π
+    @test Ribasim.get_user_demand(user, NodeID(11), 2) ≈ π
 end
 
 @testitem "Allocation objective types" begin

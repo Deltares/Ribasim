@@ -6,6 +6,7 @@
         "charliermarsh.ruff",
         "njpwerner.autodocstring",
         "quarto.quarto",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "samuelcolvin.jinjahtml"
     ]
 }

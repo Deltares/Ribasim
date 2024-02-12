@@ -1,7 +1,7 @@
 """Find the edges from the main network to a subnetwork."""
 function find_subnetwork_connections!(p::Parameters)::Nothing
     (; allocation, graph, user) = p
-    n_priorities = length(user.demand[1])
+    n_priorities = length(user.priorities)
     (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -282,39 +282,6 @@ function process_allocation_graph_edges!(
 end
 
 const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
-
-"""
-The source nodes must only have one allocation outneighbor and no allocation inneighbors.
-"""
-function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
-    (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
-
-    errors = false
-
-    for edge in edge_ids
-        (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            from_source_node = graph[id_source].type in allocation_source_nodetypes
-
-            if is_main_network(allocation_network_id)
-                if !from_source_node
-                    errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
-                end
-            else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
-
-                if !from_source_node && !from_main_network
-                    errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
-                end
-            end
-        end
-    end
-    return !errors
-end
 
 """
 Remove allocation user return flow edges that are upstream of the user itself.
@@ -846,7 +813,7 @@ function set_objective_priority!(
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
     (; graph, user, allocation) = p
-    (; demand, node_id) = user
+    (; demand, demand_itp, demand_from_timeseries, node_id) = user
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -878,7 +845,14 @@ function set_objective_priority!(
         end
 
         user_idx = findsorted(node_id, node_id_user)
-        d = demand[user_idx][priority_idx](t)
+
+        if demand_from_timeseries[user_idx]
+            d = demand_itp[user_idx][priority_idx](t)
+            set_user_demand!(user, node_id_user, priority_idx, d)
+        else
+            d = get_user_demand(user, node_id_user, priority_idx)
+        end
+
         demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
     end
@@ -932,7 +906,7 @@ function assign_allocations!(
             push!(record.allocation_network_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
             push!(record.priority, user.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx][priority_idx](t))
+            push!(record.demand, user.demand[user_idx])
             push!(record.allocated, allocated)
             # TODO: This is now the last abstraction before the allocation update,
             # should be the average abstraction since the last allocation solve

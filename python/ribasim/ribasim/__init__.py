@@ -1,7 +1,7 @@
-__version__ = "2024.02.0"
+__version__ = "2024.2.0"
 
 
-from ribasim import models, utils
+from ribasim import utils
 from ribasim.config import (
     Allocation,
     Basin,
@@ -42,7 +42,6 @@ __all__ = [
     "Logging",
     "ManningResistance",
     "Model",
-    "models",
     "Network",
     "Node",
     "NodeSchema",

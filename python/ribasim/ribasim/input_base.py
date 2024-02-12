@@ -281,7 +281,9 @@ class TableModel(FileModel, Generic[TableT]):
         with connect(path) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
-                df = pd.read_sql_query(query, connection, parse_dates=["time"])
+                df = pd.read_sql_query(
+                    query, connection, parse_dates={"time": {"format": "ISO8601"}}
+                )
             else:
                 df = None
 
@@ -312,23 +314,10 @@ class TableModel(FileModel, Generic[TableT]):
         return T
 
     @classmethod
-    def record(cls) -> type[PydanticBaseModel] | None:
-        """Retrieve Pydantic Record used in Pandera Schema."""
-        T = cls.tableschema()
-        if hasattr(T.Config, "dtype"):
-            # We always set a PydanticBaseModel dtype (see schemas.py)
-            return T.Config.dtype.type  # type: ignore
-        else:
-            return None
-
-    @classmethod
     def columns(cls) -> list[str]:
         """Retrieve column names."""
-        T = cls.record()
-        if T is not None:
-            return list(T.model_fields.keys())
-        else:
-            return []
+        T = cls.tableschema()
+        return list(T.to_schema().columns.keys())
 
     def __repr__(self) -> str:
         # Make sure not to return just "None", because it gets extremely confusing
@@ -353,15 +342,6 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
                 df = None
 
             return df
-
-    @classmethod
-    def columns(cls) -> list[str]:
-        """Retrieve column names"""
-        T = cls.tableschema()
-        if T is not None:
-            return list(T.to_schema().columns.keys())
-        else:
-            return []
 
     def _write_table(self, path: FilePath) -> None:
         """
