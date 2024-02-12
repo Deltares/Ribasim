@@ -174,9 +174,9 @@ class RibasimWidget(QWidget):
             config = maplayer.editFormConfig()
             # From QGIS 3.32 on we can use https://github.com/Deltares/Ribasim/commit/8a22fc0630f343069fd3c285ae46e9fde0c71a32
             config.setSuppress(
-                QgsEditFormConfig.FeatureFormSuppress.SuppressOn
+                QgsEditFormConfig.FeatureFormSuppress.SuppressOn  # type: ignore
                 if suppress
-                else QgsEditFormConfig.FeatureFormSuppress.SuppressDefault
+                else QgsEditFormConfig.FeatureFormSuppress.SuppressDefault  # type: ignore
             )
             maplayer.setEditFormConfig(config)
         if renderer is not None:
