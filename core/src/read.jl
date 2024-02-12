@@ -128,7 +128,7 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                control_mapping[(NodeID(nodetype, node_id), control_state_key)] =
+                control_mapping[(node_id, control_state_key)] =
                     NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
             end
         elseif node_id in time_node_ids
@@ -137,7 +137,7 @@ function parse_static_and_time(
             idx = findall(==(node_id), time_node_id_vec)
             time_subset = time[idx]
 
-            time_first_idx = searchsortedfirst(time_subset.node_id, node_id)
+            time_first_idx = searchsortedfirst(time_node_id_vec[idx], node_id)
 
             for parameter_name in parameter_names
                 # If the parameter is interpolatable, create an interpolation object
@@ -640,6 +640,8 @@ function User(db::DB, config::Config)::User
     static_node_ids, time_node_ids, node_ids, _, valid =
         static_and_time_node_ids(db, static, time, "User")
 
+    time_node_id_vec = NodeID.(NodeType.User, time.node_id)
+
     if !valid
         error("Problems encountered when parsing User static and time node IDs.")
     end
@@ -712,7 +714,7 @@ function User(db::DB, config::Config)::User
             end
             push!(demand_itp, demand_itp_node_id)
 
-            first_row_idx = searchsortedfirst(time_node_ids, node_id)
+            first_row_idx = searchsortedfirst(time_node_id_vec, node_id)
             first_row = time[first_row_idx]
             is_active = true
         else

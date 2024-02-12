@@ -54,10 +54,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" #1 from the static table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve #1 from the static table has repeated levels, this can not be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" #2 from the time table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
 end
 
 @testitem "Neighbor count validation" begin
@@ -134,10 +134,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Nodes of type Ribasim.FractionalFlow can have at most 1 flow outneighbor(s) (got 2 for node #5)."
+          "FractionalFlow #5 can have at most 1 flow outneighbor(s) (got 2)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.FractionalFlow can have at most 0 control outneighbor(s) (got 1 for node #5)."
+          "FractionalFlow #5 can have at most 0 control outneighbor(s) (got 1)."
 
     @test_throws "'n_neighbor_bounds_flow' not defined for Val{:foo}()." Ribasim.n_neighbor_bounds_flow(
         :foo,
