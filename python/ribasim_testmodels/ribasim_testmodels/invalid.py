@@ -137,7 +137,7 @@ def invalid_fractional_flow_model():
     )
 
     # Setup the edges:
-    # Invalid: Node #7 combines fractional flow outneighbors with other outneigbor types.
+    # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
     from_id = np.array([1, 7, 7, 3, 7, 4, 2], dtype=np.int64)
     to_id = np.array([7, 2, 3, 5, 4, 6, 8], dtype=np.int64)
     lines = node.geometry_from_connectivity(from_id, to_id)

@@ -10,7 +10,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         execute(db, "SELECT fid, type, allocation_network_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_id, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
+        "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int, Set{NodeID}}()
@@ -34,7 +34,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         graph_data = nothing,
     )
     for row in node_rows
-        node_id = NodeID(row.fid)
+        node_id = NodeID(row.type, row.fid)
         # Process allocation network ID
         if ismissing(row.allocation_network_id)
             allocation_network_id = 0
@@ -51,15 +51,23 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             flow_vertical_dict[node_id] = flow_vertical_counter
         end
     end
-    for (; fid, from_node_id, to_node_id, edge_type, allocation_network_id) in edge_rows
+    for (;
+        fid,
+        from_node_type,
+        from_node_id,
+        to_node_type,
+        to_node_id,
+        edge_type,
+        allocation_network_id,
+    ) in edge_rows
         try
             # hasfield does not work
             edge_type = getfield(EdgeType, Symbol(edge_type))
         catch
             error("Invalid edge type $edge_type.")
         end
-        id_src = NodeID(from_node_id)
-        id_dst = NodeID(to_node_id)
+        id_src = NodeID(from_node_type, from_node_id)
+        id_dst = NodeID(to_node_type, to_node_id)
         if ismissing(allocation_network_id)
             allocation_network_id = 0
         end

@@ -57,7 +57,7 @@ function NewNodeType(db::DB, config::Config)::NewNodeType
 
     # Unpack the fields of static as inputs for the NewNodeType constructor
     return NewNodeType(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.NewNodeType, parsed_parameters.node_id),
         parsed_parameters.some_property,
         parsed_parameters.control_mapping)
 end
