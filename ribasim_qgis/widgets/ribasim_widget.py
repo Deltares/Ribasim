@@ -12,9 +12,9 @@ from typing import Any, cast
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from qgis.core import (
-    Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
+    QgsEditFormConfig,
     QgsFeatureRenderer,
     QgsLayerTreeGroup,
     QgsMapLayer,
@@ -173,9 +173,9 @@ class RibasimWidget(QWidget):
         if suppress is not None:
             config = maplayer.editFormConfig()
             config.setSuppress(
-                Qgis.AttributeFormSuppression.On
+                QgsEditFormConfig.FeatureFormSuppress.SuppressOn
                 if suppress
-                else Qgis.AttributeFormSuppression.Default
+                else QgsEditFormConfig.FeatureFormSuppress.SuppressDefault
             )
             maplayer.setEditFormConfig(config)
         if renderer is not None:
