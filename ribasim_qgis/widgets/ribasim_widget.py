@@ -172,6 +172,7 @@ class RibasimWidget(QWidget):
         assert maplayer is not None
         if suppress is not None:
             config = maplayer.editFormConfig()
+            # From QGIS 3.32 on we can use https://github.com/Deltares/Ribasim/commit/8a22fc0630f343069fd3c285ae46e9fde0c71a32
             config.setSuppress(
                 QgsEditFormConfig.FeatureFormSuppress.SuppressOn
                 if suppress
