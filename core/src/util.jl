@@ -214,9 +214,25 @@ function get_scalar_interpolation(
     default_value::Float64 = 0.0,
 )::Tuple{LinearInterpolation, Bool}
     rows = searchsorted(time.node_id, node_id)
-    parameter = getfield.(time, param)[rows]
-    parameter = coalesce(parameter, default_value)
-    times = seconds_since.(time.time[rows], starttime)
+    values = getfield.(time, param)[rows]
+    return get_scalar_interpolation(
+        starttime,
+        t_end,
+        time.time[rows],
+        values,
+        default_value,
+    )
+end
+
+function get_scalar_interpolation(
+    starttime::DateTime,
+    t_end::Float64,
+    time::AbstractVector,
+    values::AbstractVector,
+    default_value::Float64 = 0.0,
+)::Tuple{LinearInterpolation, Bool}
+    parameter = coalesce(values, default_value)
+    times = seconds_since.(time, starttime)
     # Add extra timestep at start for constant extrapolation
     if times[1] > 0
         pushfirst!(times, 0.0)

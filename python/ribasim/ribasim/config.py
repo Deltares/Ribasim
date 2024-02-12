@@ -13,6 +13,7 @@ from ribasim.schemas import (
     BasinTimeSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
+    ExternalTimeSchema,
     FlowBoundaryStaticSchema,
     FlowBoundaryTimeSchema,
     FractionalFlowStaticSchema,
@@ -207,4 +208,11 @@ class FractionalFlow(NodeModel):
     static: TableModel[FractionalFlowStaticSchema] = Field(
         default_factory=TableModel[FractionalFlowStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
+    )
+
+
+class External(NodeModel):
+    time: TableModel[ExternalTimeSchema] = Field(
+        default_factory=TableModel[ExternalTimeSchema],
+        json_schema_extra={"sort_keys": ["time", "external"]},
     )

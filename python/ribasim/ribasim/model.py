@@ -20,6 +20,7 @@ from ribasim.config import (
     Allocation,
     Basin,
     DiscreteControl,
+    External,
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
@@ -182,6 +183,7 @@ class Model(FileModel):
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     pid_control: PidControl = Field(default_factory=PidControl)
     user: User = Field(default_factory=User)
+    external: External = Field(default_factory=External)
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":

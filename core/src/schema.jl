@@ -25,6 +25,7 @@
 @schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.user.static" UserStatic
 @schema "ribasim.user.time" UserTime
+@schema "ribasim.external.time" ExternalTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -100,6 +101,7 @@ end
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
     urban_runoff::Union{Missing, Float64}
+    concentration::Union{Missing, Float64}
 end
 
 @version BasinTimeV1 begin
@@ -110,6 +112,7 @@ end
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
     urban_runoff::Union{Missing, Float64}
+    concentration::Union{Missing, Float64}
 end
 
 @version BasinProfileV1 begin
@@ -249,4 +252,9 @@ end
     return_factor::Float64
     min_level::Float64
     priority::Int
+end
+
+@version ExternalTimeV1 begin
+    time::DateTime
+    external::Float64
 end

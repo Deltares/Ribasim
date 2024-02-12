@@ -120,7 +120,7 @@ function get_value(
     u::AbstractVector{Float64},
     t::Float64,
 )
-    (; basin, flow_boundary, level_boundary) = p
+    (; basin, flow_boundary, level_boundary, external) = p
 
     if variable == "level"
         hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
@@ -146,6 +146,19 @@ function get_value(
         end
 
         value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+
+    elseif variable == "concentration"
+        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
+
+        if hasindex_basin
+            value = basin.concentration[basin_idx](t + Δt)
+        else
+            error("Concentration condition node '$node_id' is not a basin.")
+        end
+
+    elseif variable == "external"
+        value = external.external(t + Δt)
+
     else
         error("Unsupported condition variable $variable.")
     end

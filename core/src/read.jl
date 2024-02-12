@@ -158,6 +158,7 @@ function parse_static_and_time(
                     else
                         # If the parameter is not interpolatable, get the instance in the first row
                         val = getfield(time_subset[time_first_idx], parameter_name)
+                        val = ismissing(val) ? defaults[parameter_name] : val
                     end
                 end
                 getfield(out, parameter_name)[node_idx] = val
@@ -510,6 +511,30 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
 
+    # TODO Parsing everything here is overkill
+    # as we only want a vector of interpolatables for concentration
+    time_interpolatables = [:concentration]
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Basin";
+        static,
+        time,
+        time_interpolatables,
+        defaults = (;
+            precipitation = 0.0,
+            potential_evaporation = 0.0,
+            drainage = 0.0,
+            infiltration = 0.0,
+            urban_runoff = 0.0,
+            concentration = 0.0,
+        ),
+    )
+    if !valid
+        error("Errors occurred when parsing Basin data.")
+    end
+    concentration = parsed_parameters.concentration
+
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
@@ -525,6 +550,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         area,
         level,
         storage,
+        concentration,
         time,
     )
 end
@@ -797,6 +823,21 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
+function External(db::DB, config::Config)::External
+    time = load_structvector(db, config, ExternalTimeV1)
+
+    if isempty(time)
+        push!(time, ExternalTimeV1(; time = config.starttime, external = NaN))
+    end
+    t_end = seconds_since(config.endtime, config.starttime)
+    val, is_valid =
+        get_scalar_interpolation(config.starttime, t_end, time.time, time.external, NaN)
+    if !is_valid
+        @error "The external time series has duplicate timestamps."
+    end
+    return External(val)
+end
+
 """
 Get the chunk sizes for DiffCache; differentiation w.r.t. u
 and t (the latter only if a Rosenbrock algorithm is used).
@@ -848,9 +889,9 @@ function Parameters(db::DB, config::Config)::Parameters
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
     user = User(db, config)
-
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
+    external = External(db, config)
 
     # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     for id in pid_control.node_id
@@ -883,6 +924,7 @@ function Parameters(db::DB, config::Config)::Parameters
         user,
         Dict{Int, Symbol}(),
         subgrid_level,
+        external,
     )
 
     if !valid_n_neighbors(p)

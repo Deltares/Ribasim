@@ -130,6 +130,7 @@ struct Basin{T, C} <: AbstractParameterNode
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
+    concentration::Vector{ScalarInterpolation}
     # data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
@@ -144,6 +145,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
+        concentration,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         is_valid = valid_profiles(node_id, level, area)
@@ -159,6 +161,7 @@ struct Basin{T, C} <: AbstractParameterNode
             area,
             level,
             storage,
+            concentration,
             time,
         )
     end
@@ -504,6 +507,14 @@ struct Subgrid
     level::Vector{Float64}
 end
 
+"""An external interpolated timeseries.
+
+Can store anything, and doesn't belong to a node.
+"""
+struct External
+    external::ScalarInterpolation
+end
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, C1, C2}
     starttime::DateTime
@@ -541,4 +552,5 @@ struct Parameters{T, C1, C2}
     user::User
     lookup::Dict{Int, Symbol}
     subgrid::Subgrid
+    external::External
 end

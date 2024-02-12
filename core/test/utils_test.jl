@@ -29,6 +29,7 @@ end
 @testitem "bottom" begin
     using Dictionaries: Indices
     using StructArrays: StructVector
+    using DataInterpolations
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -46,6 +47,7 @@ end
         area,
         level,
         storage,
+        [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
@@ -83,6 +85,7 @@ end
     using Dictionaries: Indices
     using StructArrays: StructVector
     using Logging
+    using DataInterpolations
 
     level = [
         0.0,
@@ -120,6 +123,7 @@ end
         [area],
         [level],
         [storage],
+        [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 

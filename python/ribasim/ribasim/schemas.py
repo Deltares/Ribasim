@@ -29,6 +29,7 @@ class BasinStaticSchema(_BaseSchema):
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class BasinSubgridSchema(_BaseSchema):
@@ -46,6 +47,7 @@ class BasinTimeSchema(_BaseSchema):
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
@@ -69,6 +71,11 @@ class EdgeSchema(_BaseSchema):
     to_node_id: Series[int] = pa.Field(nullable=False)
     edge_type: Series[str] = pa.Field(nullable=False)
     allocation_network_id: Series[int] = pa.Field(nullable=True)
+
+
+class ExternalTimeSchema(_BaseSchema):
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    external: Series[float] = pa.Field(nullable=False)
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):
