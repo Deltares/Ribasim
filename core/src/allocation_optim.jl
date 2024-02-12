@@ -448,7 +448,7 @@ function get_basin_demand(
     else
         level_min = allocation_level_control.min_level[allocation_level_control_idx](t)
         storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
-        return max(0.0, (storage_basin - storage_min) / Δt_allocation - influx)
+        return max(0.0, (storage_min - storage_basin) / Δt_allocation - influx)
     end
 end
 

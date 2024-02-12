@@ -575,11 +575,11 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) + get_basin_outflow(problem, node_id) <=
+        ]) + get_basin_inflow(problem, node_id) <=
         sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
-        ]) + get_basin_inflow(problem, node_id),
+        ]) + get_basin_outflow(problem, node_id),
         base_name = "flow_conservation",
     )
     return nothing
