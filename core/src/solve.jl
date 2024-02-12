@@ -315,17 +315,16 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
-    (; node_id, active, resistance) = linear_resistance
+    (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for (i, id) in enumerate(node_id)
         basin_a_id = inflow_id(graph, id)
         basin_b_id = outflow_id(graph, id)
 
         if active[i]
-            q =
-                (
-                    get_level(p, basin_a_id, t; storage) -
-                    get_level(p, basin_b_id, t; storage)
-                ) / resistance[i]
+            h_a = get_level(p, basin_a_id, t; storage)
+            h_b = get_level(p, basin_b_id, t; storage)
+            q_unlimited = (h_a - h_b) / resistance[i]
+            q = clamp(q_unlimited, -max_flow_rate[i], max_flow_rate[i])
 
             # add reduction_factor on highest level
             if q > 0

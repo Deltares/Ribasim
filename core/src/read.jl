@@ -226,7 +226,9 @@ end
 
 function LinearResistance(db::DB, config::Config)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, "LinearResistance"; static)
+    defaults = (; max_flow_rate = Inf, active = true)
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, "LinearResistance"; static, defaults)
 
     if !valid
         error(
@@ -238,6 +240,7 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
         NodeID.(parsed_parameters.node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
+        parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
     )
 end

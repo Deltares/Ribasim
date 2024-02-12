@@ -120,6 +120,7 @@ class LinearResistanceStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     resistance: Series[float] = pa.Field(nullable=False)
+    max_flow_rate: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 
