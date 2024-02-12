@@ -209,11 +209,12 @@ function get_scalar_interpolation(
     starttime::DateTime,
     t_end::Float64,
     time::AbstractVector,
-    node_id::Int,
+    node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
 )::Tuple{LinearInterpolation, Bool}
-    rows = searchsorted(time.node_id, node_id)
+    nodetype = node_id.type
+    rows = searchsorted(NodeID.(nodetype, time.node_id), node_id)
     parameter = getfield.(time, param)[rows]
     parameter = coalesce(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
@@ -271,10 +272,11 @@ From a table with columns node_id, flow_rate (Q) and level (h),
 create a LinearInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(
-    node_id::Int,
+    node_id::NodeID,
     table::StructVector,
 )::Tuple{LinearInterpolation, Bool}
-    rowrange = findlastgroup(node_id, table.node_id)
+    nodetype = node_id.type
+    rowrange = findlastgroup(node_id, NodeID.(nodetype, table.node_id))
     @assert !isempty(rowrange) "timeseries starts after model start time"
     return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
 end

@@ -32,7 +32,7 @@ function parse_static_and_time(
     # of the current type
     vals_out = []
 
-    node_ids = get_ids(db, nodetype)
+    node_ids = NodeID.(nodetype, get_ids(db, nodetype))
     node_names = get_names(db, nodetype)
     n_nodes = length(node_ids)
 
@@ -75,17 +75,21 @@ function parse_static_and_time(
     end
 
     # Get node IDs of static nodes if the static table exists
-    static_node_ids = if static === nothing
-        Set{Int}()
+    if static === nothing
+        static_node_id_vec = NodeID[]
+        static_node_ids = Set{NodeID}()
     else
-        Set(static.node_id)
+        static_node_id_vec = NodeID.(nodetype, static.node_id)
+        static_node_ids = Set(static_node_id_vec)
     end
 
     # Get node IDs of transient nodes if the time table exists
     time_node_ids = if time === nothing
-        Set{Int}()
+        time_node_id_vec = NodeID[]
+        time_node_ids = Set{NodeID}()
     else
-        Set(time.node_id)
+        time_node_id_vec = NodeID.(nodetype, time.node_id)
+        time_node_ids = Set(time_node_id_vec)
     end
 
     errors = false
@@ -95,7 +99,7 @@ function parse_static_and_time(
     for (node_idx, (node_id, node_name)) in enumerate(zip(node_ids, node_names))
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
-            rows = searchsorted(static.node_id, node_id)
+            rows = searchsorted(static_node_id_vec, node_id)
             # The rows of the static table that have the current node_id
             static_id = view(static, rows)
             # Here it is assumed that the parameters of a node are given by a single
@@ -130,7 +134,7 @@ function parse_static_and_time(
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
             # this fits our access pattern better, so we can use views
-            idx = findall(==(node_id), time.node_id)
+            idx = findall(==(node_id), time_node_id_vec)
             time_subset = time[idx]
 
             time_first_idx = searchsortedfirst(time_subset.node_id, node_id)
@@ -175,10 +179,10 @@ function static_and_time_node_ids(
     static::StructVector,
     time::StructVector,
     node_type::String,
-)::Tuple{Set{Int}, Set{Int}, Vector{Int}, Vector{String}, Bool}
-    static_node_ids = Set(static.node_id)
-    time_node_ids = Set(time.node_id)
-    node_ids = get_ids(db, node_type)
+)::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Vector{String}, Bool}
+    static_node_ids = Set(NodeID.(node_type, static.node_id))
+    time_node_ids = Set(NodeID.(node_type, time.node_id))
+    node_ids = NodeID.(node_type, get_ids(db, node_type))
     node_names = get_names(db, node_type)
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
@@ -269,7 +273,10 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             # If it has a control_state add it to control_mapping.
             # The last rating curve forms the initial condition and activity.
             source = "static"
-            rows = searchsorted(static.node_id, node_id)
+            rows = searchsorted(
+                NodeID.(NodeType.TabulatedRatingCurve, static.node_id),
+                node_id,
+            )
             static_id = view(static, rows)
             local is_active, interpolation
             # coalesce control_state to nothing to avoid boolean groupby logic on missing
@@ -296,11 +303,11 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             push!(interpolations, interpolation)
             push!(active, true)
         else
-            @error "TabulatedRatingCurve node $(repr(node_name)) #$node_id data not in any table."
+            @error "$node_id data not in any table."
             errors = true
         end
         if !is_valid
-            @error "A Q(h) relationship for TabulatedRatingCurve $(repr(node_name)) #$node_id from the $source table has repeated levels, this can not be interpolated."
+            @error "A Q(h) relationship for $node_id from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end
@@ -309,13 +316,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    return TabulatedRatingCurve(
-        NodeID.(NodeType.TabulatedRatingCurve, node_ids),
-        active,
-        interpolations,
-        time,
-        control_mapping,
-    )
+    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 
 function ManningResistance(db::DB, config::Config)::ManningResistance
@@ -378,11 +379,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         error("Errors occurred when parsing LevelBoundary data.")
     end
 
-    return LevelBoundary(
-        NodeID.(NodeType.LevelBoundary, node_ids),
-        parsed_parameters.active,
-        parsed_parameters.level,
-    )
+    return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
 end
 
 function FlowBoundary(db::DB, config::Config)::FlowBoundary
@@ -419,11 +416,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(
-        NodeID.(NodeType.FlowBoundary, node_ids),
-        parsed_parameters.active,
-        parsed_parameters.flow_rate,
-    )
+    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
 end
 
 function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
@@ -630,7 +623,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     end
 
     return PidControl(
-        NodeID.(NodeType.PidControl, node_ids),
+        node_ids,
         BitVector(parsed_parameters.active),
         NodeID.(parsed_parameters.listen_node_type, parsed_parameters.listen_node_id),
         parsed_parameters.target,
@@ -680,7 +673,7 @@ function User(db::DB, config::Config)::User
 
         if node_id in static_node_ids
             push!(demand_from_timeseries, false)
-            rows = searchsorted(static.node_id, node_id)
+            rows = searchsorted(NodeID.(NodeType.User, static.node_id), node_id)
             static_id = view(static, rows)
             for p in priorities
                 idx = findsorted(static_id.priority, p)
@@ -719,7 +712,7 @@ function User(db::DB, config::Config)::User
             end
             push!(demand_itp, demand_itp_node_id)
 
-            first_row_idx = searchsortedfirst(time.node_id, node_id)
+            first_row_idx = searchsortedfirst(time_node_ids, node_id)
             first_row = time[first_row_idx]
             is_active = true
         else
@@ -751,8 +744,6 @@ function User(db::DB, config::Config)::User
         allocated = Float64[],
         abstracted = Float64[],
     )
-
-    node_ids = NodeID.(NodeType.User, node_ids)
 
     return User(
         node_ids,

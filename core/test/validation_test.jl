@@ -19,12 +19,11 @@
           "Basin #1 has repeated levels, this cannot be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(:Basin, 1)
+          "Basin #1 profile cannot start with area <= 0 at the bottom for numerical reasons."
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1."
+          "Basin #1 profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
 
     itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid

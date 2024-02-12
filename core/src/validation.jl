@@ -172,21 +172,20 @@ function valid_profiles(
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
             errors = true
-            @error "Basin $id has repeated levels, this cannot be interpolated."
+            @error "$id has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
             errors = true
             @error(
-                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons.",
-                node_id = id,
+                "$id profile cannot start with area <= 0 at the bottom for numerical reasons.",
                 area = areas[1],
             )
         end
 
         if areas[end] < areas[end - 1]
             errors = true
-            @error "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id."
+            @error "$id profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
         end
     end
     return !errors
