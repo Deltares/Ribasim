@@ -319,3 +319,11 @@ end
     @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
     @test user.allocated[7] ≈ [0.001, 0.0, 0.0]
 end
+
+@testitem "Allocation level control" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_target/ribasim.toml")
+    @test ispath(toml_path)
+
+    Ribasim.run(toml_path)
+end

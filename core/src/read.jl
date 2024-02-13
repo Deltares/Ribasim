@@ -779,7 +779,7 @@ function AllocationTarget(db::DB, config::Config)::AllocationTarget
     end
 
     return AllocationTarget(
-        NodeID.(parsed_parameters.node_id),
+        NodeID.(NodeType.AllocationTarget, parsed_parameters.node_id),
         parsed_parameters.min_level,
         parsed_parameters.max_level,
         parsed_parameters.priority,
