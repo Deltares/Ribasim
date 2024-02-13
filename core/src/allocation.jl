@@ -495,14 +495,14 @@ Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
 
 Constraint:
-sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
+sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
 """
 function add_constraints_flow_conservation!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph, allocation) = p
+    (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
@@ -518,7 +518,7 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) <= sum([
+        ]) == sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
@@ -824,14 +824,11 @@ function set_objective_priority!(
         ex = sum(problem[:F_abs])
     end
 
-    demand_max = 0.0
-
     # Terms for subnetworks as users
     if is_main_network(allocation_network_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
-                demand_max = max(demand_max, d)
                 add_user_term!(ex, connection, objective_type, d, allocation_model)
             end
         end
@@ -853,23 +850,7 @@ function set_objective_priority!(
             d = get_user_demand(user, node_id_user, priority_idx)
         end
 
-        demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
-    end
-
-    # Add flow cost
-    if objective_type == :linear_absolute
-        cost_per_flow = 0.5 / length(F)
-        for flow in F
-            JuMP.add_to_expression!(ex, cost_per_flow * flow)
-        end
-    elseif objective_type == :linear_relative
-        if demand_max > 0.0
-            cost_per_flow = 0.5 / (demand_max * length(F))
-            for flow in F
-                JuMP.add_to_expression!(ex, cost_per_flow * flow)
-            end
-        end
     end
 
     new_objective = JuMP.@expression(problem, ex)
@@ -1128,7 +1109,7 @@ function allocate!(
         @debug JuMP.solution_summary(problem)
         if JuMP.termination_status(problem) !== JuMP.OPTIMAL
             (; allocation_network_id) = allocation_model
-            priority = priorities[priority_index]
+            priority = priorities[priority_idx]
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )
