@@ -1,14 +1,35 @@
+# EdgeType.flow and NodeType.FlowBoundary
+@enumx EdgeType flow control none
+@eval @enumx NodeType $(config.nodetypes...)
+
+# Support creating a NodeType enum instance from a symbol or string
+function NodeType.T(s::Symbol)::NodeType.T
+    symbol_map = EnumX.symbol_map(NodeType.T)
+    for (sym, val) in symbol_map
+        sym == s && return NodeType.T(val)
+    end
+    throw(ArgumentError("Invalid value for NodeType: $s"))
+end
+
+NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
+
 struct NodeID
+    type::NodeType.T
     value::Int
 end
 
+NodeID(type::Symbol, value::Int) = NodeID(NodeType.T(type), value)
+NodeID(type::AbstractString, value::Int) = NodeID(NodeType.T(type), value)
+
 Base.Int(id::NodeID) = id.value
-Base.convert(::Type{NodeID}, value::Int) = NodeID(value)
 Base.convert(::Type{Int}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
-Base.show(io::IO, id::NodeID) = print(io, '#', Int(id))
+Base.show(io::IO, id::NodeID) = print(io, id.type, " #", Int(id))
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
+    if id_1.type != id_2.type
+        error("Cannot compare NodeIDs of different types")
+    end
     return Int(id_1) < Int(id_2)
 end
 
@@ -64,8 +85,6 @@ struct Allocation
         collect_demands::BitVector,
     }
 end
-
-@enumx EdgeType flow control none
 
 """
 Type for storing metadata of nodes in the graph
@@ -319,7 +338,7 @@ struct Pump{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Pump)
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
                 active,
@@ -364,7 +383,7 @@ struct Outlet{T} <: AbstractParameterNode
         control_mapping,
         is_pid_controlled,
     ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping, :Outlet)
+        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
                 active,

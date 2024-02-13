@@ -65,6 +65,7 @@ class BasinTimeSchema(_BaseSchema):
 
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
+    listen_feature_type: Series[str] = pa.Field(nullable=True)
     listen_feature_id: Series[int] = pa.Field(nullable=False)
     variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
@@ -75,15 +76,6 @@ class DiscreteControlLogicSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     truth_state: Series[str] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=False)
-
-
-class EdgeSchema(_BaseSchema):
-    fid: Series[int] = pa.Field(nullable=False)
-    name: Series[str] = pa.Field(nullable=False)
-    from_node_id: Series[int] = pa.Field(nullable=False)
-    to_node_id: Series[int] = pa.Field(nullable=False)
-    edge_type: Series[str] = pa.Field(nullable=False)
-    allocation_network_id: Series[int] = pa.Field(nullable=True)
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):
@@ -134,13 +126,6 @@ class ManningResistanceStaticSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=True)
 
 
-class NodeSchema(_BaseSchema):
-    fid: Series[int] = pa.Field(nullable=False)
-    name: Series[str] = pa.Field(nullable=False)
-    type: Series[str] = pa.Field(nullable=False)
-    allocation_network_id: Series[int] = pa.Field(nullable=True)
-
-
 class OutletStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -154,6 +139,7 @@ class OutletStaticSchema(_BaseSchema):
 class PidControlStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
+    listen_node_type: Series[str] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
@@ -164,6 +150,7 @@ class PidControlStaticSchema(_BaseSchema):
 
 class PidControlTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
+    listen_node_type: Series[str] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)

@@ -1,7 +1,5 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-@schema "ribasim.node" Node
-@schema "ribasim.edge" Edge
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.basin.static" BasinStatic
@@ -58,22 +56,6 @@ function nodetype(
     end
 
     return Symbol(node[begin:length(n)]), k
-end
-
-@version NodeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
-    allocation_network_id::Union{Missing, Int}
-end
-
-@version EdgeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    from_node_id::Int
-    to_node_id::Int
-    edge_type::String
-    allocation_network_id::Union{Missing, Int}
 end
 
 @version PumpStaticV1 begin
@@ -201,6 +183,7 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int
+    listen_feature_type::Union{Missing, String}
     listen_feature_id::Int
     variable::String
     greater_than::Float64
@@ -216,6 +199,7 @@ end
 @version PidControlStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
+    listen_node_type::Union{Missing, String}
     listen_node_id::Int
     target::Float64
     proportional::Float64
@@ -226,6 +210,7 @@ end
 
 @version PidControlTimeV1 begin
     node_id::Int
+    listen_node_type::Union{Missing, String}
     listen_node_id::Int
     time::DateTime
     target::Float64

@@ -102,8 +102,6 @@ sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{NodeV1}) = sort_by_fid
-sort_by_function(table::StructVector{EdgeV1}) = sort_by_fid
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
@@ -178,21 +176,20 @@ function valid_profiles(
     for (id, levels, areas) in zip(node_id, level, area)
         if !allunique(levels)
             errors = true
-            @error "Basin $id has repeated levels, this cannot be interpolated."
+            @error "$id has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
             errors = true
             @error(
-                "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons.",
-                node_id = id,
+                "$id profile cannot start with area <= 0 at the bottom for numerical reasons.",
                 area = areas[1],
             )
         end
 
         if areas[end] < areas[end - 1]
             errors = true
-            @error "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node $id."
+            @error "$id profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
         end
     end
     return !errors
@@ -205,7 +202,6 @@ function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector,
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
-    node_type::Symbol,
 )::Bool
     errors = false
 
@@ -221,7 +217,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for control state '$control_state' of $id_controlled."
+            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
         end
     end
 
@@ -231,7 +227,7 @@ function valid_flow_rates(
         end
         if flow_rate_ < 0.0
             errors = true
-            @error "$node_type flow rates must be non-negative, found $flow_rate_ for static $id."
+            @error "$id flow rates must be non-negative, found $flow_rate_."
         end
     end
 
@@ -250,7 +246,7 @@ function valid_pid_connectivity(
     for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
         has_index, _ = id_index(basin_node_id, listen_id)
         if !has_index
-            @error "Listen node $listen_id of PidControl node $id is not a Basin"
+            @error "Listen node $listen_id of $id is not a Basin"
             errors = true
         end
 
@@ -259,7 +255,7 @@ function valid_pid_connectivity(
         if controlled_id in pump_node_id
             pump_intake_id = inflow_id(graph, controlled_id)
             if pump_intake_id != listen_id
-                @error "Listen node $listen_id of PidControl node $id is not upstream of controlled pump $controlled_id"
+                @error "Listen node $listen_id of $id is not upstream of controlled $controlled_id"
                 errors = true
             end
         else
@@ -300,7 +296,7 @@ function valid_fractional_flow(
         if src_outneighbor_ids ⊈ node_id_set
             errors = true
             @error(
-                "Node $src_id combines fractional flow outneighbors with other outneigbor types."
+                "$src_id combines fractional flow outneighbors with other outneigbor types."
             )
         end
 
@@ -357,17 +353,17 @@ function valid_subgrid(
 
     if !(node_id in keys(node_to_basin))
         errors = true
-        @error "The node_id of the Basin / subgrid_level does not refer to a basin." node_id subgrid_id
+        @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
     end
 
     if !allunique(basin_level)
         errors = true
-        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
+        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
     end
 
     if !allunique(subgrid_level)
         errors = true
-        @error "Basin / subgrid_level subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
+        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
     end
 
     return !errors
@@ -385,7 +381,7 @@ function valid_demand(
     for (col, id) in zip(demand_itp, node_id)
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
-                @error "Demand of user node $id with priority $p_itp should be non-negative"
+                @error "Demand of $id with priority $p_itp should be non-negative"
                 errors = true
             end
         end
@@ -448,22 +444,22 @@ function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
             n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "Nodes of type $node_type must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                @error "$id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "Nodes of type $node_type can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors for node $id)."
+                @error "$id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "Nodes of type $node_type must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                @error "$id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "Nodes of type $node_type can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors for node $id)."
+                @error "$id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end
@@ -525,7 +521,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "DiscreteControl node $id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
         end
 
         # Check whether these control states are defined for the
@@ -552,7 +548,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
                 node_type = typeof(node).name.name
-                @error "These control states from DiscreteControl node $id are not defined for controlled $node_type $id_outneighbor: $undefined_list."
+                @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
             end
         end

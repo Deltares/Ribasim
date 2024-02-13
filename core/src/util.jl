@@ -35,7 +35,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 
     if level < bottom
         node_id = basin.node_id.values[state_idx]
-        @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
+        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
         return NaN
     end
 
@@ -181,15 +181,8 @@ end
 For an element `id` and a vector of elements `ids`, get the range of indices of the last
 consecutive block of `id`.
 Returns the empty range `1:0` if `id` is not in `ids`.
-
-```jldoctest
-#                         1 2 3 4 5 6 7 8 9
-Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
-# output
-6:8
-```
 """
-function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
+function findlastgroup(id::NodeID, ids::AbstractVector{NodeID})::UnitRange{Int}
     idx_block_end = findlast(==(id), ids)
     if idx_block_end === nothing
         return 1:0
@@ -209,11 +202,12 @@ function get_scalar_interpolation(
     starttime::DateTime,
     t_end::Float64,
     time::AbstractVector,
-    node_id::Int,
+    node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
 )::Tuple{LinearInterpolation, Bool}
-    rows = searchsorted(time.node_id, node_id)
+    nodetype = node_id.type
+    rows = searchsorted(NodeID.(nodetype, time.node_id), node_id)
     parameter = getfield.(time, param)[rows]
     parameter = coalesce(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
@@ -271,10 +265,11 @@ From a table with columns node_id, flow_rate (Q) and level (h),
 create a LinearInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(
-    node_id::Int,
+    node_id::NodeID,
     table::StructVector,
 )::Tuple{LinearInterpolation, Bool}
-    rowrange = findlastgroup(node_id, table.node_id)
+    nodetype = node_id.type
+    rowrange = findlastgroup(node_id, NodeID.(nodetype, table.node_id))
     @assert !isempty(rowrange) "timeseries starts after model start time"
     return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
 end
@@ -383,17 +378,15 @@ function get_level(
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-    hasindex, i = id_index(basin.node_id, node_id)
-    current_level = get_tmp(basin.current_level, storage)
-    return if hasindex
+   if node_id.type == NodeType.Basin
+        _, i = id_index(basin.node_id, node_id)
+        current_level = get_tmp(basin.current_level, storage)
         current_level[i]
-    else
+    elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
-        if i === nothing
-            nothing
-        else
-            level_boundary.level[i](t)
-        end
+        level_boundary.level[i](t)
+    else
+        nothing
     end
 end
 
@@ -479,7 +472,7 @@ function expand_logic_mapping(
             if haskey(logic_mapping_expanded, new_key)
                 control_state_existing = logic_mapping_expanded[new_key]
                 control_states = sort([control_state, control_state_existing])
-                msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_states."
+                msg = "Multiple control states found for $node_id for truth state `$truth_state_new`: $control_states."
                 @assert control_state_existing == control_state msg
             else
                 logic_mapping_expanded[new_key] = control_state

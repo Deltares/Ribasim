@@ -311,6 +311,28 @@ class Model(FileModel):
         self.validate_model_node_field_ids()
         self.validate_model_node_ids()
 
+    def _add_node_type(self, df: pd.DataFrame | None, id_col: str, type_col: str):
+        node = self.network.node.df
+        assert node is not None
+        if df is not None:
+            df[type_col] = node.loc[df[id_col], "type"].to_numpy()
+
+    def _add_node_types(self):
+        """Add the from/to node types to tables that reference external node IDs.
+
+        Only valid with globally unique node IDs, which is assured by using the node index.
+        """
+        self._add_node_type(self.network.edge.df, "from_node_id", "from_node_type")
+        self._add_node_type(self.network.edge.df, "to_node_id", "to_node_type")
+        id_col, type_col = "listen_node_id", "listen_node_type"
+        self._add_node_type(self.pid_control.static.df, id_col, type_col)
+        self._add_node_type(self.pid_control.time.df, id_col, type_col)
+        self._add_node_type(
+            self.discrete_control.condition.df,
+            "listen_feature_id",
+            "listen_feature_type",
+        )
+
     @classmethod
     def read(cls, filepath: FilePath) -> "Model":
         """Read model from TOML file."""
@@ -327,6 +349,7 @@ class Model(FileModel):
         filepath: FilePath ending in .toml
         """
         self.validate_model()
+        self._add_node_types()
         filepath = Path(filepath)
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
