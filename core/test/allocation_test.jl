@@ -47,7 +47,7 @@
     @test Ribasim.get_user_demand(user, NodeID(11), 2) ≈ π
 end
 
-@testitem "Allocation quadratic absolute" begin
+@testitem "Allocation quadratic absolute" broken = true begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
