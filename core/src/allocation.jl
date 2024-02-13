@@ -494,14 +494,14 @@ Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
 
 Constraint:
-sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
+sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
 """
 function add_constraints_flow_conservation!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph, allocation) = p
+    (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
@@ -517,7 +517,7 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) <= sum([
+        ]) == sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
