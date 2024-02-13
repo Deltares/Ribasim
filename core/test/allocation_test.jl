@@ -47,7 +47,7 @@
     @test Ribasim.get_user_demand(user, NodeID(:User, 11), 2) ≈ π
 end
 
-@testitem "Allocation quadratic absolute" skip = true begin
+@testitem "Allocation objective: quadratic absolute" skip = true begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -74,7 +74,7 @@ end
     ) in keys(objective.terms) # F[4,6]^2 term
 end
 
-@testitem "Allocation quadratic relative" begin
+@testitem "Allocation objective: quadratic relative" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -102,7 +102,7 @@ end
     ) in keys(objective.terms) # F[4,6]^2 term
 end
 
-@testitem "Allocation linear absolute" begin
+@testitem "Allocation objective: linear absolute" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -126,7 +126,7 @@ end
     @test objective.terms[F_abs[NodeID(:User, 6)]] == 1.0
 end
 
-@testitem "Allocation linear relative" begin
+@testitem "Allocation objective: linear relative" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
