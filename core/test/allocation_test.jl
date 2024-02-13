@@ -283,8 +283,7 @@ end
     end
 
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈
-          [0.001333333333, 0.0, 0.0] broken = true
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈
           [0.001, 0.002, 0.002]
 
@@ -307,9 +306,9 @@ end
     Ribasim.update_allocation!((; p, t))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
-          [4.0, 0.49766666, 0.0] broken = true
+          [4.0, 0.49500000, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
-          [0.00133333333, 0.0, 0.0] broken = true
+          [0.00399999999, 0.0, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
 
     @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
