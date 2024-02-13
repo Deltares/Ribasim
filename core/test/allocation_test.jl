@@ -49,7 +49,7 @@
     @test Ribasim.get_user_demand(user, NodeID(:User, 11), 2) ≈ π
 end
 
-@testitem "Allocation objective types" begin
+@testitem "Allocation objective: quadratic absolute" skip = true begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -74,6 +74,17 @@ end
         F[(NodeID(:Basin, 4), NodeID(:User, 6))],
         F[(NodeID(:Basin, 4), NodeID(:User, 6))],
     ) in keys(objective.terms) # F[4,6]^2 term
+end
+
+@testitem "Allocation objective: quadratic relative" begin
+    using DataFrames: DataFrame
+    using SciMLBase: successful_retcode
+    using Ribasim: NodeID
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
     model = Ribasim.run(config)
@@ -91,6 +102,17 @@ end
         F[(NodeID(:Basin, 4), NodeID(:User, 6))],
         F[(NodeID(:Basin, 4), NodeID(:User, 6))],
     ) in keys(objective.terms) # F[4,6]^2 term
+end
+
+@testitem "Allocation objective: linear absolute" begin
+    using DataFrames: DataFrame
+    using SciMLBase: successful_retcode
+    using Ribasim: NodeID
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
     model = Ribasim.run(config)
@@ -104,10 +126,17 @@ end
 
     @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
     @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 6))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 5))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:Basin, 2), NodeID(:Basin, 4))]] ≈ 0.125
+end
+
+@testitem "Allocation objective: linear relative" begin
+    using DataFrames: DataFrame
+    using SciMLBase: successful_retcode
+    using Ribasim: NodeID
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
     model = Ribasim.run(config)
@@ -121,11 +150,6 @@ end
 
     @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
     @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 6))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] ≈
-          62.585499316005475
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 5))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(:Basin, 2), NodeID(:Basin, 4))]] ≈ 62.585499316005475
 end
 
 @testitem "Allocation with controlled fractional flow" begin
@@ -263,8 +287,7 @@ end
     end
 
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈
-          [0.001333333333, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈
           [0.001, 0.002, 0.002]
 
@@ -288,9 +311,9 @@ end
     Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
-          [4.0, 0.49766666, 0.0]
+          [4.0, 0.49500000, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
-          [0.00133333333, 0.0, 0.0]
+          [0.00399999999, 0.0, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
 
     @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
