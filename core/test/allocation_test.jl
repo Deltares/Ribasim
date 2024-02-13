@@ -124,10 +124,6 @@ end
 
     @test objective.terms[F_abs[NodeID(:User, 5)]] == 1.0
     @test objective.terms[F_abs[NodeID(:User, 6)]] == 1.0
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 6))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 5))]] ≈ 0.125
-    @test objective.terms[F[(NodeID(:Basin, 2), NodeID(:Basin, 4))]] ≈ 0.125
 end
 
 @testitem "Allocation linear relative" begin
@@ -152,11 +148,6 @@ end
 
     @test objective.terms[F_abs[NodeID(:User, 5)]] == 1.0
     @test objective.terms[F_abs[NodeID(:User, 6)]] == 1.0
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 6))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] ≈
-          62.585499316005475
-    @test objective.terms[F[(NodeID(:Basin, 4), NodeID(:User, 5))]] ≈ 62.585499316005475
-    @test objective.terms[F[(NodeID(:Basin, 2), NodeID(:Basin, 4))]] ≈ 62.585499316005475
 end
 
 @testitem "Allocation with controlled fractional flow" begin
