@@ -1108,7 +1108,7 @@ function allocate!(
         @debug JuMP.solution_summary(problem)
         if JuMP.termination_status(problem) !== JuMP.OPTIMAL
             (; allocation_network_id) = allocation_model
-            priority = priorities[priority_index]
+            priority = priorities[priority_idx]
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )
