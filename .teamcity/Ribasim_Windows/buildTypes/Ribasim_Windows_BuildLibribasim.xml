@@ -13,8 +13,8 @@
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[pixi run install-without-pre-commit
-pixi --version]]></param>
+          <param name="script.content"><![CDATA[pixi --version
+pixi run install-without-pre-commit]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
