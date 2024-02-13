@@ -47,7 +47,7 @@
     @test Ribasim.get_user_demand(user, NodeID(:User, 11), 2) ≈ π
 end
 
-@testitem "Allocation quadratic absolute" broken = true begin
+@testitem "Allocation quadratic absolute" skip = true begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -59,10 +59,10 @@ end
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
     model = Ribasim.run(config)
-    @test successful_retcode(model) skip = true
+    @test successful_retcode(model)
     problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
-    @test objective isa JuMP.QuadExpr skip = true # Quadratic expression
+    @test objective isa JuMP.QuadExpr # Quadratic expression
     F = problem[:F]
     @test JuMP.UnorderedPair{JuMP.VariableRef}(
         F[(NodeID(:Basin, 4), NodeID(:User, 5))],
