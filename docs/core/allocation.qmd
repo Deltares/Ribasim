@@ -230,6 +230,7 @@ The following is an example of an optimization problem for the example shown [he
 ```{julia}
 # | code-fold: true
 using Ribasim
+using Ribasim: NodeID
 using SQLite
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
@@ -239,7 +240,7 @@ allocation_model = p.allocation.allocation_models[1]
 t = 0.0
 priority_idx = 1
 
-Ribasim.set_flow!(p.graph, Ribasim.NodeID(1), Ribasim.NodeID(2), 1.0)
+Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 1.0)
 
 Ribasim.adjust_source_capacities!(allocation_model, p, priority_idx)
 Ribasim.adjust_edge_capacities!(allocation_model, p, priority_idx)
