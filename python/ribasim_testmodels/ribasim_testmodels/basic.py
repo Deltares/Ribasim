@@ -276,8 +276,8 @@ def basic_transient_model() -> ribasim.Model:
             "level": 1.4,
         }
     )
-    model.basin.time = forcing
-    model.basin.state = state
+    model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
+    model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
 
     return model
 
