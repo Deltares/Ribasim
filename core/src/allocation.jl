@@ -32,8 +32,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         use_node = false
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
-        node_type = graph[node_id].type
-        if node_type in [:user, :basin, :terminal]
+        if node_id.type in [NodeType.User, NodeType.Basin, NodeType.Terminal]
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
@@ -244,8 +243,7 @@ function process_allocation_graph_edges!(
         # edge are now nodes that have an equivalent in the allocation graph,
         # these do not constrain the composite edge capacity
         for (node_id_1, node_id_2, node_id_3) in IterTools.partition(edge_composite, 3, 1)
-            node_type = graph[node_id_2].type
-            node = getfield(p, node_type)
+            node = getfield(p, graph[node_id_2].type)
 
             # Find flow constraints
             if is_flow_constraining(node)
@@ -281,7 +279,8 @@ function process_allocation_graph_edges!(
     return capacity
 end
 
-const allocation_source_nodetypes = Set{Symbol}([:level_boundary, :flow_boundary])
+const allocation_source_nodetypes =
+    Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
 
 """
 Remove allocation user return flow edges that are upstream of the user itself.
@@ -290,7 +289,7 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
-    node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
 
     for node_id_user in node_ids_user
         node_id_return_flow = only(outflow_ids_allocation(graph, node_id_user))
@@ -384,7 +383,7 @@ function add_variables_absolute_value!(
     (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+        node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
 
         # For the main network, connections to subnetworks are treated as users
         if is_main_network(allocation_network_id)
@@ -495,18 +494,18 @@ Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
 
 Constraint:
-sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
+sum(flows out of node node) <= flows into node + flow from storage and vertical fluxes
 """
 function add_constraints_flow_conservation!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph) = p
+    (; graph, allocation) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
-        [node_id for node_id in node_ids if graph[node_id].type == :basin]
+        [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     for edge in main_network_source_edges
         push!(node_ids_conservation, edge[2])
@@ -518,7 +517,7 @@ function add_constraints_flow_conservation!(
         sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) == sum([
+        ]) <= sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
@@ -544,8 +543,8 @@ function add_constraints_user_returnflow!(
 
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_user_with_returnflow = [
-        node_id for node_id in node_ids if
-        graph[node_id].type == :user && !isempty(outflow_ids_allocation(graph, node_id))
+        node_id for node_id in node_ids if node_id.type == NodeType.User &&
+        !isempty(outflow_ids_allocation(graph, node_id))
     ]
     problem[:return_flow] = JuMP.@constraint(
         problem,
@@ -576,7 +575,7 @@ function add_constraints_absolute_value!(
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if graph[node_id].type == :user]
+        node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
 
         # For the main network, connections to subnetworks are treated as users
         if is_main_network(allocation_network_id)
@@ -655,12 +654,12 @@ function add_constraints_fractional_flow!(
     inflows = Dict{NodeID, JuMP.AffExpr}()
     for node_id in node_ids
         for outflow_id_ in outflow_ids(graph, node_id)
-            if graph[outflow_id_].type == :fractional_flow
+            if outflow_id_.type == NodeType.FractionalFlow
                 # The fractional flow nodes themselves are not represented in
                 # the allocation graph
                 dst_id = outflow_id(graph, outflow_id_)
                 # For now only consider fractional flow nodes which end in a basin
-                if haskey(graph, node_id, dst_id) && graph[dst_id].type == :basin
+                if haskey(graph, node_id, dst_id) && dst_id.type == NodeType.Basin
                     edge = (node_id, dst_id)
                     push!(edges_to_fractional_flow, edge)
                     node_idx = findsorted(fractional_flow.node_id, outflow_id_)
@@ -824,11 +823,14 @@ function set_objective_priority!(
         ex = sum(problem[:F_abs])
     end
 
+    demand_max = 0.0
+
     # Terms for subnetworks as users
     if is_main_network(allocation_network_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
+                demand_max = max(demand_max, d)
                 add_user_term!(ex, connection, objective_type, d, allocation_model)
             end
         end
@@ -837,7 +839,7 @@ function set_objective_priority!(
     # Terms for user nodes
     for edge_id in edge_ids
         node_id_user = edge_id[2]
-        if graph[node_id_user].type != :user
+        if node_id_user.type != NodeType.User
             continue
         end
 
@@ -850,7 +852,23 @@ function set_objective_priority!(
             d = get_user_demand(user, node_id_user, priority_idx)
         end
 
+        demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, allocation_model)
+    end
+
+    # Add flow cost
+    if objective_type == :linear_absolute
+        cost_per_flow = 0.5 / length(F)
+        for flow in F
+            JuMP.add_to_expression!(ex, cost_per_flow * flow)
+        end
+    elseif objective_type == :linear_relative
+        if demand_max > 0.0
+            cost_per_flow = 0.5 / (demand_max * length(F))
+            for flow in F
+                JuMP.add_to_expression!(ex, cost_per_flow * flow)
+            end
+        end
     end
 
     new_objective = JuMP.@expression(problem, ex)
@@ -892,7 +910,7 @@ function assign_allocations!(
 
         user_node_id = edge_id[2]
 
-        if graph[user_node_id].type == :user
+        if user_node_id.type == NodeType.User
             allocated = JuMP.value(F[edge_id])
             user_idx = findsorted(user.node_id, user_node_id)
             user.allocated[user_idx][priority_idx] = allocated
@@ -1109,7 +1127,7 @@ function allocate!(
         @debug JuMP.solution_summary(problem)
         if JuMP.termination_status(problem) !== JuMP.OPTIMAL
             (; allocation_network_id) = allocation_model
-            priority = priorities[priority_idx]
+            priority = priorities[priority_index]
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )
