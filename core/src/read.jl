@@ -764,24 +764,24 @@ function User(db::DB, config::Config)::User
     )
 end
 
-function AllocationLevelControl(db::DB, config::Config)::AllocationLevelControl
-    static = load_structvector(db, config, AllocationLevelControlStaticV1)
-    time = load_structvector(db, config, AllocationLevelControlTimeV1)
+function AllocationTarget(db::DB, config::Config)::AllocationTarget
+    static = load_structvector(db, config, AllocationTargetStaticV1)
+    time = load_structvector(db, config, AllocationTargetTimeV1)
 
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        "AllocationLevelControl";
+        "AllocationTarget";
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
     )
 
     if !valid
-        error("Errors occurred when parsing AllocationLevelControl data.")
+        error("Errors occurred when parsing AllocationTarget data.")
     end
 
-    return AllocationLevelControl(
+    return AllocationTarget(
         NodeID.(parsed_parameters.node_id),
         parsed_parameters.min_level,
         parsed_parameters.max_level,
@@ -874,7 +874,7 @@ function Parameters(db::DB, config::Config)::Parameters
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
     user = User(db, config)
-    allocation_level_control = AllocationLevelControl(db, config)
+    allocation_target = AllocationTarget(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
@@ -908,7 +908,7 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
-        allocation_level_control,
+        allocation_target,
         subgrid_level,
     )
 

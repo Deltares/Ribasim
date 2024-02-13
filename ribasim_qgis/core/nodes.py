@@ -215,9 +215,9 @@ class Node(Input):
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "User": (QColor("green"), "User", shape.Square),
-            "AllocationLevelControl": (
+            "AllocationTarget": (
                 QColor("black"),
-                "AllocationLevelControl",
+                "AllocationTarget",
                 shape.Circle,
             ),
             # All other nodes, or incomplete input
@@ -785,10 +785,10 @@ class UserTime(Input):
         ]
 
 
-class AllocationLevelControl(Input):
+class AllocationTarget(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "AllocationLevelControl / static"
+        return "AllocationTarget / static"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -803,10 +803,10 @@ class AllocationLevelControl(Input):
         ]
 
 
-class AllocationLevelControlTime(Input):
+class AllocationTargetTime(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "AllocationLevelControl / time"
+        return "AllocationTarget / time"
 
     @classmethod
     def geometry_type(cls) -> str:

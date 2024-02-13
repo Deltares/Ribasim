@@ -7,7 +7,7 @@ import ribasim
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
-    allocation_level_control_model,
+    allocation_target_model,
     fractional_flow_subnetwork_model,
     looped_subnetwork_model,
     main_network_with_subnetworks_model,
@@ -55,7 +55,7 @@ from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
     "allocation_example_model",
-    "allocation_level_control_model",
+    "allocation_target_model",
     "backwater_model",
     "basic_arrow_model",
     "basic_model",

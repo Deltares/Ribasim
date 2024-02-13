@@ -375,7 +375,7 @@ Get several variables associated with a basin:
 - Its current storage
 - The allocation update interval
 - The influx (sum of instantaneous vertical fluxes of the basin)
-- The index of the connected allocation_level_control node (0 if such a
+- The index of the connected allocation_target node (0 if such a
   node does not exist)
 - The index of the basin
 """
@@ -385,27 +385,27 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, allocation_level_control) = p
+    (; graph, basin, allocation_target) = p
     (; Δt_allocation) = allocation_model
     influx = get_flow(graph, node_id, 0.0)
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(control_inneighbors)
-        allocation_level_control_idx = 0
+        allocation_target_idx = 0
     else
-        allocation_level_control_node_id = first(control_inneighbors)
-        allocation_level_control_idx =
-            findsorted(allocation_level_control.node_id, allocation_level_control_node_id)
+        allocation_target_node_id = first(control_inneighbors)
+        allocation_target_idx =
+            findsorted(allocation_target.node_id, allocation_target_node_id)
     end
-    return storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx
+    return storage_basin, Δt_allocation, influx, allocation_target_idx, basin_idx
 end
 
 """
 Get the capacity of the basin, i.e. the maximum
 flow that can be abstracted from the basin if it is in a
 state of surplus storage (0 if no reference levels are provided by
-a allocation_level_control node).
+a allocation_target node).
 Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_capacity(
@@ -415,13 +415,13 @@ function get_basin_capacity(
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; allocation_level_control) = p
-    storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
+    (; allocation_target) = p
+    storage_basin, Δt_allocation, influx, allocation_target_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    if iszero(allocation_level_control_idx)
+    if iszero(allocation_target_idx)
         return 0.0
     else
-        level_max = allocation_level_control.max_level[allocation_level_control_idx](t)
+        level_max = allocation_target.max_level[allocation_target_idx](t)
         storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
         return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
     end
@@ -430,7 +430,7 @@ end
 """
 Get the demand of the basin, i.e. how large a flow the
 basin needs to get to its minimum target level (0 if no
-reference levels are provided by a allocation_level_control node).
+reference levels are provided by a allocation_target node).
 Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_demand(
@@ -440,13 +440,13 @@ function get_basin_demand(
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; allocation_level_control) = p
-    storage_basin, Δt_allocation, influx, allocation_level_control_idx, basin_idx =
+    (; allocation_target) = p
+    storage_basin, Δt_allocation, influx, allocation_target_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    if iszero(allocation_level_control_idx)
+    if iszero(allocation_target_idx)
         return 0.0
     else
-        level_min = allocation_level_control.min_level[allocation_level_control_idx](t)
+        level_min = allocation_target.min_level[allocation_target_idx](t)
         storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
         return max(0.0, (storage_min - storage_basin) / Δt_allocation - influx)
     end

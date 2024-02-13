@@ -4,7 +4,7 @@ __version__ = "2024.2.0"
 from ribasim import utils
 from ribasim.config import (
     Allocation,
-    AllocationLevelControl,
+    AllocationTarget,
     Basin,
     Compression,
     DiscreteControl,
@@ -30,7 +30,7 @@ from ribasim.model import Model, Network
 
 __all__ = [
     "Allocation",
-    "AllocationLevelControl",
+    "AllocationTarget",
     "Basin",
     "DiscreteControl",
     "Compression",

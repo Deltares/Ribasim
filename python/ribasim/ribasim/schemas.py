@@ -11,14 +11,14 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
-class AllocationLevelControlStaticSchema(_BaseSchema):
+class AllocationTargetStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
     max_level: Series[float] = pa.Field(nullable=False)
     priority: Series[int] = pa.Field(nullable=False)
 
 
-class AllocationLevelControlTimeSchema(_BaseSchema):
+class AllocationTargetTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
