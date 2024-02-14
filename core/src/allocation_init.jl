@@ -560,6 +560,8 @@ function add_constraints_flow_conservation!(
 )::Nothing
     (; graph) = p
     F = problem[:F]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
         [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
@@ -571,14 +573,14 @@ function add_constraints_flow_conservation!(
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
         [node_id = node_ids_conservation],
-        sum([
+        get_basin_inflow(problem, node_id) + sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
         ]) ==
-        sum([
+        get_basin_outflow(problem, node_id) + sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
-        ]) + get_basin_outflow(problem, node_id),
+        ]),
         base_name = "flow_conservation",
     )
     return nothing

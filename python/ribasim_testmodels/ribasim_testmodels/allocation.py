@@ -1793,16 +1793,28 @@ def allocation_target_model():
     )
     static = pd.DataFrame(
         data={
-            "node_id": [2, 5],
+            "node_id": [5],
             "drainage": 0.0,
             "potential_evaporation": 0.0,
             "infiltration": 0.0,
-            "precipitation": 1e-6,
+            "precipitation": 0.0,
             "urban_runoff": 0.0,
         }
     )
+    time = pd.DataFrame(
+        data={
+            "node_id": 2,
+            "time": ["2020-01-01 00:00:00", "2020-01-16 00:00:00"],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": [1e-6, 0.0],
+            "urban_runoff": 0.0,
+        },
+    )
+
     state = pd.DataFrame(data={"node_id": [2, 5], "level": 0.5})
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, static=static, time=time, state=state)
 
     # Setup flow boundary
     flow_boundary = ribasim.FlowBoundary(
@@ -1840,7 +1852,7 @@ def allocation_target_model():
         user=user,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-21 00:00:00",
+        endtime="2020-02-01 00:00:00",
     )
 
     return model

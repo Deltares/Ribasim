@@ -347,17 +347,17 @@ end
     # Until the first allocation solve, the user abstracts fully
     pre_allocation = t .<= Δt_allocation
     u_pre_allocation(τ) = storage[1] + (q + ϕ - d) * τ
-    @test storage[pre_allocation] ≈ u_pre_allocation.(t[pre_allocation]) atol = 4e-3
+    @test storage[pre_allocation] ≈ u_pre_allocation.(t[pre_allocation]) rtol = 1e-4
 
     # Until the basin is at its maximum level, the user does not abstract
     basin_filling = @. ~pre_allocation && (storage <= A * l_max)
     fill_start_idx = findlast(pre_allocation)
     u_filling(τ) = storage[fill_start_idx] + (q + ϕ) * (τ - t[fill_start_idx])
-    @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) atol = 1
+    @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) rtol = 1e-4
 
     # After the basin has reached its maximum level, the user abstracts fully again
     after_filling = @. ~pre_allocation && ~basin_filling
     fill_stop_idx = findfirst(after_filling)
     u_after_filling(τ) = storage[fill_stop_idx] + (q + ϕ - d) * (τ - t[fill_stop_idx])
-    @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) atol = 4e-1
+    @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) rtol = 1e-4
 end
