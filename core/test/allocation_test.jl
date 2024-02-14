@@ -333,7 +333,7 @@ end
     (; user, graph, allocation, basin, allocation_target) = p
 
     d = user.demand_itp[1][2](0)
-    ϕ = Ribasim.get_flow(graph, Ribasim.NodeID(Ribasim.NodeType.Basin, 2), 0)
+    ϕ = 1e-3 # precipitation
     q = Ribasim.get_flow(
         graph,
         Ribasim.NodeID(Ribasim.NodeType.FlowBoundary, 1),
@@ -356,8 +356,17 @@ end
     @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) rtol = 1e-4
 
     # After the basin has reached its maximum level, the user abstracts fully again
-    after_filling = @. ~pre_allocation && ~basin_filling
+    precipitation = eachindex(storage) .<= argmax(storage)
+    after_filling = @. ~pre_allocation && ~basin_filling && precipitation
     fill_stop_idx = findfirst(after_filling)
     u_after_filling(τ) = storage[fill_stop_idx] + (q + ϕ - d) * (τ - t[fill_stop_idx])
     @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) rtol = 1e-4
+
+    # After precipitation stops, the user still abstracts from the basin so the storage decreases
+    storage_reduction = @. ~precipitation && t <= 1.8e6
+    storage_reduction_start = findfirst(storage_reduction)
+    u_storage_reduction(τ) =
+        storage[storage_reduction_start] + (q - d) * (τ - t[storage_reduction_start])
+    @test storage[storage_reduction] ≈ u_storage_reduction.(t[storage_reduction]) rtol =
+        1e-4
 end
