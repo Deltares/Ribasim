@@ -555,10 +555,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     end
     for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = graph[node_id].type
+            node_type = node_id.type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
-            if node_type ∉ [:flow_boundary, :level_boundary]
+            if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                 errors = true
                 @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
             else
@@ -566,8 +566,8 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                     errors = true
                     @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
                 else
-                    node = getfield(p, node_type)
-                    idx = if node_type == :Basin
+                    node = getfield(p, graph[node_id].type)
+                    idx = if node_type == NodeType.Basin
                         id_index(node.node_id, node_id)
                     else
                         searchsortedfirst(node.node_id, node_id)
@@ -597,7 +597,7 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
     for edge in edge_ids
         (id_source, id_dst) = edge
         if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            from_source_node = graph[id_source].type in allocation_source_nodetypes
+            from_source_node = id_source.type in allocation_source_nodetypes
 
             if is_main_network(allocation_network_id)
                 if !from_source_node

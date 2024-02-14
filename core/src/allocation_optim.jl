@@ -156,7 +156,7 @@ function set_objective_priority!(
     # Terms for user nodes
     for edge_id in edge_ids
         node_id_user = edge_id[2]
-        if graph[node_id_user].type != :user
+        if node_id_user.type != NodeType.User
             continue
         end
 
@@ -221,7 +221,7 @@ function assign_allocations!(
 
         user_node_id = edge_id[2]
 
-        if graph[user_node_id].type == :user
+        if user_node_id.type == NodeType.User
             allocated = JuMP.value(F[edge_id])
             user_idx = findsorted(user.node_id, user_node_id)
             user.allocated[user_idx][priority_idx] = allocated
@@ -509,7 +509,7 @@ function save_allocation_flows!(
 
     # Basin flows
     for node_id in graph[].node_ids[allocation_network_id]
-        if graph[node_id].type == :basin
+        if node_id.type == NodeType.Basin
             flow = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             push!(record.time, t)
             push!(record.edge_id, 0)
