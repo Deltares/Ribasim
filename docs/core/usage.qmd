@@ -345,37 +345,6 @@ Water levels beyond the last `basin_level` are linearly extrapolated.
 Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
-## Basin results
-
-The basin table contains results of the storage and level of each basin at every solver
-timestep. The initial condition is also written to the file.
-
-column   | type     | unit
--------- | -------- | ----
-time     | DateTime | -
-node_id  | Int      | -
-storage  | Float64  | $m^3$
-level    | Float64  | $m$
-
-The table is sorted by time, and per time it is sorted by `node_id`.
-
-## Flow results
-
-The flow table contains results of the flow on every edge in the model, for each solver
-timestep.
-
-column        | type                | unit
-------------- | ------------------- | ----
-time          | DateTime            | -
-edge_id       | Union{Int, Missing} | -
-from_node_id  | Int                 | -
-to_node_id    | Int                 | -
-flow          | Float64             | $m^3 s^{-1}$
-
-The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
-Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
-Flows out of the model always have a negative sign, and additions a positive sign.
-
 # FractionalFlow {#sec-fractional-flow}
 
 Lets a fraction (in [0,1]) of the incoming flow trough.
@@ -521,24 +490,6 @@ min_level     | Float64  | $m$          | -
 max_level     | Float64  | $m$          | -
 priority      | Int      | -            | positive
 
-## Allocation results
-
-The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
-
-column                | type
---------------------- | -----
-time                  | DateTime
-allocation_network_id | Int
-user_node_id          | Int
-priority              | Int
-demand                | Float64
-allocated             | Float64
-abstracted            | Float64
-
-::: {.callout-note}
-Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
-:::
-
 # LevelBoundary {#sec-level-boundary}
 
 Acts like an infinitely large basin where the level does not change by flow.
@@ -671,17 +622,6 @@ node_id        | Int      | -    | sorted
 control_state  | String   | -    | -
 truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any), sorted per node_id
 
-## DiscreteControl results
-
-The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
-
-column          | type
---------------- | ----------
-time            | DateTime
-control_node_id | Int
-truth_state     | String
-control_state   | String
-
 # PidControl {#sec-pid-control}
 
 The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
@@ -718,3 +658,82 @@ target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -
 integral       | Float64  | $s^{-2}$ | -
 derivative     | Float64  | -        | -
+
+# Results
+
+## Basin (storage)
+
+The basin table contains results of the storage and level of each basin at every solver
+timestep. The initial condition is also written to the file.
+
+column   | type     | unit
+-------- | -------- | ----
+time     | DateTime | -
+node_id  | Int      | -
+storage  | Float64  | $m^3$
+level    | Float64  | $m$
+
+The table is sorted by time, and per time it is sorted by `node_id`.
+
+## Flow
+
+The flow table contains results of the flow on every edge in the model, for each solver
+timestep.
+
+column        | type                | unit
+------------- | ------------------- | ----
+time          | DateTime            | -
+edge_id       | Union{Int, Missing} | -
+from_node_id  | Int                 | -
+to_node_id    | Int                 | -
+flow          | Float64             | $m^3 s^{-1}$
+
+The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
+Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
+Flows out of the model always have a negative sign, and additions a positive sign.
+
+## Control (DiscreteControl)
+
+The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+
+column          | type
+--------------- | ----------
+time            | DateTime
+control_node_id | Int
+truth_state     | String
+control_state   | String
+
+## Allocation
+
+The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
+
+column                | type
+--------------------- | -----
+time                  | DateTime
+allocation_network_id | Int
+user_node_id          | Int
+priority              | Int
+demand                | Float64
+allocated             | Float64
+abstracted            | Float64
+
+::: {.callout-note}
+Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
+:::
+
+## Allocation flow
+
+The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](allocation.qmd#the-high-level-algorithm)).
+If in the model a main network and subnetwork(s) are specified, there are 2 different
+types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
+
+column                | type
+--------------------- | -----
+time                  | DateTime
+edge_id               | Int
+from_node_id          | Int
+to_node_id            | Int
+allocation_network_id | Int
+priority              | Int
+flow                  | Float64
+collect_demands       | Bool
