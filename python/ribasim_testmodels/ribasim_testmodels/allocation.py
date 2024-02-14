@@ -1794,10 +1794,10 @@ def allocation_target_model():
     static = pd.DataFrame(
         data={
             "node_id": [2, 5],
-            "drainage": 0.1e-3,
-            "potential_evaporation": 0.2e-3,
-            "infiltration": 0.3e-3,
-            "precipitation": 0.4e-3,
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 1e-6,
             "urban_runoff": 0.0,
         }
     )
@@ -1812,7 +1812,7 @@ def allocation_target_model():
     # Setup allocation level control
     allocation_target = ribasim.AllocationTarget(
         static=pd.DataFrame(
-            data={"node_id": [4], "priority": 1, "min_level": 1.0, "max_level": 1.0}
+            data={"node_id": [4], "priority": 1, "min_level": 1.0, "max_level": 1.5}
         )
     )
 
@@ -1822,7 +1822,7 @@ def allocation_target_model():
             data={
                 "node_id": [3],
                 "priority": [2],
-                "demand": [1e-3],
+                "demand": [1.5e-3],
                 "return_factor": [0.2],
                 "min_level": [0.2],
             }
