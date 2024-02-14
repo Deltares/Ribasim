@@ -324,6 +324,40 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_target/ribasim.toml")
     @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
 
-    Ribasim.run(toml_path)
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    t = Ribasim.timesteps(model)
+
+    p = model.integrator.p
+    (; user, graph, allocation, basin, allocation_target) = p
+
+    d = user.demand_itp[1][2](0)
+    ϕ = Ribasim.get_flow(graph, Ribasim.NodeID(Ribasim.NodeType.Basin, 2), 0)
+    q = Ribasim.get_flow(
+        graph,
+        Ribasim.NodeID(Ribasim.NodeType.FlowBoundary, 1),
+        Ribasim.NodeID(Ribasim.NodeType.Basin, 2),
+        0,
+    )
+    A = basin.area[1][1]
+    l_max = allocation_target.max_level[1](0)
+    Δt_allocation = allocation.allocation_models[1].Δt_allocation
+
+    # Until the first allocation solve, the user abstracts fully
+    pre_allocation = t .<= Δt_allocation
+    u_pre_allocation(τ) = storage[1] + (q + ϕ - d) * τ
+    @test storage[pre_allocation] ≈ u_pre_allocation.(t[pre_allocation]) atol = 4e-3
+
+    # Until the basin is at its maximum level, the user does not abstract
+    basin_filling = @. ~pre_allocation && (storage <= A * l_max)
+    fill_start_idx = findlast(pre_allocation)
+    u_filling(τ) = storage[fill_start_idx] + (q + ϕ) * (τ - t[fill_start_idx])
+    @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) atol = 1
+
+    # After the basin has reached its maximum level, the user abstracts fully again
+    after_filling = @. ~pre_allocation && ~basin_filling
+    fill_stop_idx = findfirst(after_filling)
+    u_after_filling(τ) = storage[fill_stop_idx] + (q + ϕ - d) * (τ - t[fill_stop_idx])
+    @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) atol = 4e-1
 end

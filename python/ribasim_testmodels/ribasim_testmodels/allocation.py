@@ -1830,7 +1830,7 @@ def allocation_target_model():
     )
 
     # Setup allocation
-    allocation = ribasim.Allocation(use_allocation=True, timestep=86400)
+    allocation = ribasim.Allocation(use_allocation=True, timestep=1e5)
 
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
@@ -1840,7 +1840,7 @@ def allocation_target_model():
         user=user,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-03-01 00:00:00",
+        endtime="2020-01-21 00:00:00",
     )
 
     return model
