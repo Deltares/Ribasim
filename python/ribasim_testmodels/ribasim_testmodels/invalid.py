@@ -50,20 +50,9 @@ def invalid_qh_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [3], "level": 1.4112729908597084})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     rating_curve_static = pd.DataFrame(
         # Invalid: levels must not be repeated
@@ -162,17 +151,6 @@ def invalid_fractional_flow_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 2],
-            "drainage": 2 * [0.0],
-            "potential_evaporation": 2 * [0.0],
-            "infiltration": 2 * [0.0],
-            "precipitation": 2 * [0.0],
-            "urban_runoff": 2 * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1, 2],
@@ -180,7 +158,7 @@ def invalid_fractional_flow_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup terminal:
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [5, 6]}))
@@ -261,17 +239,6 @@ def invalid_discrete_control_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "drainage": 2 * [0.0],
-            "potential_evaporation": 2 * [0.0],
-            "infiltration": 2 * [0.0],
-            "precipitation": 2 * [0.0],
-            "urban_runoff": 2 * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1, 3],
@@ -279,7 +246,7 @@ def invalid_discrete_control_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
@@ -396,17 +363,6 @@ def invalid_edge_types_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "drainage": 2 * [0.0],
-            "potential_evaporation": 2 * [0.0],
-            "infiltration": 2 * [0.0],
-            "precipitation": 2 * [0.0],
-            "urban_runoff": 2 * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1, 3],
@@ -414,7 +370,7 @@ def invalid_edge_types_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(

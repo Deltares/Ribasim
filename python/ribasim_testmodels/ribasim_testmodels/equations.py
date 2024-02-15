@@ -54,17 +54,6 @@ def linear_resistance_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1],
@@ -72,7 +61,7 @@ def linear_resistance_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
@@ -152,17 +141,6 @@ def rating_curve_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1],
@@ -170,7 +148,7 @@ def rating_curve_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the rating curve
     n_datapoints = 100
@@ -261,17 +239,6 @@ def manning_resistance_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "drainage": 2 * [0.0],
-            "potential_evaporation": 2 * [0.0],
-            "infiltration": 2 * [0.0],
-            "precipitation": 2 * [0.0],
-            "urban_runoff": 2 * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1, 3],
@@ -279,7 +246,7 @@ def manning_resistance_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the Manning resistance:
     manning_resistance = ribasim.ManningResistance(
@@ -367,17 +334,6 @@ def misc_nodes_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3, 5],
-            "drainage": 2 * [0.0],
-            "potential_evaporation": 2 * [0.0],
-            "infiltration": 2 * [0.0],
-            "precipitation": 2 * [0.0],
-            "urban_runoff": 2 * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [3, 5],
@@ -385,7 +341,7 @@ def misc_nodes_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup flow boundary:
     flow_boundary = ribasim.FlowBoundary(
@@ -499,17 +455,6 @@ def pid_control_equation_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [1],
@@ -517,7 +462,7 @@ def pid_control_equation_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
