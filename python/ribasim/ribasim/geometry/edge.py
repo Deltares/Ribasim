@@ -22,7 +22,7 @@ class EdgeSchema(pa.SchemaModel):
     to_node_type: Series[str] = pa.Field(nullable=True)
     to_node_id: Series[int] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
-    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)

@@ -822,7 +822,7 @@ function Parameters(db::DB, config::Config)::Parameters
             edge_id = Int[],
             from_node_id = Int[],
             to_node_id = Int[],
-            allocation_network_id = Int[],
+            subnetwork_id = Int[],
             priority = Int[],
             flow = Float64[],
             collect_demands = BitVector(),

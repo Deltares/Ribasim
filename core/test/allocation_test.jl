@@ -231,7 +231,7 @@ end
     @test only(main_network_connections[3]) == (NodeID(:Basin, 6), NodeID(:Pump, 24))
     @test only(main_network_connections[4]) == (NodeID(:Basin, 10), NodeID(:Pump, 38))
 
-    # main-sub connections are part of main network allocation graph
+    # main-sub connections are part of main network allocation network
     allocation_edges_main_network = graph[].edge_ids[1]
     @test [
         (NodeID(:Basin, 2), NodeID(:Pump, 11)),

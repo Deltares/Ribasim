@@ -45,7 +45,7 @@ Store information for a subnetwork used for allocation.
 
 objective_type: The name of the type of objective used
 allocation_network_id: The ID of this allocation network
-capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
+capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
@@ -78,7 +78,7 @@ struct Allocation
         edge_id::Vector{Int},
         from_node_id::Vector{Int},
         to_node_id::Vector{Int},
-        allocation_network_id::Vector{Int},
+        subnetwork_id::Vector{Int},
         priority::Vector{Int},
         flow::Vector{Float64},
         collect_demands::BitVector,
@@ -103,7 +103,7 @@ allocation_network_id_source: ID of allocation network where this edge is a sour
   (0 if not a source)
 from_id: the node ID of the source node
 to_id: the node ID of the destination node
-allocation_flow: whether this edge has a flow in an allocation graph
+allocation_flow: whether this edge has a flow in an allocation network
 node_ids: if this edge has allocation flow, these are all the
     nodes from the physical layer this edge consists of
 """
