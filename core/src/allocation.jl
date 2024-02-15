@@ -898,7 +898,7 @@ function assign_allocations!(
 
             # Save allocations to record
             push!(record.time, t)
-            push!(record.allocation_network_id, allocation_model.allocation_network_id)
+            push!(record.subnetwork_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
             push!(record.priority, user.priorities[priority_idx])
             push!(record.demand, user.demand[user_idx])

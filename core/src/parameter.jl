@@ -477,7 +477,7 @@ struct User <: AbstractParameterNode
     priorities::Vector{Int}
     record::@NamedTuple{
         time::Vector{Float64},
-        allocation_network_id::Vector{Int},
+        subnetwork_id::Vector{Int},
         user_node_id::Vector{Int},
         priority::Vector{Int},
         demand::Vector{Float64},

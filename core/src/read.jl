@@ -739,7 +739,7 @@ function User(db::DB, config::Config)::User
 
     record = (
         time = Float64[],
-        allocation_network_id = Int[],
+        subnetwork_id = Int[],
         user_node_id = Int[],
         priority = Int[],
         demand = Float64[],
