@@ -1,7 +1,7 @@
 import datetime
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -184,7 +184,7 @@ class Model(FileModel):
     user: User = Field(default_factory=User)
 
     @model_validator(mode="after")
-    def set_node_parent(self) -> "Model":
+    def set_node_parent(self) -> Self:
         for (
             k,
             v,
@@ -332,7 +332,7 @@ class Model(FileModel):
         )
 
     @classmethod
-    def read(cls, filepath: FilePath) -> "Model":
+    def read(cls, filepath: FilePath) -> Self:
         """Read model from TOML file."""
         return cls(filepath=filepath)  # type: ignore
 
@@ -377,7 +377,7 @@ class Model(FileModel):
             return {}
 
     @model_validator(mode="after")
-    def reset_contextvar(self) -> "Model":
+    def reset_contextvar(self) -> Self:
         # Drop database info
         context_file_loading.set({})
         return self

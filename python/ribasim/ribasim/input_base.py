@@ -8,6 +8,7 @@ from sqlite3 import Connection, connect
 from typing import (
     Any,
     Generic,
+    Self,
     TypeVar,
     cast,
 )
@@ -367,7 +368,7 @@ class ChildModel(BaseModel):
     _parent_field: str | None = None
 
     @model_validator(mode="after")
-    def check_parent(self) -> "ChildModel":
+    def check_parent(self) -> Self:
         if self._parent is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
