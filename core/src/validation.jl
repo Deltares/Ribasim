@@ -3,7 +3,7 @@ neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:user}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Val{:allocation_target}) = Set((:basin,))
+neighbortypes(::Val{:target_level}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
     :tabulated_rating_curve,
@@ -58,7 +58,7 @@ n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0,
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:User}) = n_neighbor_bounds(1, 1, 1, 1)
-n_neighbor_bounds_flow(::Val{:AllocationTarget}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:TargetLevel}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -77,8 +77,7 @@ n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_control(::Val{:AllocationTarget}) =
-    n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:TargetLevel}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 

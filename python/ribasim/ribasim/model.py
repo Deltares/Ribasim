@@ -18,7 +18,6 @@ from pydantic import (
 
 from ribasim.config import (
     Allocation,
-    AllocationTarget,
     Basin,
     DiscreteControl,
     FlowBoundary,
@@ -33,6 +32,7 @@ from ribasim.config import (
     Results,
     Solver,
     TabulatedRatingCurve,
+    TargetLevel,
     Terminal,
     User,
 )
@@ -168,7 +168,7 @@ class Model(FileModel):
     logging: Logging = Logging()
 
     allocation: Allocation = Field(default_factory=Allocation)
-    allocation_target: AllocationTarget = Field(default_factory=AllocationTarget)
+    target_level: TargetLevel = Field(default_factory=TargetLevel)
     basin: Basin = Field(default_factory=Basin)
     fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
     level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
