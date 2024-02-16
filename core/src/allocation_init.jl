@@ -560,8 +560,6 @@ function add_constraints_flow_conservation!(
 )::Nothing
     (; graph) = p
     F = problem[:F]
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_conservation =
         [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
@@ -782,13 +780,11 @@ end
 """
 Add the basin flow constraints to the allocation problem.
 The constraint indices are the basin node IDs.
-NOTE: negative basin flow means flow out of the basin.
 
 Constraint:
-flow basin >= - basin capacity
+flow out of basin <= basin capacity
 """
 function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
-    F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
     problem[:basin_outflow] = JuMP.@constraint(
         problem,

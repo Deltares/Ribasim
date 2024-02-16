@@ -198,7 +198,7 @@ name it must have in the database if it is stored there.
 - User: sets water usage demands at certain priorities
   - `User / static`: demands
   - `User / time`: dynamic demands
-- AllocationTarget: Indicates minimum and maximum and maximum target level of connected basins for allocation
+- AllocationTarget: Indicates minimum and maximum target level of connected basins for allocation
   - `AllocationTarget / static`: static target levels
   - `AllocationTarget / time`: dynamic target levels
 - Terminal: Water sink without state or properties
@@ -462,7 +462,7 @@ priority      | Int      | -            | positive, sorted per node id
 time          | DateTime | -            | sorted per priority per node id
 demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
-min_level     | Float64  | $m$          | (optional)
+min_level     | Float64  | $m$          | -
 
 # AllocationTarget {#sec-allocation_target}
 
@@ -661,7 +661,7 @@ derivative     | Float64  | -        | -
 
 # Results
 
-## Basin (storage)
+## Basin - `basin.arrow`
 
 The basin table contains results of the storage and level of each basin at every solver
 timestep. The initial condition is also written to the file.
@@ -675,7 +675,7 @@ level    | Float64  | $m$
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 
-## Flow
+## Flow - `flow.arrow`
 
 The flow table contains results of the flow on every edge in the model, for each solver
 timestep.
@@ -692,7 +692,7 @@ The table is sorted by time, and per time the same `edge_id` order is used, thou
 Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
 Flows out of the model always have a negative sign, and additions a positive sign.
 
-## Control (DiscreteControl)
+## DiscreteControl - `control.arrow`
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 
@@ -703,7 +703,7 @@ control_node_id | Int
 truth_state     | String
 control_state   | String
 
-## Allocation
+## Allocation - `allocation.arrow`
 
 The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
 
@@ -721,7 +721,7 @@ abstracted            | Float64
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
 :::
 
-## Allocation flow
+## Allocation flow - `allocation_flow.arrow`
 
 The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](allocation.qmd#the-high-level-algorithm)).
 If in the model a main network and subnetwork(s) are specified, there are 2 different

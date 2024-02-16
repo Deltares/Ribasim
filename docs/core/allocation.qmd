@@ -56,7 +56,7 @@ $$
 
 We consider fluxes into the basin to be positive and out of the basin to be negative.
 
-Secondly, there is either a supply or demand from the storage in the basin. Given a minimum elevel $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
+Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
     F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
 $$

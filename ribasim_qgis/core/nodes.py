@@ -785,7 +785,7 @@ class UserTime(Input):
         ]
 
 
-class AllocationTarget(Input):
+class AllocationTargetStatic(Input):
     @classmethod
     def input_type(cls) -> str:
         return "AllocationTarget / static"

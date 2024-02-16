@@ -163,9 +163,9 @@ function set_objective_priority!(
         user_idx = findsorted(node_id, node_id_user)
         if demand_from_timeseries[user_idx]
             d = demand_itp[user_idx][priority_idx](t)
-            set_user_demand!(user, node_id_user, priority_idx, d)
+            set_user_demand!(p, node_id_user, priority_idx, d)
         else
-            d = get_user_demand(user, node_id_user, priority_idx)
+            d = get_user_demand(p, node_id_user, priority_idx)
         end
         demand_max = max(demand_max, d)
         add_user_term!(ex, edge_id, objective_type, d, problem)
@@ -372,6 +372,7 @@ function get_basin_data(
 )
     (; graph, basin, allocation_target) = p
     (; Δt_allocation) = allocation_model
+    @assert node_id.type == NodeType.Basin
     influx = get_flow(graph, node_id, 0.0)
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
@@ -401,6 +402,7 @@ function get_basin_capacity(
     node_id::NodeID,
 )::Float64
     (; allocation_target) = p
+    @assert node_id.type == NodeType.Basin
     storage_basin, Δt_allocation, influx, allocation_target_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
     if iszero(allocation_target_idx)
@@ -426,6 +428,7 @@ function get_basin_demand(
     node_id::NodeID,
 )::Float64
     (; allocation_target) = p
+    @assert node_id.type == NodeType.Basin
     storage_basin, Δt_allocation, influx, allocation_target_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
     if iszero(allocation_target_idx)

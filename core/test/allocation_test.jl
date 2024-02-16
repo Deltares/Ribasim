@@ -44,9 +44,9 @@
 
     # Test getting and setting user demands
     (; user) = p
-    Ribasim.set_user_demand!(user, NodeID(:User, 11), 2, Float64(π))
+    Ribasim.set_user_demand!(p, NodeID(:User, 11), 2, Float64(π))
     @test user.demand[4] ≈ π
-    @test Ribasim.get_user_demand(user, NodeID(:User, 11), 2) ≈ π
+    @test Ribasim.get_user_demand(p, NodeID(:User, 11), 2) ≈ π
 end
 
 @testitem "Allocation objective: quadratic absolute" skip = true begin

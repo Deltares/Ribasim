@@ -63,6 +63,7 @@ allocation_network_ids: The unique sorted allocation network IDs
 allocation models: The allocation models for the main network and subnetworks corresponding to
     allocation_network_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
 record: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -457,13 +458,13 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of user per priority over time
+demand: water flux demand of user per priority over time.
+    Each user has a demand for all priorities,
+    which is 0.0 if it is not provided explicitly.
 active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
-priorities: All used priority values. Each user has a demand for all these priorities,
-    which is 0.0 if it is not provided explicitly.
 record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
@@ -475,7 +476,6 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    priorities::Vector{Int}
     record::@NamedTuple{
         time::Vector{Float64},
         allocation_network_id::Vector{Int},
@@ -508,7 +508,6 @@ struct User <: AbstractParameterNode
                 allocated,
                 return_factor,
                 min_level,
-                priorities,
                 record,
             )
         else
