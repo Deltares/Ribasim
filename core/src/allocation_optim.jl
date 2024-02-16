@@ -228,7 +228,7 @@ function assign_allocations!(
 
             # Save allocations to record
             push!(record.time, t)
-            push!(record.allocation_network_id, allocation_model.allocation_network_id)
+            push!(record.subnetwork_id, allocation_model.allocation_network_id)
             push!(record.user_node_id, Int(user_node_id))
             push!(record.priority, allocation.priorities[priority_idx])
             push!(record.demand, user.demand[user_idx])
@@ -503,7 +503,7 @@ function save_allocation_flows!(
             push!(record.edge_id, edge_metadata.id)
             push!(record.from_node_id, node_ids[i])
             push!(record.to_node_id, node_ids[i + 1])
-            push!(record.allocation_network_id, allocation_network_id)
+            push!(record.subnetwork_id, allocation_network_id)
             push!(record.priority, priority)
             push!(record.flow, flow)
             push!(record.collect_demands, collect_demands)
@@ -518,7 +518,7 @@ function save_allocation_flows!(
             push!(record.edge_id, 0)
             push!(record.from_node_id, node_id)
             push!(record.to_node_id, node_id)
-            push!(record.allocation_network_id, allocation_network_id)
+            push!(record.subnetwork_id, allocation_network_id)
             push!(record.priority, priority)
             push!(record.flow, flow)
             push!(record.collect_demands, collect_demands)
