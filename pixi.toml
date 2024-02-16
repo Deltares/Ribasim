@@ -25,6 +25,7 @@ install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
     "install-ribasim-api",
     "install-ribasim-testmodels",
+    "install-qgis-plugins",
 ] }
 install = { depends_on = ["install-without-pre-commit", "install-pre-commit"] }
 # Instantiate
