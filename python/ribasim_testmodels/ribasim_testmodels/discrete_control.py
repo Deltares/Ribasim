@@ -77,14 +77,14 @@ def pump_discrete_control_model() -> ribasim.Model:
             "infiltration": [0.0] * 2,
             "precipitation": [0.0] * 2,
             "urban_runoff": [0.0] * 2,
-            "concentration": [0.0] * 2,
+            "concentration": [0.5] * 2,
         }
     )
 
     state = pd.DataFrame(data={"node_id": [1, 3], "level": [1.0, 1e-5]})
 
     external = ribasim.External(
-        time=pd.DataFrame(data={"time": [datetime(2020, 1, 1)], "external": [0.0]})
+        time=pd.DataFrame(data={"time": [datetime(2020, 1, 1)], "external": [1.5]})
     )
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
@@ -93,8 +93,8 @@ def pump_discrete_control_model() -> ribasim.Model:
     condition = pd.DataFrame(
         data={
             "node_id": [5, 5, 6],
-            "listen_feature_id": [1, 0, 3],
-            "variable": ["level", "external", "concentration"],
+            "listen_feature_id": [1, 3, 3],
+            "variable": ["level", "level", "level"],
             "greater_than": [0.8, 0.4, 0.45],
         }
     )

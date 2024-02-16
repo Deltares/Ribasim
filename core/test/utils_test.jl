@@ -47,7 +47,7 @@ end
         area,
         level,
         storage,
-        [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
+        # [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
@@ -123,7 +123,7 @@ end
         [area],
         [level],
         [storage],
-        [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
+        # [LinearInterpolation([0.0, 0.0], [0.0, 0.0])],
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 

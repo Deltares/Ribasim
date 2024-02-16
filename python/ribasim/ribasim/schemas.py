@@ -82,12 +82,14 @@ class FlowBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class FractionalFlowStaticSchema(_BaseSchema):
@@ -100,12 +102,14 @@ class LevelBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class LevelBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class LinearResistanceStaticSchema(_BaseSchema):

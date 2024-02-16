@@ -1,0 +1,32 @@
+ITEM 'Basin'
+CONCENTRATIONS 'Continuity' 'Basin' 'Cl'
+DATA 1 1 100
+
+ITEM 'LevelBoundary'
+CONCENTRATIONS 'Continuity' 'LevelBoundary' 'Cl'
+DATA 1 1 200
+
+ITEM 'Terminal'
+CONCENTRATIONS 'Continuity' 'Cl'
+DATA 1 300
+
+ITEM 'FlowBoundary'
+CONCENTRATIONS 'Continuity' 'FlowBoundary' 'Cl'
+DATA 1 1 500
+
+ITEM 'Basin_#9'
+CONCENTRATIONS 'Cl'
+DATA 150
+
+{% for boundary in boundaries %}
+ITEM '{{ boundary.name }}'
+CONCENTRATIONS 'Continuity' {{ boundary.substances|join(' ')}}
+DATA 1 {{ boundary.concentrations|join(' ')}}
+
+{% endfor %}
+{% for state in states %}
+ITEM '{{ state.name }}'
+CONCENTRATIONS {{ state.substances|join(' ')}}
+DATA {{ state.concentrations|join(' ')}}
+
+{% endfor %}

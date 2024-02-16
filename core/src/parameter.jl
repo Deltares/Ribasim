@@ -130,7 +130,7 @@ struct Basin{T, C} <: AbstractParameterNode
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    concentration::Vector{ScalarInterpolation}
+    # concentration::Vector{ScalarInterpolation}
     # data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
@@ -145,7 +145,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
-        concentration,
+        # concentration,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         is_valid = valid_profiles(node_id, level, area)
@@ -161,7 +161,7 @@ struct Basin{T, C} <: AbstractParameterNode
             area,
             level,
             storage,
-            concentration,
+            # concentration,
             time,
         )
     end

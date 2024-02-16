@@ -143,24 +143,28 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     level::Float64
+    concentration::Union{Missing, Float64}
 end
 
 @version LevelBoundaryTimeV1 begin
     node_id::Int
     time::DateTime
     level::Float64
+    concentration::Union{Missing, Float64}
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     flow_rate::Float64
+    concentration::Union{Missing, Float64}
 end
 
 @version FlowBoundaryTimeV1 begin
     node_id::Int
     time::DateTime
     flow_rate::Float64
+    concentration::Union{Missing, Float64}
 end
 
 @version LinearResistanceStaticV1 begin
