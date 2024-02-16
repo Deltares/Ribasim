@@ -1,7 +1,7 @@
 """Find the edges from the main network to a subnetwork."""
 function find_subnetwork_connections!(p::Parameters)::Nothing
-    (; allocation, graph, user) = p
-    n_priorities = length(user.priorities)
+    (; allocation, graph, allocation) = p
+    n_priorities = length(allocation.priorities)
     (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -368,6 +368,27 @@ function add_variables_flow!(
 end
 
 """
+Add the variables for supply/demand of a basin to the problem.
+The variable indices are the node_ids of the basins in the subnetwork.
+"""
+function add_variables_basin!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    node_ids_basin = [
+        node_id for node_id in graph[].node_ids[allocation_network_id] if
+        graph[node_id].type == :basin
+    ]
+    problem[:F_basin_in] =
+        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
+    problem[:F_basin_out] =
+        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
+    return nothing
+end
+
+"""
 Certain allocation distribution types use absolute values in the objective function.
 Since most optimization packages do not support the absolute value function directly,
 New variables are introduced that act as the absolute value of an expression by
@@ -383,7 +404,17 @@ function add_variables_absolute_value!(
     (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
+        node_ids_user = NodeID[]
+        node_ids_basin = NodeID[]
+
+        for node_id in node_ids
+            type = node_id.type
+            if type == NodeType.User
+                push!(node_ids_user, node_id)
+            elseif type == NodeType.Basin
+                push!(node_ids_basin, node_id)
+            end
+        end
 
         # For the main network, connections to subnetworks are treated as users
         if is_main_network(allocation_network_id)
@@ -394,7 +425,9 @@ function add_variables_absolute_value!(
             end
         end
 
-        problem[:F_abs] = JuMP.@variable(problem, F_abs[node_id = node_ids_user])
+        problem[:F_abs_user] = JuMP.@variable(problem, F_abs_user[node_id = node_ids_user])
+        problem[:F_abs_basin] =
+            JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
     end
     return nothing
 end
@@ -489,6 +522,30 @@ function outflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
     return outflow_ids
 end
 
+function get_basin_inflow(
+    problem::JuMP.Model,
+    node_id::NodeID,
+)::Union{JuMP.VariableRef, Float64}
+    F_basin_in = problem[:F_basin_in]
+    return if node_id in only(F_basin_in.axes)
+        F_basin_in[node_id]
+    else
+        0.0
+    end
+end
+
+function get_basin_outflow(
+    problem::JuMP.Model,
+    node_id::NodeID,
+)::Union{JuMP.VariableRef, Float64}
+    F_basin_out = problem[:F_basin_out]
+    return if node_id in only(F_basin_out.axes)
+        F_basin_out[node_id]
+    else
+        0.0
+    end
+end
+
 """
 Add the flow conservation constraints to the allocation problem.
 The constraint indices are user node IDs.
@@ -514,10 +571,11 @@ function add_constraints_flow_conservation!(
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
         [node_id = node_ids_conservation],
-        sum([
+        get_basin_inflow(problem, node_id) + sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
-        ]) == sum([
+        ]) ==
+        get_basin_outflow(problem, node_id) + sum([
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
@@ -565,70 +623,105 @@ expr_abs >= -expr
 """
 function add_constraints_absolute_value!(
     problem::JuMP.Model,
+    flow_per_node::Dict{NodeID, JuMP.VariableRef},
+    F_abs::JuMP.Containers.DenseAxisArray,
+    objective_type::String,
+    variable_type::String,
+)::Nothing
+    # Example demand
+    d = 2.0
+
+    node_ids = only(F_abs.axes)
+
+    if objective_type == "linear_absolute"
+        # These constraints together make sure that F_abs_* acts as the absolute
+        # value F_abs_* = |x| where x = F-d (here for example d = 2)
+        base_name = "abs_positive_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= (flow_per_node[node_id] - d),
+            base_name = base_name
+        )
+        base_name = "abs_negative_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= -(flow_per_node[node_id] - d),
+            base_name = base_name
+        )
+    elseif objective_type == "linear_relative"
+        # These constraints together make sure that F_abs_user acts as the absolute
+        # value F_abs_user = |x| where x = 1-F/d (here for example d = 2)
+        base_name = "abs_positive_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= (1 - flow_per_node[node_id] / d),
+            base_name = base_name
+        )
+        base_name = "abs_negative_$variable_type"
+        problem[Symbol(base_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            F_abs[node_id] >= -(1 - flow_per_node[node_id] / d),
+            base_name = base_name
+        )
+    end
+    return nothing
+end
+
+"""
+Add constraints so that variables F_abs_user act as the
+absolute value of the expression comparing flow to an user to its demand.
+"""
+function add_constraints_absolute_value_user!(
+    problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
+    (; graph) = p
 
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
-        node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
-
-        # For the main network, connections to subnetworks are treated as users
-        if is_main_network(allocation_network_id)
-            for connections_subnetwork in main_network_connections
-                for connection in connections_subnetwork
-                    push!(node_ids_user, connection[2])
-                end
-            end
-        end
-
-        node_ids_user_inflow = Dict(
-            node_id_user => only(inflow_ids_allocation(graph, node_id_user)) for
-            node_id_user in node_ids_user
-        )
         F = problem[:F]
-        F_abs = problem[:F_abs]
-        d = 2.0
+        F_abs_user = problem[:F_abs_user]
 
-        if config.allocation.objective_type == "linear_absolute"
-            # These constraints together make sure that F_abs acts as the absolute
-            # value F_abs = |x| where x = F-d (here for example d = 2)
-            problem[:abs_positive] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
-                (F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
-                base_name = "abs_positive"
-            )
-            problem[:abs_negative] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
-                -(F[(node_ids_user_inflow[node_id_user], node_id_user)] - d),
-                base_name = "abs_negative"
-            )
-        elseif config.allocation.objective_type == "linear_relative"
-            # These constraints together make sure that F_abs acts as the absolute
-            # value F_abs = |x| where x = 1-F/d (here for example d = 2)
-            problem[:abs_positive] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
-                (1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
-                base_name = "abs_positive"
-            )
-            problem[:abs_negative] = JuMP.@constraint(
-                problem,
-                [node_id_user = node_ids_user],
-                F_abs[node_id_user] >=
-                -(1 - F[(node_ids_user_inflow[node_id_user], node_id_user)] / d),
-                base_name = "abs_negative"
-            )
-        end
+        flow_per_node = Dict(
+            node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
+            node_id in only(F_abs_user.axes)
+        )
+
+        add_constraints_absolute_value!(
+            problem,
+            flow_per_node,
+            F_abs_user,
+            objective_type,
+            "user",
+        )
+    end
+    return nothing
+end
+
+"""
+Add constraints so that variables F_abs_basin act as the
+absolute value of the expression comparing flow to a basin to its demand.
+"""
+function add_constraints_absolute_value_basin!(problem::JuMP.Model, config::Config)::Nothing
+    objective_type = config.allocation.objective_type
+    if startswith(objective_type, "linear")
+        F_basin_in = problem[:F_basin_in]
+        F_abs_basin = problem[:F_abs_basin]
+        flow_per_node =
+            Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
+
+        add_constraints_absolute_value!(
+            problem,
+            flow_per_node,
+            F_abs_basin,
+            objective_type,
+            "basin",
+        )
     end
     return nothing
 end
@@ -685,6 +778,24 @@ function add_constraints_fractional_flow!(
 end
 
 """
+Add the basin flow constraints to the allocation problem.
+The constraint indices are the basin node IDs.
+
+Constraint:
+flow out of basin <= basin capacity
+"""
+function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
+    F_basin_out = problem[:F_basin_out]
+    problem[:basin_outflow] = JuMP.@constraint(
+        problem,
+        [node_id = only(F_basin_out.axes)],
+        F_basin_out[node_id] <= 0.0,
+        base_name = "basin_outflow"
+    )
+    return nothing
+end
+
+"""
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
@@ -698,16 +809,18 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, p, allocation_network_id)
+    add_variables_basin!(problem, p, allocation_network_id)
     add_variables_absolute_value!(problem, p, allocation_network_id, config)
-    # TODO: Add variables for allocation to basins
 
     # Add constraints to problem
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value!(problem, p, allocation_network_id, config)
+    add_constraints_absolute_value_user!(problem, p, config)
+    add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
+    add_constraints_basin_flow!(problem)
 
     return problem
 end
@@ -744,386 +857,4 @@ function AllocationModel(
         problem,
         Δt_allocation,
     )
-end
-
-"""
-Add a term to the expression of the objective function corresponding to
-the demand of a user.
-"""
-function add_user_term!(
-    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
-    edge::Tuple{NodeID, NodeID},
-    objective_type::Symbol,
-    demand::Float64,
-    model::AllocationModel,
-)::Nothing
-    (; problem) = model
-    F = problem[:F]
-    F_edge = F[edge]
-    node_id_user = edge[2]
-
-    if objective_type == :quadratic_absolute
-        # Objective function ∑ (F - d)^2
-        JuMP.add_to_expression!(ex, 1, F_edge, F_edge)
-        JuMP.add_to_expression!(ex, -2 * demand, F_edge)
-        JuMP.add_to_expression!(ex, demand^2)
-
-    elseif objective_type == :quadratic_relative
-        # Objective function ∑ (1 - F/d)^2
-        if demand ≈ 0
-            return nothing
-        end
-        JuMP.add_to_expression!(ex, 1.0 / demand^2, F_edge, F_edge)
-        JuMP.add_to_expression!(ex, -2.0 / demand, F_edge)
-        JuMP.add_to_expression!(ex, 1.0)
-
-    elseif objective_type == :linear_absolute
-        # Objective function ∑ |F - d|
-        JuMP.set_normalized_rhs(problem[:abs_positive][node_id_user], -demand)
-        JuMP.set_normalized_rhs(problem[:abs_negative][node_id_user], demand)
-
-    elseif objective_type == :linear_relative
-        # Objective function ∑ |1 - F/d|
-        JuMP.set_normalized_coefficient(
-            problem[:abs_positive][node_id_user],
-            F_edge,
-            iszero(demand) ? 0 : 1 / demand,
-        )
-        JuMP.set_normalized_coefficient(
-            problem[:abs_negative][node_id_user],
-            F_edge,
-            iszero(demand) ? 0 : -1 / demand,
-        )
-    else
-        error("Invalid allocation objective type $objective_type.")
-    end
-    return nothing
-end
-
-"""
-Set the objective for the given priority.
-For an objective with absolute values this also involves adjusting constraints.
-"""
-function set_objective_priority!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    t::Float64,
-    priority_idx::Int,
-)::Nothing
-    (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation) = p
-    (; demand, demand_itp, demand_from_timeseries, node_id) = user
-    (; main_network_connections, subnetwork_demands) = allocation
-    edge_ids = graph[].edge_ids[allocation_network_id]
-
-    F = problem[:F]
-    if objective_type in [:quadratic_absolute, :quadratic_relative]
-        ex = JuMP.QuadExpr()
-    elseif objective_type in [:linear_absolute, :linear_relative]
-        ex = sum(problem[:F_abs])
-    end
-
-    # Terms for subnetworks as users
-    if is_main_network(allocation_network_id)
-        for connections_subnetwork in main_network_connections
-            for connection in connections_subnetwork
-                d = subnetwork_demands[connection][priority_idx]
-                add_user_term!(ex, connection, objective_type, d, allocation_model)
-            end
-        end
-    end
-
-    # Terms for user nodes
-    for edge_id in edge_ids
-        node_id_user = edge_id[2]
-        if node_id_user.type != NodeType.User
-            continue
-        end
-
-        user_idx = findsorted(node_id, node_id_user)
-
-        if demand_from_timeseries[user_idx]
-            d = demand_itp[user_idx][priority_idx](t)
-            set_user_demand!(user, node_id_user, priority_idx, d)
-        else
-            d = get_user_demand(user, node_id_user, priority_idx)
-        end
-
-        add_user_term!(ex, edge_id, objective_type, d, allocation_model)
-    end
-
-    new_objective = JuMP.@expression(problem, ex)
-    JuMP.@objective(problem, Min, new_objective)
-    return nothing
-end
-
-"""
-Assign the allocations to the users as determined by the solution of the allocation problem.
-"""
-function assign_allocations!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    t::Float64,
-    priority_idx::Int;
-    collect_demands::Bool = false,
-)::Nothing
-    (; problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation) = p
-    (;
-        subnetwork_demands,
-        subnetwork_allocateds,
-        allocation_network_ids,
-        main_network_connections,
-    ) = allocation
-    (; record) = user
-    edge_ids = graph[].edge_ids[allocation_network_id]
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-    F = problem[:F]
-    for edge_id in edge_ids
-        # If this edge is a source edge from the main network to a subnetwork,
-        # and demands are being collected, add its flow to the demand of this edge
-        if collect_demands &&
-           graph[edge_id...].allocation_network_id_source == allocation_network_id &&
-           edge_id ∈ main_network_source_edges
-            allocated = JuMP.value(F[edge_id])
-            subnetwork_demands[edge_id][priority_idx] += allocated
-        end
-
-        user_node_id = edge_id[2]
-
-        if user_node_id.type == NodeType.User
-            allocated = JuMP.value(F[edge_id])
-            user_idx = findsorted(user.node_id, user_node_id)
-            user.allocated[user_idx][priority_idx] = allocated
-
-            # Save allocations to record
-            push!(record.time, t)
-            push!(record.subnetwork_id, allocation_model.allocation_network_id)
-            push!(record.user_node_id, Int(user_node_id))
-            push!(record.priority, user.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx])
-            push!(record.allocated, allocated)
-            # TODO: This is now the last abstraction before the allocation update,
-            # should be the average abstraction since the last allocation solve
-            push!(
-                record.abstracted,
-                get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
-            )
-        end
-    end
-
-    # Write the flows to the subnetworks as allocated flows
-    # in the allocation object
-    if is_main_network(allocation_network_id)
-        for (allocation_network_id, main_network_source_edges) in
-            zip(allocation_network_ids, main_network_connections)
-            if is_main_network(allocation_network_id)
-                continue
-            end
-            for edge_id in main_network_source_edges
-                subnetwork_allocateds[edge_id][priority_idx] = JuMP.value(F[edge_id])
-            end
-        end
-    end
-    return nothing
-end
-
-"""
-Adjust the source flows.
-"""
-function adjust_source_capacities!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    priority_idx::Int;
-    collect_demands::Bool = false,
-)::Nothing
-    (; problem) = allocation_model
-    (; graph, allocation) = p
-    (; allocation_network_id) = allocation_model
-    (; subnetwork_allocateds) = allocation
-    edge_ids = graph[].edge_ids[allocation_network_id]
-    source_constraints = problem[:source]
-    F = problem[:F]
-
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-
-    for edge_id in edge_ids
-        if graph[edge_id...].allocation_network_id_source == allocation_network_id
-            # If it is a source edge for this allocation problem
-            if priority_idx == 1
-                # If the optimization was just started, i.e. sources have to be reset
-                if edge_id in main_network_source_edges
-                    if collect_demands
-                        # Set the source capacity to effectively unlimited if subnetwork demands are being collected
-                        source_capacity = Inf
-                    else
-                        # Set the source capacity to the value allocated to the subnetwork over this edge
-                        source_capacity = subnetwork_allocateds[edge_id][priority_idx]
-                    end
-                else
-                    # Reset the source to the current flow from the physical layer.
-                    source_capacity = get_flow(graph, edge_id..., 0)
-                end
-                JuMP.set_normalized_rhs(
-                    source_constraints[edge_id],
-                    # It is assumed that the allocation procedure does not have to be differentiated.
-                    source_capacity,
-                )
-            else
-                # Subtract the allocated flow from the source.
-                JuMP.set_normalized_rhs(
-                    source_constraints[edge_id],
-                    JuMP.normalized_rhs(source_constraints[edge_id]) -
-                    JuMP.value(F[edge_id]),
-                )
-            end
-        end
-    end
-    return nothing
-end
-
-"""
-Set the values of the edge capacities. 2 cases:
-- Before the first allocation solve, set the edge capacities to their full capacity;
-- Before an allocation solve, subtract the flow used by allocation for the previous priority
-  from the edge capacities.
-"""
-function adjust_edge_capacities!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    priority_idx::Int,
-)::Nothing
-    (; graph) = p
-    (; problem, capacity, allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
-    constraints_capacity = problem[:capacity]
-    F = problem[:F]
-
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-
-    for edge_id in edge_ids
-        c = capacity[edge_id...]
-
-        # These edges have no capacity constraints:
-        # - With infinite capacity
-        # - Being a source from the main network to a subnetwork
-        if isinf(c) || edge_id ∈ main_network_source_edges
-            continue
-        end
-
-        if priority_idx == 1
-            # Before the first allocation solve, set the edge capacities to their full capacity
-            JuMP.set_normalized_rhs(constraints_capacity[edge_id], c)
-        else
-            # Before an allocation solve, subtract the flow used by allocation for the previous priority
-            # from the edge capacities
-            JuMP.set_normalized_rhs(
-                constraints_capacity[edge_id],
-                JuMP.normalized_rhs(constraints_capacity[edge_id]) - JuMP.value(F[edge_id]),
-            )
-        end
-    end
-end
-
-"""
-Save the allocation flows per physical edge.
-"""
-function save_allocation_flows!(
-    p::Parameters,
-    t::Float64,
-    allocation_model::AllocationModel,
-    priority::Int,
-    collect_demands::Bool,
-)::Nothing
-    (; problem, allocation_network_id) = allocation_model
-    (; allocation, graph) = p
-    (; record) = allocation
-    F = problem[:F]
-
-    for allocation_edge in first(F.axes)
-        flow = JuMP.value(F[allocation_edge])
-        edge_metadata = graph[allocation_edge...]
-        (; node_ids) = edge_metadata
-
-        for i in eachindex(node_ids)[1:(end - 1)]
-            push!(record.time, t)
-            push!(record.edge_id, edge_metadata.id)
-            push!(record.from_node_id, node_ids[i])
-            push!(record.to_node_id, node_ids[i + 1])
-            push!(record.subnetwork_id, allocation_network_id)
-            push!(record.priority, priority)
-            push!(record.flow, flow)
-            push!(record.collect_demands, collect_demands)
-        end
-    end
-    return nothing
-end
-
-"""
-Update the allocation optimization problem for the given subnetwork with the problem state
-and flows, solve the allocation problem and assign the results to the users.
-"""
-function allocate!(
-    p::Parameters,
-    allocation_model::AllocationModel,
-    t::Float64;
-    collect_demands::Bool = false,
-)::Nothing
-    (; user, allocation) = p
-    (; problem, allocation_network_id) = allocation_model
-    (; priorities) = user
-    (; subnetwork_demands) = allocation
-
-    # TODO: Compute basin flow from vertical fluxes and basin volume.
-    # Set as basin demand if the net flow is negative, set as source
-    # in the flow_conservation constraints if the net flow is positive.
-    # Solve this as a separate problem before the priorities below
-
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-
-    if collect_demands
-        for main_network_connection in keys(subnetwork_demands)
-            if main_network_connection in main_network_source_edges
-                subnetwork_demands[main_network_connection] .= 0.0
-            end
-        end
-    end
-
-    for priority_idx in eachindex(priorities)
-        adjust_source_capacities!(allocation_model, p, priority_idx; collect_demands)
-
-        # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
-        # or set edge capacities if priority_idx = 1
-        adjust_edge_capacities!(allocation_model, p, priority_idx)
-
-        # Set the objective depending on the demands
-        # A new objective function is set instead of modifying the coefficients
-        # of an existing objective function because this is not supported for
-        # quadratic terms:
-        # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_priority!(allocation_model, p, t, priority_idx)
-
-        # Solve the allocation problem for this priority
-        JuMP.optimize!(problem)
-        @debug JuMP.solution_summary(problem)
-        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-            (; allocation_network_id) = allocation_model
-            priority = priorities[priority_idx]
-            error(
-                "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
-            )
-        end
-
-        # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p, t, priority_idx; collect_demands)
-
-        # Save the flows over all edges in the subnetwork
-        save_allocation_flows!(
-            p,
-            t,
-            allocation_model,
-            priorities[priority_idx],
-            collect_demands,
-        )
-    end
 end

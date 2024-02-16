@@ -622,7 +622,7 @@ function formulate_du!(
     basin::Basin,
     storage::AbstractVector,
 )::Nothing
-    (; flow_vertical_dict, flow_vertical) = graph[]
+    (; flow_vertical) = graph[]
     flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows

@@ -63,6 +63,7 @@ allocation_network_ids: The unique sorted allocation network IDs
 allocation models: The allocation models for the main network and subnetworks corresponding to
     allocation_network_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
 record: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -71,6 +72,7 @@ struct Allocation
     allocation_network_ids::Vector{Int}
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+    priorities::Vector{Int}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     record::@NamedTuple{
@@ -456,13 +458,13 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of user per priority over time
+demand: water flux demand of user per priority over time.
+    Each user has a demand for all priorities,
+    which is 0.0 if it is not provided explicitly.
 active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
-priorities: All used priority values. Each user has a demand for all these priorities,
-    which is 0.0 if it is not provided explicitly.
 record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
@@ -474,7 +476,6 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    priorities::Vector{Int}
     record::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int},
@@ -507,13 +508,25 @@ struct User <: AbstractParameterNode
                 allocated,
                 return_factor,
                 min_level,
-                priorities,
                 record,
             )
         else
             error("Invalid demand")
         end
     end
+end
+
+"""
+node_id: node ID of the AllocationTarget node
+min_level: The minimum target level of the connected basin(s)
+max_level: The maximum target level of the connected basin(s)
+priority: If in a shortage state, the priority of the demand of the connected basin(s)
+"""
+struct AllocationTarget
+    node_id::Vector{NodeID}
+    min_level::Vector{LinearInterpolation}
+    max_level::Vector{LinearInterpolation}
+    priority::Vector{Int}
 end
 
 "Subgrid linearly interpolates basin levels."
@@ -558,6 +571,6 @@ struct Parameters{T, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
-    lookup::Dict{Int, Symbol}
+    allocation_target::AllocationTarget
     subgrid::Subgrid
 end

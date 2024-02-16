@@ -11,6 +11,21 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
+class AllocationTargetStaticSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
+
+
+class AllocationTargetTimeSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
+
+
 class BasinProfileSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     area: Series[float] = pa.Field(nullable=False)

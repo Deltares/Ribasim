@@ -620,22 +620,46 @@ function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
 
-function get_user_demand(user::User, node_id::NodeID, priority_idx::Int)::Float64
+function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
+    (; user, allocation) = p
     (; demand) = user
     user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
+    n_priorities = length(allocation.priorities)
     return demand[(user_idx - 1) * n_priorities + priority_idx]
 end
 
 function set_user_demand!(
-    user::User,
+    p::Parameters,
     node_id::NodeID,
     priority_idx::Int,
     value::Float64,
 )::Nothing
+    (; user, allocation) = p
     (; demand) = user
     user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
+    n_priorities = length(allocation.priorities)
     demand[(user_idx - 1) * n_priorities + priority_idx] = value
     return nothing
+end
+
+function get_all_priorities(db::DB, config::Config)::Vector{Int}
+    priorities = Set{Int}()
+
+    # TODO: Is there a way to automatically grab all tables with a priority column?
+    for type in [UserStaticV1, UserTimeV1, AllocationTargetStaticV1, AllocationTargetTimeV1]
+        union!(priorities, load_structvector(db, config, type).priority)
+    end
+    return sort(unique(priorities))
+end
+
+function get_basin_priority(p::Parameters, node_id::NodeID)::Int
+    (; graph, allocation_target) = p
+    @assert node_id.type == NodeType.Basin
+    inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(inneighbors_control)
+        return 0
+    else
+        idx = findsorted(allocation_target.node_id, only(inneighbors_control))
+        return allocation_target.priority[idx]
+    end
 end

@@ -215,6 +215,11 @@ class Node(Input):
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "User": (QColor("green"), "User", shape.Square),
+            "AllocationTarget": (
+                QColor("black"),
+                "AllocationTarget",
+                shape.Circle,
+            ),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -776,6 +781,43 @@ class UserTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class AllocationTargetStatic(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "AllocationTarget / static"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("target_level", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class AllocationTargetTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "AllocationTarget / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("target_level", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 

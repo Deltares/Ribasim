@@ -1,5 +1,6 @@
 @testitem "Allocation solve" begin
     using Ribasim: NodeID
+    using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
 
@@ -25,7 +26,8 @@
 
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
-    Ribasim.allocate!(p, allocation_model, 0.0)
+    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+    Ribasim.allocate!(p, allocation_model, 0.0, u)
 
     F = allocation_model.problem[:F]
     @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0
@@ -42,9 +44,9 @@
 
     # Test getting and setting user demands
     (; user) = p
-    Ribasim.set_user_demand!(user, NodeID(:User, 11), 2, Float64(π))
+    Ribasim.set_user_demand!(p, NodeID(:User, 11), 2, Float64(π))
     @test user.demand[4] ≈ π
-    @test Ribasim.get_user_demand(user, NodeID(:User, 11), 2) ≈ π
+    @test Ribasim.get_user_demand(p, NodeID(:User, 11), 2) ≈ π
 end
 
 @testitem "Allocation objective: quadratic absolute" skip = true begin
@@ -118,12 +120,12 @@ end
     problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
-    @test :F_abs in keys(problem.obj_dict)
+    @test :F_abs_user in keys(problem.obj_dict)
     F = problem[:F]
-    F_abs = problem[:F_abs]
+    F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs[NodeID(:User, 5)]] == 1.0
-    @test objective.terms[F_abs[NodeID(:User, 6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
 end
 
 @testitem "Allocation objective: linear relative" begin
@@ -142,12 +144,12 @@ end
     problem = model.integrator.p.allocation.allocation_models[1].problem
     objective = JuMP.objective_function(problem)
     @test objective isa JuMP.AffExpr # Affine expression
-    @test :F_abs in keys(problem.obj_dict)
+    @test :F_abs_user in keys(problem.obj_dict)
     F = problem[:F]
-    F_abs = problem[:F_abs]
+    F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs[NodeID(:User, 5)]] == 1.0
-    @test objective.terms[F_abs[NodeID(:User, 6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
 end
 
 @testitem "Allocation with controlled fractional flow" begin
@@ -243,9 +245,9 @@ end
     # support absolute value expressions in the objective function
     allocation_model_main_network = Ribasim.get_allocation_model(p, 1)
     problem = allocation_model_main_network.problem
-    @test problem[:F_abs].axes[1] == NodeID.(:Pump, [11, 24, 38])
-    @test problem[:abs_positive].axes[1] == NodeID.(:Pump, [11, 24, 38])
-    @test problem[:abs_negative].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    @test problem[:F_abs_user].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    @test problem[:abs_positive_user].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    @test problem[:abs_negative_user].axes[1] == NodeID.(:Pump, [11, 24, 38])
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
@@ -260,6 +262,7 @@ end
 @testitem "allocation with main network optimization problem" begin
     using SQLite
     using Ribasim: NodeID
+    using ComponentArrays: ComponentVector
     using JuMP
 
     toml_path = normpath(
@@ -273,13 +276,14 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
 
-    (; allocation, user, graph) = p
+    (; allocation, user, graph, basin) = p
     (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
     t = 0.0
 
     # Collecting demands
+    u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t; collect_demands = true)
+        Ribasim.allocate!(p, allocation_model, t, u; collect_demands = true)
     end
 
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
@@ -291,19 +295,20 @@ end
     # containing subnetworks as users
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    Ribasim.allocate!(p, allocation_model, t)
+    Ribasim.allocate!(p, allocation_model, t, u)
 
     # Main network objective function
     objective = JuMP.objective_function(problem)
     objective_variables = keys(objective.terms)
-    F_abs = problem[:F_abs]
-    @test F_abs[NodeID(:Pump, 11)] ∈ objective_variables
-    @test F_abs[NodeID(:Pump, 24)] ∈ objective_variables
-    @test F_abs[NodeID(:Pump, 38)] ∈ objective_variables
+    F_abs_user = problem[:F_abs_user]
+    @test F_abs_user[NodeID(:Pump, 11)] ∈ objective_variables
+    @test F_abs_user[NodeID(:Pump, 24)] ∈ objective_variables
+    @test F_abs_user[NodeID(:Pump, 38)] ∈ objective_variables
 
     # Running full allocation algorithm
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
-    Ribasim.update_allocation!((; p, t))
+    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+    Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
           [4.0, 0.49500000, 0.0]
@@ -313,4 +318,55 @@ end
 
     @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
     @test user.allocated[7] ≈ [0.001, 0.0, 0.0]
+end
+
+@testitem "Allocation level control" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_target/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    t = Ribasim.timesteps(model)
+
+    p = model.integrator.p
+    (; user, graph, allocation, basin, allocation_target) = p
+
+    d = user.demand_itp[1][2](0)
+    ϕ = 1e-3 # precipitation
+    q = Ribasim.get_flow(
+        graph,
+        Ribasim.NodeID(Ribasim.NodeType.FlowBoundary, 1),
+        Ribasim.NodeID(Ribasim.NodeType.Basin, 2),
+        0,
+    )
+    A = basin.area[1][1]
+    l_max = allocation_target.max_level[1](0)
+    Δt_allocation = allocation.allocation_models[1].Δt_allocation
+
+    # Until the first allocation solve, the user abstracts fully
+    pre_allocation = t .<= Δt_allocation
+    u_pre_allocation(τ) = storage[1] + (q + ϕ - d) * τ
+    @test storage[pre_allocation] ≈ u_pre_allocation.(t[pre_allocation]) rtol = 1e-4
+
+    # Until the basin is at its maximum level, the user does not abstract
+    basin_filling = @. ~pre_allocation && (storage <= A * l_max)
+    fill_start_idx = findlast(pre_allocation)
+    u_filling(τ) = storage[fill_start_idx] + (q + ϕ) * (τ - t[fill_start_idx])
+    @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) rtol = 1e-4
+
+    # After the basin has reached its maximum level, the user abstracts fully again
+    precipitation = eachindex(storage) .<= argmax(storage)
+    after_filling = @. ~pre_allocation && ~basin_filling && precipitation
+    fill_stop_idx = findfirst(after_filling)
+    u_after_filling(τ) = storage[fill_stop_idx] + (q + ϕ - d) * (τ - t[fill_stop_idx])
+    @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) rtol = 1e-4
+
+    # After precipitation stops, the user still abstracts from the basin so the storage decreases
+    storage_reduction = @. ~precipitation && t <= 1.8e6
+    storage_reduction_start = findfirst(storage_reduction)
+    u_storage_reduction(τ) =
+        storage[storage_reduction_start] + (q - d) * (τ - t[storage_reduction_start])
+    @test storage[storage_reduction] ≈ u_storage_reduction.(t[storage_reduction]) rtol =
+        1e-4
 end

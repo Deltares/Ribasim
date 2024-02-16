@@ -1015,7 +1015,9 @@ def allocation_example_model():
 
 
 def main_network_with_subnetworks_model():
-    # Set ip the nodes:
+    """Generate a model which consists of a main network and multiple connected subnetworks."""
+
+    # Set up the nodes:
     xy = np.array(
         [
             (0.0, -1.0),
@@ -1635,6 +1637,125 @@ def main_network_with_subnetworks_model():
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2020-03-01 00:00:00",
+    )
+
+    return model
+
+
+def allocation_target_model():
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: FlowBoundary
+            (1.0, 0.0),  # 2: Basin
+            (2.0, 0.0),  # 3: User
+            (1.0, -1.0),  # 4: AllocationTarget
+            (2.0, -1.0),  # 5: Basin
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+
+    node_type = ["FlowBoundary", "Basin", "User", "AllocationTarget", "Basin"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        df=gpd.GeoDataFrame(
+            data={
+                "type": node_type,
+                "subnetwork_id": 5 * [2],
+            },
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2, 4, 3, 4])
+    to_id = np.array([2, 3, 2, 5, 5])
+    edge_type = ["flow", "flow", "control", "flow", "control"]
+    allocation_network_id = [1, None, None, None, None]
+
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
+    edge = ribasim.Edge(
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": edge_type,
+                "allocation_network_id": allocation_network_id,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup basin
+    profile = pd.DataFrame(
+        data={"node_id": [2, 2, 5, 5], "area": 1e3, "level": [0.0, 1.0, 0.0, 1.0]}
+    )
+    static = pd.DataFrame(
+        data={
+            "node_id": [5],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": 0.0,
+            "urban_runoff": 0.0,
+        }
+    )
+    time = pd.DataFrame(
+        data={
+            "node_id": 2,
+            "time": ["2020-01-01 00:00:00", "2020-01-16 00:00:00"],
+            "drainage": 0.0,
+            "potential_evaporation": 0.0,
+            "infiltration": 0.0,
+            "precipitation": [1e-6, 0.0],
+            "urban_runoff": 0.0,
+        },
+    )
+
+    state = pd.DataFrame(data={"node_id": [2, 5], "level": 0.5})
+    basin = ribasim.Basin(profile=profile, static=static, time=time, state=state)
+
+    # Setup flow boundary
+    flow_boundary = ribasim.FlowBoundary(
+        static=pd.DataFrame(data={"node_id": [1], "flow_rate": 1e-3})
+    )
+
+    # Setup allocation level control
+    allocation_target = ribasim.AllocationTarget(
+        static=pd.DataFrame(
+            data={"node_id": [4], "priority": 1, "min_level": 1.0, "max_level": 1.5}
+        )
+    )
+
+    # Setup user
+    user = ribasim.User(
+        static=pd.DataFrame(
+            data={
+                "node_id": [3],
+                "priority": [2],
+                "demand": [1.5e-3],
+                "return_factor": [0.2],
+                "min_level": [0.2],
+            }
+        )
+    )
+
+    # Setup allocation
+    allocation = ribasim.Allocation(use_allocation=True, timestep=1e5)
+
+    model = ribasim.Model(
+        network=ribasim.Network(node=node, edge=edge),
+        basin=basin,
+        flow_boundary=flow_boundary,
+        allocation_target=allocation_target,
+        user=user,
+        allocation=allocation,
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-02-01 00:00:00",
     )
 
     return model

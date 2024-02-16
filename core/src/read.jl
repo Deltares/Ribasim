@@ -205,6 +205,10 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; allocation_network_ids, allocation_models, main_network_connections) = allocation
     allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
 
+    if isempty(allocation_network_ids_)
+        return nothing
+    end
+
     errors = non_positive_allocation_network_id(graph)
     if errors
         error("Allocation network initialization failed.")
@@ -646,8 +650,8 @@ function User(db::DB, config::Config)::User
         error("Problems encountered when parsing User static and time node IDs.")
     end
 
-    # All provided priorities
-    priorities = sort(unique(union(static.priority, time.priority)))
+    # All priorities used in the model
+    priorities = get_all_priorities(db, config)
 
     active = BitVector()
     min_level = Float64[]
@@ -761,6 +765,31 @@ function User(db::DB, config::Config)::User
     )
 end
 
+function AllocationTarget(db::DB, config::Config)::AllocationTarget
+    static = load_structvector(db, config, AllocationTargetStaticV1)
+    time = load_structvector(db, config, AllocationTargetTimeV1)
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "AllocationTarget";
+        static,
+        time,
+        time_interpolatables = [:min_level, :max_level],
+    )
+
+    if !valid
+        error("Errors occurred when parsing AllocationTarget data.")
+    end
+
+    return AllocationTarget(
+        NodeID.(NodeType.AllocationTarget, parsed_parameters.node_id),
+        parsed_parameters.min_level,
+        parsed_parameters.max_level,
+        parsed_parameters.priority,
+    )
+end
+
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
@@ -815,6 +844,7 @@ function Parameters(db::DB, config::Config)::Parameters
         Int[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
+        get_all_priorities(db, config),
         Dict{Tuple{NodeID, NodeID}, Float64}(),
         Dict{Tuple{NodeID, NodeID}, Float64}(),
         (;
@@ -845,6 +875,7 @@ function Parameters(db::DB, config::Config)::Parameters
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
     user = User(db, config)
+    allocation_target = AllocationTarget(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
@@ -882,7 +913,7 @@ function Parameters(db::DB, config::Config)::Parameters
         discrete_control,
         pid_control,
         user,
-        Dict{Int, Symbol}(),
+        allocation_target,
         subgrid_level,
     )
 
