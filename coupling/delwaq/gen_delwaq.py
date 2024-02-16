@@ -1,6 +1,7 @@
 """Setup a Delwaq model from a Ribasim model and results."""
-
 import csv
+import math
+import shutil
 from datetime import timedelta
 from pathlib import Path
 
@@ -24,7 +25,7 @@ fillvolume = 0.0
 
 # Read in model and results
 modelfn = Path("../../generated_testmodels/basic/ribasim.toml")
-modelfn = Path("../../nl/hws.toml")
+modelfn = Path("../../nl/hws.toml")  # fixed hws model
 model = ribasim.Model.read(modelfn)
 basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
 flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
@@ -62,22 +63,10 @@ write_pointer(output_folder / "ribasim.poi", pointer)
 total_segments = len(node.index)
 total_exchanges = len(edge.index) + nboundary
 
-# Write input template
-template = env.get_template("delwaq.inp.j2")
-with open(output_folder / "delwaq.inp", mode="w") as f:
-    f.write(
-        template.render(
-            startime=model.starttime,
-            endtime=model.endtime,
-            timestep=strfdelta(timestep),
-            nsegments=total_segments,
-            nexchanges=total_exchanges,
-        )
-    )
 
 # Write attributes template
 template = env.get_template("delwaq.atr.j2")
-with open(output_folder / "delwaq.atr", mode="w") as f:
+with open(output_folder / "ribasim.atr", mode="w") as f:
     f.write(
         template.render(
             nsegments=total_segments,
@@ -138,22 +127,41 @@ lengths = pd.DataFrame(
 )
 write_flows(output_folder / "ribasim.len", lengths)
 
-# Add some concentration values and convert to Delwaq format
-# We don't support transient concentrations yet
-model.level_boundary.static.df.concentration = 100
-
-# TODO Change to state column
-model.basin.static.df.concentration = 5
-
 # Find our boundaries
 bnd = node[node.index.isin(boundary_nodes)]["type"].reset_index()
 
 boundaries = []
-# levelboundary, flowboundary, iterate static tables and make a
-# {"name": "name", "concentrations": [1], "substances": ["Cl"]}
-# dict, and add it to boundaries
-# Put tracer on some flowboundaries (name of id)
-# Put salt on some levelboundaries (name of id)
+substances = set()
+
+
+def make_boundary(id, type):
+    return type + "_" + "#" + str(id)
+
+
+for i, row in model.level_boundary.static.df.iterrows():
+    if not math.isnan(row.concentration):
+        bid = make_boundary(row.node_id, "LevelBoundary")
+        boundaries.append(
+            {
+                "name": bid,
+                "concentrations": [row.concentration],
+                "substances": ["Cl"],
+            }
+        )
+        substances.add("Cl")
+
+
+for i, row in model.flow_boundary.static.df.iterrows():
+    if not math.isnan(row.concentration):
+        bid = make_boundary(row.node_id, "FlowBoundary")
+        substances.add(bid)
+        boundaries.append(
+            {
+                "name": bid,
+                "concentrations": [row.concentration],
+                "substances": [bid],
+            }
+        )
 
 template = env.get_template("B5_bounddata.inc.j2")
 with open(output_folder / "B5_bounddata.inc", mode="w") as f:
@@ -176,3 +184,20 @@ bnd.to_csv(
     quotechar="'",
     quoting=csv.QUOTE_ALL,
 )
+
+dimrc = Path("reference/dimr_config.xml")
+shutil.copy(dimrc, output_folder / "dimr_config.xml")
+
+# Write input template
+template = env.get_template("delwaq.inp.j2")
+with open(output_folder / "delwaq.inp", mode="w") as f:
+    f.write(
+        template.render(
+            startime=model.starttime,
+            endtime=model.endtime,
+            timestep=strfdelta(timestep),
+            nsegments=total_segments,
+            nexchanges=total_exchanges,
+            substances=substances,
+        )
+    )

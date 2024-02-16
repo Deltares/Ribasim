@@ -13,9 +13,16 @@
 
 ; Erwin: Hard coded Substances for mass balance check:
 ; number of active and inactive substances
-1             0
+{{substances|length+5}}             0
         ; active substances
-1  'Continuity'
+1 'Continuity'
+2 'Basin'
+3 'LevelBoundary'
+4 'FlowBoundary'
+5 'Terminal'
+{% for substance in substances -%}
+{{5+loop.index}} '{{substance}}'
+{% endfor -%}
         ; passive substances
 ; end Erwin
 
@@ -62,7 +69,7 @@ UGRID 'ribasim.nc'          ; Reference to the waqgeom file for UGRID NetCDF out
  2                                                  ; Structure matrix not used
 
 ; Maarten: Hier moeten we nog iets mee!
-INCLUDE 'dummy.atr'     ; From UI: attributes file
+INCLUDE 'ribasim.atr'     ; From UI: attributes file
 ; end Maarten: Hier moeten we nog iets mee!
 
 ; Maarten: Volume file
@@ -150,11 +157,25 @@ CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 ;INCLUDE 'includes_deltashell/B8_initials.inc'       ; From UI: Initials
 
 ; Erwin: Hard coded initials for mass balance check.
-MASS/M2
+MASS/M2 ; The bed substances are specified in mass/m2
 INITIALS
 'Continuity'
+'Basin'
+'LevelBoundary'
+'FlowBoundary'
+'Terminal'
+{% for substance in substances -%}
+'{{substance}}'
+{% endfor -%}
 DEFAULTS
 1
+0
+0
+0
+0
+{% for substance in substances -%}
+0
+{% endfor -%}
 ; end Erwin
 #8
 ;###############################################################################

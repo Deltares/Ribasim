@@ -8,9 +8,11 @@ import xugrid as xu
 
 output_folder = Path("model")
 
+# TODO Have a shared config...
 modelfn = Path("../../generated_testmodels/basic/ribasim.toml")
+modelfn = Path("../../nl/hws.toml")
 model = ribasim.Model.read(modelfn)
 
-ds = xr.open_dataset(output_folder / "Delwaq/delwaq_map.nc")
+ds = xr.open_dataset(output_folder / "delwaq_map.nc")
 ug = xu.UgridDataset(ds)
-ug["network1d_Continuity"].plot(clim=(0, 2))
+ug["ribasim_network_Cl"].to_numpy()
