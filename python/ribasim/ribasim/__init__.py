@@ -4,7 +4,6 @@ __version__ = "2024.2.0"
 from ribasim import utils
 from ribasim.config import (
     Allocation,
-    AllocationTarget,
     Basin,
     Compression,
     DiscreteControl,
@@ -20,6 +19,7 @@ from ribasim.config import (
     Results,
     Solver,
     TabulatedRatingCurve,
+    TargetLevel,
     Terminal,
     User,
     Verbosity,
@@ -30,7 +30,7 @@ from ribasim.model import Model, Network
 
 __all__ = [
     "Allocation",
-    "AllocationTarget",
+    "TargetLevel",
     "Basin",
     "DiscreteControl",
     "Compression",

@@ -646,20 +646,20 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     priorities = Set{Int}()
 
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [UserStaticV1, UserTimeV1, AllocationTargetStaticV1, AllocationTargetTimeV1]
+    for type in [UserStaticV1, UserTimeV1, TargetLevelStaticV1, TargetLevelTimeV1]
         union!(priorities, load_structvector(db, config, type).priority)
     end
     return sort(unique(priorities))
 end
 
 function get_basin_priority(p::Parameters, node_id::NodeID)::Int
-    (; graph, allocation_target) = p
+    (; graph, target_level) = p
     @assert node_id.type == NodeType.Basin
     inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(inneighbors_control)
         return 0
     else
-        idx = findsorted(allocation_target.node_id, only(inneighbors_control))
-        return allocation_target.priority[idx]
+        idx = findsorted(target_level.node_id, only(inneighbors_control))
+        return target_level.priority[idx]
     end
 end
