@@ -371,7 +371,7 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
         end
 
         # Set new fractional flow fractions in allocation problem
-        if node isa FractionalFlow && field == :fraction
+        if is_active(p.allocation) && node isa FractionalFlow && field == :fraction
             set_fractional_flow_in_allocation!(p, node_id, value)
         end
     end
