@@ -87,6 +87,8 @@ struct Allocation
     }
 end
 
+is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
+
 """
 Type for storing metadata of nodes in the graph
 type: type of the node
