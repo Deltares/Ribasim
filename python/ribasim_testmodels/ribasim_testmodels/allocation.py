@@ -55,20 +55,9 @@ def user_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [1], "level": 1.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the users:
     user = ribasim.User(
@@ -199,20 +188,9 @@ def subnetwork_model():
         data={"node_id": [2, 2, 6, 6, 8, 8], "area": 100000.0, "level": 3 * [0.0, 1.0]}
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 6, 8],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2, 6, 8], "level": 10.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
@@ -450,20 +428,9 @@ def looped_subnetwork_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 7, 11, 9, 15, 17, 21],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2, 7, 9, 11, 15, 17, 21], "level": 1.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
@@ -601,20 +568,9 @@ def minimal_subnetwork_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 4],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2, 4], "level": 1.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
@@ -758,20 +714,9 @@ def fractional_flow_subnetwork_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 5, 8],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2, 5, 8], "level": 1.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the flow boundary:
     flow_boundary = ribasim.FlowBoundary(
@@ -954,20 +899,9 @@ def allocation_example_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 5, 12],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2, 5, 12], "level": 1.0})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     flow_boundary = ribasim.FlowBoundary(
         static=pd.DataFrame(
@@ -1514,36 +1448,6 @@ def main_network_with_subnetworks_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [
-                2,
-                4,
-                6,
-                8,
-                10,
-                12,
-                16,
-                18,
-                25,
-                28,
-                31,
-                35,
-                40,
-                44,
-                42,
-                48,
-                50,
-                54,
-            ],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [
@@ -1591,7 +1495,6 @@ def main_network_with_subnetworks_model():
 
     basin = ribasim.Basin(
         profile=profile,
-        static=static,
         state=state,
     )
 

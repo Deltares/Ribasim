@@ -66,11 +66,8 @@ def trivial_model() -> ribasim.Model:
     static = pd.DataFrame(
         data={
             "node_id": [6],
-            "drainage": [0.0],
             "potential_evaporation": [evaporation],
-            "infiltration": [0.0],
             "precipitation": [precipitation],
-            "urban_runoff": [0.0],
         }
     )
 
