@@ -205,6 +205,10 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; allocation_network_ids, allocation_models, main_network_connections) = allocation
     allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
 
+    if isempty(allocation_network_ids_)
+        return nothing
+    end
+
     errors = non_positive_allocation_network_id(graph)
     if errors
         error("Allocation network initialization failed.")

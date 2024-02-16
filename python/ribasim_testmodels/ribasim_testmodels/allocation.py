@@ -1662,7 +1662,7 @@ def allocation_target_model():
         df=gpd.GeoDataFrame(
             data={
                 "type": node_type,
-                "allocation_network_id": 5 * [2],
+                "subnetwork_id": 5 * [2],
             },
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
