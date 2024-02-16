@@ -134,7 +134,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libgoogle-cloud-2.12.0-hef10d8f_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libgpg-error-1.47-h71f35ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libgrpc-1.60.1-h74775cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libhwloc-2.9.3-default_h554bfaf_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libiconv-1.17-hd590300_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libjpeg-turbo-3.0.0-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libkml-1.3.0-h01aab08_1018.conda
@@ -255,8 +254,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sip-6.7.12-py311hb755f60_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/snappy-1.1.10-h9fff704_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sqlite-3.45.1-h2c6b66d_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/suitesparse-5.10.1-h5a4f163_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.11.0-h00ab1b0_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/suitesparse-5.10.1-h9e50725_1.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.7.0-h924138e_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tiledb-2.19.1-h4386cac_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h4845f30_101.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tornado-6.3.3-py311h459d7ec_1.conda
@@ -1179,10 +1178,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.4.1-py312he37b823_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/curl-8.5.0-h2d989ff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cytoolz-0.12.3-py312he37b823_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/dart-sass-1.58.3-hce30654_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/debugpy-1.8.1-py312h20a0b95_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/deno-1.37.2-hce30654_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/deno-dom-0.1.35-hb9e0d3b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/docutils-0.20.1-py312h81bd7bf_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/draco-1.5.7-h2ffa867_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/eigen-3.4.0-h1995070_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/esbuild-0.19.2-hce30654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/exiv2-0.27.6-h98a1b47_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/expat-2.5.0-hb7217d7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/fiona-1.9.5-py312hd158ed5_3.conda
@@ -1316,6 +1319,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.1-h0d3ecfb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-1.9.2-hb41d57e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py312h9e53831_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandoc-3.1.11.1-hce30654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pcre2-10.42-h26f9a81_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pdal-2.6.3-h06576fe_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-10.2.0-py312hac22aec_0.conda
@@ -1347,6 +1351,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.8-h6bf1bb6_19.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qtkeychain-0.14.2-h50bd4b1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qtwebkit-5.212-ha51050e_16.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/quarto-1.4.550-hce30654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qwt-6.2.0-haa19703_6.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/re2-2023.06.02-h6135d0a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.2-h92ec313_1.conda
@@ -3220,7 +3225,7 @@ packages:
   - azure-core-cpp >=1.10.3,<2.0a0
   - libgcc-ng >=12
   - libstdcxx-ng >=12
-  - libxml2 >=2.12.1,<3.0.0a0
+  - libxml2 >=2.12.1,<2.13.0a0
   - openssl >=3.2.0,<4.0a0
   license: MIT
   license_family: MIT
@@ -4994,6 +4999,19 @@ packages:
   size: 2961769
   timestamp: 1683598364427
 - kind: conda
+  name: dart-sass
+  version: 1.58.3
+  build: hce30654_1
+  build_number: 1
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/dart-sass-1.58.3-hce30654_1.conda
+  sha256: fcaf0653d18ccbc83845ddc41277bcf8394609bdaf3ccbafb48dcd4092a70c0d
+  md5: 7282e188f57f69f03378f149fcb8acf8
+  license: MIT
+  license_family: MIT
+  size: 2544603
+  timestamp: 1683598631146
+- kind: conda
   name: dask
   version: 2024.2.0
   build: pyhd8ed1ab_0
@@ -5206,6 +5224,19 @@ packages:
   size: 27940247
   timestamp: 1698788945614
 - kind: conda
+  name: deno
+  version: 1.37.2
+  build: hce30654_1
+  build_number: 1
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/deno-1.37.2-hce30654_1.conda
+  sha256: 40c59e8035a9e2c3a712053316c41ead55b22e94a5e9904d52b108d4f8c48ddc
+  md5: 98041d72a6ee027b467e2014191ac25f
+  license: MIT
+  license_family: MIT
+  size: 29940099
+  timestamp: 1698784034240
+- kind: conda
   name: deno-dom
   version: 0.1.35
   build: h08cba0f_1
@@ -5235,6 +5266,21 @@ packages:
   license_family: MIT
   size: 298218
   timestamp: 1682953841090
+- kind: conda
+  name: deno-dom
+  version: 0.1.35
+  build: hb9e0d3b_1
+  build_number: 1
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/deno-dom-0.1.35-hb9e0d3b_1.conda
+  sha256: c5d93aa2c31af9ff7234ad95a65d166418e71d111f88fe7158c9d21eb5a49dd1
+  md5: 15158274af1f4064563645d278c07a79
+  depends:
+  - deno >=1.24.2
+  license: MIT
+  license_family: MIT
+  size: 373555
+  timestamp: 1682953826826
 - kind: conda
   name: deno-dom
   version: 0.1.35
@@ -5545,6 +5591,18 @@ packages:
   license_family: MIT
   size: 3376650
   timestamp: 1693243729127
+- kind: conda
+  name: esbuild
+  version: 0.19.2
+  build: hce30654_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/esbuild-0.19.2-hce30654_0.conda
+  sha256: 73c7100fc6521a6e261b4aa8c2f2630c970cec8a54d5b7945873293e8f0c6f98
+  md5: 9aacf373feb68fbf6cab70db465777eb
+  license: MIT
+  license_family: MIT
+  size: 3268434
+  timestamp: 1693243834619
 - kind: conda
   name: exceptiongroup
   version: 1.2.0
@@ -9188,7 +9246,7 @@ packages:
   depends:
   - bzip2 >=1.0.8,<2.0a0
   - libgcc-ng >=12
-  - libxml2 >=2.12.2,<3.0.0a0
+  - libxml2 >=2.12.2,<2.13.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - lz4-c >=1.9.3,<1.10.0a0
   - lzo >=2.10,<3.0a0
@@ -11907,23 +11965,6 @@ packages:
 - kind: conda
   name: libhwloc
   version: 2.9.3
-  build: default_h554bfaf_1009
-  build_number: 1009
-  subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/libhwloc-2.9.3-default_h554bfaf_1009.conda
-  sha256: 6950fee24766d03406e0f6f965262a5d98829c71eed8d1004f313892423b559b
-  md5: f36ddc11ca46958197a45effdd286e45
-  depends:
-  - libgcc-ng >=12
-  - libstdcxx-ng >=12
-  - libxml2 >=2.11.5,<3.0.0a0
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 2615665
-  timestamp: 1694532603730
-- kind: conda
-  name: libhwloc
-  version: 2.9.3
   build: default_haede6df_1009
   build_number: 1009
   subdir: win-64
@@ -12312,7 +12353,7 @@ packages:
   depends:
   - libgcc-ng >=12
   - libstdcxx-ng >=12
-  - libxml2 >=2.12.1,<3.0.0a0
+  - libxml2 >=2.12.1,<2.13.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - zstd >=1.5.5,<1.6.0a0
   license: Apache-2.0 WITH LLVM-exception
@@ -12439,7 +12480,7 @@ packages:
   - libcurl >=8.5.0,<9.0a0
   - libgcc-ng >=12
   - libstdcxx-ng >=12
-  - libxml2 >=2.12.2,<3.0.0a0
+  - libxml2 >=2.12.2,<2.13.0a0
   - libzip >=1.10.1,<2.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - openssl >=3.2.0,<4.0a0
@@ -13337,7 +13378,7 @@ packages:
   - librttopo >=1.1.0,<1.2.0a0
   - libsqlite >=3.44.2,<4.0a0
   - libstdcxx-ng >=12
-  - libxml2 >=2.12.2,<3.0.0a0
+  - libxml2 >=2.12.2,<2.13.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - proj >=9.3.1,<9.3.2.0a0
   - sqlite
@@ -14102,7 +14143,7 @@ packages:
   - libgcc-ng >=12
   - libstdcxx-ng >=12
   - libxcb >=1.15,<1.16.0a0
-  - libxml2 >=2.12.1,<3.0.0a0
+  - libxml2 >=2.12.1,<2.13.0a0
   - xkeyboard-config
   - xorg-libxau >=1.0.11,<2.0a0
   license: MIT/X11 Derivative
@@ -14234,7 +14275,7 @@ packages:
   md5: e71f31f8cfb0a91439f2086fc8aa0461
   depends:
   - libgcc-ng >=12
-  - libxml2 >=2.12.1,<3.0.0a0
+  - libxml2 >=2.12.1,<2.13.0a0
   license: MIT
   license_family: MIT
   size: 254297
@@ -14559,7 +14600,7 @@ packages:
   md5: cee803b62c62e5f3326be31e57161ff5
   depends:
   - libgcc-ng >=12
-  - libxml2 >=2.12.3,<3.0.0a0
+  - libxml2 >=2.12.3,<2.13.0a0
   - libxslt >=1.1.39,<2.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - python >=3.11,<3.12.0a0
@@ -16951,6 +16992,18 @@ packages:
   license_family: GPL
   size: 20502973
   timestamp: 1707474170203
+- kind: conda
+  name: pandoc
+  version: 3.1.11.1
+  build: hce30654_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandoc-3.1.11.1-hce30654_0.conda
+  sha256: 80044e15ee1ffeb52ab8b36270b5cb99b56027aabd4e2e7aa1814087ceb6317a
+  md5: bb4cbaefaa40290fc4bb09b224bc2ebb
+  license: GPL-2.0-or-later
+  license_family: GPL
+  size: 22163163
+  timestamp: 1707474489386
 - kind: conda
   name: pandocfilters
   version: 1.5.0
@@ -20382,7 +20435,7 @@ packages:
   - libstdcxx-ng >=12
   - libwebp
   - libwebp-base >=1.3.2,<2.0a0
-  - libxml2 >=2.12.3,<3.0.0a0
+  - libxml2 >=2.12.3,<2.13.0a0
   - libxslt >=1.1.39,<2.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - qt-main >=5.15.8,<5.16.0a0
@@ -20469,6 +20522,23 @@ packages:
   license: GPL-2.0-or-later
   size: 15209862
   timestamp: 1708049120632
+- kind: conda
+  name: quarto
+  version: 1.4.550
+  build: hce30654_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/quarto-1.4.550-hce30654_0.conda
+  sha256: 6ef6c7938f3821c95fc538097fc4af2c7c9a65dc01cdcbcf596ec1e5db850f55
+  md5: 995e67712baa376e825ef49b39eb576f
+  depends:
+  - dart-sass
+  - deno >=1.37.2,<1.37.3.0a0
+  - deno-dom >=0.1.35,<0.1.36.0a0
+  - esbuild
+  - pandoc >=3.1.11.1,<3.1.12.0a0
+  license: GPL-2.0-or-later
+  size: 16037142
+  timestamp: 1708049538631
 - kind: conda
   name: quartodoc
   version: 0.7.2
@@ -21723,27 +21793,6 @@ packages:
 - kind: conda
   name: suitesparse
   version: 5.10.1
-  build: h5a4f163_3
-  build_number: 3
-  subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/suitesparse-5.10.1-h5a4f163_3.conda
-  sha256: 235c9321cb76896f3304eea87248a74f52d8c088a38b9cbd98a5366e34756b90
-  md5: f363554b9084fb9d5e3366fbbc0d18e0
-  depends:
-  - libblas >=3.9.0,<4.0a0
-  - libcblas >=3.9.0,<4.0a0
-  - libgcc-ng >=12
-  - liblapack >=3.9.0,<4.0a0
-  - libstdcxx-ng >=12
-  - metis >=5.1.0,<5.1.1.0a0
-  - mpfr >=4.2.1,<5.0a0
-  - tbb >=2021.11.0
-  license: LGPL-2.1-or-later AND BSD-3-Clause AND GPL-2.0-or-later AND Apache-2.0
-  size: 1457359
-  timestamp: 1705676854887
-- kind: conda
-  name: suitesparse
-  version: 5.10.1
   build: h79486c6_3
   build_number: 3
   subdir: osx-arm64
@@ -21762,6 +21811,27 @@ packages:
   size: 1125223
   timestamp: 1705677285644
 - kind: conda
+  name: suitesparse
+  version: 5.10.1
+  build: h9e50725_1
+  build_number: 1
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/suitesparse-5.10.1-h9e50725_1.tar.bz2
+  sha256: 176d004eafe3f07110315d1c96ab7245fbba8677364933213404890a0e2e9d1f
+  md5: a3a685b5f9aeb890ed874502fe56accf
+  depends:
+  - libblas >=3.8.0,<4.0a0
+  - libcblas >=3.8.0,<4.0a0
+  - libgcc-ng >=9.4.0
+  - liblapack >=3.8.0,<4.0a0
+  - libstdcxx-ng >=9.4.0
+  - metis >=5.1.0,<5.1.1.0a0
+  - mpfr >=4.1.0,<5.0a0
+  - tbb >=2021.3.0
+  license: LGPL-2.1-or-later (AMD, BTF, etc.), BSD-3-clause (UFget), GPL-2.0-or-later (UMFPACK, RBIO, SPQR, GPUQRENGINE), Apache-2.0 (Metis)
+  size: 2516475
+  timestamp: 1630001297117
+- kind: conda
   name: tabulate
   version: 0.9.0
   build: pyhd8ed1ab_1
@@ -21779,21 +21849,19 @@ packages:
   timestamp: 1665138565317
 - kind: conda
   name: tbb
-  version: 2021.11.0
-  build: h00ab1b0_1
-  build_number: 1
+  version: 2021.7.0
+  build: h924138e_0
   subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.11.0-h00ab1b0_1.conda
-  sha256: ded4de0d5a3eb7b47ed829f0ed0e3c61ccd428308bde52d8d22ced228038223b
-  md5: 4531d2927578e7e254ff3bcf6457518c
+  url: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.7.0-h924138e_0.tar.bz2
+  sha256: 452a6def24912d2a118d863095c3f9cb05fe5c997357431a0ca4452eb7f65f08
+  md5: 819421f81b127a5547bf96ad57eccdd9
   depends:
   - libgcc-ng >=12
-  - libhwloc >=2.9.3,<2.9.4.0a0
   - libstdcxx-ng >=12
   license: Apache-2.0
   license_family: APACHE
-  size: 195540
-  timestamp: 1706163436794
+  size: 2055530
+  timestamp: 1668617473224
 - kind: conda
   name: tbb
   version: 2021.11.0
