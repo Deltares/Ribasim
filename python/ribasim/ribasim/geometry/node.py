@@ -20,7 +20,7 @@ __all__ = ("Node",)
 class NodeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     type: Series[str] = pa.Field(default="")
-    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
@@ -147,12 +147,10 @@ class Node(SpatialTableModel[NodeSchema]):
         contains_subnetworks = False
         assert self.df is not None
 
-        for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
-            "allocation_network_id"
-        ):
-            if allocation_subnetwork_id is None:
+        for subnetwork_id, df_subnetwork in self.df.groupby("subnetwork_id"):
+            if subnetwork_id is None:
                 continue
-            elif allocation_subnetwork_id == 1:
+            elif subnetwork_id == 1:
                 contains_main_network = True
                 color = COLOR_MAIN_NETWORK
             else:

@@ -76,15 +76,15 @@ Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, 
 #### Fractional flows and user return flows
 Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $0 \le r_i \le 1, i \in U_S$.
 
-## The allocation graph
+## The allocation network
 
-A new graph is created from the subnetwork, which we call an allocation graph. The allocation graph is almost a subgraph of the main (flow) model, apart from the fact that an allocation graph can contain edges which are not in the main model.
+A new graph is created from the subnetwork, which we call an allocation network. The allocation network is almost a subgraph of the main (flow) model, apart from the fact that an allocation network can contain edges which are a combination of multiple edges in the main model.
 
 ### Nodes and edges
 
-The allocation graph consists of:
+The allocation network consists of:
 
-- Nodes $V'_S \subset V_S$, where each basin, source and user in the subnetwork get a node in the allocation graph. Also nodes that have fractional flow outneighbors get a node in the allocation graph.
+- Nodes $V'_S \subset V_S$, where each basin, source and user in the subnetwork get a node in the allocation network. Also nodes that have fractional flow outneighbors get a node in the allocation network.
 - Edges $E_S$, which are either edges that also appear between nodes in the subnetwork or represent a sequence of those, creating a shortcut.
 
 For notational convenience, we use the notation
@@ -94,15 +94,15 @@ For notational convenience, we use the notation
     V^{\text{in}}_S(j) = \left\{i \in V'_S : (i,j) \in E_S\right\}
 \end{align}
 
-for the set of in-neighbors and out-neighbors of a node in the allocation graph respectively.
+for the set of in-neighbors and out-neighbors of a node in the allocation network respectively.
 
 ### Capacities
 
-Each edge in the allocation graph has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n'\times n'}$ where $n' = \#V'_S$ is the number of nodes in the allocation graph. The capacities can be infinite, if there is nothing in the model constraining the capacity of the edge.
+Each edge in the allocation network has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n'\times n'}$ where $n' = \#V'_S$ is the number of nodes in the allocation network. The capacities can be infinite, if there is nothing in the model constraining the capacity of the edge.
 
 The capacities are determined in different ways:
 
-- If an edge does not exist in the allocation graph, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
+- If an edge does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
 - The capacity of the edge $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite;
 - If the edge is a source, the capacity of the edge is given by the flow rate of that source.
 
@@ -116,7 +116,7 @@ The optimization problem for a subnetwork is a linear optimization problem consi
 
 There are several types of variable whose value has to be determined to solve the allocation problem:
 
-- The flows $F \in \mathbb{R}_{\ge 0}^{n'\times n'}$ over the edges in the allocation graph;
+- The flows $F \in \mathbb{R}_{\ge 0}^{n'\times n'}$ over the edges in the allocation network;
 - The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins respectively.
 
 ## The optimization objective
@@ -185,7 +185,7 @@ $$
 $$
 
 ## The optimization constraints
-- Flow conservation: For the basins in the allocation graph we have that
+- Flow conservation: For the basins in the allocation network we have that
 $$
     F^\text{basin in}_k + \sum_{j=1}^{n'} F_{kj} = F^\text{basin out}_k + \sum_{i=1}^{n'} F_{ik}, \quad \forall k \in B_S .
 $$  {#eq-flowconservationconstraint}
@@ -217,7 +217,7 @@ $$
     V^{\text{in}}_S(k) = \{i\},\;
      V^{\text{out}}_S(k) = \{j\}.
 $$ {#eq-returnflowconstraint}
-Here we use that each user node in the allocation graph has a unique in-edge and out-edge.
+Here we use that each user node in the allocation network has a unique in-edge and out-edge.
 - User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
@@ -233,11 +233,11 @@ $$ {#eq-fractionalflowconstraint}
 ### Users using their own return flow
 
 If not explicitly avoided, users can use their own return flow in this allocation problem formulation.
-Therefore, return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation graph from the user outflow node back to the user.
+Therefore, return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation network from the user outflow node back to the user.
 
 # Solving the allocation problem {#sec-solving-allocation}
 
-The allocation problem for an allocation graph at time $t$ is solved per priority, as follows:
+The allocation problem for an allocation network at time $t$ is solved per priority, as follows:
 
 1. Define a capacity matrix with capacities as described above, that will be updated for each priority:
 $$

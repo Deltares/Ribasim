@@ -158,13 +158,13 @@ in some way. Counter intuitively, even systems you may think of as edges, such a
 are nodes in Ribasim. This is because edges only define direct instantaneous couplings
 between nodes, and never have storage of their own.
 
-column                | type     | restriction
---------------------- | -------- | -----------
-fid                   | Int      | unique, sorted
-type                  | String   | known node type
-geometry              | geoarrow | (optional)
-name                  | String   | (optional, does not have to be unique)
-allocation_network_id | Int      | (optional)
+column        | type     | restriction
+--------------| -------- | -----------
+fid           | Int      | unique, sorted
+type          | String   | known node type
+geometry      | geoarrow | (optional)
+name          | String   | (optional, does not have to be unique)
+subnetwork_id |  Int     | (optional)
 
 The available node types as of this writing are listed as the top level bullets below. The
 sub-bullets indicate which tables are associated to the node type. The table name is the
@@ -231,15 +231,15 @@ There are currently 2 possible edge types:
   Control edges should always point away from the control node.
   The edges between the control node and the nodes it *listens* to are *not* present in `Edge`, these are defined in [`DiscreteControl / condition`](usage.qmd#sec-discrete-control)
 
-column                | type     | restriction
---------------------- | -------- | -----------
-fid                   | Int      | unique, sorted
-from_node_id          | Int      | -
-to_node_id            | Int      | -
-edge_type             | String   | must be "flow" or "control"
-geom                  | geometry | (optional)
-name                  | String   | (optional, does not have to be unique)
-allocation_network_id | Int      | (optional, denotes source in allocation network)
+column        | type     | restriction
+--------------| -------- | -----------
+fid           | Int      | unique, sorted
+from_node_id  | Int      | -
+to_node_id    | Int      | -
+edge_type     | String   | must be "flow" or "control"
+geom          | geometry | (optional)
+name          | String   | (optional, does not have to be unique)
+subnetwork_id | Int      | (optional, denotes source in allocation network)
 
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
@@ -469,6 +469,7 @@ min_level     | Float64  | $m$          | -
 An `AllocationTarget` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
 above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
+The same `AllocationTarget` node can be used for basins in different subnetworks.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
@@ -707,15 +708,15 @@ control_state   | String
 
 The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
 
-column                | type
---------------------- | -----
-time                  | DateTime
-allocation_network_id | Int
-user_node_id          | Int
-priority              | Int
-demand                | Float64
-allocated             | Float64
-abstracted            | Float64
+column        | type
+--------------| -----
+time          | DateTime
+subnetwork_id | Int
+user_node_id  | Int
+priority      | Int
+demand        | Float64
+allocated     | Float64
+abstracted    | Float64
 
 ::: {.callout-note}
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
@@ -727,13 +728,13 @@ The allocation flow table contains results of the optimized allocation flow on e
 If in the model a main network and subnetwork(s) are specified, there are 2 different
 types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
 
-column                | type
---------------------- | -----
-time                  | DateTime
-edge_id               | Int
-from_node_id          | Int
-to_node_id            | Int
-allocation_network_id | Int
-priority              | Int
-flow                  | Float64
-collect_demands       | Bool
+column          | type
+----------------| -----
+time            | DateTime
+edge_id         | Int
+from_node_id    | Int
+to_node_id      | Int
+subnetwork_id   | Int
+priority        | Int
+flow            | Float64
+collect_demands | Bool

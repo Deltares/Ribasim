@@ -46,7 +46,7 @@
         @test Tables.schema(allocation) == Tables.Schema(
             (
                 :time,
-                :allocation_network_id,
+                :subnetwork_id,
                 :user_node_id,
                 :priority,
                 :demand,
@@ -61,7 +61,7 @@
                 :edge_id,
                 :from_node_id,
                 :to_node_id,
-                :allocation_network_id,
+                :subnetwork_id,
                 :priority,
                 :flow,
                 :collect_demands,

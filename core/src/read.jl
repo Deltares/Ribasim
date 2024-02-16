@@ -739,7 +739,7 @@ function User(db::DB, config::Config)::User
 
     record = (
         time = Float64[],
-        allocation_network_id = Int[],
+        subnetwork_id = Int[],
         user_node_id = Int[],
         priority = Int[],
         demand = Float64[],
@@ -848,7 +848,7 @@ function Parameters(db::DB, config::Config)::Parameters
             edge_id = Int[],
             from_node_id = Int[],
             to_node_id = Int[],
-            allocation_network_id = Int[],
+            subnetwork_id = Int[],
             priority = Int[],
             flow = Float64[],
             collect_demands = BitVector(),

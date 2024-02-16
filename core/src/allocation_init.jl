@@ -43,7 +43,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         end
     end
 
-    # Add nodes in the allocation graph for nodes connected to the source edges
+    # Add nodes in the allocation network for nodes connected to the source edges
     # One of these nodes can be outside the subnetwork, as long as the edge
     # connects to the subnetwork
     edges_source = graph[].edges_source
@@ -98,10 +98,10 @@ function indicate_allocation_flow!(
 end
 
 """
-This loop finds allocation graph edges in several ways:
-- Between allocation graph nodes whose equivalent in the subnetwork are directly connected
-- Between allocation graph nodes whose equivalent in the subnetwork are connected
-  with one or more allocation graph nodes in between
+This loop finds allocation network edges in several ways:
+- Between allocation network nodes whose equivalent in the subnetwork are directly connected
+- Between allocation network nodes whose equivalent in the subnetwork are connected
+  with one or more allocation network nodes in between
 """
 function find_allocation_graph_edges!(
     p::Parameters,
@@ -125,7 +125,7 @@ function find_allocation_graph_edges!(
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
             # Direct connections in the subnetwork between nodes that
-            # are in the allocation graph
+            # are in the allocation network
             for inneighbor_id in inneighbor_ids
                 if inneighbor_id in node_ids
                     # The opposite of source edges must not be made
@@ -139,7 +139,7 @@ function find_allocation_graph_edges!(
                 end
             end
             # Direct connections in the subnetwork between nodes that
-            # are in the allocation graph
+            # are in the allocation network
             for outneighbor_id in outneighbor_ids
                 if outneighbor_id in node_ids
                     # The opposite of source edges must not be made
@@ -156,7 +156,7 @@ function find_allocation_graph_edges!(
 
         elseif graph[node_id].allocation_network_id == allocation_network_id
 
-            # Try to find an existing allocation graph composite edge to add the current subnetwork_node_id to
+            # Try to find an existing allocation network composite edge to add the current subnetwork_node_id to
             found_edge = false
             for edge_composite in edges_composite
                 if edge_composite[1] in neighbor_ids
@@ -170,7 +170,7 @@ function find_allocation_graph_edges!(
                 end
             end
 
-            # Start a new allocation graph composite edge if no existing edge to append to was found
+            # Start a new allocation network composite edge if no existing edge to append to was found
             if !found_edge
                 push!(edges_composite, [node_id])
             end
@@ -180,8 +180,8 @@ function find_allocation_graph_edges!(
 end
 
 """
-For the composite allocation graph edges:
-- Find out whether they are connected to allocation graph nodes on both ends
+For the composite allocation network edges:
+- Find out whether they are connected to allocation network nodes on both ends
 - Compute their capacity
 - Find out their allowed flow direction(s)
 """
@@ -196,7 +196,7 @@ function process_allocation_graph_edges!(
     edge_ids = graph[].edge_ids[allocation_network_id]
 
     for edge_composite in edges_composite
-        # Find allocation graph node connected to this edge on the first end
+        # Find allocation network node connected to this edge on the first end
         node_id_1 = nothing
         neighbors_side_1 = inoutflow_ids(graph, edge_composite[1])
         for neighbor_node_id in neighbors_side_1
@@ -212,13 +212,13 @@ function process_allocation_graph_edges!(
             continue
         end
 
-        # Find allocation graph node connected to this edge on the second end
+        # Find allocation network node connected to this edge on the second end
         node_id_2 = nothing
         neighbors_side_2 = inoutflow_ids(graph, edge_composite[end])
         for neighbor_node_id in neighbors_side_2
             if neighbor_node_id in node_ids
                 node_id_2 = neighbor_node_id
-                # Make sure this allocation graph node is distinct from the other one
+                # Make sure this allocation network node is distinct from the other one
                 if node_id_2 ≠ node_id_1
                     push!(edge_composite, neighbor_node_id)
                     break
@@ -226,7 +226,7 @@ function process_allocation_graph_edges!(
             end
         end
 
-        # No connection to allocation graph node found on this side, so edge is discarded
+        # No connection to allocation network node found on this side, so edge is discarded
         if isnothing(node_id_2)
             continue
         end
@@ -235,12 +235,12 @@ function process_allocation_graph_edges!(
             continue
         end
 
-        # Find capacity of this composite allocation graph edge
+        # Find capacity of this composite allocation network edge
         positive_flow = true
         negative_flow = true
         edge_capacity = Inf
-        # The start and end subnetwork nodes of the composite allocation graph
-        # edge are now nodes that have an equivalent in the allocation graph,
+        # The start and end subnetwork nodes of the composite allocation network
+        # edge are now nodes that have an equivalent in the allocation network,
         # these do not constrain the composite edge capacity
         for (node_id_1, node_id_2, node_id_3) in IterTools.partition(edge_composite, 3, 1)
             node = getfield(p, graph[node_id_2].type)
@@ -263,7 +263,7 @@ function process_allocation_graph_edges!(
             end
         end
 
-        # Add composite allocation graph edge(s)
+        # Add composite allocation network edge(s)
         if positive_flow
             indicate_allocation_flow!(graph, edge_composite)
             capacity[node_id_1, node_id_2] = edge_capacity
@@ -307,7 +307,7 @@ end
 
 """
 Add the edges connecting the main network work to a subnetwork to both the main network
-and subnetwork allocation graph.
+and subnetwork allocation network.
 """
 function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int)::Nothing
     (; graph, allocation) = p
@@ -334,15 +334,15 @@ function allocation_graph(
     # Find out which nodes in the subnetwork are used in the allocation network
     allocation_graph_used_nodes!(p, allocation_network_id)
 
-    # Find the edges in the allocation graph
+    # Find the edges in the allocation network
     edges_composite, capacity = find_allocation_graph_edges!(p, allocation_network_id)
 
-    # Process the edges in the allocation graph
+    # Process the edges in the allocation network
     process_allocation_graph_edges!(capacity, edges_composite, p, allocation_network_id)
     add_subnetwork_connections!(p, allocation_network_id)
 
     if !valid_sources(p, allocation_network_id)
-        error("Errors in sources in allocation graph.")
+        error("Errors in sources in allocation network.")
     end
 
     # Discard user return flow in allocation if this leads to a closed loop of flow
@@ -749,7 +749,7 @@ function add_constraints_fractional_flow!(
         for outflow_id_ in outflow_ids(graph, node_id)
             if outflow_id_.type == NodeType.FractionalFlow
                 # The fractional flow nodes themselves are not represented in
-                # the allocation graph
+                # the allocation network
                 dst_id = outflow_id(graph, outflow_id_)
                 # For now only consider fractional flow nodes which end in a basin
                 if haskey(graph, node_id, dst_id) && dst_id.type == NodeType.Basin
@@ -844,7 +844,7 @@ function AllocationModel(
     p::Parameters,
     Δt_allocation::Float64,
 )::AllocationModel
-    # Add allocation graph data to the model MetaGraph
+    # Add allocation network data to the model MetaGraph
     capacity = allocation_graph(p, allocation_network_id)
 
     # The JuMP.jl allocation problem
