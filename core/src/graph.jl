@@ -6,11 +6,10 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows =
-        execute(db, "SELECT fid, type, allocation_network_id FROM Node ORDER BY fid")
+    node_rows = execute(db, "SELECT fid, type, subnetwork_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, allocation_network_id FROM Edge ORDER BY fid",
+        "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int, Set{NodeID}}()
@@ -36,10 +35,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     for row in node_rows
         node_id = NodeID(row.type, row.fid)
         # Process allocation network ID
-        if ismissing(row.allocation_network_id)
+        if ismissing(row.subnetwork_id)
             allocation_network_id = 0
         else
-            allocation_network_id = row.allocation_network_id
+            allocation_network_id = row.subnetwork_id
             if !haskey(node_ids, allocation_network_id)
                 node_ids[allocation_network_id] = Set{NodeID}()
             end
@@ -58,7 +57,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         to_node_type,
         to_node_id,
         edge_type,
-        allocation_network_id,
+        subnetwork_id,
     ) in edge_rows
         try
             # hasfield does not work
@@ -68,28 +67,21 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         end
         id_src = NodeID(from_node_type, from_node_id)
         id_dst = NodeID(to_node_type, to_node_id)
-        if ismissing(allocation_network_id)
-            allocation_network_id = 0
+        if ismissing(subnetwork_id)
+            subnetwork_id = 0
         end
-        edge_metadata = EdgeMetadata(
-            fid,
-            edge_type,
-            allocation_network_id,
-            id_src,
-            id_dst,
-            false,
-            NodeID[],
-        )
+        edge_metadata =
+            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
         graph[id_src, id_dst] = edge_metadata
         if edge_type == EdgeType.flow
             flow_counter += 1
             flow_dict[(id_src, id_dst)] = flow_counter
         end
-        if allocation_network_id != 0
-            if !haskey(edges_source, allocation_network_id)
-                edges_source[allocation_network_id] = Set{EdgeMetadata}()
+        if subnetwork_id != 0
+            if !haskey(edges_source, subnetwork_id)
+                edges_source[subnetwork_id] = Set{EdgeMetadata}()
             end
-            push!(edges_source[allocation_network_id], edge_metadata)
+            push!(edges_source[subnetwork_id], edge_metadata)
         end
     end
 

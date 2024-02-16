@@ -378,7 +378,7 @@ function get_level(
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-   if node_id.type == NodeType.Basin
+    if node_id.type == NodeType.Basin
         _, i = id_index(basin.node_id, node_id)
         current_level = get_tmp(basin.current_level, storage)
         current_level[i]
@@ -588,7 +588,7 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
 
-"""Find out whether a path exists between a start node and end node in the given allocation graph."""
+"""Find out whether a path exists between a start node and end node in the given allocation network."""
 function allocation_path_exists_in_graph(
     graph::MetaGraph,
     start_node_id::NodeID,

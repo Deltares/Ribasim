@@ -170,7 +170,7 @@ function allocation_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    allocation_network_id::Vector{Int},
+    subnetwork_id::Vector{Int},
     user_node_id::Vector{Int},
     priority::Vector{Int},
     demand::Vector{Float64},
@@ -183,7 +183,7 @@ function allocation_table(
     time = datetime_since.(record.time, config.starttime)
     return (;
         time,
-        record.allocation_network_id,
+        record.subnetwork_id,
         record.user_node_id,
         record.priority,
         record.demand,
@@ -199,7 +199,7 @@ function allocation_flow_table(
     edge_id::Vector{Int},
     from_node_id::Vector{Int},
     to_node_id::Vector{Int},
-    allocation_network_id::Vector{Int},
+    subnetwork_id::Vector{Int},
     priority::Vector{Int},
     flow::Vector{Float64},
     collect_demands::BitVector,
@@ -214,7 +214,7 @@ function allocation_flow_table(
         record.edge_id,
         record.from_node_id,
         record.to_node_id,
-        record.allocation_network_id,
+        record.subnetwork_id,
         record.priority,
         record.flow,
         record.collect_demands,
