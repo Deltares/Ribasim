@@ -27,3 +27,7 @@ docker run --mount type=bind,source="$(pwd)/model",target=/mnt/myModel \
 
 If everything worked out, there's now a new netcdf output. We'll use this to update the Ribasim model.
 Run `parse_delwaq.py` again to update the Ribasim model with the new concentrations.
+
+## Notes
+I've tested this with a basic model, and the latest ribasim-nl (hws) model.
+In the latter I've set a (static) concentration on the Rijn and Maas FlowBoundaries, which will create individual tracers for these nodes (named FlowBoundary_#node_id). For the LevelBoundaries, I've set a concentration of 34 for all North Sea nodes, assuming Cl as substance.
