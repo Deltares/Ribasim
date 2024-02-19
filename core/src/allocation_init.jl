@@ -561,12 +561,22 @@ function add_constraints_flow_conservation!(
     (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_conservation =
-        [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-    for edge in main_network_source_edges
+    node_ids_conservation = NodeID[]
+    for node_id in node_ids
+        is_basin = node_id.type == NodeType.Basin
+        has_fractional_flow = any(
+            outflow_id.type == NodeType.FractionalFlow for
+            outflow_id in outflow_ids(graph, node_id)
+        )
+        if is_basin || has_fractional_flow
+            push!(node_ids_conservation, node_id)
+        end
+    end
+
+    for edge in get_main_network_connections(p, allocation_network_id)
         push!(node_ids_conservation, edge[2])
     end
+
     unique!(node_ids_conservation)
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
@@ -795,6 +805,32 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+function add_constraints_terminal_flow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+
+    node_ids = graph[].node_ids[allocation_network_id]
+    terminal_edges = Tuple{NodeID, NodeID}[]
+    for node_id in node_ids
+        if node_id.type == NodeType.Terminal
+            for inflow_id in inflow_ids_allocation(graph, node_id)
+                push!(terminal_edges, (inflow_id, node_id))
+            end
+        end
+    end
+    problem[:terminal_flow] = JuMP.@constraint(
+        problem,
+        [edge_id = terminal_edges],
+        F[edge_id] <= 0.0,
+        base_name = "terminal_flow"
+    )
+    return nothing
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
@@ -804,8 +840,9 @@ function allocation_problem(
     capacity::SparseMatrixCSC{Float64, Int},
     allocation_network_id::Int,
 )::JuMP.Model
-    optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
-    problem = JuMP.direct_model(optimizer)
+    problem = JuMP.Model()
+    optimizer = JuMP.optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    JuMP.set_optimizer(problem, optimizer)
 
     # Add variables to problem
     add_variables_flow!(problem, p, allocation_network_id)
@@ -821,6 +858,7 @@ function allocation_problem(
     add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
+    add_constraints_terminal_flow!(problem, p, allocation_network_id)
 
     return problem
 end
@@ -856,5 +894,6 @@ function AllocationModel(
         capacity,
         problem,
         Δt_allocation,
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
     )
 end

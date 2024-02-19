@@ -324,10 +324,9 @@ function adjust_edge_capacities!(
     priority_idx::Int,
 )::Nothing
     (; graph) = p
-    (; problem, capacity, allocation_network_id) = allocation_model
+    (; problem, capacity, allocation_network_id, flows) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
-    F = problem[:F]
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
@@ -349,7 +348,10 @@ function adjust_edge_capacities!(
             # from the edge capacities
             JuMP.set_normalized_rhs(
                 constraints_capacity[edge_id],
-                JuMP.normalized_rhs(constraints_capacity[edge_id]) - JuMP.value(F[edge_id]),
+                max(
+                    0.0,
+                    JuMP.normalized_rhs(constraints_capacity[edge_id]) - flows[edge_id],
+                ),
             )
         end
     end
@@ -453,9 +455,8 @@ function adjust_basin_capacities!(
     t::Float64,
     priority_idx::Int,
 )::Nothing
-    (; problem) = allocation_model
+    (; problem, flows) = allocation_model
     constraints_outflow = problem[:basin_outflow]
-    F_basin_out = problem[:F_basin_out]
 
     for node_id in only(constraints_outflow.axes)
         constraint = constraints_outflow[node_id]
@@ -467,7 +468,7 @@ function adjust_basin_capacities!(
         else
             JuMP.set_normalized_rhs(
                 constraint,
-                JuMP.normalized_rhs(constraint) - JuMP.value(F_basin_out[node_id]),
+                max(0.0, JuMP.normalized_rhs(constraint) - flows[(node_id, node_id)]),
             )
         end
     end
@@ -485,7 +486,7 @@ function save_allocation_flows!(
     priority::Int,
     collect_demands::Bool,
 )::Nothing
-    (; problem, allocation_network_id) = allocation_model
+    (; problem, allocation_network_id, flows) = allocation_model
     (; allocation, graph) = p
     (; record) = allocation
     F = problem[:F]
@@ -507,6 +508,7 @@ function save_allocation_flows!(
             push!(record.priority, priority)
             push!(record.flow, flow)
             push!(record.collect_demands, collect_demands)
+            flows[allocation_edge] = flow
         end
     end
 
@@ -522,6 +524,7 @@ function save_allocation_flows!(
             push!(record.priority, priority)
             push!(record.flow, flow)
             push!(record.collect_demands, collect_demands)
+            flows[(node_id, node_id)] = JuMP.value(F_basin_out[node_id])
         end
     end
 
@@ -559,7 +562,6 @@ function allocate!(
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
         adjust_edge_capacities!(allocation_model, p, priority_idx)
-
         adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
 
         # Set the objective depending on the demands
@@ -572,9 +574,11 @@ function allocate!(
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)
         @debug JuMP.solution_summary(problem)
-        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+        if JuMP.termination_status(problem) !== LOCALLY_SOLVED
             (; allocation_network_id) = allocation_model
             priority = priorities[priority_idx]
+            println(problem)
+            @show JuMP.termination_status(problem)
             error(
                 "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
             )

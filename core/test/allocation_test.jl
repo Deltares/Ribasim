@@ -6,16 +6,10 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, cfg)
-    graph = p.graph
-    close(db)
+    p = Ribasim.Model(toml_path).integrator.p
 
     # Test compound allocation edge data
-    for edge_metadata in values(graph.edge_data)
+    for edge_metadata in values(p.graph.edge_data)
         if edge_metadata.allocation_flow
             @test first(edge_metadata.node_ids) == edge_metadata.from_id
             @test last(edge_metadata.node_ids) == edge_metadata.to_id
@@ -24,23 +18,23 @@
         end
     end
 
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
+    Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate!(p, allocation_model, 0.0, u)
 
     F = allocation_model.problem[:F]
-    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0
-    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:User, 10))]) ≈ 0.5
-    @test JuMP.value(F[(NodeID(:Basin, 8), NodeID(:User, 12))]) ≈ 0.0
-    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:Basin, 8))]) ≈ 0.0
-    @test JuMP.value(F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]) ≈ 0.5
-    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:User, 11))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0 atol = 1e-4
+    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:User, 10))]) ≈ 0.5 rtol = 1e-4
+    @test JuMP.value(F[(NodeID(:Basin, 8), NodeID(:User, 12))]) ≈ 0.0 atol = 1e-4
+    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:Basin, 8))]) ≈ 0.0 atol = 1e-4
+    @test JuMP.value(F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]) ≈ 0.5 rtol = 1e-4
+    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:User, 11))]) ≈ 0.0 atol = 1e-4
 
     allocated = p.user.allocated
-    @test allocated[1] ≈ [0.0, 0.5]
-    @test allocated[2] ≈ [4.0, 0.0]
-    @test allocated[3] ≈ [0.0, 0.0]
+    @test allocated[1] ≈ [0.0, 0.5] rtol = 1e-4
+    @test allocated[2] ≈ [4.0, 0.0] rtol = 1e-4
+    @test allocated[3] ≈ [0.0, 0.0] atol = 1e-4
 
     # Test getting and setting user demands
     (; user) = p
@@ -49,7 +43,7 @@
     @test Ribasim.get_user_demand(p, NodeID(:User, 11), 2) ≈ π
 end
 
-@testitem "Allocation objective: quadratic absolute" skip = true begin
+@testitem "Allocation objective: quadratic absolute" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -77,7 +71,6 @@ end
 end
 
 @testitem "Allocation objective: quadratic relative" begin
-    using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
     import JuMP
@@ -105,7 +98,6 @@ end
 end
 
 @testitem "Allocation objective: linear absolute" begin
-    using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
     import JuMP
@@ -129,7 +121,6 @@ end
 end
 
 @testitem "Allocation objective: linear relative" begin
-    using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
     import JuMP
@@ -217,11 +208,7 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    p = Ribasim.Model(toml_path).integrator.p
     (; allocation, graph) = p
     (; main_network_connections, allocation_network_ids) = allocation
     @test Ribasim.has_main_network(allocation)
@@ -270,11 +257,7 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    p = Ribasim.Model(toml_path).integrator.p
 
     (; allocation, user, graph, basin) = p
     (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
@@ -286,10 +269,33 @@ end
         Ribasim.allocate!(p, allocation_model, t, u; collect_demands = true)
     end
 
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    function get_full_demand(
+        p::Ribasim.Parameters,
+        model::Ribasim.AllocationModel,
+    )::Vector{Float64}
+        (; graph, user) = p
+        (; allocation_network_id) = model
+        n_priorities = length(user.demand_itp[1])
+        full_demand = zeros(n_priorities)
+
+        for node_id in graph[].node_ids[allocation_network_id]
+            if node_id.type == Ribasim.NodeType.User
+                user_idx = Ribasim.findsorted(user.node_id, node_id)
+                demand_itp = user.demand_itp[user_idx]
+                for priority_idx in eachindex(full_demand)
+                    full_demand[priority_idx] += demand_itp[priority_idx](t)
+                end
+            end
+        end
+        return full_demand
+    end
+
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0] rtol =
+        1e-4
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.0013333, 0.0, 0.0] rtol =
+        1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈
-          [0.001, 0.002, 0.002]
+          [0.001, 0.002, 0.002] rtol = 1e-4
 
     # Solving for the main network,
     # containing subnetworks as users
@@ -310,14 +316,15 @@ end
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
-    @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
-          [4.0, 0.49500000, 0.0]
+    @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈ [4.0, 0.4966, 0.0] rtol =
+        1e-4
     @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
-          [0.00399999999, 0.0, 0.0]
-    @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
+          [0.0013333, 0.0, 0.0] rtol = 1e-4
+    @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.001, 0.0] rtol =
+        1e-3
 
-    @test user.allocated[2] ≈ [4.0, 0.0, 0.0]
-    @test user.allocated[7] ≈ [0.001, 0.0, 0.0]
+    @test user.allocated[2] ≈ [4.0, 0.0, 0.0] rtol = 1e-4
+    @test user.allocated[7] ≈ [0.001, 0.0, 0.0] rtol = 1e-4
 end
 
 @testitem "Allocation level control" begin

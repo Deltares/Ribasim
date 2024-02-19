@@ -48,6 +48,8 @@ allocation_network_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
+flows: Cache of the last flows over the edges of the allocation network
+    Note: flows from a basin to itself always denote flows out of the basin
 """
 struct AllocationModel
     objective_type::Symbol
@@ -55,6 +57,7 @@ struct AllocationModel
     capacity::SparseMatrixCSC{Float64, Int}
     problem::JuMP.Model
     Δt_allocation::Float64
+    flows::Dict{Tuple{NodeID, NodeID}, Float64}
 end
 
 """

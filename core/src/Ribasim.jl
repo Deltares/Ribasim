@@ -16,7 +16,7 @@ module Ribasim
 
 import IterTools
 import BasicModelInterface as BMI
-import HiGHS
+import Ipopt
 import JuMP
 import TranscodingStreams
 import LoggingExtras
@@ -50,6 +50,7 @@ using Graphs:
 
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: with_logger, LogLevel, AbstractLogger
+using MathOptInterface: LOCALLY_SOLVED
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,
