@@ -17,7 +17,7 @@
         @test o isa Ribasim.Results
         @test o.compression
         @test o.compression_level === 6
-        @test_throws ArgumentError Ribasim.Results(compression = "zstd")
+        @test_throws MethodError Ribasim.Results(compression = "zstd")
 
         @test Ribasim.get_compressor(
             Ribasim.Results(; compression = true, compression_level = 2),
