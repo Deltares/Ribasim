@@ -741,16 +741,6 @@ function User(db::DB, config::Config)::User
 
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
-    record = (
-        time = Float64[],
-        subnetwork_id = Int[],
-        user_node_id = Int[],
-        priority = Int[],
-        demand = Float64[],
-        allocated = Float64[],
-        abstracted = Float64[],
-    )
-
     return User(
         node_ids,
         active,
@@ -761,7 +751,6 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
-        record,
     )
 end
 
@@ -823,6 +812,43 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
+function Allocation(db::DB, config::Config)::Allocation
+    record_demand = (
+        time = Float64[],
+        subnetwork_id = Int[],
+        node_type = String[],
+        node_id = Int[],
+        priority = Int[],
+        demand = Float64[],
+        allocated = Float64[],
+        abstracted = Float64[],
+    )
+
+    record_flow = (
+        time = Float64[],
+        edge_id = Int[],
+        from_node_id = Int[],
+        to_node_id = Int[],
+        subnetwork_id = Int[],
+        priority = Int[],
+        flow = Float64[],
+        collect_demands = BitVector(),
+    )
+
+    allocation = Allocation(
+        Int[],
+        AllocationModel[],
+        Vector{Tuple{NodeID, NodeID}}[],
+        get_all_priorities(db, config),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        record_demand,
+        record_flow,
+    )
+
+    return allocation
+end
+
 """
 Get the chunk sizes for DiffCache; differentiation w.r.t. u
 and t (the latter only if a Rosenbrock algorithm is used).
@@ -840,24 +866,7 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation = Allocation(
-        Int[],
-        AllocationModel[],
-        Vector{Tuple{NodeID, NodeID}}[],
-        get_all_priorities(db, config),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        (;
-            time = Float64[],
-            edge_id = Int[],
-            from_node_id = Int[],
-            to_node_id = Int[],
-            subnetwork_id = Int[],
-            priority = Int[],
-            flow = Float64[],
-            collect_demands = BitVector(),
-        ),
-    )
+    allocation = Allocation(db, config)
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
@@ -880,22 +889,6 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
-    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
-    for id in pid_control.node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        if id_controlled.type == NodeType.Pump
-            pump_idx = findsorted(pump.node_id, id_controlled)
-            pump.is_pid_controlled[pump_idx] = true
-        elseif id_controlled.type == NodeType.Outlet
-            outlet_idx = findsorted(outlet.node_id, id_controlled)
-            outlet.is_pid_controlled[outlet_idx] = true
-        else
-            error(
-                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
-            )
-        end
-    end
-
     p = Parameters(
         config.starttime,
         graph,
@@ -916,6 +909,9 @@ function Parameters(db::DB, config::Config)::Parameters
         target_level,
         subgrid_level,
     )
+
+    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+    set_is_pid_controlled!(p)
 
     if !valid_n_neighbors(p)
         error("Invalid number of connections for certain node types.")

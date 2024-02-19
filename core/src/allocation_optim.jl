@@ -204,8 +204,8 @@ function assign_allocations!(
         subnetwork_allocateds,
         allocation_network_ids,
         main_network_connections,
+        record_demand,
     ) = allocation
-    (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
@@ -227,16 +227,17 @@ function assign_allocations!(
             user.allocated[user_idx][priority_idx] = allocated
 
             # Save allocations to record
-            push!(record.time, t)
-            push!(record.subnetwork_id, allocation_model.allocation_network_id)
-            push!(record.user_node_id, Int(user_node_id))
-            push!(record.priority, allocation.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx])
-            push!(record.allocated, allocated)
+            push!(record_demand.time, t)
+            push!(record_demand.subnetwork_id, allocation_model.allocation_network_id)
+            push!(record_demand.node_type, String(Symbol(t)))
+            push!(record_demand.node_id, Int(user_node_id))
+            push!(record_demand.priority, allocation.priorities[priority_idx])
+            push!(record_demand.demand, user.demand[user_idx])
+            push!(record_demand.allocated, allocated)
             # TODO: This is now the last abstraction before the allocation update,
             # should be the average abstraction since the last allocation solve
             push!(
-                record.abstracted,
+                record_demand.abstracted,
                 get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
             )
         end
@@ -486,7 +487,7 @@ function save_allocation_flows!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; allocation, graph) = p
-    (; record) = allocation
+    (; record_flow) = allocation
     F = problem[:F]
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
@@ -498,14 +499,14 @@ function save_allocation_flows!(
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
-            push!(record.time, t)
-            push!(record.edge_id, edge_metadata.id)
-            push!(record.from_node_id, node_ids[i])
-            push!(record.to_node_id, node_ids[i + 1])
-            push!(record.subnetwork_id, allocation_network_id)
-            push!(record.priority, priority)
-            push!(record.flow, flow)
-            push!(record.collect_demands, collect_demands)
+            push!(record_flow.time, t)
+            push!(record_flow.edge_id, edge_metadata.id)
+            push!(record_flow.from_node_id, node_ids[i])
+            push!(record_flow.to_node_id, node_ids[i + 1])
+            push!(record_flow.subnetwork_id, allocation_network_id)
+            push!(record_flow.priority, priority)
+            push!(record_flow.flow, flow)
+            push!(record_flow.collect_demands, collect_demands)
         end
     end
 
@@ -513,14 +514,14 @@ function save_allocation_flows!(
     for node_id in graph[].node_ids[allocation_network_id]
         if node_id.type == NodeType.Basin
             flow = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
-            push!(record.time, t)
-            push!(record.edge_id, 0)
-            push!(record.from_node_id, node_id)
-            push!(record.to_node_id, node_id)
-            push!(record.subnetwork_id, allocation_network_id)
-            push!(record.priority, priority)
-            push!(record.flow, flow)
-            push!(record.collect_demands, collect_demands)
+            push!(record_flow.time, t)
+            push!(record_flow.edge_id, 0)
+            push!(record_flow.from_node_id, node_id)
+            push!(record_flow.to_node_id, node_id)
+            push!(record_flow.subnetwork_id, allocation_network_id)
+            push!(record_flow.priority, priority)
+            push!(record_flow.flow, flow)
+            push!(record_flow.collect_demands, collect_demands)
         end
     end
 

@@ -75,7 +75,17 @@ struct Allocation
     priorities::Vector{Int}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    record::@NamedTuple{
+    record_demand::@NamedTuple{
+        time::Vector{Float64},
+        subnetwork_id::Vector{Int},
+        node_type::Vector{String},
+        node_id::Vector{Int},
+        priority::Vector{Int},
+        demand::Vector{Float64},
+        allocated::Vector{Float64},
+        abstracted::Vector{Float64},
+    }
+    record_flow::@NamedTuple{
         time::Vector{Float64},
         edge_id::Vector{Int},
         from_node_id::Vector{Int},
@@ -478,15 +488,6 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    record::@NamedTuple{
-        time::Vector{Float64},
-        subnetwork_id::Vector{Int},
-        user_node_id::Vector{Int},
-        priority::Vector{Int},
-        demand::Vector{Float64},
-        allocated::Vector{Float64},
-        abstracted::Vector{Float64},
-    }
 
     function User(
         node_id,
@@ -498,7 +499,6 @@ struct User <: AbstractParameterNode
         return_factor,
         min_level,
         priorities,
-        record,
     )
         if valid_demand(node_id, demand_itp, priorities)
             return new(
@@ -510,7 +510,6 @@ struct User <: AbstractParameterNode
                 allocated,
                 return_factor,
                 min_level,
-                record,
             )
         else
             error("Invalid demand")

@@ -171,24 +171,26 @@ function allocation_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     subnetwork_id::Vector{Int},
-    user_node_id::Vector{Int},
+    node_type::Vector{String},
+    node_id::Vector{Int},
     priority::Vector{Int},
     demand::Vector{Float64},
     allocated::Vector{Float64},
     abstracted::Vector{Float64},
 }
     (; config) = model
-    (; record) = model.integrator.p.user
+    (; record_demand) = model.integrator.p.allocation
 
-    time = datetime_since.(record.time, config.starttime)
+    time = datetime_since.(record_demand.time, config.starttime)
     return (;
         time,
-        record.subnetwork_id,
-        record.user_node_id,
-        record.priority,
-        record.demand,
-        record.allocated,
-        record.abstracted,
+        record_demand.subnetwork_id,
+        record_demand.node_type,
+        record_demand.node_id,
+        record_demand.priority,
+        record_demand.demand,
+        record_demand.allocated,
+        record_demand.abstracted,
     )
 end
 
@@ -205,19 +207,19 @@ function allocation_flow_table(
     collect_demands::BitVector,
 }
     (; config) = model
-    (; record) = model.integrator.p.allocation
+    (; record_flow) = model.integrator.p.allocation
 
-    time = datetime_since.(record.time, config.starttime)
+    time = datetime_since.(record_flow.time, config.starttime)
 
     return (;
         time,
-        record.edge_id,
-        record.from_node_id,
-        record.to_node_id,
-        record.subnetwork_id,
-        record.priority,
-        record.flow,
-        record.collect_demands,
+        record_flow.edge_id,
+        record_flow.from_node_id,
+        record_flow.to_node_id,
+        record_flow.subnetwork_id,
+        record_flow.priority,
+        record_flow.flow,
+        record_flow.collect_demands,
     )
 end
 
