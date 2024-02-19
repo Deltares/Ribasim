@@ -113,6 +113,7 @@ end
 
 @testitem "results" begin
     using SciMLBase: successful_retcode
+    import Arrow
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
