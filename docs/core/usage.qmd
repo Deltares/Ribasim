@@ -388,7 +388,7 @@ column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
 node_id   | Int      | -            | sorted
 time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | -
+level     | Float64  | $m$          | sorted per node_id per time
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 # Pump {#sec-pump}
