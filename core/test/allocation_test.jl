@@ -175,9 +175,9 @@ end
     ) ≈ -0.25
 
     solve!(model)
-    record_allocation = DataFrame(model.integrator.p.user.record)
+    record_allocation = DataFrame(model.integrator.p.allocation.record_demand)
     record_control = model.integrator.p.discrete_control.record
-    groups = groupby(record_allocation, [:user_node_id, :priority])
+    groups = groupby(record_allocation, [:node_id, :priority])
     fractional_flow = model.integrator.p.fractional_flow
     (; control_mapping) = fractional_flow
     t_control = record_control.time[2]

@@ -47,13 +47,14 @@
             (
                 :time,
                 :subnetwork_id,
-                :user_node_id,
+                :node_type,
+                :node_id,
                 :priority,
                 :demand,
                 :allocated,
                 :abstracted,
             ),
-            (DateTime, Int, Int, Int, Float64, Float64, Float64),
+            (DateTime, Int, String, Int, Int, Float64, Float64, Float64),
         )
         @test Tables.schema(allocation_flow) == Tables.Schema(
             (
