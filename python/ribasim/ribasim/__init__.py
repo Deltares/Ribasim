@@ -5,7 +5,6 @@ from ribasim import utils
 from ribasim.config import (
     Allocation,
     Basin,
-    Compression,
     DiscreteControl,
     FlowBoundary,
     FractionalFlow,
@@ -33,7 +32,6 @@ __all__ = [
     "TargetLevel",
     "Basin",
     "DiscreteControl",
-    "Compression",
     "Edge",
     "EdgeSchema",
     "FlowBoundary",

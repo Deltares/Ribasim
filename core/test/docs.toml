@@ -39,5 +39,5 @@ timing = false     # optional, whether to log debug timing statements
 
 [results]
 # These results files are always written
-compression = "zstd"  # optional, default "zstd", also supports "lz4"
+compression = true  # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6

@@ -258,16 +258,14 @@ function write_arrow(
 end
 
 "Get the compressor based on the Results section"
-function get_compressor(results::Results)::TranscodingStreams.Codec
+function get_compressor(results::Results)::Union{ZstdCompressor, Nothing}
     compressor = results.compression
     level = results.compression_level
-    c = if compressor == lz4
-        LZ4FrameCompressor(; compressionlevel = level)
-    elseif compressor == zstd
-        ZstdCompressor(; level)
+    if compressor
+        c = ZstdCompressor(; level)
+        TranscodingStreams.initialize(c)
     else
-        error("Unsupported compressor $compressor")
+        c = nothing
     end
-    TranscodingStreams.initialize(c)
     return c
 end
