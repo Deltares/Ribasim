@@ -1,5 +1,4 @@
 @testitem "config" begin
-    using CodecLz4: LZ4FrameCompressor
     using CodecZstd: ZstdCompressor
     using Configurations: UndefKeywordError
     using Dates
@@ -9,23 +8,25 @@
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 86400.0)
-        @test config.results.compression == Ribasim.zstd
+        @test config.results.compression
         @test config.results.compression_level == 6
     end
 
     @testset "results" begin
         o = Ribasim.Results()
         @test o isa Ribasim.Results
-        @test o.compression === Ribasim.zstd
+        @test o.compression
         @test o.compression_level === 6
-        @test_throws ArgumentError Ribasim.Results(compression = "lz5")
+        @test_throws ArgumentError Ribasim.Results(compression = "zstd")
 
         @test Ribasim.get_compressor(
-            Ribasim.Results(; compression = "lz4", compression_level = 2),
-        ) isa LZ4FrameCompressor
-        @test Ribasim.get_compressor(
-            Ribasim.Results(; compression = "zstd", compression_level = 3),
+            Ribasim.Results(; compression = true, compression_level = 2),
         ) isa ZstdCompressor
+        @test Ribasim.get_compressor(Ribasim.Results(; compression_level = 3)) isa
+              ZstdCompressor
+        @test Ribasim.get_compressor(
+            Ribasim.Results(; compression = false, compression_level = 3),
+        ) === nothing
     end
 
     @testset "docs" begin

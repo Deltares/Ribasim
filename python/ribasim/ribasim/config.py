@@ -40,14 +40,9 @@ class Allocation(ChildModel):
     objective_type: str = "quadratic_relative"
 
 
-class Compression(str, Enum):
-    zstd = "zstd"
-    lz4 = "lz4"
-
-
 class Results(ChildModel):
     outstate: str | None = None
-    compression: Compression = Compression.zstd
+    compression: bool = True
     compression_level: int = 6
     subgrid: bool = False
 

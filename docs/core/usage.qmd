@@ -77,8 +77,8 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-compression       | String | Compression algorithm: zstd or lz4.
-compression_level | Int    | Compression level. Higher is more compression.
+compression       | Bool   | Whether to apply compression or not.
+compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
 ## Logging settings

@@ -23,7 +23,6 @@ import LoggingExtras
 
 using Accessors: @set
 using Arrow: Arrow, Table
-using CodecLz4: LZ4FrameCompressor
 using CodecZstd: ZstdCompressor
 using Configurations: from_toml
 using ComponentArrays: ComponentVector
