@@ -522,12 +522,12 @@ struct User <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the AllocationTarget node
+node_id: node ID of the TargetLevel node
 min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct AllocationTarget
+struct TargetLevel
     node_id::Vector{NodeID}
     min_level::Vector{LinearInterpolation}
     max_level::Vector{LinearInterpolation}
@@ -576,6 +576,6 @@ struct Parameters{T, C1, C2}
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
     user::User
-    allocation_target::AllocationTarget
+    target_level::TargetLevel
     subgrid::Subgrid
 end

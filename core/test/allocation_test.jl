@@ -328,8 +328,7 @@ end
 end
 
 @testitem "Allocation level control" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/allocation_target/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/target_level/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
@@ -337,7 +336,7 @@ end
     t = Ribasim.timesteps(model)
 
     p = model.integrator.p
-    (; user, graph, allocation, basin, allocation_target) = p
+    (; user, graph, allocation, basin, target_level) = p
 
     d = user.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
@@ -348,7 +347,7 @@ end
         0,
     )
     A = basin.area[1][1]
-    l_max = allocation_target.max_level[1](0)
+    l_max = target_level.max_level[1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
     # Until the first allocation solve, the user abstracts fully

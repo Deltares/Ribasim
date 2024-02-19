@@ -23,8 +23,8 @@
 @schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.user.static" UserStatic
 @schema "ribasim.user.time" UserTime
-@schema "ribasim.allocationtarget.static" AllocationTargetStatic
-@schema "ribasim.allocationtarget.time" AllocationTargetTime
+@schema "ribasim.targetlevel.static" TargetLevelStatic
+@schema "ribasim.targetlevel.time" TargetLevelTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -238,14 +238,14 @@ end
     priority::Int
 end
 
-@version AllocationTargetStaticV1 begin
+@version TargetLevelStaticV1 begin
     node_id::Int
     min_level::Float64
     max_level::Float64
     priority::Int
 end
 
-@version AllocationTargetTimeV1 begin
+@version TargetLevelTimeV1 begin
     node_id::Int
     time::DateTime
     min_level::Float64

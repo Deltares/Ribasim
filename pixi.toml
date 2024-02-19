@@ -161,6 +161,7 @@ pytest-xdist = "*"
 python = ">=3.10"
 qgis = "*"
 qgis-plugin-manager = "*"
+quarto = "*"
 quartodoc = "*"
 ruff = "*"
 shapely = ">=2.0"
@@ -174,15 +175,12 @@ xmipy = "*"
 xugrid = "*"
 
 [target.win-64.dependencies]
-quarto = "*"
 ptvsd = "*"
 
 [target.linux-64.dependencies]
-quarto = "*"
 ptvsd = "*"
 
 [target.osx-64.dependencies]
-quarto = "*"
 ptvsd = "*"
 
 [activation]
