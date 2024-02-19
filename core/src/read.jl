@@ -513,6 +513,8 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
+    demand = zeros(length(node_id))
+
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
         precipitation,
@@ -524,6 +526,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         area,
         level,
         storage,
+        demand,
         time,
     )
 end
