@@ -114,6 +114,7 @@ of different values are repeated many times. To reduce file sizes it may be a go
 apply [dictionary
 encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
 those columns.
+The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
 
 ## Table requirements
 

@@ -251,8 +251,9 @@ function write_arrow(
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
+    metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
     mkpath(dirname(path))
-    Arrow.write(path, table; compress)
+    Arrow.write(path, table; compress, metadata)
     return nothing
 end
 
