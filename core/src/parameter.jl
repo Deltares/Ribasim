@@ -156,14 +156,16 @@ struct Basin{T, C} <: AbstractParameterNode
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
-    # cache this to avoid recomputation
+    # Cache this to avoid recomputation
     current_level::T
     current_area::T
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    # data source for parameter updates
+    # Demands and allocated flows for allocation if applicable
+    demand::Vector{Float64}
+    # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
     function Basin(
@@ -177,6 +179,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
+        demand,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         is_valid = valid_profiles(node_id, level, area)
@@ -192,6 +195,7 @@ struct Basin{T, C} <: AbstractParameterNode
             area,
             level,
             storage,
+            demand,
             time,
         )
     end
