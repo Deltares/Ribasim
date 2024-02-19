@@ -110,3 +110,18 @@ end
     # reversed_arrow_table throws an AssertionError
     @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
 end
+
+@testitem "results" begin
+    using SciMLBase: successful_retcode
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+
+    path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
+    bytes = read(path)
+    tbl = Arrow.Table(bytes)
+    @test Arrow.getmetadata(tbl) === Base.ImmutableDict("ribasim_version" => "2024.2.0")
+end
