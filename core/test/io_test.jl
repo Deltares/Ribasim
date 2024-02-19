@@ -123,5 +123,7 @@ end
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
     bytes = read(path)
     tbl = Arrow.Table(bytes)
-    @test Arrow.getmetadata(tbl) === Base.ImmutableDict("ribasim_version" => "2024.2.0")
+    ribasim_version = string(pkgversion(Ribasim))
+    @test Arrow.getmetadata(tbl) ===
+          Base.ImmutableDict("ribasim_version" => ribasim_version)
 end
