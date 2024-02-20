@@ -248,7 +248,7 @@ end
 function write_arrow(
     path::AbstractString,
     table::NamedTuple,
-    compress::TranscodingStreams.Codec,
+    compress::Union{ZstdCompressor, Nothing},
 )::Nothing
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
