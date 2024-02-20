@@ -363,7 +363,7 @@ end
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
 
     # In this section the basin enters its surplus stage,
-    # even though the level is below the maximum level. This is because the simulation
+    # even though initially the level is below the maximum level. This is because the simulation
     # anticipates that the current precipitation is going to bring the basin level over
     # its maximum level
     stage_4 = 8 * Δt_allocation .<= t .<= 12 * Δt_allocation
@@ -371,7 +371,7 @@ end
     u_stage_4(τ) = storage[stage_4_start_idx] + (q + ϕ - d) * (τ - t[stage_4_start_idx])
     @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
 
-    # At the start of this section precipitation stops, and so the basin
+    # At the start of this section precipitation stops, and so the user
     # partly uses surplus water from the basin to fulfill its demand
     stage_5 = 13 * Δt_allocation .<= t .<= 16 * Δt_allocation
     stage_5_start_idx = findfirst(stage_5)

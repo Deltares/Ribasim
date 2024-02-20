@@ -709,17 +709,20 @@ control_state   | String
 
 ## Allocation - `allocation.arrow`
 
-The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
+The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
 
 column        | type
 --------------| -----
 time          | DateTime
 subnetwork_id | Int
-user_node_id  | Int
+node_type     | String
+node_id       | Int
 priority      | Int
 demand        | Float64
 allocated     | Float64
 abstracted    | Float64
+
+For basins the values `demand`, `allocated` and `abstracted` are positive of the basin abstracts due to a shortage (e.g. its level is lower than its minimum level given by a `TargetLevel` node) and negative if the basin supplies due to a surplus of water.
 
 ::: {.callout-note}
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
