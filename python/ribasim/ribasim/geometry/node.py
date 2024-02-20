@@ -21,7 +21,7 @@ __all__ = ("Node",)
 class NodeSchema(pa.SchemaModel):
     node_id: Series[int]
     name: Series[str] = pa.Field(default="")
-    type: Series[str] = pa.Field(default="")
+    node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
