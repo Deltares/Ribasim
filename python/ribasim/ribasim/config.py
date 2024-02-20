@@ -47,7 +47,7 @@ class Compression(str, Enum):
 
 class Results(ChildModel):
     outstate: str | None = None
-    compression: Compression = Compression.zstd
+    compression: bool = True
     compression_level: int = 6
     subgrid: bool = False
 
