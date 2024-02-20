@@ -253,22 +253,21 @@ function write_arrow(
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
+    metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
     mkpath(dirname(path))
-    Arrow.write(path, table; compress)
+    Arrow.write(path, table; compress, metadata)
     return nothing
 end
 
 "Get the compressor based on the Results section"
-function get_compressor(results::Results)::TranscodingStreams.Codec
+function get_compressor(results::Results)::Union{ZstdCompressor, Nothing}
     compressor = results.compression
     level = results.compression_level
-    c = if compressor == lz4
-        LZ4FrameCompressor(; compressionlevel = level)
-    elseif compressor == zstd
-        ZstdCompressor(; level)
+    if compressor
+        c = ZstdCompressor(; level)
+        TranscodingStreams.initialize(c)
     else
-        error("Unsupported compressor $compressor")
+        c = nothing
     end
-    TranscodingStreams.initialize(c)
     return c
 end

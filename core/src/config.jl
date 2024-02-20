@@ -16,7 +16,7 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, zstd, lz4, input_path, results_path
+export algorithm, snake_case, input_path, results_path
 
 const schemas =
     getfield.(
@@ -90,27 +90,10 @@ const nodetypes = collect(keys(nodekinds))
     autodiff::Bool = true
 end
 
-@enum Compression begin
-    zstd
-    lz4
-end
-
-function Base.convert(::Type{Compression}, str::AbstractString)
-    i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
-    if i === nothing
-        throw(
-            ArgumentError(
-                "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
-            ),
-        )
-    end
-    return Compression(i - 1)
-end
-
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
     outstate::Union{String, Nothing} = nothing
-    compression::Compression = "zstd"
+    compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
 end
