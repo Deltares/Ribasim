@@ -929,11 +929,11 @@ function Parameters(db::DB, config::Config)::Parameters
 end
 
 function get_nodetypes(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
+    return only(execute(columntable, db, "SELECT node_type FROM Node ORDER BY fid"))
 end
 
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "SELECT node_id FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 
@@ -942,14 +942,14 @@ function get_names(db::DB)::Vector{String}
 end
 
 function get_names(db::DB, nodetype)::Vector{String}
-    sql = "SELECT name FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT name FROM Node where node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 
 function exists(db::DB, tablename::String)
     query = execute(
         db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
+        "SELECT name FROM sqlite_master WHERE node_type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
     )
     return !isempty(query)
 end
