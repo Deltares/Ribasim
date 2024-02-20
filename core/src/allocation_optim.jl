@@ -197,6 +197,9 @@ function save_demands_and_allocations!(
     (; record_demand, priorities) = allocation
     (; allocation_network_id, problem) = allocation_model
     node_ids = graph[].node_ids[allocation_network_id]
+    constraints_outflow = problem[:basin_outflow]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
 
     for node_id in node_ids
         has_demand = false
@@ -210,11 +213,21 @@ function save_demands_and_allocations!(
 
         elseif node_id.type == NodeType.Basin
             basin_priority_idx = get_basin_priority_idx(p, node_id)
-            if basin_priority_idx == priority_idx
+
+            if priority_idx == 1 || basin_priority_idx == priority_idx
                 has_demand = true
-                _, basin_idx = id_index(basin.node_id, node_id)
-                demand = basin.demand[basin_idx]
-                allocated = JuMP.value(problem[:F_basin_in][node_id])
+                demand = 0.0
+                if priority_idx == 1
+                    # Basin surplus
+                    demand -= JuMP.normalized_rhs(constraints_outflow[node_id])
+                end
+                if priority_idx == basin_priority_idx
+                    # Basin demand
+                    _, basin_idx = id_index(basin.node_id, node_id)
+                    demand += basin.demand[basin_idx]
+                end
+                allocated =
+                    JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
                 # TODO: Abstracted for a basin is not so clear, maybe it should be Δstorage/Δt
                 # over the last allocation interval?
                 abstracted = 0.0
