@@ -162,6 +162,7 @@ between nodes, and never have storage of their own.
 column        | type     | restriction
 --------------| -------- | -----------
 fid           | Int      | unique, sorted
+node_id       | Int      | -
 type          | String   | known node type
 geometry      | geoarrow | (optional)
 name          | String   | (optional, does not have to be unique)

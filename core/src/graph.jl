@@ -6,7 +6,7 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows = execute(db, "SELECT fid, type, subnetwork_id FROM Node ORDER BY fid")
+    node_rows = execute(db, "SELECT node_id, type, subnetwork_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
         "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
@@ -33,7 +33,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         graph_data = nothing,
     )
     for row in node_rows
-        node_id = NodeID(row.type, row.fid)
+        node_id = NodeID(row.type, row.node_id)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
             allocation_network_id = 0

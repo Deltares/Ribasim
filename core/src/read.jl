@@ -932,12 +932,8 @@ function get_nodetypes(db::DB)::Vector{String}
     return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
 end
 
-function get_ids(db::DB)::Vector{Int}
-    return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
-end
-
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "SELECT fid FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT node_id FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 
