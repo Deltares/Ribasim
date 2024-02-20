@@ -65,7 +65,8 @@ allocation models: The allocation models for the main network and subnetworks co
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
-record: A record of all flows computed by allocation optimization, eventually saved to
+record_demand: A record of demands and allocated flows for nodes that have these.
+record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
 struct Allocation
@@ -481,7 +482,6 @@ active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
-record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{NodeID}
