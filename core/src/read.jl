@@ -949,7 +949,7 @@ end
 function exists(db::DB, tablename::String)
     query = execute(
         db,
-        "SELECT name FROM sqlite_master WHERE node_type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
     )
     return !isempty(query)
 end
