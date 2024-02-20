@@ -33,7 +33,7 @@ def test_solver():
 def test_invalid_node_type(basic):
     # Add entry with invalid node type
     basic.node.static = basic.node.df._append(
-        {"type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
+        {"node_type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
     )
 
     with pytest.raises(

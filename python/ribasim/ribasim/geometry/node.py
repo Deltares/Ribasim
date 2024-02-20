@@ -239,7 +239,7 @@ class Node(SpatialTableModel[NodeSchema]):
         }
         assert self.df is not None
 
-        for nodetype, df in self.df.groupby("type"):
+        for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]

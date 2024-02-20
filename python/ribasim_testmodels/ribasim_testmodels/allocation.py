@@ -23,7 +23,7 @@ def user_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -155,7 +155,7 @@ def subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "subnetwork_id": 2},
+            data={"node_type": node_type, "subnetwork_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -327,7 +327,7 @@ def looped_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "subnetwork_id": 2},
+            data={"node_type": node_type, "subnetwork_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -527,7 +527,7 @@ def minimal_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "subnetwork_id": 2},
+            data={"node_type": node_type, "subnetwork_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -673,7 +673,7 @@ def fractional_flow_subnetwork_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "subnetwork_id": 2},
+            data={"node_type": node_type, "subnetwork_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -857,7 +857,7 @@ def allocation_example_model():
     # All nodes belong to allocation network id 2
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "subnetwork_id": 2},
+            data={"node_type": node_type, "subnetwork_id": 2},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -1150,7 +1150,7 @@ def main_network_with_subnetworks_model():
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={
-                "type": node_type,
+                "node_type": node_type,
                 "subnetwork_id": subnetwork_id,
             },
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
@@ -1661,7 +1661,7 @@ def target_level_model():
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
             data={
-                "type": node_type,
+                "node_type": node_type,
                 "subnetwork_id": 5 * [2],
             },
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
