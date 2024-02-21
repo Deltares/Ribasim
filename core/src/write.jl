@@ -101,9 +101,11 @@ function flow_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Union{Int, Missing}},
+    from_node_type::Vector{String},
     from_node_id::Vector{Int},
+    to_node_type::Vector{String},
     to_node_id::Vector{Int},
-    flow::FlatVector{Float64},
+    flow_rate::FlatVector{Float64},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
@@ -111,7 +113,9 @@ function flow_table(
     (; flow_dict, flow_vertical_dict) = graph[]
 
     # self-loops have no edge ID
+    from_node_type = String[]
     from_node_id = Int[]
+    to_node_type = String[]
     to_node_id = Int[]
     unique_edge_ids_flow = Union{Int, Missing}[]
 
@@ -121,7 +125,9 @@ function flow_table(
     end
 
     for id in vertical_flow_node_ids
+        push!(from_node_type, string(id.type))
         push!(from_node_id, id.value)
+        push!(to_node_type, string(id.type))
         push!(to_node_id, id.value)
         push!(unique_edge_ids_flow, missing)
     end
@@ -132,7 +138,9 @@ function flow_table(
     end
 
     for (from_id, to_id) in flow_edge_ids
+        push!(from_node_type, string(from_id.type))
         push!(from_node_id, from_id.value)
+        push!(to_node_type, string(to_id.type))
         push!(to_node_id, to_id.value)
         push!(unique_edge_ids_flow, graph[from_id, to_id].id)
     end
@@ -142,11 +150,21 @@ function flow_table(
 
     time = repeat(datetime_since.(t, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
+    from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
+    to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow = FlatVector(saveval)
+    flow_rate = FlatVector(saveval)
 
-    return (; time, edge_id, from_node_id, to_node_id, flow)
+    return (;
+        time,
+        edge_id,
+        from_node_type,
+        from_node_id,
+        to_node_type,
+        to_node_id,
+        flow_rate,
+    )
 end
 
 "Create a discrete control result table from the saved data"
@@ -176,7 +194,7 @@ function allocation_table(
     priority::Vector{Int},
     demand::Vector{Float64},
     allocated::Vector{Float64},
-    abstracted::Vector{Float64},
+    realized::Vector{Float64},
 }
     (; config) = model
     (; record_demand) = model.integrator.p.allocation
@@ -190,7 +208,7 @@ function allocation_table(
         record_demand.priority,
         record_demand.demand,
         record_demand.allocated,
-        record_demand.abstracted,
+        record_demand.realized,
     )
 end
 
@@ -199,11 +217,13 @@ function allocation_flow_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Int},
+    from_node_type::Vector{String},
     from_node_id::Vector{Int},
+    to_node_type::Vector{String},
     to_node_id::Vector{Int},
     subnetwork_id::Vector{Int},
     priority::Vector{Int},
-    flow::Vector{Float64},
+    flow_rate::Vector{Float64},
     collect_demands::BitVector,
 }
     (; config) = model
@@ -214,11 +234,13 @@ function allocation_flow_table(
     return (;
         time,
         record_flow.edge_id,
+        record_flow.from_node_type,
         record_flow.from_node_id,
+        record_flow.to_node_type,
         record_flow.to_node_id,
         record_flow.subnetwork_id,
         record_flow.priority,
-        record_flow.flow,
+        record_flow.flow_rate,
         record_flow.collect_demands,
     )
 end

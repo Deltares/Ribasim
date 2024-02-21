@@ -84,16 +84,18 @@ struct Allocation
         priority::Vector{Int},
         demand::Vector{Float64},
         allocated::Vector{Float64},
-        abstracted::Vector{Float64},
+        realized::Vector{Float64},
     }
     record_flow::@NamedTuple{
         time::Vector{Float64},
         edge_id::Vector{Int},
+        from_node_type::Vector{String},
         from_node_id::Vector{Int},
+        to_node_type::Vector{String},
         to_node_id::Vector{Int},
         subnetwork_id::Vector{Int},
         priority::Vector{Int},
-        flow::Vector{Float64},
+        flow_rate::Vector{Float64},
         collect_demands::BitVector,
     }
 end

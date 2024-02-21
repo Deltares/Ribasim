@@ -665,6 +665,9 @@ function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
     end
 end
 
+"""
+Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+"""
 function set_is_pid_controlled!(p::Parameters)::Nothing
     (; graph, pid_control, pump, outlet) = p
 

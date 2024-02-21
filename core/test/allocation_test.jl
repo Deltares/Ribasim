@@ -177,15 +177,19 @@ end
     solve!(model)
     record_allocation = DataFrame(model.integrator.p.allocation.record_demand)
     record_control = model.integrator.p.discrete_control.record
-    groups = groupby(record_allocation, [:node_id, :priority])
+    groups = groupby(record_allocation, [:node_type, :node_id, :priority])
     fractional_flow = model.integrator.p.fractional_flow
     (; control_mapping) = fractional_flow
     t_control = record_control.time[2]
 
-    allocated_6_before = groups[(6, 1)][groups[(6, 1)].time .< t_control, :].allocated
-    allocated_9_before = groups[(9, 1)][groups[(9, 1)].time .< t_control, :].allocated
-    allocated_6_after = groups[(6, 1)][groups[(6, 1)].time .> t_control, :].allocated
-    allocated_9_after = groups[(9, 1)][groups[(9, 1)].time .> t_control, :].allocated
+    allocated_6_before =
+        groups[("User", 6, 1)][groups[("User", 6, 1)].time .< t_control, :].allocated
+    allocated_9_before =
+        groups[("User", 9, 1)][groups[("User", 9, 1)].time .< t_control, :].allocated
+    allocated_6_after =
+        groups[("User", 6, 1)][groups[("User", 6, 1)].time .> t_control, :].allocated
+    allocated_9_after =
+        groups[("User", 9, 1)][groups[("User", 9, 1)].time .> t_control, :].allocated
     @test all(
         allocated_9_before ./ allocated_6_before .<=
         control_mapping[(NodeID(:FractionalFlow, 7), "A")].fraction /
@@ -385,19 +389,4 @@ end
     stage_6_start_idx = findfirst(stage_6)
     u_stage_6(τ) = storage[stage_6_start_idx]
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
-
-    # f = plot(t, storage)
-    # where_allocation = @. t % Δt_allocation ≈ 0.0
-    # scatter!(t[where_allocation], storage[where_allocation])
-    # for (stage, u) in zip(
-    #     [stage_1, stage_2, stage_3, stage_4, stage_5, stage_6],
-    #     [u_stage_1, u_stage_2, u_stage_3, u_stage_4, u_stage_5, u_stage_6],
-    # )
-    #     t_stage = t[stage]
-    #     s_stage = storage[stage]
-    #     slope = (last(s_stage) - first(s_stage)) / (last(t_stage) - first(t_stage))
-    #     @show slope
-    #     plot!(t_stage, u.(t[stage]))
-    # end
-    # f
 end

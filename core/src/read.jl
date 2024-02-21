@@ -824,17 +824,19 @@ function Allocation(db::DB, config::Config)::Allocation
         priority = Int[],
         demand = Float64[],
         allocated = Float64[],
-        abstracted = Float64[],
+        realized = Float64[],
     )
 
     record_flow = (
         time = Float64[],
         edge_id = Int[],
+        from_node_type = String[],
         from_node_id = Int[],
+        to_node_type = String[],
         to_node_id = Int[],
         subnetwork_id = Int[],
         priority = Int[],
-        flow = Float64[],
+        flow_rate = Float64[],
         collect_demands = BitVector(),
     )
 
@@ -913,7 +915,6 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid_level,
     )
 
-    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
     set_is_pid_controlled!(p)
 
     if !valid_n_neighbors(p)

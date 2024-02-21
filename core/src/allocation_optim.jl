@@ -484,7 +484,7 @@ function save_demands_and_allocations!(
             user_idx = findsorted(user.node_id, node_id)
             demand = user.demand[user_idx]
             allocated = user.allocated[user_idx][priority_idx]
-            abstracted = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+            realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
         elseif node_id.type == NodeType.Basin
             basin_priority_idx = get_basin_priority_idx(p, node_id)
@@ -503,9 +503,9 @@ function save_demands_and_allocations!(
                 end
                 allocated =
                     JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
-                # TODO: Abstracted for a basin is not so clear, maybe it should be Δstorage/Δt
+                # TODO: realized for a basin is not so clear, maybe it should be Δstorage/Δt
                 # over the last allocation interval?
-                abstracted = 0.0
+                realized = 0.0
             end
         end
 
@@ -513,7 +513,7 @@ function save_demands_and_allocations!(
             # Save allocations and demands to record
             push!(record_demand.time, t)
             push!(record_demand.subnetwork_id, allocation_network_id)
-            push!(record_demand.node_type, String(Symbol(node_id.type)))
+            push!(record_demand.node_type, string(node_id.type))
             push!(record_demand.node_id, Int(node_id))
             push!(record_demand.priority, priorities[priority_idx])
             push!(record_demand.demand, demand)
@@ -521,7 +521,7 @@ function save_demands_and_allocations!(
 
             # TODO: This is now the last abstraction before the allocation update,
             # should be the average abstraction since the last allocation solve
-            push!(record_demand.abstracted, abstracted)
+            push!(record_demand.realized, realized)
         end
     end
     return nothing
@@ -546,18 +546,20 @@ function save_allocation_flows!(
 
     # Edge flows
     for allocation_edge in first(F.axes)
-        flow = JuMP.value(F[allocation_edge])
+        flow_rate = JuMP.value(F[allocation_edge])
         edge_metadata = graph[allocation_edge...]
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
             push!(record_flow.time, t)
             push!(record_flow.edge_id, edge_metadata.id)
-            push!(record_flow.from_node_id, node_ids[i])
-            push!(record_flow.to_node_id, node_ids[i + 1])
+            push!(record_flow.from_node_type, string(node_ids[i].type))
+            push!(record_flow.from_node_id, Int(node_ids[i]))
+            push!(record_flow.to_node_type, string(node_ids[i + 1].type))
+            push!(record_flow.to_node_id, Int(node_ids[i + 1]))
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
-            push!(record_flow.flow, flow)
+            push!(record_flow.flow_rate, flow_rate)
             push!(record_flow.collect_demands, collect_demands)
         end
     end
@@ -565,14 +567,16 @@ function save_allocation_flows!(
     # Basin flows
     for node_id in graph[].node_ids[allocation_network_id]
         if node_id.type == NodeType.Basin
-            flow = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
+            flow_rate = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             push!(record_flow.time, t)
             push!(record_flow.edge_id, 0)
+            push!(record_flow.from_node_type, string(NodeType.Basin))
             push!(record_flow.from_node_id, node_id)
+            push!(record_flow.to_node_type, string(NodeType.Basin))
             push!(record_flow.to_node_id, node_id)
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
-            push!(record_flow.flow, flow)
+            push!(record_flow.flow_rate, flow_rate)
             push!(record_flow.collect_demands, collect_demands)
         end
     end
