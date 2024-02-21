@@ -90,19 +90,29 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
 
     flow = zeros(flow_counter)
+    flow_prev = zeros(flow_counter)
+    flow_integrated = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
+    flow_vertical_prev = zeros(flow_vertical_counter)
+    flow_vertical_integrated = zeros(flow_vertical_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
         flow_vertical = DiffCache(flow_vertical, chunk_sizes)
     end
+    tprev_flow_save = zeros(1)
     graph_data = (;
         node_ids,
         edge_ids,
         edges_source,
         flow_dict,
         flow,
+        flow_prev,
+        flow_integrated,
         flow_vertical_dict,
         flow_vertical,
+        flow_vertical_prev,
+        flow_vertical_integrated,
+        tprev_flow_save,
     )
     graph = @set graph.graph_data = graph_data
 

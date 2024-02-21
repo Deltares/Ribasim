@@ -7,7 +7,7 @@ function set_initial_discrete_controlled_parameters!(
     storage0::Vector{Float64},
 )::Nothing
     (; p) = integrator
-    (; basin, discrete_control) = p
+    (; discrete_control) = p
 
     n_conditions = length(discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
@@ -39,6 +39,9 @@ function create_callbacks(
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
     push!(callbacks, basin_cb)
+
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!)
+    push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
@@ -85,6 +88,29 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function integrate_flows!(u, t, integrator)::Nothing
+    (; p, tprev) = integrator
+    (; graph) = p
+    (;
+        flow,
+        flow_vertical,
+        flow_prev,
+        flow_vertical_prev,
+        flow_integrated,
+        flow_vertical_integrated,
+    ) = graph[]
+    flow = get_tmp(flow, 0)
+    flow_vertical = get_tmp(flow_vertical, 0)
+    Δt = t - tprev
+
+    @. flow_integrated += 0.5 * (flow + flow_prev) * Δt
+    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * Δt
+
+    copyto!(flow_prev, flow)
+    copyto!(flow_vertical_prev, flow_vertical)
+    return nothing
 end
 
 """
@@ -379,10 +405,17 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    vcat(
-        get_tmp(integrator.p.graph[].flow_vertical, 0.0),
-        get_tmp(integrator.p.graph[].flow, 0.0),
-    )
+    (; graph) = integrator.p
+    (; flow_integrated, flow_vertical_integrated, tprev_flow_save) = graph[]
+    Δt = t - tprev_flow_save[1]
+    tprev_flow_save[1] = t
+
+    mean_flow_vertical = flow_vertical_integrated / Δt
+    mean_flow = flow_integrated / Δt
+
+    fill!(flow_vertical_integrated, 0.0)
+    fill!(flow_integrated, 0.0)
+    return vcat(mean_flow_vertical, mean_flow)
 end
 
 function update_subgrid_level!(integrator)::Nothing
