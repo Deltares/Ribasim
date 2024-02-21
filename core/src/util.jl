@@ -652,14 +652,38 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     return sort(unique(priorities))
 end
 
-function get_basin_priority(p::Parameters, node_id::NodeID)::Int
-    (; graph, target_level) = p
+function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
+    (; graph, target_level, allocation) = p
     @assert node_id.type == NodeType.Basin
     inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(inneighbors_control)
         return 0
     else
         idx = findsorted(target_level.node_id, only(inneighbors_control))
-        return target_level.priority[idx]
+        priority = target_level.priority[idx]
+        return findsorted(allocation.priorities, priority)
     end
+end
+
+"""
+Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+"""
+function set_is_pid_controlled!(p::Parameters)::Nothing
+    (; graph, pid_control, pump, outlet) = p
+
+    for id in pid_control.node_id
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        if id_controlled.type == NodeType.Pump
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            pump.is_pid_controlled[pump_idx] = true
+        elseif id_controlled.type == NodeType.Outlet
+            outlet_idx = findsorted(outlet.node_id, id_controlled)
+            outlet.is_pid_controlled[outlet_idx] = true
+        else
+            error(
+                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
+            )
+        end
+    end
+    return nothing
 end

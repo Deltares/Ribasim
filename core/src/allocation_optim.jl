@@ -126,12 +126,11 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation) = p
+    (; graph, user, allocation, basin) = p
     (; demand_itp, demand_from_timeseries, node_id) = user
-    (; main_network_connections, subnetwork_demands, priorities) = allocation
+    (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
-    F = problem[:F]
     if objective_type in [:quadratic_absolute, :quadratic_relative]
         ex = JuMP.QuadExpr()
     elseif objective_type in [:linear_absolute, :linear_relative]
@@ -174,11 +173,12 @@ function set_objective_priority!(
     # Terms for basins
     F_basin_in = problem[:F_basin_in]
     for node_id in only(F_basin_in.axes)
-        priority_basin = get_basin_priority(p, node_id)
-        priority_now = priorities[priority_idx]
+        basin_priority_idx = get_basin_priority_idx(p, node_id)
         d =
-            priority_basin == priority_now ?
+            basin_priority_idx == priority_idx ?
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
+        _, basin_idx = id_index(basin.node_id, node_id)
+        basin.demand[basin_idx] = d
         add_basin_term!(ex, problem, d, objective_type, node_id)
     end
 
@@ -193,7 +193,6 @@ Assign the allocations to the users as determined by the solution of the allocat
 function assign_allocations!(
     allocation_model::AllocationModel,
     p::Parameters,
-    t::Float64,
     priority_idx::Int;
     collect_demands::Bool = false,
 )::Nothing
@@ -205,7 +204,6 @@ function assign_allocations!(
         allocation_network_ids,
         main_network_connections,
     ) = allocation
-    (; record) = user
     edge_ids = graph[].edge_ids[allocation_network_id]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
@@ -225,20 +223,6 @@ function assign_allocations!(
             allocated = JuMP.value(F[edge_id])
             user_idx = findsorted(user.node_id, user_node_id)
             user.allocated[user_idx][priority_idx] = allocated
-
-            # Save allocations to record
-            push!(record.time, t)
-            push!(record.subnetwork_id, allocation_model.allocation_network_id)
-            push!(record.user_node_id, Int(user_node_id))
-            push!(record.priority, allocation.priorities[priority_idx])
-            push!(record.demand, user.demand[user_idx])
-            push!(record.allocated, allocated)
-            # TODO: This is now the last abstraction before the allocation update,
-            # should be the average abstraction since the last allocation solve
-            push!(
-                record.abstracted,
-                get_flow(graph, inflow_id(graph, user_node_id), user_node_id, 0),
-            )
         end
     end
 
@@ -475,7 +459,76 @@ function adjust_basin_capacities!(
 end
 
 """
-Save the allocation flows per basin physical edge.
+Save the demands and allocated flows for users and basins.
+Note: Basin supply (negative demand) is only saved for the first priority.
+"""
+function save_demands_and_allocations!(
+    p::Parameters,
+    allocation_model::AllocationModel,
+    t::Float64,
+    priority_idx::Int,
+)::Nothing
+    (; graph, allocation, user, basin) = p
+    (; record_demand, priorities) = allocation
+    (; allocation_network_id, problem) = allocation_model
+    node_ids = graph[].node_ids[allocation_network_id]
+    constraints_outflow = problem[:basin_outflow]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
+
+    for node_id in node_ids
+        has_demand = false
+
+        if node_id.type == NodeType.User
+            has_demand = true
+            user_idx = findsorted(user.node_id, node_id)
+            demand = user.demand[user_idx]
+            allocated = user.allocated[user_idx][priority_idx]
+            realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+
+        elseif node_id.type == NodeType.Basin
+            basin_priority_idx = get_basin_priority_idx(p, node_id)
+
+            if priority_idx == 1 || basin_priority_idx == priority_idx
+                has_demand = true
+                demand = 0.0
+                if priority_idx == 1
+                    # Basin surplus
+                    demand -= JuMP.normalized_rhs(constraints_outflow[node_id])
+                end
+                if priority_idx == basin_priority_idx
+                    # Basin demand
+                    _, basin_idx = id_index(basin.node_id, node_id)
+                    demand += basin.demand[basin_idx]
+                end
+                allocated =
+                    JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
+                # TODO: realized for a basin is not so clear, maybe it should be Δstorage/Δt
+                # over the last allocation interval?
+                realized = 0.0
+            end
+        end
+
+        if has_demand
+            # Save allocations and demands to record
+            push!(record_demand.time, t)
+            push!(record_demand.subnetwork_id, allocation_network_id)
+            push!(record_demand.node_type, string(node_id.type))
+            push!(record_demand.node_id, Int(node_id))
+            push!(record_demand.priority, priorities[priority_idx])
+            push!(record_demand.demand, demand)
+            push!(record_demand.allocated, allocated)
+
+            # TODO: This is now the last abstraction before the allocation update,
+            # should be the average abstraction since the last allocation solve
+            push!(record_demand.realized, realized)
+        end
+    end
+    return nothing
+end
+
+"""
+Save the allocation flows per basin and physical edge.
 """
 function save_allocation_flows!(
     p::Parameters,
@@ -486,41 +539,45 @@ function save_allocation_flows!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; allocation, graph) = p
-    (; record) = allocation
+    (; record_flow) = allocation
     F = problem[:F]
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
     # Edge flows
     for allocation_edge in first(F.axes)
-        flow = JuMP.value(F[allocation_edge])
+        flow_rate = JuMP.value(F[allocation_edge])
         edge_metadata = graph[allocation_edge...]
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
-            push!(record.time, t)
-            push!(record.edge_id, edge_metadata.id)
-            push!(record.from_node_id, node_ids[i])
-            push!(record.to_node_id, node_ids[i + 1])
-            push!(record.subnetwork_id, allocation_network_id)
-            push!(record.priority, priority)
-            push!(record.flow, flow)
-            push!(record.collect_demands, collect_demands)
+            push!(record_flow.time, t)
+            push!(record_flow.edge_id, edge_metadata.id)
+            push!(record_flow.from_node_type, string(node_ids[i].type))
+            push!(record_flow.from_node_id, Int(node_ids[i]))
+            push!(record_flow.to_node_type, string(node_ids[i + 1].type))
+            push!(record_flow.to_node_id, Int(node_ids[i + 1]))
+            push!(record_flow.subnetwork_id, allocation_network_id)
+            push!(record_flow.priority, priority)
+            push!(record_flow.flow_rate, flow_rate)
+            push!(record_flow.collect_demands, collect_demands)
         end
     end
 
     # Basin flows
     for node_id in graph[].node_ids[allocation_network_id]
         if node_id.type == NodeType.Basin
-            flow = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
-            push!(record.time, t)
-            push!(record.edge_id, 0)
-            push!(record.from_node_id, node_id)
-            push!(record.to_node_id, node_id)
-            push!(record.subnetwork_id, allocation_network_id)
-            push!(record.priority, priority)
-            push!(record.flow, flow)
-            push!(record.collect_demands, collect_demands)
+            flow_rate = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
+            push!(record_flow.time, t)
+            push!(record_flow.edge_id, 0)
+            push!(record_flow.from_node_type, string(NodeType.Basin))
+            push!(record_flow.from_node_id, node_id)
+            push!(record_flow.to_node_type, string(NodeType.Basin))
+            push!(record_flow.to_node_id, node_id)
+            push!(record_flow.subnetwork_id, allocation_network_id)
+            push!(record_flow.priority, priority)
+            push!(record_flow.flow_rate, flow_rate)
+            push!(record_flow.collect_demands, collect_demands)
         end
     end
 
@@ -580,7 +637,10 @@ function allocate!(
         end
 
         # Assign the allocations to the users for this priority
-        assign_allocations!(allocation_model, p, t, priority_idx; collect_demands)
+        assign_allocations!(allocation_model, p, priority_idx; collect_demands)
+
+        # Save the demands and allocated flows for all nodes that have these
+        save_demands_and_allocations!(p, allocation_model, t, priority_idx)
 
         # Save the flows over all edges in the subnetwork
         save_allocation_flows!(

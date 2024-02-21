@@ -1674,7 +1674,7 @@ def target_level_model():
     from_id = np.array([1, 2, 4, 3, 4])
     to_id = np.array([2, 3, 2, 5, 5])
     edge_type = ["flow", "flow", "control", "flow", "control"]
-    allocation_network_id = [1, None, None, None, None]
+    subnetwork_id = [2, None, None, None, None]
 
     lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
@@ -1683,7 +1683,7 @@ def target_level_model():
                 "from_node_id": from_id,
                 "to_node_id": to_id,
                 "edge_type": edge_type,
-                "allocation_network_id": allocation_network_id,
+                "subnetwork_id": subnetwork_id,
             },
             geometry=lines,
             crs="EPSG:28992",
