@@ -47,9 +47,10 @@ When `adaptive = true`, `dtmin` and `dtmax` control the minimum and maximum allo
 If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
 `force_dtmin` is off by default to ensure an accurate solution.
 
-By default the calculation and result stepsize are the same, with `saveat = []`, which will save every timestep.
-`saveat` can be a number, which is the saving interval in seconds, or it can be a list of numbers, which are the times in seconds since start that are saved.
-For instance, `saveat = 86400.0` will save results after every day that passed.
+The default result stepsize, `saveat = 86400` will save results after every day that passed.
+The calculation and result stepsize need not be the same.
+If you wish to save every calculation step, set `saveat = 0`.
+If you wish to not save any intermediate steps, set `saveat = inf`.
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.

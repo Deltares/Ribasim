@@ -17,13 +17,16 @@ def test_repr(basic):
 def test_solver():
     solver = Solver()
     assert solver.algorithm == "QNDF"  # default
-    assert solver.saveat == []
+    assert solver.saveat == 86400.0
 
     solver = Solver(saveat=3600.0)
     assert solver.saveat == 3600.0
 
-    solver = Solver(saveat=[3600.0, 7200.0])
-    assert solver.saveat == [3600.0, 7200.0]
+    solver = Solver(saveat=float("inf"))
+    assert solver.saveat == float("inf")
+
+    solver = Solver(saveat=0)
+    assert solver.saveat == 0
 
     with pytest.raises(ValidationError):
         Solver(saveat="a")

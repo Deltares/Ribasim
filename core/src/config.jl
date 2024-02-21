@@ -16,7 +16,7 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, input_path, results_path
+export algorithm, snake_case, input_path, results_path, convert_saveat
 
 const schemas =
     getfield.(
@@ -77,7 +77,7 @@ const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
-    saveat::Union{Float64, Vector{Float64}} = Float64[]
+    saveat::Float64 = 86400.0
     adaptive::Bool = true
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
@@ -166,11 +166,6 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
     )
 end
 
-# [] in TOML is parsed as a Vector{Union{}}
-function Configurations.from_dict(::Type{Solver}, t::Type, saveat::Vector{Union{}})
-    return Float64[]
-end
-
 # TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
     println(io, "Ribasim Config")
@@ -233,6 +228,23 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         algotype(; solver.autodiff)
     catch
         algotype()
+    end
+end
+
+"Convert the saveat Float64 from our Config to SciML's saveat"
+function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}
+    if iszero(saveat)
+        # every step
+        Float64[]
+    elseif saveat == Inf
+        # only the start and end
+        [0.0, t_end]
+    elseif isfinite(saveat)
+        # every saveat seconds
+        saveat
+    else
+        @error "Invalid saveat" saveat
+        error("Invalid saveat")
     end
 end
 
