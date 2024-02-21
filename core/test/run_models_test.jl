@@ -476,3 +476,16 @@ end
         0,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
+
+@testitem "mean_flow" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
+    @test ispath(toml_path)
+    t_end = 3.16224e7
+
+    config = Ribasim.Config(toml_path; solver_saveat = t_end)
+    model = Ribasim.run(config)
+    mean_flow = model.saved.flow.saveval[1]
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    @test storage[2] ≈ storage[1] - t_end * mean_flow[3] atol = 1
+end
