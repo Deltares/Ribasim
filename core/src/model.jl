@@ -105,6 +105,7 @@ function Model(config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
+    saveat = convert_saveat(config.solver.saveat, t_end)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -114,7 +115,7 @@ function Model(config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config; config.solver.saveat)
+    callback, saved = create_callbacks(parameters, config; saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -130,7 +131,7 @@ function Model(config::Config)::Model
         callback,
         tstops,
         isoutofdomain = (u, p, t) -> any(<(0), u.storage),
-        config.solver.saveat,
+        saveat,
         config.solver.adaptive,
         dt = something(config.solver.dt, t0),
         config.solver.dtmin,

@@ -11,4 +11,4 @@ database = "database.gpkg"
 time = "basin/time.arrow"
 
 [solver]
-saveat = 86400
+saveat = 3600

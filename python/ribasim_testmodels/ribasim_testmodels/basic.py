@@ -481,6 +481,7 @@ def outlet_model():
         level_boundary=level_boundary,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        solver=ribasim.Solver(saveat=0),
     )
 
     return model

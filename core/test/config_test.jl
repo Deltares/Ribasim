@@ -7,7 +7,7 @@
         config = Ribasim.Config(normpath(@__DIR__, "data", "config_test.toml"))
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
-        @test config.solver == Ribasim.Solver(; saveat = 86400.0)
+        @test config.solver == Ribasim.Solver(; saveat = 3600.0)
         @test config.results.compression
         @test config.results.compression_level == 6
     end
@@ -38,10 +38,11 @@ end
 
 @testitem "Solver" begin
     using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+    using Ribasim: convert_saveat, Solver, algorithm
 
-    solver = Ribasim.Solver()
+    solver = Solver()
     @test solver.algorithm == "QNDF"
-    Ribasim.Solver(;
+    Solver(;
         algorithm = "Rosenbrock23",
         autodiff = true,
         saveat = 3600.0,
@@ -51,21 +52,26 @@ end
         reltol = 1e-4,
         maxiters = 1e5,
     )
-    Ribasim.Solver(; algorithm = "DoesntExist")
-    @test_throws InexactError Ribasim.Solver(autodiff = 2)
-    @test_throws "algorithm DoesntExist not supported" Ribasim.algorithm(
-        Ribasim.Solver(; algorithm = "DoesntExist"),
+    Solver(; algorithm = "DoesntExist")
+    @test_throws InexactError Solver(autodiff = 2)
+    @test_throws "algorithm DoesntExist not supported" algorithm(
+        Solver(; algorithm = "DoesntExist"),
     )
-    @test alg_autodiff(
-        Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF", autodiff = true)),
-    ) == AutoForwardDiff()
-    @test alg_autodiff(
-        Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF", autodiff = false)),
-    ) == AutoFiniteDiff()
-    @test alg_autodiff(Ribasim.algorithm(Ribasim.Solver(; algorithm = "QNDF"))) ==
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
           AutoForwardDiff()
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) ==
+          AutoFiniteDiff()
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoForwardDiff()
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
-    Ribasim.algorithm(Ribasim.Solver(; algorithm = "Euler", autodiff = true))
+    algorithm(Solver(; algorithm = "Euler", autodiff = true))
+
+    t_end = 100.0
+    @test convert_saveat(0.0, t_end) == Float64[]
+    @test convert_saveat(60.0, t_end) == 60.0
+    @test convert_saveat(Inf, t_end) == [0.0, t_end]
+    @test convert_saveat(Inf, t_end) == [0.0, t_end]
+    @test_throws ErrorException convert_saveat(-Inf, t_end)
+    @test_throws ErrorException convert_saveat(NaN, t_end)
 end
 
 @testitem "snake_case" begin

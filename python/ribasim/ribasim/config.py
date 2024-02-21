@@ -49,7 +49,7 @@ class Results(ChildModel):
 
 class Solver(ChildModel):
     algorithm: str = "QNDF"
-    saveat: float | list[float] = []
+    saveat: float = 86400.0
     adaptive: bool = True
     dt: float | None = None
     dtmin: float | None = None
