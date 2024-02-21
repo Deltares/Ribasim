@@ -65,7 +65,8 @@ allocation models: The allocation models for the main network and subnetworks co
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
-record: A record of all flows computed by allocation optimization, eventually saved to
+record_demand: A record of demands and allocated flows for nodes that have these.
+record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
 struct Allocation
@@ -75,14 +76,26 @@ struct Allocation
     priorities::Vector{Int}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    record::@NamedTuple{
+    record_demand::@NamedTuple{
+        time::Vector{Float64},
+        subnetwork_id::Vector{Int},
+        node_type::Vector{String},
+        node_id::Vector{Int},
+        priority::Vector{Int},
+        demand::Vector{Float64},
+        allocated::Vector{Float64},
+        realized::Vector{Float64},
+    }
+    record_flow::@NamedTuple{
         time::Vector{Float64},
         edge_id::Vector{Int},
+        from_node_type::Vector{String},
         from_node_id::Vector{Int},
+        to_node_type::Vector{String},
         to_node_id::Vector{Int},
         subnetwork_id::Vector{Int},
         priority::Vector{Int},
-        flow::Vector{Float64},
+        flow_rate::Vector{Float64},
         collect_demands::BitVector,
     }
 end
@@ -146,14 +159,16 @@ struct Basin{T, C} <: AbstractParameterNode
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
-    # cache this to avoid recomputation
+    # Cache this to avoid recomputation
     current_level::T
     current_area::T
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    # data source for parameter updates
+    # Demands and allocated flows for allocation if applicable
+    demand::Vector{Float64}
+    # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
     function Basin(
@@ -167,6 +182,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
+        demand,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         is_valid = valid_profiles(node_id, level, area)
@@ -182,6 +198,7 @@ struct Basin{T, C} <: AbstractParameterNode
             area,
             level,
             storage,
+            demand,
             time,
         )
     end
@@ -467,7 +484,6 @@ active: whether this node is active and thus demands water
 allocated: water flux currently allocated to user per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the user does not abstract
-record: Collected data of allocation optimizations for output file.
 """
 struct User <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -478,15 +494,6 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    record::@NamedTuple{
-        time::Vector{Float64},
-        subnetwork_id::Vector{Int},
-        user_node_id::Vector{Int},
-        priority::Vector{Int},
-        demand::Vector{Float64},
-        allocated::Vector{Float64},
-        abstracted::Vector{Float64},
-    }
 
     function User(
         node_id,
@@ -498,7 +505,6 @@ struct User <: AbstractParameterNode
         return_factor,
         min_level,
         priorities,
-        record,
     )
         if valid_demand(node_id, demand_itp, priorities)
             return new(
@@ -510,7 +516,6 @@ struct User <: AbstractParameterNode
                 allocated,
                 return_factor,
                 min_level,
-                record,
             )
         else
             error("Invalid demand")

@@ -175,17 +175,21 @@ end
     ) ≈ -0.25
 
     solve!(model)
-    record_allocation = DataFrame(model.integrator.p.user.record)
+    record_allocation = DataFrame(model.integrator.p.allocation.record_demand)
     record_control = model.integrator.p.discrete_control.record
-    groups = groupby(record_allocation, [:user_node_id, :priority])
+    groups = groupby(record_allocation, [:node_type, :node_id, :priority])
     fractional_flow = model.integrator.p.fractional_flow
     (; control_mapping) = fractional_flow
     t_control = record_control.time[2]
 
-    allocated_6_before = groups[(6, 1)][groups[(6, 1)].time .< t_control, :].allocated
-    allocated_9_before = groups[(9, 1)][groups[(9, 1)].time .< t_control, :].allocated
-    allocated_6_after = groups[(6, 1)][groups[(6, 1)].time .> t_control, :].allocated
-    allocated_9_after = groups[(9, 1)][groups[(9, 1)].time .> t_control, :].allocated
+    allocated_6_before =
+        groups[("User", 6, 1)][groups[("User", 6, 1)].time .< t_control, :].allocated
+    allocated_9_before =
+        groups[("User", 9, 1)][groups[("User", 9, 1)].time .< t_control, :].allocated
+    allocated_6_after =
+        groups[("User", 6, 1)][groups[("User", 6, 1)].time .> t_control, :].allocated
+    allocated_9_after =
+        groups[("User", 9, 1)][groups[("User", 9, 1)].time .> t_control, :].allocated
     @test all(
         allocated_9_before ./ allocated_6_before .<=
         control_mapping[(NodeID(:FractionalFlow, 7), "A")].fraction /
@@ -344,28 +348,45 @@ end
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
     # Until the first allocation solve, the user abstracts fully
-    pre_allocation = t .<= Δt_allocation
-    u_pre_allocation(τ) = storage[1] + (q + ϕ - d) * τ
-    @test storage[pre_allocation] ≈ u_pre_allocation.(t[pre_allocation]) rtol = 1e-4
+    stage_1 = t .<= Δt_allocation
+    u_stage_1(τ) = storage[1] + (q + ϕ - d) * τ
+    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-4
 
-    # Until the basin is at its maximum level, the user does not abstract
-    basin_filling = @. ~pre_allocation && (storage <= A * l_max)
-    fill_start_idx = findlast(pre_allocation)
-    u_filling(τ) = storage[fill_start_idx] + (q + ϕ) * (τ - t[fill_start_idx])
-    @test storage[basin_filling] ≈ u_filling.(t[basin_filling]) rtol = 1e-4
+    # In this section the basin leaves no supply for the user
+    stage_2 = Δt_allocation .<= t .<= 3 * Δt_allocation
+    stage_2_start_idx = findfirst(stage_2)
+    u_stage_2(τ) = storage[stage_2_start_idx] + (q + ϕ) * (τ - t[stage_2_start_idx])
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
 
-    # After the basin has reached its maximum level, the user abstracts fully again
-    precipitation = eachindex(storage) .<= argmax(storage)
-    after_filling = @. ~pre_allocation && ~basin_filling && precipitation
-    fill_stop_idx = findfirst(after_filling)
-    u_after_filling(τ) = storage[fill_stop_idx] + (q + ϕ - d) * (τ - t[fill_stop_idx])
-    @test storage[after_filling] ≈ u_after_filling.(t[after_filling]) rtol = 1e-4
+    # In this section (and following sections) the basin has no longer a (positive) demand,
+    # since precipitation provides enough water to get the basin to its target level
+    # The FlowBoundary flow gets fully allocated to the user
+    stage_3 = 3 * Δt_allocation .<= t .<= 8 * Δt_allocation
+    stage_3_start_idx = findfirst(stage_3)
+    u_stage_3(τ) = storage[stage_3_start_idx] + ϕ * (τ - t[stage_3_start_idx])
+    @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
 
-    # After precipitation stops, the user still abstracts from the basin so the storage decreases
-    storage_reduction = @. ~precipitation && t <= 1.8e6
-    storage_reduction_start = findfirst(storage_reduction)
-    u_storage_reduction(τ) =
-        storage[storage_reduction_start] + (q - d) * (τ - t[storage_reduction_start])
-    @test storage[storage_reduction] ≈ u_storage_reduction.(t[storage_reduction]) rtol =
-        1e-4
+    # In this section the basin enters its surplus stage,
+    # even though initially the level is below the maximum level. This is because the simulation
+    # anticipates that the current precipitation is going to bring the basin level over
+    # its maximum level
+    stage_4 = 8 * Δt_allocation .<= t .<= 12 * Δt_allocation
+    stage_4_start_idx = findfirst(stage_4)
+    u_stage_4(τ) = storage[stage_4_start_idx] + (q + ϕ - d) * (τ - t[stage_4_start_idx])
+    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
+
+    # At the start of this section precipitation stops, and so the user
+    # partly uses surplus water from the basin to fulfill its demand
+    stage_5 = 13 * Δt_allocation .<= t .<= 16 * Δt_allocation
+    stage_5_start_idx = findfirst(stage_5)
+    u_stage_5(τ) = storage[stage_5_start_idx] + (q - d) * (τ - t[stage_5_start_idx])
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
+
+    # From this point the basin is in a dynamical equilibrium,
+    # since the basin has no supply so the user abstracts precisely
+    # the flow from the level boundary
+    stage_6 = 17 * Δt_allocation .<= t
+    stage_6_start_idx = findfirst(stage_6)
+    u_stage_6(τ) = storage[stage_6_start_idx]
+    @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
 end

@@ -32,8 +32,16 @@
 
     @testset "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (:time, :edge_id, :from_node_id, :to_node_id, :flow),
-            (DateTime, Union{Int, Missing}, Int, Int, Float64),
+            (
+                :time,
+                :edge_id,
+                :from_node_type,
+                :from_node_id,
+                :to_node_type,
+                :to_node_id,
+                :flow_rate,
+            ),
+            (DateTime, Union{Int, Missing}, String, Int, String, Int, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (:time, :node_id, :storage, :level),
@@ -47,26 +55,29 @@
             (
                 :time,
                 :subnetwork_id,
-                :user_node_id,
+                :node_type,
+                :node_id,
                 :priority,
                 :demand,
                 :allocated,
-                :abstracted,
+                :realized,
             ),
-            (DateTime, Int, Int, Int, Float64, Float64, Float64),
+            (DateTime, Int, String, Int, Int, Float64, Float64, Float64),
         )
         @test Tables.schema(allocation_flow) == Tables.Schema(
             (
                 :time,
                 :edge_id,
+                :from_node_type,
                 :from_node_id,
+                :to_node_type,
                 :to_node_id,
                 :subnetwork_id,
                 :priority,
-                :flow,
+                :flow_rate,
                 :collect_demands,
             ),
-            (DateTime, Int, Int, Int, Int, Int, Float64, Bool),
+            (DateTime, Int, String, Int, String, Int, Int, Int, Float64, Bool),
         )
         @test Tables.schema(subgrid) ==
               Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
@@ -187,10 +198,7 @@ end
     @test logger.logs[1].message == "Read database into memory."
 
     table = Ribasim.flow_table(model)
-    @test Tables.schema(table) == Tables.Schema(
-        (:time, :edge_id, :from_node_id, :to_node_id, :flow),
-        (DateTime, Union{Int, Missing}, Int, Int, Float64),
-    )
+
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[2:end]
 
@@ -198,8 +206,9 @@ end
     t = table.time[1]
     @test length(p.fractional_flow.node_id) == 3
     for id in p.fractional_flow.node_id
-        inflow = only(table.flow[table.to_node_id .== id.value .&& table.time .== t])
-        outflow = only(table.flow[table.from_node_id .== id.value .&& table.time .== t])
+        inflow = only(table.flow_rate[table.to_node_id .== id.value .&& table.time .== t])
+        outflow =
+            only(table.flow_rate[table.from_node_id .== id.value .&& table.time .== t])
         @test inflow == outflow
     end
 end
@@ -355,7 +364,7 @@ end
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow[timesteps <= t_min_crest_level] == 0)
+    @test all(@. outlet_flow.flow_rate[timesteps <= t_min_crest_level] == 0)
 
     timesteps = Ribasim.timesteps(model)
     t_maximum_level = level.t[2]

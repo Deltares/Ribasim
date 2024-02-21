@@ -684,13 +684,15 @@ The table is sorted by time, and per time it is sorted by `node_id`.
 The flow table contains results of the flow on every edge in the model, for each solver
 timestep.
 
-column        | type                | unit
-------------- | ------------------- | ----
-time          | DateTime            | -
-edge_id       | Union{Int, Missing} | -
-from_node_id  | Int                 | -
-to_node_id    | Int                 | -
-flow          | Float64             | $m^3 s^{-1}$
+column         | type                | unit
+-------------- | ------------------- | ----
+time           | DateTime            | -
+edge_id        | Union{Int, Missing} | -
+from_node_type | String              | -
+from_node_id   | Int                 | -
+to_node_type   | String              | -
+to_node_id     | Int                 | -
+flow_rate      | Float64             | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
@@ -709,17 +711,21 @@ control_state   | String
 
 ## Allocation - `allocation.arrow`
 
-The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
+The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 
 column        | type
 --------------| -----
 time          | DateTime
 subnetwork_id | Int
-user_node_id  | Int
+node_type     | String
+node_id       | Int
 priority      | Int
 demand        | Float64
 allocated     | Float64
-abstracted    | Float64
+realized      | Float64
+
+For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `TargetLevel` node.
+The values are negative if the Basin supplies due to a surplus of water.
 
 ::: {.callout-note}
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
@@ -735,9 +741,11 @@ column          | type
 ----------------| -----
 time            | DateTime
 edge_id         | Int
+from_node_type  | String
 from_node_id    | Int
+to_node_type    | String
 to_node_id      | Int
 subnetwork_id   | Int
 priority        | Int
-flow            | Float64
+flow_rate       | Float64
 collect_demands | Bool
