@@ -16,7 +16,7 @@
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
           <param name="secure:github_access_token" value="credentialsJSON:558df52e-822f-4d9d-825a-854846a9a2ff" />
-          <param name="vcsRootId" value="iMOD6_IMODPython_ImodPython" />
+          <param name="vcsRootId" value="Ribasim_Ribasim" />
         </parameters>
       </extension>
     </build-extensions>
