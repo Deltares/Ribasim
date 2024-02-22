@@ -478,23 +478,24 @@ end
 end
 
 @testitem "mean_flow" begin
+    using DataFrames: DataFrame
+
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
     function get_flow(solver_adaptive::Bool, solver_saveat::Float64)::Vector{Float64}
         config = Ribasim.Config(toml_path; solver_adaptive, solver_saveat)
         model = Ribasim.run(config)
-        @show model.integrator.sol.t
         df = DataFrame(Ribasim.flow_table(model))
         return filter(
             [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
             df,
         ).flow_rate
     end
-    @test all(get_flow(true, 86400.0) .≈ 1.0) # broken
+    @test all(get_flow(true, 86400.0) .≈ 1.0)
     @test all(get_flow(true, 0.0) .≈ 1.0)
     @test all(get_flow(true, Inf) .≈ 1.0)
-    @test all(get_flow(false, 86400.0) .≈ 1.0) # broken
+    @test all(get_flow(false, 86400.0) .≈ 1.0)
     @test all(get_flow(false, 0.0) .≈ 1.0)
-    @test all(get_flow(false, Inf) .≈ 1.0) # broken
+    @test all(get_flow(false, Inf) .≈ 1.0)
 end

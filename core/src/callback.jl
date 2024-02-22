@@ -105,16 +105,16 @@ function integrate_flows!(u, t, integrator)::Nothing
     flow = get_tmp(flow, 0)
     flow_vertical = get_tmp(flow_vertical, 0)
     Δt = t - tprev
-    @show Δt
 
-    flow_effective = if length(integrator.sol.t) == 2
+    flow_effective = if isnan(flow_prev[1])
         # If flow_prev is not populated yet
         flow
     else
         0.5 * (flow + flow_prev)
     end
 
-    flow_vertical_effective = if length(integrator.sol.t) == 2
+    flow_vertical_effective = if isnan(flow_vertical_prev[1])
+        # If flow_vertical_prev is not populated yet
         flow_vertical
     else
         0.5 * (flow_vertical + flow_vertical_prev)
@@ -433,8 +433,6 @@ function save_flow(u, t, integrator)
         # The last interval might be shorter than saveat
         t_end - t >= saveat ? saveat : t - tprev
     end
-
-    @show Δt
 
     mean_flow_vertical = flow_vertical_integrated / Δt
     mean_flow = flow_integrated / Δt

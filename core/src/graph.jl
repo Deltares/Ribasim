@@ -90,10 +90,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
 
     flow = zeros(flow_counter)
-    flow_prev = zeros(flow_counter)
+    flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
-    flow_vertical_prev = zeros(flow_vertical_counter)
+    flow_vertical_prev = fill(NaN, flow_vertical_counter)
     flow_vertical_integrated = zeros(flow_vertical_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
