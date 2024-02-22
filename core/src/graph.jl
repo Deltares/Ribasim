@@ -99,7 +99,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         flow = DiffCache(flow, chunk_sizes)
         flow_vertical = DiffCache(flow_vertical, chunk_sizes)
     end
-    tprev_flow_save = zeros(1)
     graph_data = (;
         node_ids,
         edge_ids,
@@ -112,7 +111,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         flow_vertical,
         flow_vertical_prev,
         flow_vertical_integrated,
-        tprev_flow_save,
+        config.solver.saveat,
     )
     graph = @set graph.graph_data = graph_data
 

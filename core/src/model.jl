@@ -46,7 +46,7 @@ function Model(config::Config)::Model
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
-    local parameters, state, n, tstops
+    local parameters, state, n, tstops, tstops_flow_boundary, tstops_user
     try
         parameters = Parameters(db, config)
 
@@ -79,7 +79,6 @@ function Model(config::Config)::Model
         tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
         time_user = load_structvector(db, config, UserTimeV1)
         tstops_user = get_tstops(time_user.time, config.starttime)
-        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -106,6 +105,11 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
     saveat = convert_saveat(config.solver.saveat, t_end)
+
+    tstops_saveat =
+        isfinite(config.solver.saveat) ? range(t0, t_end; step = config.solver.saveat) :
+        Float64[]
+    tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user, tstops_saveat)))
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
