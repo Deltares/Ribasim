@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: timesteps
+    using Ribasim: get_tstops, tstops
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -84,7 +84,7 @@
     end
 
     @testset "Results size" begin
-        nsaved = length(timesteps(model))
+        nsaved = length(tstops(model))
         @test nsaved > 10
         # t0 has no flow, 2 flow edges and 2 boundary condition flows
         @test nrow(flow) == (nsaved - 1) * 4
@@ -189,7 +189,7 @@ end
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
     @test successful_retcode(model)
-    @test allunique(Ribasim.timesteps(model))
+    @test allunique(Ribasim.tstops(model))
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
@@ -355,7 +355,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    timesteps = model.saved.flow.t
+    t = model.saved.flow.t
     flow = DataFrame(Ribasim.flow_table(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)
@@ -364,14 +364,14 @@ end
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow_rate[timesteps <= t_min_crest_level] == 0)
+    @test all(@. outlet_flow.flow_rate[t <= t_min_crest_level] == 0)
 
-    timesteps = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
     t_maximum_level = level.t[2]
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
+    all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
 @testitem "User" begin

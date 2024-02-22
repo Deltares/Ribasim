@@ -273,8 +273,8 @@ to have a reasonable and safe default, a value must be provided in the static ta
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
-A linear interpolation between the given timesteps is currently done if the
-solver takes timesteps between the given data points. More options will be available later.
+A linear interpolation between the given tstops is currently done if the
+solver takes tstops between the given data points. More options will be available later.
 
 ## Basin / state
 

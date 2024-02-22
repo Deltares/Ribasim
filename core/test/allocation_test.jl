@@ -330,7 +330,7 @@ end
     model = Ribasim.run(toml_path)
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
 
     p = model.integrator.p
     (; user, graph, allocation, basin, target_level) = p

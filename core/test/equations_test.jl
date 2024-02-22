@@ -25,7 +25,7 @@
     @test successful_retcode(model)
     (; p) = model.integrator
 
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     A = p.basin.area[1][2]  # needs to be constant
     u0 = A * 10.0
@@ -57,7 +57,7 @@ end
     @test successful_retcode(model)
     p = model.integrator.p
 
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     basin_area = p.basin.area[1][2]
     storage_min = 50.005
@@ -93,7 +93,7 @@ end
     p = model.integrator.p
     (; manning_resistance) = p
 
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
     storage_both = Ribasim.get_storages_and_levels(model).storage
     storage = storage_both[1, :]
     storage_min = 50.005
@@ -131,7 +131,7 @@ end
     (; basin, pid_control) = p
 
     storage = Ribasim.get_storages_and_levels(model).storage[:]
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
     SP = pid_control.target[1](0)
     K_p, K_i, K_d = pid_control.pid_params[1](0)
 
@@ -182,7 +182,7 @@ end
     frac = fractional_flow.fraction[1]
 
     storage_both = Ribasim.get_storages_and_levels(model).storage
-    t = Ribasim.timesteps(model)
+    t = Ribasim.tstops(model)
 
     @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump

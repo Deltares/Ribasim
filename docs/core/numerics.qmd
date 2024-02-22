@@ -106,4 +106,4 @@ Rather, the basin gets a very small storage.
 The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.
 Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn't exist.
 Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
-This reject timesteps that lead to negative storage, instead retrying with a smaller timestep.
+This reject tstops that lead to negative storage, instead retrying with a smaller timestep.

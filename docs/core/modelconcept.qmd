@@ -41,7 +41,7 @@ Ribasim is essentially a continuous model, rather than daily or hourly.
 If you want to use hourly forcing, you only need to make sure that your forcing data contains hourly updates.
 The output frequency can be configured independently.
 To be able to write a closed water balance, we accumulate the fluxes.
-This way any variations in between timesteps are also included, and we can output in `m³` rather than `m³s⁻¹`.
+This way any variations in between tstops are also included, and we can output in `m³` rather than `m³s⁻¹`.
 
 ## Space {#sec-space}
 
