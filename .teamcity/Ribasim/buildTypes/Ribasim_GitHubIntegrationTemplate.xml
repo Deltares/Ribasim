@@ -4,7 +4,9 @@
   <settings>
     <parameters />
     <build-runners />
-    <vcs-settings />
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim" />
+    </vcs-settings>
     <requirements />
     <build-triggers />
     <build-extensions>
