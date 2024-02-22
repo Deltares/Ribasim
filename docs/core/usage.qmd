@@ -160,8 +160,8 @@ between nodes, and never have storage of their own.
 
 column        | type     | restriction
 --------------| -------- | -----------
-fid           | Int      | unique, sorted
-type          | String   | known node type
+node_id       | Int      | -
+node_type     | String   | known node type
 geometry      | geoarrow | (optional)
 name          | String   | (optional, does not have to be unique)
 subnetwork_id |  Int     | (optional)

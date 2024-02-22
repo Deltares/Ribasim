@@ -11,6 +11,7 @@ from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import field_validator
 
 from ribasim.input_base import SpatialTableModel
 
@@ -18,8 +19,9 @@ __all__ = ("Node",)
 
 
 class NodeSchema(pa.SchemaModel):
+    node_id: Series[int]
     name: Series[str] = pa.Field(default="")
-    type: Series[str] = pa.Field(default="")
+    node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
@@ -27,10 +29,19 @@ class NodeSchema(pa.SchemaModel):
 
     class Config:
         add_missing_columns = True
+        coerce = True
 
 
 class Node(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
+
+    # TODO: Remove as soon as add api has been merged
+    @field_validator("df", mode="before")
+    @classmethod
+    def add_node_id_column(cls, df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        if "node_id" not in df.columns:
+            df.insert(0, "node_id", df.index)
+        return df
 
     @staticmethod
     def node_ids_and_types(*nodes):
@@ -228,7 +239,7 @@ class Node(SpatialTableModel[NodeSchema]):
         }
         assert self.df is not None
 
-        for nodetype, df in self.df.groupby("type"):
+        for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]

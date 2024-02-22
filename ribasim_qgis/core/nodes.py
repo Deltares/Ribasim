@@ -159,7 +159,7 @@ class Node(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("name", QVariant.String),
-            QgsField("type", QVariant.String),
+            QgsField("node_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
         ]
 
@@ -177,7 +177,7 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("type")
+        index = layer.fields().indexFromName("node_type")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {"map": {node: node for node in NONSPATIALNODETYPES}},
@@ -235,7 +235,9 @@ class Node(Input):
             category = QgsRendererCategory(value, symbol, label, render=True)
             categories.append(category)
 
-        renderer = QgsCategorizedSymbolRenderer(attrName="type", categories=categories)
+        renderer = QgsCategorizedSymbolRenderer(
+            attrName="node_type", categories=categories
+        )
         return renderer
 
     @property
