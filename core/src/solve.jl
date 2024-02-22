@@ -665,15 +665,3 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(level_boundary, p, storage, t)
     formulate_flow!(terminal, p, storage, t)
 end
-
-function track_waterbalance!(u, t, integrator)::Nothing
-    (; p, tprev, uprev) = integrator
-    dt = t - tprev
-    du = u - uprev
-    p.storage_diff .+= du
-    p.precipitation.total .+= p.precipitation.value .* dt
-    p.evaporation.total .+= p.evaporation.value .* dt
-    p.infiltration.total .+= p.infiltration.value .* dt
-    p.drainage.total .+= p.drainage.value .* dt
-    return nothing
-end
