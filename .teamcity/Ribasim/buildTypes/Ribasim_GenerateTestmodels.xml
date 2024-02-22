@@ -56,16 +56,6 @@ pixi run generate-testmodels]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
-    <build-extensions>
-      <extension id="BUILD_EXT_295" type="commit-status-publisher">
-        <parameters>
-          <param name="github_authentication_type" value="token" />
-          <param name="github_host" value="https://api.github.com" />
-          <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-        </parameters>
-      </extension>
-    </build-extensions>
     <cleanup />
   </settings>
 </build-type>
