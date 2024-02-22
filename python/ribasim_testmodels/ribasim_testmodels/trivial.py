@@ -24,7 +24,7 @@ def trivial_model() -> ribasim.Model:
     ]
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index([6, 0, terminal_id], name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
