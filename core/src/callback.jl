@@ -31,7 +31,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config;
-    saveat,
+    saveat_flow,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
@@ -58,7 +58,8 @@ function create_callbacks(
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    save_flow_cb =
+        SavingCallback(save_flow, saved_flow; saveat = saveat_flow, save_start = false)
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -104,9 +105,23 @@ function integrate_flows!(u, t, integrator)::Nothing
     flow = get_tmp(flow, 0)
     flow_vertical = get_tmp(flow_vertical, 0)
     Δt = t - tprev
+    @show Δt
 
-    @. flow_integrated += 0.5 * (flow + flow_prev) * Δt
-    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * Δt
+    flow_effective = if length(integrator.sol.t) == 2
+        # If flow_prev is not populated yet
+        flow
+    else
+        0.5 * (flow + flow_prev)
+    end
+
+    flow_vertical_effective = if length(integrator.sol.t) == 2
+        flow_vertical
+    else
+        0.5 * (flow_vertical + flow_vertical_prev)
+    end
+
+    @. flow_integrated += flow_effective * Δt
+    @. flow_vertical_integrated += flow_vertical_effective * Δt
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)
@@ -418,6 +433,8 @@ function save_flow(u, t, integrator)
         # The last interval might be shorter than saveat
         t_end - t >= saveat ? saveat : t - tprev
     end
+
+    @show Δt
 
     mean_flow_vertical = flow_vertical_integrated / Δt
     mean_flow = flow_integrated / Δt
