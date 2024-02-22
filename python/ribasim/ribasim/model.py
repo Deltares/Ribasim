@@ -284,7 +284,9 @@ class Model(FileModel):
             nodetype = node.get_input_type()
             node_ids_data = set(node.node_ids())
             node_ids_network = set(
-                self.network.node.df.loc[self.network.node.df["type"] == nodetype].index
+                self.network.node.df.loc[
+                    self.network.node.df["node_type"] == nodetype
+                ].index
             )
 
             if not node_ids_network == node_ids_data:
@@ -315,7 +317,7 @@ class Model(FileModel):
         node = self.network.node.df
         assert node is not None
         if df is not None:
-            df[type_col] = node.loc[df[id_col], "type"].to_numpy()
+            df[type_col] = node.loc[df[id_col], "node_type"].to_numpy()
 
     def _add_node_types(self):
         """Add the from/to node types to tables that reference external node IDs.
@@ -503,7 +505,9 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.network.node.df.loc[listen_feature_id, "type"]
+                listen_node_type = self.network.node.df.loc[
+                    listen_feature_id, "node_type"
+                ]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -518,7 +522,7 @@ class Model(FileModel):
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.network.node.df.loc[affect_node_id, "type"]
+                affect_node_type = self.network.node.df.loc[affect_node_id, "node_type"]
                 nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "

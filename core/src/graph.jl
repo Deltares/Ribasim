@@ -6,7 +6,7 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows = execute(db, "SELECT fid, type, subnetwork_id FROM Node ORDER BY fid")
+    node_rows = execute(db, "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
         "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
@@ -33,7 +33,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         graph_data = nothing,
     )
     for row in node_rows
-        node_id = NodeID(row.type, row.fid)
+        node_id = NodeID(row.node_type, row.node_id)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
             allocation_network_id = 0
@@ -44,8 +44,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(node_ids[allocation_network_id], node_id)
         end
-        graph[node_id] = NodeMetadata(Symbol(snake_case(row.type)), allocation_network_id)
-        if row.type in nonconservative_nodetypes
+        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
+        if row.node_type in nonconservative_nodetypes
             flow_vertical_counter += 1
             flow_vertical_dict[node_id] = flow_vertical_counter
         end

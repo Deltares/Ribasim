@@ -5,7 +5,7 @@ from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
-from ribasim import Node, Pump
+from ribasim import Pump
 
 
 def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
@@ -107,13 +107,6 @@ def test_extra_columns(basic_transient):
     pump_1 = Pump(static=static_data)
 
     assert "meta_id" in pump_1.static.df.columns
-
-    model_orig = basic_transient
-    df = model_orig.network.node.df.copy()
-    df["node_id"] = df.index
-    node = Node(df=df)
-
-    assert "meta_node_id" in node.df.columns
 
 
 def test_sort(level_setpoint_with_minmax, tmp_path):
