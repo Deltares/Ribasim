@@ -17,16 +17,6 @@
           <param name="vcsRootId" value="iMOD6_IMODPython_ImodPython" />
         </parameters>
       </extension>
-      <extension id="TEMPLATE_BUILD_EXT_2" type="pullRequests">
-        <parameters>
-          <param name="authenticationType" value="token" />
-          <param name="filterAuthorRole" value="MEMBER" />
-          <param name="filterTargetBranch" value="" />
-          <param name="providerType" value="github" />
-          <param name="secure:accessToken" value="credentialsJSON:558df52e-822f-4d9d-825a-854846a9a2ff" />
-          <param name="vcsRootId" value="iMOD6_IMODPython_ImodPython" />
-        </parameters>
-      </extension>
     </build-extensions>
     <cleanup />
   </settings>
