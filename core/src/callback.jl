@@ -32,6 +32,7 @@ function create_callbacks(
     parameters::Parameters,
     config::Config;
     saveat_flow,
+    saveat_state,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
@@ -68,7 +69,7 @@ function create_callbacks(
         export_cb = SavingCallback(
             save_subgrid_level,
             saved_subgrid_level;
-            saveat,
+            saveat = saveat_state,
             save_start = true,
         )
         push!(callbacks, export_cb)
@@ -91,6 +92,9 @@ function create_callbacks(
     return callback, saved
 end
 
+"""
+Integrate flows over timesteps
+"""
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; graph) = p
@@ -106,19 +110,20 @@ function integrate_flows!(u, t, integrator)::Nothing
     flow_vertical = get_tmp(flow_vertical, 0)
     Δt = t - tprev
 
-    flow_effective = if isnan(flow_prev[1])
+    flow_effective = if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         flow
     else
         0.5 * (flow + flow_prev)
     end
 
-    flow_vertical_effective = if isnan(flow_vertical_prev[1])
-        # If flow_vertical_prev is not populated yet
-        flow_vertical
-    else
-        0.5 * (flow_vertical + flow_vertical_prev)
-    end
+    flow_vertical_effective =
+        if !isempty(flow_vertical_prev) && isnan(flow_vertical_prev[1])
+            # If flow_vertical_prev is not populated yet
+            flow_vertical
+        else
+            0.5 * (flow_vertical + flow_vertical_prev)
+        end
 
     @. flow_integrated += flow_effective * Δt
     @. flow_vertical_integrated += flow_vertical_effective * Δt

@@ -252,7 +252,7 @@ function convert_saveat(
         if state
             saveat
         else
-            collect(range(0.0, t_end; step = saveat))[2:end]
+            collect(range(saveat, t_end; step = saveat))
         end
     else
         @error "Invalid saveat" saveat

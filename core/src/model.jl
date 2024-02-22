@@ -117,7 +117,7 @@ function Model(config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config; saveat_flow)
+    callback, saved = create_callbacks(parameters, config; saveat_flow, saveat_state)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
