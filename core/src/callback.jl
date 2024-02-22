@@ -40,7 +40,7 @@ function create_callbacks(
     basin_cb = PresetTimeCallback(tstops, update_basin)
     push!(callbacks, basin_cb)
 
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!)
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
@@ -405,10 +405,19 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    (; graph) = integrator.p
-    (; flow_integrated, flow_vertical_integrated, tprev_flow_save) = graph[]
-    Δt = t - tprev_flow_save[1]
-    tprev_flow_save[1] = t
+    (; tprev, p) = integrator
+    (; graph) = p
+    (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
+
+    Δt = if iszero(saveat)
+        t - tprev
+    elseif isinf(saveat)
+        t
+    else
+        t_end = integrator.sol.prob.tspan[2]
+        # The last interval might be shorter than saveat
+        t_end - t >= saveat ? saveat : t - tprev
+    end
 
     mean_flow_vertical = flow_vertical_integrated / Δt
     mean_flow = flow_integrated / Δt
