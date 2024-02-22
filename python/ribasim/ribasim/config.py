@@ -18,6 +18,8 @@ from ribasim.schemas import (
     FractionalFlowStaticSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
+    LevelDemandStaticSchema,
+    LevelDemandTimeSchema,
     LinearResistanceStaticSchema,
     ManningResistanceStaticSchema,
     OutletStaticSchema,
@@ -26,8 +28,6 @@ from ribasim.schemas import (
     PumpStaticSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
-    TargetLevelStaticSchema,
-    TargetLevelTimeSchema,
     TerminalStaticSchema,
     UserStaticSchema,
     UserTimeSchema,
@@ -132,13 +132,13 @@ class User(NodeModel):
     )
 
 
-class TargetLevel(NodeModel):
-    static: TableModel[TargetLevelStaticSchema] = Field(
-        default_factory=TableModel[TargetLevelStaticSchema],
+class LevelDemand(NodeModel):
+    static: TableModel[LevelDemandStaticSchema] = Field(
+        default_factory=TableModel[LevelDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
-    time: TableModel[TargetLevelTimeSchema] = Field(
-        default_factory=TableModel[TargetLevelTimeSchema],
+    time: TableModel[LevelDemandTimeSchema] = Field(
+        default_factory=TableModel[LevelDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
 

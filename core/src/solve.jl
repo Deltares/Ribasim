@@ -190,12 +190,12 @@ function continuous_control!(
         end
 
         if !iszero(K_d)
-            dtarget_level = scalar_interpolation_derivative(target[i], t)
+            dlevel_demand = scalar_interpolation_derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dtarget_level - du_listened_basin_old / area) / D
+            flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
         end
 
         # Clip values outside pump flow rate bounds

@@ -200,9 +200,9 @@ name it must have in the database if it is stored there.
 - User: sets water usage demands at certain priorities
   - `User / static`: demands
   - `User / time`: dynamic demands
-- TargetLevel: Indicates minimum and maximum target level of connected basins for allocation
-  - `TargetLevel / static`: static target levels
-  - `TargetLevel / time`: dynamic target levels
+- LevelDemand: Indicates minimum and maximum target level of connected basins for allocation
+  - `LevelDemand / static`: static target levels
+  - `LevelDemand / time`: dynamic target levels
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
@@ -468,12 +468,12 @@ demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | -
 
-# TargetLevel {#sec-target_level}
+# LevelDemand {#sec-level_demand}
 
-An `TargetLevel` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
+An `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
 above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
-The same `TargetLevel` node can be used for basins in different subnetworks.
+The same `LevelDemand` node can be used for basins in different subnetworks.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
@@ -482,10 +482,10 @@ min_level     | Float64 | $m$          | -
 max_level     | Float64 | $m$          | -
 priority      | Int     | -            | positive
 
-## TargetLevel / time
+## LevelDemand / time
 
-This table is the transient form of the `TargetLevel` table, in which time-dependent minimum and maximum levels can be supplied.
-Similar to the static version, only a single priority per `TargetLevel` node can be provided.
+This table is the transient form of the `LevelDemand` table, in which time-dependent minimum and maximum levels can be supplied.
+Similar to the static version, only a single priority per `LevelDemand` node can be provided.
 
 column        | type     | unit         | restriction
 ------------- | -------  | ------------ | -----------
@@ -725,7 +725,7 @@ demand        | Float64
 allocated     | Float64
 realized      | Float64
 
-For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `TargetLevel` node.
+For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
 The values are negative if the Basin supplies due to a surplus of water.
 
 ::: {.callout-note}

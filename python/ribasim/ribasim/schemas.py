@@ -169,14 +169,14 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
-class TargetLevelStaticSchema(_BaseSchema):
+class LevelDemandStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
     max_level: Series[float] = pa.Field(nullable=False)
     priority: Series[int] = pa.Field(nullable=False)
 
 
-class TargetLevelTimeSchema(_BaseSchema):
+class LevelDemandTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
