@@ -168,6 +168,7 @@ end
 @testitem "MiscellaneousNodes" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
+    using Ribasim: timesteps, get_storages_and_levels
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
@@ -181,9 +182,10 @@ end
     q_pump = pump_flow_rate[1]
     frac = fractional_flow.fraction[1]
 
-    storage_both = Ribasim.get_storages_and_levels(model).storage
-    t = Ribasim.timesteps(model)
+    storage_both = get_storages_and_levels(model).storage
+    t = timesteps(model)
 
+    @test t ≈ range(; start = 0.0, step = 86400.0, length = 367)
     @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end

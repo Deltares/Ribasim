@@ -21,8 +21,7 @@ objective_type = "linear_absolute" # optional, default "linear_absolute"
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
 saveat = 86400      # optional, default 86400, 0 saves every timestep, inf saves only at start- and endtime
-adaptive = true     # optional, default true
-dt = 0.0            # optional when adaptive = true, default automatically determined
+dt = 60.0           # optional, remove for adaptive time stepping
 dtmin = 0.0         # optional, default 0.0
 dtmax = 0.0         # optional, default length of simulation
 force_dtmin = false # optional, default false

@@ -384,7 +384,6 @@ def misc_nodes_model():
 
     # Setup solver:
     solver = ribasim.Solver(
-        adaptive=False,
         dt=24 * 24 * 60,
         algorithm="Euler",
     )

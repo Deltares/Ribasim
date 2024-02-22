@@ -32,7 +32,7 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test config.solver.adaptive
+        @test config.solver.autodiff
     end
 end
 
@@ -46,7 +46,6 @@ end
         algorithm = "Rosenbrock23",
         autodiff = true,
         saveat = 3600.0,
-        adaptive = true,
         dt = 0,
         abstol = 1e-5,
         reltol = 1e-4,
