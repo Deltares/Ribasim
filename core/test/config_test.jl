@@ -38,7 +38,7 @@ end
 
 @testitem "Solver" begin
     using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
-    using Ribasim: convert_saveat, Solver, algorithm
+    using Ribasim: convert_saveat, convert_dt, Solver, algorithm
 
     solver = Solver()
     @test solver.algorithm == "QNDF"
@@ -71,6 +71,10 @@ end
     @test convert_saveat(Inf, t_end) == [0.0, t_end]
     @test_throws ErrorException convert_saveat(-Inf, t_end)
     @test_throws ErrorException convert_saveat(NaN, t_end)
+
+    @test convert_dt(nothing) == (true, 0.0)
+    @test convert_dt(360.0) == (false, 360.0)
+    @test_throws ErrorException convert_dt(0.0)
 end
 
 @testitem "snake_case" begin
