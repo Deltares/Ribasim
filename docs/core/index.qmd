@@ -88,9 +88,9 @@ The allocation will then be conducted in three steps:
 
 1. conduct an inventory of demands from the sub-networks to inlets from the main network,
 2. allocate the available water in the main network to the subnetworks inlets,
-3. allocate the assigned water within each subnetwork to the individual water users.
+3. allocate the assigned water within each subnetwork to the individual demand nodes.
 
-The users then will request this updated demand from the rule-based simulation.
+The demand nodes then will request this updated demand from the rule-based simulation.
 Whether this updated demand is indeed abstracted depends on all dry-fall control mechanism implemented in the rule-based simulation.
 
 The following sequence diagram illustrates this calculation process within then allocation phase.
@@ -99,25 +99,25 @@ The following sequence diagram illustrates this calculation process within then 
 sequenceDiagram
 participant boundary
 participant basin
-participant user
+participant user_demand
 participant allocation_subNetwork
 participant allocation_mainNetwork
 
-user->>allocation_subNetwork: demand
+user_demand->>allocation_subNetwork: demand
 loop
    allocation_subNetwork-->>allocation_mainNetwork: demand inventory at inlets
 end
-user->>allocation_mainNetwork: demand
+user_demand->>allocation_mainNetwork: demand
 boundary->>allocation_mainNetwork: source availability
 basin->>allocation_mainNetwork: source availability
-allocation_mainNetwork-->>allocation_mainNetwork: allocate to inlets (and users)
-allocation_mainNetwork->>user: allocated
+allocation_mainNetwork-->>allocation_mainNetwork: allocate to inlets (and user_demands)
+allocation_mainNetwork->>user_demand: allocated
 allocation_mainNetwork->>allocation_subNetwork: allocated
 loop
-   allocation_subNetwork-->>allocation_subNetwork: allocate to users
+   allocation_subNetwork-->>allocation_subNetwork: allocate to user_demands
 end
-allocation_subNetwork->>user: allocated
-user->>basin: abstracted
+allocation_subNetwork->>user_demand: allocated
+user_demand->>basin: abstracted
 ```
 
 # Coupling

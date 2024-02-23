@@ -152,7 +152,7 @@ class Model(FileModel):
         Discrete control logic.
     pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : UserDemand
+    user_demand : UserDemand
         UserDemand node type with demand and priority.
     """
 
@@ -183,7 +183,7 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     pid_control: PidControl = Field(default_factory=PidControl)
-    user: UserDemand = Field(default_factory=UserDemand)
+    user_demand: UserDemand = Field(default_factory=UserDemand)
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":

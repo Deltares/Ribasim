@@ -377,16 +377,16 @@ end
 @testitem "UserDemand" begin
     using SciMLBase: successful_retcode
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
     day = 86400.0
     @test only(model.integrator.sol(0day)) == 1000.0
-    # constant user withdraws to 0.9m/900m3
+    # constant UserDemand withdraws to 0.9m/900m3
     @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic user withdraws to 0.5m/509m3
+    # dynamic UserDemand withdraws to 0.5m/509m3
     @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 

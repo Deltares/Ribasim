@@ -4,8 +4,8 @@ import pandas as pd
 import ribasim
 
 
-def user_model():
-    """Create a user test model with static and dynamic users on the same basin."""
+def user_demand_model():
+    """Create a UserDemand test model with static and dynamic UserDemand on the same basin."""
 
     # Set up the nodes:
     xy = np.array(
@@ -59,8 +59,8 @@ def user_model():
 
     basin = ribasim.Basin(profile=profile, state=state)
 
-    # Setup the users:
-    user = ribasim.UserDemand(
+    # Setup the UserDemands:
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [2],
@@ -101,7 +101,7 @@ def user_model():
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
-        user=user,
+        user_demand=user_demand,
         terminal=terminal,
         solver=solver,
         starttime="2020-01-01 00:00:00",
@@ -112,7 +112,7 @@ def user_model():
 
 
 def subnetwork_model():
-    """Create a user testmodel representing a subnetwork.
+    """Create a UserDemand testmodel representing a subnetwork.
     This model is merged into main_network_with_subnetworks_model.
     """
 
@@ -203,8 +203,8 @@ def subnetwork_model():
         )
     )
 
-    # Setup the users:
-    user = ribasim.UserDemand(
+    # Setup the UserDemand:
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [10, 11, 12],
@@ -249,7 +249,7 @@ def subnetwork_model():
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
-        user=user,
+        user_demand=user_demand,
         flow_boundary=flow_boundary,
         pump=pump,
         outlet=outlet,
@@ -263,7 +263,7 @@ def subnetwork_model():
 
 
 def looped_subnetwork_model():
-    """Create a user testmodel representing a subnetwork containing a loop in the topology.
+    """Create a UserDemand testmodel representing a subnetwork containing a loop in the topology.
     This model is merged into main_network_with_subnetworks_model.
     """
     # Setup the nodes:
@@ -437,8 +437,8 @@ def looped_subnetwork_model():
         static=pd.DataFrame(data={"node_id": [5], "flow_rate": [4.5e-3]})
     )
 
-    # Setup the users:
-    user = ribasim.UserDemand(
+    # Setup the user_demands:
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [1, 12, 18, 20, 24],
@@ -495,7 +495,7 @@ def looped_subnetwork_model():
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
-        user=user,
+        user_demand=user_demand,
         pump=pump,
         outlet=outlet,
         tabulated_rating_curve=rating_curve,
@@ -593,8 +593,8 @@ def minimal_subnetwork_model():
         )
     )
 
-    # Setup the users:
-    user = ribasim.UserDemand(
+    # Setup the UserDemand:
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [5],
@@ -627,7 +627,7 @@ def minimal_subnetwork_model():
         basin=basin,
         flow_boundary=flow_boundary,
         pump=pump,
-        user=user,
+        user_demand=user_demand,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
@@ -740,8 +740,8 @@ def fractional_flow_subnetwork_model():
         )
     )
 
-    # Setup the users:
-    user = ribasim.UserDemand(
+    # Setup the UserDemands
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [6],
@@ -805,7 +805,7 @@ def fractional_flow_subnetwork_model():
         basin=basin,
         flow_boundary=flow_boundary,
         tabulated_rating_curve=rating_curve,
-        user=user,
+        user_demand=user_demand,
         allocation=allocation,
         fractional_flow=fractional_flow,
         discrete_control=discrete_control,
@@ -968,7 +968,7 @@ def allocation_example_model():
 
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
-    user = ribasim.UserDemand(
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [6, 13],
@@ -1003,7 +1003,7 @@ def allocation_example_model():
         linear_resistance=linear_resistance,
         tabulated_rating_curve=tabulated_rating_curve,
         terminal=terminal,
-        user=user,
+        user_demand=user_demand,
         discrete_control=discrete_control,
         fractional_flow=fractional_flow,
         allocation=allocation,
@@ -1586,8 +1586,8 @@ def main_network_with_subnetworks_model():
     # Setup terminal node
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [14, 19, 37, 56]}))
 
-    # Setup the user
-    user = ribasim.UserDemand(
+    # Setup the UserDemand
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [20, 21, 22, 29, 34, 45, 51, 53, 57],
@@ -1632,7 +1632,7 @@ def main_network_with_subnetworks_model():
         outlet=outlet,
         pump=pump,
         terminal=terminal,
-        user=user,
+        user_demand=user_demand,
         tabulated_rating_curve=rating_curve,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
@@ -1731,8 +1731,8 @@ def level_demand_model():
         )
     )
 
-    # Setup user
-    user = ribasim.UserDemand(
+    # Setup UserDemand
+    user_demand = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [3],
@@ -1752,7 +1752,7 @@ def level_demand_model():
         basin=basin,
         flow_boundary=flow_boundary,
         level_demand=level_demand,
-        user=user,
+        user_demand=user_demand,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",
         endtime="2020-02-01 00:00:00",

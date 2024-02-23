@@ -477,13 +477,13 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of user per priority over time.
-    Each user has a demand for all priorities,
+demand: water flux demand of UserDemand per priority over time.
+    Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
 active: whether this node is active and thus demands water
-allocated: water flux currently allocated to user per priority
+allocated: water flux currently allocated to UserDemand per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
-min_level: The level of the source basin below which the user does not abstract
+min_level: The level of the source basin below which the UserDemand does not abstract
 """
 struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -577,7 +577,7 @@ struct Parameters{T, C1, C2}
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
-    user::UserDemand
+    user_demand::UserDemand
     level_demand::LevelDemand
     subgrid::Subgrid
 end

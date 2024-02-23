@@ -2,7 +2,8 @@
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Val{:user}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:user_demand}) =
+    Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -10,7 +11,7 @@ neighbortypes(::Val{:basin}) = Set((
     :manning_resistance,
     :pump,
     :outlet,
-    :user,
+    :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary))

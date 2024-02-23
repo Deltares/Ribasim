@@ -673,7 +673,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
 
     demand = Float64[]
 
-    # Whether the demand of a user node is given by a timeseries
+    # Whether the demand of a UserDemand node is given by a timeseries
     demand_from_timeseries = BitVector()
 
     for node_id in node_ids
@@ -888,7 +888,7 @@ function Parameters(db::DB, config::Config)::Parameters
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
-    user = UserDemand(db, config)
+    user_demand = UserDemand(db, config)
     level_demand = LevelDemand(db, config)
 
     basin = Basin(db, config, chunk_sizes)
@@ -910,7 +910,7 @@ function Parameters(db::DB, config::Config)::Parameters
         terminal,
         discrete_control,
         pid_control,
-        user,
+        user_demand,
         level_demand,
         subgrid_level,
     )

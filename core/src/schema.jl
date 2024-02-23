@@ -21,8 +21,8 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
-@schema "ribasim.user.static" UserDemandStatic
-@schema "ribasim.user.time" UserDemandTime
+@schema "ribasim.user_demand.static" UserDemandStatic
+@schema "ribasim.user_demand.time" UserDemandTime
 @schema "ribasim.leveldemand.static" LevelDemandStatic
 @schema "ribasim.leveldemand.time" LevelDemandTime
 

@@ -621,11 +621,11 @@ function is_main_network(allocation_network_id::Int)::Bool
 end
 
 function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
-    (; user, allocation) = p
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    return demand[(user_idx - 1) * n_priorities + priority_idx]
+    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
 end
 
 function set_user_demand!(
@@ -634,11 +634,11 @@ function set_user_demand!(
     priority_idx::Int,
     value::Float64,
 )::Nothing
-    (; user, allocation) = p
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    demand[(user_idx - 1) * n_priorities + priority_idx] = value
+    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
     return nothing
 end
 

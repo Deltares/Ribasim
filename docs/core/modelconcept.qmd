@@ -6,7 +6,7 @@ As indicated, the model concept is organized in three layers:
 
 - a physical layer representing water bodies and associated infrastructure,
 - a rule-based control layer to manage the infrastructure, and
-- a priority-based allocation layer to take centralized decisions on user abstractions.
+- a priority-based allocation layer to take centralized decisions on user_demand abstractions.
 
 # Physical layer
 

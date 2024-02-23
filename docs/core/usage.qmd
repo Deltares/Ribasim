@@ -425,18 +425,18 @@ min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
 
-# UserDemand {#sec-user}
+# UserDemand {#sec-user-demand}
 
-A user can demand a certain flow from the basin that supplies it,
+A UserDemand can demand a certain flow from the basin that supplies it,
 distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
-Currently the user attempts to extract the complete demand from the Basin.
-Only if the Basin is almost empty or reaches the minimum level at which the user can extract
+Currently the UserDemand attempts to extract the complete demand from the Basin.
+Only if the Basin is almost empty or reaches the minimum level at which the UserDemand can extract
 water (`min_level`), will it take less than the demand.
-In the future water can be allocated to users based on their priority.
+When allocation is used, water can be allocated to UserDemand based on their priority.
 UserDemands need an outgoing flow edge along which they can send their return flow,
 this can also be to the same basin from which it extracts water.
-The amount of return flow is always a fraction of the inflow into the user.
-The difference is consumed by the user.
+The amount of return flow is always a fraction of the inflow into the UserDemand.
+The difference is consumed by the UserDemand.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
