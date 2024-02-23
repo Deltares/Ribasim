@@ -43,7 +43,7 @@ function build_lib()
         output_dir;
         lib_name = "libribasim",
         precompile_execution_file = "precompile.jl",
-        include_lazy_artifacts = true,
+        include_lazy_artifacts = false,
         force = true,
     )
 
