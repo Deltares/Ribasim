@@ -185,8 +185,10 @@ end
 
     storage_both = get_storages_and_levels(model).storage
     t = timesteps(model)
+    tspan = model.integrator.sol.prob.tspan
 
-    @test t ≈ range(; start = 0.0, step = config.solver.dt, length = 367)
+    @test config.solver.dt === model.integrator.dt
+    @test t ≈ range(tspan...; step = config.solver.saveat)
     @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end
