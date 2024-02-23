@@ -23,6 +23,7 @@ from ribasim.config import (
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
+    LevelDemand,
     LinearResistance,
     Logging,
     ManningResistance,
@@ -32,7 +33,6 @@ from ribasim.config import (
     Results,
     Solver,
     TabulatedRatingCurve,
-    TargetLevel,
     Terminal,
     User,
 )
@@ -168,7 +168,7 @@ class Model(FileModel):
     logging: Logging = Logging()
 
     allocation: Allocation = Field(default_factory=Allocation)
-    target_level: TargetLevel = Field(default_factory=TargetLevel)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
     basin: Basin = Field(default_factory=Basin)
     fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
     level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)

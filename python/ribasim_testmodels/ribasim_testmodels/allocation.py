@@ -1642,20 +1642,20 @@ def main_network_with_subnetworks_model():
     return model
 
 
-def target_level_model():
+def level_demand_model():
     # Set up the nodes:
     xy = np.array(
         [
             (0.0, 0.0),  # 1: FlowBoundary
             (1.0, 0.0),  # 2: Basin
             (2.0, 0.0),  # 3: User
-            (1.0, -1.0),  # 4: TargetLevel
+            (1.0, -1.0),  # 4: LevelDemand
             (2.0, -1.0),  # 5: Basin
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["FlowBoundary", "Basin", "User", "TargetLevel", "Basin"]
+    node_type = ["FlowBoundary", "Basin", "User", "LevelDemand", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -1725,7 +1725,7 @@ def target_level_model():
     )
 
     # Setup allocation level control
-    target_level = ribasim.TargetLevel(
+    level_demand = ribasim.LevelDemand(
         static=pd.DataFrame(
             data={"node_id": [4], "priority": 1, "min_level": 1.0, "max_level": 1.5}
         )
@@ -1751,7 +1751,7 @@ def target_level_model():
         network=ribasim.Network(node=node, edge=edge),
         basin=basin,
         flow_boundary=flow_boundary,
-        target_level=target_level,
+        level_demand=level_demand,
         user=user,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",

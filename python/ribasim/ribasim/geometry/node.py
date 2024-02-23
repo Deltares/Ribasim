@@ -216,7 +216,7 @@ class Node(SpatialTableModel[NodeSchema]):
             "DiscreteControl": "*",
             "PidControl": "x",
             "User": "s",
-            "TargetLevel": "o",
+            "LevelDemand": "o",
             "": "o",
         }
 
@@ -234,7 +234,7 @@ class Node(SpatialTableModel[NodeSchema]):
             "DiscreteControl": "k",
             "PidControl": "k",
             "User": "g",
-            "TargetLevel": "k",
+            "LevelDemand": "k",
             "": "k",
         }
         assert self.df is not None

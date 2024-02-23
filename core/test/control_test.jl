@@ -107,13 +107,13 @@ end
     idx_target_change = searchsortedlast(timesteps, t_target_change)
 
     K_p, K_i, _ = pid_control.pid_params[2](0)
-    target_level = pid_control.target[2](0)
+    level_demand = pid_control.target[2](0)
 
     A = basin.area[1][1]
     initial_level = level[1]
     flow_rate = flow_boundary.flow_rate[1].u[1]
-    du0 = flow_rate + K_p * (target_level - initial_level)
-    Δlevel = initial_level - target_level
+    du0 = flow_rate + K_p * (level_demand - initial_level)
+    Δlevel = initial_level - level_demand
     alpha = -K_p / (2 * A)
     omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
     phi = atan(du0 / (A * Δlevel) - alpha) / omega
@@ -122,7 +122,7 @@ end
     bound = @. a * exp(alpha * timesteps[1:idx_target_change])
     eps = 5e-3
     # Initial convergence to target level
-    @test all(@. abs(level[1:idx_target_change] - target_level) < bound + eps)
+    @test all(@. abs(level[1:idx_target_change] - level_demand) < bound + eps)
     # Later closeness to target level
     @test all(
         @. abs(

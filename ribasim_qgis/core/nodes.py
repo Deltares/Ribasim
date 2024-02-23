@@ -215,9 +215,9 @@ class Node(Input):
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
             "User": (QColor("green"), "User", shape.Square),
-            "TargetLevel": (
+            "LevelDemand": (
                 QColor("black"),
-                "TargetLevel",
+                "LevelDemand",
                 shape.Circle,
             ),
             # All other nodes, or incomplete input
@@ -787,10 +787,10 @@ class UserTime(Input):
         ]
 
 
-class TargetLevelStatic(Input):
+class LevelDemandStatic(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "TargetLevel / static"
+        return "LevelDemand / static"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -800,15 +800,15 @@ class TargetLevelStatic(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("target_level", QVariant.Double),
+            QgsField("level_demand", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 
 
-class TargetLevelTime(Input):
+class LevelDemandTime(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "TargetLevel / time"
+        return "LevelDemand / time"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -819,7 +819,7 @@ class TargetLevelTime(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
-            QgsField("target_level", QVariant.Double),
+            QgsField("level_demand", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 
