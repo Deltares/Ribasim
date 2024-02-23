@@ -32,7 +32,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         use_node = false
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
-        if node_id.type in [NodeType.User, NodeType.Basin, NodeType.Terminal]
+        if node_id.type in [NodeType.UserDemand, NodeType.Basin, NodeType.Terminal]
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
@@ -148,7 +148,7 @@ function find_allocation_graph_edges!(
                     end
                     indicate_allocation_flow!(graph, [node_id, outneighbor_id])
                     push!(edge_ids, (node_id, outneighbor_id))
-                    # if subnetwork_outneighbor_id in user.node_id: Capacity depends on user demand at a given priority
+                    # if subnetwork_outneighbor_id in user_demand.node_id: Capacity depends on user demand at a given priority
                     # else: These direct connections cannot have capacity constraints
                     capacity[node_id, outneighbor_id] = Inf
                 end
@@ -283,23 +283,24 @@ const allocation_source_nodetypes =
     Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
 
 """
-Remove allocation user return flow edges that are upstream of the user itself.
+Remove allocation UserDemand return flow edges that are upstream of the UserDemand itself.
 """
 function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
-    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
+    node_ids_user_demand =
+        [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
 
-    for node_id_user in node_ids_user
-        node_id_return_flow = only(outflow_ids_allocation(graph, node_id_user))
-        if allocation_path_exists_in_graph(graph, node_id_return_flow, node_id_user)
-            edge_metadata = graph[node_id_user, node_id_return_flow]
-            graph[node_id_user, node_id_return_flow] =
+    for node_id_user_demand in node_ids_user_demand
+        node_id_return_flow = only(outflow_ids_allocation(graph, node_id_user_demand))
+        if allocation_path_exists_in_graph(graph, node_id_return_flow, node_id_user_demand)
+            edge_metadata = graph[node_id_user_demand, node_id_return_flow]
+            graph[node_id_user_demand, node_id_return_flow] =
                 @set edge_metadata.allocation_flow = false
             empty!(edge_metadata.node_ids)
-            delete!(edge_ids, (node_id_user, node_id_return_flow))
-            @debug "The outflow of user $node_id_user is upstream of the user itself and thus ignored in allocation solves."
+            delete!(edge_ids, (node_id_user_demand, node_id_return_flow))
+            @debug "The outflow of $node_id_user_demand is upstream of the UserDemand itself and thus ignored in allocation solves."
         end
     end
     return nothing
@@ -345,7 +346,7 @@ function allocation_graph(
         error("Errors in sources in allocation network.")
     end
 
-    # Discard user return flow in allocation if this leads to a closed loop of flow
+    # Discard UserDemand return flow in allocation if this leads to a closed loop of flow
     avoid_using_own_returnflow!(p, allocation_network_id)
 
     return capacity
@@ -404,28 +405,29 @@ function add_variables_absolute_value!(
     (; main_network_connections) = allocation
     if startswith(config.allocation.objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user = NodeID[]
+        node_ids_user_demand = NodeID[]
         node_ids_basin = NodeID[]
 
         for node_id in node_ids
             type = node_id.type
-            if type == NodeType.User
-                push!(node_ids_user, node_id)
+            if type == NodeType.UserDemand
+                push!(node_ids_user_demand, node_id)
             elseif type == NodeType.Basin
                 push!(node_ids_basin, node_id)
             end
         end
 
-        # For the main network, connections to subnetworks are treated as users
+        # For the main network, connections to subnetworks are treated as UserDemands
         if is_main_network(allocation_network_id)
             for connections_subnetwork in main_network_connections
                 for connection in connections_subnetwork
-                    push!(node_ids_user, connection[2])
+                    push!(node_ids_user_demand, connection[2])
                 end
             end
         end
 
-        problem[:F_abs_user] = JuMP.@variable(problem, F_abs_user[node_id = node_ids_user])
+        problem[:F_abs_user_demand] =
+            JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
         problem[:F_abs_basin] =
             JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
     end
@@ -548,7 +550,7 @@ end
 
 """
 Add the flow conservation constraints to the allocation problem.
-The constraint indices are user node IDs.
+The constraint indices are UserDemand node IDs.
 
 Constraint:
 sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
@@ -585,31 +587,36 @@ function add_constraints_flow_conservation!(
 end
 
 """
-Add the user returnflow constraints to the allocation problem.
-The constraint indices are user node IDs.
+Add the UserDemand returnflow constraints to the allocation problem.
+The constraint indices are UserDemand node IDs.
 
 Constraint:
-outflow from user <= return factor * inflow to user
+outflow from user_demand <= return factor * inflow to user_demand
 """
-function add_constraints_user_returnflow!(
+function add_constraints_user_demand_returnflow!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
 )::Nothing
-    (; graph, user) = p
+    (; graph, user_demand) = p
     F = problem[:F]
 
     node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_user_with_returnflow = [
-        node_id for node_id in node_ids if node_id.type == NodeType.User &&
+    node_ids_user_demand_with_returnflow = [
+        node_id for node_id in node_ids if node_id.type == NodeType.UserDemand &&
         !isempty(outflow_ids_allocation(graph, node_id))
     ]
     problem[:return_flow] = JuMP.@constraint(
         problem,
-        [node_id_user = node_ids_user_with_returnflow],
-        F[(node_id_user, only(outflow_ids_allocation(graph, node_id_user)))] <=
-        user.return_factor[findsorted(user.node_id, node_id_user)] *
-        F[(only(inflow_ids_allocation(graph, node_id_user)), node_id_user)],
+        [node_id_user_demand = node_ids_user_demand_with_returnflow],
+        F[(
+            node_id_user_demand,
+            only(outflow_ids_allocation(graph, node_id_user_demand)),
+        )] <=
+        user_demand.return_factor[findsorted(user_demand.node_id, node_id_user_demand)] * F[(
+            only(inflow_ids_allocation(graph, node_id_user_demand)),
+            node_id_user_demand,
+        )],
         base_name = "return_flow",
     )
     return nothing
@@ -651,8 +658,8 @@ function add_constraints_absolute_value!(
             base_name = base_name
         )
     elseif objective_type == "linear_relative"
-        # These constraints together make sure that F_abs_user acts as the absolute
-        # value F_abs_user = |x| where x = 1-F/d (here for example d = 2)
+        # These constraints together make sure that F_abs_user_demand acts as the absolute
+        # value F_abs_user_demand = |x| where x = 1-F/d (here for example d = 2)
         base_name = "abs_positive_$variable_type"
         problem[Symbol(base_name)] = JuMP.@constraint(
             problem,
@@ -672,10 +679,10 @@ function add_constraints_absolute_value!(
 end
 
 """
-Add constraints so that variables F_abs_user act as the
-absolute value of the expression comparing flow to an user to its demand.
+Add constraints so that variables F_abs_user_demand act as the
+absolute value of the expression comparing flow to a UserDemand to its demand.
 """
-function add_constraints_absolute_value_user!(
+function add_constraints_absolute_value_user_demand!(
     problem::JuMP.Model,
     p::Parameters,
     config::Config,
@@ -685,19 +692,19 @@ function add_constraints_absolute_value_user!(
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
         F = problem[:F]
-        F_abs_user = problem[:F_abs_user]
+        F_abs_user_demand = problem[:F_abs_user_demand]
 
         flow_per_node = Dict(
             node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
-            node_id in only(F_abs_user.axes)
+            node_id in only(F_abs_user_demand.axes)
         )
 
         add_constraints_absolute_value!(
             problem,
             flow_per_node,
-            F_abs_user,
+            F_abs_user_demand,
             objective_type,
-            "user",
+            "user_demand",
         )
     end
     return nothing
@@ -778,8 +785,8 @@ function add_constraints_fractional_flow!(
 end
 
 """
-Add the basin flow constraints to the allocation problem.
-The constraint indices are the basin node IDs.
+Add the Basin flow constraints to the allocation problem.
+The constraint indices are the Basin node IDs.
 
 Constraint:
 flow out of basin <= basin capacity
@@ -816,8 +823,8 @@ function allocation_problem(
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
-    add_constraints_user_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value_user!(problem, p, config)
+    add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
+    add_constraints_absolute_value_user_demand!(problem, p, config)
     add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)

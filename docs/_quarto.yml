@@ -80,7 +80,7 @@ quartodoc:
         - TabulatedRatingCurve
         - Pump
         - Outlet
-        - User
+        - UserDemand
         - LevelBoundary
         - FlowBoundary
         - LinearResistance

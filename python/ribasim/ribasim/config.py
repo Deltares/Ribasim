@@ -29,8 +29,8 @@ from ribasim.schemas import (
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
     TerminalStaticSchema,
-    UserStaticSchema,
-    UserTimeSchema,
+    UserDemandStaticSchema,
+    UserDemandTimeSchema,
 )
 
 
@@ -120,13 +120,13 @@ class TabulatedRatingCurve(NodeModel):
     )
 
 
-class User(NodeModel):
-    static: TableModel[UserStaticSchema] = Field(
-        default_factory=TableModel[UserStaticSchema],
+class UserDemand(NodeModel):
+    static: TableModel[UserDemandStaticSchema] = Field(
+        default_factory=TableModel[UserDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
-    time: TableModel[UserTimeSchema] = Field(
-        default_factory=TableModel[UserTimeSchema],
+    time: TableModel[UserDemandTimeSchema] = Field(
+        default_factory=TableModel[UserDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
 

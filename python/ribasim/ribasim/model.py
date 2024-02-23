@@ -34,7 +34,7 @@ from ribasim.config import (
     Solver,
     TabulatedRatingCurve,
     Terminal,
-    User,
+    UserDemand,
 )
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
@@ -152,8 +152,8 @@ class Model(FileModel):
         Discrete control logic.
     pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : User
-        User node type with demand and priority.
+    user_demand : UserDemand
+        UserDemand node type with demand and priority.
     """
 
     starttime: datetime.datetime
@@ -183,7 +183,7 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     pid_control: PidControl = Field(default_factory=PidControl)
-    user: User = Field(default_factory=User)
+    user_demand: UserDemand = Field(default_factory=UserDemand)
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":

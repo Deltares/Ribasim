@@ -258,13 +258,13 @@ function continuous_control!(
 end
 
 function formulate_flow!(
-    user::User,
+    user_demand::UserDemand,
     p::Parameters,
     storage::AbstractVector,
     t::Number,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, allocated, active, demand_itp, return_factor, min_level) = user
+    (; node_id, allocated, active, demand_itp, return_factor, min_level) = user_demand
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -647,7 +647,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         level_boundary,
         pump,
         outlet,
-        user,
+        user_demand,
         fractional_flow,
         terminal,
     ) = p
@@ -658,7 +658,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(flow_boundary, p, storage, t)
     formulate_flow!(pump, p, storage, t)
     formulate_flow!(outlet, p, storage, t)
-    formulate_flow!(user, p, storage, t)
+    formulate_flow!(user_demand, p, storage, t)
 
     # do these last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)

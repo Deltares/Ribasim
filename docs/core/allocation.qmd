@@ -3,7 +3,7 @@ title: "Allocation"
 ---
 
 # Introduction
-Allocation is the process of assigning an allocated abstraction flow rate to user nodes in the physical layer of the model based on information about sources, user demands over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
+Allocation is the process of assigning an allocated abstraction flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
 The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
@@ -11,8 +11,8 @@ The allocation problem is solved per subnetwork of the Ribasim model. The subnet
 The allocation algorithm consists of 3 types of optimization problems:
 
 1. **Subnetwork demand collection**: Collect the demands of a subnetwork from the main network by optimizing with unlimited capacity from the main network;
-2. **Main network allocation**: Allocate to subnetworks with the above collected demand, and users in the main network;
-3. **Subnetwork allocation**: Allocate to users in the subnetworks with the flows allocated to the subnetwork in the main network allocation.
+2. **Main network allocation**: Allocate to subnetworks with the above collected demand, and demands in the main network;
+3. **Subnetwork allocation**: Allocate to demands in the subnetworks with the flows allocated to the subnetwork in the main network allocation.
 
 The total allocation algorithm consists of performing 1 for all subnetworks, then performing 2, then performing 3 for all subnetworks. Not having a main network is also supported, then 1 and 2 are skipped.
 
@@ -36,7 +36,7 @@ That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model 
 
 ### User demands
 
-The subnetwork contains a subset of user nodes $U_S \subset S$, who all have time varying demands over various priorities $p$:
+The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have time varying demands over various priorities $p$:
 $$
     d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}.
 $$
@@ -73,8 +73,8 @@ for all $i \in B_S$. Here $\Delta t_{\text{alloc}}$ is the simulated time betwee
 #### Flow magnitude and direction constraints
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like pumps, outlets and tabulated rating curves.
 
-#### Fractional flows and user return flows
-Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $0 \le r_i \le 1, i \in U_S$.
+#### FractionalFlow and UserDemand return flows
+Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$.
 
 ## The allocation network
 
@@ -84,7 +84,8 @@ A new graph is created from the subnetwork, which we call an allocation network.
 
 The allocation network consists of:
 
-- Nodes $V'_S \subset V_S$, where each basin, source and user in the subnetwork get a node in the allocation network. Also nodes that have fractional flow outneighbors get a node in the allocation network.
+- Nodes $V'_S \subset V_S$, where each Basin, source and demand in the subnetwork get a node in the allocation network.
+Also nodes that have FractionalFlow outneighbors get a node in the allocation network.
 - Edges $E_S$, which are either edges that also appear between nodes in the subnetwork or represent a sequence of those, creating a shortcut.
 
 For notational convenience, we use the notation
@@ -124,39 +125,40 @@ There are several types of variable whose value has to be determined to solve th
 The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized. The form of these error terms is determined by the choice of one of the supported objective function types, which are discussed further below.
 
 $$
-    \min E_{\text{user}} + E_{\text{basin}}
+    \min E_{\text{user_demand}} + E_{\text{basin}}
 $$
 
 ### User demands
 
 - `quadratic_absolute`:
 $$
-    E_{\text{user}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( F_{ij} - d_j^p(t)\right)^2
+    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( F_{ij} - d_j^p(t)\right)^2
 $$
 - `quadratic_relative`:
 $$
-    E_{\text{user}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( 1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
+    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( 1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
 $$
 - `linear_absolute` (default):
 $$
-    E_{\text{user}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
+    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
 $$
 - `linear_relative`:
 $$
-    E_{\text{user}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right|
+    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right|
 $$
 
 :::{.callout-note}
-When performing main network allocation, the connections to subnetworks are also interpreted as users with demands determined by subnetwork demand collection.
+When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand with demands determined by subnetwork demand collection.
 :::
 
 
 To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{ij}$ is set to $0$.
 
-For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a user, for `*_relative` objectives it cares about the fraction of the demand allocated to the user. For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
+For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a demand, for `*_relative` objectives it cares about the fraction of the demand allocated.
+For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
 
 :::{.callout-note}
-These options for objectives for allocation to users have not been tested thoroughly, and might change in the future.
+These options for objectives for allocation to demands have not been tested thoroughly, and might change in the future.
 :::
 
 The absolute value applied here is not supported in a linear programming context directly; this requires introduction of new variables and constraints. For more details see [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
@@ -189,7 +191,7 @@ $$
 $$
     F^\text{basin in}_k + \sum_{j=1}^{n'} F_{kj} = F^\text{basin out}_k + \sum_{i=1}^{n'} F_{ik}, \quad \forall k \in B_S .
 $$  {#eq-flowconservationconstraint}
-Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the users.
+Note that we do not require equality here; in the allocation we do not mind that excess flow is 'forgotten' if it cannot contribute to the allocation to the demands.
 
 :::{.callout-note}
 In @eq-flowconservationconstraint, the placement of the basin flows might seem counter-intuitive. Think of the basin storage as a separate node connected to the basin node.
@@ -210,15 +212,15 @@ When performing subnetwork demand collection, these capacities are set to $\inft
 :::
 
 
-- User outflow: The outflow of the user is dictated by the inflow and the return factor:
+- UserDemand outflow: The outflow of the UserDemand is dictated by the inflow and the return factor:
 $$
     F_{ik} = r_k \cdot F_{kj} \quad
     \quad \forall k \in U_S, \quad
     V^{\text{in}}_S(k) = \{i\},\;
      V^{\text{out}}_S(k) = \{j\}.
 $$ {#eq-returnflowconstraint}
-Here we use that each user node in the allocation network has a unique in-edge and out-edge.
-- User demand: user demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
+Here we use that each UserDemand node in the allocation network has a unique in-edge and out-edge.
+- User demand: UserDemand demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
     F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
@@ -230,10 +232,10 @@ $$ {#eq-fractionalflowconstraint}
 
 ## Final notes on the allocation problem
 
-### Users using their own return flow
+### UserDemands using their own return flow
 
-If not explicitly avoided, users can use their own return flow in this allocation problem formulation.
-Therefore, return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation network from the user outflow node back to the user.
+If not explicitly avoided, UserDemands can use their own return flow in this allocation problem formulation.
+Therefore, return flow of UserDemand is only taken into account by allocation if that return flow is downstream of the UserDemand where it comes from. That is, if there is no path in the directed allocation network from the UserDemand outflow node back to the UserDemand.
 
 # Solving the allocation problem {#sec-solving-allocation}
 
@@ -243,7 +245,7 @@ The allocation problem for an allocation network at time $t$ is solved per prior
 $$
     C_S^p \leftarrow C_S;
 $$
-2. Set the capacities of the edges that end in an user to their priority 1 demands:
+2. Set the capacities of the edges that end in a UserDemand to their priority 1 demands:
 $$
     (C_S^p)_{i,j} \leftarrow d_j^1(t) \quad\text{ for all } (i,j) \in U_S;
 $$
@@ -256,8 +258,8 @@ $$
 
 :::{.callout-note}
 In the future there will be 2 more optimization solves:
-- One before optimizing for users, taking the demand/supply from basins into account;
-- One after optimizing for users, taking preferences over sources into account.
+- One before optimizing for demands, taking the demand/supply from basins into account;
+- One after optimizing for demands, taking preferences over sources into account.
 :::
 
 ## Example

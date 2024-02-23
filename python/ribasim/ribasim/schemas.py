@@ -188,7 +188,7 @@ class TerminalStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
 
 
-class UserStaticSchema(_BaseSchema):
+class UserDemandStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     demand: Series[float] = pa.Field(nullable=False)
@@ -197,7 +197,7 @@ class UserStaticSchema(_BaseSchema):
     priority: Series[int] = pa.Field(nullable=False)
 
 
-class UserTimeSchema(_BaseSchema):
+class UserDemandTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
