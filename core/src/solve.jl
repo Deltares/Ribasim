@@ -258,7 +258,7 @@ function continuous_control!(
 end
 
 function formulate_flow!(
-    user::User,
+    user::UserDemand,
     p::Parameters,
     storage::AbstractVector,
     t::Number,

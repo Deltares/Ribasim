@@ -155,7 +155,7 @@ function set_objective_priority!(
     # Terms for user nodes
     for edge_id in edge_ids
         node_id_user = edge_id[2]
-        if node_id_user.type != NodeType.User
+        if node_id_user.type != NodeType.UserDemand
             continue
         end
 
@@ -219,7 +219,7 @@ function assign_allocations!(
 
         user_node_id = edge_id[2]
 
-        if user_node_id.type == NodeType.User
+        if user_node_id.type == NodeType.UserDemand
             allocated = JuMP.value(F[edge_id])
             user_idx = findsorted(user.node_id, user_node_id)
             user.allocated[user_idx][priority_idx] = allocated
@@ -479,7 +479,7 @@ function save_demands_and_allocations!(
     for node_id in node_ids
         has_demand = false
 
-        if node_id.type == NodeType.User
+        if node_id.type == NodeType.UserDemand
             has_demand = true
             user_idx = findsorted(user.node_id, node_id)
             demand = user.demand[user_idx]

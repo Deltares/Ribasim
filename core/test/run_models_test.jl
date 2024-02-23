@@ -374,7 +374,7 @@ end
     all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
-@testitem "User" begin
+@testitem "UserDemand" begin
     using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")

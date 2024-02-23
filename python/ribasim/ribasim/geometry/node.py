@@ -215,7 +215,7 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "h",
             "DiscreteControl": "*",
             "PidControl": "x",
-            "User": "s",
+            "UserDemand": "s",
             "LevelDemand": "o",
             "": "o",
         }
@@ -233,7 +233,7 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "m",
             "DiscreteControl": "k",
             "PidControl": "k",
-            "User": "g",
+            "UserDemand": "g",
             "LevelDemand": "k",
             "": "k",
         }

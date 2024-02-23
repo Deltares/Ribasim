@@ -20,7 +20,7 @@ from ribasim.config import (
     Solver,
     TabulatedRatingCurve,
     Terminal,
-    User,
+    UserDemand,
     Verbosity,
 )
 from ribasim.geometry.edge import Edge, EdgeSchema
@@ -51,7 +51,7 @@ __all__ = [
     "Solver",
     "TabulatedRatingCurve",
     "Terminal",
-    "User",
+    "UserDemand",
     "utils",
     "Verbosity",
 ]

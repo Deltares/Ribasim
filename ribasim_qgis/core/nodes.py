@@ -214,7 +214,7 @@ class Node(Input):
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
-            "User": (QColor("green"), "User", shape.Square),
+            "UserDemand": (QColor("green"), "UserDemand", shape.Square),
             "LevelDemand": (
                 QColor("black"),
                 "LevelDemand",
@@ -747,10 +747,10 @@ class PidControlTime(Input):
         ]
 
 
-class UserStatic(Input):
+class UserDemandStatic(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "User / static"
+        return "UserDemand / static"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -767,10 +767,10 @@ class UserStatic(Input):
         ]
 
 
-class UserTime(Input):
+class UserDemandTime(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "User / time"
+        return "UserDemand / time"
 
     @classmethod
     def geometry_type(cls) -> str:

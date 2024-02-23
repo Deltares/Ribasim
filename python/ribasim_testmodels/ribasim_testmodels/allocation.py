@@ -11,14 +11,14 @@ def user_model():
     xy = np.array(
         [
             (0.0, 0.0),  # 1: Basin
-            (1.0, 0.5),  # 2: User
-            (1.0, -0.5),  # 3: User
+            (1.0, 0.5),  # 2: UserDemand
+            (1.0, -0.5),  # 3: UserDemand
             (2.0, 0.0),  # 4: Terminal
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["Basin", "User", "User", "Terminal"]
+    node_type = ["Basin", "UserDemand", "UserDemand", "Terminal"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -60,7 +60,7 @@ def user_model():
     basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the users:
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [2],
@@ -128,9 +128,9 @@ def subnetwork_model():
             (1.0, 3.0),  # 7: Outlet
             (0.0, 3.0),  # 8: Basin
             (2.0, 5.0),  # 9: Terminal
-            (2.0, 0.0),  # 10: User
-            (3.0, 3.0),  # 11: User
-            (0.0, 4.0),  # 12: User
+            (2.0, 0.0),  # 10: UserDemand
+            (3.0, 3.0),  # 11: UserDemand
+            (0.0, 4.0),  # 12: UserDemand
             (2.0, 4.0),  # 13: Outlet
         ]
     )
@@ -146,9 +146,9 @@ def subnetwork_model():
         "Outlet",
         "Basin",
         "Terminal",
-        "User",
-        "User",
-        "User",
+        "UserDemand",
+        "UserDemand",
+        "UserDemand",
         "Outlet",
     ]
 
@@ -204,7 +204,7 @@ def subnetwork_model():
     )
 
     # Setup the users:
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [10, 11, 12],
@@ -269,7 +269,7 @@ def looped_subnetwork_model():
     # Setup the nodes:
     xy = np.array(
         [
-            (0.0, 0.0),  # 1: User
+            (0.0, 0.0),  # 1: UserDemand
             (0.0, 1.0),  # 2: Basin
             (-1.0, 1.0),  # 3: Outlet
             (-2.0, 1.0),  # 4: Terminal
@@ -280,25 +280,25 @@ def looped_subnetwork_model():
             (0.0, 3.0),  # 9: Basin
             (1.0, 3.0),  # 10: Outlet
             (2.0, 3.0),  # 11: Basin
-            (-2.0, 4.0),  # 12: User
+            (-2.0, 4.0),  # 12: UserDemand
             (0.0, 4.0),  # 13: TabulatedRatingCurve
             (2.0, 4.0),  # 14: TabulatedRatingCurve
             (0.0, 5.0),  # 15: Basin
             (1.0, 5.0),  # 16: Pump
             (2.0, 5.0),  # 17: Basin
-            (-1.0, 6.0),  # 18: User
+            (-1.0, 6.0),  # 18: UserDemand
             (0.0, 6.0),  # 19: TabulatedRatingCurve
-            (2.0, 6.0),  # 20: User
+            (2.0, 6.0),  # 20: UserDemand
             (0.0, 7.0),  # 21: Basin
             (0.0, 8.0),  # 22: Outlet
             (0.0, 9.0),  # 23: Terminal
-            (3.0, 3.0),  # 24: User
+            (3.0, 3.0),  # 24: UserDemand
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
     node_type = [
-        "User",
+        "UserDemand",
         "Basin",
         "Outlet",
         "Terminal",
@@ -309,19 +309,19 @@ def looped_subnetwork_model():
         "Basin",
         "Outlet",
         "Basin",
-        "User",
+        "UserDemand",
         "TabulatedRatingCurve",
         "TabulatedRatingCurve",
         "Basin",
         "Pump",
         "Basin",
-        "User",
+        "UserDemand",
         "TabulatedRatingCurve",
-        "User",
+        "UserDemand",
         "Basin",
         "Outlet",
         "Terminal",
-        "User",
+        "UserDemand",
     ]
 
     # Make sure the feature id starts at 1: explicitly give an index.
@@ -438,7 +438,7 @@ def looped_subnetwork_model():
     )
 
     # Setup the users:
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [1, 12, 18, 20, 24],
@@ -516,13 +516,13 @@ def minimal_subnetwork_model():
             (0.0, 1.0),  # 2: Basin
             (0.0, 2.0),  # 3: Pump
             (0.0, 3.0),  # 4: Basin
-            (-1.0, 4.0),  # 5: User
-            (1.0, 4.0),  # 6: User
+            (-1.0, 4.0),  # 5: UserDemand
+            (1.0, 4.0),  # 6: UserDemand
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["FlowBoundary", "Basin", "Pump", "Basin", "User", "User"]
+    node_type = ["FlowBoundary", "Basin", "Pump", "Basin", "UserDemand", "UserDemand"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -594,7 +594,7 @@ def minimal_subnetwork_model():
     )
 
     # Setup the users:
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [5],
@@ -648,10 +648,10 @@ def fractional_flow_subnetwork_model():
             (0.0, 2.0),  # 3: TabulatedRatingCurve
             (-1.0, 3.0),  # 4: FractionalFlow
             (-2.0, 4.0),  # 5: Basin
-            (-3.0, 5.0),  # 6: User
+            (-3.0, 5.0),  # 6: UserDemand
             (1.0, 3.0),  # 7: FractionalFlow
             (2.0, 4.0),  # 8: Basin
-            (3.0, 5.0),  # 9: User
+            (3.0, 5.0),  # 9: UserDemand
             (-1.0, 2.0),  # 10: DiscreteControl
         ]
     )
@@ -663,10 +663,10 @@ def fractional_flow_subnetwork_model():
         "TabulatedRatingCurve",
         "FractionalFlow",
         "Basin",
-        "User",
+        "UserDemand",
         "FractionalFlow",
         "Basin",
-        "User",
+        "UserDemand",
         "DiscreteControl",
     ]
 
@@ -741,7 +741,7 @@ def fractional_flow_subnetwork_model():
     )
 
     # Setup the users:
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [6],
@@ -823,17 +823,17 @@ def allocation_example_model():
         [
             (0.0, 0.0),  # 1: FlowBoundary
             (1.0, 0.0),  # 2: Basin
-            (1.0, 1.0),  # 3: User
+            (1.0, 1.0),  # 3: UserDemand
             (2.0, 0.0),  # 4: LinearResistance
             (3.0, 0.0),  # 5: Basin
-            (3.0, 1.0),  # 6: User
+            (3.0, 1.0),  # 6: UserDemand
             (4.0, 0.0),  # 7: TabulatedRatingCurve
             (4.5, 0.0),  # 8: FractionalFlow
             (4.5, 0.5),  # 9: FractionalFlow
             (5.0, 0.0),  # 10: Terminal
             (4.5, 0.25),  # 11: DiscreteControl
             (4.5, 1.0),  # 12: Basin
-            (5.0, 1.0),  # 13: User
+            (5.0, 1.0),  # 13: UserDemand
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -841,17 +841,17 @@ def allocation_example_model():
     node_type = [
         "FlowBoundary",
         "Basin",
-        "User",
+        "UserDemand",
         "LinearResistance",
         "Basin",
-        "User",
+        "UserDemand",
         "TabulatedRatingCurve",
         "FractionalFlow",
         "FractionalFlow",
         "Terminal",
         "DiscreteControl",
         "Basin",
-        "User",
+        "UserDemand",
     ]
 
     # All nodes belong to allocation network id 2
@@ -968,7 +968,7 @@ def allocation_example_model():
 
     discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
 
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [6, 13],
@@ -1101,21 +1101,21 @@ def main_network_with_subnetworks_model():
         "Outlet",
         "Basin",
         "Terminal",
-        "User",
-        "User",
-        "User",
+        "UserDemand",
+        "UserDemand",
+        "UserDemand",
         "Outlet",
         "Pump",
         "Basin",
         "TabulatedRatingCurve",
         "FractionalFlow",
         "Basin",
-        "User",
+        "UserDemand",
         "FractionalFlow",
         "Basin",
-        "User",
+        "UserDemand",
         "DiscreteControl",
-        "User",
+        "UserDemand",
         "Basin",
         "Outlet",
         "Terminal",
@@ -1126,19 +1126,19 @@ def main_network_with_subnetworks_model():
         "Basin",
         "Outlet",
         "Basin",
-        "User",
+        "UserDemand",
         "TabulatedRatingCurve",
         "TabulatedRatingCurve",
         "Basin",
         "Pump",
         "Basin",
-        "User",
+        "UserDemand",
         "TabulatedRatingCurve",
-        "User",
+        "UserDemand",
         "Basin",
         "Outlet",
         "Terminal",
-        "User",
+        "UserDemand",
     ]
 
     subnetwork_id = np.ones(57, dtype=int)
@@ -1587,7 +1587,7 @@ def main_network_with_subnetworks_model():
     terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [14, 19, 37, 56]}))
 
     # Setup the user
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [20, 21, 22, 29, 34, 45, 51, 53, 57],
@@ -1648,14 +1648,14 @@ def level_demand_model():
         [
             (0.0, 0.0),  # 1: FlowBoundary
             (1.0, 0.0),  # 2: Basin
-            (2.0, 0.0),  # 3: User
+            (2.0, 0.0),  # 3: UserDemand
             (1.0, -1.0),  # 4: LevelDemand
             (2.0, -1.0),  # 5: Basin
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["FlowBoundary", "Basin", "User", "LevelDemand", "Basin"]
+    node_type = ["FlowBoundary", "Basin", "UserDemand", "LevelDemand", "Basin"]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -1732,7 +1732,7 @@ def level_demand_model():
     )
 
     # Setup user
-    user = ribasim.User(
+    user = ribasim.UserDemand(
         static=pd.DataFrame(
             data={
                 "node_id": [3],

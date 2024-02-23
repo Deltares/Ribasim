@@ -21,8 +21,8 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
-@schema "ribasim.user.static" UserStatic
-@schema "ribasim.user.time" UserTime
+@schema "ribasim.user.static" UserDemandStatic
+@schema "ribasim.user.time" UserDemandTime
 @schema "ribasim.leveldemand.static" LevelDemandStatic
 @schema "ribasim.leveldemand.time" LevelDemandTime
 
@@ -220,7 +220,7 @@ end
     control_state::Union{Missing, String}
 end
 
-@version UserStaticV1 begin
+@version UserDemandStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     demand::Float64
@@ -229,7 +229,7 @@ end
     priority::Int
 end
 
-@version UserTimeV1 begin
+@version UserDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64

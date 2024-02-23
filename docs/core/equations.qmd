@@ -446,8 +446,8 @@ $$
 B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
 $$
 
-# User allocation
-Users have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a user is given by
+# UserDemand allocation
+UserDemands have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a user is given by
 $$
     Q_\text{user, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
@@ -458,7 +458,7 @@ From left to right:
 - The second reduction factor lets the user abstraction go smoothly to $0$ as the source basin level approaches the minimum source basin level (from above);
 - The last term is the sum of the allocations over the priorities. If the current demand happens to be lower than the allocation at some priority, the demand is taken instead.
 
-Users also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the user:
+UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the user:
 
 $$
 Q_\text{user, out} = r \cdot Q_\text{user, in}.

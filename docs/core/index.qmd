@@ -48,7 +48,7 @@ sequenceDiagram
                 Param-->>Optim: Input
                 State-->>Optim: Input
                 Optim->>Optim: Optimize Basin allocations if below target level
-                Optim->>Optim: Optimize User allocation, per priority
+                Optim->>Optim: Optimize UserDemand allocation, per priority
                 Optim-->>Param: Set allocated flow rates
                 deactivate Optim
             end

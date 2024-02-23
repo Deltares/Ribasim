@@ -195,9 +195,9 @@ name it must have in the database if it is stored there.
   - `Pump / static`: flow rate
 - Outlet: let water flow with a prescribed flux under the conditions of positive head difference and the upstream level being higher than the minimum crest level
   - `Outlet / static`: flow rate, minimum crest level
-- User: sets water usage demands at certain priorities
-  - `User / static`: demands
-  - `User / time`: dynamic demands
+- UserDemand: sets water usage demands at certain priorities
+  - `UserDemand / static`: demands
+  - `UserDemand / time`: dynamic demands
 - LevelDemand: Indicates minimum and maximum target level of connected basins for allocation
   - `LevelDemand / static`: static target levels
   - `LevelDemand / time`: dynamic target levels
@@ -425,7 +425,7 @@ min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
 
-# User {#sec-user}
+# UserDemand {#sec-user}
 
 A user can demand a certain flow from the basin that supplies it,
 distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
@@ -433,7 +433,7 @@ Currently the user attempts to extract the complete demand from the Basin.
 Only if the Basin is almost empty or reaches the minimum level at which the user can extract
 water (`min_level`), will it take less than the demand.
 In the future water can be allocated to users based on their priority.
-Users need an outgoing flow edge along which they can send their return flow,
+UserDemands need an outgoing flow edge along which they can send their return flow,
 this can also be to the same basin from which it extracts water.
 The amount of return flow is always a fraction of the inflow into the user.
 The difference is consumed by the user.
@@ -447,9 +447,9 @@ return_factor | Float64 | -            | between [0 - 1]
 min_level     | Float64 | $m$          | -
 priority      | Int     | -            | positive, sorted per node id
 
-## User / time
+## UserDemand / time
 
-This table is the transient form of the `User` table.
+This table is the transient form of the `UserDemand` table.
 The only difference is that a time column is added and activity is assumed to be true.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the

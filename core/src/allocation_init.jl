@@ -32,7 +32,7 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
         use_node = false
         has_fractional_flow_outneighbors =
             get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
-        if node_id.type in [NodeType.User, NodeType.Basin, NodeType.Terminal]
+        if node_id.type in [NodeType.UserDemand, NodeType.Basin, NodeType.Terminal]
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
@@ -289,7 +289,7 @@ function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int):
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
-    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.User]
+    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
 
     for node_id_user in node_ids_user
         node_id_return_flow = only(outflow_ids_allocation(graph, node_id_user))
@@ -409,7 +409,7 @@ function add_variables_absolute_value!(
 
         for node_id in node_ids
             type = node_id.type
-            if type == NodeType.User
+            if type == NodeType.UserDemand
                 push!(node_ids_user, node_id)
             elseif type == NodeType.Basin
                 push!(node_ids_basin, node_id)
@@ -601,7 +601,7 @@ function add_constraints_user_returnflow!(
 
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_user_with_returnflow = [
-        node_id for node_id in node_ids if node_id.type == NodeType.User &&
+        node_id for node_id in node_ids if node_id.type == NodeType.UserDemand &&
         !isempty(outflow_ids_allocation(graph, node_id))
     ]
     problem[:return_flow] = JuMP.@constraint(

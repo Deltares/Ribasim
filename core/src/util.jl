@@ -646,7 +646,8 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     priorities = Set{Int}()
 
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [UserStaticV1, UserTimeV1, LevelDemandStaticV1, LevelDemandTimeV1]
+    for type in
+        [UserDemandStaticV1, UserDemandTimeV1, LevelDemandStaticV1, LevelDemandTimeV1]
         union!(priorities, load_structvector(db, config, type).priority)
     end
     return sort(unique(priorities))

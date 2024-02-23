@@ -74,7 +74,7 @@ for all $i \in B_S$. Here $\Delta t_{\text{alloc}}$ is the simulated time betwee
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like pumps, outlets and tabulated rating curves.
 
 #### Fractional flows and user return flows
-Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. Users have a return factor $0 \le r_i \le 1, i \in U_S$.
+Both fractional flow nodes and user nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$.
 
 ## The allocation network
 
@@ -210,7 +210,7 @@ When performing subnetwork demand collection, these capacities are set to $\inft
 :::
 
 
-- User outflow: The outflow of the user is dictated by the inflow and the return factor:
+- UserDemand outflow: The outflow of the user is dictated by the inflow and the return factor:
 $$
     F_{ik} = r_k \cdot F_{kj} \quad
     \quad \forall k \in U_S, \quad
@@ -230,7 +230,7 @@ $$ {#eq-fractionalflowconstraint}
 
 ## Final notes on the allocation problem
 
-### Users using their own return flow
+### UserDemands using their own return flow
 
 If not explicitly avoided, users can use their own return flow in this allocation problem formulation.
 Therefore, return flow of users is only taken into account by allocation if that return flow is downstream of the user where it comes from. That is, if there is no path in the directed allocation network from the user outflow node back to the user.

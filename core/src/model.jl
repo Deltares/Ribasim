@@ -77,7 +77,7 @@ function Model(config::Config)::Model
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
         tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
-        time_user = load_structvector(db, config, UserTimeV1)
+        time_user = load_structvector(db, config, UserDemandTimeV1)
         tstops_user = get_tstops(time_user.time, config.starttime)
         tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
 

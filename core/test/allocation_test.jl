@@ -31,11 +31,11 @@
 
     F = allocation_model.problem[:F]
     @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0
-    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:User, 10))]) ≈ 0.5
-    @test JuMP.value(F[(NodeID(:Basin, 8), NodeID(:User, 12))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:UserDemand, 10))]) ≈ 0.5
+    @test JuMP.value(F[(NodeID(:Basin, 8), NodeID(:UserDemand, 12))]) ≈ 0.0
     @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:Basin, 8))]) ≈ 0.0
     @test JuMP.value(F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]) ≈ 0.5
-    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:User, 11))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:UserDemand, 11))]) ≈ 0.0
 
     allocated = p.user.allocated
     @test allocated[1] ≈ [0.0, 0.5]
@@ -44,9 +44,9 @@
 
     # Test getting and setting user demands
     (; user) = p
-    Ribasim.set_user_demand!(p, NodeID(:User, 11), 2, Float64(π))
+    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π))
     @test user.demand[4] ≈ π
-    @test Ribasim.get_user_demand(p, NodeID(:User, 11), 2) ≈ π
+    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
 end
 
 @testitem "Allocation objective: quadratic absolute" skip = true begin
@@ -67,12 +67,12 @@ end
     @test objective isa JuMP.QuadExpr # Quadratic expression
     F = problem[:F]
     @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:User, 5))],
-        F[(NodeID(:Basin, 4), NodeID(:User, 5))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
     ) in keys(objective.terms) # F[4,5]^2 term
     @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:User, 6))],
-        F[(NodeID(:Basin, 4), NodeID(:User, 6))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
     ) in keys(objective.terms) # F[4,6]^2 term
 end
 
@@ -95,12 +95,12 @@ end
     @test objective.aff.constant == 2.0
     F = problem[:F]
     @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:User, 5))],
-        F[(NodeID(:Basin, 4), NodeID(:User, 5))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
     ) in keys(objective.terms) # F[4,5]^2 term
     @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:User, 6))],
-        F[(NodeID(:Basin, 4), NodeID(:User, 6))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
+        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
     ) in keys(objective.terms) # F[4,6]^2 term
 end
 
@@ -124,8 +124,8 @@ end
     F = problem[:F]
     F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
-    @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:UserDemand, 5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:UserDemand, 6)]] == 1.0
 end
 
 @testitem "Allocation objective: linear relative" begin
@@ -148,8 +148,8 @@ end
     F = problem[:F]
     F_abs_user = problem[:F_abs_user]
 
-    @test objective.terms[F_abs_user[NodeID(:User, 5)]] == 1.0
-    @test objective.terms[F_abs_user[NodeID(:User, 6)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:UserDemand, 5)]] == 1.0
+    @test objective.terms[F_abs_user[NodeID(:UserDemand, 6)]] == 1.0
 end
 
 @testitem "Allocation with controlled fractional flow" begin
@@ -183,13 +183,25 @@ end
     t_control = record_control.time[2]
 
     allocated_6_before =
-        groups[("User", 6, 1)][groups[("User", 6, 1)].time .< t_control, :].allocated
+        groups[("UserDemand", 6, 1)][
+            groups[("UserDemand", 6, 1)].time .< t_control,
+            :,
+        ].allocated
     allocated_9_before =
-        groups[("User", 9, 1)][groups[("User", 9, 1)].time .< t_control, :].allocated
+        groups[("UserDemand", 9, 1)][
+            groups[("UserDemand", 9, 1)].time .< t_control,
+            :,
+        ].allocated
     allocated_6_after =
-        groups[("User", 6, 1)][groups[("User", 6, 1)].time .> t_control, :].allocated
+        groups[("UserDemand", 6, 1)][
+            groups[("UserDemand", 6, 1)].time .> t_control,
+            :,
+        ].allocated
     allocated_9_after =
-        groups[("User", 9, 1)][groups[("User", 9, 1)].time .> t_control, :].allocated
+        groups[("UserDemand", 9, 1)][
+            groups[("UserDemand", 9, 1)].time .> t_control,
+            :,
+        ].allocated
     @test all(
         allocated_9_before ./ allocated_6_before .<=
         control_mapping[(NodeID(:FractionalFlow, 7), "A")].fraction /

@@ -198,7 +198,7 @@ function static_and_time_node_ids(
 end
 
 const nonconservative_nodetypes =
-    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
+    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "UserDemand"])
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
@@ -640,17 +640,17 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     )
 end
 
-function User(db::DB, config::Config)::User
-    static = load_structvector(db, config, UserStaticV1)
-    time = load_structvector(db, config, UserTimeV1)
+function UserDemand(db::DB, config::Config)::UserDemand
+    static = load_structvector(db, config, UserDemandStaticV1)
+    time = load_structvector(db, config, UserDemandTimeV1)
 
     static_node_ids, time_node_ids, node_ids, _, valid =
-        static_and_time_node_ids(db, static, time, "User")
+        static_and_time_node_ids(db, static, time, "UserDemand")
 
-    time_node_id_vec = NodeID.(NodeType.User, time.node_id)
+    time_node_id_vec = NodeID.(NodeType.UserDemand, time.node_id)
 
     if !valid
-        error("Problems encountered when parsing User static and time node IDs.")
+        error("Problems encountered when parsing UserDemand static and time node IDs.")
     end
 
     # All priorities used in the model
@@ -666,7 +666,7 @@ function User(db::DB, config::Config)::User
     t_end = seconds_since(config.endtime, config.starttime)
 
     # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int, StructVector{UserTimeV1}} = Dict(
+    time_priority_dict::Dict{Int, StructVector{UserDemandTimeV1}} = Dict(
         first(group).priority => StructVector(group) for
         group in IterTools.groupby(row -> row.priority, time)
     )
@@ -682,7 +682,7 @@ function User(db::DB, config::Config)::User
 
         if node_id in static_node_ids
             push!(demand_from_timeseries, false)
-            rows = searchsorted(NodeID.(NodeType.User, static.node_id), node_id)
+            rows = searchsorted(NodeID.(NodeType.UserDemand, static.node_id), node_id)
             static_id = view(static, rows)
             for p in priorities
                 idx = findsorted(static_id.priority, p)
@@ -711,7 +711,7 @@ function User(db::DB, config::Config)::User
                     if is_valid
                         push!(demand_itp_node_id, demand_p_itp)
                     else
-                        @error "The demand(t) relationship for User #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+                        @error "The demand(t) relationship for UserDemand #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
                         errors = true
                     end
                 else
@@ -725,7 +725,7 @@ function User(db::DB, config::Config)::User
             first_row = time[first_row_idx]
             is_active = true
         else
-            @error "User node #$node_id data not in any table."
+            @error "UserDemand node #$node_id data not in any table."
             errors = true
         end
 
@@ -739,12 +739,12 @@ function User(db::DB, config::Config)::User
     end
 
     if errors
-        error("Errors occurred when parsing User data.")
+        error("Errors occurred when parsing UserDemand data.")
     end
 
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
-    return User(
+    return UserDemand(
         node_ids,
         active,
         demand,
@@ -888,7 +888,7 @@ function Parameters(db::DB, config::Config)::Parameters
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
-    user = User(db, config)
+    user = UserDemand(db, config)
     level_demand = LevelDemand(db, config)
 
     basin = Basin(db, config, chunk_sizes)
