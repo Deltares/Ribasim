@@ -106,6 +106,7 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
     saveat = convert_saveat(config.solver.saveat, t_end)
+    adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -132,8 +133,8 @@ function Model(config::Config)::Model
         tstops,
         isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         saveat,
-        config.solver.adaptive,
-        dt = something(config.solver.dt, t0),
+        adaptive,
+        dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,

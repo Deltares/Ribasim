@@ -23,14 +23,9 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     dt = 10.0
-    config = Ribasim.Config(
-        toml_path;
-        solver_algorithm = "ImplicitEuler",
-        solver_adaptive = false,
-        solver_dt = dt,
-    )
+    config = Ribasim.Config(toml_path; solver_algorithm = "ImplicitEuler", solver_dt = dt)
     @test config.solver.algorithm == "ImplicitEuler"
-    @test !config.solver.adaptive
+    @test config.solver.dt === dt
     model = Ribasim.Model(config)
 
     @test BMI.get_time_step(model) == dt

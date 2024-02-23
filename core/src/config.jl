@@ -16,7 +16,7 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, input_path, results_path, convert_saveat
+export algorithm, snake_case, input_path, results_path, convert_saveat, convert_dt
 
 const schemas =
     getfield.(
@@ -78,7 +78,6 @@ const nodetypes = collect(keys(nodekinds))
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
     saveat::Float64 = 86400.0
-    adaptive::Bool = true
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
@@ -246,6 +245,25 @@ function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{
         @error "Invalid saveat" saveat
         error("Invalid saveat")
     end
+end
+
+"Convert the dt from our Config to SciML stepsize control arguments"
+function convert_dt(dt::Union{Float64, Nothing})::Tuple{Bool, Float64}
+    # In SciML dt represents the initial timestep if adaptive is true.
+    # We don't support setting the initial timestep, so we don't need the adaptive flag.
+    # The solver will give a clear error message if the algorithm is not adaptive.
+    if isnothing(dt)
+        # adaptive step size
+        adaptive = true
+        dt = 0.0
+    elseif 0 < dt < Inf
+        # fixed step size
+        adaptive = false
+    else
+        @error "Invalid dt" dt
+        error("Invalid dt")
+    end
+    adaptive, dt
 end
 
 end  # module
