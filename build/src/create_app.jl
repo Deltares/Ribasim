@@ -36,6 +36,8 @@ function build_app()
         executables = ["ribasim" => "main"],
         precompile_execution_file = "precompile.jl",
         include_lazy_artifacts = false,
+        include_transitive_dependencies = false,
+        include_preferences = true,
         force = true,
     )
 
