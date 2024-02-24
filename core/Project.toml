@@ -101,5 +101,15 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [preferences.LinearSolve]
 LoadMKL_JLL = false
 
+[preferences.OrdinaryDiffEq]
+PrecompileAutoSpecialize = false
+PrecompileAutoSwitch = false
+PrecompileDefaultSpecialize = false
+PrecompileFunctionWrapperSpecialize = false
+PrecompileLowStorage = false
+PrecompileNoSpecialize = false
+PrecompileNonStiff = false
+PrecompileStiff = false
+
 [targets]
 test = ["Aqua", "CSV", "DataFrames", "Documenter", "IOCapture", "Logging", "ReTestItems", "TerminalLoggers", "Test", "TOML"]
