@@ -93,6 +93,21 @@ class LevelBoundaryTimeSchema(_BaseSchema):
     level: Series[float] = pa.Field(nullable=False)
 
 
+class LevelDemandStaticSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
+
+
+class LevelDemandTimeSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
+
+
 class LinearResistanceStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -167,21 +182,6 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
-
-
-class LevelDemandStaticSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[int] = pa.Field(nullable=False)
-
-
-class LevelDemandTimeSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[int] = pa.Field(nullable=False)
 
 
 class TerminalStaticSchema(_BaseSchema):
