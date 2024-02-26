@@ -14,6 +14,7 @@ flow = model[:flow]
     flow[3] == flow[1] + flow[2]
     flow[3] <= 0.004
     flow[4] <= 0.002
+    #flow[1] + flow[2] <= 0.02
 end)
 print(model)
 optimize!(model)

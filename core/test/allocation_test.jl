@@ -49,7 +49,7 @@
     @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
 end
 
-@testitem "Allocation objective: quadratic absolute" skip = true begin
+@testitem "Allocation objective: quadratic absolute" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
