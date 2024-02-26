@@ -16,7 +16,7 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, zstd, lz4, input_path, results_path
+export algorithm, snake_case, input_path, results_path, convert_saveat, convert_dt
 
 const schemas =
     getfield.(
@@ -77,8 +77,7 @@ const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
-    saveat::Union{Float64, Vector{Float64}} = Float64[]
-    adaptive::Bool = true
+    saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
@@ -90,27 +89,10 @@ const nodetypes = collect(keys(nodekinds))
     autodiff::Bool = true
 end
 
-@enum Compression begin
-    zstd
-    lz4
-end
-
-function Base.convert(::Type{Compression}, str::AbstractString)
-    i = findfirst(==(Symbol(str)) ∘ Symbol, instances(Compression))
-    if i === nothing
-        throw(
-            ArgumentError(
-                "Compression algorithm $str not supported, choose one of: $(join(instances(Compression), " ")).",
-            ),
-        )
-    end
-    return Compression(i - 1)
-end
-
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
     outstate::Union{String, Nothing} = nothing
-    compression::Compression = "zstd"
+    compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
 end
@@ -183,11 +165,6 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
     )
 end
 
-# [] in TOML is parsed as a Vector{Union{}}
-function Configurations.from_dict(::Type{Solver}, t::Type, saveat::Vector{Union{}})
-    return Float64[]
-end
-
 # TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
     println(io, "Ribasim Config")
@@ -251,6 +228,42 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     catch
         algotype()
     end
+end
+
+"Convert the saveat Float64 from our Config to SciML's saveat"
+function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}
+    if iszero(saveat)
+        # every step
+        Float64[]
+    elseif saveat == Inf
+        # only the start and end
+        [0.0, t_end]
+    elseif isfinite(saveat)
+        # every saveat seconds
+        saveat
+    else
+        @error "Invalid saveat" saveat
+        error("Invalid saveat")
+    end
+end
+
+"Convert the dt from our Config to SciML stepsize control arguments"
+function convert_dt(dt::Union{Float64, Nothing})::Tuple{Bool, Float64}
+    # In SciML dt represents the initial timestep if adaptive is true.
+    # We don't support setting the initial timestep, so we don't need the adaptive flag.
+    # The solver will give a clear error message if the algorithm is not adaptive.
+    if isnothing(dt)
+        # adaptive step size
+        adaptive = true
+        dt = 0.0
+    elseif 0 < dt < Inf
+        # fixed step size
+        adaptive = false
+    else
+        @error "Invalid dt" dt
+        error("Invalid dt")
+    end
+    adaptive, dt
 end
 
 end  # module

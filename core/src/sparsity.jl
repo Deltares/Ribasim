@@ -96,7 +96,7 @@ Upstream basins always depend on themselves.
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
     p::Parameters,
-    node::Union{Pump, Outlet, TabulatedRatingCurve, User},
+    node::Union{Pump, Outlet, TabulatedRatingCurve, UserDemand},
 )::Nothing
     (; basin, fractional_flow, graph) = p
 

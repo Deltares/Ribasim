@@ -378,7 +378,7 @@ function get_level(
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-   if node_id.type == NodeType.Basin
+    if node_id.type == NodeType.Basin
         _, i = id_index(basin.node_id, node_id)
         current_level = get_tmp(basin.current_level, storage)
         current_level[i]
@@ -588,7 +588,7 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
 
-"""Find out whether a path exists between a start node and end node in the given allocation graph."""
+"""Find out whether a path exists between a start node and end node in the given allocation network."""
 function allocation_path_exists_in_graph(
     graph::MetaGraph,
     start_node_id::NodeID,
@@ -620,22 +620,71 @@ function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
 
-function get_user_demand(user::User, node_id::NodeID, priority_idx::Int)::Float64
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
-    return demand[(user_idx - 1) * n_priorities + priority_idx]
+function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
+    n_priorities = length(allocation.priorities)
+    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
 end
 
 function set_user_demand!(
-    user::User,
+    p::Parameters,
     node_id::NodeID,
     priority_idx::Int,
     value::Float64,
 )::Nothing
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
-    demand[(user_idx - 1) * n_priorities + priority_idx] = value
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
+    n_priorities = length(allocation.priorities)
+    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
+    return nothing
+end
+
+function get_all_priorities(db::DB, config::Config)::Vector{Int}
+    priorities = Set{Int}()
+
+    # TODO: Is there a way to automatically grab all tables with a priority column?
+    for type in
+        [UserDemandStaticV1, UserDemandTimeV1, LevelDemandStaticV1, LevelDemandTimeV1]
+        union!(priorities, load_structvector(db, config, type).priority)
+    end
+    return sort(unique(priorities))
+end
+
+function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
+    (; graph, level_demand, allocation) = p
+    @assert node_id.type == NodeType.Basin
+    inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(inneighbors_control)
+        return 0
+    else
+        idx = findsorted(level_demand.node_id, only(inneighbors_control))
+        priority = level_demand.priority[idx]
+        return findsorted(allocation.priorities, priority)
+    end
+end
+
+"""
+Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+"""
+function set_is_pid_controlled!(p::Parameters)::Nothing
+    (; graph, pid_control, pump, outlet) = p
+
+    for id in pid_control.node_id
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        if id_controlled.type == NodeType.Pump
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            pump.is_pid_controlled[pump_idx] = true
+        elseif id_controlled.type == NodeType.Outlet
+            outlet_idx = findsorted(outlet.node_id, id_controlled)
+            outlet.is_pid_controlled[outlet_idx] = true
+        else
+            error(
+                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
+            )
+        end
+    end
     return nothing
 end

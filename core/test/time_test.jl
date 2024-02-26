@@ -18,13 +18,13 @@
             [:time, :from_node_id, :to_node_id] =>
                 (t, from, to) -> is_summer(t) && from === 1 && to === 1,
             flow,
-        ).flow
+        ).flow_rate
     flow_1_to_2 = filter(
         [:time, :from_node_id, :to_node_id] =>
             (t, from, to) -> is_summer(t) && from === 1 && to === 2,
         flow,
     )
-    @test flow_added_1 == flow_1_to_2.flow
+    @test flow_added_1 == flow_1_to_2.flow_rate
 
     t = Ribasim.seconds_since.(flow_1_to_2.time, model.config.starttime)
     flow_expected = @. 1 + sin(0.5 * π * (t - t[1]) / (t[end] - t[1]))^2

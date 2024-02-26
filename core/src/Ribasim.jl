@@ -23,7 +23,6 @@ import LoggingExtras
 
 using Accessors: @set
 using Arrow: Arrow, Table
-using CodecLz4: LZ4FrameCompressor
 using CodecZstd: ZstdCompressor
 using Configurations: from_toml
 using ComponentArrays: ComponentVector
@@ -82,7 +81,8 @@ include("parameter.jl")
 include("validation.jl")
 include("solve.jl")
 include("logging.jl")
-include("allocation.jl")
+include("allocation_init.jl")
+include("allocation_optim.jl")
 include("util.jl")
 include("sparsity.jl")
 include("graph.jl")

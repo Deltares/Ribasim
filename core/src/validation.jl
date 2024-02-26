@@ -2,14 +2,16 @@
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Val{:user}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:user_demand}) =
+    Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
     :tabulated_rating_curve,
     :manning_resistance,
     :pump,
     :outlet,
-    :user,
+    :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
 neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary))
@@ -56,12 +58,13 @@ n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, typemax(Int)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_flow(::Val{:User}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
 n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
-n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, typemax(Int))
+n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, typemax(Int))
 n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -74,7 +77,8 @@ n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
-n_neighbor_bounds_control(::Val{:User}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -100,8 +104,8 @@ sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
-sort_by_function(table::StructVector{UserStaticV1}) = sort_by_priority
-sort_by_function(table::StructVector{UserTimeV1}) = sort_by_priority_time
+sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
+sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 
 const TimeSchemas = Union{
@@ -110,7 +114,7 @@ const TimeSchemas = Union{
     LevelBoundaryTimeV1,
     PidControlTimeV1,
     TabulatedRatingCurveTimeV1,
-    UserTimeV1,
+    UserDemandTimeV1,
 }
 
 function sort_by_function(table::StructVector{<:TimeSchemas})
@@ -551,10 +555,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     end
     for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
         if !iszero(Δt)
-            node_type = graph[node_id].type
+            node_type = node_id.type
             # TODO: If more transient listen variables must be supported, this validation must be more specific
             # (e.g. for some node some variables are transient, some not).
-            if node_type ∉ [:flow_boundary, :level_boundary]
+            if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                 errors = true
                 @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
             else
@@ -562,8 +566,8 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                     errors = true
                     @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
                 else
-                    node = getfield(p, node_type)
-                    idx = if node_type == :Basin
+                    node = getfield(p, graph[node_id].type)
+                    idx = if node_type == NodeType.Basin
                         id_index(node.node_id, node_id)
                     else
                         searchsortedfirst(node.node_id, node_id)
@@ -593,7 +597,7 @@ function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
     for edge in edge_ids
         (id_source, id_dst) = edge
         if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
-            from_source_node = graph[id_source].type in allocation_source_nodetypes
+            from_source_node = id_source.type in allocation_source_nodetypes
 
             if is_main_network(allocation_network_id)
                 if !from_source_node

@@ -35,6 +35,7 @@ end
     level = [[0.0, 1.0], [4.0, 5.0]]
     darea = zeros(2)
     storage = Ribasim.profile_storage.(level, area)
+    demand = zeros(2)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [5, 7])),
         [2.0, 3.0],
@@ -46,6 +47,7 @@ end
         area,
         level,
         storage,
+        demand,
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
@@ -110,6 +112,7 @@ end
         1.1,
     ]
     storage = Ribasim.profile_storage(level, area)
+    demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
         zeros(1),
@@ -121,6 +124,7 @@ end
         [area],
         [level],
         [storage],
+        demand,
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 

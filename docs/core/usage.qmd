@@ -31,25 +31,24 @@ Ribasim expects the GeoPackage database [database.gpkg](usage.qmd#sec-geopackage
 ## Solver settings {#sec-solver-settings}
 
 The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
-Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `adaptive`, `dt`, and `saveat`.
+Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
 If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
-It is an implicit method that supports the default `adaptive = true` timestepping.
+It is an implicit method that supports the default adaptive timestepping.
 The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
-The `dt` controls the stepsize.
-When `adaptive = true`, `dt` only applies to the initial stepsize, and by default it is automatically determined.
-When `adaptive = false` a suitable `dt` must always be provided.
-The value is in seconds, so `dt = 3600.0` corresponds to an hourly timestep.
-When `adaptive = true`, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
+By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
+To use fixed timesteps, provide a timestep size in seconds; `dt = 3600.0` corresponds to an hourly timestep.
+With adaptive timestepping, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
 If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
 `force_dtmin` is off by default to ensure an accurate solution.
 
-By default the calculation and result stepsize are the same, with `saveat = []`, which will save every timestep.
-`saveat` can be a number, which is the saving interval in seconds, or it can be a list of numbers, which are the times in seconds since start that are saved.
-For instance, `saveat = 86400.0` will save results after every day that passed.
+The default result stepsize, `saveat = 86400` will save results after every day that passed.
+The calculation and result stepsize need not be the same.
+If you wish to save every calculation step, set `saveat = 0`.
+If you wish to not save any intermediate steps, set `saveat = inf`.
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
@@ -77,8 +76,8 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-compression       | String | Compression algorithm: zstd or lz4.
-compression_level | Int    | Compression level. Higher is more compression.
+compression       | Bool   | Whether to apply compression or not.
+compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
 ## Logging settings
@@ -114,6 +113,7 @@ of different values are repeated many times. To reduce file sizes it may be a go
 apply [dictionary
 encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
 those columns.
+The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
 
 ## Table requirements
 
@@ -158,13 +158,13 @@ in some way. Counter intuitively, even systems you may think of as edges, such a
 are nodes in Ribasim. This is because edges only define direct instantaneous couplings
 between nodes, and never have storage of their own.
 
-column                | type     | restriction
---------------------- | -------- | -----------
-fid                   | Int      | unique, sorted
-type                  | String   | known node type
-geometry              | geoarrow | (optional)
-name                  | String   | (optional, does not have to be unique)
-allocation_network_id | Int      | (optional)
+column        | type     | restriction
+--------------| -------- | -----------
+node_id       | Int      | -
+node_type     | String   | known node type
+geometry      | geoarrow | (optional)
+name          | String   | (optional, does not have to be unique)
+subnetwork_id |  Int     | (optional)
 
 The available node types as of this writing are listed as the top level bullets below. The
 sub-bullets indicate which tables are associated to the node type. The table name is the
@@ -195,9 +195,12 @@ name it must have in the database if it is stored there.
   - `Pump / static`: flow rate
 - Outlet: let water flow with a prescribed flux under the conditions of positive head difference and the upstream level being higher than the minimum crest level
   - `Outlet / static`: flow rate, minimum crest level
-- User: sets water usage demands at certain priorities
-  - `User / static`: demands
-  - `User / time`: dynamic demands
+- UserDemand: sets water usage demands at certain priorities
+  - `UserDemand / static`: demands
+  - `UserDemand / time`: dynamic demands
+- LevelDemand: Indicates minimum and maximum target level of connected basins for allocation
+  - `LevelDemand / static`: static target levels
+  - `LevelDemand / time`: dynamic target levels
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
@@ -228,15 +231,17 @@ There are currently 2 possible edge types:
   Control edges should always point away from the control node.
   The edges between the control node and the nodes it *listens* to are *not* present in `Edge`, these are defined in [`DiscreteControl / condition`](usage.qmd#sec-discrete-control)
 
-column                | type     | restriction
---------------------- | -------- | -----------
-fid                   | Int      | unique, sorted
-from_node_id          | Int      | -
-to_node_id            | Int      | -
-edge_type             | String   | must be "flow" or "control"
-geom                  | geometry | (optional)
-name                  | String   | (optional, does not have to be unique)
-allocation_network_id | Int      | (optional, denotes source in allocation network)
+column        | type     | restriction
+--------------| -------- | -----------
+fid           | Int      | unique, sorted
+from_node_type| String   | -
+from_node_id  | Int      | -
+to_node_type  | String   | -
+to_node_id    | Int      | -
+edge_type     | String   | must be "flow" or "control"
+geom          | geometry | (optional)
+name          | String   | (optional, does not have to be unique)
+subnetwork_id | Int      | (optional, denotes source in allocation network)
 
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
@@ -342,37 +347,6 @@ Water levels beyond the last `basin_level` are linearly extrapolated.
 Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
-## Basin results
-
-The basin table contains results of the storage and level of each basin at every solver
-timestep. The initial condition is also written to the file.
-
-column   | type     | unit
--------- | -------- | ----
-time     | DateTime | -
-node_id  | Int      | -
-storage  | Float64  | $m^3$
-level    | Float64  | $m$
-
-The table is sorted by time, and per time it is sorted by `node_id`.
-
-## Flow results
-
-The flow table contains results of the flow on every edge in the model, for each solver
-timestep.
-
-column        | type                | unit
-------------- | ------------------- | ----
-time          | DateTime            | -
-edge_id       | Union{Int, Missing} | -
-from_node_id  | Int                 | -
-to_node_id    | Int                 | -
-flow          | Float64             | $m^3 s^{-1}$
-
-The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
-Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
-Flows out of the model always have a negative sign, and additions a positive sign.
-
 # FractionalFlow {#sec-fractional-flow}
 
 Lets a fraction (in [0,1]) of the incoming flow trough.
@@ -416,7 +390,7 @@ column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
 node_id   | Int      | -            | sorted
 time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | -
+level     | Float64  | $m$          | sorted per node_id per time
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
 
 # Pump {#sec-pump}
@@ -451,18 +425,18 @@ min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
 
-# User {#sec-user}
+# UserDemand {#sec-user-demand}
 
-A user can demand a certain flow from the basin that supplies it,
+A UserDemand can demand a certain flow from the basin that supplies it,
 distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
-Currently the user attempts to extract the complete demand from the Basin.
-Only if the Basin is almost empty or reaches the minimum level at which the user can extract
+Currently the UserDemand attempts to extract the complete demand from the Basin.
+Only if the Basin is almost empty or reaches the minimum level at which the UserDemand can extract
 water (`min_level`), will it take less than the demand.
-In the future water can be allocated to users based on their priority.
-Users need an outgoing flow edge along which they can send their return flow,
+When allocation is used, water can be allocated to UserDemand based on their priority.
+UserDemands need an outgoing flow edge along which they can send their return flow,
 this can also be to the same basin from which it extracts water.
-The amount of return flow is always a fraction of the inflow into the user.
-The difference is consumed by the user.
+The amount of return flow is always a fraction of the inflow into the UserDemand.
+The difference is consumed by the UserDemand.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
@@ -470,12 +444,12 @@ node_id       | Int     | -            | sorted
 active        | Bool    | -            | (optional, default true)
 demand        | Float64 | $m^3 s^{-1}$ | -
 return_factor | Float64 | -            | between [0 - 1]
-min_level     | Float64 | $m$          | (optional)
-priority      | Int     | -            | sorted per node id
+min_level     | Float64 | $m$          | -
+priority      | Int     | -            | positive, sorted per node id
 
-## User / time
+## UserDemand / time
 
-This table is the transient form of the `User` table.
+This table is the transient form of the `UserDemand` table.
 The only difference is that a time column is added and activity is assumed to be true.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the
@@ -486,29 +460,38 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 column        | type     | unit         | restriction
 ------------- | -------- | ------------ | -----------
 node_id       | Int      | -            | sorted
-priority      | Int      | -            | sorted per node id
+priority      | Int      | -            | positive, sorted per node id
 time          | DateTime | -            | sorted per priority per node id
 demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
-min_level     | Float64  | $m$          | (optional)
+min_level     | Float64  | $m$          | -
 
-## Allocation results
+# LevelDemand {#sec-level_demand}
 
-The allocation table contains a record of allocation results: when it happened, for which user node, in which allocation network, and what the demand, allocated flow and abstracted flow were.
+An `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
+Below the minimum level the basin has a demand of the supplied priority,
+above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
+The same `LevelDemand` node can be used for basins in different subnetworks.
 
-column                | type
---------------------- | -----
-time                  | DateTime
-allocation_network_id | Int
-user_node_id          | Int
-priority              | Int
-demand                | Float64
-allocated             | Float64
-abstracted            | Float64
+column        | type    | unit         | restriction
+------------- | ------- | ------------ | -----------
+node_id       | Int     | -            | sorted
+min_level     | Float64 | $m$          | -
+max_level     | Float64 | $m$          | -
+priority      | Int     | -            | positive
 
-::: {.callout-note}
-Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
-:::
+## LevelDemand / time
+
+This table is the transient form of the `LevelDemand` table, in which time-dependent minimum and maximum levels can be supplied.
+Similar to the static version, only a single priority per `LevelDemand` node can be provided.
+
+column        | type     | unit         | restriction
+------------- | -------  | ------------ | -----------
+node_id       | Int      | -            | sorted
+time          | DateTime | -            | sorted per node id
+min_level     | Float64  | $m$          | -
+max_level     | Float64  | $m$          | -
+priority      | Int      | -            | positive
 
 # LevelBoundary {#sec-level-boundary}
 
@@ -642,17 +625,6 @@ node_id        | Int      | -    | sorted
 control_state  | String   | -    | -
 truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any), sorted per node_id
 
-## DiscreteControl results
-
-The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
-
-column          | type
---------------- | ----------
-time            | DateTime
-control_node_id | Int
-truth_state     | String
-control_state   | String
-
 # PidControl {#sec-pid-control}
 
 The PidControl node controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [PID controller](https://en.wikipedia.org/wiki/PID_controller). When A PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
@@ -689,3 +661,90 @@ target         | Float64  | $m$      | -
 proportional   | Float64  | $s^{-1}$ | -
 integral       | Float64  | $s^{-2}$ | -
 derivative     | Float64  | -        | -
+
+# Results
+
+## Basin - `basin.arrow`
+
+The basin table contains results of the storage and level of each basin at every solver
+timestep. The initial condition is also written to the file.
+
+column   | type     | unit
+-------- | -------- | ----
+time     | DateTime | -
+node_id  | Int      | -
+storage  | Float64  | $m^3$
+level    | Float64  | $m$
+
+The table is sorted by time, and per time it is sorted by `node_id`.
+
+## Flow - `flow.arrow`
+
+The flow table contains results of the flow on every edge in the model, for each solver
+timestep.
+
+column         | type                | unit
+-------------- | ------------------- | ----
+time           | DateTime            | -
+edge_id        | Union{Int, Missing} | -
+from_node_type | String              | -
+from_node_id   | Int                 | -
+to_node_type   | String              | -
+to_node_id     | Int                 | -
+flow_rate      | Float64             | $m^3 s^{-1}$
+
+The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
+Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
+Flows out of the model always have a negative sign, and additions a positive sign.
+
+## DiscreteControl - `control.arrow`
+
+The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+
+column          | type
+--------------- | ----------
+time            | DateTime
+control_node_id | Int
+truth_state     | String
+control_state   | String
+
+## Allocation - `allocation.arrow`
+
+The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
+
+column        | type
+--------------| -----
+time          | DateTime
+subnetwork_id | Int
+node_type     | String
+node_id       | Int
+priority      | Int
+demand        | Float64
+allocated     | Float64
+realized      | Float64
+
+For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
+The values are negative if the Basin supplies due to a surplus of water.
+
+::: {.callout-note}
+Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
+:::
+
+## Allocation flow - `allocation_flow.arrow`
+
+The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](allocation.qmd#the-high-level-algorithm)).
+If in the model a main network and subnetwork(s) are specified, there are 2 different
+types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
+
+column          | type
+----------------| -----
+time            | DateTime
+edge_id         | Int
+from_node_type  | String
+from_node_id    | Int
+to_node_type    | String
+to_node_id      | Int
+subnetwork_id   | Int
+priority        | Int
+flow_rate       | Float64
+collect_demands | Bool

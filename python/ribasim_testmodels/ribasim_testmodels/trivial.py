@@ -24,7 +24,7 @@ def trivial_model() -> ribasim.Model:
     ]
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index([6, 0, terminal_id], name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -66,11 +66,8 @@ def trivial_model() -> ribasim.Model:
     static = pd.DataFrame(
         data={
             "node_id": [6],
-            "drainage": [0.0],
             "potential_evaporation": [evaporation],
-            "infiltration": [0.0],
             "precipitation": [precipitation],
-            "urban_runoff": [0.0],
         }
     )
 
@@ -124,6 +121,6 @@ def trivial_model() -> ribasim.Model:
         tabulated_rating_curve=rating_curve,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
-        results=ribasim.Results(subgrid=True),
+        results=ribasim.Results(subgrid=True, compression=False),
     )
     return model

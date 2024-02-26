@@ -34,7 +34,7 @@ def pid_control_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -63,17 +63,6 @@ def pid_control_model():
         data={"node_id": [2, 2], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [2],
@@ -81,7 +70,7 @@ def pid_control_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
@@ -187,7 +176,7 @@ def discrete_control_of_pid_control_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -216,17 +205,6 @@ def discrete_control_of_pid_control_model():
         data={"node_id": [3, 3], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={
             "node_id": [3],
@@ -234,7 +212,7 @@ def discrete_control_of_pid_control_model():
         }
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     outlet = ribasim.Outlet(

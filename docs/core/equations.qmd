@@ -13,7 +13,7 @@ Ribasim currently simulates the following "natural" water balance terms:
 
 Additionally, Ribasim simulates the following "allocated" water balance terms:
 
-1. General user
+1. UserDemand
 2. Flushing
 
 Depending on the type of boundary conditions, Ribasim requires relation between
@@ -446,25 +446,25 @@ $$
 B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
 $$
 
-# User allocation
-Users have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a user is given by
+# UserDemand allocation
+UserDemands have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a UserDemand is given by
 $$
-    Q_\text{user, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+    Q_\text{user_demand, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
 
 From left to right:
 
-- The first reduction factor lets the user abstraction go smoothly to $0$ as the source basin dries out;
-- The second reduction factor lets the user abstraction go smoothly to $0$ as the source basin level approaches the minimum source basin level (from above);
+- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out;
+- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above);
 - The last term is the sum of the allocations over the priorities. If the current demand happens to be lower than the allocation at some priority, the demand is taken instead.
 
-Users also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the user:
+UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
 $$
-Q_\text{user, out} = r \cdot Q_\text{user, in}.
+Q_\text{user_demand, out} = r \cdot Q_\text{user_demand, in}.
 $$
 
-Note that this means that the user has a consumption rate of $(1-r)Q_\text{user, in}$.
+Note that this means that the user_demand has a consumption rate of $(1-r)Q_\text{user_demand, in}$.
 
 # PID controller {#sec-PID}
 

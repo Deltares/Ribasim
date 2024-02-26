@@ -19,7 +19,7 @@ def backwater_model():
 
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(node_xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -60,18 +60,8 @@ def backwater_model():
             "level": [0.0, 1.0] * n_basin,
         }
     )
-    static = pd.DataFrame(
-        data={
-            "node_id": basin_ids,
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
     state = pd.DataFrame(data={"node_id": basin_ids, "level": 0.05})
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     manning_resistance = ribasim.ManningResistance(
         static=pd.DataFrame(

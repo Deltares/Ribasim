@@ -61,22 +61,11 @@ def dutch_waterways_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": basin_node_ids,
-            "drainage": n_basins * [0.0],
-            "potential_evaporation": n_basins * [0.0],
-            "infiltration": n_basins * [0.0],
-            "precipitation": n_basins * [0.0],
-            "urban_runoff": n_basins * [0.0],
-        }
-    )
-
     state = pd.DataFrame(
         data={"node_id": basin_node_ids, "level": [8.31, 7.5, 7.5, 7.0, 6.0, 5.5]}
     )
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup linear resistance:
     linear_resistance = ribasim.LinearResistance(
@@ -261,7 +250,7 @@ def dutch_waterways_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type, "name": node_name},
+            data={"node_type": node_type, "name": node_name},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",

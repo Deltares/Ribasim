@@ -45,7 +45,7 @@ Store information for a subnetwork used for allocation.
 
 objective_type: The name of the type of objective used
 allocation_network_id: The ID of this allocation network
-capacity: The capacity per edge of the allocation graph, as constrained by nodes that have a max_flow_rate
+capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
@@ -63,27 +63,44 @@ allocation_network_ids: The unique sorted allocation network IDs
 allocation models: The allocation models for the main network and subnetworks corresponding to
     allocation_network_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
-record: A record of all flows computed by allocation optimization, eventually saved to
+record_demand: A record of demands and allocated flows for nodes that have these.
+record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
 struct Allocation
     allocation_network_ids::Vector{Int}
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+    priorities::Vector{Int}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    record::@NamedTuple{
+    record_demand::@NamedTuple{
+        time::Vector{Float64},
+        subnetwork_id::Vector{Int},
+        node_type::Vector{String},
+        node_id::Vector{Int},
+        priority::Vector{Int},
+        demand::Vector{Float64},
+        allocated::Vector{Float64},
+        realized::Vector{Float64},
+    }
+    record_flow::@NamedTuple{
         time::Vector{Float64},
         edge_id::Vector{Int},
+        from_node_type::Vector{String},
         from_node_id::Vector{Int},
+        to_node_type::Vector{String},
         to_node_id::Vector{Int},
-        allocation_network_id::Vector{Int},
+        subnetwork_id::Vector{Int},
         priority::Vector{Int},
-        flow::Vector{Float64},
+        flow_rate::Vector{Float64},
         collect_demands::BitVector,
     }
 end
+
+is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 """
 Type for storing metadata of nodes in the graph
@@ -103,7 +120,7 @@ allocation_network_id_source: ID of allocation network where this edge is a sour
   (0 if not a source)
 from_id: the node ID of the source node
 to_id: the node ID of the destination node
-allocation_flow: whether this edge has a flow in an allocation graph
+allocation_flow: whether this edge has a flow in an allocation network
 node_ids: if this edge has allocation flow, these are all the
     nodes from the physical layer this edge consists of
 """
@@ -142,14 +159,16 @@ struct Basin{T, C} <: AbstractParameterNode
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
-    # cache this to avoid recomputation
+    # Cache this to avoid recomputation
     current_level::T
     current_area::T
     # Discrete values for interpolation
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    # data source for parameter updates
+    # Demands and allocated flows for allocation if applicable
+    demand::Vector{Float64}
+    # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
     function Basin(
@@ -163,6 +182,7 @@ struct Basin{T, C} <: AbstractParameterNode
         area,
         level,
         storage,
+        demand,
         time::StructVector{BasinTimeV1, C, Int},
     ) where {T, C}
         is_valid = valid_profiles(node_id, level, area)
@@ -178,6 +198,7 @@ struct Basin{T, C} <: AbstractParameterNode
             area,
             level,
             storage,
+            demand,
             time,
         )
     end
@@ -456,16 +477,15 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of user per priority over time
-active: whether this node is active and thus demands water
-allocated: water flux currently allocated to user per priority
-return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
-min_level: The level of the source basin below which the user does not abstract
-priorities: All used priority values. Each user has a demand for all these priorities,
+demand: water flux demand of UserDemand per priority over time.
+    Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
-record: Collected data of allocation optimizations for output file.
+active: whether this node is active and thus demands water
+allocated: water flux currently allocated to UserDemand per priority
+return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
+min_level: The level of the source basin below which the UserDemand does not abstract
 """
-struct User <: AbstractParameterNode
+struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     demand::Vector{Float64}
@@ -474,18 +494,8 @@ struct User <: AbstractParameterNode
     allocated::Vector{Vector{Float64}}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-    priorities::Vector{Int}
-    record::@NamedTuple{
-        time::Vector{Float64},
-        allocation_network_id::Vector{Int},
-        user_node_id::Vector{Int},
-        priority::Vector{Int},
-        demand::Vector{Float64},
-        allocated::Vector{Float64},
-        abstracted::Vector{Float64},
-    }
 
-    function User(
+    function UserDemand(
         node_id,
         active,
         demand,
@@ -495,7 +505,6 @@ struct User <: AbstractParameterNode
         return_factor,
         min_level,
         priorities,
-        record,
     )
         if valid_demand(node_id, demand_itp, priorities)
             return new(
@@ -507,13 +516,24 @@ struct User <: AbstractParameterNode
                 allocated,
                 return_factor,
                 min_level,
-                priorities,
-                record,
             )
         else
             error("Invalid demand")
         end
     end
+end
+
+"""
+node_id: node ID of the LevelDemand node
+min_level: The minimum target level of the connected basin(s)
+max_level: The maximum target level of the connected basin(s)
+priority: If in a shortage state, the priority of the demand of the connected basin(s)
+"""
+struct LevelDemand
+    node_id::Vector{NodeID}
+    min_level::Vector{LinearInterpolation}
+    max_level::Vector{LinearInterpolation}
+    priority::Vector{Int}
 end
 
 "Subgrid linearly interpolates basin levels."
@@ -557,7 +577,7 @@ struct Parameters{T, C1, C2}
     terminal::Terminal
     discrete_control::DiscreteControl
     pid_control::PidControl{T}
-    user::User
-    lookup::Dict{Int, Symbol}
+    user_demand::UserDemand
+    level_demand::LevelDemand
     subgrid::Subgrid
 end

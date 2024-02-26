@@ -371,7 +371,7 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
         end
 
         # Set new fractional flow fractions in allocation problem
-        if node isa FractionalFlow && field == :fraction
+        if is_active(p.allocation) && node isa FractionalFlow && field == :fraction
             set_fractional_flow_in_allocation!(p, node_id, value)
         end
     end
@@ -424,16 +424,16 @@ function update_basin(integrator)::Nothing
     return nothing
 end
 
-"Solve the allocation problem for all users and assign allocated abstractions to user nodes."
+"Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
-    (; p, t) = integrator
+    (; p, t, u) = integrator
     (; allocation) = p
     (; allocation_models) = allocation
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            allocate!(p, allocation_model, t; collect_demands = true)
+            allocate!(p, allocation_model, t, u; collect_demands = true)
         end
     end
 
@@ -441,7 +441,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate!(p, allocation_model, t)
+        allocate!(p, allocation_model, t, u)
     end
 end
 

@@ -198,12 +198,16 @@ function static_and_time_node_ids(
 end
 
 const nonconservative_nodetypes =
-    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "User"])
+    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "UserDemand"])
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
     (; allocation_network_ids, allocation_models, main_network_connections) = allocation
     allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
+
+    if isempty(allocation_network_ids_)
+        return nothing
+    end
 
     errors = non_positive_allocation_network_id(graph)
     if errors
@@ -509,6 +513,8 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
+    demand = zeros(length(node_id))
+
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
         precipitation,
@@ -520,6 +526,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         area,
         level,
         storage,
+        demand,
         time,
     )
 end
@@ -633,21 +640,21 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     )
 end
 
-function User(db::DB, config::Config)::User
-    static = load_structvector(db, config, UserStaticV1)
-    time = load_structvector(db, config, UserTimeV1)
+function UserDemand(db::DB, config::Config)::UserDemand
+    static = load_structvector(db, config, UserDemandStaticV1)
+    time = load_structvector(db, config, UserDemandTimeV1)
 
     static_node_ids, time_node_ids, node_ids, _, valid =
-        static_and_time_node_ids(db, static, time, "User")
+        static_and_time_node_ids(db, static, time, "UserDemand")
 
-    time_node_id_vec = NodeID.(NodeType.User, time.node_id)
+    time_node_id_vec = NodeID.(NodeType.UserDemand, time.node_id)
 
     if !valid
-        error("Problems encountered when parsing User static and time node IDs.")
+        error("Problems encountered when parsing UserDemand static and time node IDs.")
     end
 
-    # All provided priorities
-    priorities = sort(unique(union(static.priority, time.priority)))
+    # All priorities used in the model
+    priorities = get_all_priorities(db, config)
 
     active = BitVector()
     min_level = Float64[]
@@ -659,14 +666,14 @@ function User(db::DB, config::Config)::User
     t_end = seconds_since(config.endtime, config.starttime)
 
     # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int, StructVector{UserTimeV1}} = Dict(
+    time_priority_dict::Dict{Int, StructVector{UserDemandTimeV1}} = Dict(
         first(group).priority => StructVector(group) for
         group in IterTools.groupby(row -> row.priority, time)
     )
 
     demand = Float64[]
 
-    # Whether the demand of a user node is given by a timeseries
+    # Whether the demand of a UserDemand node is given by a timeseries
     demand_from_timeseries = BitVector()
 
     for node_id in node_ids
@@ -675,7 +682,7 @@ function User(db::DB, config::Config)::User
 
         if node_id in static_node_ids
             push!(demand_from_timeseries, false)
-            rows = searchsorted(NodeID.(NodeType.User, static.node_id), node_id)
+            rows = searchsorted(NodeID.(NodeType.UserDemand, static.node_id), node_id)
             static_id = view(static, rows)
             for p in priorities
                 idx = findsorted(static_id.priority, p)
@@ -704,7 +711,7 @@ function User(db::DB, config::Config)::User
                     if is_valid
                         push!(demand_itp_node_id, demand_p_itp)
                     else
-                        @error "The demand(t) relationship for User #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+                        @error "The demand(t) relationship for UserDemand #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
                         errors = true
                     end
                 else
@@ -718,7 +725,7 @@ function User(db::DB, config::Config)::User
             first_row = time[first_row_idx]
             is_active = true
         else
-            @error "User node #$node_id data not in any table."
+            @error "UserDemand node #$node_id data not in any table."
             errors = true
         end
 
@@ -732,22 +739,12 @@ function User(db::DB, config::Config)::User
     end
 
     if errors
-        error("Errors occurred when parsing User data.")
+        error("Errors occurred when parsing UserDemand data.")
     end
 
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
-    record = (
-        time = Float64[],
-        allocation_network_id = Int[],
-        user_node_id = Int[],
-        priority = Int[],
-        demand = Float64[],
-        allocated = Float64[],
-        abstracted = Float64[],
-    )
-
-    return User(
+    return UserDemand(
         node_ids,
         active,
         demand,
@@ -757,7 +754,31 @@ function User(db::DB, config::Config)::User
         return_factor,
         min_level,
         priorities,
-        record,
+    )
+end
+
+function LevelDemand(db::DB, config::Config)::LevelDemand
+    static = load_structvector(db, config, LevelDemandStaticV1)
+    time = load_structvector(db, config, LevelDemandTimeV1)
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "LevelDemand";
+        static,
+        time,
+        time_interpolatables = [:min_level, :max_level],
+    )
+
+    if !valid
+        error("Errors occurred when parsing LevelDemand data.")
+    end
+
+    return LevelDemand(
+        NodeID.(NodeType.LevelDemand, parsed_parameters.node_id),
+        parsed_parameters.min_level,
+        parsed_parameters.max_level,
+        parsed_parameters.priority,
     )
 end
 
@@ -794,6 +815,45 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
+function Allocation(db::DB, config::Config)::Allocation
+    record_demand = (
+        time = Float64[],
+        subnetwork_id = Int[],
+        node_type = String[],
+        node_id = Int[],
+        priority = Int[],
+        demand = Float64[],
+        allocated = Float64[],
+        realized = Float64[],
+    )
+
+    record_flow = (
+        time = Float64[],
+        edge_id = Int[],
+        from_node_type = String[],
+        from_node_id = Int[],
+        to_node_type = String[],
+        to_node_id = Int[],
+        subnetwork_id = Int[],
+        priority = Int[],
+        flow_rate = Float64[],
+        collect_demands = BitVector(),
+    )
+
+    allocation = Allocation(
+        Int[],
+        AllocationModel[],
+        Vector{Tuple{NodeID, NodeID}}[],
+        get_all_priorities(db, config),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        record_demand,
+        record_flow,
+    )
+
+    return allocation
+end
+
 """
 Get the chunk sizes for DiffCache; differentiation w.r.t. u
 and t (the latter only if a Rosenbrock algorithm is used).
@@ -811,23 +871,7 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation = Allocation(
-        Int[],
-        AllocationModel[],
-        Vector{Tuple{NodeID, NodeID}}[],
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        (;
-            time = Float64[],
-            edge_id = Int[],
-            from_node_id = Int[],
-            to_node_id = Int[],
-            allocation_network_id = Int[],
-            priority = Int[],
-            flow = Float64[],
-            collect_demands = BitVector(),
-        ),
-    )
+    allocation = Allocation(db, config)
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
@@ -844,26 +888,11 @@ function Parameters(db::DB, config::Config)::Parameters
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
-    user = User(db, config)
+    user_demand = UserDemand(db, config)
+    level_demand = LevelDemand(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
-
-    # Set is_pid_controlled to true for those pumps and outlets that are PID controlled
-    for id in pid_control.node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        if id_controlled.type == NodeType.Pump
-            pump_idx = findsorted(pump.node_id, id_controlled)
-            pump.is_pid_controlled[pump_idx] = true
-        elseif id_controlled.type == NodeType.Outlet
-            outlet_idx = findsorted(outlet.node_id, id_controlled)
-            outlet.is_pid_controlled[outlet_idx] = true
-        else
-            error(
-                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
-            )
-        end
-    end
 
     p = Parameters(
         config.starttime,
@@ -881,10 +910,12 @@ function Parameters(db::DB, config::Config)::Parameters
         terminal,
         discrete_control,
         pid_control,
-        user,
-        Dict{Int, Symbol}(),
+        user_demand,
+        level_demand,
         subgrid_level,
     )
+
+    set_is_pid_controlled!(p)
 
     if !valid_n_neighbors(p)
         error("Invalid number of connections for certain node types.")
@@ -898,15 +929,11 @@ function Parameters(db::DB, config::Config)::Parameters
 end
 
 function get_nodetypes(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT type FROM Node ORDER BY fid"))
-end
-
-function get_ids(db::DB)::Vector{Int}
-    return only(execute(columntable, db, "SELECT fid FROM Node ORDER BY fid"))
+    return only(execute(columntable, db, "SELECT node_type FROM Node ORDER BY fid"))
 end
 
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "SELECT fid FROM Node WHERE type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 
@@ -915,7 +942,7 @@ function get_names(db::DB)::Vector{String}
 end
 
 function get_names(db::DB, nodetype)::Vector{String}
-    sql = "SELECT name FROM Node where type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT name FROM Node where node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 

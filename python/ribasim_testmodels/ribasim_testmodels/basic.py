@@ -27,11 +27,8 @@ def basic_model() -> ribasim.Model:
     static = pd.DataFrame(
         data={
             "node_id": [0],
-            "drainage": [0.0],
             "potential_evaporation": [evaporation],
-            "infiltration": [0.0],
             "precipitation": [precipitation],
-            "urban_runoff": [0.0],
         }
     )
     static = static.iloc[[0, 0, 0, 0]]
@@ -172,7 +169,7 @@ def basic_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -307,11 +304,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     static = pd.DataFrame(
         data={
             "node_id": [1, 4],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
             "precipitation": [precipitation, 0.0],
-            "urban_runoff": 0.0,
         }
     )
     state = pd.DataFrame(
@@ -366,7 +359,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -419,7 +412,7 @@ def outlet_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -451,20 +444,9 @@ def outlet_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
-            "precipitation": 0.0,
-            "urban_runoff": 0.0,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [3], "level": 1e-3})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup the level boundary:
     level_boundary = ribasim.LevelBoundary(
@@ -499,6 +481,7 @@ def outlet_model():
         level_boundary=level_boundary,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        solver=ribasim.Solver(saveat=0),
     )
 
     return model

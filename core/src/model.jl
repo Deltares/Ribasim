@@ -77,9 +77,9 @@ function Model(config::Config)::Model
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
         tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
-        time_user = load_structvector(db, config, UserTimeV1)
-        tstops_user = get_tstops(time_user.time, config.starttime)
-        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user)))
+        time_user_demand = load_structvector(db, config, UserDemandTimeV1)
+        tstops_user_demand = get_tstops(time_user_demand.time, config.starttime)
+        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user_demand)))
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -105,6 +105,8 @@ function Model(config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
+    saveat = convert_saveat(config.solver.saveat, t_end)
+    adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -114,7 +116,7 @@ function Model(config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config; config.solver.saveat)
+    callback, saved = create_callbacks(parameters, config; saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -130,9 +132,9 @@ function Model(config::Config)::Model
         callback,
         tstops,
         isoutofdomain = (u, p, t) -> any(<(0), u.storage),
-        config.solver.saveat,
-        config.solver.adaptive,
-        dt = something(config.solver.dt, t0),
+        saveat,
+        adaptive,
+        dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
