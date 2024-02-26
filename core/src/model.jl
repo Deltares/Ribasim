@@ -159,13 +159,13 @@ tsaves(model::Model)::Vector{Float64} = model.integrator.sol.t
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
-    return datetime_since.(tstops(model), model.config.starttime)
+    return datetime_since.(tsaves(model), model.config.starttime)
 end
 
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model
     t = datetime_since(integrator.t, config.starttime)
-    nsaved = length(tstops(model))
+    nsaved = length(tsaves(model))
     println(io, "Model(ts: $nsaved, t: $t)")
 end
 
