@@ -57,19 +57,19 @@ function main(ARGS::Vector{String})::Cint
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
-                ribasim_version = string(pkgversion(Ribasim))
+                cli = (; ribasim_version = string(pkgversion(Ribasim)))
                 (; starttime, endtime) = config
-                if string(ribasim_version) != config.ribasim_version
-                    @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version ribasim_version
+                if config.ribasim_version != cli.ribasim_version
+                    @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
                 end
-                @info "Starting a Ribasim simulation." ribasim_version starttime endtime
+                @info "Starting a Ribasim simulation." cli.ribasim_version starttime endtime
                 model = Ribasim.run(config)
                 if successful_retcode(model)
                     @info "The model finished successfully"
                     return 0
                 end
 
-                t = Ribasim.datetime_since(model.integrator.t, model.config.starttime)
+                t = Ribasim.datetime_since(model.integrator.t, starttime)
                 retcode = model.integrator.sol.retcode
                 @error "The model exited at model time $t with return code $retcode.\nSee https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"
                 return 1
