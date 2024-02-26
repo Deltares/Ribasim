@@ -299,3 +299,20 @@ end
         2.0,
     ) === 1.0
 end
+
+@testitem "constraints_from_nodes" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    constraining_types = (:pump, :outlet, :linear_resistance)
+
+    for type in Ribasim.nodefields(p)
+        node = getfield(p, type)
+        if type in constraining_types
+            @test Ribasim.is_flow_constraining(node)
+        else
+            @test !Ribasim.is_flow_constraining(node)
+        end
+    end
+end
