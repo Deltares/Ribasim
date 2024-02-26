@@ -96,7 +96,7 @@ end
 Integrate flows over timesteps
 """
 function integrate_flows!(u, t, integrator)::Nothing
-    (; p, tprev) = integrator
+    (; p, dt) = integrator
     (; graph) = p
     (;
         flow,
@@ -108,7 +108,6 @@ function integrate_flows!(u, t, integrator)::Nothing
     ) = graph[]
     flow = get_tmp(flow, 0)
     flow_vertical = get_tmp(flow_vertical, 0)
-    Δt = t - tprev
 
     flow_effective = if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
@@ -125,8 +124,8 @@ function integrate_flows!(u, t, integrator)::Nothing
             0.5 * (flow_vertical + flow_vertical_prev)
         end
 
-    @. flow_integrated += flow_effective * Δt
-    @. flow_vertical_integrated += flow_vertical_effective * Δt
+    @. flow_integrated += flow_effective * dt
+    @. flow_vertical_integrated += flow_vertical_effective * dt
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)
@@ -425,18 +424,23 @@ end
 
 "Copy the current flow to the SavedValues"
 function save_flow(u, t, integrator)
-    (; tprev, p) = integrator
+    (; dt, p) = integrator
     (; graph) = p
     (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
 
     Δt = if iszero(saveat)
-        t - tprev
+        dt
     elseif isinf(saveat)
         t
     else
         t_end = integrator.sol.prob.tspan[2]
-        # The last interval might be shorter than saveat
-        t_end - t >= saveat ? saveat : t - tprev
+        if t_end - t > saveat
+            saveat
+        else
+            # The last interval might be shorter than saveat
+            rem = t % saveat
+            iszero(rem) ? saveat : rem
+        end
     end
 
     mean_flow_vertical = flow_vertical_integrated / Δt

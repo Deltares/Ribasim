@@ -173,7 +173,9 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
-    model = Ribasim.run(config)
+    model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
+    @test config.solver.dt === model.integrator.dt
+    Ribasim.solve!(model)
     @test successful_retcode(model)
     p = model.integrator.p
     (; flow_boundary, fractional_flow, pump) = p
@@ -186,8 +188,6 @@ end
     storage_both = get_storages_and_levels(model).storage
     t = tstops(model)
     tspan = model.integrator.sol.prob.tspan
-
-    @test config.solver.dt === model.integrator.dt
     @test t ≈ range(tspan...; step = config.solver.saveat)
     @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
