@@ -9,6 +9,7 @@ run(config_path::AbstractString)::Model = run(Config(config_path))
 
 function run(config::Config)::Model
     model = Model(config)
+    println(model)
     solve!(model)
     write_results(model)
     return model
