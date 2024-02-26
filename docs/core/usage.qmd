@@ -680,8 +680,7 @@ The table is sorted by time, and per time it is sorted by `node_id`.
 
 ## Flow - `flow.arrow`
 
-The flow table contains results of the flow on every edge in the model, for each solver
-timestep.
+The flow table contains results of the flow on every edge in the model, averaged over each `saveat` interval.
 
 column         | type                | unit
 -------------- | ------------------- | ----
