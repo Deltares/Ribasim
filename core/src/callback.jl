@@ -93,7 +93,7 @@ function create_callbacks(
 end
 
 """
-Integrate flows over timesteps
+Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
@@ -422,7 +422,8 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     end
 end
 
-"Copy the current flow to the SavedValues"
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
 function save_flow(u, t, integrator)
     (; dt, p) = integrator
     (; graph) = p

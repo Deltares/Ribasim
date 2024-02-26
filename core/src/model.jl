@@ -155,7 +155,7 @@ function Model(config::Config)::Model
 end
 
 "Get all saved times in seconds since start"
-tstops(model::Model)::Vector{Float64} = model.integrator.sol.t
+tsaves(model::Model)::Vector{Float64} = model.integrator.sol.t
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}

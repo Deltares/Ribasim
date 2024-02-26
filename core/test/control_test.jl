@@ -32,7 +32,7 @@
           ["off", "active", "on", "off", "inactive"]
 
     level = Ribasim.get_storages_and_levels(model).level
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
 
     # Control times
     t_1 = discrete_control.record.time[3]
@@ -56,7 +56,7 @@ end
 
     Δt = discrete_control.look_ahead[1]
 
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
@@ -80,7 +80,7 @@ end
 
     Δt = discrete_control.look_ahead[1]
 
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
@@ -100,7 +100,7 @@ end
     (; basin, pid_control, flow_boundary) = p
 
     level = Ribasim.get_storages_and_levels(model).level[1, :]
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
 
     target_itp = pid_control.target[1]
     t_target_change = target_itp.t[2]
@@ -161,7 +161,7 @@ end
     (; discrete_control) = p
     (; record, greater_than) = discrete_control
     level = Ribasim.get_storages_and_levels(model).level[1, :]
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
 
     t_none_1 = discrete_control.record.time[2]
     t_in = discrete_control.record.time[3]
@@ -192,7 +192,7 @@ end
     p = model.integrator.p
     (; discrete_control, pid_control) = p
 
-    t = Ribasim.tstops(model)
+    t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
     target_high =
