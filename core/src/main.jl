@@ -57,8 +57,11 @@ function main(ARGS::Vector{String})::Cint
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
-                ribasim_version = pkgversion(Ribasim)
+                ribasim_version = string(pkgversion(Ribasim))
                 (; starttime, endtime) = config
+                if string(ribasim_version) != config.ribasim_version
+                    @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version ribasim_version
+                end
                 @info "Starting a Ribasim simulation." ribasim_version starttime endtime
                 model = Ribasim.run(config)
                 if successful_retcode(model)

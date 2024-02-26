@@ -16,6 +16,7 @@ from pydantic import (
     model_validator,
 )
 
+import ribasim
 from ribasim.config import (
     Allocation,
     Basin,
@@ -229,6 +230,7 @@ class Model(FileModel):
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
+        content["ribasim_version"] = ribasim.__version__
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
