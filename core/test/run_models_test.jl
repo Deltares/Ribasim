@@ -95,7 +95,7 @@
     end
 
     @testset "Results values" begin
-        @test flow.time[1] > DateTime(2020)
+        @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.edge_id[1:4], -1) == [-1, -1, 9, 11]
         @test flow.from_node_id[1:4] == [6, typemax(Int), 0, 6]
         @test flow.to_node_id[1:4] == [6, typemax(Int), typemax(Int), 0]
@@ -200,7 +200,7 @@ end
     table = Ribasim.flow_table(model)
 
     # flows are recorded at the end of each period, and are undefined at the start
-    @test unique(table.time) == Ribasim.datetimes(model)[2:end]
+    @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
     # inflow = outflow over FractionalFlow
     t = table.time[1]

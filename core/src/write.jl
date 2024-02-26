@@ -148,7 +148,10 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
-    time = repeat(datetime_since.(t, config.starttime); inner = nflow)
+    # the timestamp should represent the start of the period, not the end
+    t_starts = circshift(t, 1)
+    t_starts[1] = 0.0
+    time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
