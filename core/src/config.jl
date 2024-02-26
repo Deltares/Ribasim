@@ -111,6 +111,7 @@ end
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
+    ribasim_version::String
     input_dir::String
     results_dir::String
     database::String = "database.gpkg"

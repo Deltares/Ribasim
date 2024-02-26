@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 import ribasim
+import tomli
 from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
@@ -36,8 +37,14 @@ def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
 
 def test_basic(basic, tmp_path):
     model_orig = basic
-    model_orig.write(tmp_path / "basic/ribasim.toml")
-    model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
+    toml_path = tmp_path / "basic/ribasim.toml"
+    model_orig.write(toml_path)
+    model_loaded = ribasim.Model(filepath=toml_path)
+
+    with open(toml_path, "rb") as f:
+        toml_dict = tomli.load(f)
+
+    assert toml_dict["ribasim_version"] == ribasim.__version__
 
     index_a = model_orig.network.node.df.index.to_numpy(int)
     index_b = model_loaded.network.node.df.index.to_numpy(int)

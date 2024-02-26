@@ -7,6 +7,8 @@ endtime = 2021-01-01   # required
 input_dir = "."         # required
 results_dir = "results" # required
 
+ribasim_version = "2024.2.0" # required
+
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the database if not specified in the TOML.
