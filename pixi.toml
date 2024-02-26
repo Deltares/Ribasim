@@ -93,7 +93,7 @@ generate-testmodels = "python utils/generate-testmodels.py"
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 generate-python = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py"}
-codegen = { depends_on = ["generate-python", "lint"] }
+codegen = { depends_on = ["initialize-julia", "generate-python"] }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
@@ -168,7 +168,6 @@ shapely = ">=2.0"
 tomli = "*"
 tomli-w = "*"
 twine = "*"
-types-requests = "*"
 typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
