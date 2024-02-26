@@ -411,8 +411,8 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        @test_throws "Invalid demand" Ribasim.User(
-            [NodeID(:User, 1)],
+        @test_throws "Invalid demand" Ribasim.UserDemand(
+            [NodeID(:UserDemand, 1)],
             [true],
             [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
@@ -427,5 +427,5 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Demand of User #1 with priority 1 should be non-negative"
+          "Demand of UserDemand #1 with priority 1 should be non-negative"
 end

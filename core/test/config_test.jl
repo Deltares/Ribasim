@@ -32,13 +32,13 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test config.solver.adaptive
+        @test config.solver.autodiff
     end
 end
 
 @testitem "Solver" begin
     using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
-    using Ribasim: convert_saveat, Solver, algorithm
+    using Ribasim: convert_saveat, convert_dt, Solver, algorithm
 
     solver = Solver()
     @test solver.algorithm == "QNDF"
@@ -46,7 +46,6 @@ end
         algorithm = "Rosenbrock23",
         autodiff = true,
         saveat = 3600.0,
-        adaptive = true,
         dt = 0,
         abstol = 1e-5,
         reltol = 1e-4,
@@ -66,12 +65,16 @@ end
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
     t_end = 100.0
-    @test convert_saveat(0.0, t_end) == Float64[]
-    @test convert_saveat(60.0, t_end) == 60.0
-    @test convert_saveat(Inf, t_end) == [0.0, t_end]
-    @test convert_saveat(Inf, t_end) == [0.0, t_end]
+    @test convert_saveat(0.0, t_end) == (Float64[], Float64[])
+    @test convert_saveat(60.0, t_end) == (60.0, [60.0])
+    @test convert_saveat(Inf, t_end) == ([0.0, t_end], [t_end])
+    @test convert_saveat(Inf, t_end) == ([0.0, t_end], [t_end])
     @test_throws ErrorException convert_saveat(-Inf, t_end)
     @test_throws ErrorException convert_saveat(NaN, t_end)
+
+    @test convert_dt(nothing) == (true, 0.0)
+    @test convert_dt(360.0) == (false, 360.0)
+    @test_throws ErrorException convert_dt(0.0)
 end
 
 @testitem "snake_case" begin

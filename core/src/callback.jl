@@ -486,7 +486,7 @@ function update_basin(integrator)::Nothing
     return nothing
 end
 
-"Solve the allocation problem for all users and assign allocated abstractions to user nodes."
+"Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p

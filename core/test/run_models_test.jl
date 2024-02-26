@@ -374,19 +374,19 @@ end
     all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
-@testitem "User" begin
+@testitem "UserDemand" begin
     using SciMLBase: successful_retcode
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/user/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
     day = 86400.0
     @test only(model.integrator.sol(0day)) == 1000.0
-    # constant user withdraws to 0.9m/900m3
+    # constant UserDemand withdraws to 0.9m/900m3
     @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic user withdraws to 0.5m/509m3
+    # dynamic UserDemand withdraws to 0.5m/509m3
     @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 
@@ -484,7 +484,9 @@ end
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
     function get_flow(solver_adaptive::Bool, solver_saveat::Float64)::Vector{Float64}
-        config = Ribasim.Config(toml_path; solver_adaptive, solver_saveat)
+        config = Ribasim.Config(toml_path)
+        solver_dt = solver_adaptive ? nothing : config.solver.dt
+        config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_table(model))
         return filter(

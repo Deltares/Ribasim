@@ -215,8 +215,8 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "h",
             "DiscreteControl": "*",
             "PidControl": "x",
-            "User": "s",
-            "TargetLevel": "o",
+            "UserDemand": "s",
+            "LevelDemand": "o",
             "": "o",
         }
 
@@ -233,8 +233,8 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "m",
             "DiscreteControl": "k",
             "PidControl": "k",
-            "User": "g",
-            "TargetLevel": "k",
+            "UserDemand": "g",
+            "LevelDemand": "k",
             "": "k",
         }
         assert self.df is not None

@@ -46,7 +46,7 @@ function Model(config::Config)::Model
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
-    local parameters, state, n, tstops, tstops_flow_boundary, tstops_user
+    local parameters, state, n, tstops, tstops_flow_boundary, tstops_user_demand
     try
         parameters = Parameters(db, config)
 
@@ -77,8 +77,8 @@ function Model(config::Config)::Model
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
         tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
-        time_user = load_structvector(db, config, UserTimeV1)
-        tstops_user = get_tstops(time_user.time, config.starttime)
+        time_user_demand = load_structvector(db, config, UserDemandTimeV1)
+        tstops_user_demand = get_tstops(time_user_demand.time, config.starttime)
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -104,10 +104,10 @@ function Model(config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
-    saveat_state = convert_saveat(config.solver.saveat, t_end)
-    saveat_flow = convert_saveat(config.solver.saveat, t_end; state = false)
 
-    tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user, saveat_flow)))
+    saveat_state, saveat_flow = convert_saveat(config.solver.saveat, t_end)
+    tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user_demand, saveat_flow)))
+    adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
@@ -134,8 +134,8 @@ function Model(config::Config)::Model
         tstops,
         isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         saveat = saveat_state,
-        config.solver.adaptive,
-        dt = something(config.solver.dt, t0),
+        adaptive,
+        dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,

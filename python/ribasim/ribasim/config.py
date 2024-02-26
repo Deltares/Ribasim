@@ -18,6 +18,8 @@ from ribasim.schemas import (
     FractionalFlowStaticSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
+    LevelDemandStaticSchema,
+    LevelDemandTimeSchema,
     LinearResistanceStaticSchema,
     ManningResistanceStaticSchema,
     OutletStaticSchema,
@@ -26,11 +28,9 @@ from ribasim.schemas import (
     PumpStaticSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
-    TargetLevelStaticSchema,
-    TargetLevelTimeSchema,
     TerminalStaticSchema,
-    UserStaticSchema,
-    UserTimeSchema,
+    UserDemandStaticSchema,
+    UserDemandTimeSchema,
 )
 
 
@@ -50,7 +50,6 @@ class Results(ChildModel):
 class Solver(ChildModel):
     algorithm: str = "QNDF"
     saveat: float = 86400.0
-    adaptive: bool = True
     dt: float | None = None
     dtmin: float | None = None
     dtmax: float | None = None
@@ -121,24 +120,24 @@ class TabulatedRatingCurve(NodeModel):
     )
 
 
-class User(NodeModel):
-    static: TableModel[UserStaticSchema] = Field(
-        default_factory=TableModel[UserStaticSchema],
+class UserDemand(NodeModel):
+    static: TableModel[UserDemandStaticSchema] = Field(
+        default_factory=TableModel[UserDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
-    time: TableModel[UserTimeSchema] = Field(
-        default_factory=TableModel[UserTimeSchema],
+    time: TableModel[UserDemandTimeSchema] = Field(
+        default_factory=TableModel[UserDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
 
 
-class TargetLevel(NodeModel):
-    static: TableModel[TargetLevelStaticSchema] = Field(
-        default_factory=TableModel[TargetLevelStaticSchema],
+class LevelDemand(NodeModel):
+    static: TableModel[LevelDemandStaticSchema] = Field(
+        default_factory=TableModel[LevelDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
-    time: TableModel[TargetLevelTimeSchema] = Field(
-        default_factory=TableModel[TargetLevelTimeSchema],
+    time: TableModel[LevelDemandTimeSchema] = Field(
+        default_factory=TableModel[LevelDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
 

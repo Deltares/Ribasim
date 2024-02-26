@@ -21,10 +21,10 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
-@schema "ribasim.user.static" UserStatic
-@schema "ribasim.user.time" UserTime
-@schema "ribasim.targetlevel.static" TargetLevelStatic
-@schema "ribasim.targetlevel.time" TargetLevelTime
+@schema "ribasim.userdemand.static" UserDemandStatic
+@schema "ribasim.userdemand.time" UserDemandTime
+@schema "ribasim.leveldemand.static" LevelDemandStatic
+@schema "ribasim.leveldemand.time" LevelDemandTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -220,7 +220,7 @@ end
     control_state::Union{Missing, String}
 end
 
-@version UserStaticV1 begin
+@version UserDemandStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     demand::Float64
@@ -229,7 +229,7 @@ end
     priority::Int
 end
 
-@version UserTimeV1 begin
+@version UserDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64
@@ -238,14 +238,14 @@ end
     priority::Int
 end
 
-@version TargetLevelStaticV1 begin
+@version LevelDemandStaticV1 begin
     node_id::Int
     min_level::Float64
     max_level::Float64
     priority::Int
 end
 
-@version TargetLevelTimeV1 begin
+@version LevelDemandTimeV1 begin
     node_id::Int
     time::DateTime
     min_level::Float64

@@ -8,12 +8,12 @@ import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
     fractional_flow_subnetwork_model,
+    level_demand_model,
     looped_subnetwork_model,
     main_network_with_subnetworks_model,
     minimal_subnetwork_model,
     subnetwork_model,
-    target_level_model,
-    user_model,
+    user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
@@ -55,7 +55,6 @@ from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
     "allocation_example_model",
-    "target_level_model",
     "backwater_model",
     "basic_arrow_model",
     "basic_model",
@@ -72,9 +71,11 @@ __all__ = [
     "invalid_qh_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
+    "level_demand_model",
     "level_setpoint_with_minmax_model",
     "linear_resistance_model",
     "looped_subnetwork_model",
+    "main_network_with_subnetworks_model",
     "manning_resistance_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
@@ -88,8 +89,7 @@ __all__ = [
     "tabulated_rating_curve_model",
     "trivial_model",
     "two_basin_model",
-    "user_model",
-    "main_network_with_subnetworks_model",
+    "user_demand_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models

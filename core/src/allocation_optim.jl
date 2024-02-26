@@ -50,9 +50,9 @@ end
 
 """
 Add a term to the expression of the objective function corresponding to
-the demand of a user.
+the demand of a UserDemand.
 """
-function add_user_term!(
+function add_user_demand_term!(
     ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
     edge::Tuple{NodeID, NodeID},
     objective_type::Symbol,
@@ -61,11 +61,11 @@ function add_user_term!(
 )::Nothing
     F = problem[:F]
     F_edge = F[edge]
-    node_id_user = edge[2]
+    node_id_user_demand = edge[2]
 
     if objective_type in [:linear_absolute, :linear_relative]
-        constraint_abs_positive = problem[:abs_positive_user][node_id_user]
-        constraint_abs_negative = problem[:abs_negative_user][node_id_user]
+        constraint_abs_positive = problem[:abs_positive_user_demand][node_id_user_demand]
+        constraint_abs_negative = problem[:abs_negative_user_demand][node_id_user_demand]
     else
         constraint_abs_positive = nothing
         constraint_abs_negative = nothing
@@ -126,8 +126,8 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; objective_type, problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation, basin) = p
-    (; demand_itp, demand_from_timeseries, node_id) = user
+    (; graph, user_demand, allocation, basin) = p
+    (; demand_itp, demand_from_timeseries, node_id) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -135,39 +135,39 @@ function set_objective_priority!(
         ex = JuMP.QuadExpr()
     elseif objective_type in [:linear_absolute, :linear_relative]
         ex = JuMP.AffExpr()
-        ex += sum(problem[:F_abs_user])
+        ex += sum(problem[:F_abs_user_demand])
         ex += sum(problem[:F_abs_basin])
     end
 
     demand_max = 0.0
 
-    # Terms for subnetworks as users
+    # Terms for subnetworks as UserDemand
     if is_main_network(allocation_network_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
                 demand_max = max(demand_max, d)
-                add_user_term!(ex, connection, objective_type, d, problem)
+                add_user_demand_term!(ex, connection, objective_type, d, problem)
             end
         end
     end
 
-    # Terms for user nodes
+    # Terms for UserDemand nodes
     for edge_id in edge_ids
-        node_id_user = edge_id[2]
-        if node_id_user.type != NodeType.User
+        node_id_user_demand = edge_id[2]
+        if node_id_user_demand.type != NodeType.UserDemand
             continue
         end
 
-        user_idx = findsorted(node_id, node_id_user)
-        if demand_from_timeseries[user_idx]
-            d = demand_itp[user_idx][priority_idx](t)
-            set_user_demand!(p, node_id_user, priority_idx, d)
+        user_demand_idx = findsorted(node_id, node_id_user_demand)
+        if demand_from_timeseries[user_demand_idx]
+            d = demand_itp[user_demand_idx][priority_idx](t)
+            set_user_demand!(p, node_id_user_demand, priority_idx, d)
         else
-            d = get_user_demand(p, node_id_user, priority_idx)
+            d = get_user_demand(p, node_id_user_demand, priority_idx)
         end
         demand_max = max(demand_max, d)
-        add_user_term!(ex, edge_id, objective_type, d, problem)
+        add_user_demand_term!(ex, edge_id, objective_type, d, problem)
     end
 
     # Terms for basins
@@ -188,7 +188,7 @@ function set_objective_priority!(
 end
 
 """
-Assign the allocations to the users as determined by the solution of the allocation problem.
+Assign the allocations to the UserDemand as determined by the solution of the allocation problem.
 """
 function assign_allocations!(
     allocation_model::AllocationModel,
@@ -197,7 +197,7 @@ function assign_allocations!(
     collect_demands::Bool = false,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
-    (; graph, user, allocation) = p
+    (; graph, user_demand, allocation) = p
     (;
         subnetwork_demands,
         subnetwork_allocateds,
@@ -217,12 +217,12 @@ function assign_allocations!(
             subnetwork_demands[edge_id][priority_idx] += allocated
         end
 
-        user_node_id = edge_id[2]
+        user_demand_node_id = edge_id[2]
 
-        if user_node_id.type == NodeType.User
+        if user_demand_node_id.type == NodeType.UserDemand
             allocated = JuMP.value(F[edge_id])
-            user_idx = findsorted(user.node_id, user_node_id)
-            user.allocated[user_idx][priority_idx] = allocated
+            user_demand_idx = findsorted(user_demand.node_id, user_demand_node_id)
+            user_demand.allocated[user_demand_idx][priority_idx] = allocated
         end
     end
 
@@ -344,7 +344,7 @@ Get several variables associated with a basin:
 - Its current storage
 - The allocation update interval
 - The influx (sum of instantaneous vertical fluxes of the basin)
-- The index of the connected target_level node (0 if such a
+- The index of the connected level_demand node (0 if such a
   node does not exist)
 - The index of the basin
 """
@@ -354,7 +354,7 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, target_level) = p
+    (; graph, basin, level_demand) = p
     (; Δt_allocation) = allocation_model
     @assert node_id.type == NodeType.Basin
     influx = get_flow(graph, node_id, 0.0)
@@ -362,19 +362,19 @@ function get_basin_data(
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(control_inneighbors)
-        target_level_idx = 0
+        level_demand_idx = 0
     else
-        target_level_node_id = first(control_inneighbors)
-        target_level_idx = findsorted(target_level.node_id, target_level_node_id)
+        level_demand_node_id = first(control_inneighbors)
+        level_demand_idx = findsorted(level_demand.node_id, level_demand_node_id)
     end
-    return storage_basin, Δt_allocation, influx, target_level_idx, basin_idx
+    return storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx
 end
 
 """
 Get the capacity of the basin, i.e. the maximum
 flow that can be abstracted from the basin if it is in a
 state of surplus storage (0 if no reference levels are provided by
-a target_level node).
+a level_demand node).
 Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_capacity(
@@ -384,14 +384,14 @@ function get_basin_capacity(
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; target_level) = p
+    (; level_demand) = p
     @assert node_id.type == NodeType.Basin
-    storage_basin, Δt_allocation, influx, target_level_idx, basin_idx =
+    storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    if iszero(target_level_idx)
+    if iszero(level_demand_idx)
         return 0.0
     else
-        level_max = target_level.max_level[target_level_idx](t)
+        level_max = level_demand.max_level[level_demand_idx](t)
         storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
         return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
     end
@@ -400,7 +400,7 @@ end
 """
 Get the demand of the basin, i.e. how large a flow the
 basin needs to get to its minimum target level (0 if no
-reference levels are provided by a target_level node).
+reference levels are provided by a level_demand node).
 Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_demand(
@@ -410,14 +410,14 @@ function get_basin_demand(
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; target_level) = p
+    (; level_demand) = p
     @assert node_id.type == NodeType.Basin
-    storage_basin, Δt_allocation, influx, target_level_idx, basin_idx =
+    storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx =
         get_basin_data(allocation_model, p, u, node_id)
-    if iszero(target_level_idx)
+    if iszero(level_demand_idx)
         return 0.0
     else
-        level_min = target_level.min_level[target_level_idx](t)
+        level_min = level_demand.min_level[level_demand_idx](t)
         storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
         return max(0.0, (storage_min - storage_basin) / Δt_allocation - influx)
     end
@@ -459,7 +459,7 @@ function adjust_basin_capacities!(
 end
 
 """
-Save the demands and allocated flows for users and basins.
+Save the demands and allocated flows for UserDemand and Basin.
 Note: Basin supply (negative demand) is only saved for the first priority.
 """
 function save_demands_and_allocations!(
@@ -468,7 +468,7 @@ function save_demands_and_allocations!(
     t::Float64,
     priority_idx::Int,
 )::Nothing
-    (; graph, allocation, user, basin) = p
+    (; graph, allocation, user_demand, basin) = p
     (; record_demand, priorities) = allocation
     (; allocation_network_id, problem) = allocation_model
     node_ids = graph[].node_ids[allocation_network_id]
@@ -479,11 +479,11 @@ function save_demands_and_allocations!(
     for node_id in node_ids
         has_demand = false
 
-        if node_id.type == NodeType.User
+        if node_id.type == NodeType.UserDemand
             has_demand = true
-            user_idx = findsorted(user.node_id, node_id)
-            demand = user.demand[user_idx]
-            allocated = user.allocated[user_idx][priority_idx]
+            user_demand_idx = findsorted(user_demand.node_id, node_id)
+            demand = user_demand.demand[user_demand_idx]
+            allocated = user_demand.allocated[user_demand_idx][priority_idx]
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
         elseif node_id.type == NodeType.Basin
@@ -586,7 +586,7 @@ end
 
 """
 Update the allocation optimization problem for the given subnetwork with the problem state
-and flows, solve the allocation problem and assign the results to the users.
+and flows, solve the allocation problem and assign the results to the UserDemand.
 """
 function allocate!(
     p::Parameters,
@@ -636,7 +636,7 @@ function allocate!(
             )
         end
 
-        # Assign the allocations to the users for this priority
+        # Assign the allocations to the UserDemand for this priority
         assign_allocations!(allocation_model, p, priority_idx; collect_demands)
 
         # Save the demands and allocated flows for all nodes that have these

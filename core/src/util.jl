@@ -621,11 +621,11 @@ function is_main_network(allocation_network_id::Int)::Bool
 end
 
 function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
-    (; user, allocation) = p
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    return demand[(user_idx - 1) * n_priorities + priority_idx]
+    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
 end
 
 function set_user_demand!(
@@ -634,11 +634,11 @@ function set_user_demand!(
     priority_idx::Int,
     value::Float64,
 )::Nothing
-    (; user, allocation) = p
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    demand[(user_idx - 1) * n_priorities + priority_idx] = value
+    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
     return nothing
 end
 
@@ -646,21 +646,22 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     priorities = Set{Int}()
 
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [UserStaticV1, UserTimeV1, TargetLevelStaticV1, TargetLevelTimeV1]
+    for type in
+        [UserDemandStaticV1, UserDemandTimeV1, LevelDemandStaticV1, LevelDemandTimeV1]
         union!(priorities, load_structvector(db, config, type).priority)
     end
     return sort(unique(priorities))
 end
 
 function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
-    (; graph, target_level, allocation) = p
+    (; graph, level_demand, allocation) = p
     @assert node_id.type == NodeType.Basin
     inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(inneighbors_control)
         return 0
     else
-        idx = findsorted(target_level.node_id, only(inneighbors_control))
-        priority = target_level.priority[idx]
+        idx = findsorted(level_demand.node_id, only(inneighbors_control))
+        priority = level_demand.priority[idx]
         return findsorted(allocation.priorities, priority)
     end
 end

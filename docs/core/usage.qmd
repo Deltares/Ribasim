@@ -31,19 +31,17 @@ Ribasim expects the GeoPackage database [database.gpkg](usage.qmd#sec-geopackage
 ## Solver settings {#sec-solver-settings}
 
 The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
-Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `adaptive`, `dt`, and `saveat`.
+Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
 If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
-It is an implicit method that supports the default `adaptive = true` timestepping.
+It is an implicit method that supports the default adaptive timestepping.
 The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
-The `dt` controls the stepsize.
-When `adaptive = true`, `dt` only applies to the initial stepsize, and by default it is automatically determined.
-When `adaptive = false` a suitable `dt` must always be provided.
-The value is in seconds, so `dt = 3600.0` corresponds to an hourly timestep.
-When `adaptive = true`, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
+By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
+To use fixed timesteps, provide a timestep size in seconds; `dt = 3600.0` corresponds to an hourly timestep.
+With adaptive timestepping, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
 If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
 `force_dtmin` is off by default to ensure an accurate solution.
 
@@ -197,12 +195,12 @@ name it must have in the database if it is stored there.
   - `Pump / static`: flow rate
 - Outlet: let water flow with a prescribed flux under the conditions of positive head difference and the upstream level being higher than the minimum crest level
   - `Outlet / static`: flow rate, minimum crest level
-- User: sets water usage demands at certain priorities
-  - `User / static`: demands
-  - `User / time`: dynamic demands
-- TargetLevel: Indicates minimum and maximum target level of connected basins for allocation
-  - `TargetLevel / static`: static target levels
-  - `TargetLevel / time`: dynamic target levels
+- UserDemand: sets water usage demands at certain priorities
+  - `UserDemand / static`: demands
+  - `UserDemand / time`: dynamic demands
+- LevelDemand: Indicates minimum and maximum target level of connected basins for allocation
+  - `LevelDemand / static`: static target levels
+  - `LevelDemand / time`: dynamic target levels
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
@@ -427,18 +425,18 @@ min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
 
-# User {#sec-user}
+# UserDemand {#sec-user-demand}
 
-A user can demand a certain flow from the basin that supplies it,
+A UserDemand can demand a certain flow from the basin that supplies it,
 distributed over multiple priorities 1,2,3,... where priority 1 denotes the most important demand.
-Currently the user attempts to extract the complete demand from the Basin.
-Only if the Basin is almost empty or reaches the minimum level at which the user can extract
+Currently the UserDemand attempts to extract the complete demand from the Basin.
+Only if the Basin is almost empty or reaches the minimum level at which the UserDemand can extract
 water (`min_level`), will it take less than the demand.
-In the future water can be allocated to users based on their priority.
-Users need an outgoing flow edge along which they can send their return flow,
+When allocation is used, water can be allocated to UserDemand based on their priority.
+UserDemands need an outgoing flow edge along which they can send their return flow,
 this can also be to the same basin from which it extracts water.
-The amount of return flow is always a fraction of the inflow into the user.
-The difference is consumed by the user.
+The amount of return flow is always a fraction of the inflow into the UserDemand.
+The difference is consumed by the UserDemand.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
@@ -449,9 +447,9 @@ return_factor | Float64 | -            | between [0 - 1]
 min_level     | Float64 | $m$          | -
 priority      | Int     | -            | positive, sorted per node id
 
-## User / time
+## UserDemand / time
 
-This table is the transient form of the `User` table.
+This table is the transient form of the `UserDemand` table.
 The only difference is that a time column is added and activity is assumed to be true.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the
@@ -468,12 +466,12 @@ demand        | Float64  | $m^3 s^{-1}$ | -
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | -
 
-# TargetLevel {#sec-target_level}
+# LevelDemand {#sec-level_demand}
 
-An `TargetLevel` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
+An `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
 above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
-The same `TargetLevel` node can be used for basins in different subnetworks.
+The same `LevelDemand` node can be used for basins in different subnetworks.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
@@ -482,10 +480,10 @@ min_level     | Float64 | $m$          | -
 max_level     | Float64 | $m$          | -
 priority      | Int     | -            | positive
 
-## TargetLevel / time
+## LevelDemand / time
 
-This table is the transient form of the `TargetLevel` table, in which time-dependent minimum and maximum levels can be supplied.
-Similar to the static version, only a single priority per `TargetLevel` node can be provided.
+This table is the transient form of the `LevelDemand` table, in which time-dependent minimum and maximum levels can be supplied.
+Similar to the static version, only a single priority per `LevelDemand` node can be provided.
 
 column        | type     | unit         | restriction
 ------------- | -------  | ------------ | -----------
@@ -725,7 +723,7 @@ demand        | Float64
 allocated     | Float64
 realized      | Float64
 
-For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `TargetLevel` node.
+For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
 The values are negative if the Basin supplies due to a surplus of water.
 
 ::: {.callout-note}
