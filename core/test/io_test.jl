@@ -8,6 +8,7 @@
         database = "path/to/file",
         input_dir = ".",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
@@ -20,6 +21,7 @@
         database = "path/to/file",
         input_dir = "input",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
@@ -32,6 +34,7 @@
         database = "/path/to/file",
         input_dir = ".",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml)
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
