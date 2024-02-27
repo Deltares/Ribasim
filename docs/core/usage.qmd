@@ -144,9 +144,6 @@ objects such as weirs might have specific identification codes. Additional colum
 added to tables. The column names should be prefixed with `meta_`. They will not be used in
 computations or validated by the Julia core.
 
-The Ribasim Python library will automatically add the `meta_` prefix to non-standard columns.
-Column names already prefixed with `meta_` will not be updated.
-
 # Node {#sec-node}
 
 Node is a table that specifies the ID and type of each node of a model. The ID must be
