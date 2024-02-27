@@ -693,6 +693,7 @@ to_node_id     | Int                 | -
 flow_rate      | Float64             | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
+The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
 Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
 Flows out of the model always have a negative sign, and additions a positive sign.
 
