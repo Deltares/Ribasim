@@ -210,7 +210,7 @@ $$
 $$ {#eq-drn}
 
 The interaction with MODFLOW 6 boundary conditions is explained in greater
-detail in the [the MODFLOW coupling section](../couple/modflow.qmd) of the documentation.
+detail in the [the iMOD Coupler docs](https://deltares.github.io/iMOD-Documentation/coupler.html).
 
 ## Upstream and downstream flow
 
