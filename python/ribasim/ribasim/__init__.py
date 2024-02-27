@@ -51,6 +51,5 @@ __all__ = [
     "TabulatedRatingCurve",
     "Terminal",
     "UserDemand",
-    "utils",
     "Verbosity",
 ]
