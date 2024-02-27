@@ -150,7 +150,9 @@ function flow_table(
 
     # the timestamp should represent the start of the period, not the end
     t_starts = circshift(t, 1)
-    t_starts[1] = 0.0
+    if !isempty(t)
+        t_starts[1] = 0.0
+    end
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_type = repeat(from_node_type; outer = ntsteps)
