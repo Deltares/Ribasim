@@ -30,9 +30,8 @@ Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
     parameters::Parameters,
-    config::Config;
-    saveat_flow,
-    saveat_state,
+    config::Config,
+    saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
@@ -59,8 +58,14 @@ function create_callbacks(
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb =
-        SavingCallback(save_flow, saved_flow; saveat = saveat_flow, save_start = false)
+    save_flow_cb = SavingCallback(
+        save_flow,
+        saved_flow;
+        # If saveat is a vector which contains 0.0 this callback will still be called
+        # at t = 0.0 despite save_start = false
+        saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat,
+        save_start = false,
+    )
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -69,7 +74,7 @@ function create_callbacks(
         export_cb = SavingCallback(
             save_subgrid_level,
             saved_subgrid_level;
-            saveat = saveat_state,
+            saveat,
             save_start = true,
         )
         push!(callbacks, export_cb)
@@ -109,23 +114,14 @@ function integrate_flows!(u, t, integrator)::Nothing
     flow = get_tmp(flow, 0)
     flow_vertical = get_tmp(flow_vertical, 0)
 
-    flow_effective = if !isempty(flow_prev) && isnan(flow_prev[1])
+    if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
-        flow
-    else
-        0.5 * (flow + flow_prev)
+        copyto!(flow_prev, flow)
+        copyto!(flow_vertical_prev, flow_vertical)
     end
 
-    flow_vertical_effective =
-        if !isempty(flow_vertical_prev) && isnan(flow_vertical_prev[1])
-            # If flow_vertical_prev is not populated yet
-            flow_vertical
-        else
-            0.5 * (flow_vertical + flow_vertical_prev)
-        end
-
-    @. flow_integrated += flow_effective * dt
-    @. flow_vertical_integrated += flow_vertical_effective * dt
+    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
+    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)
@@ -317,8 +313,7 @@ function discrete_control_affect!(
 
     # What the local control state is
     # TODO: Check time elapsed since control change
-    control_state_now, control_state_start =
-        discrete_control.control_state[discrete_control_node_id]
+    control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
 
     control_state_change = false
 
@@ -444,12 +439,12 @@ function save_flow(u, t, integrator)
         end
     end
 
-    mean_flow_vertical = flow_vertical_integrated / Δt
-    mean_flow = flow_integrated / Δt
-
+    mean_flow_all = vcat(flow_vertical_integrated, flow_integrated)
+    mean_flow_all ./= Δt
     fill!(flow_vertical_integrated, 0.0)
     fill!(flow_integrated, 0.0)
-    return vcat(mean_flow_vertical, mean_flow)
+
+    return mean_flow_all
 end
 
 function update_subgrid_level!(integrator)::Nothing

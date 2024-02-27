@@ -483,21 +483,63 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
-    function get_flow(solver_adaptive::Bool, solver_saveat::Float64)::Vector{Float64}
-        config = Ribasim.Config(toml_path)
-        solver_dt = solver_adaptive ? nothing : config.solver.dt
+    function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
         config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_table(model))
         return filter(
             [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
             df,
-        ).flow_rate
+        ).flow_rate,
+        Ribasim.tsaves(model)
     end
-    @test all(get_flow(true, 86400.0) .≈ 1.0)
-    @test all(get_flow(true, 0.0) .≈ 1.0)
-    @test all(get_flow(true, Inf) .≈ 1.0)
-    @test all(get_flow(false, 86400.0) .≈ 1.0)
-    @test all(get_flow(false, 0.0) .≈ 1.0)
-    @test all(get_flow(false, Inf) .≈ 1.0)
+
+    Δt = 24 * 24 * 60.0
+    t_end = 3.16224e7 # 366 days
+
+    # t_end % saveat = 0
+    saveat = 86400.0
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == t_end / saveat
+    @test length(tstops) == t_end / saveat + 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == t_end / saveat
+    @test length(tstops) == t_end / saveat + 1
+
+    # t_end % saveat != 0
+    saveat = round(10000 * π)
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == ceil(t_end / saveat)
+    @test length(tstops) == ceil(t_end / saveat) + 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == ceil(t_end / saveat)
+    @test length(tstops) == ceil(t_end / saveat) + 1
+
+    # Only save average over all flows in tspan
+    saveat = Inf
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == 1
+    @test length(tstops) == 2
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == 1
+    @test length(tstops) == 2
+
+    # Save all flows
+    saveat = 0.0
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == length(tstops) - 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == length(tstops) - 1
 end

@@ -232,27 +232,20 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
-function convert_saveat(
-    saveat::Float64,
-    t_end::Float64,
-)::Tuple{Union{Float64, Vector{Float64}}, Vector{Float64}}
+function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}
     if iszero(saveat)
         # every step
-        saveat_state = Float64[]
-        saveat_flow = Float64[]
+        Float64[]
     elseif saveat == Inf
         # only the start and end
-        saveat_state = [0.0, t_end]
-        saveat_flow = [t_end]
+        [0.0, t_end]
     elseif isfinite(saveat)
         # every saveat seconds
-        saveat_state = saveat
-        saveat_flow = collect(range(saveat, t_end; step = saveat))
+        saveat
     else
         @error "Invalid saveat" saveat
         error("Invalid saveat")
     end
-    return saveat_state, saveat_flow
 end
 
 "Convert the dt from our Config to SciML stepsize control arguments"
