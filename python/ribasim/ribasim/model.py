@@ -22,6 +22,7 @@ from ribasim.config import (
     Basin,
     DiscreteControl,
     FlowBoundary,
+    FlowDemand,
     FractionalFlow,
     LevelBoundary,
     LevelDemand,
@@ -119,7 +120,6 @@ class Model(FileModel):
 
     network: Network
         Class containing the topology (nodes and edges) of the model.
-
     results: Results
         Results configuration options.
     solver: Solver
@@ -131,28 +131,32 @@ class Model(FileModel):
         The allocation configuration.
     basin : Basin
         The waterbodies.
+    discrete_control : DiscreteControl
+        Discrete control logic.
+    flow_boundary : FlowBoundary
+        Boundary conditions specifying the flow.
+    flow_demand : FlowDemand
+        Prescribe flow demand trough a node at with priority.
     fractional_flow : FractionalFlow
         Split flows into fractions.
     level_boundary : LevelBoundary
         Boundary condition specifying the water level.
-    flow_boundary : FlowBoundary
-        Boundary conditions specifying the flow.
+    level_demand : LevelDemand
+        Prescribe level window of basin with priority.
     linear_resistance: LinearResistance
         Linear flow resistance.
     manning_resistance : ManningResistance
         Flow resistance based on the Manning formula.
-    tabulated_rating_curve : TabulatedRatingCurve
-        Tabulated rating curve describing flow based on the upstream water level.
-    pump : Pump
-        Prescribed flow rate from one basin to the other.
     outlet : Outlet
         Prescribed flow rate from one basin to the other.
-    terminal : Terminal
-        Water sink without state or properties.
-    discrete_control : DiscreteControl
-        Discrete control logic.
     pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
+    pump : Pump
+        Prescribed flow rate from one basin to the other.
+    tabulated_rating_curve : TabulatedRatingCurve
+        Tabulated rating curve describing flow based on the upstream water level.
+    terminal : Terminal
+        Water sink without state or properties.
     user_demand : UserDemand
         UserDemand node type with demand and priority.
     """
@@ -169,21 +173,22 @@ class Model(FileModel):
     logging: Logging = Logging()
 
     allocation: Allocation = Field(default_factory=Allocation)
-    level_demand: LevelDemand = Field(default_factory=LevelDemand)
     basin: Basin = Field(default_factory=Basin)
-    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
-    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
+    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
+    flow_demand: FlowDemand = Field(default_factory=FlowDemand)
+    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
+    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    outlet: Outlet = Field(default_factory=Outlet)
+    pid_control: PidControl = Field(default_factory=PidControl)
+    pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(
         default_factory=TabulatedRatingCurve
     )
-    pump: Pump = Field(default_factory=Pump)
-    outlet: Outlet = Field(default_factory=Outlet)
     terminal: Terminal = Field(default_factory=Terminal)
-    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
-    pid_control: PidControl = Field(default_factory=PidControl)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     @model_validator(mode="after")

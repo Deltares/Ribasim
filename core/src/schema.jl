@@ -25,6 +25,8 @@
 @schema "ribasim.userdemand.time" UserDemandTime
 @schema "ribasim.leveldemand.static" LevelDemandStatic
 @schema "ribasim.leveldemand.time" LevelDemandTime
+@schema "ribasim.flowdemand.static" FlowDemandStatic
+@schema "ribasim.flowdemand.time" FlowDemandTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -250,5 +252,18 @@ end
     time::DateTime
     min_level::Float64
     max_level::Float64
+    priority::Int
+end
+
+@version FlowDemandStaticV1 begin
+    node_id::Int
+    demand::Float64
+    priority::Int
+end
+
+@version FlowDemandTimeV1 begin
+    node_id::Int
+    time::DateTime
+    demand::Float64
     priority::Int
 end

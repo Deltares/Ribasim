@@ -782,6 +782,30 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
     )
 end
 
+function FlowDemand(db::DB, config::Config)::FlowDemand
+    static = load_structvector(db, config, FlowDemandStaticV1)
+    time = load_structvector(db, config, FlowDemandTimeV1)
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "FlowDemand";
+        static,
+        time,
+        time_interpolatables = [:demand],
+    )
+
+    if !valid
+        error("Errors occurred when parsing FlowDemand data.")
+    end
+
+    return FlowDemand(
+        NodeID.(NodeType.FlowDemand, parsed_parameters.node_id),
+        parsed_parameters.demand,
+        parsed_parameters.priority,
+    )
+end
+
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
@@ -890,6 +914,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config)
     level_demand = LevelDemand(db, config)
+    flow_demand = FlowDemand(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
@@ -912,6 +937,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user_demand,
         level_demand,
+        flow_demand,
         subgrid_level,
     )
 

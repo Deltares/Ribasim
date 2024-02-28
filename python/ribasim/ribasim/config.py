@@ -15,6 +15,8 @@ from ribasim.schemas import (
     DiscreteControlLogicSchema,
     FlowBoundaryStaticSchema,
     FlowBoundaryTimeSchema,
+    FlowDemandStaticSchema,
+    FlowDemandTimeSchema,
     FractionalFlowStaticSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
@@ -134,7 +136,7 @@ class UserDemand(NodeModel):
 class LevelDemand(NodeModel):
     static: TableModel[LevelDemandStaticSchema] = Field(
         default_factory=TableModel[LevelDemandStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id", "priority"]},
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
     time: TableModel[LevelDemandTimeSchema] = Field(
         default_factory=TableModel[LevelDemandTimeSchema],
@@ -149,6 +151,17 @@ class FlowBoundary(NodeModel):
     )
     time: TableModel[FlowBoundaryTimeSchema] = Field(
         default_factory=TableModel[FlowBoundaryTimeSchema],
+        json_schema_extra={"sort_keys": ["node_id", "time"]},
+    )
+
+
+class FlowDemand(NodeModel):
+    static: TableModel[FlowDemandStaticSchema] = Field(
+        default_factory=TableModel[FlowDemandStaticSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    time: TableModel[FlowDemandTimeSchema] = Field(
+        default_factory=TableModel[FlowDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "time"]},
     )
 

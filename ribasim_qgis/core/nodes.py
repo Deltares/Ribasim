@@ -220,6 +220,7 @@ class Node(Input):
                 "LevelDemand",
                 shape.Circle,
             ),
+            "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -819,7 +820,45 @@ class LevelDemandTime(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
-            QgsField("level_demand", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
+            QgsField("max_level", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class FlowDemandStatic(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "FlowDemand / static"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("demand", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class FlowDemandTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "FlowDemand / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("demand", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 

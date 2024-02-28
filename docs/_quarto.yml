@@ -88,3 +88,5 @@ quartodoc:
         - Terminal
         - DiscreteControl
         - PidControl
+        - LevelDemand
+        - FlowDemand

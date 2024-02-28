@@ -33,7 +33,15 @@ neighbortypes(::Val{:discrete_control}) = Set((
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Any) = Set{Symbol}()
+neighbortypes(::Val{:flow_demand}) = Set((p))
+neighbortypes(::Any) = Set{Symbol}(
+    :linear_resistance,
+    :manning_resistance,
+    :tabulated_rating_curve,
+    :fractional_flow,
+    :pump,
+    :outlet,
+)
 
 # Allowed number of inneighbors and outneighbors per node type
 struct n_neighbor_bounds
@@ -60,6 +68,7 @@ n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -79,6 +88,7 @@ n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
