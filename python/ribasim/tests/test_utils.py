@@ -2,7 +2,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
-from ribasim import utils
 from ribasim.geometry.node import Node
 from shapely import LineString
 
@@ -34,10 +33,3 @@ def test_utils():
 
     assert_array_equal(from_id, from_id_)
     assert_array_equal(to_id, to_id_)
-
-
-def test_prefix_column():
-    assert utils.prefix_column("a", ["b"]) == "meta_a"
-    assert utils.prefix_column("meta_a", ["b"]) == "meta_a"
-    assert utils.prefix_column("a", ["a"]) == "a"
-    assert utils.prefix_column("fid", ["a"]) == "fid"

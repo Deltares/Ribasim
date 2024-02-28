@@ -1,7 +1,6 @@
 __version__ = "2024.2.0"
 
 
-from ribasim import utils
 from ribasim.config import (
     Allocation,
     Basin,
@@ -52,6 +51,5 @@ __all__ = [
     "TabulatedRatingCurve",
     "Terminal",
     "UserDemand",
-    "utils",
     "Verbosity",
 ]

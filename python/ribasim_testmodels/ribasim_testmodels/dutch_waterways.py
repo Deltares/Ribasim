@@ -109,8 +109,8 @@ def dutch_waterways_model():
                 "active": [True, True, False, None],
                 "control_state": ["pump_low", "pump_high", "rating_curve", None],
                 "flow_rate": [15.0, 25.0, 1.0, 1.0],
-                "flow_rate_min": 3 * [None] + [0.0],
-                "flow_rate_max": 3 * [None] + [50.0],
+                "min_flow_rate": 3 * [None] + [0.0],
+                "max_flow_rate": 3 * [None] + [50.0],
             }
         )
     )
