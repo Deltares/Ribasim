@@ -1759,3 +1759,102 @@ def level_demand_model():
     )
 
     return model
+
+
+def flow_demand_model():
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: LevelBoundary
+            (1.0, 0.0),  # 1: TabulatedRatingCurve
+            (2.0, 0.0),  # 1: Basin
+            (3.0, 0.0),  # 1: UserDemand
+            (1.0, -1.0),  # 1: FlowDemand
+            (2.0, -1.0),  # 2: UserDemand
+            (3.0, -1.0),  # 2: Basin
+            (3.0, -2.0),  # 3: UserDemand
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+    node_type = [
+        "LevelBoundary",
+        "TabulatedRatingCurve",
+        "Basin",
+        "UserDemand",
+        "FlowDemand",
+        "UserDemand",
+        "Basin",
+        "UserDemand",
+    ]
+    node_id = [1, 1, 1, 1, 1, 2, 2, 3]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        df=gpd.GeoDataFrame(
+            data={
+                "node_type": node_type,
+                "subnetwork_id": len(node_type) * [2],
+            },
+            index=pd.Index(node_id, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_type = np.array(
+        [
+            "LevelBoundary",
+            "TabulatedRatingCurve",
+            "Basin",
+            "FlowDemand",
+            "Basin",
+            "UserDemand",
+            "Basin",
+            "UserDemand",
+        ]
+    )
+    from_id = np.array([1, 1, 1, 1, 1, 1, 2, 3])
+    to_type = np.array(
+        [
+            "TabulatedRatingCurve",
+            "Basin",
+            "UserDemand",
+            "TabulatedRatingCurve",
+            "UserDemand",
+            "Basin",
+            "UserDemand",
+            "Basin",
+        ]
+    )
+    to_id = np.array([1, 1, 1, 1, 2, 2, 3, 2])
+    edge_type = len(from_type) * ["flow"]
+    edge_type[3] = "control"
+    subnetwork_id = len(from_type) * [None]
+    subnetwork_id[0] = 2
+
+    lines = node.geometry_from_connectivity(
+        from_type, from_id.tolist(), to_type, to_id.tolist()
+    )
+    edge = ribasim.Edge(
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_type": from_type,
+                "from_node_id": from_id,
+                "to_node_type": to_type,
+                "to_node_id": to_id,
+                "edge_type": edge_type,
+                "subnetwork_id": subnetwork_id,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    model = ribasim.Model(
+        network=ribasim.Network(node=node, edge=edge),
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-02-01 00:00:00",
+    )
+
+    return model

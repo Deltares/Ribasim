@@ -656,7 +656,7 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     ]
         union!(priorities, load_structvector(db, config, type).priority)
     end
-    return sort(priorities)
+    return sort(collect(priorities))
 end
 
 function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int

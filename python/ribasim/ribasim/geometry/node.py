@@ -73,7 +73,11 @@ class Node(SpatialTableModel[NodeSchema]):
         return node_id, node_type
 
     def geometry_from_connectivity(
-        self, from_id: Sequence[int], to_id: Sequence[int]
+        self,
+        from_type: Sequence[str],
+        from_id: Sequence[int],
+        to_type: Sequence[str],
+        to_id: Sequence[int],
     ) -> NDArray[Any]:
         """
         Create edge shapely geometries from connectivities.
@@ -92,9 +96,18 @@ class Node(SpatialTableModel[NodeSchema]):
             Array of shapely LineStrings.
         """
         assert self.df is not None
-        geometry = self.df["geometry"]
-        from_points = shapely.get_coordinates(geometry.loc[from_id])
-        to_points = shapely.get_coordinates(geometry.loc[to_id])
+
+        df_lookup = self.df.set_index(["node_type", "node_id"])
+        from_points_ = [
+            df_lookup.loc[node_id, "geometry"] for node_id in zip(from_type, from_id)
+        ]
+        to_points_ = [
+            df_lookup.loc[node_id, "geometry"] for node_id in zip(to_type, to_id)
+        ]
+
+        from_points = shapely.get_coordinates(from_points_)
+        to_points = shapely.get_coordinates(to_points_)
+
         n = len(from_points)
         vertices = np.empty((n * 2, 2), dtype=from_points.dtype)
         vertices[0::2, :] = from_points
@@ -256,7 +269,7 @@ class Node(SpatialTableModel[NodeSchema]):
 
         assert self.df is not None
         geometry = self.df["geometry"]
-        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
+        for text, xy in zip(self.df.node_id, np.column_stack((geometry.x, geometry.y))):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax

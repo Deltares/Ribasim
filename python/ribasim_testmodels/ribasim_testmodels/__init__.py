@@ -7,6 +7,7 @@ import ribasim
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
+    flow_demand_model,
     fractional_flow_subnetwork_model,
     level_demand_model,
     looped_subnetwork_model,
@@ -90,6 +91,7 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
+    "flow_demand_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models
