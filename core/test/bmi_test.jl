@@ -58,11 +58,33 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
-    for name in ["volume", "level", "infiltration", "drainage"]
+    for name in [
+        "volume",
+        "level",
+        "infiltration",
+        "drainage",
+        "subgrid_level",
+        "demand",
+        "realized",
+    ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)
         # get_value_ptr does not copy
         @test value_first === value_second
     end
+end
+
+@testitem "realized_user_demand" begin
+    import BasicModelInterface as BMI
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    Δt_allocation = model.config.allocation.timestep
+    BMI.update_until(model, Δt_allocation)
+    demand = BMI.get_value_ptr(model, "demand")
+    realized = BMI.get_value_ptr(model, "realized")
+    @test realized ≈ Δt_allocation * demand atol = 0.5
 end

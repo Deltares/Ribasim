@@ -43,7 +43,9 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     elseif name == "subgrid_level"
         model.integrator.p.subgrid.level
     elseif name == "demand"
-        model.integrator.p.demand
+        model.integrator.p.user_demand.demand
+    elseif name == "realized"
+        model.integrator.p.user_demand.realized
     else
         error("Unknown variable $name")
     end

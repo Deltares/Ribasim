@@ -102,9 +102,10 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph) = p
+    (; graph, user_demand) = p
     (;
         flow,
+        flow_dict,
         flow_vertical,
         flow_prev,
         flow_vertical_prev,
@@ -122,6 +123,14 @@ function integrate_flows!(u, t, integrator)::Nothing
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
     @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+
+    for user_demand_idx in eachindex(user_demand.node_id)
+        id = user_demand.node_id[user_demand_idx]
+        src_id = inflow_id(graph, id)
+        flow_idx = flow_dict[src_id, id]
+        user_demand.realized[user_demand_idx] +=
+            0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    end
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)
@@ -489,7 +498,7 @@ end
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation) = p
+    (; allocation, user_demand) = p
     (; allocation_models) = allocation
 
     # If a main network is present, collect demands of subnetworks
