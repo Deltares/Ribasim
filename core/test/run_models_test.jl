@@ -487,11 +487,12 @@ end
         config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_table(model))
-        return filter(
-            [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
-            df,
-        ).flow_rate,
-        Ribasim.tsaves(model)
+        flow =
+            filter(
+                [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
+                df,
+            ).flow_rate
+        flow, Ribasim.tsaves(model)
     end
 
     Δt = 24 * 24 * 60.0
