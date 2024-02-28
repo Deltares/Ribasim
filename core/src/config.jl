@@ -233,19 +233,26 @@ end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
 function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}
+    errors = false
     if iszero(saveat)
         # every step
-        Float64[]
+        saveat = Float64[]
     elseif saveat == Inf
         # only the start and end
-        [0.0, t_end]
+        saveat = [0.0, t_end]
     elseif isfinite(saveat)
         # every saveat seconds
-        saveat
+        if saveat !== round(saveat)
+            errors = true
+            @error "A finite saveat must be an integer number of seconds." saveat
+        end
     else
+        errors = true
         @error "Invalid saveat" saveat
-        error("Invalid saveat")
     end
+
+    errors && error("Invalid saveat")
+    return saveat
 end
 
 "Convert the dt from our Config to SciML stepsize control arguments"

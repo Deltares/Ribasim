@@ -6,7 +6,8 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows = execute(db, "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY fid")
+    node_rows =
+        execute(db, "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
         "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
@@ -44,7 +45,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(node_ids[allocation_network_id], node_id)
         end
-        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
+        graph[node_id] =
+            NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
         if row.node_type in nonconservative_nodetypes
             flow_vertical_counter += 1
             flow_vertical_dict[node_id] = flow_vertical_counter
@@ -90,7 +92,11 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
 
     flow = zeros(flow_counter)
+    flow_prev = fill(NaN, flow_counter)
+    flow_integrated = zeros(flow_counter)
     flow_vertical = zeros(flow_vertical_counter)
+    flow_vertical_prev = fill(NaN, flow_vertical_counter)
+    flow_vertical_integrated = zeros(flow_vertical_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
         flow_vertical = DiffCache(flow_vertical, chunk_sizes)
@@ -101,8 +107,13 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         edges_source,
         flow_dict,
         flow,
+        flow_prev,
+        flow_integrated,
         flow_vertical_dict,
         flow_vertical,
+        flow_vertical_prev,
+        flow_vertical_integrated,
+        config.solver.saveat,
     )
     graph = @set graph.graph_data = graph_data
 

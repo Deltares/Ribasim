@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: timesteps
+    using Ribasim: get_tstops, tsaves
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -84,7 +84,7 @@
     end
 
     @testset "Results size" begin
-        nsaved = length(timesteps(model))
+        nsaved = length(tsaves(model))
         @test nsaved > 10
         # t0 has no flow, 2 flow edges and 2 boundary condition flows
         @test nrow(flow) == (nsaved - 1) * 4
@@ -95,7 +95,7 @@
     end
 
     @testset "Results values" begin
-        @test flow.time[1] > DateTime(2020)
+        @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.edge_id[1:4], -1) == [-1, -1, 9, 11]
         @test flow.from_node_id[1:4] == [6, typemax(Int), 0, 6]
         @test flow.to_node_id[1:4] == [6, typemax(Int), typemax(Int), 0]
@@ -189,18 +189,18 @@ end
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
     @test successful_retcode(model)
-    @test allunique(Ribasim.timesteps(model))
+    @test allunique(Ribasim.tsaves(model))
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) == 8
+    @test length(logger.logs) == 11
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 
     table = Ribasim.flow_table(model)
 
     # flows are recorded at the end of each period, and are undefined at the start
-    @test unique(table.time) == Ribasim.datetimes(model)[2:end]
+    @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
     # inflow = outflow over FractionalFlow
     t = table.time[1]
@@ -355,7 +355,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    timesteps = model.saved.flow.t
+    t = model.saved.flow.t
     flow = DataFrame(Ribasim.flow_table(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)
@@ -364,14 +364,14 @@ end
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow_rate[timesteps <= t_min_crest_level] == 0)
+    @test all(@. outlet_flow.flow_rate[t <= t_min_crest_level] == 0)
 
-    timesteps = Ribasim.timesteps(model)
+    t = Ribasim.tsaves(model)
     t_maximum_level = level.t[2]
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    all(isapprox.(level_basin[timesteps .>= t_maximum_level], level.u[3], atol = 5e-2))
+    all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
 @testitem "UserDemand" begin
@@ -475,4 +475,72 @@ end
         NodeID(:LevelBoundary, 102),
         0,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+end
+
+@testitem "mean_flow" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
+    @test ispath(toml_path)
+    function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
+        config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
+        model = Ribasim.run(config)
+        df = DataFrame(Ribasim.flow_table(model))
+        flow =
+            filter(
+                [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
+                df,
+            ).flow_rate
+        flow, Ribasim.tsaves(model)
+    end
+
+    Δt = 24 * 24 * 60.0
+    t_end = 3.16224e7 # 366 days
+
+    # t_end % saveat = 0
+    saveat = 86400.0
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == t_end / saveat
+    @test length(tstops) == t_end / saveat + 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == t_end / saveat
+    @test length(tstops) == t_end / saveat + 1
+
+    # t_end % saveat != 0
+    saveat = round(10000 * π)
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == ceil(t_end / saveat)
+    @test length(tstops) == ceil(t_end / saveat) + 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == ceil(t_end / saveat)
+    @test length(tstops) == ceil(t_end / saveat) + 1
+
+    # Only save average over all flows in tspan
+    saveat = Inf
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == 1
+    @test length(tstops) == 2
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == 1
+    @test length(tstops) == 2
+
+    # Save all flows
+    saveat = 0.0
+    flow, tstops = get_flow(nothing, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == length(tstops) - 1
+
+    flow, tstops = get_flow(Δt, saveat)
+    @test all(flow .≈ 1.0)
+    @test length(flow) == length(tstops) - 1
 end

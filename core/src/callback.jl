@@ -7,7 +7,7 @@ function set_initial_discrete_controlled_parameters!(
     storage0::Vector{Float64},
 )::Nothing
     (; p) = integrator
-    (; basin, discrete_control) = p
+    (; discrete_control) = p
 
     n_conditions = length(discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
@@ -30,7 +30,7 @@ Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
     parameters::Parameters,
-    config::Config;
+    config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -39,6 +39,9 @@ function create_callbacks(
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
     push!(callbacks, basin_cb)
+
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
+    push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
@@ -55,7 +58,14 @@ function create_callbacks(
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    save_flow_cb = SavingCallback(
+        save_flow,
+        saved_flow;
+        # If saveat is a vector which contains 0.0 this callback will still be called
+        # at t = 0.0 despite save_start = false
+        saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat,
+        save_start = false,
+    )
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -85,6 +95,37 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+"""
+Integrate flows over the last timestep
+"""
+function integrate_flows!(u, t, integrator)::Nothing
+    (; p, dt) = integrator
+    (; graph) = p
+    (;
+        flow,
+        flow_vertical,
+        flow_prev,
+        flow_vertical_prev,
+        flow_integrated,
+        flow_vertical_integrated,
+    ) = graph[]
+    flow = get_tmp(flow, 0)
+    flow_vertical = get_tmp(flow_vertical, 0)
+
+    if !isempty(flow_prev) && isnan(flow_prev[1])
+        # If flow_prev is not populated yet
+        copyto!(flow_prev, flow)
+        copyto!(flow_vertical_prev, flow_vertical)
+    end
+
+    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
+    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+
+    copyto!(flow_prev, flow)
+    copyto!(flow_vertical_prev, flow_vertical)
+    return nothing
 end
 
 """
@@ -272,8 +313,7 @@ function discrete_control_affect!(
 
     # What the local control state is
     # TODO: Check time elapsed since control change
-    control_state_now, control_state_start =
-        discrete_control.control_state[discrete_control_node_id]
+    control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
 
     control_state_change = false
 
@@ -377,12 +417,34 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     end
 end
 
-"Copy the current flow to the SavedValues"
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
 function save_flow(u, t, integrator)
-    vcat(
-        get_tmp(integrator.p.graph[].flow_vertical, 0.0),
-        get_tmp(integrator.p.graph[].flow, 0.0),
-    )
+    (; dt, p) = integrator
+    (; graph) = p
+    (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
+
+    Δt = if iszero(saveat)
+        dt
+    elseif isinf(saveat)
+        t
+    else
+        t_end = integrator.sol.prob.tspan[2]
+        if t_end - t > saveat
+            saveat
+        else
+            # The last interval might be shorter than saveat
+            rem = t % saveat
+            iszero(rem) ? saveat : rem
+        end
+    end
+
+    mean_flow_all = vcat(flow_vertical_integrated, flow_integrated)
+    mean_flow_all ./= Δt
+    fill!(flow_vertical_integrated, 0.0)
+    fill!(flow_integrated, 0.0)
+
+    return mean_flow_all
 end
 
 function update_subgrid_level!(integrator)::Nothing
