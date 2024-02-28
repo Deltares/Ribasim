@@ -71,6 +71,7 @@ end
     @test convert_saveat(Inf, t_end) == ([0.0, t_end], [t_end])
     @test_throws ErrorException convert_saveat(-Inf, t_end)
     @test_throws ErrorException convert_saveat(NaN, t_end)
+    @test_throws ErrorException convert_saveat(3.1415, t_end)
 
     @test convert_dt(nothing) == (true, 0.0)
     @test convert_dt(360.0) == (false, 360.0)

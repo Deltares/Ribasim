@@ -173,7 +173,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
-    model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
+    model = Ribasim.Model(toml_path)
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test successful_retcode(model)
