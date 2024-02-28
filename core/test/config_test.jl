@@ -65,10 +65,9 @@ end
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
     t_end = 100.0
-    @test convert_saveat(0.0, t_end) == (Float64[], Float64[])
-    @test convert_saveat(60.0, t_end) == (60.0, [60.0])
-    @test convert_saveat(Inf, t_end) == ([0.0, t_end], [t_end])
-    @test convert_saveat(Inf, t_end) == ([0.0, t_end], [t_end])
+    @test convert_saveat(0.0, t_end) == Float64[]
+    @test convert_saveat(60.0, t_end) == 60.0
+    @test convert_saveat(Inf, t_end) == [0.0, t_end]
     @test_throws ErrorException convert_saveat(-Inf, t_end)
     @test_throws ErrorException convert_saveat(NaN, t_end)
     @test_throws ErrorException convert_saveat(3.1415, t_end)
