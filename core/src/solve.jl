@@ -622,8 +622,6 @@ function formulate_du!(
     basin::Basin,
     storage::AbstractVector,
 )::Nothing
-    (; flow_vertical) = graph[]
-    flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -664,16 +662,4 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(fractional_flow, p, storage, t)
     formulate_flow!(level_boundary, p, storage, t)
     formulate_flow!(terminal, p, storage, t)
-end
-
-function track_waterbalance!(u, t, integrator)::Nothing
-    (; p, tprev, uprev) = integrator
-    dt = t - tprev
-    du = u - uprev
-    p.storage_diff .+= du
-    p.precipitation.total .+= p.precipitation.value .* dt
-    p.evaporation.total .+= p.evaporation.value .* dt
-    p.infiltration.total .+= p.infiltration.value .* dt
-    p.drainage.total .+= p.drainage.value .* dt
-    return nothing
 end

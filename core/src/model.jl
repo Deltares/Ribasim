@@ -76,10 +76,10 @@ function Model(config::Config)::Model
         # tell the solver to stop when new data comes in
         # TODO add all time tables here
         time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
-        tstops_flow_boundary = get_tstops(time_flow_boundary.time, config.starttime)
+        tstops = Vector{Float64}[]
+        push!(tstops, get_tstops(time_flow_boundary.time, config.starttime))
         time_user_demand = load_structvector(db, config, UserDemandTimeV1)
-        tstops_user_demand = get_tstops(time_user_demand.time, config.starttime)
-        tstops = sort(unique(vcat(tstops_flow_boundary, tstops_user_demand)))
+        push!(tstops, get_tstops(time_user_demand.time, config.starttime))
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
@@ -105,7 +105,10 @@ function Model(config::Config)::Model
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
+
     saveat = convert_saveat(config.solver.saveat, t_end)
+    saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
+    tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
@@ -116,7 +119,7 @@ function Model(config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config; saveat)
+    callback, saved = create_callbacks(parameters, config, saveat)
     @debug "Created callbacks."
 
     # Initialize the integrator, providing all solver options as described in
@@ -154,17 +157,17 @@ function Model(config::Config)::Model
 end
 
 "Get all saved times in seconds since start"
-timesteps(model::Model)::Vector{Float64} = model.integrator.sol.t
+tsaves(model::Model)::Vector{Float64} = model.integrator.sol.t
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
-    return datetime_since.(timesteps(model), model.config.starttime)
+    return datetime_since.(tsaves(model), model.config.starttime)
 end
 
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model
     t = datetime_since(integrator.t, config.starttime)
-    nsaved = length(timesteps(model))
+    nsaved = length(tsaves(model))
     println(io, "Model(ts: $nsaved, t: $t)")
 end
 

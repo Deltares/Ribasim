@@ -64,7 +64,7 @@ function get_storages_and_levels(
     (; sol, p) = integrator
 
     node_id = p.basin.node_id.values::Vector{NodeID}
-    tsteps = datetime_since.(timesteps(model), config.starttime)
+    tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
@@ -148,7 +148,12 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
-    time = repeat(datetime_since.(t, config.starttime); inner = nflow)
+    # the timestamp should represent the start of the period, not the end
+    t_starts = circshift(t, 1)
+    if !isempty(t)
+        t_starts[1] = 0.0
+    end
+    time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)

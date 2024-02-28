@@ -144,9 +144,6 @@ objects such as weirs might have specific identification codes. Additional colum
 added to tables. The column names should be prefixed with `meta_`. They will not be used in
 computations or validated by the Julia core.
 
-The Ribasim Python library will automatically add the `meta_` prefix to non-standard columns.
-Column names already prefixed with `meta_` will not be updated.
-
 # Node {#sec-node}
 
 Node is a table that specifies the ID and type of each node of a model. The ID must be
@@ -270,8 +267,7 @@ to have a reasonable and safe default, a value must be provided in the static ta
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
-A linear interpolation between the given timesteps is currently done if the
-solver takes timesteps between the given data points. More options will be available later.
+At the given timestamps the values are set in the simulation, such that the timeseries can be seen as forward filled.
 
 ## Basin / state
 
@@ -679,8 +675,8 @@ The table is sorted by time, and per time it is sorted by `node_id`.
 
 ## Flow - `flow.arrow`
 
-The flow table contains results of the flow on every edge in the model, for each solver
-timestep.
+The flow table contains calculated mean flows for every flow edge in the model.
+In the time column the start of the period is indicated.
 
 column         | type                | unit
 -------------- | ------------------- | ----

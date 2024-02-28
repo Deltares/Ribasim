@@ -69,7 +69,18 @@ def pump_discrete_control_model() -> ribasim.Model:
 
     state = pd.DataFrame(data={"node_id": [1, 3], "level": [1.0, 1e-5]})
 
-    basin = ribasim.Basin(profile=profile, state=state)
+    static = pd.DataFrame(
+        data={
+            "node_id": [3],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [1e-9],
+            "urban_runoff": [0.0],
+        }
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state)
 
     # Setup the discrete control:
     condition = pd.DataFrame(
@@ -325,20 +336,9 @@ def level_boundary_condition_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [3], "level": [2.5]})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup level boundary:
     level_boundary = ribasim.LevelBoundary(
