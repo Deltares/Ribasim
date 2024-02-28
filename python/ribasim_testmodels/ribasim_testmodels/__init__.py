@@ -65,6 +65,7 @@ __all__ = [
     "dutch_waterways_model",
     "flow_boundary_time_model",
     "flow_condition_model",
+    "flow_demand_model",
     "fractional_flow_subnetwork_model",
     "invalid_discrete_control_model",
     "invalid_edge_types_model",
@@ -91,7 +92,6 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
-    "flow_demand_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models

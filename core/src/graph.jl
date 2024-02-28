@@ -6,7 +6,8 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
-    node_rows = execute(db, "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY fid")
+    node_rows =
+        execute(db, "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY fid")
     edge_rows = execute(
         db,
         "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
@@ -44,12 +45,15 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(node_ids[allocation_network_id], node_id)
         end
-        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
+        graph[node_id] =
+            NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
         if row.node_type in nonconservative_nodetypes
             flow_vertical_counter += 1
             flow_vertical_dict[node_id] = flow_vertical_counter
         end
     end
+
+    errors = false
     for (;
         fid,
         from_node_type,
@@ -72,6 +76,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         end
         edge_metadata =
             EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
+        if haskey(graph, id_src, id_dst)
+            errors = true
+            @error "Duplicate edge" id_src id_dst
+        end
         graph[id_src, id_dst] = edge_metadata
         if edge_type == EdgeType.flow
             flow_counter += 1
@@ -83,6 +91,9 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(edges_source[subnetwork_id], edge_metadata)
         end
+    end
+    if errors
+        error("Invalid edges found")
     end
 
     if incomplete_subnetwork(graph, node_ids)

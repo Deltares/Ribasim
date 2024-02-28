@@ -1766,13 +1766,13 @@ def flow_demand_model():
     xy = np.array(
         [
             (0.0, 0.0),  # 1: LevelBoundary
-            (1.0, 0.0),  # 1: TabulatedRatingCurve
-            (2.0, 0.0),  # 1: Basin
-            (3.0, 0.0),  # 1: UserDemand
-            (1.0, -1.0),  # 1: FlowDemand
-            (2.0, -1.0),  # 2: UserDemand
-            (3.0, -1.0),  # 2: Basin
-            (3.0, -2.0),  # 3: UserDemand
+            (1.0, 0.0),  # 2: TabulatedRatingCurve
+            (2.0, 0.0),  # 3: Basin
+            (3.0, 0.0),  # 4: UserDemand
+            (1.0, -1.0),  # 5: FlowDemand
+            (2.0, -1.0),  # 6: UserDemand
+            (3.0, -1.0),  # 7: Basin
+            (3.0, -2.0),  # 8: UserDemand
         ]
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
@@ -1786,7 +1786,6 @@ def flow_demand_model():
         "Basin",
         "UserDemand",
     ]
-    node_id = [1, 1, 1, 1, 1, 2, 2, 3]
 
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
@@ -1795,53 +1794,25 @@ def flow_demand_model():
                 "node_type": node_type,
                 "subnetwork_id": len(node_type) * [2],
             },
-            index=pd.Index(node_id, name="fid"),
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
     )
 
     # Setup the edges:
-    from_type = np.array(
-        [
-            "LevelBoundary",
-            "TabulatedRatingCurve",
-            "Basin",
-            "FlowDemand",
-            "Basin",
-            "UserDemand",
-            "Basin",
-            "UserDemand",
-        ]
-    )
-    from_id = np.array([1, 1, 1, 1, 1, 1, 2, 3])
-    to_type = np.array(
-        [
-            "TabulatedRatingCurve",
-            "Basin",
-            "UserDemand",
-            "TabulatedRatingCurve",
-            "UserDemand",
-            "Basin",
-            "UserDemand",
-            "Basin",
-        ]
-    )
-    to_id = np.array([1, 1, 1, 1, 2, 2, 3, 2])
-    edge_type = len(from_type) * ["flow"]
+    from_id = np.array([1, 2, 3, 5, 3, 4, 7, 8, 6])
+    to_id = np.array([2, 3, 4, 2, 6, 7, 8, 7, 7])
+    edge_type = len(from_id) * ["flow"]
     edge_type[3] = "control"
-    subnetwork_id = len(from_type) * [None]
+    subnetwork_id = len(from_id) * [None]
     subnetwork_id[0] = 2
 
-    lines = node.geometry_from_connectivity(
-        from_type, from_id.tolist(), to_type, to_id.tolist()
-    )
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
     edge = ribasim.Edge(
         df=gpd.GeoDataFrame(
             data={
-                "from_node_type": from_type,
                 "from_node_id": from_id,
-                "to_node_type": to_type,
                 "to_node_id": to_id,
                 "edge_type": edge_type,
                 "subnetwork_id": subnetwork_id,
@@ -1851,10 +1822,63 @@ def flow_demand_model():
         )
     )
 
+    # Setup tabulated rating curve
+    rating_curve = ribasim.TabulatedRatingCurve(
+        static=pd.DataFrame(
+            data={
+                "node_id": 2,
+                "level": [0.0, 1.0],
+                "flow_rate": [
+                    0.0,
+                    2.0,
+                ],
+            }
+        )
+    )
+
+    # Setup FlowBoundary
+    level_boundary = ribasim.LevelBoundary(
+        static=pd.DataFrame(data={"node_id": [1], "level": [2.0]})
+    )
+
+    # Setup basin
+    profile = pd.DataFrame(
+        data={"node_id": [3, 3, 7, 7], "area": 1e3, "level": [0.0, 1.0, 0.0, 1.0]}
+    )
+    state = pd.DataFrame(data={"node_id": [3, 7], "level": 1.0})
+    basin = ribasim.Basin(profile=profile, state=state)
+
+    # Setup UserDemand
+    user_demand = ribasim.UserDemand(
+        static=pd.DataFrame(
+            data={
+                "node_id": [4, 6, 8],
+                "priority": [3, 1, 4],
+                "demand": 1.5e-3,
+                "return_factor": 1.0,
+                "min_level": 0.2,
+            }
+        )
+    )
+
+    # Setup FlowDemand
+    flow_demand = ribasim.FlowDemand(
+        static=pd.DataFrame(data={"node_id": [5], "demand": [0.5], "priority": [2]})
+    )
+
+    # Setup allocation
+    allocation = ribasim.Allocation(use_allocation=True, timestep=1e5)
+
     model = ribasim.Model(
         network=ribasim.Network(node=node, edge=edge),
+        basin=basin,
+        tabulated_rating_curve=rating_curve,
+        level_boundary=level_boundary,
+        user_demand=user_demand,
+        flow_demand=flow_demand,
+        allocation=allocation,
         starttime="2020-01-01 00:00:00",
-        endtime="2020-02-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
     )
 
     return model
