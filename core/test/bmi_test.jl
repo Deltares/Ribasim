@@ -82,9 +82,11 @@ end
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
     model = BMI.initialize(Ribasim.Model, toml_path)
-    Δt_allocation = model.config.allocation.timestep
-    BMI.update_until(model, Δt_allocation)
-    demand = BMI.get_value_ptr(model, "demand")
-    realized = BMI.get_value_ptr(model, "realized")
-    @test realized ≈ demand rtol = 1e-3
+    demand = BMI.get_value_ptr(model, "user_demand.demand")
+    realized = BMI.get_value_ptr(model, "user_demand.realized")
+    day = 86400.0
+    BMI.update_until(model, 0.4day)
+    @test realized ≈ demand * 0.4day rtol = 1e-3
+    BMI.update_until(model, 0.6day)
+    @test realized ≈ demand * 0.6day rtol = 1e-3
 end

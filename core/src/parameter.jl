@@ -480,6 +480,7 @@ end
 demand: water flux demand of UserDemand per priority over time.
     Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
+realized_bmi: Cumulative inflow volume, for read or reset by BMI only.
 active: whether this node is active and thus demands water
 allocated: water flux currently allocated to UserDemand per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
@@ -488,9 +489,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
 struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
+    realized_bmi::Vector{Float64}
     demand::Vector{Float64}
-    realized_volume::Vector{Float64}
-    realized_flow::Vector{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::BitVector
     allocated::Vector{Vector{Float64}}
@@ -500,9 +500,8 @@ struct UserDemand <: AbstractParameterNode
     function UserDemand(
         node_id,
         active,
+        realized_bmi,
         demand,
-        realized_volume,
-        realized_flow,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -514,9 +513,8 @@ struct UserDemand <: AbstractParameterNode
             return new(
                 node_id,
                 active,
+                realized_bmi,
                 demand,
-                realized_volume,
-                realized_flow,
                 demand_itp,
                 demand_from_timeseries,
                 allocated,

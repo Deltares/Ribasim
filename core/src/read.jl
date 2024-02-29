@@ -742,16 +742,14 @@ function UserDemand(db::DB, config::Config)::UserDemand
         error("Errors occurred when parsing UserDemand data.")
     end
 
-    realized_volume = zeros(length(node_ids))
-    realized_flow = zeros(length(node_ids))
+    realized_bmi = zeros(length(node_ids))
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
     return UserDemand(
         node_ids,
         active,
+        realized_bmi,
         demand,
-        realized_volume,
-        realized_flow,
         demand_itp,
         demand_from_timeseries,
         allocated,
