@@ -49,7 +49,7 @@
     @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
 end
 
-@testitem "Allocation objective: quadratic absolute" skip = true begin
+@testitem "Allocation objective: quadratic absolute" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -60,20 +60,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
-    model = Ribasim.run(config)
-    @test successful_retcode(model)
-    problem = model.integrator.p.allocation.allocation_models[1].problem
-    objective = JuMP.objective_function(problem)
-    @test objective isa JuMP.QuadExpr # Quadratic expression
-    F = problem[:F]
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
-    ) in keys(objective.terms) # F[4,5]^2 term
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
-    ) in keys(objective.terms) # F[4,6]^2 term
+    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
 end
 
 @testitem "Allocation objective: quadratic relative" begin
@@ -87,21 +74,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
-    model = Ribasim.run(config)
-    @test successful_retcode(model)
-    problem = model.integrator.p.allocation.allocation_models[1].problem
-    objective = JuMP.objective_function(problem)
-    @test objective isa JuMP.QuadExpr # Quadratic expression
-    @test objective.aff.constant == 2.0
-    F = problem[:F]
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))],
-    ) in keys(objective.terms) # F[4,5]^2 term
-    @test JuMP.UnorderedPair{JuMP.VariableRef}(
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
-        F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))],
-    ) in keys(objective.terms) # F[4,6]^2 term
+    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
 end
 
 @testitem "Allocation objective: linear absolute" begin
@@ -139,17 +112,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
-    model = Ribasim.run(config)
-    @test successful_retcode(model)
-    problem = model.integrator.p.allocation.allocation_models[1].problem
-    objective = JuMP.objective_function(problem)
-    @test objective isa JuMP.AffExpr # Affine expression
-    @test :F_abs_user_demand in keys(problem.obj_dict)
-    F = problem[:F]
-    F_abs_user_demand = problem[:F_abs_user_demand]
-
-    @test objective.terms[F_abs_user_demand[NodeID(:UserDemand, 5)]] == 1.0
-    @test objective.terms[F_abs_user_demand[NodeID(:UserDemand, 6)]] == 1.0
+    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
 end
 
 @testitem "Allocation with controlled fractional flow" begin
