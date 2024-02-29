@@ -102,9 +102,10 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph) = p
+    (; graph, user_demand) = p
     (;
         flow,
+        flow_dict,
         flow_vertical,
         flow_prev,
         flow_vertical_prev,
@@ -122,6 +123,12 @@ function integrate_flows!(u, t, integrator)::Nothing
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
     @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+
+    for (i, id) in enumerate(user_demand.node_id)
+        src_id = inflow_id(graph, id)
+        flow_idx = flow_dict[src_id, id]
+        user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    end
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)

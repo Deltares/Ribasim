@@ -264,7 +264,8 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, allocated, active, demand_itp, return_factor, min_level) = user_demand
+    (; node_id, allocated, active, demand, demand_itp, return_factor, min_level) =
+        user_demand
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -281,7 +282,9 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
-            alloc = min(allocated[i][priority_idx], demand_itp[i][priority_idx](t))
+            alloc_prio = allocated[i][priority_idx]
+            demand_prio = demand_itp[i][priority_idx](t)
+            alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
 
