@@ -159,7 +159,8 @@ struct Basin{T, C} <: AbstractParameterNode
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
-    infiltration_realized::Vector{Float64}
+    infiltration_volume::Vector{Float64}
+    infiltration_flow::Vector{Float64}
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -178,6 +179,7 @@ struct Basin{T, C} <: AbstractParameterNode
         potential_evaporation,
         drainage,
         infiltration,
+        infiltration_realized,
         current_level::T,
         current_area::T,
         area,
@@ -194,6 +196,7 @@ struct Basin{T, C} <: AbstractParameterNode
             potential_evaporation,
             drainage,
             infiltration,
+            infiltration_realized,
             current_level,
             current_area,
             area,

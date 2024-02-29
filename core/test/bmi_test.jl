@@ -58,7 +58,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
-    for name in ["volume", "level", "infiltration", "drainage"]
+    for name in ["volume", "level", "infiltration", "infiltration_realized", "drainage"]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)

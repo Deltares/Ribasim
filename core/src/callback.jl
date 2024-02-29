@@ -102,15 +102,9 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph) = p
-    (;
-        flow,
-        flow_vertical,
-        flow_prev,
-        flow_vertical_prev,
-        flow_integrated,
-        flow_vertical_integrated,
-    ) = graph[]
+    (; graph, basin) = p
+    (; flow, flow_vertical, flow_prev, flow_vertical_prev, flow_integrated) = graph[]
+    (; infiltration, infiltration_volume) = basin
     flow = get_tmp(flow, 0)
     flow_vertical = get_tmp(flow_vertical, 0)
 
@@ -122,6 +116,9 @@ function integrate_flows!(u, t, integrator)::Nothing
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
     @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+
+    # Realized infiltration (forward fill)
+    @. infiltration_volume += infiltration * dt
 
     copyto!(flow_prev, flow)
     copyto!(flow_vertical_prev, flow_vertical)
@@ -421,7 +418,8 @@ end
 them to SavedValues"
 function save_flow(u, t, integrator)
     (; dt, p) = integrator
-    (; graph) = p
+    (; graph, basin) = p
+    (; infiltration_volume, infiltration_flow) = basin
     (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
 
     Δt = if iszero(saveat)
@@ -443,6 +441,10 @@ function save_flow(u, t, integrator)
     mean_flow_all ./= Δt
     fill!(flow_vertical_integrated, 0.0)
     fill!(flow_integrated, 0.0)
+
+    # Realized infiltration
+    copyto!(infiltration_flow, infiltration_volume)
+    infiltration_flow ./= Δt
 
     return mean_flow_all
 end
