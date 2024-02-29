@@ -501,6 +501,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     potential_evaporation = zeros(length(node_id))
     drainage = zeros(length(node_id))
     infiltration = zeros(length(node_id))
+    infiltration_realized = zeros(length(node_id))
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
@@ -521,6 +522,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         potential_evaporation,
         drainage,
         infiltration,
+        infiltration_realized,
         current_level,
         current_area,
         area,

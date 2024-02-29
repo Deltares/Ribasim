@@ -76,6 +76,7 @@ function formulate_basins!(
         evaporation = area * factor * basin.potential_evaporation[i]
         drainage = basin.drainage[i]
         infiltration = factor * basin.infiltration[i]
+        infiltration_realized[i] = infiltration
 
         influx = precipitation - evaporation + drainage - infiltration
         du.storage[i] += influx
