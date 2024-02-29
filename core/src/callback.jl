@@ -102,7 +102,7 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph, user_demand) = p
+    (; graph, user_demand, allocation) = p
     (;
         flow,
         flow_dict,
@@ -124,10 +124,13 @@ function integrate_flows!(u, t, integrator)::Nothing
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
     @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
 
-    for (i, id) in enumerate(user_demand.node_id)
-        src_id = inflow_id(graph, id)
-        flow_idx = flow_dict[src_id, id]
-        user_demand.realized[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    if is_active(allocation)
+        for (i, id) in enumerate(user_demand.node_id)
+            src_id = inflow_id(graph, id)
+            flow_idx = flow_dict[src_id, id]
+            user_demand.realized_volume[i] +=
+                0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+        end
     end
 
     copyto!(flow_prev, flow)
@@ -428,7 +431,8 @@ end
 them to SavedValues"
 function save_flow(u, t, integrator)
     (; dt, p) = integrator
-    (; graph) = p
+    (; graph, user_demand, allocation) = p
+    (; realized_volume, realized_flow) = user_demand
     (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
 
     Δt = if iszero(saveat)
@@ -450,6 +454,13 @@ function save_flow(u, t, integrator)
     mean_flow_all ./= Δt
     fill!(flow_vertical_integrated, 0.0)
     fill!(flow_integrated, 0.0)
+
+    if is_active(allocation)
+        copyto!(realized_flow, realized_volume)
+        (; Δt_allocation) = allocation.allocation_models[1]
+        realized_flow ./= Δt_allocation
+        fill!(realized_volume, 0.0)
+    end
 
     return mean_flow_all
 end

@@ -86,5 +86,5 @@ end
     BMI.update_until(model, Δt_allocation)
     demand = BMI.get_value_ptr(model, "demand")
     realized = BMI.get_value_ptr(model, "realized")
-    @test realized ≈ Δt_allocation * demand atol = 0.5
+    @test realized ≈ demand rtol = 1e-3
 end

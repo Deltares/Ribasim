@@ -45,7 +45,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     elseif name == "demand"
         model.integrator.p.user_demand.demand
     elseif name == "realized"
-        model.integrator.p.user_demand.realized
+        model.integrator.p.user_demand.realized_flow
     else
         error("Unknown variable $name")
     end

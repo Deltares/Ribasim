@@ -489,7 +489,8 @@ struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     demand::Vector{Float64}
-    realized::Vector{Float64}
+    realized_volume::Vector{Float64}
+    realized_flow::Vector{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::BitVector
     allocated::Vector{Vector{Float64}}
@@ -500,7 +501,8 @@ struct UserDemand <: AbstractParameterNode
         node_id,
         active,
         demand,
-        realized,
+        realized_volume,
+        realized_flow,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -513,7 +515,8 @@ struct UserDemand <: AbstractParameterNode
                 node_id,
                 active,
                 demand,
-                realized,
+                realized_volume,
+                realized_flow,
                 demand_itp,
                 demand_from_timeseries,
                 allocated,
