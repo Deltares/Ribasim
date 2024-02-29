@@ -14,7 +14,6 @@ For more granular access, see:
 """
 module Ribasim
 
-import Arrow
 import BasicModelInterface as BMI
 import HiGHS
 import IterTools
@@ -23,6 +22,7 @@ import LoggingExtras
 import TranscodingStreams
 
 using Accessors: @set
+using Arrow: Table
 using CodecZstd: ZstdCompressor
 using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
