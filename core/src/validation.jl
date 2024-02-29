@@ -33,14 +33,8 @@ neighbortypes(::Val{:discrete_control}) = Set((
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Val{:flow_demand}) = Set((
-    :linear_resistance,
-    :manning_resistance,
-    :tabulated_rating_curve,
-    :fractional_flow,
-    :pump,
-    :outlet,
-))
+neighbortypes(::Val{:flow_demand}) =
+    Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type

@@ -403,11 +403,33 @@ end
 end
 
 @testitem "flow_demand" begin
+    using JuMP
+    using Ribasim: NodeID, NodeType
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    (; graph) = p
+    (; graph, allocation) = p
 
-    @test [Ribasim.has_flow_demand(graph, node_id) for node_id in graph[].node_ids[2]] == [false, true, false, false, false, false, false]
+    # Test has_flow_demand
+    @test [Ribasim.has_flow_demand(graph, node_id) for node_id in graph[].node_ids[2]] == [true, false, false, false, false, false, false]
+
+    allocation_model = allocation.allocation_models[1]
+    (; problem) = allocation_model
+
+    F = problem[:F]
+    F_flow_buffer = problem[:F_flow_buffer]
+
+    # Test flow conservation constraint containing flow buffer
+    constraint_with_flow_buffer = JuMP.constraint_object(
+        allocation_model.problem[:flow_conservation][NodeID(
+            NodeType.TabulatedRatingCurve,
+            2,
+        )],
+    )
+    @test constraint_with_flow_buffer.func ==
+          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
+          F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
+          F_flow_buffer[NodeID(NodeType.TabulatedRatingCurve, 2)]
 end
