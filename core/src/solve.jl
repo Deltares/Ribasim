@@ -276,7 +276,6 @@ function formulate_flow!(
         end
 
         q = 0.0
-        demand[i] = 0.0
 
         # Take as effectively allocated the minimum of what is allocated by allocation optimization
         # and the current demand.
