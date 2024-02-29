@@ -694,3 +694,13 @@ function set_is_pid_controlled!(p::Parameters)::Nothing
     end
     return nothing
 end
+
+function has_flow_demand(graph::MetaGraph, node_id::NodeID)::Bool
+    control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    for id in control_inneighbors
+        if graph[id].type == :flow_demand
+            return true
+        end
+    end
+    return false
+end

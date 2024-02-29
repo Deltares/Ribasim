@@ -401,3 +401,13 @@ end
     u_stage_6(τ) = storage[stage_6_start_idx]
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
 end
+
+@testitem "flow_demand" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    (; graph) = p
+
+    @test [Ribasim.has_flow_demand(graph, node_id) for node_id in graph[].node_ids[2]] == [false, true, false, false, false, false, false]
+end
