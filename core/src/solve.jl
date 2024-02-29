@@ -283,9 +283,9 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
+            alloc_prio = allocated[i][priority_idx]
             demand_prio = demand_itp[i][priority_idx](t)
-            demand[i] += demand_prio
-            alloc = min(allocated[i][priority_idx], demand_prio)
+            alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
 

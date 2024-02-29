@@ -86,7 +86,8 @@ end
     realized = BMI.get_value_ptr(model, "user_demand.realized")
     day = 86400.0
     BMI.update_until(model, 0.4day)
-    @test realized ≈ demand * 0.4day rtol = 1e-3
+    demand = 0.001  # for both users at the start
+    @test all(isapprox.(realized, demand * 0.4day; rtol = 1e-3))
     BMI.update_until(model, 0.6day)
-    @test realized ≈ demand * 0.6day rtol = 1e-3
+    @test all(isapprox.(realized, demand * 0.6day; rtol = 1e-3))
 end
