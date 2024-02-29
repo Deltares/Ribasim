@@ -998,7 +998,7 @@ function load_data(
 
     table = if !isnothing(path)
         table_path = input_path(config, path)
-        Table(read(table_path))
+        Arrow.Table(read(table_path))
     elseif exists(db, sqltable)
         execute(db, "select * from $(esc_id(sqltable))")
     else
