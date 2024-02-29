@@ -856,7 +856,7 @@ function AllocationModel(
 
     # The JuMP.jl allocation problem
     problem = allocation_problem(config, p, capacity, allocation_network_id)
-    if (config.allocation.objective_type != "linear_absolute")
+    if config.allocation.objective_type != "linear_absolute"
         error("Type of object function is not supported")
     end
 
