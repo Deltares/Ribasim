@@ -43,11 +43,11 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
-    storage0 = BMI.get_value_ptr(model, "volume")
+    storage0 = BMI.get_value_ptr(model, "basin.storage")
     @test storage0 ≈ ones(4)
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
-    storage = BMI.get_value_ptr(model, "volume")
+    storage = BMI.get_value_ptr(model, "basin.storage")
     # get_value_ptr does not copy
     @test storage0 === storage != ones(4)
 end
@@ -59,13 +59,13 @@ end
     model = BMI.initialize(Ribasim.Model, toml_path)
 
     for name in [
-        "volume",
-        "level",
-        "infiltration",
-        "drainage",
-        "subgrid_level",
-        "demand",
-        "realized",
+        "basin.storage",
+        "basin.level",
+        "basin.infiltration",
+        "basin.drainage",
+        "basin.subgrid_level",
+        "user_demand.demand",
+        "user_demand.realized",
     ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)

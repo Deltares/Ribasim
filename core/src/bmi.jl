@@ -32,19 +32,19 @@ function BMI.update_until(model::Model, time)::Model
 end
 
 function BMI.get_value_ptr(model::Model, name::AbstractString)
-    if name == "volume"
+    if name == "basin.storage"
         model.integrator.u.storage
-    elseif name == "level"
+    elseif name == "basin.level"
         get_tmp(model.integrator.p.basin.current_level, 0)
-    elseif name == "infiltration"
+    elseif name == "basin.infiltration"
         model.integrator.p.basin.infiltration
-    elseif name == "drainage"
+    elseif name == "basin.drainage"
         model.integrator.p.basin.drainage
-    elseif name == "subgrid_level"
+    elseif name == "basin.subgrid_level"
         model.integrator.p.subgrid.level
-    elseif name == "demand"
+    elseif name == "user_demand.demand"
         model.integrator.p.user_demand.demand
-    elseif name == "realized"
+    elseif name == "user_demand.realized"
         model.integrator.p.user_demand.realized_flow
     else
         error("Unknown variable $name")
