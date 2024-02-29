@@ -22,7 +22,7 @@ import LoggingExtras
 import TranscodingStreams
 
 using Accessors: @set
-using Arrow: Table
+using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
 using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
