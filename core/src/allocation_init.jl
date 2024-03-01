@@ -403,34 +403,33 @@ function add_variables_absolute_value!(
 )::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
-    if startswith(config.allocation.objective_type, "linear")
-        node_ids = graph[].node_ids[allocation_network_id]
-        node_ids_user_demand = NodeID[]
-        node_ids_basin = NodeID[]
 
-        for node_id in node_ids
-            type = node_id.type
-            if type == NodeType.UserDemand
-                push!(node_ids_user_demand, node_id)
-            elseif type == NodeType.Basin
-                push!(node_ids_basin, node_id)
-            end
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_user_demand = NodeID[]
+    node_ids_basin = NodeID[]
+
+    for node_id in node_ids
+        type = node_id.type
+        if type == NodeType.UserDemand
+            push!(node_ids_user_demand, node_id)
+        elseif type == NodeType.Basin
+            push!(node_ids_basin, node_id)
         end
-
-        # For the main network, connections to subnetworks are treated as UserDemands
-        if is_main_network(allocation_network_id)
-            for connections_subnetwork in main_network_connections
-                for connection in connections_subnetwork
-                    push!(node_ids_user_demand, connection[2])
-                end
-            end
-        end
-
-        problem[:F_abs_user_demand] =
-            JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
-        problem[:F_abs_basin] =
-            JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
     end
+
+    # For the main network, connections to subnetworks are treated as UserDemands
+    if is_main_network(allocation_network_id)
+        for connections_subnetwork in main_network_connections
+            for connection in connections_subnetwork
+                push!(node_ids_user_demand, connection[2])
+            end
+        end
+    end
+
+    problem[:F_abs_user_demand] =
+        JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
+    problem[:F_abs_basin] = JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
+
     return nothing
 end
 
@@ -632,7 +631,6 @@ function add_constraints_absolute_value!(
     problem::JuMP.Model,
     flow_per_node::Dict{NodeID, JuMP.VariableRef},
     F_abs::JuMP.Containers.DenseAxisArray,
-    objective_type::String,
     variable_type::String,
 )::Nothing
     # Example demand
@@ -640,41 +638,23 @@ function add_constraints_absolute_value!(
 
     node_ids = only(F_abs.axes)
 
-    if objective_type == "linear_absolute"
-        # These constraints together make sure that F_abs_* acts as the absolute
-        # value F_abs_* = |x| where x = F-d (here for example d = 2)
-        base_name = "abs_positive_$variable_type"
-        problem[Symbol(base_name)] = JuMP.@constraint(
-            problem,
-            [node_id = node_ids],
-            F_abs[node_id] >= (flow_per_node[node_id] - d),
-            base_name = base_name
-        )
-        base_name = "abs_negative_$variable_type"
-        problem[Symbol(base_name)] = JuMP.@constraint(
-            problem,
-            [node_id = node_ids],
-            F_abs[node_id] >= -(flow_per_node[node_id] - d),
-            base_name = base_name
-        )
-    elseif objective_type == "linear_relative"
-        # These constraints together make sure that F_abs_user_demand acts as the absolute
-        # value F_abs_user_demand = |x| where x = 1-F/d (here for example d = 2)
-        base_name = "abs_positive_$variable_type"
-        problem[Symbol(base_name)] = JuMP.@constraint(
-            problem,
-            [node_id = node_ids],
-            F_abs[node_id] >= (1 - flow_per_node[node_id] / d),
-            base_name = base_name
-        )
-        base_name = "abs_negative_$variable_type"
-        problem[Symbol(base_name)] = JuMP.@constraint(
-            problem,
-            [node_id = node_ids],
-            F_abs[node_id] >= -(1 - flow_per_node[node_id] / d),
-            base_name = base_name
-        )
-    end
+    # These constraints together make sure that F_abs_* acts as the absolute
+    # value F_abs_* = |x| where x = F-d (here for example d = 2)
+    base_name = "abs_positive_$variable_type"
+    problem[Symbol(base_name)] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids],
+        F_abs[node_id] >= (flow_per_node[node_id] - d),
+        base_name = base_name
+    )
+    base_name = "abs_negative_$variable_type"
+    problem[Symbol(base_name)] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids],
+        F_abs[node_id] >= -(flow_per_node[node_id] - d),
+        base_name = base_name
+    )
+
     return nothing
 end
 
@@ -685,28 +665,24 @@ absolute value of the expression comparing flow to a UserDemand to its demand.
 function add_constraints_absolute_value_user_demand!(
     problem::JuMP.Model,
     p::Parameters,
-    config::Config,
 )::Nothing
     (; graph) = p
 
-    objective_type = config.allocation.objective_type
-    if startswith(objective_type, "linear")
-        F = problem[:F]
-        F_abs_user_demand = problem[:F_abs_user_demand]
+    F = problem[:F]
+    F_abs_user_demand = problem[:F_abs_user_demand]
 
-        flow_per_node = Dict(
-            node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
-            node_id in only(F_abs_user_demand.axes)
-        )
+    flow_per_node = Dict(
+        node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
+        node_id in only(F_abs_user_demand.axes)
+    )
 
-        add_constraints_absolute_value!(
-            problem,
-            flow_per_node,
-            F_abs_user_demand,
-            objective_type,
-            "user_demand",
-        )
-    end
+    add_constraints_absolute_value!(
+        problem,
+        flow_per_node,
+        F_abs_user_demand,
+        "user_demand",
+    )
+
     return nothing
 end
 
@@ -714,22 +690,14 @@ end
 Add constraints so that variables F_abs_basin act as the
 absolute value of the expression comparing flow to a basin to its demand.
 """
-function add_constraints_absolute_value_basin!(problem::JuMP.Model, config::Config)::Nothing
-    objective_type = config.allocation.objective_type
-    if startswith(objective_type, "linear")
-        F_basin_in = problem[:F_basin_in]
-        F_abs_basin = problem[:F_abs_basin]
-        flow_per_node =
-            Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
+function add_constraints_absolute_value_basin!(problem::JuMP.Model)::Nothing
+    F_basin_in = problem[:F_basin_in]
+    F_abs_basin = problem[:F_abs_basin]
+    flow_per_node =
+        Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
 
-        add_constraints_absolute_value!(
-            problem,
-            flow_per_node,
-            F_abs_basin,
-            objective_type,
-            "basin",
-        )
-    end
+    add_constraints_absolute_value!(problem, flow_per_node, F_abs_basin, "basin")
+
     return nothing
 end
 
@@ -824,8 +792,8 @@ function allocation_problem(
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value_user_demand!(problem, p, config)
-    add_constraints_absolute_value_basin!(problem, config)
+    add_constraints_absolute_value_user_demand!(problem, p)
+    add_constraints_absolute_value_basin!(problem)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
 
@@ -856,15 +824,6 @@ function AllocationModel(
 
     # The JuMP.jl allocation problem
     problem = allocation_problem(config, p, capacity, allocation_network_id)
-    if config.allocation.objective_type != "linear_absolute"
-        error("Type of object function is not supported")
-    end
 
-    return AllocationModel(
-        Symbol(config.allocation.objective_type),
-        allocation_network_id,
-        capacity,
-        problem,
-        Δt_allocation,
-    )
+    return AllocationModel(allocation_network_id, capacity, problem, Δt_allocation)
 end
