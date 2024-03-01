@@ -122,7 +122,7 @@ There are several types of variable whose value has to be determined to solve th
 
 ## The optimization objective
 
-The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized. The form of these error terms is determined by the choice of one of the supported objective function types, which are discussed further below.
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized. The form of these error terms is determined by the linear absolute object function, which is discussed further below.
 
 $$
     \min E_{\text{user_demand}} + E_{\text{basin}}
@@ -130,32 +130,16 @@ $$
 
 ### User demands
 
-- `quadratic_absolute`:
-$$
-    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( F_{ij} - d_j^p(t)\right)^2
-$$
-- `quadratic_relative`:
-$$
-    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left( 1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
-$$
-- `linear_absolute` (default):
+- `linear_absolute`:
 $$
     E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
-$$
-- `linear_relative`:
-$$
-    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|1 - \frac{F_{ij}}{d_j^p(t)}\right|
 $$
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand with demands determined by subnetwork demand collection.
 :::
 
-
-To avoid division by $0$ errors, if a `*_relative` objective is used and a demand is $0$, the coefficient of the flow $F_{ij}$ is set to $0$.
-
-For `*_absolute` objectives the optimizer cares about the actual amount of water allocated to a demand, for `*_relative` objectives it cares about the fraction of the demand allocated.
-For `quadratic_*` objectives the optimizer cares about avoiding large shortages, for `linear_*` objectives it treats all deviations equally.
+Linear absolute objectives cares about the actual amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment if deviations increase.
 
 :::{.callout-note}
 These options for objectives for allocation to demands have not been tested thoroughly, and might change in the future.
@@ -169,21 +153,9 @@ In the future new optimization objectives will be introduced, for demands of bas
 
 ### Basin demands
 
-- `quadratic_absolute`:
-$$
-    E_{\text{basin}} = \sum_{i \in B_S} \left( F_i^\text{basin in} - d_i^p(t)\right)^2
-$$
-- `quadratic_relative`:
-$$
-    E_{\text{basin}} = \sum_{i \in B_S} \left( 1 - \frac{F_i^\text{basin in}}{d_i^p(t)}\right)^2
-$$
-- `linear_absolute` (default):
+- `linear_absolute`:
 $$
     E_{\text{basin}} = \sum_{i \in B_S} \left| F_i^\text{basin in} - d_i^p(t)\right|
-$$
-- `linear_relative`:
-$$
-    E_{\text{basin}} = \sum_{i \in B_S} \left|1 - \frac{F_i^\text{basin in}}{d_i^p(t)}\right|
 $$
 
 ## The optimization constraints
