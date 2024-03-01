@@ -15,12 +15,12 @@ shutil.rmtree(output_dir, ignore_errors=True)
 model = Model(starttime="2020-01-01 00:00:00", endtime="2021-01-01 00:00:00")
 # %%
 model.basin.add(
-    Node(node_id=2, geometry=Point(2.0, 3.6)),
+    Node(2, Point(2.0, 3.6)),
     [basin.Profile(area=[1.0, 3.0], level=[1.1, 2.2]), basin.State(level=[1.0])],
 )
 # %%
 model.basin.add(
-    Node(node_id=1, geometry=Point(5.0, 3.6)),
+    Node(1, Point(5.0, 3.6)),
     [basin.Profile(area=[2.0, 4.0], level=[6.1, 7.2]), basin.State(level=[1.0])],
 )
 

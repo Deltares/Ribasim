@@ -11,7 +11,6 @@ from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
-from pydantic import field_validator
 
 from ribasim.input_base import SpatialTableModel
 

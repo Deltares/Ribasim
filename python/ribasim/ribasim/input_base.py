@@ -1,5 +1,4 @@
 import re
-import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing

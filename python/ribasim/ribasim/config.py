@@ -89,6 +89,9 @@ class Node(pydantic.BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def __init__(self, node_id: int, geometry: Point, **kwargs) -> None:
+        super().__init__(node_id=node_id, geometry=geometry, **kwargs)
+
     def into_geodataframe(self, node_type: str) -> GeoDataFrame:
         return GeoDataFrame(
             data={
