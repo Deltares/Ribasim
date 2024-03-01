@@ -310,6 +310,16 @@ Internally this get converted to two functions, $A(S)$ and $h(S)$, by integratin
 The minimum area cannot be zero to avoid numerical issues.
 The maximum area is used to convert the precipitation flux into an inflow.
 
+## Basin / area
+
+The optional area table is not used during computation, but provides a place to associate areas in the form of polygons to Basins.
+Using this makes it easier to recognize which water or land surfaces are represented by Basins.
+
+column    | type                    | restriction
+--------- | ----------------------- | -----------
+node_id   | Int                     | sorted
+geom      | Polygon or MultiPolygon | (optional)
+
 ## Basin / subgrid
 
 The subgrid_level table defines a piecewise linear interpolation from a basin water level to a subgrid element water level.

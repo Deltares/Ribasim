@@ -287,34 +287,9 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     Only the upstream Basin receives a (constant) precipitation.
     """
 
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 4, 4],
-            "area": [0.01, 1000.0] * 2,
-            "level": [0.0, 1.0] * 2,
-        }
-    )
-
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    # only the upstream basin gets precipitation
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 4],
-            "precipitation": [precipitation, 0.0],
-        }
-    )
-    state = pd.DataFrame(
-        data={"node_id": static["node_id"], "level": 0.04471158417652035}
-    )
-
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
-
     # Set up a rating curve node:
     # Discharge: lose 1% of storage volume per day at storage = 1000.0.
+    seconds_in_day = 24 * 3600
     q1000 = 1000.0 * 0.01 / seconds_in_day
 
     rating_curve = ribasim.TabulatedRatingCurve(
@@ -354,17 +329,59 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     )
     node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_id, node_type = ribasim.Node.node_ids_and_types(basin, rating_curve)
-
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(node_id, name="fid"),
+            data={
+                "node_type": [
+                    "Basin",
+                    "TabulatedRatingCurve",
+                    "TabulatedRatingCurve",
+                    "Basin",
+                ]
+            },
+            index=pd.Index([1, 2, 3, 4], name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
         )
     )
+
+    # Setup the basins:
+    profile = pd.DataFrame(
+        data={
+            "node_id": [1, 1, 4, 4],
+            "area": [0.01, 1000.0] * 2,
+            "level": [0.0, 1.0] * 2,
+        }
+    )
+
+    # Convert steady forcing to m/s
+    # 2 mm/d precipitation
+    precipitation = 0.002 / seconds_in_day
+    # only the upstream basin gets precipitation
+    static = pd.DataFrame(
+        data={
+            "node_id": [1, 4],
+            "precipitation": [precipitation, 0.0],
+        }
+    )
+    state = pd.DataFrame(
+        data={"node_id": static["node_id"], "level": 0.04471158417652035}
+    )
+    # Turn the basin node point geometries into polygons describing the area
+    assert node.df is not None
+    basin_area = (
+        node.df[node.df.node_type == "Basin"]
+        .geometry.buffer(1.0)
+        .reset_index(drop=True)
+    )
+    area = gpd.GeoDataFrame(
+        data={"node_id": static.node_id},
+        geometry=basin_area,
+        crs="EPSG:28992",
+    )
+
+    basin = ribasim.Basin(profile=profile, static=static, state=state, area=area)
 
     # Setup the edges:
     from_id = np.array([1, 1, 2, 3], dtype=np.int64)
