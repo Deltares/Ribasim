@@ -1,22 +1,14 @@
 # Automatically generated file. Do not modify.
 
-from typing import Any
-
 import pandera as pa
 from pandera.dtypes import Timestamp
 from pandera.typing import Series
-from pandera.typing.geopandas import GeoSeries
 
 
 class _BaseSchema(pa.DataFrameModel):
     class Config:
         add_missing_columns = True
         coerce = True
-
-
-class BasinAreaSchema(_BaseSchema):
-    node_id: Series[int]
-    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
 
 class BasinProfileSchema(_BaseSchema):
