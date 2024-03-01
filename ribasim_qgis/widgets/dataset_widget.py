@@ -62,16 +62,17 @@ class DatasetTreeWidget(QTreeWidget):
         root = self.invisibleRootItem()
         return [root.child(i) for i in range(root.childCount())]
 
-    def add_item(self, name: str):
+    def add_item(self, name: str) -> QTreeWidgetItem:
         item = QTreeWidgetItem()
         self.addTopLevelItem(item)
         item.setText(0, name)
         return item
 
-    def add_node_layer(self, element: Input) -> None:
+    def add_node_layer(self, element: Input) -> QTreeWidgetItem:
         # These are mandatory elements, cannot be unticked
         item = self.add_item(name=element.input_type())
-        item.element = element
+        item.element = element  # type: ignore[attr-defined]
+        return item
 
     def remove_geopackage_layers(self) -> None:
         """
@@ -260,16 +261,32 @@ class DatasetWidget(QWidget):
         self.dataset_tree.clear()
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
-        for node_layer in nodes.values():
-            self.dataset_tree.add_node_layer(node_layer)
+
         name = self.path.stem
         self.ribasim_widget.create_groups(name)
-        for item in self.dataset_tree.items():
+
+        # Make sure "Node", "Edge", "Basin / area" are the top three layers
+        node = nodes.pop("Node")
+        item = self.dataset_tree.add_node_layer(node)
+        self.add_item_to_qgis(item)
+
+        edge = nodes.pop("Edge")
+        item = self.dataset_tree.add_node_layer(edge)
+        self.add_item_to_qgis(item)
+
+        basin_area_layer = nodes.pop("Basin / area", None)
+        if basin_area_layer is not None:
+            item = self.dataset_tree.add_node_layer(basin_area_layer)
+            self.add_item_to_qgis(item)
+
+        # Add the remaining layers
+        for node_layer in nodes.values():
+            item = self.dataset_tree.add_node_layer(node_layer)
             self.add_item_to_qgis(item)
 
         # Connect node and edge layer to derive connectivities.
-        self.node_layer = nodes["Node"].layer
-        self.edge_layer = nodes["Edge"].layer
+        self.node_layer = node.layer
+        self.edge_layer = edge.layer
         self.edge_layer.editingStopped.connect(self.explode_and_connect)
         return
 
