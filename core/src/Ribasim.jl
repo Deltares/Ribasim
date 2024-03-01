@@ -49,7 +49,7 @@ using MetaGraphsNext:
     labels,
     outneighbor_labels,
     inneighbor_labels
-using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
+using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, get_tmp
 using SciMLBase:
     init,
