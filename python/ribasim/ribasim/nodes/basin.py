@@ -29,6 +29,6 @@ class Profile(DataFrame[BasinProfileSchema]):
         super().__init__(data=dict(**kwargs))
 
 
-class Profile(DataFrame[BasinSubgridSchema]):
+class Subgrid(DataFrame[BasinSubgridSchema]):
     def __init__(self, **kwargs):
         super().__init__(data=dict(**kwargs))
