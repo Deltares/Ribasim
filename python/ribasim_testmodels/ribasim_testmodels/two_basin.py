@@ -1,6 +1,6 @@
 from ribasim.config import Node
 from ribasim.model import Model
-from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve, terminal
+from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
 
 
@@ -55,7 +55,7 @@ def two_basin_model() -> Model:
         Node(4, Point(1000, 0)),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 0.01])],
     )
-    model.terminal.add(Node(5, Point(1100, 0)), [terminal.Static()])
+    model.terminal.add(Node(5, Point(1100, 0)))
 
     model.edge.add(
         from_node=model.flow_boundary[1], to_node=model.basin[2], edge_type="flow"
