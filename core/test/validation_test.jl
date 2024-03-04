@@ -181,6 +181,8 @@ end
 
     set_edge_metadata!(NodeID(:Terminal, 3), NodeID(:Pump, 4), EdgeType.flow)
     set_edge_metadata!(NodeID(:Basin, 7), NodeID(:Pump, 2), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 2), NodeID(:Basin, 7), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 4), NodeID(:Basin, 7), EdgeType.flow)
 
     set_edge_metadata!(NodeID(:PidControl, 1), NodeID(:Pump, 4), EdgeType.control)
     set_edge_metadata!(NodeID(:PidControl, 6), NodeID(:Pump, 2), EdgeType.control)
@@ -204,7 +206,7 @@ end
           "Listen node Terminal #3 of PidControl #1 is not a Basin"
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Listen node Basin #5 of PidControl #6 is not upstream of controlled Pump #2"
+          "PID listened Basin #5 is not on either side of controlled Pump #2."
 end
 
 @testitem "FractionalFlow validation" begin
@@ -414,6 +416,7 @@ end
         @test_throws "Invalid demand" Ribasim.UserDemand(
             [NodeID(:UserDemand, 1)],
             [true],
+            [0.0],
             [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
             [true],

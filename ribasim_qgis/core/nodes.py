@@ -4,7 +4,7 @@ This module contains the classes to represent the Ribasim node layers.
 The classes specify:
 
 * The (unabbreviated) name
-* The type of geometry (No geometry, point, linestring, polygon)
+* The type of geometry ("No Geometry", "Point", "LineString", "Polygon")
 * The required attributes of the attribute table
 
 Each node layer is (optionally) represented in multiple places:
@@ -264,7 +264,7 @@ class Edge(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "Linestring"
+        return "LineString"
 
     @classmethod
     def input_type(cls) -> str:
@@ -367,7 +367,7 @@ class BasinStatic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "No geometry"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -420,6 +420,24 @@ class BasinSubgridLevel(Input):
             QgsField("basin_level", QVariant.Double),
             QgsField("subgrid_level", QVariant.Double),
         ]
+
+
+class BasinArea(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / area"
+
+    @classmethod
+    def is_spatial(cls):
+        return True
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "Polygon"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [QgsField("node_id", QVariant.Int)]
 
 
 class BasinState(Input):
@@ -693,7 +711,7 @@ class DiscreteControlLogic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -711,7 +729,7 @@ class PidControlStatic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -733,7 +751,7 @@ class PidControlTime(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:

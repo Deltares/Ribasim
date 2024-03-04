@@ -62,7 +62,7 @@ def test_update_subgrid_level(libribasim, basic, tmp_path):
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
     libribasim.update_subgrid_level()
-    level = libribasim.get_value_ptr("subgrid_level")
+    level = libribasim.get_value_ptr("basin.subgrid_level")
     # The subgrid levels are initialized with NaN.
     # After calling update, they should have regular values.
     assert np.isfinite(level).all()
@@ -72,7 +72,7 @@ def test_get_var_type(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
-    var_type = libribasim.get_var_type("volume")
+    var_type = libribasim.get_var_type("basin.storage")
     assert var_type == "double"
 
 
@@ -80,7 +80,7 @@ def test_get_var_rank(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
-    actual_rank = libribasim.get_var_rank("volume")
+    actual_rank = libribasim.get_var_rank("basin.storage")
     expected_rank = 1
     assert_array_almost_equal(actual_rank, expected_rank)
 
@@ -89,7 +89,7 @@ def test_get_var_shape(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
-    actual_shape = libribasim.get_var_shape("volume")
+    actual_shape = libribasim.get_var_shape("basin.storage")
     expected_shape = np.array([4])
     assert_array_almost_equal(actual_shape, expected_shape)
 
@@ -98,7 +98,7 @@ def test_get_value_ptr(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
-    actual_volume = libribasim.get_value_ptr("volume")
+    actual_volume = libribasim.get_value_ptr("basin.storage")
     expected_volume = np.array([1.0, 1.0, 1.0, 1.0])
     assert_array_almost_equal(actual_volume, expected_volume)
 
@@ -112,7 +112,7 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 
-    variable_name = "var-that-does-not-exist"
+    variable_name = "unknown_node.unknown_variable"
     error_message = re.escape(
         f"BMI exception in get_var_type (for variable {variable_name}):"
         " Message from Ribasim "

@@ -1,4 +1,4 @@
-__version__ = "2024.2.0"
+__version__ = "2024.3.0"
 
 
 from ribasim.config import (

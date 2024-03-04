@@ -3,7 +3,7 @@
 
     # data from which we create pointers for libribasim
     time = [-1.0]
-    var_name = "volume"
+    var_name = "basin.storage"
     type = ones(UInt8, 8)
 
     GC.@preserve time var_name value type toml_path begin

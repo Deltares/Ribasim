@@ -247,27 +247,23 @@ function valid_pid_connectivity(
 )::Bool
     errors = false
 
-    for (id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
+    for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
         has_index, _ = id_index(basin_node_id, listen_id)
         if !has_index
-            @error "Listen node $listen_id of $id is not a Basin"
+            @error "Listen node $listen_id of $pid_control_id is not a Basin"
             errors = true
         end
 
-        controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        controlled_id =
+            only(outneighbor_labels_type(graph, pid_control_id, EdgeType.control))
+        @assert controlled_id.type in [NodeType.Pump, NodeType.Outlet]
 
-        if controlled_id in pump_node_id
-            pump_intake_id = inflow_id(graph, controlled_id)
-            if pump_intake_id != listen_id
-                @error "Listen node $listen_id of $id is not upstream of controlled $controlled_id"
-                errors = true
-            end
-        else
-            outlet_outflow_id = outflow_id(graph, controlled_id)
-            if outlet_outflow_id != listen_id
-                @error "Listen node $listen_id of PidControl node $id is not downstream of controlled outlet $controlled_id"
-                errors = true
-            end
+        id_inflow = inflow_id(graph, controlled_id)
+        id_outflow = outflow_id(graph, controlled_id)
+
+        if listen_id ∉ [id_inflow, id_outflow]
+            errors = true
+            @error "PID listened $listen_id is not on either side of controlled $controlled_id."
         end
     end
 
