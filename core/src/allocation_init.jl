@@ -251,7 +251,7 @@ function process_allocation_graph_edges!(
 
             # Find flow constraints
             if is_flow_constraining(node)
-                problem_node_idx = Ribasim.findsorted(node.node_id, node_id_2)
+                problem_node_idx = findsorted(node.node_id, node_id_2)
                 edge_capacity = min(edge_capacity, node.max_flow_rate[problem_node_idx])
             end
 
@@ -893,6 +893,25 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+function add_constraints_flow_demand_outflow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_flow_demand = [
+        node_id for node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)
+    ]
+    problem[:flow_demand_outflow] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_flow_demand],
+        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] <= 0.0
+    )
+    return nothing
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
@@ -920,6 +939,7 @@ function allocation_problem(
     add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
+    add_constraints_flow_demand_outflow!(problem, p, allocation_network_id)
     add_constraints_buffer!(problem)
 
     return problem

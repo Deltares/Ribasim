@@ -497,6 +497,33 @@ function adjust_buffers!(allocation_model::AllocationModel, priority_idx::Int)::
     return nothing
 end
 
+function set_capacity_flow_demand_outflow!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
+    (; graph, allocation, flow_demand) = p
+    (; priorities) = allocation
+    (; problem) = allocation_model
+    priority = priorities[priority_idx]
+    constraints = problem[:flow_demand_outflow]
+
+    for node_id in only(constraints.axes)
+        constraint = constraints[node_id]
+        node_id_flow_demand = only(inneighbor_labels_type(graph, node_id, EdgeType.control))
+        node_idx = findsorted(flow_demand.node_id, node_id_flow_demand)
+        priority_flow_demand = flow_demand.priority[node_idx]
+
+        capacity = if priority == priority_flow_demand
+            0.0
+        else
+            Inf
+        end
+
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+end
+
 """
 Save the demands and allocated flows for UserDemand and Basin.
 Note: Basin supply (negative demand) is only saved for the first priority.
@@ -663,6 +690,8 @@ function allocate!(
         # quadratic terms:
         # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
         set_objective_priority!(allocation_model, p, u, t, priority_idx)
+
+        set_capacity_flow_demand_outflow!(allocation_model, p, priority_idx)
 
         # Solve the allocation problem for this priority
         JuMP.optimize!(problem)

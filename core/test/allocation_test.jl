@@ -368,6 +368,7 @@ end
 @testitem "flow_demand" begin
     using JuMP
     using Ribasim: NodeID, NodeType
+    using MathOptInterface
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -395,14 +396,18 @@ end
 
     # Test flow conservation constraint containing flow buffer
     constraint_with_flow_buffer = JuMP.constraint_object(
-        allocation_model.problem[:flow_conservation_flow_demand][NodeID(
-            NodeType.TabulatedRatingCurve,
-            2,
-        )],
+        problem[:flow_conservation_flow_demand][NodeID(NodeType.TabulatedRatingCurve, 2)],
     )
     @test constraint_with_flow_buffer.func ==
           F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
           F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
           F_flow_buffer_in[NodeID(NodeType.TabulatedRatingCurve, 2)] -
           F_flow_buffer_out[NodeID(NodeType.TabulatedRatingCurve, 2)]
+
+    constraint_flow_demand_outflow = JuMP.constraint_object(
+        problem[:flow_demand_outflow][NodeID(NodeType.TabulatedRatingCurve, 2)],
+    )
+    @test constraint_flow_demand_outflow.func ==
+          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] + 0.0
+    @test constraint_flow_demand_outflow.set == MathOptInterface.LessThan{Float64}(0.0)
 end
