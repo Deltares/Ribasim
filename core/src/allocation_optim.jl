@@ -96,8 +96,12 @@ function add_basin_term!(
     F_basin = F_basin_in[node_id]
 
     if objective_type in [:linear_absolute, :linear_relative]
-        constraint_abs_positive = problem[:abs_positive_basin][node_id]
-        constraint_abs_negative = problem[:abs_negative_basin][node_id]
+        constraint_abs_positive = get(problem[:abs_positive_basin], node_id)
+        constraint_abs_negative = get(problem[:abs_negative_basin], node_id)
+
+        if isnothing(constraint_abs_positive)
+            return
+        end
     else
         constraint_abs_positive = nothing
         constraint_abs_negative = nothing
@@ -135,8 +139,16 @@ function set_objective_priority!(
         ex = JuMP.QuadExpr()
     elseif objective_type in [:linear_absolute, :linear_relative]
         ex = JuMP.AffExpr()
-        ex += sum(problem[:F_abs_user_demand])
-        ex += sum(problem[:F_abs_basin])
+
+        F_abs_user_demand = problem[:F_abs_user_demand]
+        F_abs_level_demand = problem[:F_abs_level_demand]
+
+        if !isempty(only(F_abs_user_demand.axes))
+            ex += sum(problem[:F_abs_user_demand])
+        end
+        if !isempty(only(F_abs_level_demand.axes))
+            ex += sum(problem[:F_abs_level_demand])
+        end
     end
 
     demand_max = 0.0
@@ -644,7 +656,6 @@ function allocate!(
         adjust_edge_capacities!(allocation_model, p, priority_idx)
 
         adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
-        adjust_buffers()
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients

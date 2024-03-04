@@ -376,7 +376,10 @@ end
     (; graph, allocation) = p
 
     # Test has_flow_demand
-    @test [Ribasim.has_flow_demand(graph, node_id) for node_id in graph[].node_ids[2]] == [true, false, false, false, false, false, false]
+    @test [
+        Ribasim.has_external_demand(graph, node_id, :flow_demand) for
+        node_id in graph[].node_ids[2]
+    ] == [false, false, false, true, false, false, false]
 
     allocation_model = allocation.allocation_models[1]
     (; problem) = allocation_model

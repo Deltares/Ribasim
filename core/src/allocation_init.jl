@@ -36,7 +36,9 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
-        elseif has_flow_demand(graph, node_id)
+        elseif has_external_demand(graph, node_id, :level_demand)
+            use_node = true
+        elseif has_external_demand(graph, node_id, :flow_demand)
             use_node = true
         end
 
@@ -371,21 +373,19 @@ function add_variables_flow_buffer!(
 )::Nothing
     (; graph) = p
 
-    node_ids_user_demand = NodeID[]
     node_ids_flow_demand = NodeID[]
 
     for node_id in graph[].node_ids[allocation_network_id]
-        if node_id.type == NodeType.UserDemand
-            push!(node_ids_user_demand, node_id)
-        elseif has_flow_demand(graph, node_id)
+        if node_type.type == NodeType.Basin &&
+           has_external_demand(graph, node_id, :flow_demand)
             push!(node_ids_flow_demand, node_id)
         end
     end
 
-    problem[:F_user_buffer] =
-        JuMP.@variable(problem, F_user_buffer[node_id = node_ids_user_demand,] >= 0.0)
-    problem[:F_flow_buffer] =
-        JuMP.@variable(problem, F_flow_buffer[node_id = node_ids_flow_demand,] >= 0.0)
+    problem[:F_flow_buffer_in] =
+        JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] >= 0.0)
+    problem[:F_flow_buffer_out] =
+        JuMP.@variable(problem, F_flow_buffer_out[node_id = node_ids_flow_demand,] >= 0.0)
     return nothing
 end
 
@@ -406,14 +406,18 @@ function add_variables_absolute_value!(
     if startswith(config.allocation.objective_type, "linear")
         node_ids = graph[].node_ids[allocation_network_id]
         node_ids_user_demand = NodeID[]
-        node_ids_basin = NodeID[]
+        node_ids_level_demand = NodeID[]
+        node_ids_flow_demand = NodeID[]
 
         for node_id in node_ids
             type = node_id.type
             if type == NodeType.UserDemand
                 push!(node_ids_user_demand, node_id)
-            elseif type == NodeType.Basin
-                push!(node_ids_basin, node_id)
+            elseif type == NodeType.Basin &&
+                   has_external_demand(graph, node_id, :level_demand)
+                push!(node_ids_level_demand, node_id)
+            elseif has_external_demand(graph, node_id, :flow_demand)
+                push!(node_ids_flow_demand, node_id)
             end
         end
 
@@ -428,8 +432,10 @@ function add_variables_absolute_value!(
 
         problem[:F_abs_user_demand] =
             JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
-        problem[:F_abs_basin] =
-            JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
+        problem[:F_abs_level_demand] =
+            JuMP.@variable(problem, F_abs_level_demand[node_id = node_ids_level_demand])
+        problem[:F_abs_flow_demand] =
+            JuMP.@variable(problem, F_abs_flow_demand[node_id = node_ids_flow_demand])
     end
     return nothing
 end
@@ -553,9 +559,7 @@ function get_buffer(
     graph::MetaGraph,
     node_id::NodeID,
 )::Union{JuMP.VariableRef, Float64}
-    if node_id.type == NodeType.UserDemand
-        problem[:F_user_buffer][node_id]
-    elseif has_flow_demand(graph, node_id)
+    if has_external_demand(graph, node_id, :flow_demand)
         problem[:F_flow_buffer][node_id]
     else
         0.0
@@ -580,7 +584,8 @@ function add_constraints_flow_conservation!(
     node_ids_conservation = NodeID[]
 
     for node_id in node_ids
-        if node_id.type == NodeType.Basin || has_flow_demand(graph, node_id)
+        if node_id.type == NodeType.Basin ||
+           has_external_demand(graph, node_id, :flow_demand)
             push!(node_ids_conservation, node_id)
         end
     end
@@ -703,14 +708,15 @@ function add_constraints_absolute_value_basin!(problem::JuMP.Model, config::Conf
     objective_type = config.allocation.objective_type
     if startswith(objective_type, "linear")
         F_basin_in = problem[:F_basin_in]
-        F_abs_basin = problem[:F_abs_basin]
-        flow_per_node =
-            Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
+        F_abs_level_demand = problem[:F_abs_level_demand]
+        flow_per_node = Dict(
+            node_id => F_basin_in[node_id] for node_id in only(F_abs_level_demand.axes)
+        )
 
         add_constraints_absolute_value!(
             problem,
             flow_per_node,
-            F_abs_basin,
+            F_abs_level_demand,
             objective_type,
             "basin",
         )
@@ -788,14 +794,7 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
 end
 
 function add_constraints_buffer!(problem::JuMP.Model)::Nothing
-    F_user_buffer = problem[:F_user_buffer]
     F_flow_buffer = problem[:F_flow_buffer]
-    problem[:user_buffer_outflow] = JuMP.@constraint(
-        problem,
-        [node_id = only(F_user_buffer.axes)],
-        F_user_buffer[node_id] <= 0.0,
-        base_name = "user_buffer_outflow"
-    )
     problem[:flow_buffer_outflow] = JuMP.@constraint(
         problem,
         [node_id = only(F_flow_buffer.axes)],

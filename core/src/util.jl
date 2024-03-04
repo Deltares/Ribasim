@@ -695,12 +695,23 @@ function set_is_pid_controlled!(p::Parameters)::Nothing
     return nothing
 end
 
-function has_flow_demand(graph::MetaGraph, node_id::NodeID)::Bool
+function has_external_demand(graph::MetaGraph, node_id::NodeID, node_type::Symbol)::Bool
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     for id in control_inneighbors
-        if graph[id].type == :flow_demand
+        if graph[id].type == node_type
             return true
         end
     end
     return false
+end
+
+function Base.get(
+    constraints::JuMP.Containers.DenseAxisArray,
+    node_id::NodeID,
+)::Union{JuMP.ConstraintRef, Nothing}
+    if node_id in only(constraints.axes)
+        constraints[node_id]
+    else
+        nothing
+    end
 end
