@@ -122,28 +122,22 @@ There are several types of variable whose value has to be determined to solve th
 
 ## The optimization objective
 
-The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized. The form of these error terms is determined by the linear absolute object function, which is discussed further below.
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized.
 
 $$
-    \min E_{\text{user_demand}} + E_{\text{basin}}
+    \min E_{\text{user demand}} + E_{\text{basin}}
 $$
 
-### User demands
-
-- `linear_absolute`:
+The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where
 $$
-    E_{\text{user_demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
+    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
 $$
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand with demands determined by subnetwork demand collection.
 :::
 
-Linear absolute objectives cares about the actual amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment if deviations increase.
-
-:::{.callout-note}
-These options for objectives for allocation to demands have not been tested thoroughly, and might change in the future.
-:::
+This type of objective cares about the absolute amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment if deviations increase.
 
 The absolute value applied here is not supported in a linear programming context directly; this requires introduction of new variables and constraints. For more details see [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
 
@@ -151,9 +145,7 @@ The absolute value applied here is not supported in a linear programming context
 In the future new optimization objectives will be introduced, for demands of basins and priorities over sources. These will be used in combination with the above, in the form of goal programming.
 :::
 
-### Basin demands
-
-- `linear_absolute`:
+Likewise, the error of basin demands is the absolute value between flows consumed by basins and basin demands.
 $$
     E_{\text{basin}} = \sum_{i \in B_S} \left| F_i^\text{basin in} - d_i^p(t)\right|
 $$
