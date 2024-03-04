@@ -1,93 +1,47 @@
-import geopandas as gpd
 import numpy as np
-import pandas as pd
-import ribasim
+from ribasim.config import Node, Solver
+from ribasim.model import Model
+from ribasim.nodes import (
+    basin,
+    flow_boundary,
+    fractional_flow,
+    level_boundary,
+    linear_resistance,
+    manning_resistance,
+    pid_control,
+    pump,
+    tabulated_rating_curve,
+)
+from shapely.geometry import Point
 
 
 def linear_resistance_model():
     """Set up a minimal model which uses a linear_resistance node."""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: LinearResistance
-            (2.0, 0.0),  # 3: LevelBoundary
-        ]
-    )
-
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["Basin", "LinearResistance", "LevelBoundary"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1],
-            "area": [100.0, 100.0],
-            "level": [0.0, 10.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "level": [10.0],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # setup linear resistance:
-    linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(
-            data={"node_id": [2], "resistance": [5e4], "max_flow_rate": [6e-5]}
-        )
-    )
-
-    # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [3],
-                "level": [5.0],
-            }
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        level_boundary=level_boundary,
-        linear_resistance=linear_resistance,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [basin.Profile(area=100.0, level=[0.0, 10.0]), basin.State(level=[10.0])],
+    )
+    model.linear_resistance.add(
+        Node(2, Point(1, 0)),
+        [linear_resistance.Static(resistance=[5e4], max_flow_rate=[6e-5])],
+    )
+    model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[5.0])])
+
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.linear_resistance[2],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.linear_resistance[2],
+        to_node=model.level_boundary[3],
+        edge_type="flow",
     )
 
     return model
@@ -95,95 +49,39 @@ def linear_resistance_model():
 
 def rating_curve_model():
     """Set up a minimal model which uses a tabulated_rating_curve node."""
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: TabulatedRatingCurve
-            (2.0, 0.0),  # 3: Terminal
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = ["Basin", "TabulatedRatingCurve", "Terminal"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 1],
-            "area": [0.01, 100.0, 100.0],
-            "level": [0.0, 1.0, 2.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "level": [10.5],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup the rating curve
-    n_datapoints = 100
-    level_min = 1.0
-    node_id = np.full(n_datapoints, 2)
-    level = np.linspace(0, 12, 100)
-    flow_rate = np.square(level - level_min) / (60 * 60 * 24)
-
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=pd.DataFrame(
-            data={
-                "node_id": node_id,
-                "level": level,
-                "flow_rate": flow_rate,
-            }
-        )
-    )
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(
-        static=pd.DataFrame(
-            data={
-                "node_id": [3],
-            }
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        terminal=terminal,
-        tabulated_rating_curve=rating_curve,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
+            basin.State(level=[10.5]),
+        ],
+    )
+
+    level_min = 1.0
+    level = np.linspace(0, 12, 100)
+    flow_rate = np.square(level - level_min) / (60 * 60 * 24)
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0)),
+        [tabulated_rating_curve.Static(level=level, flow_rate=flow_rate)],
+    )
+
+    model.terminal.add(Node(3, Point(2, 0)))
+
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.tabulated_rating_curve[2],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[2],
+        to_node=model.terminal[3],
+        edge_type="flow",
     )
 
     return model
@@ -192,82 +90,33 @@ def rating_curve_model():
 def manning_resistance_model():
     """Set up a minimal model which uses a manning_resistance node."""
 
-    # Set up the nodes:
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: ManningResistance
-            (2.0, 0.0),  # 3: Basin
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["Basin", "ManningResistance", "Basin"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 1, 3, 3, 3],
-            "area": 2 * [0.01, 100.0, 100.0],
-            "level": 2 * [0.0, 1.0, 2.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "level": [9.5, 4.5],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup the Manning resistance:
-    manning_resistance = ribasim.ManningResistance(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "length": [2000.0],
-                "manning_n": [1e7],
-                "profile_width": [50.0],
-                "profile_slope": [0.0],
-            }
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        manning_resistance=manning_resistance,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+    )
+
+    basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0])
+
+    model.basin.add(Node(1, Point(0, 0)), [basin_profile, basin.State(level=[9.5])])
+    model.manning_resistance.add(
+        Node(2, Point(1, 0)),
+        [
+            manning_resistance.Static(
+                manning_n=[1e7], profile_width=50.0, profile_slope=0.0, length=2000.0
+            )
+        ],
+    )
+    model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
+
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.manning_resistance[2],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.manning_resistance[2],
+        to_node=model.basin[3],
+        edge_type="flow",
     )
 
     return model
@@ -276,129 +125,60 @@ def manning_resistance_model():
 def misc_nodes_model():
     """Set up a minimal model using flow_boundary, fractional_flow and pump nodes."""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: FlowBoundary
-            (0.0, 1.0),  # 2: FractionalFlow
-            (0.0, 2.0),  # 3: Basin
-            (0.0, 3.0),  # 4: Pump
-            (0.0, 4.0),  # 5: Basin
-            (1.0, 0.0),  # 6: FractionalFlow
-            (2.0, 0.0),  # 7: Terminal
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = [
-        "FlowBoundary",
-        "FractionalFlow",
-        "Basin",
-        "Pump",
-        "Basin",
-        "FractionalFlow",
-        "Terminal",
-    ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2, 3, 4, 1, 6], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 5, 6, 7], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": 3 * [3] + 3 * [5],
-            "area": 2 * [0.01, 100.0, 100.0],
-            "level": 2 * [0.0, 1.0, 2.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [3, 5],
-            "level": 2 * [10.5],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup flow boundary:
-    flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [1],
-                "flow_rate": [3e-4],
-            }
-        )
-    )
-
-    # Setup fractional flows:
-    fractional_flow = ribasim.FractionalFlow(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2, 6],
-                "fraction": [0.5, 0.5],
-            }
-        )
-    )
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            data={
-                "node_id": [4],
-                "flow_rate": [1e-4],
-            }
-        )
-    )
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(
-        static=pd.DataFrame(
-            data={
-                "node_id": [7],
-            }
-        )
-    )
-
-    # Setup solver:
-    solver = ribasim.Solver(
-        dt=24 * 24 * 60,
-        algorithm="Euler",
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        flow_boundary=flow_boundary,
-        pump=pump,
-        terminal=terminal,
-        fractional_flow=fractional_flow,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
-        solver=solver,
+        solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
+    )
+
+    basin_shared = [
+        basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
+        basin.State(level=[10.5]),
+    ]
+
+    model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[3e-4])]
+    )
+    model.fractional_flow.add(
+        Node(2, Point(0, 1)), [fractional_flow.Static(fraction=[0.5])]
+    )
+    model.basin.add(Node(3, Point(0, 2)), basin_shared)
+    model.pump.add(Node(4, Point(0, 3)), [pump.Static(flow_rate=[1e-4])])
+    model.basin.add(Node(5, Point(0, 4)), basin_shared)
+    model.fractional_flow.add(
+        Node(6, Point(1, 0)), [fractional_flow.Static(fraction=[0.5])]
+    )
+    model.terminal.add(Node(7, Point(2, 0)))
+
+    model.edge.add(
+        from_node=model.flow_boundary[1],
+        to_node=model.fractional_flow[2],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.fractional_flow[2],
+        to_node=model.basin[3],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.basin[3],
+        to_node=model.pump[4],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.pump[4],
+        to_node=model.basin[5],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.flow_boundary[1],
+        to_node=model.fractional_flow[6],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.fractional_flow[6],
+        to_node=model.terminal[7],
+        edge_type="flow",
     )
 
     return model
@@ -407,103 +187,47 @@ def misc_nodes_model():
 def pid_control_equation_model():
     """Set up a model with pid control for an analytical solution test"""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: Pump
-            (2.0, 0.0),  # 3: Terminal
-            (0.5, 1.0),  # 4: PidControl
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["Basin", "Pump", "Terminal", "PidControl"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2, 4], dtype=np.int64)
-    to_id = np.array([2, 3, 2], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": ["flow", "flow", "control"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 1],
-            "area": [0.01, 100.0, 100.0],
-            "level": [0.0, 1.0, 2.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "level": [10.5],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "flow_rate": [0.0],  # irrelevant, will be overwritten
-            }
-        )
-    )
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(
-        static=pd.DataFrame(
-            data={
-                "node_id": [3],
-            }
-        )
-    )
-
-    # Setup PID control
-    pid_control = ribasim.PidControl(
-        static=pd.DataFrame(
-            data={
-                "node_id": [4],
-                "listen_node_id": [1],
-                "target": [10.0],
-                "proportional": [-2.5],
-                "integral": [-0.001],
-                "derivative": [10.0],
-            }
-        )
-    )
-
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        pump=pump,
-        terminal=terminal,
-        pid_control=pid_control,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-01 00:05:00",
+    )
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
+            basin.State(level=[10.5]),
+        ],
+    )
+    # Pump flow_rate will be overwritten by the PidControl
+    model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[0.0])])
+    model.terminal.add(Node(3, Point(2, 0)))
+    model.pid_control.add(
+        Node(4, Point(0.5, 1)),
+        [
+            pid_control.Static(
+                listen_node_id=[1],
+                target=10.0,
+                proportional=-2.5,
+                integral=-0.001,
+                derivative=10.0,
+            )
+        ],
+    )
+
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.pump[2],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.pump[2],
+        to_node=model.terminal[3],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.pid_control[4],
+        to_node=model.pump[2],
+        edge_type="control",
     )
 
     return model
