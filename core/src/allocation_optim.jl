@@ -458,6 +458,33 @@ function adjust_basin_capacities!(
     return nothing
 end
 
+function adjust_buffers!(allocation_model::AllocationModel, priority_idx::Int)::Nothing
+    (; problem) = allocation_model
+
+    constraints_user_buffer = problem[:user_buffer_outflow]
+    constraints_flow_buffer = problem[:flow_buffer_outflow]
+
+    for node_id in only(constraints_user_buffer.axes)
+        constraint = constraints_user_buffer[node_id]
+
+        buffer_capacity = if priority_idx == 1
+            0.0
+        else
+            JuMP.normalized_rhs(constraint) - used + new
+        end
+
+        JuMP.set_normalized_rhs(constraint, buffer_capacity)
+    end
+
+    for node_id in only(constraints_flow_buffer.axes)
+        if priority_idx == 1
+        else
+        end
+    end
+
+    return nothing
+end
+
 """
 Save the demands and allocated flows for UserDemand and Basin.
 Note: Basin supply (negative demand) is only saved for the first priority.
@@ -617,6 +644,7 @@ function allocate!(
         adjust_edge_capacities!(allocation_model, p, priority_idx)
 
         adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
+        adjust_buffers()
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients

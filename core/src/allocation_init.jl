@@ -787,7 +787,7 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
-function add_constraints_flow_buffer!(problem::JuMP.Model)::Nothing
+function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     F_user_buffer = problem[:F_user_buffer]
     F_flow_buffer = problem[:F_flow_buffer]
     problem[:user_buffer_outflow] = JuMP.@constraint(
@@ -831,7 +831,7 @@ function allocation_problem(
     add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
-    add_constraints_flow_buffer!(problem)
+    add_constraints_buffer!(problem)
 
     return problem
 end
