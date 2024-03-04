@@ -25,13 +25,8 @@ Determine the new version number like `2023.1.0`, filling in the current year, a
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
 Update the version numbers in the repository to the new version number.
-A single find and replace can update all 5 locations:
-
-- `pixi.toml`
-- `core/Project.toml`
-- `python/ribasim/ribasim/__init__.py`
-- `python/ribasim_api/ribasim_api/__init__.py`
-- `ribasim_qgis/metadata.txt`
+A single find and replace can update all locations.
+The Ribasim version number is not in `pixi.lock`, that file does not need updating.
 
 Now submit a pull request to update the version numbers.
 

@@ -46,8 +46,8 @@ def explode_lines(edge: QgsVectorLayer) -> None:
 
 def derive_connectivity(
     node_index: NDArray[np.int_],
-    node_xy: NDArray[np.float_],
-    edge_xy: NDArray[np.float_],
+    node_xy: NDArray[np.float64],
+    edge_xy: NDArray[np.float64],
 ) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
     """
     Derive connectivity on the basis of xy locations.

@@ -20,7 +20,7 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run install-without-pre-commit
+        run: pixi run install-ci
       - name: Run mypy on python/ribasim
         run: |
           pixi run mypy-ribasim-python
@@ -30,3 +30,6 @@ jobs:
       - name: Run mypy on python/ribasim_api
         run: |
           pixi run mypy-ribasim-api
+      - name: Run mypy on ribasim_qgis
+        run: |
+          pixi run mypy-ribasim-qgis

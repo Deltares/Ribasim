@@ -1,16 +1,15 @@
-__version__ = "2024.2.0"
+__version__ = "2024.3.0"
 
 
-from ribasim import utils
 from ribasim.config import (
     Allocation,
     Basin,
-    Compression,
     DiscreteControl,
     External,
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
+    LevelDemand,
     LinearResistance,
     Logging,
     ManningResistance,
@@ -21,7 +20,7 @@ from ribasim.config import (
     Solver,
     TabulatedRatingCurve,
     Terminal,
-    User,
+    UserDemand,
     Verbosity,
 )
 from ribasim.geometry.edge import Edge, EdgeSchema
@@ -32,14 +31,13 @@ __all__ = [
     "Allocation",
     "Basin",
     "DiscreteControl",
-    "Compression",
     "Edge",
     "EdgeSchema",
     "External",
     "FlowBoundary",
     "FractionalFlow",
-    "Results",
     "LevelBoundary",
+    "LevelDemand",
     "LinearResistance",
     "Logging",
     "ManningResistance",
@@ -50,10 +48,10 @@ __all__ = [
     "Outlet",
     "PidControl",
     "Pump",
+    "Results",
     "Solver",
     "TabulatedRatingCurve",
-    "Verbosity",
     "Terminal",
-    "User",
-    "utils",
+    "UserDemand",
+    "Verbosity",
 ]

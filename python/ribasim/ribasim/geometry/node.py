@@ -11,6 +11,7 @@ from matplotlib.patches import Patch
 from numpy.typing import NDArray
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import field_validator
 
 from ribasim.input_base import SpatialTableModel
 
@@ -18,19 +19,29 @@ __all__ = ("Node",)
 
 
 class NodeSchema(pa.SchemaModel):
+    node_id: Series[int]
     name: Series[str] = pa.Field(default="")
-    type: Series[str] = pa.Field(default="")
-    allocation_network_id: Series[pd.Int64Dtype] = pa.Field(
+    node_type: Series[str] = pa.Field(default="")
+    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
 
     class Config:
         add_missing_columns = True
+        coerce = True
 
 
 class Node(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
+
+    # TODO: Remove as soon as add api has been merged
+    @field_validator("df", mode="before")
+    @classmethod
+    def add_node_id_column(cls, df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        if "node_id" not in df.columns:
+            df.insert(0, "node_id", df.index)
+        return df
 
     @staticmethod
     def node_ids_and_types(*nodes):
@@ -147,12 +158,10 @@ class Node(SpatialTableModel[NodeSchema]):
         contains_subnetworks = False
         assert self.df is not None
 
-        for allocation_subnetwork_id, df_subnetwork in self.df.groupby(
-            "allocation_network_id"
-        ):
-            if allocation_subnetwork_id is None:
+        for subnetwork_id, df_subnetwork in self.df.groupby("subnetwork_id"):
+            if subnetwork_id is None:
                 continue
-            elif allocation_subnetwork_id == 1:
+            elif subnetwork_id == 1:
                 contains_main_network = True
                 color = COLOR_MAIN_NETWORK
             else:
@@ -206,7 +215,8 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "h",
             "DiscreteControl": "*",
             "PidControl": "x",
-            "User": "s",
+            "UserDemand": "s",
+            "LevelDemand": "o",
             "": "o",
         }
 
@@ -223,12 +233,13 @@ class Node(SpatialTableModel[NodeSchema]):
             "FlowBoundary": "m",
             "DiscreteControl": "k",
             "PidControl": "k",
-            "User": "g",
+            "UserDemand": "g",
+            "LevelDemand": "k",
             "": "k",
         }
         assert self.df is not None
 
-        for nodetype, df in self.df.groupby("type"):
+        for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
             marker = MARKERS[nodetype]
             color = COLORS[nodetype]

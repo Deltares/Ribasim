@@ -7,7 +7,7 @@ function set_initial_discrete_controlled_parameters!(
     storage0::Vector{Float64},
 )::Nothing
     (; p) = integrator
-    (; basin, discrete_control) = p
+    (; discrete_control) = p
 
     n_conditions = length(discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
@@ -30,7 +30,7 @@ Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
     parameters::Parameters,
-    config::Config;
+    config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -39,6 +39,9 @@ function create_callbacks(
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin)
     push!(callbacks, basin_cb)
+
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
+    push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
@@ -55,7 +58,14 @@ function create_callbacks(
 
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    save_flow_cb = SavingCallback(
+        save_flow,
+        saved_flow;
+        # If saveat is a vector which contains 0.0 this callback will still be called
+        # at t = 0.0 despite save_start = false
+        saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat,
+        save_start = false,
+    )
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -85,6 +95,44 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+"""
+Integrate flows over the last timestep
+"""
+function integrate_flows!(u, t, integrator)::Nothing
+    (; p, dt) = integrator
+    (; graph, user_demand) = p
+    (;
+        flow,
+        flow_dict,
+        flow_vertical,
+        flow_prev,
+        flow_vertical_prev,
+        flow_integrated,
+        flow_vertical_integrated,
+    ) = graph[]
+    flow = get_tmp(flow, 0)
+    flow_vertical = get_tmp(flow_vertical, 0)
+
+    if !isempty(flow_prev) && isnan(flow_prev[1])
+        # If flow_prev is not populated yet
+        copyto!(flow_prev, flow)
+        copyto!(flow_vertical_prev, flow_vertical)
+    end
+
+    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
+    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+
+    for (i, id) in enumerate(user_demand.node_id)
+        src_id = inflow_id(graph, id)
+        flow_idx = flow_dict[src_id, id]
+        user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    end
+
+    copyto!(flow_prev, flow)
+    copyto!(flow_vertical_prev, flow_vertical)
+    return nothing
 end
 
 """
@@ -120,44 +168,29 @@ function get_value(
     u::AbstractVector{Float64},
     t::Float64,
 )
-    (; basin, flow_boundary, level_boundary, external) = p
+    (; basin, flow_boundary, level_boundary) = p
 
     if variable == "level"
-        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
-        level_boundary_idx = findsorted(level_boundary.node_id, node_id)
-
-        if hasindex_basin
+        if node_id.type == NodeType.Basin
+            _, basin_idx = id_index(basin.node_id, node_id)
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif level_boundary_idx !== nothing
+        elseif node_id.type == NodeType.LevelBoundary
+            level_boundary_idx = findsorted(level_boundary.node_id, node_id)
             level = level_boundary.level[level_boundary_idx](t + Δt)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
             )
         end
-
         value = level
 
     elseif variable == "flow_rate"
-        flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
-
-        if flow_boundary_idx === nothing
+        if node_id.type == NodeType.FlowBoundary
+            flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
+            value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+        else
             error("Flow condition node $node_id is not a flow boundary.")
         end
-
-        value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
-
-    elseif variable == "concentration"
-        hasindex_basin, basin_idx = id_index(basin.node_id, node_id)
-
-        if hasindex_basin
-            value = basin.concentration[basin_idx](t + Δt)
-        else
-            error("Concentration condition node '$node_id' is not a basin.")
-        end
-
-    elseif variable == "external"
-        value = external.external(t + Δt)
 
     else
         error("Unsupported condition variable $variable.")
@@ -287,8 +320,7 @@ function discrete_control_affect!(
 
     # What the local control state is
     # TODO: Check time elapsed since control change
-    control_state_now, control_state_start =
-        discrete_control.control_state[discrete_control_node_id]
+    control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
 
     control_state_change = false
 
@@ -386,18 +418,40 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
         end
 
         # Set new fractional flow fractions in allocation problem
-        if node isa FractionalFlow && field == :fraction
+        if is_active(p.allocation) && node isa FractionalFlow && field == :fraction
             set_fractional_flow_in_allocation!(p, node_id, value)
         end
     end
 end
 
-"Copy the current flow to the SavedValues"
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
 function save_flow(u, t, integrator)
-    vcat(
-        get_tmp(integrator.p.graph[].flow_vertical, 0.0),
-        get_tmp(integrator.p.graph[].flow, 0.0),
-    )
+    (; dt, p) = integrator
+    (; graph) = p
+    (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
+
+    Δt = if iszero(saveat)
+        dt
+    elseif isinf(saveat)
+        t
+    else
+        t_end = integrator.sol.prob.tspan[2]
+        if t_end - t > saveat
+            saveat
+        else
+            # The last interval might be shorter than saveat
+            rem = t % saveat
+            iszero(rem) ? saveat : rem
+        end
+    end
+
+    mean_flow_all = vcat(flow_vertical_integrated, flow_integrated)
+    mean_flow_all ./= Δt
+    fill!(flow_vertical_integrated, 0.0)
+    fill!(flow_integrated, 0.0)
+
+    return mean_flow_all
 end
 
 function update_subgrid_level!(integrator)::Nothing
@@ -431,7 +485,7 @@ function update_basin(integrator)::Nothing
     )
 
     for row in timeblock
-        hasindex, i = id_index(node_id, NodeID(row.node_id))
+        hasindex, i = id_index(node_id, NodeID(NodeType.Basin, row.node_id))
         @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
         set_table_row!(table, row, i)
     end
@@ -439,16 +493,16 @@ function update_basin(integrator)::Nothing
     return nothing
 end
 
-"Solve the allocation problem for all users and assign allocated abstractions to user nodes."
+"Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
-    (; p, t) = integrator
+    (; p, t, u) = integrator
     (; allocation) = p
     (; allocation_models) = allocation
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            allocate!(p, allocation_model, t; collect_demands = true)
+            allocate!(p, allocation_model, t, u; collect_demands = true)
         end
     end
 
@@ -456,7 +510,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate!(p, allocation_model, t)
+        allocate!(p, allocation_model, t, u)
     end
 end
 
@@ -474,7 +528,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         id = first(group).node_id
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
-        i = searchsortedfirst(node_id, NodeID(id))
+        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
         tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing

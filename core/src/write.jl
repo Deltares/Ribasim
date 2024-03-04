@@ -64,7 +64,7 @@ function get_storages_and_levels(
     (; sol, p) = integrator
 
     node_id = p.basin.node_id.values::Vector{NodeID}
-    tsteps = datetime_since.(timesteps(model), config.starttime)
+    tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)
     level = zero(storage)
@@ -101,9 +101,11 @@ function flow_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Union{Int, Missing}},
+    from_node_type::Vector{String},
     from_node_id::Vector{Int},
+    to_node_type::Vector{String},
     to_node_id::Vector{Int},
-    flow::FlatVector{Float64},
+    flow_rate::FlatVector{Float64},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
@@ -111,7 +113,9 @@ function flow_table(
     (; flow_dict, flow_vertical_dict) = graph[]
 
     # self-loops have no edge ID
+    from_node_type = String[]
     from_node_id = Int[]
+    to_node_type = String[]
     to_node_id = Int[]
     unique_edge_ids_flow = Union{Int, Missing}[]
 
@@ -121,7 +125,9 @@ function flow_table(
     end
 
     for id in vertical_flow_node_ids
+        push!(from_node_type, string(id.type))
         push!(from_node_id, id.value)
+        push!(to_node_type, string(id.type))
         push!(to_node_id, id.value)
         push!(unique_edge_ids_flow, missing)
     end
@@ -132,7 +138,9 @@ function flow_table(
     end
 
     for (from_id, to_id) in flow_edge_ids
+        push!(from_node_type, string(from_id.type))
         push!(from_node_id, from_id.value)
+        push!(to_node_type, string(to_id.type))
         push!(to_node_id, to_id.value)
         push!(unique_edge_ids_flow, graph[from_id, to_id].id)
     end
@@ -140,13 +148,28 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
-    time = repeat(datetime_since.(t, config.starttime); inner = nflow)
+    # the timestamp should represent the start of the period, not the end
+    t_starts = circshift(t, 1)
+    if !isempty(t)
+        t_starts[1] = 0.0
+    end
+    time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
+    from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
+    to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow = FlatVector(saveval)
+    flow_rate = FlatVector(saveval)
 
-    return (; time, edge_id, from_node_id, to_node_id, flow)
+    return (;
+        time,
+        edge_id,
+        from_node_type,
+        from_node_id,
+        to_node_type,
+        to_node_id,
+        flow_rate,
+    )
 end
 
 "Create a discrete control result table from the saved data"
@@ -170,25 +193,27 @@ function allocation_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    allocation_network_id::Vector{Int},
-    user_node_id::Vector{Int},
+    subnetwork_id::Vector{Int},
+    node_type::Vector{String},
+    node_id::Vector{Int},
     priority::Vector{Int},
     demand::Vector{Float64},
     allocated::Vector{Float64},
-    abstracted::Vector{Float64},
+    realized::Vector{Float64},
 }
     (; config) = model
-    (; record) = model.integrator.p.user
+    (; record_demand) = model.integrator.p.allocation
 
-    time = datetime_since.(record.time, config.starttime)
+    time = datetime_since.(record_demand.time, config.starttime)
     return (;
         time,
-        record.allocation_network_id,
-        record.user_node_id,
-        record.priority,
-        record.demand,
-        record.allocated,
-        record.abstracted,
+        record_demand.subnetwork_id,
+        record_demand.node_type,
+        record_demand.node_id,
+        record_demand.priority,
+        record_demand.demand,
+        record_demand.allocated,
+        record_demand.realized,
     )
 end
 
@@ -197,27 +222,31 @@ function allocation_flow_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Int},
+    from_node_type::Vector{String},
     from_node_id::Vector{Int},
+    to_node_type::Vector{String},
     to_node_id::Vector{Int},
-    allocation_network_id::Vector{Int},
+    subnetwork_id::Vector{Int},
     priority::Vector{Int},
-    flow::Vector{Float64},
+    flow_rate::Vector{Float64},
     collect_demands::BitVector,
 }
     (; config) = model
-    (; record) = model.integrator.p.allocation
+    (; record_flow) = model.integrator.p.allocation
 
-    time = datetime_since.(record.time, config.starttime)
+    time = datetime_since.(record_flow.time, config.starttime)
 
     return (;
         time,
-        record.edge_id,
-        record.from_node_id,
-        record.to_node_id,
-        record.allocation_network_id,
-        record.priority,
-        record.flow,
-        record.collect_demands,
+        record_flow.edge_id,
+        record_flow.from_node_type,
+        record_flow.from_node_id,
+        record_flow.to_node_type,
+        record_flow.to_node_id,
+        record_flow.subnetwork_id,
+        record_flow.priority,
+        record_flow.flow_rate,
+        record_flow.collect_demands,
     )
 end
 
@@ -246,27 +275,26 @@ end
 function write_arrow(
     path::AbstractString,
     table::NamedTuple,
-    compress::TranscodingStreams.Codec,
+    compress::Union{ZstdCompressor, Nothing},
 )::Nothing
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
+    metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
     mkpath(dirname(path))
-    Arrow.write(path, table; compress)
+    Arrow.write(path, table; compress, metadata)
     return nothing
 end
 
 "Get the compressor based on the Results section"
-function get_compressor(results::Results)::TranscodingStreams.Codec
+function get_compressor(results::Results)::Union{ZstdCompressor, Nothing}
     compressor = results.compression
     level = results.compression_level
-    c = if compressor == lz4
-        LZ4FrameCompressor(; compressionlevel = level)
-    elseif compressor == zstd
-        ZstdCompressor(; level)
+    if compressor
+        c = ZstdCompressor(; level)
+        TranscodingStreams.initialize(c)
     else
-        error("Unsupported compressor $compressor")
+        c = nothing
     end
-    TranscodingStreams.initialize(c)
     return c
 end

@@ -4,7 +4,7 @@ This module contains the classes to represent the Ribasim node layers.
 The classes specify:
 
 * The (unabbreviated) name
-* The type of geometry (No geometry, point, linestring, polygon)
+* The type of geometry ("No Geometry", "Point", "LineString", "Polygon")
 * The required attributes of the attribute table
 
 Each node layer is (optionally) represented in multiple places:
@@ -159,8 +159,8 @@ class Node(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("name", QVariant.String),
-            QgsField("type", QVariant.String),
-            QgsField("allocation_network_id", QVariant.Int),
+            QgsField("node_type", QVariant.String),
+            QgsField("subnetwork_id", QVariant.Int),
         ]
 
     @classmethod
@@ -177,7 +177,7 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("type")
+        index = layer.fields().indexFromName("node_type")
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {"map": {node: node for node in NONSPATIALNODETYPES}},
@@ -214,7 +214,12 @@ class Node(Input):
             "Terminal": (QColor("purple"), "Terminal", shape.Square),
             "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
             "PidControl": (QColor("black"), "PidControl", shape.Cross2),
-            "User": (QColor("green"), "User", shape.Square),
+            "UserDemand": (QColor("green"), "UserDemand", shape.Square),
+            "LevelDemand": (
+                QColor("black"),
+                "LevelDemand",
+                shape.Circle,
+            ),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -230,7 +235,9 @@ class Node(Input):
             category = QgsRendererCategory(value, symbol, label, render=True)
             categories.append(category)
 
-        renderer = QgsCategorizedSymbolRenderer(attrName="type", categories=categories)
+        renderer = QgsCategorizedSymbolRenderer(
+            attrName="node_type", categories=categories
+        )
         return renderer
 
     @property
@@ -251,12 +258,12 @@ class Edge(Input):
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
             QgsField("edge_type", QVariant.String),
-            QgsField("allocation_network_id", QVariant.Int),
+            QgsField("subnetwork_id", QVariant.Int),
         ]
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "Linestring"
+        return "LineString"
 
     @classmethod
     def input_type(cls) -> str:
@@ -359,7 +366,7 @@ class BasinStatic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "No geometry"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -412,6 +419,24 @@ class BasinSubgridLevel(Input):
             QgsField("basin_level", QVariant.Double),
             QgsField("subgrid_level", QVariant.Double),
         ]
+
+
+class BasinArea(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / area"
+
+    @classmethod
+    def is_spatial(cls):
+        return True
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "Polygon"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [QgsField("node_id", QVariant.Int)]
 
 
 class BasinState(Input):
@@ -685,7 +710,7 @@ class DiscreteControlLogic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -703,7 +728,7 @@ class PidControlStatic(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -725,7 +750,7 @@ class PidControlTime(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "LineString"
+        return "No Geometry"
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -740,10 +765,10 @@ class PidControlTime(Input):
         ]
 
 
-class UserStatic(Input):
+class UserDemandStatic(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "User / static"
+        return "UserDemand / static"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -760,10 +785,10 @@ class UserStatic(Input):
         ]
 
 
-class UserTime(Input):
+class UserDemandTime(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "User / time"
+        return "UserDemand / time"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -776,6 +801,43 @@ class UserTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class LevelDemandStatic(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "LevelDemand / static"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("level_demand", QVariant.Double),
+            QgsField("priority", QVariant.Int),
+        ]
+
+
+class LevelDemandTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "LevelDemand / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("level_demand", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 

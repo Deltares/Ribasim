@@ -35,7 +35,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 
     if level < bottom
         node_id = basin.node_id.values[state_idx]
-        @error "The level $level of basin $node_id is lower than the bottom of this basin $bottom."
+        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
         return NaN
     end
 
@@ -181,15 +181,8 @@ end
 For an element `id` and a vector of elements `ids`, get the range of indices of the last
 consecutive block of `id`.
 Returns the empty range `1:0` if `id` is not in `ids`.
-
-```jldoctest
-#                         1 2 3 4 5 6 7 8 9
-Ribasim.findlastgroup(2, [5,4,2,2,5,2,2,2,1])
-# output
-6:8
-```
 """
-function findlastgroup(id::Int, ids::AbstractVector{Int})::UnitRange{Int}
+function findlastgroup(id::NodeID, ids::AbstractVector{NodeID})::UnitRange{Int}
     idx_block_end = findlast(==(id), ids)
     if idx_block_end === nothing
         return 1:0
@@ -209,30 +202,15 @@ function get_scalar_interpolation(
     starttime::DateTime,
     t_end::Float64,
     time::AbstractVector,
-    node_id::Int,
+    node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
 )::Tuple{LinearInterpolation, Bool}
-    rows = searchsorted(time.node_id, node_id)
-    values = getfield.(time, param)[rows]
-    return get_scalar_interpolation(
-        starttime,
-        t_end,
-        time.time[rows],
-        values,
-        default_value,
-    )
-end
-
-function get_scalar_interpolation(
-    starttime::DateTime,
-    t_end::Float64,
-    time::AbstractVector,
-    values::AbstractVector,
-    default_value::Float64 = 0.0,
-)::Tuple{LinearInterpolation, Bool}
-    parameter = coalesce(values, default_value)
-    times = seconds_since.(time, starttime)
+    nodetype = node_id.type
+    rows = searchsorted(NodeID.(nodetype, time.node_id), node_id)
+    parameter = getfield.(time, param)[rows]
+    parameter = coalesce(parameter, default_value)
+    times = seconds_since.(time.time[rows], starttime)
     # Add extra timestep at start for constant extrapolation
     if times[1] > 0
         pushfirst!(times, 0.0)
@@ -287,10 +265,11 @@ From a table with columns node_id, flow_rate (Q) and level (h),
 create a LinearInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(
-    node_id::Int,
+    node_id::NodeID,
     table::StructVector,
 )::Tuple{LinearInterpolation, Bool}
-    rowrange = findlastgroup(node_id, table.node_id)
+    nodetype = node_id.type
+    rowrange = findlastgroup(node_id, NodeID.(nodetype, table.node_id))
     @assert !isempty(rowrange) "timeseries starts after model start time"
     return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
 end
@@ -399,17 +378,15 @@ function get_level(
     storage::Union{AbstractArray, Number} = 0,
 )::Union{Real, Nothing}
     (; basin, level_boundary) = p
-    hasindex, i = id_index(basin.node_id, node_id)
-    current_level = get_tmp(basin.current_level, storage)
-    return if hasindex
+    if node_id.type == NodeType.Basin
+        _, i = id_index(basin.node_id, node_id)
+        current_level = get_tmp(basin.current_level, storage)
         current_level[i]
-    else
+    elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
-        if i === nothing
-            nothing
-        else
-            level_boundary.level[i](t)
-        end
+        level_boundary.level[i](t)
+    else
+        nothing
     end
 end
 
@@ -495,7 +472,7 @@ function expand_logic_mapping(
             if haskey(logic_mapping_expanded, new_key)
                 control_state_existing = logic_mapping_expanded[new_key]
                 control_states = sort([control_state, control_state_existing])
-                msg = "Multiple control states found for DiscreteControl node $node_id for truth state `$truth_state_new`: $control_states."
+                msg = "Multiple control states found for $node_id for truth state `$truth_state_new`: $control_states."
                 @assert control_state_existing == control_state msg
             else
                 logic_mapping_expanded[new_key] = control_state
@@ -611,7 +588,7 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
 
-"""Find out whether a path exists between a start node and end node in the given allocation graph."""
+"""Find out whether a path exists between a start node and end node in the given allocation network."""
 function allocation_path_exists_in_graph(
     graph::MetaGraph,
     start_node_id::NodeID,
@@ -643,22 +620,71 @@ function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
 
-function get_user_demand(user::User, node_id::NodeID, priority_idx::Int)::Float64
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
-    return demand[(user_idx - 1) * n_priorities + priority_idx]
+function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
+    n_priorities = length(allocation.priorities)
+    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
 end
 
 function set_user_demand!(
-    user::User,
+    p::Parameters,
     node_id::NodeID,
     priority_idx::Int,
     value::Float64,
 )::Nothing
-    (; demand) = user
-    user_idx = findsorted(user.node_id, node_id)
-    n_priorities = length(user.priorities)
-    demand[(user_idx - 1) * n_priorities + priority_idx] = value
+    (; user_demand, allocation) = p
+    (; demand) = user_demand
+    user_demand_idx = findsorted(user_demand.node_id, node_id)
+    n_priorities = length(allocation.priorities)
+    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
+    return nothing
+end
+
+function get_all_priorities(db::DB, config::Config)::Vector{Int}
+    priorities = Set{Int}()
+
+    # TODO: Is there a way to automatically grab all tables with a priority column?
+    for type in
+        [UserDemandStaticV1, UserDemandTimeV1, LevelDemandStaticV1, LevelDemandTimeV1]
+        union!(priorities, load_structvector(db, config, type).priority)
+    end
+    return sort(unique(priorities))
+end
+
+function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
+    (; graph, level_demand, allocation) = p
+    @assert node_id.type == NodeType.Basin
+    inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(inneighbors_control)
+        return 0
+    else
+        idx = findsorted(level_demand.node_id, only(inneighbors_control))
+        priority = level_demand.priority[idx]
+        return findsorted(allocation.priorities, priority)
+    end
+end
+
+"""
+Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+"""
+function set_is_pid_controlled!(p::Parameters)::Nothing
+    (; graph, pid_control, pump, outlet) = p
+
+    for id in pid_control.node_id
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        if id_controlled.type == NodeType.Pump
+            pump_idx = findsorted(pump.node_id, id_controlled)
+            pump.is_pid_controlled[pump_idx] = true
+        elseif id_controlled.type == NodeType.Outlet
+            outlet_idx = findsorted(outlet.node_id, id_controlled)
+            outlet.is_pid_controlled[outlet_idx] = true
+        else
+            error(
+                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
+            )
+        end
+    end
     return nothing
 end

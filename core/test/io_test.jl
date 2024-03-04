@@ -8,6 +8,7 @@
         database = "path/to/file",
         input_dir = ".",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
@@ -20,6 +21,7 @@
         database = "path/to/file",
         input_dir = "input",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
     @test Ribasim.input_path(config, "path/to/file") ==
@@ -32,6 +34,7 @@
         database = "/path/to/file",
         input_dir = ".",
         results_dir = "results",
+        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml)
     @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
@@ -50,9 +53,13 @@ end
 end
 
 @testitem "findlastgroup" begin
-    @test Ribasim.findlastgroup(2, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 6:8
-    @test Ribasim.findlastgroup(2, [2]) === 1:1
-    @test Ribasim.findlastgroup(3, [5, 4, 2, 2, 5, 2, 2, 2, 1]) === 1:0
+    using Ribasim: NodeID, findlastgroup
+
+    @test findlastgroup(NodeID(:Pump, 2), NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1])) ===
+          6:8
+    @test findlastgroup(NodeID(:Pump, 2), NodeID.(:Pump, [2])) === 1:1
+    @test findlastgroup(NodeID(:Pump, 3), NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1])) ===
+          1:0
 end
 
 @testitem "table sort" begin
@@ -105,4 +112,22 @@ end
     @test_throws ReadOnlyMemoryError arrow_table.node_id[1] = 0
     # reversed_arrow_table throws an AssertionError
     @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
+end
+
+@testitem "results" begin
+    using SciMLBase: successful_retcode
+    import Arrow
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
+    @test successful_retcode(model)
+
+    path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
+    bytes = read(path)
+    tbl = Arrow.Table(bytes)
+    ribasim_version = string(pkgversion(Ribasim))
+    @test Arrow.getmetadata(tbl) ===
+          Base.ImmutableDict("ribasim_version" => ribasim_version)
 end

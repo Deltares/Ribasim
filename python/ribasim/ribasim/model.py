@@ -16,14 +16,15 @@ from pydantic import (
     model_validator,
 )
 
+import ribasim
 from ribasim.config import (
     Allocation,
     Basin,
     DiscreteControl,
-    External,
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
+    LevelDemand,
     LinearResistance,
     Logging,
     ManningResistance,
@@ -34,7 +35,7 @@ from ribasim.config import (
     Solver,
     TabulatedRatingCurve,
     Terminal,
-    User,
+    UserDemand,
 )
 from ribasim.geometry.edge import Edge
 from ribasim.geometry.node import Node
@@ -152,8 +153,8 @@ class Model(FileModel):
         Discrete control logic.
     pid_control : PidControl
         PID controller attempting to set the level of a basin to a desired value using a pump/outlet.
-    user : User
-        User node type with demand and priority.
+    user_demand : UserDemand
+        UserDemand node type with demand and priority.
     """
 
     starttime: datetime.datetime
@@ -168,6 +169,7 @@ class Model(FileModel):
     logging: Logging = Logging()
 
     allocation: Allocation = Field(default_factory=Allocation)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
     basin: Basin = Field(default_factory=Basin)
     fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
     level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
@@ -182,8 +184,7 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     pid_control: PidControl = Field(default_factory=PidControl)
-    user: User = Field(default_factory=User)
-    external: External = Field(default_factory=External)
+    user_demand: UserDemand = Field(default_factory=UserDemand)
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":
@@ -229,6 +230,7 @@ class Model(FileModel):
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
+        content["ribasim_version"] = ribasim.__version__
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
@@ -284,7 +286,9 @@ class Model(FileModel):
             nodetype = node.get_input_type()
             node_ids_data = set(node.node_ids())
             node_ids_network = set(
-                self.network.node.df.loc[self.network.node.df["type"] == nodetype].index
+                self.network.node.df.loc[
+                    self.network.node.df["node_type"] == nodetype
+                ].index
             )
 
             if not node_ids_network == node_ids_data:
@@ -311,6 +315,28 @@ class Model(FileModel):
         self.validate_model_node_field_ids()
         self.validate_model_node_ids()
 
+    def _add_node_type(self, df: pd.DataFrame | None, id_col: str, type_col: str):
+        node = self.network.node.df
+        assert node is not None
+        if df is not None:
+            df[type_col] = node.loc[df[id_col], "node_type"].to_numpy()
+
+    def _add_node_types(self):
+        """Add the from/to node types to tables that reference external node IDs.
+
+        Only valid with globally unique node IDs, which is assured by using the node index.
+        """
+        self._add_node_type(self.network.edge.df, "from_node_id", "from_node_type")
+        self._add_node_type(self.network.edge.df, "to_node_id", "to_node_type")
+        id_col, type_col = "listen_node_id", "listen_node_type"
+        self._add_node_type(self.pid_control.static.df, id_col, type_col)
+        self._add_node_type(self.pid_control.time.df, id_col, type_col)
+        self._add_node_type(
+            self.discrete_control.condition.df,
+            "listen_feature_id",
+            "listen_feature_type",
+        )
+
     @classmethod
     def read(cls, filepath: FilePath) -> "Model":
         """Read model from TOML file."""
@@ -327,6 +353,7 @@ class Model(FileModel):
         filepath: FilePath ending in .toml
         """
         self.validate_model()
+        self._add_node_types()
         filepath = Path(filepath)
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
@@ -480,7 +507,9 @@ class Model(FileModel):
             ):
                 var = condition["variable"]
                 listen_feature_id = condition["listen_feature_id"]
-                listen_node_type = self.network.node.df.loc[listen_feature_id, "type"]
+                listen_node_type = self.network.node.df.loc[
+                    listen_feature_id, "node_type"
+                ]
                 symbol = truth_dict[truth_value]
                 greater_than = condition["greater_than"]
                 feature_type = "edge" if var == "flow" else "node"
@@ -495,7 +524,7 @@ class Model(FileModel):
             ].to_node_id
 
             for affect_node_id in affect_node_ids:
-                affect_node_type = self.network.node.df.loc[affect_node_id, "type"]
+                affect_node_type = self.network.node.df.loc[affect_node_id, "node_type"]
                 nodeattr = node_attrs[node_clss.index(affect_node_type)]
 
                 out += f"\tFor node ID {affect_node_id} ({affect_node_type}): "

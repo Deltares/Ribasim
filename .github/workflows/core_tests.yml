@@ -37,7 +37,7 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run install-without-pre-commit
+        run: pixi run install-ci
       - name: Test Ribasim Core
         run: |
           pixi run test-ribasim-core-cov
@@ -47,5 +47,4 @@ jobs:
       - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}

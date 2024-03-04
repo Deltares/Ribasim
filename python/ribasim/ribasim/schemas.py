@@ -29,7 +29,6 @@ class BasinStaticSchema(_BaseSchema):
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
-    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class BasinSubgridSchema(_BaseSchema):
@@ -47,11 +46,11 @@ class BasinTimeSchema(_BaseSchema):
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
     urban_runoff: Series[float] = pa.Field(nullable=True)
-    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
+    listen_feature_type: Series[str] = pa.Field(nullable=True)
     listen_feature_id: Series[int] = pa.Field(nullable=False)
     variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
@@ -64,32 +63,16 @@ class DiscreteControlLogicSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=False)
 
 
-class EdgeSchema(_BaseSchema):
-    fid: Series[int] = pa.Field(nullable=False)
-    name: Series[str] = pa.Field(nullable=False)
-    from_node_id: Series[int] = pa.Field(nullable=False)
-    to_node_id: Series[int] = pa.Field(nullable=False)
-    edge_type: Series[str] = pa.Field(nullable=False)
-    allocation_network_id: Series[int] = pa.Field(nullable=True)
-
-
-class ExternalTimeSchema(_BaseSchema):
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    external: Series[float] = pa.Field(nullable=False)
-
-
 class FlowBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class FractionalFlowStaticSchema(_BaseSchema):
@@ -102,14 +85,27 @@ class LevelBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=True)
 
 
 class LevelBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=True)
+
+
+class LevelDemandStaticSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
+
+
+class LevelDemandTimeSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=False)
+    max_level: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False)
 
 
 class LinearResistanceStaticSchema(_BaseSchema):
@@ -130,13 +126,6 @@ class ManningResistanceStaticSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=True)
 
 
-class NodeSchema(_BaseSchema):
-    fid: Series[int] = pa.Field(nullable=False)
-    name: Series[str] = pa.Field(nullable=False)
-    type: Series[str] = pa.Field(nullable=False)
-    allocation_network_id: Series[int] = pa.Field(nullable=True)
-
-
 class OutletStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -150,6 +139,7 @@ class OutletStaticSchema(_BaseSchema):
 class PidControlStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
+    listen_node_type: Series[str] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
@@ -160,6 +150,7 @@ class PidControlStaticSchema(_BaseSchema):
 
 class PidControlTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
+    listen_node_type: Series[str] = pa.Field(nullable=True)
     listen_node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
@@ -197,7 +188,7 @@ class TerminalStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
 
 
-class UserStaticSchema(_BaseSchema):
+class UserDemandStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     demand: Series[float] = pa.Field(nullable=False)
@@ -206,7 +197,7 @@ class UserStaticSchema(_BaseSchema):
     priority: Series[int] = pa.Field(nullable=False)
 
 
-class UserTimeSchema(_BaseSchema):
+class UserDemandTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)

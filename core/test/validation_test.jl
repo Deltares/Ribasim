@@ -4,7 +4,7 @@
     using DataInterpolations: LinearInterpolation
     using Logging
 
-    node_id = Indices([NodeID(1)])
+    node_id = Indices([NodeID(:Basin, 1)])
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
@@ -19,12 +19,11 @@
           "Basin #1 has repeated levels, this cannot be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Basin profiles cannot start with area <= 0 at the bottom for numerical reasons."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(1)
+          "Basin #1 profile cannot start with area <= 0 at the bottom for numerical reasons."
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Basin profiles cannot have decreasing area at the top since extrapolating could lead to negative areas, found decreasing top areas for node #1."
+          "Basin #1 profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
 
     itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid
@@ -55,10 +54,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" #1 from the static table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve #1 from the static table has repeated levels, this can not be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "A Q(h) relationship for TabulatedRatingCurve \"\" #2 from the time table has repeated levels, this can not be interpolated."
+          "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
 end
 
 @testitem "Neighbor count validation" begin
@@ -75,29 +74,30 @@ end
         graph_data = nothing,
     )
 
-    for i in 1:6
-        type = i in [1, 6] ? :pump : :other
-        graph[NodeID(i)] = NodeMetadata(type, 9)
-    end
+    graph[NodeID(:Pump, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 2)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 3)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 4)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:FractionalFlow, 5)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
         return nothing
     end
 
-    set_edge_metadata!(2, 1, EdgeType.flow)
-    set_edge_metadata!(3, 1, EdgeType.flow)
-    set_edge_metadata!(6, 2, EdgeType.flow)
-    set_edge_metadata!(5, 6, EdgeType.control)
+    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:Pump, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 3), NodeID(:Pump, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Pump, 6), EdgeType.control)
 
     pump = Ribasim.Pump(
-        Ribasim.NodeID[1, 6],
+        NodeID.(:Pump, [1, 6]),
         [true, true],
         [0.0, 0.0],
         [0.0, 0.0],
         [1.0, 1.0],
-        Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
+        Dict{Tuple{NodeID, String}, NamedTuple}(),
         falses(2),
     )
 
@@ -108,21 +108,23 @@ end
 
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} can have at most 1 flow inneighbor(s) (got 2 for node #1)."
+    @test logger.logs[1].message == "Pump #1 can have at most 1 flow inneighbor(s) (got 2)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow outneighbor(s) (got 0 for node #1)."
+          "Pump #1 must have at least 1 flow outneighbor(s) (got 0)."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Nodes of type Ribasim.Pump{Vector{Float64}} must have at least 1 flow inneighbor(s) (got 0 for node #6)."
+          "Pump #6 must have at least 1 flow inneighbor(s) (got 0)."
 
-    set_edge_metadata!(2, 5, EdgeType.flow)
-    set_edge_metadata!(5, 3, EdgeType.flow)
-    set_edge_metadata!(5, 4, EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:FractionalFlow, 5), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 3), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 4), EdgeType.flow)
 
-    fractional_flow =
-        Ribasim.FractionalFlow([NodeID(5)], [1.0], Dict{Tuple{Int, String}, NamedTuple}())
+    fractional_flow = Ribasim.FractionalFlow(
+        [NodeID(:FractionalFlow, 5)],
+        [1.0],
+        Dict{Tuple{Int, String}, NamedTuple}(),
+    )
 
     logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
@@ -132,10 +134,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Nodes of type Ribasim.FractionalFlow can have at most 1 flow outneighbor(s) (got 2 for node #5)."
+          "FractionalFlow #5 can have at most 1 flow outneighbor(s) (got 2)."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Nodes of type Ribasim.FractionalFlow can have at most 0 control outneighbor(s) (got 1 for node #5)."
+          "FractionalFlow #5 can have at most 0 control outneighbor(s) (got 1)."
 
     @test_throws "'n_neighbor_bounds_flow' not defined for Val{:foo}()." Ribasim.n_neighbor_bounds_flow(
         :foo,
@@ -152,9 +154,9 @@ end
     using MetaGraphsNext: MetaGraph
     using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
 
-    pid_control_node_id = NodeID[1, 6]
-    pid_control_listen_node_id = NodeID[3, 5]
-    pump_node_id = NodeID[2, 4]
+    pid_control_node_id = NodeID.(:PidControl, [1, 6])
+    pid_control_listen_node_id = [NodeID(:Terminal, 3), NodeID(:Basin, 5)]
+    pump_node_id = NodeID.(:Pump, [2, 4])
 
     graph = MetaGraph(
         DiGraph();
@@ -164,27 +166,28 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(6)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(2)] = NodeMetadata(:pump, 0)
-    graph[NodeID(4)] = NodeMetadata(:pump, 0)
-    graph[NodeID(3)] = NodeMetadata(:something_else, 0)
-    graph[NodeID(5)] = NodeMetadata(:basin, 0)
-    graph[NodeID(7)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:PidControl, 1)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:PidControl, 6)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:Pump, 2)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Pump, 4)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Terminal, 3)] = NodeMetadata(:something_else, 0)
+    graph[NodeID(:Basin, 5)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[NodeID(id_1), NodeID(id_2)] =
-            EdgeMetadata(0, edge_type, 0, NodeID(id_1), NodeID(id_2), false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
         return nothing
     end
 
-    set_edge_metadata!(3, 4, EdgeType.flow)
-    set_edge_metadata!(7, 2, EdgeType.flow)
+    set_edge_metadata!(NodeID(:Terminal, 3), NodeID(:Pump, 4), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 7), NodeID(:Pump, 2), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 2), NodeID(:Basin, 7), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 4), NodeID(:Basin, 7), EdgeType.flow)
 
-    set_edge_metadata!(1, 4, EdgeType.control)
-    set_edge_metadata!(6, 2, EdgeType.control)
+    set_edge_metadata!(NodeID(:PidControl, 1), NodeID(:Pump, 4), EdgeType.control)
+    set_edge_metadata!(NodeID(:PidControl, 6), NodeID(:Pump, 2), EdgeType.control)
 
-    basin_node_id = Indices(NodeID[5, 7])
+    basin_node_id = Indices(NodeID.(:Basin, [5, 7]))
 
     logger = TestLogger()
     with_logger(logger) do
@@ -199,10 +202,11 @@ end
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message == "Listen node #3 of PidControl node #1 is not a Basin"
+    @test logger.logs[1].message ==
+          "Listen node Terminal #3 of PidControl #1 is not a Basin"
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Listen node #5 of PidControl node #6 is not upstream of controlled pump #2"
+          "PID listened Basin #5 is not on either side of controlled Pump #2."
 end
 
 @testitem "FractionalFlow validation" begin
@@ -235,24 +239,24 @@ end
     @test length(logger.logs) == 4
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Node #7 combines fractional flow outneighbors with other outneigbor types."
+          "TabulatedRatingCurve #7 combines fractional flow outneighbors with other outneigbor types."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(3)
+    @test logger.logs[2].kwargs[:node_id] == NodeID(:FractionalFlow, 3)
     @test logger.logs[2].kwargs[:fraction] ≈ -0.1
     @test logger.logs[2].kwargs[:control_state] == ""
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "The sum of fractional flow fractions leaving a node must be ≈1."
-    @test logger.logs[3].kwargs[:node_id] == NodeID(7)
+    @test logger.logs[3].kwargs[:node_id] == NodeID(:TabulatedRatingCurve, 7)
     @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
     @test logger.logs[4].kwargs[:edge_id] == 6
-    @test logger.logs[4].kwargs[:id_src] == NodeID(2)
-    @test logger.logs[4].kwargs[:id_dst] == NodeID(8)
+    @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2)
+    @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8)
 end
 
 @testitem "DiscreteControl logic validation" begin
@@ -278,55 +282,55 @@ end
     @test length(logger.logs) == 5
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "DiscreteControl node #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
+          "DiscreteControl #5 has 3 condition(s), which is inconsistent with these truth state(s): [\"FFFF\"]."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "These control states from DiscreteControl node #5 are not defined for controlled Pump #2: [\"foo\"]."
+          "These control states from DiscreteControl #5 are not defined for controlled Pump #2: [\"foo\"]."
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
-          "Look ahead supplied for non-timeseries listen variable 'level' from listen node #1."
+          "Look ahead supplied for non-timeseries listen variable 'level' from listen node Basin #1."
     @test logger.logs[4].level == Error
     @test logger.logs[4].message ==
-          "Look ahead for listen variable 'flow_rate' from listen node #4 goes past timeseries end during simulation."
+          "Look ahead for listen variable 'flow_rate' from listen node FlowBoundary #4 goes past timeseries end during simulation."
     @test logger.logs[5].level == Error
     @test logger.logs[5].message ==
-          "Negative look ahead supplied for listen variable 'flow_rate' from listen node #4."
+          "Negative look ahead supplied for listen variable 'flow_rate' from listen node FlowBoundary #4."
 end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
+    using Ribasim: NodeID
 
     logger = TestLogger()
 
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
-            [Ribasim.NodeID(1)],
+            [NodeID(:Outlet, 1)],
             [true],
             [-1.0],
             [NaN],
             [NaN],
             [NaN],
-            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(),
+            Dict{Tuple{NodeID, String}, NamedTuple}(),
             [false],
         )
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Outlet flow rates must be non-negative, found -1.0 for static #1."
+    @test logger.logs[1].message == "Outlet #1 flow rates must be non-negative, found -1.0."
 
     logger = TestLogger()
 
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
-            Ribasim.NodeID[1],
+            [NodeID(:Pump, 1)],
             [true],
             [-1.0],
             [NaN],
             [NaN],
-            Dict{Tuple{Ribasim.NodeID, String}, NamedTuple}(
-                (Ribasim.NodeID(1), "foo") => (; flow_rate = -1.0),
+            Dict{Tuple{NodeID, String}, NamedTuple}(
+                (NodeID(:Pump, 1), "foo") => (; flow_rate = -1.0),
             ),
             [false],
         )
@@ -336,7 +340,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Pump flow rates must be non-negative, found -1.0 for control state 'foo' of #1."
+          "Pump #1 flow rates must be non-negative, found -1.0 for control state 'foo'."
 end
 
 @testitem "Edge type validation" begin
@@ -368,25 +372,24 @@ end
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(NodeID(9) => 1)
+    node_to_basin = Dict(NodeID(:Basin, 9) => 1)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(1, NodeID(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(1, NodeID(:Basin, 10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "The node_id of the Basin / subgrid_level does not refer to a basin."
-    @test logger.logs[1].kwargs[:node_id] == NodeID(10)
+    @test logger.logs[1].message == "The node_id of the Basin / subgrid does not exist."
+    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             1,
-            NodeID(9),
+            NodeID(:Basin, 9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
             [-1.0, 0.0, 0.0],
@@ -396,21 +399,24 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Basin / subgrid_level subgrid_id 1 has repeated basin levels, this cannot be interpolated."
+          "Basin / subgrid subgrid_id 1 has repeated basin levels, this cannot be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Basin / subgrid_level subgrid_id 1 has repeated element levels, this cannot be interpolated."
+          "Basin / subgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
 end
 
 @testitem "negative demand" begin
     using Logging
     using DataInterpolations: LinearInterpolation
+    using Ribasim: NodeID
+
     logger = TestLogger()
 
     with_logger(logger) do
-        @test_throws "Invalid demand" Ribasim.User(
-            [Ribasim.NodeID(1)],
+        @test_throws "Invalid demand" Ribasim.UserDemand(
+            [NodeID(:UserDemand, 1)],
             [true],
+            [0.0],
             [0.0],
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
             [true],
@@ -418,12 +424,11 @@ end
             [0.9],
             [0.9],
             [1],
-            [],
         )
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Demand of user node #1 with priority 1 should be non-negative"
+          "Demand of UserDemand #1 with priority 1 should be non-negative"
 end

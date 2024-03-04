@@ -190,12 +190,12 @@ function continuous_control!(
         end
 
         if !iszero(K_d)
-            dtarget_level = scalar_interpolation_derivative(target[i], t)
+            dlevel_demand = scalar_interpolation_derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dtarget_level - du_listened_basin_old / area) / D
+            flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
         end
 
         # Clip values outside pump flow rate bounds
@@ -258,13 +258,14 @@ function continuous_control!(
 end
 
 function formulate_flow!(
-    user::User,
+    user_demand::UserDemand,
     p::Parameters,
     storage::AbstractVector,
     t::Number,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, allocated, active, demand_itp, return_factor, min_level) = user
+    (; node_id, allocated, active, demand, demand_itp, return_factor, min_level) =
+        user_demand
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -281,7 +282,9 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
-            alloc = min(allocated[i][priority_idx], demand_itp[i][priority_idx](t))
+            alloc_prio = allocated[i][priority_idx]
+            demand_prio = demand_itp[i][priority_idx](t)
+            alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
 
@@ -622,8 +625,6 @@ function formulate_du!(
     basin::Basin,
     storage::AbstractVector,
 )::Nothing
-    (; flow_vertical_dict, flow_vertical) = graph[]
-    flow_vertical = get_tmp(flow_vertical, storage)
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -647,7 +648,7 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         level_boundary,
         pump,
         outlet,
-        user,
+        user_demand,
         fractional_flow,
         terminal,
     ) = p
@@ -658,22 +659,10 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(flow_boundary, p, storage, t)
     formulate_flow!(pump, p, storage, t)
     formulate_flow!(outlet, p, storage, t)
-    formulate_flow!(user, p, storage, t)
+    formulate_flow!(user_demand, p, storage, t)
 
     # do these last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
     formulate_flow!(level_boundary, p, storage, t)
     formulate_flow!(terminal, p, storage, t)
-end
-
-function track_waterbalance!(u, t, integrator)::Nothing
-    (; p, tprev, uprev) = integrator
-    dt = t - tprev
-    du = u - uprev
-    p.storage_diff .+= du
-    p.precipitation.total .+= p.precipitation.value .* dt
-    p.evaporation.total .+= p.evaporation.value .* dt
-    p.infiltration.total .+= p.infiltration.value .* dt
-    p.drainage.total .+= p.drainage.value .* dt
-    return nothing
 end

@@ -56,7 +56,7 @@ flowchart TB
 physical:::layer
 rbc:::layer
 allocation:::layer
-user
+user_demand
 basin
 connector[basin connector]
 control[control rules]
@@ -64,7 +64,7 @@ condition
 alloc[global allocation]
 
 subgraph physical[physical layer]
-    user-->|abstraction| basin
+    user_demand-->|abstraction| basin
     basin<-->|flow| connector
 end
 
@@ -76,8 +76,8 @@ subgraph allocation[allocation layer]
     alloc
 end
 
-user-->|request demand| alloc
-alloc-->|assign allocation| user
+user_demand-->|request demand| alloc
+alloc-->|assign allocation| user_demand
 basin-->|volume| alloc
 basin --> |volume or level| condition
 alloc --> |optional flow update| control

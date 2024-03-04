@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -38,7 +36,7 @@ def pump_discrete_control_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -69,22 +67,17 @@ def pump_discrete_control_model() -> ribasim.Model:
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "drainage": [0.0] * 2,
-            "potential_evaporation": [0.0] * 2,
-            "infiltration": [0.0] * 2,
-            "precipitation": [0.0] * 2,
-            "urban_runoff": [0.0] * 2,
-            "concentration": [0.5] * 2,
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [1, 3], "level": [1.0, 1e-5]})
 
-    external = ribasim.External(
-        time=pd.DataFrame(data={"time": [datetime(2020, 1, 1)], "external": [1.5]})
+    static = pd.DataFrame(
+        data={
+            "node_id": [3],
+            "drainage": [0.0],
+            "potential_evaporation": [0.0],
+            "infiltration": [0.0],
+            "precipitation": [1e-9],
+            "urban_runoff": [0.0],
+        }
     )
 
     basin = ribasim.Basin(profile=profile, static=static, state=state)
@@ -148,7 +141,6 @@ def pump_discrete_control_model() -> ribasim.Model:
         linear_resistance=linear_resistance,
         pump=pump,
         discrete_control=discrete_control,
-        external=external,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
     )
@@ -182,7 +174,7 @@ def flow_condition_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -214,20 +206,9 @@ def flow_condition_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [2],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [2], "level": [2.5]})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump:
     pump = ribasim.Pump(
@@ -323,7 +304,7 @@ def level_boundary_condition_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -355,20 +336,9 @@ def level_boundary_condition_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [3], "level": [2.5]})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup level boundary:
     level_boundary = ribasim.LevelBoundary(
@@ -471,7 +441,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -511,11 +481,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     static = pd.DataFrame(
         data={
             "node_id": [1],
-            "drainage": 0.0,
-            "potential_evaporation": 0.0,
-            "infiltration": 0.0,
             "precipitation": precipitation,
-            "urban_runoff": 0.0,
         }
     )
 
@@ -607,7 +573,7 @@ def level_setpoint_with_minmax_model():
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",
@@ -639,20 +605,9 @@ def level_setpoint_with_minmax_model():
         }
     )
 
-    static = pd.DataFrame(
-        data={
-            "node_id": [1],
-            "drainage": [0.0],
-            "potential_evaporation": [0.0],
-            "infiltration": [0.0],
-            "precipitation": [0.0],
-            "urban_runoff": [0.0],
-        }
-    )
-
     state = pd.DataFrame(data={"node_id": [1], "level": [20.0]})
 
-    basin = ribasim.Basin(profile=profile, static=static, state=state)
+    basin = ribasim.Basin(profile=profile, state=state)
 
     # Setup pump
     pump = ribasim.Pump(

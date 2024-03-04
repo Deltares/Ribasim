@@ -1,7 +1,5 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-@schema "ribasim.node" Node
-@schema "ribasim.edge" Edge
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.basin.static" BasinStatic
@@ -23,9 +21,10 @@
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.outlet.static" OutletStatic
-@schema "ribasim.user.static" UserStatic
-@schema "ribasim.user.time" UserTime
-@schema "ribasim.external.time" ExternalTime
+@schema "ribasim.userdemand.static" UserDemandStatic
+@schema "ribasim.userdemand.time" UserDemandTime
+@schema "ribasim.leveldemand.static" LevelDemandStatic
+@schema "ribasim.leveldemand.time" LevelDemandTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -59,22 +58,6 @@ function nodetype(
     return Symbol(node[begin:length(n)]), k
 end
 
-@version NodeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    type::String = in(Symbol(type), nodetypes) ? type : error("Unknown node type $type")
-    allocation_network_id::Union{Missing, Int}
-end
-
-@version EdgeV1 begin
-    fid::Int
-    name::String = isnothing(s) ? "" : String(s)
-    from_node_id::Int
-    to_node_id::Int
-    edge_type::String
-    allocation_network_id::Union{Missing, Int}
-end
-
 @version PumpStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
@@ -101,7 +84,6 @@ end
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
     urban_runoff::Union{Missing, Float64}
-    concentration::Union{Missing, Float64}
 end
 
 @version BasinTimeV1 begin
@@ -112,7 +94,6 @@ end
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
     urban_runoff::Union{Missing, Float64}
-    concentration::Union{Missing, Float64}
 end
 
 @version BasinProfileV1 begin
@@ -143,28 +124,24 @@ end
     node_id::Int
     active::Union{Missing, Bool}
     level::Float64
-    concentration::Union{Missing, Float64}
 end
 
 @version LevelBoundaryTimeV1 begin
     node_id::Int
     time::DateTime
     level::Float64
-    concentration::Union{Missing, Float64}
 end
 
 @version FlowBoundaryStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     flow_rate::Float64
-    concentration::Union{Missing, Float64}
 end
 
 @version FlowBoundaryTimeV1 begin
     node_id::Int
     time::DateTime
     flow_rate::Float64
-    concentration::Union{Missing, Float64}
 end
 
 @version LinearResistanceStaticV1 begin
@@ -206,6 +183,7 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int
+    listen_feature_type::Union{Missing, String}
     listen_feature_id::Int
     variable::String
     greater_than::Float64
@@ -221,6 +199,7 @@ end
 @version PidControlStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
+    listen_node_type::Union{Missing, String}
     listen_node_id::Int
     target::Float64
     proportional::Float64
@@ -231,6 +210,7 @@ end
 
 @version PidControlTimeV1 begin
     node_id::Int
+    listen_node_type::Union{Missing, String}
     listen_node_id::Int
     time::DateTime
     target::Float64
@@ -240,7 +220,7 @@ end
     control_state::Union{Missing, String}
 end
 
-@version UserStaticV1 begin
+@version UserDemandStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
     demand::Float64
@@ -249,7 +229,7 @@ end
     priority::Int
 end
 
-@version UserTimeV1 begin
+@version UserDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64
@@ -258,7 +238,17 @@ end
     priority::Int
 end
 
-@version ExternalTimeV1 begin
+@version LevelDemandStaticV1 begin
+    node_id::Int
+    min_level::Float64
+    max_level::Float64
+    priority::Int
+end
+
+@version LevelDemandTimeV1 begin
+    node_id::Int
     time::DateTime
-    external::Float64
+    min_level::Float64
+    max_level::Float64
+    priority::Int
 end

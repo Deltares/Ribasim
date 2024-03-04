@@ -5,4 +5,4 @@ The test models are used for internal testing of Ribasim.
 
 # Contributing
 
-For the developer docs please have a look at https://deltares.github.io/Ribasim/python/developer.html
+For the developer docs please have a look at https://deltares.github.io/Ribasim/contribute/

@@ -23,14 +23,9 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     dt = 10.0
-    config = Ribasim.Config(
-        toml_path;
-        solver_algorithm = "ImplicitEuler",
-        solver_adaptive = false,
-        solver_dt = dt,
-    )
+    config = Ribasim.Config(toml_path; solver_algorithm = "ImplicitEuler", solver_dt = dt)
     @test config.solver.algorithm == "ImplicitEuler"
-    @test !config.solver.adaptive
+    @test config.solver.dt === dt
     model = Ribasim.Model(config)
 
     @test BMI.get_time_step(model) == dt
@@ -48,11 +43,11 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
-    storage0 = BMI.get_value_ptr(model, "volume")
+    storage0 = BMI.get_value_ptr(model, "basin.storage")
     @test storage0 ≈ ones(4)
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
-    storage = BMI.get_value_ptr(model, "volume")
+    storage = BMI.get_value_ptr(model, "basin.storage")
     # get_value_ptr does not copy
     @test storage0 === storage != ones(4)
 end
@@ -63,11 +58,36 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
-    for name in ["volume", "level", "infiltration", "drainage"]
+    for name in [
+        "basin.storage",
+        "basin.level",
+        "basin.infiltration",
+        "basin.drainage",
+        "basin.subgrid_level",
+        "user_demand.demand",
+        "user_demand.realized",
+    ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)
         # get_value_ptr does not copy
         @test value_first === value_second
     end
+end
+
+@testitem "realized_user_demand" begin
+    import BasicModelInterface as BMI
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    @test ispath(toml_path)
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    demand = BMI.get_value_ptr(model, "user_demand.demand")
+    realized = BMI.get_value_ptr(model, "user_demand.realized")
+    day = 86400.0
+    BMI.update_until(model, 0.4day)
+    demand = 0.001  # for both users at the start
+    @test all(isapprox.(realized, demand * 0.4day; rtol = 1e-3))
+    BMI.update_until(model, 0.6day)
+    @test all(isapprox.(realized, demand * 0.6day; rtol = 1e-3))
 end

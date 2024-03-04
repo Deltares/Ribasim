@@ -42,16 +42,6 @@ def two_basin_model() -> ribasim.Model:
         }
     )
     state = pd.DataFrame(data={"node_id": [2, 3], "level": [0.01, 0.01]})
-    static = pd.DataFrame(
-        data={
-            "node_id": [2, 3],
-            "drainage": [0.0, 0.0],
-            "potential_evaporation": [0.0, 0.0],
-            "infiltration": [0.0, 0.0],
-            "precipitation": [0.0, 0.0],
-            "urban_runoff": [0.0, 0.0],
-        }
-    )
     subgrid = pd.DataFrame(
         data={
             "node_id": [2, 2, 3, 3],
@@ -62,7 +52,7 @@ def two_basin_model() -> ribasim.Model:
             "meta_y": [0.0, 0.0, 0.0, 0.0],
         }
     )
-    basin = ribasim.Basin(profile=profile, state=state, static=static, subgrid=subgrid)
+    basin = ribasim.Basin(profile=profile, state=state, subgrid=subgrid)
 
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
@@ -92,7 +82,7 @@ def two_basin_model() -> ribasim.Model:
     # Make sure the feature id starts at 1: explicitly give an index.
     node = ribasim.Node(
         df=gpd.GeoDataFrame(
-            data={"type": node_type},
+            data={"node_type": node_type},
             index=pd.Index(node_id, name="fid"),
             geometry=node_xy,
             crs="EPSG:28992",

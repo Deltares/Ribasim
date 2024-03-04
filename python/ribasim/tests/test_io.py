@@ -1,11 +1,12 @@
 import pandas as pd
 import pytest
 import ribasim
+import tomli
 from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
-from ribasim import Node, Pump
+from ribasim import Pump, Terminal
 
 
 def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
@@ -36,8 +37,14 @@ def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
 
 def test_basic(basic, tmp_path):
     model_orig = basic
-    model_orig.write(tmp_path / "basic/ribasim.toml")
-    model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
+    toml_path = tmp_path / "basic/ribasim.toml"
+    model_orig.write(toml_path)
+    model_loaded = ribasim.Model(filepath=toml_path)
+
+    with open(toml_path, "rb") as f:
+        toml_dict = tomli.load(f)
+
+    assert toml_dict["ribasim_version"] == ribasim.__version__
 
     index_a = model_orig.network.node.df.index.to_numpy(int)
     index_b = model_loaded.network.node.df.index.to_numpy(int)
@@ -74,7 +81,7 @@ def test_basic_transient(basic_transient, tmp_path):
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time[0] == time.df.time[0]
     __assert_equal(model_orig.basin.time.df, time.df)
-    assert time.df.shape == (1468, 9)
+    assert time.df.shape == (1468, 7)
 
 
 def test_pydantic():
@@ -100,20 +107,38 @@ def test_repr():
 
 
 def test_extra_columns(basic_transient):
-    static_data = pd.DataFrame(
-        data={"node_id": [1, 2, 3], "flow_rate": [1.0, -1.0, 0.0], "id": [-1, -2, -3]}
+    terminal = Terminal(
+        static=pd.DataFrame(
+            data={
+                "node_id": [1, 2, 3],
+                "meta_id": [-1, -2, -3],
+            }
+        )
     )
+    assert "meta_id" in terminal.static.df.columns
+    assert (terminal.static.df.meta_id == [-1, -2, -3]).all()
 
-    pump_1 = Pump(static=static_data)
+    with pytest.raises(ValidationError):
+        # Extra column "extra" needs "meta_" prefix
+        Terminal(
+            static=pd.DataFrame(
+                data={
+                    "node_id": [1, 2, 3],
+                    "meta_id": [-1, -2, -3],
+                    "extra": [-1, -2, -3],
+                }
+            )
+        )
 
-    assert "meta_id" in pump_1.static.df.columns
-
-    model_orig = basic_transient
-    df = model_orig.network.node.df.copy()
-    df["node_id"] = df.index
-    node = Node(df=df)
-
-    assert "meta_node_id" in node.df.columns
+    with pytest.raises(ValidationError):
+        # Missing required column "node_id"
+        Terminal(
+            static=pd.DataFrame(
+                data={
+                    "meta_id": [-1, -2, -3],
+                }
+            )
+        )
 
 
 def test_sort(level_setpoint_with_minmax, tmp_path):
