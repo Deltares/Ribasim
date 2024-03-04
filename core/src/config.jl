@@ -10,10 +10,20 @@ module config
 
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
-using Dates
+using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
-using OrdinaryDiffEq
+using OrdinaryDiffEq:
+    OrdinaryDiffEqAlgorithm,
+    Euler,
+    ImplicitEuler,
+    KenCarp4,
+    QNDF,
+    RK4,
+    Rodas5,
+    Rosenbrock23,
+    TRBDF2,
+    Tsit5
 
 export Config, Solver, Results, Logging, Toml
 export algorithm, snake_case, input_path, results_path, convert_saveat, convert_dt

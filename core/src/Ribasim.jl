@@ -14,39 +14,31 @@ For more granular access, see:
 """
 module Ribasim
 
-import IterTools
 import BasicModelInterface as BMI
 import HiGHS
+import IterTools
 import JuMP
-import TranscodingStreams
 import LoggingExtras
+import TranscodingStreams
 
 using Accessors: @set
 using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
-using Configurations: from_toml
 using ComponentArrays: ComponentVector
 using DataInterpolations: LinearInterpolation, derivative
-using Dates
-using DBInterface: execute, prepare
-using Dictionaries: Indices, Dictionary, gettoken, dictionary
-using DiffEqCallbacks
-using EnumX
+using Dates: Dates, DateTime, Millisecond, @dateformat_str
+using DBInterface: execute
+using Dictionaries: Indices, gettoken
+using DiffEqCallbacks:
+    FunctionCallingCallback,
+    PeriodicCallback,
+    PresetTimeCallback,
+    SavedValues,
+    SavingCallback
+using EnumX: EnumX, @enumx
 using ForwardDiff: pickchunksize
 using Graphs:
-    add_edge!,
-    adjacency_matrix,
-    all_neighbors,
-    DiGraph,
-    Edge,
-    edges,
-    inneighbors,
-    nv,
-    outneighbors,
-    rem_edge!,
-    induced_subgraph,
-    is_connected
-
+    DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
 using Logging: with_logger, LogLevel, AbstractLogger
 using MetaGraphsNext:
@@ -57,17 +49,26 @@ using MetaGraphsNext:
     labels,
     outneighbor_labels,
     inneighbor_labels
-using OrdinaryDiffEq
-using OrdinaryDiffEq: OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
-using PreallocationTools: DiffCache, FixedSizeDiffCache, get_tmp
-using SciMLBase
-using SciMLBase: successful_retcode
-using SparseArrays
+using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
+using PreallocationTools: DiffCache, get_tmp
+using SciMLBase:
+    init,
+    solve!,
+    step!,
+    SciMLBase,
+    successful_retcode,
+    CallbackSet,
+    ODEFunction,
+    ODEProblem,
+    ODESolution,
+    VectorContinuousCallback,
+    get_proposed_dt
+using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
-using Tables: Tables, AbstractRow, columntable, getcolumn
+using Tables: Tables, AbstractRow, columntable
 using TerminalLoggers: TerminalLogger
-using TimerOutputs
+using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 
 export libribasim
 
