@@ -20,9 +20,8 @@ def basic_model() -> ribasim.Model:
 
     # Convert steady forcing to m/s
     # 2 mm/d precipitation, 1 mm/d evaporation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    evaporation = 0.001 / seconds_in_day
+    precipitation = 0.002 / 86400
+    evaporation = 0.001 / 86400
 
     static = pd.DataFrame(
         data={
@@ -68,15 +67,12 @@ def basic_model() -> ribasim.Model:
     )
 
     # Set up a rating curve node:
-    # Discharge: lose 1% of storage volume per day at storage = 1000.0.
-    q1000 = 1000.0 * 0.01 / seconds_in_day
-
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
                 "node_id": [4, 4],
                 "level": [0.0, 1.0],
-                "flow_rate": [0.0, q1000],
+                "flow_rate": [0.0, 10 / 86400],
             }
         )
     )
@@ -288,16 +284,12 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     """
 
     # Set up a rating curve node:
-    # Discharge: lose 1% of storage volume per day at storage = 1000.0.
-    seconds_in_day = 24 * 3600
-    q1000 = 1000.0 * 0.01 / seconds_in_day
-
     rating_curve = ribasim.TabulatedRatingCurve(
         static=pd.DataFrame(
             data={
                 "node_id": [2, 2],
                 "level": [0.0, 1.0],
-                "flow_rate": [0.0, q1000],
+                "flow_rate": [0.0, 10 / 86400],
             }
         ),
         time=pd.DataFrame(
@@ -313,7 +305,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
                     pd.Timestamp("2020-03"),
                 ],
                 "level": [0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
-                "flow_rate": [0.0, q1000, 0.0, q1000, 0.0, q1000],
+                "flow_rate": [0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
             }
         ),
     )
@@ -357,7 +349,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Convert steady forcing to m/s
     # 2 mm/d precipitation
-    precipitation = 0.002 / seconds_in_day
+    precipitation = 0.002 / 86400
     # only the upstream basin gets precipitation
     static = pd.DataFrame(
         data={

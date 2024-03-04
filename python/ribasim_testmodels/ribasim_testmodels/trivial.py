@@ -15,9 +15,8 @@ def trivial_model() -> Model:
 
     # Convert steady forcing to m/s
     # 2 mm/d precipitation, 1 mm/d evaporation
-    seconds_in_day = 24 * 3600
-    precipitation = 0.002 / seconds_in_day
-    potential_evaporation = 0.001 / seconds_in_day
+    precipitation = 0.002 / 86400
+    potential_evaporation = 0.001 / 86400
 
     # Create a subgrid level interpolation from one basin to three elements. Scale one to one, but:
     # 22. start at -1.0
@@ -40,16 +39,12 @@ def trivial_model() -> Model:
         ],
     )
 
-    # Set up a rating curve node:
-    # Discharge: lose 1% of storage volume per day at storage = 1000.0.
-    q1000 = 1000.0 * 0.01 / seconds_in_day
-
     # largest signed 64 bit integer, to check encoding
     terminal_id = 9223372036854775807
     model.terminal.add(Node(terminal_id, Point(500, 200)))
     model.tabulated_rating_curve.add(
         Node(0, Point(450, 200)),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, q1000])],
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
     )
 
     model.edge.add(
