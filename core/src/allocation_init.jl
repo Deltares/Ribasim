@@ -399,7 +399,6 @@ function add_variables_absolute_value!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int,
-    config::Config,
 )::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
@@ -774,7 +773,6 @@ end
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
-    config::Config,
     p::Parameters,
     capacity::SparseMatrixCSC{Float64, Int},
     allocation_network_id::Int,
@@ -785,7 +783,7 @@ function allocation_problem(
     # Add variables to problem
     add_variables_flow!(problem, p, allocation_network_id)
     add_variables_basin!(problem, p, allocation_network_id)
-    add_variables_absolute_value!(problem, p, allocation_network_id, config)
+    add_variables_absolute_value!(problem, p, allocation_network_id)
 
     # Add constraints to problem
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
@@ -805,7 +803,6 @@ Construct the JuMP.jl problem for allocation.
 
 Inputs
 ------
-config: The model configuration with allocation configuration in config.allocation
 p: Ribasim problem parameters
 Δt_allocation: The timestep between successive allocation solves
 
@@ -814,7 +811,6 @@ Outputs
 An AllocationModel object.
 """
 function AllocationModel(
-    config::Config,
     allocation_network_id::Int,
     p::Parameters,
     Δt_allocation::Float64,
@@ -823,7 +819,7 @@ function AllocationModel(
     capacity = allocation_graph(p, allocation_network_id)
 
     # The JuMP.jl allocation problem
-    problem = allocation_problem(config, p, capacity, allocation_network_id)
+    problem = allocation_problem(p, capacity, allocation_network_id)
 
     return AllocationModel(allocation_network_id, capacity, problem, Δt_allocation)
 end
