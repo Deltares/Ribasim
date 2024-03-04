@@ -287,6 +287,30 @@ const allocation_source_nodetypes =
     Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
 
 """
+Remove allocation UserDemand return flow edges that are upstream of the UserDemand itself.
+"""
+function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
+    (; graph) = p
+    node_ids = graph[].node_ids[allocation_network_id]
+    edge_ids = graph[].edge_ids[allocation_network_id]
+    node_ids_user_demand =
+        [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+
+    for node_id_user_demand in node_ids_user_demand
+        node_id_return_flow = only(outflow_ids_allocation(graph, node_id_user_demand))
+        if allocation_path_exists_in_graph(graph, node_id_return_flow, node_id_user_demand)
+            edge_metadata = graph[node_id_user_demand, node_id_return_flow]
+            graph[node_id_user_demand, node_id_return_flow] =
+                @set edge_metadata.allocation_flow = false
+            empty!(edge_metadata.node_ids)
+            delete!(edge_ids, (node_id_user_demand, node_id_return_flow))
+            @debug "The outflow of $node_id_user_demand is upstream of the UserDemand itself and thus ignored in allocation solves."
+        end
+    end
+    return nothing
+end
+
+"""
 Add the edges connecting the main network work to a subnetwork to both the main network
 and subnetwork allocation network.
 """
@@ -325,6 +349,9 @@ function allocation_graph(
     if !valid_sources(p, allocation_network_id)
         error("Errors in sources in allocation network.")
     end
+
+    # Discard UserDemand return flow in allocation if this leads to a closed loop of flow
+    avoid_using_own_returnflow!(p, allocation_network_id)
 
     return capacity
 end
@@ -376,8 +403,7 @@ function add_variables_flow_buffer!(
     node_ids_flow_demand = NodeID[]
 
     for node_id in graph[].node_ids[allocation_network_id]
-        if node_type.type == NodeType.Basin &&
-           has_external_demand(graph, node_id, :flow_demand)
+        if has_external_demand(graph, node_id, :flow_demand)
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -560,7 +586,7 @@ function get_buffer(
     node_id::NodeID,
 )::Union{JuMP.VariableRef, Float64}
     if has_external_demand(graph, node_id, :flow_demand)
-        problem[:F_flow_buffer][node_id]
+        problem[:F_flow_buffer_in][node_id]
     else
         0.0
     end
@@ -608,6 +634,41 @@ function add_constraints_flow_conservation!(
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
         base_name = "flow_conservation",
+    )
+    return nothing
+end
+
+"""
+Add the UserDemand returnflow constraints to the allocation problem.
+The constraint indices are UserDemand node IDs.
+Constraint:
+outflow from user_demand <= return factor * inflow to user_demand
+"""
+function add_constraints_user_demand_returnflow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph, user_demand) = p
+    F = problem[:F]
+
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_user_demand_with_returnflow = [
+        node_id for node_id in node_ids if node_id.type == NodeType.UserDemand &&
+        !isempty(outflow_ids_allocation(graph, node_id))
+    ]
+    problem[:return_flow] = JuMP.@constraint(
+        problem,
+        [node_id_user_demand = node_ids_user_demand_with_returnflow],
+        F[(
+            node_id_user_demand,
+            only(outflow_ids_allocation(graph, node_id_user_demand)),
+        )] <=
+        user_demand.return_factor[findsorted(user_demand.node_id, node_id_user_demand)] * F[(
+            only(inflow_ids_allocation(graph, node_id_user_demand)),
+            node_id_user_demand,
+        )],
+        base_name = "return_flow",
     )
     return nothing
 end
@@ -794,11 +855,11 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
 end
 
 function add_constraints_buffer!(problem::JuMP.Model)::Nothing
-    F_flow_buffer = problem[:F_flow_buffer]
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
     problem[:flow_buffer_outflow] = JuMP.@constraint(
         problem,
-        [node_id = only(F_flow_buffer.axes)],
-        F_flow_buffer[node_id] <= 0.0,
+        [node_id = only(F_flow_buffer_in.axes)],
+        F_flow_buffer_in[node_id] <= 0.0,
         base_name = "flow_buffer_outflow"
     )
     return nothing
@@ -826,6 +887,7 @@ function allocation_problem(
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
+    add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value_user_demand!(problem, p, config)
     add_constraints_absolute_value_basin!(problem, config)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)

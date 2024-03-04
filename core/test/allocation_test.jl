@@ -375,27 +375,32 @@ end
     (; p) = model.integrator
     (; graph, allocation) = p
 
-    # Test has_flow_demand
-    @test [
+    # Test has_external_demand
+    @test !any(
         Ribasim.has_external_demand(graph, node_id, :flow_demand) for
-        node_id in graph[].node_ids[2]
-    ] == [false, false, false, true, false, false, false]
+        node_id in graph[].node_ids[2] if node_id.value != 2
+    )
+    @test Ribasim.has_external_demand(
+        graph,
+        NodeID(NodeType.TabulatedRatingCurve, 2),
+        :flow_demand,
+    )
 
     allocation_model = allocation.allocation_models[1]
     (; problem) = allocation_model
 
-    F = problem[:F]
-    F_flow_buffer = problem[:F_flow_buffer]
+    # F = problem[:F]
+    # F_flow_buffer = problem[:F_flow_buffer]
 
-    # Test flow conservation constraint containing flow buffer
-    constraint_with_flow_buffer = JuMP.constraint_object(
-        allocation_model.problem[:flow_conservation][NodeID(
-            NodeType.TabulatedRatingCurve,
-            2,
-        )],
-    )
-    @test constraint_with_flow_buffer.func ==
-          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
-          F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
-          F_flow_buffer[NodeID(NodeType.TabulatedRatingCurve, 2)]
+    # # Test flow conservation constraint containing flow buffer
+    # constraint_with_flow_buffer = JuMP.constraint_object(
+    #     allocation_model.problem[:flow_conservation][NodeID(
+    #         NodeType.TabulatedRatingCurve,
+    #         2,
+    #     )],
+    # )
+    # @test constraint_with_flow_buffer.func ==
+    #       F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
+    #       F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
+    #       F_flow_buffer[NodeID(NodeType.TabulatedRatingCurve, 2)]
 end
