@@ -3,8 +3,6 @@ Add a term to the objective function given by the objective type,
 depending in the provided flow variable and the associated demand.
 """
 function add_objective_term!(
-    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
-    F_variable::JuMP.VariableRef,
     demand::Float64,
     constraint_abs_positive::Union{JuMP.ConstraintRef, Nothing} = nothing,
     constraint_abs_negative::Union{JuMP.ConstraintRef, Nothing} = nothing,
@@ -20,50 +18,27 @@ Add a term to the expression of the objective function corresponding to
 the demand of a UserDemand.
 """
 function add_user_demand_term!(
-    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
     edge::Tuple{NodeID, NodeID},
     demand::Float64,
     problem::JuMP.Model,
 )::Nothing
-    F = problem[:F]
-    F_edge = F[edge]
     node_id_user_demand = edge[2]
 
     constraint_abs_positive = problem[:abs_positive_user_demand][node_id_user_demand]
     constraint_abs_negative = problem[:abs_negative_user_demand][node_id_user_demand]
 
-    add_objective_term!(
-        ex,
-        F_edge,
-        demand,
-        constraint_abs_positive,
-        constraint_abs_negative,
-    )
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
 end
 
 """
 Add a term to the expression of the objective function corresponding to
 the demand of a basin.
 """
-function add_basin_term!(
-    ex::Union{JuMP.QuadExpr, JuMP.AffExpr},
-    problem::JuMP.Model,
-    demand::Float64,
-    node_id::NodeID,
-)::Nothing
-    F_basin_in = problem[:F_basin_in]
-    F_basin = F_basin_in[node_id]
-
+function add_basin_term!(problem::JuMP.Model, demand::Float64, node_id::NodeID)::Nothing
     constraint_abs_positive = problem[:abs_positive_basin][node_id]
     constraint_abs_negative = problem[:abs_negative_basin][node_id]
 
-    add_objective_term!(
-        ex,
-        F_basin,
-        demand,
-        constraint_abs_positive,
-        constraint_abs_negative,
-    )
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
     return nothing
 end
 
@@ -96,7 +71,7 @@ function set_objective_priority!(
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
                 demand_max = max(demand_max, d)
-                add_user_demand_term!(ex, connection, d, problem)
+                add_user_demand_term!(connection, d, problem)
             end
         end
     end
@@ -116,7 +91,7 @@ function set_objective_priority!(
             d = get_user_demand(p, node_id_user_demand, priority_idx)
         end
         demand_max = max(demand_max, d)
-        add_user_demand_term!(ex, edge_id, d, problem)
+        add_user_demand_term!(edge_id, d, problem)
     end
 
     # Terms for basins
@@ -128,7 +103,7 @@ function set_objective_priority!(
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
         _, basin_idx = id_index(basin.node_id, node_id)
         basin.demand[basin_idx] = d
-        add_basin_term!(ex, problem, d, node_id)
+        add_basin_term!(problem, d, node_id)
     end
 
     new_objective = JuMP.@expression(problem, ex)
