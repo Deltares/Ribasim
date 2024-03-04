@@ -389,18 +389,20 @@ end
     allocation_model = allocation.allocation_models[1]
     (; problem) = allocation_model
 
-    # F = problem[:F]
-    # F_flow_buffer = problem[:F_flow_buffer]
+    F = problem[:F]
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
 
-    # # Test flow conservation constraint containing flow buffer
-    # constraint_with_flow_buffer = JuMP.constraint_object(
-    #     allocation_model.problem[:flow_conservation][NodeID(
-    #         NodeType.TabulatedRatingCurve,
-    #         2,
-    #     )],
-    # )
-    # @test constraint_with_flow_buffer.func ==
-    #       F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
-    #       F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
-    #       F_flow_buffer[NodeID(NodeType.TabulatedRatingCurve, 2)]
+    # Test flow conservation constraint containing flow buffer
+    constraint_with_flow_buffer = JuMP.constraint_object(
+        allocation_model.problem[:flow_conservation_flow_demand][NodeID(
+            NodeType.TabulatedRatingCurve,
+            2,
+        )],
+    )
+    @test constraint_with_flow_buffer.func ==
+          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
+          F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
+          F_flow_buffer_in[NodeID(NodeType.TabulatedRatingCurve, 2)] -
+          F_flow_buffer_out[NodeID(NodeType.TabulatedRatingCurve, 2)]
 end

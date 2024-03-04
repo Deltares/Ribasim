@@ -580,18 +580,6 @@ function get_basin_outflow(
     end
 end
 
-function get_buffer(
-    problem::JuMP.Model,
-    graph::MetaGraph,
-    node_id::NodeID,
-)::Union{JuMP.VariableRef, Float64}
-    if has_external_demand(graph, node_id, :flow_demand)
-        problem[:F_flow_buffer_in][node_id]
-    else
-        0.0
-    end
-end
-
 """
 Add the flow conservation constraints to the allocation problem.
 The constraint indices are UserDemand node IDs.
@@ -607,25 +595,13 @@ function add_constraints_flow_conservation!(
     (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_conservation = NodeID[]
 
-    for node_id in node_ids
-        if node_id.type == NodeType.Basin ||
-           has_external_demand(graph, node_id, :flow_demand)
-            push!(node_ids_conservation, node_id)
-        end
-    end
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-    for edge in main_network_source_edges
-        push!(node_ids_conservation, edge[2])
-    end
-    unique!(node_ids_conservation)
-    problem[:flow_conservation] = JuMP.@constraint(
+    # Basins
+    node_ids_basin = [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
+    problem[:flow_conservation_basin] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_conservation],
-        get_basin_inflow(problem, node_id) +
-        get_buffer(problem, graph, node_id) +
-        sum([
+        [node_id = node_ids_basin],
+        get_basin_inflow(problem, node_id) + sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
         ]) ==
@@ -633,7 +609,59 @@ function add_constraints_flow_conservation!(
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
-        base_name = "flow_conservation",
+        base_name = "flow_conservation_basin"
+    )
+
+    # Subnetwork inlets from main network
+    node_ids_inlets = [
+        edge[2] for edge in get_main_network_connections(p, allocation_network_id) if
+        edge[2] ∉ node_ids_basin
+    ]
+    problem[:flow_conservation_inlets] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_inlets],
+        sum([
+            F[(node_id, outneighbor_id)] for
+            outneighbor_id in outflow_ids_allocation(graph, node_id)
+        ]) == sum([
+            F[(inneighbor_id, node_id)] for
+            inneighbor_id in inflow_ids_allocation(graph, node_id)
+        ]),
+        base_name = "flow_conservation_inlet"
+    )
+
+    # Nodes with flow demand
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
+    node_ids_flow_demand = [
+        node_id for node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)
+    ]
+    problem[:flow_conservation_flow_demand] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_flow_demand],
+        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] +
+        F_flow_buffer_in[node_id] ==
+        F[(only(inflow_ids_allocation(graph, node_id)), node_id)] +
+        F_flow_buffer_out[node_id],
+        base_name = "flow_conservation_flow_demand"
+    )
+
+    # Subnetwork inlets from main network
+    node_ids_inlets = [
+        edge[2] for edge in get_main_network_connections(p, allocation_network_id) if
+        edge[2] ∉ node_ids_basin && edge[2] ∉ node_ids_flow_demand
+    ]
+    problem[:flow_conservation_inlets] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_inlets],
+        sum([
+            F[(node_id, outneighbor_id)] for
+            outneighbor_id in outflow_ids_allocation(graph, node_id)
+        ]) == sum([
+            F[(inneighbor_id, node_id)] for
+            inneighbor_id in inflow_ids_allocation(graph, node_id)
+        ]),
+        base_name = "flow_conservation_inlet"
     )
     return nothing
 end
