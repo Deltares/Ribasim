@@ -21,6 +21,7 @@ from ribasim.config import (
     FlowBoundary,
     FractionalFlow,
     LevelBoundary,
+    LevelDemand,
     LinearResistance,
     ManningResistance,
     Outlet,
@@ -62,6 +63,7 @@ class Model(FileModel):
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     pid_control: PidControl = Field(default_factory=PidControl)
     user_demand: UserDemand = Field(default_factory=UserDemand)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
 
     edge: Edge = Field(default_factory=Edge)
 
