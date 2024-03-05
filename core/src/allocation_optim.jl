@@ -455,7 +455,34 @@ function adjust_demands_flow!(
     return nothing
 end
 
-function adjust_capacities_buffer!() end
+function adjust_capacities_buffers!(
+    allocation_model::AllocationModel,
+    priority_idx::Int,
+)::Nothing
+    (; problem) = allocation_model
+
+    constraints_flow_buffer = problem[:flow_buffer_outflow]
+
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
+
+    for node_id in only(constraints_flow_buffer.axes)
+        constraint = constraints_flow_buffer[node_id]
+
+        buffer_capacity = if priority_idx == 1
+            0.0
+        else
+            max(
+                0.0,
+                JuMP.normalized_rhs(constraint) + JuMP.value(F_flow_buffer_in[node_id]) -
+                JuMP.value(F_flow_buffer_out[node_id]),
+            )
+        end
+
+        JuMP.set_normalized_rhs(constraint, buffer_capacity)
+    end
+    return nothing
+end
 
 function adjust_capacities_flow_demand_outflow!(
     allocation_model::AllocationModel,
@@ -623,15 +650,9 @@ function allocate_priority!(
     (; priorities) = allocation
 
     adjust_capacities_source!(allocation_model, p, priority_idx; collect_demands)
-
-    # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
-    # or set edge capacities if priority_idx = 1
     adjust_capacities_edge!(allocation_model, p, priority_idx)
-
     adjust_capacities_basin!(allocation_model, u, p, t, priority_idx)
-
-    adjust_capacities_buffer!()
-
+    adjust_capacities_buffers!(allocation_model, priority_idx)
     adjust_demands_flow!(allocation_model, p, t, priority_idx)
 
     # Set the objective depending on the demands
