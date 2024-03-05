@@ -43,14 +43,12 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
-objective_type: The name of the type of objective used
 allocation_network_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
-    objective_type::Symbol
     allocation_network_id::Int
     capacity::SparseMatrixCSC{Float64, Int}
     problem::JuMP.Model
