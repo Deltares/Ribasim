@@ -1,6 +1,8 @@
 __version__ = "2024.2.0"
 
 
+from ribasim.config import Allocation
 from ribasim.geometry.edge import Edge
+from ribasim.model import Model
 
-__all__ = ["Edge"]
+__all__ = ["Edge", "Allocation", "Model"]

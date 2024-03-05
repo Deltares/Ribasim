@@ -15,6 +15,7 @@ from pydantic import (
 
 import ribasim
 from ribasim.config import (
+    Allocation,
     Basin,
     DiscreteControl,
     FlowBoundary,
@@ -45,6 +46,7 @@ class Model(FileModel):
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
+    allocation: Allocation = Field(default_factory=Allocation)
     basin: Basin = Field(default_factory=Basin)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
