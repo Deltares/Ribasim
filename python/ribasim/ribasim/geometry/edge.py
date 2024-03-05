@@ -65,13 +65,13 @@ class Edge(SpatialTableModel[EdgeSchema]):
         )
         table_to_append = GeoDataFrame(
             data={
-                "from_node_type": [from_node.node_type],
-                "from_node_id": [from_node.node_id],
-                "to_node_type": [to_node.node_type],
-                "to_node_id": [to_node.node_id],
-                "edge_type": [edge_type],
-                "name": [name],
-                "subnetwork_id": [subnetwork_id],
+                "from_node_type": pd.Series([from_node.node_type], dtype=str),
+                "from_node_id": pd.Series([from_node.node_id], dtype=int),
+                "to_node_type": pd.Series([to_node.node_type], dtype=str),
+                "to_node_id": pd.Series([to_node.node_id], dtype=int),
+                "edge_type": pd.Series([edge_type], dtype=str),
+                "name": pd.Series([name], dtype=str),
+                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int64Dtype()),
             },
             geometry=geometry_to_append,
             crs="EPSG:28992",

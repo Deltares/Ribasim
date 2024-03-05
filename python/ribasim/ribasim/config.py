@@ -95,10 +95,10 @@ class Node(pydantic.BaseModel):
     def into_geodataframe(self, node_type: str) -> GeoDataFrame:
         return GeoDataFrame(
             data={
-                "node_id": [self.node_id],
-                "node_type": [node_type],
-                "name": [self.name],
-                "subnetwork_id": [self.subnetwork_id],
+                "node_id": pd.Series([self.node_id], dtype=int),
+                "node_type": pd.Series([node_type], dtype=str),
+                "name": pd.Series([self.name], dtype=str),
+                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int64Dtype()),
             },
             geometry=[self.geometry],
             crs="EPSG:28992",
