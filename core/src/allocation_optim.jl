@@ -207,7 +207,7 @@ end
 """
 Adjust the source flows.
 """
-function adjust_source_capacities!(
+function adjust_capacities_source!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int;
@@ -264,7 +264,7 @@ Set the values of the edge capacities. 2 cases:
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the edge capacities.
 """
-function adjust_edge_capacities!(
+function adjust_capacities_edge!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int,
@@ -391,7 +391,7 @@ Set the values of the basin outflows. 2 cases:
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the capacities.
 """
-function adjust_basin_capacities!(
+function adjust_capacities_basin!(
     allocation_model::AllocationModel,
     u::ComponentVector,
     p::Parameters,
@@ -420,7 +420,7 @@ function adjust_basin_capacities!(
     return nothing
 end
 
-function adjust_flow_demand!(
+function adjust_demands_flow!(
     allocation_model::AllocationModel,
     p::Parameters,
     t::Float64,
@@ -455,7 +455,9 @@ function adjust_flow_demand!(
     return nothing
 end
 
-function set_capacity_flow_demand_outflow!(
+function adjust_capacities_buffer!() end
+
+function adjust_capacities_flow_demand_outflow!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int,
@@ -608,6 +610,67 @@ function save_allocation_flows!(
     return nothing
 end
 
+function allocate_priority!(
+    allocation_model::AllocationModel,
+    u::ComponentVector,
+    p::Parameters,
+    t::Float64,
+    priority_idx::Int;
+    collect_demands::Bool = false,
+)::Nothing
+    (; problem) = allocation_model
+    (; allocation) = p
+    (; priorities) = allocation
+
+    adjust_capacities_source!(allocation_model, p, priority_idx; collect_demands)
+
+    # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
+    # or set edge capacities if priority_idx = 1
+    adjust_capacities_edge!(allocation_model, p, priority_idx)
+
+    adjust_capacities_basin!(allocation_model, u, p, t, priority_idx)
+
+    adjust_capacities_buffer!()
+
+    adjust_demands_flow!(allocation_model, p, t, priority_idx)
+
+    # Set the objective depending on the demands
+    # A new objective function is set instead of modifying the coefficients
+    # of an existing objective function because this is not supported for
+    # quadratic terms:
+    # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
+    set_objective_priority!(allocation_model, p, u, t, priority_idx)
+
+    adjust_capacities_flow_demand_outflow!(allocation_model, p, priority_idx)
+
+    # Solve the allocation problem for this priority
+    JuMP.optimize!(problem)
+    @debug JuMP.solution_summary(problem)
+    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+        (; allocation_network_id) = allocation_model
+        priority = priorities[priority_idx]
+        error(
+            "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
+        )
+    end
+
+    # Assign the allocations to the UserDemand for this priority
+    assign_allocations!(allocation_model, p, priority_idx; collect_demands)
+
+    # Save the demands and allocated flows for all nodes that have these
+    save_demands_and_allocations!(p, allocation_model, t, priority_idx)
+
+    # Save the flows over all edges in the subnetwork
+    save_allocation_flows!(
+        p,
+        t,
+        allocation_model,
+        priorities[priority_idx],
+        collect_demands,
+    )
+    return nothing
+end
+
 """
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
@@ -620,7 +683,7 @@ function allocate!(
     collect_demands::Bool = false,
 )::Nothing
     (; allocation) = p
-    (; problem, allocation_network_id) = allocation_model
+    (; allocation_network_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
@@ -634,49 +697,6 @@ function allocate!(
     end
 
     for priority_idx in eachindex(priorities)
-        adjust_source_capacities!(allocation_model, p, priority_idx; collect_demands)
-
-        # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
-        # or set edge capacities if priority_idx = 1
-        adjust_edge_capacities!(allocation_model, p, priority_idx)
-
-        adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
-
-        adjust_flow_demand!(allocation_model, p, t, priority_idx)
-
-        # Set the objective depending on the demands
-        # A new objective function is set instead of modifying the coefficients
-        # of an existing objective function because this is not supported for
-        # quadratic terms:
-        # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_priority!(allocation_model, p, u, t, priority_idx)
-
-        set_capacity_flow_demand_outflow!(allocation_model, p, priority_idx)
-
-        # Solve the allocation problem for this priority
-        JuMP.optimize!(problem)
-        @debug JuMP.solution_summary(problem)
-        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-            (; allocation_network_id) = allocation_model
-            priority = priorities[priority_idx]
-            error(
-                "Allocation of subnetwork $allocation_network_id, priority $priority coudn't find optimal solution.",
-            )
-        end
-
-        # Assign the allocations to the UserDemand for this priority
-        assign_allocations!(allocation_model, p, priority_idx; collect_demands)
-
-        # Save the demands and allocated flows for all nodes that have these
-        save_demands_and_allocations!(p, allocation_model, t, priority_idx)
-
-        # Save the flows over all edges in the subnetwork
-        save_allocation_flows!(
-            p,
-            t,
-            allocation_model,
-            priorities[priority_idx],
-            collect_demands,
-        )
+        allocate_priority!(allocation_model, u, p, t, priority_idx; collect_demands)
     end
 end

@@ -331,7 +331,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    (; graph, allocation) = p
+    (; graph, allocation, flow_demand) = p
 
     # Test has_external_demand
     @test !any(
@@ -371,7 +371,12 @@ end
     @test constraint_flow_demand_outflow.set.upper == 0.0
 
     t = 0.0
-    Ribasim.allocate!(p, allocation_model, t, model.integrator.u)
+
+    # Priority 1
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 1)
     objective = JuMP.objective_function(problem)
     @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
+
+    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t)
+    @test
 end
