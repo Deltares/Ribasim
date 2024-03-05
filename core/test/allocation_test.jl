@@ -382,7 +382,7 @@ end
 
     # Priority 2
     Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 2)
-    # The flow at priority 1 trough the node with a flow demand at priority 2
+    # The flow at priority 1 through the node with a flow demand at priority 2
     # is subtracted from this flow demand
     @test flow_demand.demand[1] ≈
           flow_demand.demand_itp[1](t) -
