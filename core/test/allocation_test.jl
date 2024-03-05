@@ -335,14 +335,14 @@ end
 
     # Test has_external_demand
     @test !any(
-        Ribasim.has_external_demand(graph, node_id, :flow_demand) for
+        Ribasim.has_external_demand(graph, node_id, :flow_demand)[1] for
         node_id in graph[].node_ids[2] if node_id.value != 2
     )
     @test Ribasim.has_external_demand(
         graph,
         NodeID(NodeType.TabulatedRatingCurve, 2),
         :flow_demand,
-    )
+    )[1]
 
     allocation_model = allocation.allocation_models[1]
     (; problem) = allocation_model
@@ -350,21 +350,28 @@ end
     F = problem[:F]
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
+
+    node_id_with_flow_demand = NodeID(NodeType.TabulatedRatingCurve, 2)
 
     # Test flow conservation constraint containing flow buffer
     constraint_with_flow_buffer = JuMP.constraint_object(
-        problem[:flow_conservation_flow_demand][NodeID(NodeType.TabulatedRatingCurve, 2)],
+        problem[:flow_conservation_flow_demand][node_id_with_flow_demand],
     )
     @test constraint_with_flow_buffer.func ==
-          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] -
-          F[(NodeID(NodeType.LevelBoundary, 1), NodeID(NodeType.TabulatedRatingCurve, 2))] +
-          F_flow_buffer_in[NodeID(NodeType.TabulatedRatingCurve, 2)] -
-          F_flow_buffer_out[NodeID(NodeType.TabulatedRatingCurve, 2)]
+          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] -
+          F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)] +
+          F_flow_buffer_in[node_id_with_flow_demand] -
+          F_flow_buffer_out[node_id_with_flow_demand]
 
-    constraint_flow_demand_outflow = JuMP.constraint_object(
-        problem[:flow_demand_outflow][NodeID(NodeType.TabulatedRatingCurve, 2)],
-    )
+    constraint_flow_demand_outflow =
+        JuMP.constraint_object(problem[:flow_demand_outflow][node_id_with_flow_demand])
     @test constraint_flow_demand_outflow.func ==
-          F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] + 0.0
+          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] + 0.0
     @test constraint_flow_demand_outflow.set.upper == 0.0
+
+    t = 0.0
+    Ribasim.allocate!(p, allocation_model, t, model.integrator.u)
+    objective = JuMP.objective_function(problem)
+    @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
 end

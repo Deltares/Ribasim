@@ -30,6 +30,19 @@ function add_user_demand_term!(
     add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
 end
 
+function add_flow_demand_term!(
+    edge::Tuple{NodeID, NodeID},
+    demand::Float64,
+    problem::JuMP.Model,
+)::Nothing
+    node_id_flow_demand = edge[2]
+
+    constraint_abs_positive = problem[:abs_positive_flow_demand][node_id_flow_demand]
+    constraint_abs_negative = problem[:abs_negative_flow_demand][node_id_flow_demand]
+
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
+end
+
 """
 Add a term to the expression of the objective function corresponding to
 the demand of a basin.
@@ -58,7 +71,7 @@ function set_objective_priority!(
     priority_idx::Int,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
-    (; graph, user_demand, allocation, basin) = p
+    (; graph, allocation, user_demand, flow_demand, basin) = p
     (; demand_itp, demand_from_timeseries, node_id) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -67,12 +80,16 @@ function set_objective_priority!(
 
     F_abs_user_demand = problem[:F_abs_user_demand]
     F_abs_level_demand = problem[:F_abs_level_demand]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
 
     if !isempty(only(F_abs_user_demand.axes))
-        ex += sum(problem[:F_abs_user_demand])
+        ex += sum(F_abs_user_demand)
     end
     if !isempty(only(F_abs_level_demand.axes))
-        ex += sum(problem[:F_abs_level_demand])
+        ex += sum(F_abs_level_demand)
+    end
+    if !isempty(only(F_abs_flow_demand.axes))
+        ex += sum(F_abs_flow_demand)
     end
 
     # Terms for subnetworks as UserDemand
@@ -85,27 +102,40 @@ function set_objective_priority!(
         end
     end
 
-    # Terms for UserDemand nodes
+    # Terms for UserDemand nodes and LevelDemand nodes
     for edge_id in edge_ids
-        node_id_user_demand = edge_id[2]
-        if node_id_user_demand.type != NodeType.UserDemand
-            continue
-        end
+        to_node_id = edge_id[2]
 
-        user_demand_idx = findsorted(node_id, node_id_user_demand)
-        if demand_from_timeseries[user_demand_idx]
-            d = demand_itp[user_demand_idx][priority_idx](t)
-            set_user_demand!(p, node_id_user_demand, priority_idx, d)
+        if to_node_id.type == NodeType.UserDemand
+            # UserDemand
+            user_demand_idx = findsorted(node_id, to_node_id)
+            if demand_from_timeseries[user_demand_idx]
+                d = demand_itp[user_demand_idx][priority_idx](t)
+                set_user_demand!(p, to_node_id, priority_idx, d)
+            else
+                d = get_user_demand(p, to_node_id, priority_idx)
+            end
+            add_user_demand_term!(edge_id, d, problem)
         else
-            d = get_user_demand(p, node_id_user_demand, priority_idx)
+            has_demand, demand_node_id =
+                has_external_demand(graph, to_node_id, :flow_demand)
+            # FlowDemand
+            if has_demand
+                flow_priority_idx = get_external_priority_idx(p, to_node_id)
+                d =
+                    priority_idx == flow_priority_idx ?
+                    flow_demand.demand[findsorted(flow_demand.node_id, demand_node_id)] :
+                    0.0
+
+                add_flow_demand_term!(edge_id, d, problem)
+            end
         end
-        add_user_demand_term!(edge_id, d, problem)
     end
 
-    # Terms for basins
+    # Terms for LevelDemand nodes
     F_basin_in = problem[:F_basin_in]
     for node_id in only(F_basin_in.axes)
-        basin_priority_idx = get_basin_priority_idx(p, node_id)
+        basin_priority_idx = get_external_priority_idx(p, node_id)
         d =
             basin_priority_idx == priority_idx ?
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
@@ -481,7 +511,7 @@ function save_demands_and_allocations!(
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
         elseif node_id.type == NodeType.Basin
-            basin_priority_idx = get_basin_priority_idx(p, node_id)
+            basin_priority_idx = get_external_priority_idx(p, node_id)
 
             if priority_idx == 1 || basin_priority_idx == priority_idx
                 has_demand = true

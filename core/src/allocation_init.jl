@@ -36,9 +36,9 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
-        elseif has_external_demand(graph, node_id, :level_demand)
+        elseif has_external_demand(graph, node_id, :level_demand)[1]
             use_node = true
-        elseif has_external_demand(graph, node_id, :flow_demand)
+        elseif has_external_demand(graph, node_id, :flow_demand)[1]
             use_node = true
         end
 
@@ -403,7 +403,7 @@ function add_variables_flow_buffer!(
     node_ids_flow_demand = NodeID[]
 
     for node_id in graph[].node_ids[allocation_network_id]
-        if has_external_demand(graph, node_id, :flow_demand)
+        if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -438,9 +438,10 @@ function add_variables_absolute_value!(
         type = node_id.type
         if type == NodeType.UserDemand
             push!(node_ids_user_demand, node_id)
-        elseif type == NodeType.Basin && has_external_demand(graph, node_id, :level_demand)
+        elseif type == NodeType.Basin &&
+               has_external_demand(graph, node_id, :level_demand)[1]
             push!(node_ids_level_demand, node_id)
-        elseif has_external_demand(graph, node_id, :flow_demand)
+        elseif has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -632,7 +633,8 @@ function add_constraints_flow_conservation!(
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
     node_ids_flow_demand = [
-        node_id for node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)
+        node_id for
+        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
     ]
     problem[:flow_conservation_flow_demand] = JuMP.@constraint(
         problem,
@@ -768,7 +770,7 @@ end
 Add constraints so that variables F_abs_basin act as the
 absolute value of the expression comparing flow to a basin to its demand.
 """
-function add_constraints_absolute_value_basin!(problem::JuMP.Model)::Nothing
+function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Nothing
     F_basin_in = problem[:F_basin_in]
     F_abs_level_demand = problem[:F_abs_level_demand]
     flow_per_node =
@@ -776,6 +778,27 @@ function add_constraints_absolute_value_basin!(problem::JuMP.Model)::Nothing
 
     add_constraints_absolute_value!(problem, flow_per_node, F_abs_level_demand, "basin")
 
+    return nothing
+end
+
+function add_constraints_absolute_value_flow_demand!(
+    problem::JuMP.Model,
+    p::Parameters,
+)::Nothing
+    F = problem[:F]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
+    (; graph) = p
+    flow_per_node = Dict(
+        node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
+        node_id in only(F_abs_flow_demand.axes)
+    )
+
+    add_constraints_absolute_value!(
+        problem,
+        flow_per_node,
+        F_abs_flow_demand,
+        "flow_demand",
+    )
     return nothing
 end
 
@@ -868,7 +891,8 @@ function add_constraints_flow_demand_outflow!(
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_flow_demand = [
-        node_id for node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)
+        node_id for
+        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
     ]
     problem[:flow_demand_outflow] = JuMP.@constraint(
         problem,
@@ -901,7 +925,9 @@ function allocation_problem(
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value_user_demand!(problem, p)
-    add_constraints_absolute_value_basin!(problem)
+    add_constraints_absolute_value_flow_demand!(problem, p)
+    add_constraints_absolute_value_level_demand!(problem)
+
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
     add_constraints_flow_demand_outflow!(problem, p, allocation_network_id)

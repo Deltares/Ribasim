@@ -659,17 +659,25 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int}
     return sort(collect(priorities))
 end
 
-function get_basin_priority_idx(p::Parameters, node_id::NodeID)::Int
-    (; graph, level_demand, allocation) = p
-    @assert node_id.type == NodeType.Basin
-    inneighbors_control = inneighbor_labels_type(graph, node_id, EdgeType.control)
-    if isempty(inneighbors_control)
+function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
+    (; graph, level_demand, flow_demand, allocation) = p
+    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    if isempty(inneighbor_control_ids)
         return 0
-    else
-        idx = findsorted(level_demand.node_id, only(inneighbors_control))
-        priority = level_demand.priority[idx]
-        return findsorted(allocation.priorities, priority)
     end
+    inneighbor_control_id = only(inneighbor_control_ids)
+    type = inneighbor_control_id.type
+    if type == NodeType.LevelDemand
+        idx = findsorted(level_demand.node_id, inneighbor_control_id)
+        priority = level_demand.priority[idx]
+    elseif type == NodeType.FlowDemand
+        idx = findsorted(flow_demand.node_id, inneighbor_control_id)
+        priority = flow_demand.priority[idx]
+    else
+        error("Nodes of type $type have no priority.")
+    end
+
+    return findsorted(allocation.priorities, priority)
 end
 
 """
@@ -695,14 +703,18 @@ function set_is_pid_controlled!(p::Parameters)::Nothing
     return nothing
 end
 
-function has_external_demand(graph::MetaGraph, node_id::NodeID, node_type::Symbol)::Bool
+function has_external_demand(
+    graph::MetaGraph,
+    node_id::NodeID,
+    node_type::Symbol,
+)::Tuple{Bool, Union{NodeID, Nothing}}
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     for id in control_inneighbors
         if graph[id].type == node_type
-            return true
+            return true, id
         end
     end
-    return false
+    return false, nothing
 end
 
 function Base.get(
