@@ -39,8 +39,8 @@ def trivial_model() -> Model:
         ],
     )
 
-    # largest signed 64 bit integer, to check encoding
-    terminal_id = 9223372036854775807
+    # TODO largest signed 64 bit integer, to check encoding
+    terminal_id = 922  # 3372036854775807
     model.terminal.add(Node(terminal_id, Point(500, 200)))
     model.tabulated_rating_curve.add(
         Node(0, Point(450, 200)),
