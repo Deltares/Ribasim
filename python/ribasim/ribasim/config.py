@@ -38,7 +38,6 @@ from ribasim.schemas import (
 class Allocation(ChildModel):
     timestep: float | None = None
     use_allocation: bool = False
-    objective_type: str = "linear_absolute"
 
 
 class Results(ChildModel):
