@@ -137,15 +137,11 @@ $$
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand with demands determined by subnetwork demand collection.
 :::
 
-This type of objective cares about the absolute amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment if deviations increase.
+This type of objective cares about the absolute amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment per flow unit if deviations increase.
 
 The absolute value applied here is not supported in a linear programming context directly; this requires introduction of new variables and constraints. For more details see [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
 
-:::{.callout-note}
-In the future new optimization objectives will be introduced, for demands of basins and priorities over sources. These will be used in combination with the above, in the form of goal programming.
-:::
-
-Likewise, the error of basin demands is the absolute value between flows consumed by basins and basin demands.
+Likewise, the error of basin demands is the absolute difference between flows consumed by basins and basin demands.
 $$
     E_{\text{basin}} = \sum_{i \in B_S} \left| F_i^\text{basin in} - d_i^p(t)\right|
 $$
