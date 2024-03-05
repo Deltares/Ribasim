@@ -368,7 +368,6 @@ end
 @testitem "flow_demand" begin
     using JuMP
     using Ribasim: NodeID, NodeType
-    using MathOptInterface
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -409,5 +408,5 @@ end
     )
     @test constraint_flow_demand_outflow.func ==
           F[(NodeID(NodeType.TabulatedRatingCurve, 2), NodeID(NodeType.Basin, 3))] + 0.0
-    @test constraint_flow_demand_outflow.set == MathOptInterface.LessThan{Float64}(0.0)
+    @test constraint_flow_demand_outflow.set.upper == 0.0
 end

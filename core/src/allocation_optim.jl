@@ -470,30 +470,38 @@ function adjust_basin_capacities!(
     return nothing
 end
 
-function adjust_buffers!(allocation_model::AllocationModel, priority_idx::Int)::Nothing
-    (; problem) = allocation_model
+function adjust_flow_demand!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+    priority_idx::Int,
+)::Nothing
+    (; flow_demand, graph) = p
+    (; problem, allocation_network_id) = allocation_model
+    F = problem[:F]
 
-    constraints_user_buffer = problem[:user_buffer_outflow]
-    constraints_flow_buffer = problem[:flow_buffer_outflow]
-
-    for node_id in only(constraints_user_buffer.axes)
-        constraint = constraints_user_buffer[node_id]
-
-        buffer_capacity = if priority_idx == 1
-            0.0
-        else
-            JuMP.normalized_rhs(constraint) - used + new
+    for (i, node_id) in enumerate(flow_demand.node_id)
+        if graph[node_id].allocation_network_id != allocation_network_id
+            continue
         end
 
-        JuMP.set_normalized_rhs(constraint, buffer_capacity)
-    end
-
-    for node_id in only(constraints_flow_buffer.axes)
         if priority_idx == 1
+            flow_demand.demand[i] = flow_demand.demand_itp[i](t)
         else
+            node_with_demand_id =
+                only(outneighbor_labels_type(graph, node_id, EdgeType.control))
+
+            flow_demand.demand[i] = max(
+                0.0,
+                flow_demand.demand[i] - JuMP.value(
+                    F[(
+                        only(inflow_ids_allocation(graph, node_with_demand_id)),
+                        node_with_demand_id,
+                    )],
+                ),
+            )
         end
     end
-
     return nothing
 end
 
@@ -683,6 +691,8 @@ function allocate!(
         adjust_edge_capacities!(allocation_model, p, priority_idx)
 
         adjust_basin_capacities!(allocation_model, u, p, t, priority_idx)
+
+        adjust_flow_demand!(allocation_model, p, t, priority_idx)
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients

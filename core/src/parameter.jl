@@ -543,6 +543,7 @@ end
 struct FlowDemand
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
+    demand::Vector{Float64}
     priority::Vector{Int}
 end
 

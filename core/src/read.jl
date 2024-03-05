@@ -801,9 +801,12 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
         error("Errors occurred when parsing FlowDemand data.")
     end
 
+    demand = zeros(length(parsed_parameters.node_id))
+
     return FlowDemand(
         NodeID.(NodeType.FlowDemand, parsed_parameters.node_id),
         parsed_parameters.demand,
+        demand,
         parsed_parameters.priority,
     )
 end
