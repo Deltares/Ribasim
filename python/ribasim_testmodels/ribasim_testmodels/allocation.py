@@ -1828,17 +1828,14 @@ def flow_demand_model():
             data={
                 "node_id": 2,
                 "level": [0.0, 1.0],
-                "flow_rate": [
-                    0.0,
-                    2.0,
-                ],
+                "flow_rate": [0.0, 2e-3],
             }
         )
     )
 
     # Setup FlowBoundary
     level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "level": [2.0]})
+        static=pd.DataFrame(data={"node_id": [1], "level": [1.0]})
     )
 
     # Setup basin
@@ -1854,7 +1851,7 @@ def flow_demand_model():
             data={
                 "node_id": [4, 6, 8],
                 "priority": [3, 1, 4],
-                "demand": 1.5e-3,
+                "demand": 1e-3,
                 "return_factor": 1.0,
                 "min_level": 0.2,
             }
@@ -1863,7 +1860,7 @@ def flow_demand_model():
 
     # Setup FlowDemand
     flow_demand = ribasim.FlowDemand(
-        static=pd.DataFrame(data={"node_id": [5], "demand": [0.5], "priority": [2]})
+        static=pd.DataFrame(data={"node_id": [5], "demand": [2e-3], "priority": [2]})
     )
 
     # Setup allocation

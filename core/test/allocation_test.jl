@@ -353,6 +353,7 @@ end
     F_abs_flow_demand = problem[:F_abs_flow_demand]
 
     node_id_with_flow_demand = NodeID(NodeType.TabulatedRatingCurve, 2)
+    constraint_flow_out = problem[:flow_demand_outflow][node_id_with_flow_demand]
 
     # Test flow conservation constraint containing flow buffer
     constraint_with_flow_buffer = JuMP.constraint_object(
@@ -376,7 +377,24 @@ end
     Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 1)
     objective = JuMP.objective_function(problem)
     @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
-
     @test flow_demand.demand[1] == flow_demand.demand_itp[1](t)
-    @test
+    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
+
+    # Priority 2
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 2)
+    # The flow at priority 1 trough the node with a flow demand at priority 2
+    # is subtracted from this flow demand
+    @test flow_demand.demand[1] ≈
+          flow_demand.demand_itp[1](t) -
+          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 6), 1)
+    @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
+
+    # Priority 3
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 3)
+    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
+    # The flow from the source is used up in previous priorities
+    @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
+    # So flow from the flow buffer is used for UserDemand #4
+    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ==
+          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 4), 3)
 end

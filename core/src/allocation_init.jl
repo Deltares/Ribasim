@@ -384,7 +384,8 @@ function add_variables_basin!(
     (; graph) = p
     node_ids_basin = [
         node_id for node_id in graph[].node_ids[allocation_network_id] if
-        graph[node_id].type == :basin
+        graph[node_id].type == :basin &&
+        has_external_demand(graph, node_id, :level_demand)[1]
     ]
     problem[:F_basin_in] =
         JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
@@ -781,16 +782,11 @@ function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Noth
     return nothing
 end
 
-function add_constraints_absolute_value_flow_demand!(
-    problem::JuMP.Model,
-    p::Parameters,
-)::Nothing
-    F = problem[:F]
+function add_constraints_absolute_value_flow_demand!(problem::JuMP.Model)::Nothing
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_abs_flow_demand = problem[:F_abs_flow_demand]
-    (; graph) = p
     flow_per_node = Dict(
-        node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
-        node_id in only(F_abs_flow_demand.axes)
+        node_id => F_flow_buffer_in[node_id] for node_id in only(F_abs_flow_demand.axes)
     )
 
     add_constraints_absolute_value!(
@@ -872,11 +868,11 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
 end
 
 function add_constraints_buffer!(problem::JuMP.Model)::Nothing
-    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
     problem[:flow_buffer_outflow] = JuMP.@constraint(
         problem,
-        [node_id = only(F_flow_buffer_in.axes)],
-        F_flow_buffer_in[node_id] <= 0.0,
+        [node_id = only(F_flow_buffer_out.axes)],
+        F_flow_buffer_out[node_id] <= 0.0,
         base_name = "flow_buffer_outflow"
     )
     return nothing
@@ -897,7 +893,8 @@ function add_constraints_flow_demand_outflow!(
     problem[:flow_demand_outflow] = JuMP.@constraint(
         problem,
         [node_id = node_ids_flow_demand],
-        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] <= 0.0
+        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] <= 0.0,
+        base_name = "flow_demand_outflow"
     )
     return nothing
 end
@@ -925,7 +922,7 @@ function allocation_problem(
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
     add_constraints_absolute_value_user_demand!(problem, p)
-    add_constraints_absolute_value_flow_demand!(problem, p)
+    add_constraints_absolute_value_flow_demand!(problem)
     add_constraints_absolute_value_level_demand!(problem)
 
     add_constraints_fractional_flow!(problem, p, allocation_network_id)

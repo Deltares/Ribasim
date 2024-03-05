@@ -539,7 +539,8 @@ function save_demands_and_allocations!(
             allocated = user_demand.allocated[user_demand_idx][priority_idx]
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
-        elseif node_id.type == NodeType.Basin
+        elseif node_id.type == NodeType.Basin &&
+               has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
 
             if priority_idx == 1 || basin_priority_idx == priority_idx
@@ -619,7 +620,8 @@ function save_allocation_flows!(
 
     # Basin flows
     for node_id in graph[].node_ids[allocation_network_id]
-        if node_id.type == NodeType.Basin
+        if node_id.type == NodeType.Basin &&
+           has_external_demand(graph, node_id, :level_demand)[1]
             flow_rate = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             push!(record_flow.time, t)
             push!(record_flow.edge_id, 0)
