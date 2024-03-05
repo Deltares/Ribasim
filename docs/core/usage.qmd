@@ -603,13 +603,14 @@ DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.
 
 The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen feature id is grater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
 
-column            | type     | unit    | restriction
------------------ | -------- | ------- | -----------
-node_id           | Int      | -       | sorted
-listen_feature_id | Int      | -       | sorted per node_id
-variable          | String   | -       | must be "level" or "flow_rate", sorted per listen_feature_id
-greater_than      | Float64  | various | sorted per variable
-look_ahead        | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0)
+column              | type     | unit    | restriction
+------------------- | -------- | ------- | -----------
+node_id             | Int      | -       | sorted
+listen_feature_id   | Int      | -       | sorted per node_id
+listen_feature_type | String   | -       | known node type
+variable            | String   | -       | must be "level" or "flow_rate", sorted per listen_feature_id
+greater_than        | Float64  | various | sorted per variable
+look_ahead          | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0)
 
 ## DiscreteControl / logic
 
