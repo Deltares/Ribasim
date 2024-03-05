@@ -15,7 +15,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 
 
-def dutch_waterways_model():
+def dutch_waterways_model() -> Model:
     """Set up a model that is representative of the main Dutch rivers."""
 
     model = Model(

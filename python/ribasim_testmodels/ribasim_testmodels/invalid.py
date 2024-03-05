@@ -12,7 +12,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 
 
-def invalid_qh_model():
+def invalid_qh_model() -> Model:
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-12-01 00:00:00",
@@ -48,7 +48,7 @@ def invalid_qh_model():
     return model
 
 
-def invalid_fractional_flow_model():
+def invalid_fractional_flow_model() -> Model:
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-12-01 00:00:00",
@@ -118,7 +118,7 @@ def invalid_fractional_flow_model():
     return model
 
 
-def invalid_discrete_control_model():
+def invalid_discrete_control_model() -> Model:
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-12-01 00:00:00",
@@ -188,7 +188,7 @@ def invalid_discrete_control_model():
     return model
 
 
-def invalid_edge_types_model():
+def invalid_edge_types_model() -> Model:
     """Set up a minimal model with invalid edge types."""
 
     model = Model(

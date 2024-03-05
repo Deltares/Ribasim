@@ -2,9 +2,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
+from ribasim.model import Model
 
 
-def pump_discrete_control_model() -> ribasim.Model:
+def pump_discrete_control_model() -> Model:
     """
     Set up a basic model with a pump controlled based on basin levels.
     The LinearResistance is deactivated when the levels are almost equal.
@@ -148,7 +149,7 @@ def pump_discrete_control_model() -> ribasim.Model:
     return model
 
 
-def flow_condition_model():
+def flow_condition_model() -> Model:
     """Set up a basic model that involves discrete control based on a flow condition"""
 
     # Set up the nodes:
@@ -276,7 +277,7 @@ def flow_condition_model():
     return model
 
 
-def level_boundary_condition_model():
+def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
 
     # Set up the nodes
@@ -536,7 +537,7 @@ def tabulated_rating_curve_control_model() -> ribasim.Model:
     return model
 
 
-def level_setpoint_with_minmax_model():
+def level_setpoint_with_minmax_model() -> Model:
     """
     Set up a minimal model in which the level of a basin is kept within an acceptable range
     around a setpoint while being affected by time-varying forcing.

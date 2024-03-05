@@ -13,7 +13,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 
 
-def pid_control_model():
+def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
 
     model = Model(
@@ -76,7 +76,7 @@ def pid_control_model():
     return model
 
 
-def discrete_control_of_pid_control_model():
+def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
 
     model = Model(

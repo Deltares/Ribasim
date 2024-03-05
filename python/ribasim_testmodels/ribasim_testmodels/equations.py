@@ -15,7 +15,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 
 
-def linear_resistance_model():
+def linear_resistance_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
 
     model = Model(
@@ -47,7 +47,7 @@ def linear_resistance_model():
     return model
 
 
-def rating_curve_model():
+def rating_curve_model() -> Model:
     """Set up a minimal model which uses a tabulated_rating_curve node."""
 
     model = Model(
@@ -87,7 +87,7 @@ def rating_curve_model():
     return model
 
 
-def manning_resistance_model():
+def manning_resistance_model() -> Model:
     """Set up a minimal model which uses a manning_resistance node."""
 
     model = Model(
@@ -122,7 +122,7 @@ def manning_resistance_model():
     return model
 
 
-def misc_nodes_model():
+def misc_nodes_model() -> Model:
     """Set up a minimal model using flow_boundary, fractional_flow and pump nodes."""
 
     model = Model(
@@ -184,7 +184,7 @@ def misc_nodes_model():
     return model
 
 
-def pid_control_equation_model():
+def pid_control_equation_model() -> Model:
     """Set up a model with pid control for an analytical solution test"""
 
     model = Model(
