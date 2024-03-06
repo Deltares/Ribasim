@@ -23,6 +23,7 @@ from ribasim.config import (
     LevelBoundary,
     LevelDemand,
     LinearResistance,
+    Logging,
     ManningResistance,
     Outlet,
     PidControl,
@@ -48,6 +49,7 @@ class Model(FileModel):
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
     allocation: Allocation = Field(default_factory=Allocation)
+    logging: Logging = Field(default_factory=Logging)
     basin: Basin = Field(default_factory=Basin)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
