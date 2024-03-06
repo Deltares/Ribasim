@@ -242,6 +242,3 @@ class Model(FileModel):
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
-
-    def print_discrete_control_record(self, path: FilePath) -> None:
-        raise NotImplementedError()
