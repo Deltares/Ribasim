@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import ribasim
 from ribasim.config import Node
