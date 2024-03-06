@@ -5,6 +5,8 @@ from ribasim.schemas import (
     FlowBoundaryTimeSchema,
 )
 
+__all__ = ["Static", "Time"]
+
 
 class Static(DataFrame[FlowBoundaryStaticSchema]):
     def __init__(self, **kwargs):

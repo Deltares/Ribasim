@@ -5,6 +5,8 @@ from ribasim.schemas import (
     LevelBoundaryTimeSchema,
 )
 
+__all__ = ["Static", "Time"]
+
 
 class Static(DataFrame[LevelBoundaryStaticSchema]):
     def __init__(self, **kwargs):

@@ -4,6 +4,8 @@ from ribasim.schemas import (
     PumpStaticSchema,
 )
 
+__all__ = ["Static"]
+
 
 class Static(DataFrame[PumpStaticSchema]):
     def __init__(self, **kwargs):

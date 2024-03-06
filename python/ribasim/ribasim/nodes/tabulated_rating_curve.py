@@ -5,6 +5,8 @@ from ribasim.schemas import (
     TabulatedRatingCurveTimeSchema,
 )
 
+__all__ = ["Static", "Time"]
+
 
 class Static(DataFrame[TabulatedRatingCurveStaticSchema]):
     def __init__(self, **kwargs):

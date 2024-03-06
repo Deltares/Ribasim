@@ -1,5 +1,6 @@
 from pandera.typing import DataFrame
 
+from ribasim.geometry.area import BasinAreaSchema
 from ribasim.schemas import (
     BasinProfileSchema,
     BasinStateSchema,
@@ -7,6 +8,8 @@ from ribasim.schemas import (
     BasinSubgridSchema,
     BasinTimeSchema,
 )
+
+__all__ = ["Static", "Time", "State", "Profile", "Subgrid", "Area"]
 
 
 class Static(DataFrame[BasinStaticSchema]):
@@ -30,5 +33,10 @@ class Profile(DataFrame[BasinProfileSchema]):
 
 
 class Subgrid(DataFrame[BasinSubgridSchema]):
+    def __init__(self, **kwargs):
+        super().__init__(data=dict(**kwargs))
+
+
+class Area(DataFrame[BasinAreaSchema]):
     def __init__(self, **kwargs):
         super().__init__(data=dict(**kwargs))

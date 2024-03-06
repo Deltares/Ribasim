@@ -4,6 +4,8 @@ from ribasim.schemas import (
     OutletStaticSchema,
 )
 
+__all__ = ["Static"]
+
 
 class Static(DataFrame[OutletStaticSchema]):
     def __init__(self, **kwargs):

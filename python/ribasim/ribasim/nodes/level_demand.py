@@ -5,6 +5,8 @@ from ribasim.schemas import (
     LevelDemandTimeSchema,
 )
 
+__all__ = ["Static", "Time"]
+
 
 class Static(DataFrame[LevelDemandStaticSchema]):
     def __init__(self, **kwargs):
