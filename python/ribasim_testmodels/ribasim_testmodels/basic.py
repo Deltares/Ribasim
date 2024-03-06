@@ -1,217 +1,192 @@
 from pathlib import Path
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
+from ribasim.config import Node
+from ribasim.nodes import (
+    basin,
+    flow_boundary,
+    fractional_flow,
+    level_boundary,
+    linear_resistance,
+    manning_resistance,
+    outlet,
+    pump,
+    tabulated_rating_curve,
+)
+from shapely.geometry import Point
 
 
 def basic_model() -> ribasim.Model:
-    """Set up a basic model with most node types and static forcing"""
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 3, 3, 6, 6, 9, 9],
-            "area": [0.01, 1000.0] * 4,
-            "level": [0.0, 1.0] * 4,
-        }
-    )
-
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation, 1 mm/d evaporation
-    precipitation = 0.002 / 86400
-    evaporation = 0.001 / 86400
-
-    static = pd.DataFrame(
-        data={
-            "node_id": [0],
-            "potential_evaporation": [evaporation],
-            "precipitation": [precipitation],
-        }
-    )
-    static = static.iloc[[0, 0, 0, 0]]
-    static["node_id"] = [1, 3, 6, 9]
-    state = pd.DataFrame(
-        data={"node_id": static["node_id"], "level": 0.04471158417652035}
-    )
-    # This is a 1:1 translation.
-    subgrid = pd.DataFrame(
-        data={
-            "node_id": profile["node_id"],
-            "subgrid_id": profile["node_id"],
-            "basin_level": profile["level"],
-            "subgrid_level": profile["level"],
-        }
-    )
-    basin = ribasim.Basin(profile=profile, static=static, state=state, subgrid=subgrid)
-
-    # Setup linear resistance:
-    linear_resistance = ribasim.LinearResistance(
-        static=pd.DataFrame(
-            data={"node_id": [12, 10], "resistance": [5e3, (3600.0 * 24) / 100.0]}
-        )
-    )
-
-    # Setup Manning resistance:
-    manning_resistance = ribasim.ManningResistance(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "length": [900.0],
-                "manning_n": [0.04],
-                "profile_width": [1.0],
-                "profile_slope": [3.0],
-            }
-        )
-    )
-
-    # Set up a rating curve node:
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=pd.DataFrame(
-            data={
-                "node_id": [4, 4],
-                "level": [0.0, 1.0],
-                "flow_rate": [0.0, 10 / 86400],
-            }
-        )
-    )
-
-    # Setup fractional flows:
-    fractional_flow = ribasim.FractionalFlow(
-        static=pd.DataFrame(
-            data={
-                "node_id": [5, 8, 13],
-                "fraction": [0.3, 0.6, 0.1],
-            }
-        )
-    )
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            data={
-                "node_id": [7],
-                "flow_rate": [0.5 / 3600],
-            }
-        )
-    )
-
-    # Setup flow boundary:
-    flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [15, 16],
-                "flow_rate": [1e-4, 1e-4],
-            }
-        )
-    )
-
-    # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [11, 17],
-                "level": [1.0, 1.5],
-            }
-        )
-    )
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(
-        static=pd.DataFrame(
-            data={
-                "node_id": [14],
-            }
-        )
-    )
-
-    # Set up the nodes:
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: ManningResistance
-            (2.0, 0.0),  # 3: Basin
-            (3.0, 0.0),  # 4: TabulatedRatingCurve
-            (3.0, 1.0),  # 5: FractionalFlow
-            (3.0, 2.0),  # 6: Basin
-            (4.0, 1.0),  # 7: Pump
-            (4.0, 0.0),  # 8: FractionalFlow
-            (5.0, 0.0),  # 9: Basin
-            (6.0, 0.0),  # 10: LinearResistance
-            (2.0, 2.0),  # 11: LevelBoundary
-            (2.0, 1.0),  # 12: LinearResistance
-            (3.0, -1.0),  # 13: FractionalFlow
-            (3.0, -2.0),  # 14: Terminal
-            (3.0, 3.0),  # 15: Flowboundary
-            (0.0, 1.0),  # 16: FlowBoundary
-            (6.0, 1.0),  # 17: LevelBoundary
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_id, node_type = ribasim.Node.node_ids_and_types(
-        basin,
-        level_boundary,
-        flow_boundary,
-        pump,
-        terminal,
-        linear_resistance,
-        manning_resistance,
-        rating_curve,
-        fractional_flow,
-    )
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(node_id, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array(
-        [1, 2, 3, 4, 4, 5, 6, 8, 7, 9, 11, 12, 4, 13, 15, 16, 10], dtype=np.int64
-    )
-    to_id = np.array(
-        [2, 3, 4, 5, 8, 6, 7, 9, 9, 10, 12, 3, 13, 14, 6, 1, 17], dtype=np.int64
-    )
-    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-    # Setup logging
-    logging = ribasim.Logging(verbosity="debug")
-
-    # Setup a model:
+    # Setup model
     model = ribasim.Model(
-        network=ribasim.Network(
-            node=node,
-            edge=edge,
-        ),
-        basin=basin,
-        level_boundary=level_boundary,
-        flow_boundary=flow_boundary,
-        pump=pump,
-        terminal=terminal,
-        linear_resistance=linear_resistance,
-        manning_resistance=manning_resistance,
-        tabulated_rating_curve=rating_curve,
-        fractional_flow=fractional_flow,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
-        logging=logging,
+    )
+    model.logging = ribasim.Logging(verbosity="debug")
+
+    # Setup basins
+    level = [0.0, 1.0]
+    node_data = [
+        basin.Profile(area=[0.01, 1000.0], level=level),
+        basin.Static(
+            potential_evaporation=[0.001 / 86400], precipitation=[0.002 / 86400]
+        ),
+        basin.State(level=[0.04471158417652035]),
+    ]
+    node_ids = [1, 3, 6, 9]
+    node_geometries = [
+        Point(0.0, 0.0),
+        Point(2.0, 0.0),
+        Point(3.0, 2.0),
+        Point(5.0, 0.0),
+    ]
+    for node_id, node_geometry in zip(node_ids, node_geometries):
+        model.basin.add(
+            Node(node_id, node_geometry),
+            [
+                basin.Subgrid(
+                    subgrid_id=[node_id] * 2, basin_level=level, subgrid_level=level
+                ),
+                *node_data,
+            ],
+        )
+
+    # Setup linear resistance
+    model.linear_resistance.add(
+        Node(12, Point(2.0, 1.0)), [linear_resistance.Static(resistance=[5e3])]
+    )
+    model.linear_resistance.add(
+        Node(10, Point(6.0, 0.0)),
+        [linear_resistance.Static(resistance=[(3600.0 * 24) / 100.0])],
+    )
+
+    # Setup Manning resistance
+    model.manning_resistance.add(
+        Node(2, Point(1.0, 0.0)),
+        [
+            manning_resistance.Static(
+                length=[900.0],
+                manning_n=[0.04],
+                profile_width=[1.0],
+                profile_slope=[3.0],
+            )
+        ],
+    )
+
+    # Setup tabulated rating curve
+    model.tabulated_rating_curve.add(
+        Node(4, Point(3.0, 0.0)),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.0],
+                flow_rate=[
+                    0.0,
+                    1000.0 * 0.01 / 86400,
+                ],  # Discharge: lose 1% of storage volume per day at storage = 1000.0.
+            )
+        ],
+    )
+
+    # Setup fractional flows
+    model.fractional_flow.add(
+        Node(5, Point(3.0, 1.0)), [fractional_flow.Static(fraction=[0.3])]
+    )
+    model.fractional_flow.add(
+        Node(8, Point(4.0, 0.0)), [fractional_flow.Static(fraction=[0.6])]
+    )
+    model.fractional_flow.add(
+        Node(13, Point(3.0, -1.0)), [fractional_flow.Static(fraction=[0.1])]
+    )
+
+    # Setup pump
+    model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
+
+    # Setup flow boundary
+    flow_boundary_data = [flow_boundary.Static(flow_rate=[1e-4])]
+    model.flow_boundary.add(Node(15, Point(3.0, 3.0)), flow_boundary_data)
+    model.flow_boundary.add(Node(16, Point(0.0, 1.0)), flow_boundary_data)
+
+    # Setup level boundary
+    model.level_boundary.add(
+        Node(11, Point(2.0, 2.0)), [level_boundary.Static(level=[1.0])]
+    )
+    model.level_boundary.add(
+        Node(17, Point(6.0, 1.0)), [level_boundary.Static(level=[1.5])]
+    )
+
+    # Setup terminal
+    model.terminal.add(Node(14, Point(3.0, -2.0)))
+
+    # Setup edges
+    model.edge.add(
+        from_node=model.basin[1], to_node=model.manning_resistance[2], edge_type="flow"
+    )
+    model.edge.add(
+        from_node=model.manning_resistance[2], to_node=model.basin[3], edge_type="flow"
+    )
+    model.edge.add(
+        from_node=model.basin[3],
+        to_node=model.tabulated_rating_curve[4],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[4],
+        to_node=model.fractional_flow[5],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[4],
+        to_node=model.fractional_flow[8],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.fractional_flow[5], to_node=model.basin[6], edge_type="flow"
+    )
+    model.edge.add(from_node=model.basin[6], to_node=model.pump[7], edge_type="flow")
+    model.edge.add(
+        from_node=model.basin[9], to_node=model.linear_resistance[10], edge_type="flow"
+    )
+    model.edge.add(
+        from_node=model.level_boundary[11],
+        to_node=model.linear_resistance[12],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.level_boundary[11],
+        to_node=model.linear_resistance[12],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.linear_resistance[12],
+        to_node=model.basin[3],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[4],
+        to_node=model.fractional_flow[13],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.fractional_flow[13],
+        to_node=model.terminal[14],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.flow_boundary[15],
+        to_node=model.basin[6],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.flow_boundary[16],
+        to_node=model.basin[1],
+        edge_type="flow",
+    )
+    model.edge.add(
+        from_node=model.linear_resistance[10],
+        to_node=model.level_boundary[17],
+        edge_type="flow",
     )
 
     return model
@@ -283,19 +258,26 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     Only the upstream Basin receives a (constant) precipitation.
     """
 
-    # Set up a rating curve node:
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2, 2],
-                "level": [0.0, 1.0],
-                "flow_rate": [0.0, 10 / 86400],
-            }
-        ),
-        time=pd.DataFrame(
-            data={
-                "node_id": [3, 3, 3, 3, 3, 3],
-                "time": [
+    # Setup a model:
+    model = ribasim.Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    # Setup tabulated rating curve:
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1.0, 1.0)),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400]
+            ),
+        ],
+    )
+    model.tabulated_rating_curve.add(
+        Node(3, Point(1.0, -1.0)),
+        [
+            tabulated_rating_curve.Time(
+                time=[
                     # test subsecond precision
                     pd.Timestamp("2020-01-01 00:00:00.000001"),
                     pd.Timestamp("2020-01"),
@@ -304,193 +286,100 @@ def tabulated_rating_curve_model() -> ribasim.Model:
                     pd.Timestamp("2020-03"),
                     pd.Timestamp("2020-03"),
                 ],
-                "level": [0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
-                "flow_rate": [0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
-            }
-        ),
+                level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
+                flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
+            ),
+        ],
     )
 
-    # Set up the nodes:
-    xy = np.array(
+    # Setup the basins
+    node_data = [
+        basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
+        basin.State(level=[0.04471158417652035]),
+    ]
+    basin_geometry_1 = Point(0.0, 0.0)
+    model.basin.add(
+        Node(1, basin_geometry_1),
         [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 1.0),  # 2: TabulatedRatingCurve (static)
-            (1.0, -1.0),  # 3: TabulatedRatingCurve (time-varying)
-            (2.0, 0.0),  # 4: Basin
-        ]
+            basin.Static(precipitation=[0.002 / 86400]),
+            basin.Area(geometry=[basin_geometry_1.buffer(1.0)]),
+            *node_data,
+        ],
     )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={
-                "node_type": [
-                    "Basin",
-                    "TabulatedRatingCurve",
-                    "TabulatedRatingCurve",
-                    "Basin",
-                ]
-            },
-            index=pd.Index([1, 2, 3, 4], name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
+    basin_geometry_2 = Point(2.0, 0.0)
+    model.basin.add(
+        Node(4, basin_geometry_2),
+        [
+            basin.Static(precipitation=[0.0]),
+            basin.Area(geometry=[basin_geometry_2.buffer(1.0)]),
+            *node_data,
+        ],
     )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 4, 4],
-            "area": [0.01, 1000.0] * 2,
-            "level": [0.0, 1.0] * 2,
-        }
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.tabulated_rating_curve[2],
+        edge_type="flow",
     )
-
-    # Convert steady forcing to m/s
-    # 2 mm/d precipitation
-    precipitation = 0.002 / 86400
-    # only the upstream basin gets precipitation
-    static = pd.DataFrame(
-        data={
-            "node_id": [1, 4],
-            "precipitation": [precipitation, 0.0],
-        }
+    model.edge.add(
+        from_node=model.basin[1],
+        to_node=model.tabulated_rating_curve[3],
+        edge_type="flow",
     )
-    state = pd.DataFrame(
-        data={"node_id": static["node_id"], "level": 0.04471158417652035}
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[2],
+        to_node=model.basin[4],
+        edge_type="flow",
     )
-    # Turn the basin node point geometries into polygons describing the area
-    assert node.df is not None
-    basin_area = (
-        node.df[node.df.node_type == "Basin"]
-        .geometry.buffer(1.0)
-        .reset_index(drop=True)
+    model.edge.add(
+        from_node=model.tabulated_rating_curve[3],
+        to_node=model.basin[4],
+        edge_type="flow",
     )
-    area = gpd.GeoDataFrame(
-        data={"node_id": static.node_id},
-        geometry=basin_area,
-        crs="EPSG:28992",
-    )
-
-    basin = ribasim.Basin(profile=profile, static=static, state=state, area=area)
-
-    # Setup the edges:
-    from_id = np.array([1, 1, 2, 3], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 4], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        tabulated_rating_curve=rating_curve,
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
-    )
-
     return model
 
 
 def outlet_model():
     """Set up a basic model with an outlet that encounters various physical constraints."""
-
-    # Set up the nodes:
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: LevelBoundary
-            (1.0, 0.0),  # 2: Outlet
-            (2.0, 0.0),  # 3: Basin
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["LevelBoundary", "Outlet", "Basin"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": 3,
-            "area": 1000.0,
-            "level": [0.0, 1.0],
-        }
-    )
-
-    state = pd.DataFrame(data={"node_id": [3], "level": 1e-3})
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup the level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        time=pd.DataFrame(
-            data={
-                "node_id": 1,
-                "time": [
-                    "2020-01-01 00:00:00",
-                    "2020-06-01 00:00:00",
-                    "2021-01-01 00:00:00",
-                ],
-                "level": [1.0, 3.0, 3.0],
-            }
-        )
-    )
-
-    # Setup the outlet
-    outlet = ribasim.Outlet(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "flow_rate": 1e-3,
-                "min_crest_level": 2.0,
-            }
-        )
-    )
-
     model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        outlet=outlet,
-        level_boundary=level_boundary,
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         solver=ribasim.Solver(saveat=0),
     )
+
+    # Set up the basins
+    model.basin.add(
+        Node(3, Point(2.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[1e-3]),
+        ],
+    )
+
+    # Set up the level boundary
+    model.level_boundary.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            level_boundary.Time(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-06-01 00:00:00",
+                    "2021-01-01 00:00:00",
+                ],
+                level=[1.0, 3.0, 3.0],
+            )
+        ],
+    )
+
+    # Setup the outlet
+    model.outlet.add(
+        Node(2, Point(1.0, 0.0)),
+        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+    )
+
+    # Setup the edges
+    model.edge.add(
+        from_node=model.level_boundary[1], to_node=model.outlet[2], edge_type="flow"
+    )
+    model.edge.add(from_node=model.outlet[2], to_node=model.basin[3], edge_type="flow")
 
     return model
