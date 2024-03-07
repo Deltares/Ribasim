@@ -47,19 +47,15 @@ def dutch_waterways_model() -> Model:
 
     # TODO use EPSG:28992 and apply 405 - y to the y coordinates
     model.flow_boundary.add(
-        Node(1, Point(1310, 312), name=""),
+        Node(1, Point(1310, 312)),
         [flow_boundary.Time(time=time, flow_rate=flow_rate)],
     )
     model.basin.add(
         Node(2, Point(1281, 278), name="IJsselkop"),
         [basin.State(level=[8.31]), basin_profile],
     )
-    model.linear_resistance.add(
-        Node(3, Point(1283, 183), name=""), linear_resistance_shared
-    )
-    model.linear_resistance.add(
-        Node(4, Point(1220, 186), name=""), linear_resistance_shared
-    )
+    model.linear_resistance.add(Node(3, Point(1283, 183)), linear_resistance_shared)
+    model.linear_resistance.add(Node(4, Point(1220, 186)), linear_resistance_shared)
     model.basin.add(
         Node(5, Point(1342, 162), name="IJssel Westervoort"),
         [basin.State(level=[7.5]), basin_profile],
@@ -69,7 +65,7 @@ def dutch_waterways_model() -> Model:
         [basin.State(level=[7.5]), basin_profile],
     )
     model.level_boundary.add(
-        Node(7, Point(1383, 121), name=""), [level_boundary.Static(level=[3.0])]
+        Node(7, Point(1383, 121)), [level_boundary.Static(level=[3.0])]
     )
     model.tabulated_rating_curve.add(
         Node(8, Point(1052, 201), name="Driel open"),
@@ -95,13 +91,11 @@ def dutch_waterways_model() -> Model:
         ],
     )
     model.basin.add(
-        Node(10, Point(920, 197), name=""), [basin.State(level=[7.0]), basin_profile]
+        Node(10, Point(920, 197)), [basin.State(level=[7.0]), basin_profile]
     )
-    model.linear_resistance.add(
-        Node(11, Point(783, 237), name=""), linear_resistance_shared
-    )
+    model.linear_resistance.add(Node(11, Point(783, 237)), linear_resistance_shared)
     model.basin.add(
-        Node(12, Point(609, 186), name=""), [basin.State(level=[6.0]), basin_profile]
+        Node(12, Point(609, 186)), [basin.State(level=[6.0]), basin_profile]
     )
     model.tabulated_rating_curve.add(
         Node(13, Point(430, 176), name="Amerongen open"),
@@ -112,7 +106,7 @@ def dutch_waterways_model() -> Model:
         [pump.Static(flow_rate=[1.0], min_flow_rate=0.0, max_flow_rate=50.0)],
     )
     model.basin.add(
-        Node(15, Point(369, 185), name=""), [basin.State(level=[5.5]), basin_profile]
+        Node(15, Point(369, 185)), [basin.State(level=[5.5]), basin_profile]
     )
     model.level_boundary.add(
         Node(16, Point(329, 202), name="Kruising ARK"),
@@ -139,12 +133,8 @@ def dutch_waterways_model() -> Model:
             ),
         ],
     )
-    model.linear_resistance.add(
-        Node(18, Point(1362, 142), name=""), linear_resistance_shared
-    )
-    model.linear_resistance.add(
-        Node(19, Point(349, 194), name=""), linear_resistance_shared
-    )
+    model.linear_resistance.add(Node(18, Point(1362, 142)), linear_resistance_shared)
+    model.linear_resistance.add(Node(19, Point(349, 194)), linear_resistance_shared)
     model.pid_control.add(
         Node(20, Point(511, 126), name="Controller Amerongen"),
         [
