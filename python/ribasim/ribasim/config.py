@@ -264,7 +264,7 @@ class DiscreteControl(MultiNodeModel):
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": ["node_id", "listen_feature_id", "variable", "greater_than"]
+            "sort_keys": ["node_id", "listen_node_id", "variable", "greater_than"]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(

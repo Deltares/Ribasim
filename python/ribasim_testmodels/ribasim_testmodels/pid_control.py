@@ -113,8 +113,8 @@ def discrete_control_of_pid_control_model() -> Model:
         Node(7, Point(0, 1)),
         [
             discrete_control.Condition(
-                listen_feature_type="LevelBoundary",
-                listen_feature_id=[1],
+                listen_node_type="LevelBoundary",
+                listen_node_id=[1],
                 variable="level",
                 greater_than=5.0,
             ),

@@ -567,7 +567,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     return DiscreteControl(
         NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
-        NodeID.(condition.listen_feature_type, condition.listen_feature_id),
+        NodeID.(condition.listen_node_type, condition.listen_node_id),
         condition.variable,
         look_ahead,
         condition.greater_than,

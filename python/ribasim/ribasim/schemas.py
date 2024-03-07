@@ -50,8 +50,8 @@ class BasinTimeSchema(_BaseSchema):
 
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
-    listen_feature_type: Series[str] = pa.Field(nullable=False)
-    listen_feature_id: Series[int] = pa.Field(nullable=False, default=0)
+    listen_node_type: Series[str] = pa.Field(nullable=False)
+    listen_node_id: Series[int] = pa.Field(nullable=False, default=0)
     variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
     look_ahead: Series[float] = pa.Field(nullable=True)

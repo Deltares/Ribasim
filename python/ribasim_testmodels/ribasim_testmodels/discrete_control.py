@@ -54,8 +54,8 @@ def pump_discrete_control_model() -> Model:
         Node(5, Point(1, 1)),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=1,
+                listen_node_type="Basin",
+                listen_node_id=1,
                 variable="level",
                 greater_than=[0.8, 0.4],
             ),
@@ -69,8 +69,8 @@ def pump_discrete_control_model() -> Model:
         Node(6, Point(2, -1)),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=3,
+                listen_node_type="Basin",
+                listen_node_id=3,
                 variable="level",
                 greater_than=[0.45],
             ),
@@ -145,8 +145,8 @@ def flow_condition_model() -> Model:
         Node(5, Point(1, 1)),
         [
             discrete_control.Condition(
-                listen_feature_type="FlowBoundary",
-                listen_feature_id=1,
+                listen_node_type="FlowBoundary",
+                listen_node_id=1,
                 variable="flow_rate",
                 greater_than=[20 / (86400)],
                 look_ahead=60 * 86400,
@@ -215,8 +215,8 @@ def level_boundary_condition_model() -> Model:
         Node(6, Point(1.5, 1)),
         [
             discrete_control.Condition(
-                listen_feature_type="LevelBoundary",
-                listen_feature_id=[1],
+                listen_node_type="LevelBoundary",
+                listen_node_id=[1],
                 variable="level",
                 greater_than=6.0,
                 look_ahead=60 * 86400,
@@ -291,8 +291,8 @@ def tabulated_rating_curve_control_model() -> Model:
         Node(4, Point(1, 1)),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=[1],
+                listen_node_type="Basin",
+                listen_node_id=[1],
                 variable="level",
                 greater_than=0.5,
             ),
@@ -360,8 +360,8 @@ def level_setpoint_with_minmax_model() -> Model:
         Node(7, Point(1, 0)),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=1,
+                listen_node_type="Basin",
+                listen_node_id=1,
                 variable="level",
                 # min, setpoint, max
                 greater_than=[5.0, 10.0, 15.0],

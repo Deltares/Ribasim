@@ -400,8 +400,8 @@ def fractional_flow_subnetwork_model() -> Model:
         Node(10, Point(-1, 2), subnetwork_id=2),
         [
             discrete_control.Condition(
-                listen_feature_type="FlowBoundary",
-                listen_feature_id=[1],
+                listen_node_type="FlowBoundary",
+                listen_node_id=[1],
                 variable="flow_rate",
                 greater_than=3e-3,
             ),
@@ -493,8 +493,8 @@ def allocation_example_model() -> Model:
         Node(11, Point(4.5, 0.25), subnetwork_id=2),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=[5],
+                listen_node_type="Basin",
+                listen_node_id=[5],
                 variable="level",
                 greater_than=0.52,
             ),
@@ -671,8 +671,8 @@ def main_network_with_subnetworks_model() -> Model:
         Node(33, Point(13, 5), subnetwork_id=5),
         [
             discrete_control.Condition(
-                listen_feature_type="Basin",
-                listen_feature_id=[25],
+                listen_node_type="Basin",
+                listen_node_id=[25],
                 variable="level",
                 greater_than=0.003,
             ),

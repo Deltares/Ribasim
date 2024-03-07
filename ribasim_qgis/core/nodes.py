@@ -697,7 +697,7 @@ class DiscreteControlCondition(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("listen_feature_id", QVariant.Int),
+            QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("greater_than", QVariant.Double),
         ]
