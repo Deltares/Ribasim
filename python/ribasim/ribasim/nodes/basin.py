@@ -1,6 +1,7 @@
-from pandera.typing import DataFrame
+from pandas import DataFrame
 
 from ribasim.geometry.area import BasinAreaSchema
+from ribasim.input_base import TableModel
 from ribasim.schemas import (
     BasinProfileSchema,
     BasinStateSchema,
@@ -12,31 +13,31 @@ from ribasim.schemas import (
 __all__ = ["Static", "Time", "State", "Profile", "Subgrid", "Area"]
 
 
-class Static(DataFrame[BasinStaticSchema]):
+class Static(TableModel[BasinStaticSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Time(DataFrame[BasinTimeSchema]):
+class Time(TableModel[BasinTimeSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class State(DataFrame[BasinStateSchema]):
+class State(TableModel[BasinStateSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Profile(DataFrame[BasinProfileSchema]):
+class Profile(TableModel[BasinProfileSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Subgrid(DataFrame[BasinSubgridSchema]):
+class Subgrid(TableModel[BasinSubgridSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Area(DataFrame[BasinAreaSchema]):
+class Area(TableModel[BasinAreaSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))

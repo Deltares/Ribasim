@@ -1,5 +1,6 @@
-from pandera.typing import DataFrame
+from pandas import DataFrame
 
+from ribasim.input_base import TableModel
 from ribasim.schemas import (
     UserDemandStaticSchema,
     UserDemandTimeSchema,
@@ -8,11 +9,11 @@ from ribasim.schemas import (
 __all__ = ["Static", "Time"]
 
 
-class Static(DataFrame[UserDemandStaticSchema]):
+class Static(TableModel[UserDemandStaticSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Time(DataFrame[UserDemandTimeSchema]):
+class Time(TableModel[UserDemandTimeSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))

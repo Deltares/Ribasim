@@ -1,5 +1,6 @@
-from pandera.typing import DataFrame
+from pandas import DataFrame
 
+from ribasim.input_base import TableModel
 from ribasim.schemas import (
     TerminalStaticSchema,
 )
@@ -7,6 +8,6 @@ from ribasim.schemas import (
 __all__ = ["Static"]
 
 
-class Static(DataFrame[TerminalStaticSchema]):
+class Static(TableModel[TerminalStaticSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))

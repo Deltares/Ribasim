@@ -1,5 +1,6 @@
-from pandera.typing import DataFrame
+from pandas import DataFrame
 
+from ribasim.input_base import TableModel
 from ribasim.schemas import (
     FlowBoundaryStaticSchema,
     FlowBoundaryTimeSchema,
@@ -8,11 +9,11 @@ from ribasim.schemas import (
 __all__ = ["Static", "Time"]
 
 
-class Static(DataFrame[FlowBoundaryStaticSchema]):
+class Static(TableModel[FlowBoundaryStaticSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Time(DataFrame[FlowBoundaryTimeSchema]):
+class Time(TableModel[FlowBoundaryTimeSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))

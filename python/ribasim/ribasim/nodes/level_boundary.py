@@ -1,5 +1,6 @@
-from pandera.typing import DataFrame
+from pandas import DataFrame
 
+from ribasim.input_base import TableModel
 from ribasim.schemas import (
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
@@ -8,11 +9,11 @@ from ribasim.schemas import (
 __all__ = ["Static", "Time"]
 
 
-class Static(DataFrame[LevelBoundaryStaticSchema]):
+class Static(TableModel[LevelBoundaryStaticSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))
 
 
-class Time(DataFrame[LevelBoundaryTimeSchema]):
+class Time(TableModel[LevelBoundaryTimeSchema]):
     def __init__(self, **kwargs):
-        super().__init__(data=dict(**kwargs))
+        super().__init__(df=DataFrame(dict(**kwargs)))

@@ -109,7 +109,7 @@ class MultiNodeModel(NodeModel):
     node: geometry.Node = Field(default_factory=geometry.Node)
     _node_type: str
 
-    def add(self, node: Node, tables: list[pd.DataFrame] | None = None) -> None:
+    def add(self, node: Node, tables: list[TableModel] | None = None) -> None:
         if tables is None:
             tables = []
 
@@ -125,8 +125,8 @@ class MultiNodeModel(NodeModel):
             existing_table = (
                 existing_member.df if existing_member.df is not None else pd.DataFrame()
             )
-            table = table.assign(node_id=node_id)
-            setattr(self, member_name, pd.concat([existing_table, table]))
+            table_to_append = table.df.assign(node_id=node_id)
+            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__,
