@@ -454,10 +454,7 @@ function adjust_demands_flow!(
             flow_demand.demand[i] = max(
                 0.0,
                 flow_demand.demand[i] - JuMP.value(
-                    F[(
-                        only(inflow_ids_allocation(graph, node_with_demand_id)),
-                        node_with_demand_id,
-                    )],
+                    F[(inflow_id(graph, node_with_demand_id), node_with_demand_id)],
                 ),
             )
         end
@@ -542,11 +539,12 @@ function save_demands_and_allocations!(
     t::Float64,
     priority_idx::Int,
 )::Nothing
-    (; graph, allocation, user_demand, basin) = p
+    (; graph, allocation, user_demand, flow_demand, basin) = p
     (; record_demand, priorities) = allocation
     (; allocation_network_id, problem) = allocation_model
     node_ids = graph[].node_ids[allocation_network_id]
     constraints_outflow = problem[:basin_outflow]
+    F = problem[:F]
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
@@ -558,6 +556,7 @@ function save_demands_and_allocations!(
             user_demand_idx = findsorted(user_demand.node_id, node_id)
             demand = user_demand.demand[user_demand_idx]
             allocated = user_demand.allocated[user_demand_idx][priority_idx]
+            #NOTE: istantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
         elseif node_id.type == NodeType.Basin &&
@@ -581,6 +580,23 @@ function save_demands_and_allocations!(
                 # TODO: realized for a basin is not so clear, maybe it should be Δstorage/Δt
                 # over the last allocation interval?
                 realized = 0.0
+            end
+
+        else
+            has_demand, flow_demand_node_id =
+                has_external_demand(graph, node_id, :flow_demand)
+            if has_demand
+                # Full demand, not the possibly reduced demand
+                flow_priority_idx = get_external_priority_idx(p, node_id)
+                demand =
+                    priority_idx == flow_priority_idx ?
+                    flow_demand.demand[findsorted(
+                        flow_demand.node_id,
+                        flow_demand_node_id,
+                    )] : 0.0
+                allocated = JuMP.value(F[(inflow_id(graph, node_id), node_id)])
+                #NOTE: Still instantaneous
+                realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
             end
         end
 
