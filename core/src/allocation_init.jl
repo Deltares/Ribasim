@@ -36,8 +36,6 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
-        elseif has_external_demand(graph, node_id, :level_demand)[1]
-            use_node = true
         elseif has_external_demand(graph, node_id, :flow_demand)[1]
             use_node = true
         end
@@ -374,7 +372,7 @@ end
 
 """
 Add the variables for supply/demand of a basin to the problem.
-The variable indices are the node_ids of the basins in the subnetwork.
+The variable indices are the node_ids of the basins with a level demand in the subnetwork.
 """
 function add_variables_basin!(
     problem::JuMP.Model,
@@ -394,6 +392,10 @@ function add_variables_basin!(
     return nothing
 end
 
+"""
+Add the variables for supply/demand of a node with a flow demand to the problem.
+The variable indices are the node_ids of the nodes with a flow demand in the subnetwork.
+"""
 function add_variables_flow_buffer!(
     problem::JuMP.Model,
     p::Parameters,
@@ -768,7 +770,7 @@ function add_constraints_absolute_value_user_demand!(
 end
 
 """
-Add constraints so that variables F_abs_basin act as the
+Add constraints so that variables F_abs_level_demand act as the
 absolute value of the expression comparing flow to a basin to its demand.
 """
 function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Nothing
@@ -782,6 +784,10 @@ function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Noth
     return nothing
 end
 
+"""
+Add constraints so that variables F_abs_flow_demand act as the
+absolute value of the expression comparing flow to a flow buffer to the flow demand.
+"""
 function add_constraints_absolute_value_flow_demand!(problem::JuMP.Model)::Nothing
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_abs_flow_demand = problem[:F_abs_flow_demand]
@@ -867,6 +873,13 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+"""
+Add the buffer outflow constraints to the allocation problem.
+The constraint indices are the node IDs of the nodes that have a flow demand.
+
+Constraint:
+flow out of buffer <= flow buffer capacity
+"""
 function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     F_flow_buffer_out = problem[:F_flow_buffer_out]
     problem[:flow_buffer_outflow] = JuMP.@constraint(
@@ -878,6 +891,13 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+"""
+Add the flow demand node outflow constraints to the allocation problem.
+The constraint indices are the node IDs of the nodes that have a flow demand.
+
+Constraint:
+flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 otherwise
+"""
 function add_constraints_flow_demand_outflow!(
     problem::JuMP.Model,
     p::Parameters,
@@ -938,6 +958,7 @@ Construct the JuMP.jl problem for allocation.
 
 Inputs
 ------
+allocation_network_id: the ID of this allocation network
 p: Ribasim problem parameters
 Δt_allocation: The timestep between successive allocation solves
 

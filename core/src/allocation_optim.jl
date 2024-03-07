@@ -30,6 +30,10 @@ function add_user_demand_term!(
     add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
 end
 
+"""
+Add a term to the expression of the objective function corresponding to
+the demand of a node with a a flow demand.
+"""
 function add_flow_demand_term!(
     edge::Tuple{NodeID, NodeID},
     demand::Float64,
@@ -386,7 +390,7 @@ function get_basin_demand(
 end
 
 """
-Set the values of the basin outflows. 2 cases:
+Set the capacities of the basin outflows. 2 cases:
 - Before the first allocation solve, set the capacities to their full capacity if there is surplus storage;
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the capacities.
@@ -420,6 +424,12 @@ function adjust_capacities_basin!(
     return nothing
 end
 
+"""
+Set the demand of the flow demand nodes. 2 cases:
+- Before the first allocation solve, set the demands to their full value;
+- Before an allocation solve, subtract the flow trough the node with a flow demand
+  from the total flow demand (which will be used at the priority of the flow demand only).
+"""
 function adjust_demands_flow!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -455,6 +465,12 @@ function adjust_demands_flow!(
     return nothing
 end
 
+"""
+Adjust the capacities of the flow buffers of nodes with a flow demand. 2 cases:
+- Before the first allocation solve, set the capacities to 0.0;
+- Before an allocation solve, add the flow into the buffer and remove the flow out
+  of the buffer from the buffer capacity.
+"""
 function adjust_capacities_buffers!(
     allocation_model::AllocationModel,
     priority_idx::Int,
@@ -484,6 +500,11 @@ function adjust_capacities_buffers!(
     return nothing
 end
 
+"""
+Set the capacity of the outflow edge from a node with a flow demand:
+- To Inf if the current priority is other than the priority of the flow demand
+- To 0.0 if the current priority is equal to the priority of the flow demand
+"""
 function adjust_capacities_flow_demand_outflow!(
     allocation_model::AllocationModel,
     p::Parameters,
