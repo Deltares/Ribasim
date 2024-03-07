@@ -6,7 +6,7 @@ from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
-from ribasim import Pump, Terminal
+from ribasim.nodes import Pump, Terminal
 
 
 def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:

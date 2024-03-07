@@ -4,8 +4,9 @@ from sqlite3 import connect
 import pandas as pd
 import pytest
 from pydantic import ValidationError
-from ribasim import Model, Solver
+from ribasim.config import Solver
 from ribasim.input_base import esc_id
+from ribasim.model import Model
 from shapely import Point
 
 

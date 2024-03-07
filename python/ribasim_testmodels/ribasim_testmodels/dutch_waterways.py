@@ -122,6 +122,7 @@ def dutch_waterways_model() -> Model:
         Node(17, Point(1187, 276), name="Controller Driel"),
         [
             discrete_control.Condition(
+                listen_feature_type="FlowBoundary",
                 listen_feature_id=1,
                 variable="flow_rate",
                 greater_than=[250, 275, 750, 800],
@@ -148,6 +149,7 @@ def dutch_waterways_model() -> Model:
         Node(20, Point(511, 126), name="Controller Amerongen"),
         [
             pid_control.Static(
+                listen_node_type="Basin",
                 listen_node_id=[12],
                 target=6.0,
                 proportional=-0.005,
