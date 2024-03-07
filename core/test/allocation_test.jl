@@ -398,3 +398,25 @@ end
     @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ==
           Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 4), 3)
 end
+
+@testitem "flow_demand_with_max_flow_rate" begin
+    using Ribasim: NodeID, NodeType
+    using JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/linear_resistance_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+
+    # Test for pump max flow capacity constraint
+    (; problem) = model.integrator.p.allocation.allocation_models[1]
+    constraint = JuMP.constraint_object(
+        problem[:capacity][(
+            NodeID(NodeType.Basin, 1),
+            NodeID(NodeType.LinearResistance, 2),
+        )],
+    )
+    @test constraint.set.upper == 2.0
+end

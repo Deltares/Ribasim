@@ -126,6 +126,17 @@ function find_allocation_graph_edges!(
 
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
+
+            # Capacity for nodes that have both a flow demand and a max flow rate
+            if has_external_demand(graph, node_id, :flow_demand)[1]
+                node = getfield(p, graph[node_id].type)
+                if is_flow_constraining(node)
+                    node_idx = findsorted(node.node_id, node_id)
+                    capacity[inflow_id(graph, node_id), node_id] =
+                        node.max_flow_rate[node_idx]
+                end
+            end
+
             # Direct connections in the subnetwork between nodes that
             # are in the allocation network
             for inneighbor_id in inneighbor_ids

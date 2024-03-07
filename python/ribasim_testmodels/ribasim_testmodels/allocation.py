@@ -1643,6 +1643,8 @@ def main_network_with_subnetworks_model():
 
 
 def level_demand_model():
+    """Generate a small model which contains a level demand."""
+
     # Set up the nodes:
     xy = np.array(
         [
@@ -1762,6 +1764,8 @@ def level_demand_model():
 
 
 def flow_demand_model():
+    """Generate a small model which contains a flow demand."""
+
     # Set up the nodes:
     xy = np.array(
         [
@@ -1872,6 +1876,89 @@ def flow_demand_model():
         tabulated_rating_curve=rating_curve,
         level_boundary=level_boundary,
         user_demand=user_demand,
+        flow_demand=flow_demand,
+        allocation=allocation,
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+    )
+
+    return model
+
+
+def linear_resistance_demand_model():
+    """
+    Generate a small model which contains a flow demand for a node which
+    also has a max flow rate.
+    """
+    # Set up the nodes:
+    xy = np.array(
+        [
+            (0.0, 0.0),  # 1: Basin
+            (0.0, 1.0),  # 2: LinearResistance
+            (0.0, 2.0),  # 3: Basin
+            (1.0, 1.0),  # 4: FlowDemand
+        ]
+    )
+    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
+    node_type = ["Basin", "LinearResistance", "Basin", "FlowDemand"]
+
+    # Make sure the feature id starts at 1: explicitly give an index.
+    node = ribasim.Node(
+        df=gpd.GeoDataFrame(
+            data={
+                "node_type": node_type,
+                "subnetwork_id": len(node_type) * [2],
+            },
+            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
+            geometry=node_xy,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup the edges:
+    from_id = np.array([1, 2, 4])
+    to_id = np.array([2, 3, 2])
+    edge_type = ["flow", "flow", "control"]
+
+    lines = node.geometry_from_connectivity(from_id.tolist(), to_id.tolist())
+    edge = ribasim.Edge(
+        df=gpd.GeoDataFrame(
+            data={
+                "from_node_id": from_id,
+                "to_node_id": to_id,
+                "edge_type": edge_type,
+            },
+            geometry=lines,
+            crs="EPSG:28992",
+        )
+    )
+
+    # Setup basin
+    profile = pd.DataFrame(
+        data={"node_id": [1, 1, 3, 3], "area": 1e3, "level": [0.0, 1.0, 0.0, 1.0]}
+    )
+    state = pd.DataFrame(data={"node_id": [1, 3], "level": 1.0})
+    basin = ribasim.Basin(profile=profile, state=state)
+
+    # Setup linear resistance
+    linear_resistance = ribasim.LinearResistance(
+        static=pd.DataFrame(
+            data={"node_id": [2], "resistance": [1.0], "max_flow_rate": [2.0]}
+        )
+    )
+
+    # Setup flow demand
+    flow_demand = ribasim.FlowDemand(
+        static=pd.DataFrame(data={"node_id": [4], "priority": [1], "demand": [2.0]})
+    )
+
+    # Setup allocation
+    allocation = ribasim.Allocation(use_allocation=True)
+
+    model = ribasim.Model(
+        network=ribasim.Network(node=node, edge=edge),
+        basin=basin,
+        linear_resistance=linear_resistance,
         flow_demand=flow_demand,
         allocation=allocation,
         starttime="2020-01-01 00:00:00",

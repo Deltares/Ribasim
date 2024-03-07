@@ -113,7 +113,7 @@ end
 end
 
 @option struct Allocation <: TableOption
-    timestep::Union{Float64, Nothing} = nothing
+    timestep::Union{Float64, Nothing} = 86400
     use_allocation::Bool = false
 end
 
