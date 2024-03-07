@@ -38,7 +38,7 @@ def basic_model() -> ribasim.Model:
         basin.State(level=[0.04471158417652035]),
     ]
     node_ids = [1, 3, 6, 9]
-    node_geometries: list[TableModel[Any]] = [
+    node_geometries = [
         Point(0.0, 0.0),
         Point(2.0, 0.0),
         Point(3.0, 2.0),
