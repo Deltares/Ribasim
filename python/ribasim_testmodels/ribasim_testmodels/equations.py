@@ -34,14 +34,14 @@ def linear_resistance_model() -> Model:
     model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[5.0])])
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.linear_resistance[2],
-        edge_type="flow",
+        model.basin[1],
+        model.linear_resistance[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[2],
-        to_node=model.level_boundary[3],
-        edge_type="flow",
+        model.linear_resistance[2],
+        model.level_boundary[3],
+        "flow",
     )
 
     return model
@@ -74,14 +74,14 @@ def rating_curve_model() -> Model:
     model.terminal.add(Node(3, Point(2, 0)))
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[2],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[2],
-        to_node=model.terminal[3],
-        edge_type="flow",
+        model.tabulated_rating_curve[2],
+        model.terminal[3],
+        "flow",
     )
 
     return model
@@ -109,14 +109,14 @@ def manning_resistance_model() -> Model:
     model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.manning_resistance[2],
-        edge_type="flow",
+        model.basin[1],
+        model.manning_resistance[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.manning_resistance[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.manning_resistance[2],
+        model.basin[3],
+        "flow",
     )
 
     return model
@@ -151,34 +151,34 @@ def misc_nodes_model() -> Model:
     model.terminal.add(Node(7, Point(2, 0)))
 
     model.edge.add(
-        from_node=model.flow_boundary[1],
-        to_node=model.fractional_flow[2],
-        edge_type="flow",
+        model.flow_boundary[1],
+        model.fractional_flow[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.fractional_flow[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.fractional_flow[2],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[3],
-        to_node=model.pump[4],
-        edge_type="flow",
+        model.basin[3],
+        model.pump[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[4],
-        to_node=model.basin[5],
-        edge_type="flow",
+        model.pump[4],
+        model.basin[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.flow_boundary[1],
-        to_node=model.fractional_flow[6],
-        edge_type="flow",
+        model.flow_boundary[1],
+        model.fractional_flow[6],
+        "flow",
     )
     model.edge.add(
-        from_node=model.fractional_flow[6],
-        to_node=model.terminal[7],
-        edge_type="flow",
+        model.fractional_flow[6],
+        model.terminal[7],
+        "flow",
     )
 
     return model
@@ -215,19 +215,19 @@ def pid_control_equation_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.pump[2],
-        edge_type="flow",
+        model.basin[1],
+        model.pump[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[2],
-        to_node=model.terminal[3],
-        edge_type="flow",
+        model.pump[2],
+        model.terminal[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pid_control[4],
-        to_node=model.pump[2],
-        edge_type="control",
+        model.pid_control[4],
+        model.pump[2],
+        "control",
     )
 
     return model

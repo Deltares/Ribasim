@@ -53,30 +53,30 @@ def backwater_model():
         )
         if id == 2:
             model.edge.add(
-                from_node=model.flow_boundary[1],
-                to_node=model.basin[2],
-                edge_type="flow",
+                model.flow_boundary[1],
+                model.basin[2],
+                "flow",
             )
         else:
             model.edge.add(
-                from_node=model.manning_resistance[id - 1],
-                to_node=model.basin[id],
-                edge_type="flow",
+                model.manning_resistance[id - 1],
+                model.basin[id],
+                "flow",
             )
 
         model.edge.add(
-            from_node=model.basin[id],
-            to_node=model.manning_resistance[id + 1],
-            edge_type="flow",
+            model.basin[id],
+            model.manning_resistance[id + 1],
+            "flow",
         )
 
     model.level_boundary.add(
         Node(102, Point(1010.0, 0.0)), [level_boundary.Static(level=[2.0])]
     )
     model.edge.add(
-        from_node=model.manning_resistance[101],
-        to_node=model.level_boundary[102],
-        edge_type="flow",
+        model.manning_resistance[101],
+        model.level_boundary[102],
+        "flow",
     )
 
     return model

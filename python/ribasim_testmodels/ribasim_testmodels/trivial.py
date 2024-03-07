@@ -48,14 +48,14 @@ def trivial_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[6],
-        to_node=model.tabulated_rating_curve[0],
-        edge_type="flow",
+        model.basin[6],
+        model.tabulated_rating_curve[0],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[0],
-        to_node=model.terminal[terminal_id],
-        edge_type="flow",
+        model.tabulated_rating_curve[0],
+        model.terminal[terminal_id],
+        "flow",
     )
 
     return model

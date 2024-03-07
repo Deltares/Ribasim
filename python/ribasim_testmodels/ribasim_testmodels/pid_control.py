@@ -56,22 +56,12 @@ def pid_control_model() -> Model:
         [pid_control_time],
     )
 
-    model.edge.add(
-        from_node=model.flow_boundary[1], to_node=model.basin[2], edge_type="flow"
-    )
-    model.edge.add(from_node=model.basin[2], to_node=model.pump[3], edge_type="flow")
-    model.edge.add(
-        from_node=model.pump[3], to_node=model.level_boundary[4], edge_type="flow"
-    )
-    model.edge.add(
-        from_node=model.level_boundary[4], to_node=model.outlet[6], edge_type="flow"
-    )
-    model.edge.add(
-        from_node=model.pid_control[5], to_node=model.pump[3], edge_type="control"
-    )
-    model.edge.add(
-        from_node=model.pid_control[7], to_node=model.outlet[6], edge_type="control"
-    )
+    model.edge.add(model.flow_boundary[1], model.basin[2], "flow")
+    model.edge.add(model.basin[2], model.pump[3], "flow")
+    model.edge.add(model.pump[3], model.level_boundary[4], "flow")
+    model.edge.add(model.level_boundary[4], model.outlet[6], "flow")
+    model.edge.add(model.pid_control[5], model.pump[3], "control")
+    model.edge.add(model.pid_control[7], model.outlet[6], "control")
 
     return model
 
@@ -130,34 +120,34 @@ def discrete_control_of_pid_control_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.level_boundary[1],
-        to_node=model.outlet[2],
-        edge_type="flow",
+        model.level_boundary[1],
+        model.outlet[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.outlet[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.outlet[2],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[3],
-        to_node=model.tabulated_rating_curve[4],
-        edge_type="flow",
+        model.basin[3],
+        model.tabulated_rating_curve[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[4],
-        to_node=model.terminal[5],
-        edge_type="flow",
+        model.tabulated_rating_curve[4],
+        model.terminal[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pid_control[6],
-        to_node=model.outlet[2],
-        edge_type="control",
+        model.pid_control[6],
+        model.outlet[2],
+        "control",
     )
     model.edge.add(
-        from_node=model.discrete_control[7],
-        to_node=model.pid_control[6],
-        edge_type="control",
+        model.discrete_control[7],
+        model.pid_control[6],
+        "control",
     )
 
     return model

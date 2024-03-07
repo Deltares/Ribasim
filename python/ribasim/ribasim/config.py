@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from enum import Enum
+from typing import Any
 
 import pandas as pd
 import pydantic
@@ -109,7 +111,7 @@ class MultiNodeModel(NodeModel):
     node: geometry.Node = Field(default_factory=geometry.Node)
     _node_type: str
 
-    def add(self, node: Node, tables: list[TableModel] | None = None) -> None:
+    def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
         if tables is None:
             tables = []
 

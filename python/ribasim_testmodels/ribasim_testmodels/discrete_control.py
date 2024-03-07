@@ -80,34 +80,34 @@ def pump_discrete_control_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.linear_resistance[2],
-        edge_type="flow",
+        model.basin[1],
+        model.linear_resistance[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.linear_resistance[2],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.pump[4],
-        edge_type="flow",
+        model.basin[1],
+        model.pump[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[4],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.pump[4],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[5],
-        to_node=model.pump[4],
-        edge_type="control",
+        model.discrete_control[5],
+        model.pump[4],
+        "control",
     )
     model.edge.add(
-        from_node=model.discrete_control[6],
-        to_node=model.linear_resistance[2],
-        edge_type="control",
+        model.discrete_control[6],
+        model.linear_resistance[2],
+        "control",
     )
 
     return model
@@ -153,24 +153,24 @@ def flow_condition_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.flow_boundary[1],
-        to_node=model.basin[2],
-        edge_type="flow",
+        model.flow_boundary[1],
+        model.basin[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[2],
-        to_node=model.pump[3],
-        edge_type="flow",
+        model.basin[2],
+        model.pump[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[3],
-        to_node=model.terminal[4],
-        edge_type="flow",
+        model.pump[3],
+        model.terminal[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[5],
-        to_node=model.pump[3],
-        edge_type="control",
+        model.discrete_control[5],
+        model.pump[3],
+        "control",
     )
 
     return model
@@ -222,29 +222,29 @@ def level_boundary_condition_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.level_boundary[1],
-        to_node=model.linear_resistance[2],
-        edge_type="flow",
+        model.level_boundary[1],
+        model.linear_resistance[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.linear_resistance[2],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[3],
-        to_node=model.outlet[4],
-        edge_type="flow",
+        model.basin[3],
+        model.outlet[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.outlet[4],
-        to_node=model.terminal[5],
-        edge_type="flow",
+        model.outlet[4],
+        model.terminal[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[6],
-        to_node=model.outlet[4],
-        edge_type="control",
+        model.discrete_control[6],
+        model.outlet[4],
+        "control",
     )
 
     return model
@@ -298,19 +298,19 @@ def tabulated_rating_curve_control_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[2],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[2],
-        to_node=model.terminal[3],
-        edge_type="flow",
+        model.tabulated_rating_curve[2],
+        model.terminal[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[4],
-        to_node=model.tabulated_rating_curve[2],
-        edge_type="control",
+        model.discrete_control[4],
+        model.tabulated_rating_curve[2],
+        "control",
     )
 
     return model
@@ -368,44 +368,44 @@ def level_setpoint_with_minmax_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.pump[3],
-        edge_type="flow",
+        model.basin[1],
+        model.pump[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[3],
-        to_node=model.level_boundary[4],
-        edge_type="flow",
+        model.pump[3],
+        model.level_boundary[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.level_boundary[4],
-        to_node=model.pump[2],
-        edge_type="flow",
+        model.level_boundary[4],
+        model.pump[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[2],
-        to_node=model.basin[1],
-        edge_type="flow",
+        model.pump[2],
+        model.basin[1],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[5],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[5],
-        to_node=model.terminal[6],
-        edge_type="flow",
+        model.tabulated_rating_curve[5],
+        model.terminal[6],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[7],
-        to_node=model.pump[2],
-        edge_type="control",
+        model.discrete_control[7],
+        model.pump[2],
+        "control",
     )
     model.edge.add(
-        from_node=model.discrete_control[7],
-        to_node=model.pump[3],
-        edge_type="control",
+        model.discrete_control[7],
+        model.pump[3],
+        "control",
     )
 
     return model

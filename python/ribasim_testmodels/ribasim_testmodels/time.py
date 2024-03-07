@@ -40,14 +40,14 @@ def flow_boundary_time_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.flow_boundary[1],
-        to_node=model.basin[2],
-        edge_type="flow",
+        model.flow_boundary[1],
+        model.basin[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.flow_boundary[3],
-        to_node=model.basin[2],
-        edge_type="flow",
+        model.flow_boundary[3],
+        model.basin[2],
+        "flow",
     )
 
     return model

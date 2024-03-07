@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import ribasim
 from ribasim.config import Node
+from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
     flow_boundary,
@@ -36,7 +38,7 @@ def basic_model() -> ribasim.Model:
         basin.State(level=[0.04471158417652035]),
     ]
     node_ids = [1, 3, 6, 9]
-    node_geometries = [
+    node_geometries: list[TableModel[Any]] = [
         Point(0.0, 0.0),
         Point(2.0, 0.0),
         Point(3.0, 2.0),
@@ -120,73 +122,65 @@ def basic_model() -> ribasim.Model:
     model.terminal.add(Node(14, Point(3.0, -2.0)))
 
     # Setup edges
+    model.edge.add(model.basin[1], model.manning_resistance[2], "flow")
+    model.edge.add(model.manning_resistance[2], model.basin[3], "flow")
     model.edge.add(
-        from_node=model.basin[1], to_node=model.manning_resistance[2], edge_type="flow"
+        model.basin[3],
+        model.tabulated_rating_curve[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.manning_resistance[2], to_node=model.basin[3], edge_type="flow"
+        model.tabulated_rating_curve[4],
+        model.fractional_flow[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[3],
-        to_node=model.tabulated_rating_curve[4],
-        edge_type="flow",
+        model.tabulated_rating_curve[4],
+        model.fractional_flow[8],
+        "flow",
+    )
+    model.edge.add(model.fractional_flow[5], model.basin[6], "flow")
+    model.edge.add(model.basin[6], model.pump[7], "flow")
+    model.edge.add(model.basin[9], model.linear_resistance[10], "flow")
+    model.edge.add(
+        model.level_boundary[11],
+        model.linear_resistance[12],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[4],
-        to_node=model.fractional_flow[5],
-        edge_type="flow",
+        model.level_boundary[11],
+        model.linear_resistance[12],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[4],
-        to_node=model.fractional_flow[8],
-        edge_type="flow",
+        model.linear_resistance[12],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.fractional_flow[5], to_node=model.basin[6], edge_type="flow"
-    )
-    model.edge.add(from_node=model.basin[6], to_node=model.pump[7], edge_type="flow")
-    model.edge.add(
-        from_node=model.basin[9], to_node=model.linear_resistance[10], edge_type="flow"
+        model.tabulated_rating_curve[4],
+        model.fractional_flow[13],
+        "flow",
     )
     model.edge.add(
-        from_node=model.level_boundary[11],
-        to_node=model.linear_resistance[12],
-        edge_type="flow",
+        model.fractional_flow[13],
+        model.terminal[14],
+        "flow",
     )
     model.edge.add(
-        from_node=model.level_boundary[11],
-        to_node=model.linear_resistance[12],
-        edge_type="flow",
+        model.flow_boundary[15],
+        model.basin[6],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[12],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.flow_boundary[16],
+        model.basin[1],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[4],
-        to_node=model.fractional_flow[13],
-        edge_type="flow",
-    )
-    model.edge.add(
-        from_node=model.fractional_flow[13],
-        to_node=model.terminal[14],
-        edge_type="flow",
-    )
-    model.edge.add(
-        from_node=model.flow_boundary[15],
-        to_node=model.basin[6],
-        edge_type="flow",
-    )
-    model.edge.add(
-        from_node=model.flow_boundary[16],
-        to_node=model.basin[1],
-        edge_type="flow",
-    )
-    model.edge.add(
-        from_node=model.linear_resistance[10],
-        to_node=model.level_boundary[17],
-        edge_type="flow",
+        model.linear_resistance[10],
+        model.level_boundary[17],
+        "flow",
     )
 
     return model
@@ -293,7 +287,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     )
 
     # Setup the basins
-    node_data = [
+    node_data: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
         basin.State(level=[0.04471158417652035]),
     ]
@@ -316,24 +310,24 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         ],
     )
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[2],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[3],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[2],
-        to_node=model.basin[4],
-        edge_type="flow",
+        model.tabulated_rating_curve[2],
+        model.basin[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[3],
-        to_node=model.basin[4],
-        edge_type="flow",
+        model.tabulated_rating_curve[3],
+        model.basin[4],
+        "flow",
     )
     return model
 
@@ -377,9 +371,7 @@ def outlet_model():
     )
 
     # Setup the edges
-    model.edge.add(
-        from_node=model.level_boundary[1], to_node=model.outlet[2], edge_type="flow"
-    )
-    model.edge.add(from_node=model.outlet[2], to_node=model.basin[3], edge_type="flow")
+    model.edge.add(model.level_boundary[1], model.outlet[2], "flow")
+    model.edge.add(model.outlet[2], model.basin[3], "flow")
 
     return model

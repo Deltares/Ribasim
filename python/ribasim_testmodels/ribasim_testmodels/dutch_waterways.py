@@ -158,117 +158,117 @@ def dutch_waterways_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.flow_boundary[1],
-        to_node=model.basin[2],
-        edge_type="flow",
+        model.flow_boundary[1],
+        model.basin[2],
+        "flow",
         name="Pannerdensch Kanaal",
     )
     model.edge.add(
-        from_node=model.basin[2],
-        to_node=model.linear_resistance[3],
-        edge_type="flow",
+        model.basin[2],
+        model.linear_resistance[3],
+        "flow",
         name="Start IJssel",
     )
     model.edge.add(
-        from_node=model.linear_resistance[3],
-        to_node=model.basin[5],
-        edge_type="flow",
+        model.linear_resistance[3],
+        model.basin[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[2],
-        to_node=model.linear_resistance[4],
-        edge_type="flow",
+        model.basin[2],
+        model.linear_resistance[4],
+        "flow",
         name="Start Nederrijn",
     )
     model.edge.add(
-        from_node=model.linear_resistance[4],
-        to_node=model.basin[6],
-        edge_type="flow",
+        model.linear_resistance[4],
+        model.basin[6],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[6],
-        to_node=model.pump[9],
-        edge_type="flow",
+        model.basin[6],
+        model.pump[9],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[9],
-        to_node=model.basin[10],
-        edge_type="flow",
+        model.pump[9],
+        model.basin[10],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[10],
-        to_node=model.linear_resistance[11],
-        edge_type="flow",
+        model.basin[10],
+        model.linear_resistance[11],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[11],
-        to_node=model.basin[12],
-        edge_type="flow",
+        model.linear_resistance[11],
+        model.basin[12],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[12],
-        to_node=model.pump[14],
-        edge_type="flow",
+        model.basin[12],
+        model.pump[14],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[14],
-        to_node=model.basin[15],
-        edge_type="flow",
+        model.pump[14],
+        model.basin[15],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[6],
-        to_node=model.tabulated_rating_curve[8],
-        edge_type="flow",
+        model.basin[6],
+        model.tabulated_rating_curve[8],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[8],
-        to_node=model.basin[10],
-        edge_type="flow",
+        model.tabulated_rating_curve[8],
+        model.basin[10],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[12],
-        to_node=model.tabulated_rating_curve[13],
-        edge_type="flow",
+        model.basin[12],
+        model.tabulated_rating_curve[13],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[13],
-        to_node=model.basin[15],
-        edge_type="flow",
+        model.tabulated_rating_curve[13],
+        model.basin[15],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[5],
-        to_node=model.linear_resistance[18],
-        edge_type="flow",
+        model.basin[5],
+        model.linear_resistance[18],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[18],
-        to_node=model.level_boundary[7],
-        edge_type="flow",
+        model.linear_resistance[18],
+        model.level_boundary[7],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[15],
-        to_node=model.linear_resistance[19],
-        edge_type="flow",
+        model.basin[15],
+        model.linear_resistance[19],
+        "flow",
     )
     model.edge.add(
-        from_node=model.linear_resistance[19],
-        to_node=model.level_boundary[16],
-        edge_type="flow",
+        model.linear_resistance[19],
+        model.level_boundary[16],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pid_control[20],
-        to_node=model.pump[14],
-        edge_type="control",
+        model.pid_control[20],
+        model.pump[14],
+        "control",
     )
     model.edge.add(
-        from_node=model.discrete_control[17],
-        to_node=model.tabulated_rating_curve[8],
-        edge_type="control",
+        model.discrete_control[17],
+        model.tabulated_rating_curve[8],
+        "control",
     )
     model.edge.add(
-        from_node=model.discrete_control[17],
-        to_node=model.pump[9],
-        edge_type="control",
+        model.discrete_control[17],
+        model.pump[9],
+        "control",
     )
 
     return model

@@ -79,40 +79,40 @@ def invalid_fractional_flow_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.tabulated_rating_curve[7],
-        edge_type="flow",
+        model.basin[1],
+        model.tabulated_rating_curve[7],
+        "flow",
     )
     # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
     model.edge.add(
-        from_node=model.tabulated_rating_curve[7],
-        to_node=model.basin[2],
-        edge_type="flow",
+        model.tabulated_rating_curve[7],
+        model.basin[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[7],
-        to_node=model.fractional_flow[3],
-        edge_type="flow",
+        model.tabulated_rating_curve[7],
+        model.fractional_flow[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.fractional_flow[3],
-        to_node=model.terminal[5],
-        edge_type="flow",
+        model.fractional_flow[3],
+        model.terminal[5],
+        "flow",
     )
     model.edge.add(
-        from_node=model.tabulated_rating_curve[7],
-        to_node=model.fractional_flow[4],
-        edge_type="flow",
+        model.tabulated_rating_curve[7],
+        model.fractional_flow[4],
+        "flow",
     )
     model.edge.add(
-        from_node=model.fractional_flow[4],
-        to_node=model.terminal[6],
-        edge_type="flow",
+        model.fractional_flow[4],
+        model.terminal[6],
+        "flow",
     )
     model.edge.add(
-        from_node=model.basin[2],
-        to_node=model.fractional_flow[8],
-        edge_type="flow",
+        model.basin[2],
+        model.fractional_flow[8],
+        "flow",
     )
 
     return model
@@ -165,24 +165,24 @@ def invalid_discrete_control_model() -> Model:
     )
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.pump[2],
-        edge_type="flow",
+        model.basin[1],
+        model.pump[2],
+        "flow",
     )
     model.edge.add(
-        from_node=model.pump[2],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.pump[2],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.flow_boundary[4],
-        to_node=model.basin[3],
-        edge_type="flow",
+        model.flow_boundary[4],
+        model.basin[3],
+        "flow",
     )
     model.edge.add(
-        from_node=model.discrete_control[5],
-        to_node=model.pump[2],
-        edge_type="control",
+        model.discrete_control[5],
+        model.pump[2],
+        "control",
     )
 
     return model
@@ -206,14 +206,14 @@ def invalid_edge_types_model() -> Model:
     model.basin.add(Node(3, Point(2, 0)), basin_shared)
 
     model.edge.add(
-        from_node=model.basin[1],
-        to_node=model.pump[2],
-        edge_type="foo",
+        model.basin[1],
+        model.pump[2],
+        "foo",
     )
     model.edge.add(
-        from_node=model.pump[2],
-        to_node=model.basin[3],
-        edge_type="bar",
+        model.pump[2],
+        model.basin[3],
+        "bar",
     )
 
     return model
