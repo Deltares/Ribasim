@@ -74,7 +74,6 @@ class Edge(SpatialTableModel[EdgeSchema]):
                 "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int64Dtype()),
             },
             geometry=geometry_to_append,
-            crs="EPSG:28992",
         )
 
         if self.df is None:

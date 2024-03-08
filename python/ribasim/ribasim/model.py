@@ -28,6 +28,8 @@ from ribasim.config import (
     Outlet,
     PidControl,
     Pump,
+    Results,
+    Solver,
     TabulatedRatingCurve,
     Terminal,
     UserDemand,
@@ -50,6 +52,9 @@ class Model(FileModel):
 
     allocation: Allocation = Field(default_factory=Allocation)
     logging: Logging = Field(default_factory=Logging)
+    solver: Solver = Field(default_factory=Solver)
+    results: Results = Field(default_factory=Results)
+
     basin: Basin = Field(default_factory=Basin)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)

@@ -102,7 +102,6 @@ class Node(pydantic.BaseModel):
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int64Dtype()),
             },
             geometry=[self.geometry],
-            crs="EPSG:28992",
         )
 
 

@@ -17,13 +17,6 @@
             "host": "localhost",
             "port": 5678,
             "justMyCode": false
-        },
-        {
-            "name": "Python Playground",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/playground/playground.py",
-            "console": "integratedTerminal"
         }
     ]
 }
