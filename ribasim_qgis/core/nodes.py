@@ -340,7 +340,7 @@ class Edge(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = '"name"'
+        pal_layer.fieldName = """concat("name", ' #', "fid")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0
