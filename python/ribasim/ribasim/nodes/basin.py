@@ -1,3 +1,4 @@
+from geopandas import GeoDataFrame
 from pandas import DataFrame
 
 from ribasim.geometry.area import BasinAreaSchema
@@ -40,4 +41,4 @@ class Subgrid(TableModel[BasinSubgridSchema]):
 
 class Area(TableModel[BasinAreaSchema]):
     def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+        super().__init__(df=GeoDataFrame(dict(**kwargs)))
