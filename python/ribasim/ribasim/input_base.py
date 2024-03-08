@@ -418,10 +418,6 @@ class NodeModel(ChildModel):
             node_ids.update(table.node_ids())
         return node_ids
 
-    def node_ids_and_types(self) -> tuple[list[int], list[str]]:
-        ids = self.node_ids()
-        return list(ids), len(ids) * [self.get_input_type()]
-
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
         # TODO: stop sorting loop so that "node" comes first
         for field in sorted(self.fields(), key=lambda x: x != "node"):
