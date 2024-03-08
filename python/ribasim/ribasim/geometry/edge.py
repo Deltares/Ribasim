@@ -87,12 +87,10 @@ class Edge(SpatialTableModel[EdgeSchema]):
         angle = np.degrees(np.arctan2(dy, dx)) - 90
 
         # Set the color of the marker to match the line.
+        # Black is default, set color_flow otherwise; then set color_control.
         color_index = index[1:][keep]
-        string_length = max((1, len(color_flow), len(color_control)))
-        # Default color is black
-        color = np.full(x.size, fill_value="k", dtype=f"<U{string_length}")
-        color[where_flow[color_index]] = color_flow
-        color[where_control[color_index]] = color_control
+        color = np.where(where_flow[color_index], color_flow, "k")
+        color = np.where(where_control[color_index], color_control, color)
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.
