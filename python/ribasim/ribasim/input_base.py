@@ -233,7 +233,7 @@ class TableModel(FileModel, Generic[TableT]):
         if self.df is not None and self.filepath is not None:
             self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
-        elif self.df is not None and db_path is not None:
+        elif db_path is not None:
             self.sort()
             self._write_table(db_path)
 
@@ -247,7 +247,8 @@ class TableModel(FileModel, Generic[TableT]):
             SQLite connection to the database.
         """
         table = self.tablename()
-        assert self.df is not None
+        if self.df is None:
+            return
 
         # Add `fid` to all tables as primary key
         # Enables editing values manually in QGIS
@@ -361,7 +362,8 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         gdf.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
-        self.df.sort_index(inplace=True)
+        if self.df is not None:
+            self.df.sort_index(inplace=True)
 
 
 class ChildModel(BaseModel):
