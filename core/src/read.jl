@@ -226,7 +226,7 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     for allocation_network_id in allocation_network_ids_
         push!(
             allocation_models,
-            AllocationModel(config, allocation_network_id, p, config.allocation.timestep),
+            AllocationModel(allocation_network_id, p, config.allocation.timestep),
         )
     end
     return nothing

@@ -7,7 +7,7 @@ endtime = 2021-01-01   # required
 input_dir = "."         # required
 results_dir = "results" # required
 
-ribasim_version = "2024.2.0" # required
+ribasim_version = "2024.3.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
@@ -18,7 +18,6 @@ time = "basin/time.arrow"
 [allocation]
 timestep = 86400                   # optional (required if use_allocation = true), default 86400
 use_allocation = false             # optional, default false
-objective_type = "linear_absolute" # optional, default "linear_absolute"
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"

@@ -49,34 +49,6 @@
     @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
 end
 
-@testitem "Allocation objective: quadratic absolute" begin
-    using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
-    using Ribasim: NodeID
-    import JuMP
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_absolute")
-    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
-end
-
-@testitem "Allocation objective: quadratic relative" begin
-    using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
-    using Ribasim: NodeID
-    import JuMP
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; allocation_objective_type = "quadratic_relative")
-    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
-end
-
 @testitem "Allocation objective: linear absolute" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
@@ -87,7 +59,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; allocation_objective_type = "linear_absolute")
+    config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test successful_retcode(model)
     problem = model.integrator.p.allocation.allocation_models[1].problem
@@ -99,20 +71,6 @@ end
 
     @test objective.terms[F_abs_user_demand[NodeID(:UserDemand, 5)]] == 1.0
     @test objective.terms[F_abs_user_demand[NodeID(:UserDemand, 6)]] == 1.0
-end
-
-@testitem "Allocation objective: linear relative" begin
-    using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
-    using Ribasim: NodeID
-    import JuMP
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; allocation_objective_type = "linear_relative")
-    @test_throws "Type of object function is not supported" model = Ribasim.run(config)
 end
 
 @testitem "Allocation with controlled fractional flow" begin
