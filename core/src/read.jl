@@ -930,17 +930,9 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_nodetypes(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT node_type FROM Node ORDER BY fid"))
-end
-
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
-end
-
-function get_names(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT name FROM Node ORDER BY fid"))
 end
 
 function get_names(db::DB, nodetype)::Vector{String}
