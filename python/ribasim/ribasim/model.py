@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 import tomli
 import tomli_w
@@ -70,7 +70,7 @@ class Model(FileModel):
     edge: Edge = Field(default_factory=Edge)
 
     @model_validator(mode="after")
-    def set_node_parent(self) -> Self:
+    def set_node_parent(self) -> "Model":
         for (
             k,
             v,
@@ -198,7 +198,7 @@ class Model(FileModel):
             return {}
 
     @model_validator(mode="after")
-    def reset_contextvar(self) -> Self:
+    def reset_contextvar(self) -> "Model":
         # Drop database info
         context_file_loading.set({})
         return self
