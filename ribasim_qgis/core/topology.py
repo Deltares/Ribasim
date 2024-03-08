@@ -88,8 +88,8 @@ def collect_edge_coordinates(edge: QgsVectorLayer) -> NDArray[np.float64]:
     return edge_xy
 
 
-def infer_edge_type(type1: str, type2: str) -> str:
-    if SPATIALCONTROLNODETYPES.intersection((type1, type2)):
+def infer_edge_type(from_node_type: str) -> str:
+    if from_node_type in SPATIALCONTROLNODETYPES:
         return "control"
     else:
         return "flow"
@@ -128,7 +128,7 @@ def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
             for feature, fid1, fid2 in zip(edge_iterator, from_fid, to_fid):
                 type1, id1 = node_identifiers[fid1]
                 type2, id2 = node_identifiers[fid2]
-                edge_type = infer_edge_type(type1, type2)
+                edge_type = infer_edge_type(type1)
 
                 fid = feature.id()
                 edge.changeAttributeValue(
