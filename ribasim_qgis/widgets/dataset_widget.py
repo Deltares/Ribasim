@@ -38,6 +38,7 @@ from ribasim_qgis.core.model import (
     get_directory_path_from_model_file,
 )
 from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.topology import set_edge_properties
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -170,6 +171,17 @@ class DatasetWidget(QWidget):
         """Returns currently active path to Ribasim model (.toml)"""
         return Path(self.dataset_line_edit.text())
 
+    def connect_nodes(self) -> None:
+        node = self.node_layer
+        edge = self.edge_layer
+        assert edge is not None
+        assert node is not None
+
+        if (node.featureCount() > 0) and (edge.featureCount() > 0):
+            set_edge_properties(node, edge)
+
+        return
+
     def add_layer(
         self,
         layer: Any,
@@ -233,6 +245,7 @@ class DatasetWidget(QWidget):
         # Connect node and edge layer to derive connectivities.
         self.node_layer = node.layer
         self.edge_layer = edge.layer
+        self.edge_layer.editingStopped.connect(self.connect_nodes)
         return
 
     def new_model(self) -> None:

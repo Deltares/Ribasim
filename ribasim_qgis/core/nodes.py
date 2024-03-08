@@ -188,11 +188,11 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-
+        node_type_field = layer.fields().indexFromName("node_type")
         self.set_dropdown("node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(1, True)
+        layer_form_config.setReuseLastValue(node_type_field, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
@@ -290,7 +290,6 @@ class Edge(Input):
         self.set_dropdown("to_node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(1, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
@@ -860,6 +859,7 @@ NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 EDGETYPES = {"flow", "control"}
+SPATIALCONTROLNODETYPES = {"DiscreteControl", "PidControl"}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:
