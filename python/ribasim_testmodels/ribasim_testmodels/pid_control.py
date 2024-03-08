@@ -62,6 +62,7 @@ def pid_control_model() -> Model:
     model.edge.add(model.pump[3], model.level_boundary[4], "flow")
     model.edge.add(model.level_boundary[4], model.outlet[6], "flow")
     model.edge.add(model.pid_control[5], model.pump[3], "control")
+    model.edge.add(model.outlet[6], model.basin[2], "flow")
     model.edge.add(model.pid_control[7], model.outlet[6], "control")
 
     return model
