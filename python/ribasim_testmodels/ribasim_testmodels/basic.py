@@ -141,12 +141,9 @@ def basic_model() -> ribasim.Model:
     )
     model.edge.add(model.fractional_flow[5], model.basin[6], "flow")
     model.edge.add(model.basin[6], model.pump[7], "flow")
+    model.edge.add(model.fractional_flow[8], model.basin[9], "flow")
+    model.edge.add(model.pump[7], model.basin[9], "flow")
     model.edge.add(model.basin[9], model.linear_resistance[10], "flow")
-    model.edge.add(
-        model.level_boundary[11],
-        model.linear_resistance[12],
-        "flow",
-    )
     model.edge.add(
         model.level_boundary[11],
         model.linear_resistance[12],
