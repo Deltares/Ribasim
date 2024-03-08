@@ -131,6 +131,9 @@ test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis -
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
 ribasim-model = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'"
+ribasim-models = { cmd = "julia --project utils/testmodelrun.jl", depends_on = [
+    "generate-testmodels",
+] }
 # Release
 github-release = "python utils/github-release.py"
 
