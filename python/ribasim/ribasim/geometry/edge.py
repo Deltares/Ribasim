@@ -46,10 +46,11 @@ class Edge(SpatialTableModel[EdgeSchema]):
         return (self.df.edge_type == edge_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:
+        assert self.df is not None  # Pleases mypy
+        kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
-        color_flow = kwargs.get("color_flow", None)
-        color_control = kwargs.get("color_control", None)
-        assert self.df is not None
+        color_flow = kwargs.pop("color_flow", None)
+        color_control = kwargs.pop("color_control", None)
 
         if ax is None:
             _, ax = plt.subplots()
@@ -63,17 +64,10 @@ class Edge(SpatialTableModel[EdgeSchema]):
             color_flow = "#3690c0"  # lightblue
             kwargs_flow["color"] = color_flow
             kwargs_flow["label"] = "Flow edge"
-        else:
-            color_flow = kwargs["color_flow"]
-            del kwargs_flow["color_flow"], kwargs_control["color_flow"]
-
         if color_control is None:
             color_control = "grey"
             kwargs_control["color"] = color_control
             kwargs_control["label"] = "Control edge"
-        else:
-            color_control = kwargs["color_flow"]
-            del kwargs_flow["color_control"], kwargs_control["color_control"]
 
         where_flow = self.get_where_edge_type("flow")
         where_control = self.get_where_edge_type("control")
@@ -85,23 +79,21 @@ class Edge(SpatialTableModel[EdgeSchema]):
             self.df[where_control].plot(**kwargs_control)
 
         # Determine the angle for every caret marker and where to place it.
-        coords = shapely.get_coordinates(self.df.geometry).reshape(-1, 2, 2)
-        x, y = np.mean(coords, axis=1).T
-        dx, dy = np.diff(coords, axis=1)[:, 0, :].T
+        coords, index = shapely.get_coordinates(self.df.geometry, return_index=True)
+        keep = np.diff(index) == 0
+        edge_coords = np.stack((coords[:-1, :], coords[1:, :]), axis=1)[keep]
+        x, y = np.mean(edge_coords, axis=1).T
+        dx, dy = np.diff(edge_coords, axis=1)[:, 0, :].T
         angle = np.degrees(np.arctan2(dy, dx)) - 90
+
+        # Set the color of the marker to match the line.
+        # Black is default, set color_flow otherwise; then set color_control.
+        color_index = index[1:][keep]
+        color = np.where(where_flow[color_index], color_flow, "k")
+        color = np.where(where_control[color_index], color_control, color)
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.
-        color = []
-
-        for i in range(len(self.df)):
-            if where_flow[i]:
-                color.append(color_flow)
-            elif where_control[i]:
-                color.append(color_control)
-            else:
-                color.append("k")
-
         for m_x, m_y, m_angle, c in zip(x, y, angle, color):
             ax.plot(
                 m_x,
