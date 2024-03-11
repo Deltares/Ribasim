@@ -67,24 +67,23 @@ quartodoc:
       desc: The Model class represents an entire Ribasim model.
       contents:
         - Model
-    - title: Network
-      desc: The Node and Edge database layers define the network layout.
+    - title: Edge
+      desc: The Edge database layer.
       contents:
-        - Node
         - Edge
     - title: Node types
       desc: Available node types to model different situations.
       contents:
-        - Basin
-        - FractionalFlow
-        - TabulatedRatingCurve
-        - Pump
-        - Outlet
-        - UserDemand
-        - LevelBoundary
-        - FlowBoundary
-        - LinearResistance
-        - ManningResistance
-        - Terminal
-        - DiscreteControl
-        - PidControl
+        - nodes.basin
+        - nodes.fractional_flow
+        - nodes.tabulated_rating_curve
+        - nodes.pump
+        - nodes.outlet
+        - nodes.user_demand
+        - nodes.level_boundary
+        - nodes.flow_boundary
+        - nodes.linear_resistance
+        - nodes.manning_resistance
+        - nodes.terminal
+        - nodes.discrete_control
+        - nodes.pid_control

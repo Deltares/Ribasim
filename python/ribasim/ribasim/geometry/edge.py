@@ -40,14 +40,7 @@ class EdgeSchema(pa.SchemaModel):
 
 
 class Edge(SpatialTableModel[EdgeSchema]):
-    """
-    Defines the connections between nodes.
-
-    Parameters
-    ----------
-    static : pandas.DataFrame
-        Table describing the flow connections.
-    """
+    """Defines the connections between nodes."""
 
     def __init__(self, **kwargs):
         kwargs.setdefault("df", DataFrame[EdgeSchema]())
