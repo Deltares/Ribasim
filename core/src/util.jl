@@ -588,30 +588,6 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 is_flow_direction_constraining(node::AbstractParameterNode) =
     (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
 
-"""Find out whether a path exists between a start node and end node in the given allocation network."""
-function allocation_path_exists_in_graph(
-    graph::MetaGraph,
-    start_node_id::NodeID,
-    end_node_id::NodeID,
-)::Bool
-    node_ids_visited = Set{NodeID}()
-    stack = [start_node_id]
-
-    while !isempty(stack)
-        current_node_id = pop!(stack)
-        if current_node_id == end_node_id
-            return true
-        end
-        if !(current_node_id in node_ids_visited)
-            push!(node_ids_visited, current_node_id)
-            for outneighbor_node_id in outflow_ids_allocation(graph, current_node_id)
-                push!(stack, outneighbor_node_id)
-            end
-        end
-    end
-    return false
-end
-
 function has_main_network(allocation::Allocation)::Bool
     return first(allocation.allocation_network_ids) == 1
 end
