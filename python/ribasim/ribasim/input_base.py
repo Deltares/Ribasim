@@ -233,7 +233,7 @@ class TableModel(FileModel, Generic[TableT]):
         if self.df is not None and self.filepath is not None:
             self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
-        elif db_path is not None:
+        elif self.df is not None and db_path is not None:
             self.sort()
             self._write_table(db_path)
 

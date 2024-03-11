@@ -49,8 +49,9 @@ class Edge(SpatialTableModel[EdgeSchema]):
         Table describing the flow connections.
     """
 
-    def __init__(self):
-        super().__init__(df=DataFrame[EdgeSchema]())
+    def __init__(self, **kwargs):
+        kwargs.setdefault("df", DataFrame[EdgeSchema]())
+        super().__init__(**kwargs)
 
     def add(
         self,
