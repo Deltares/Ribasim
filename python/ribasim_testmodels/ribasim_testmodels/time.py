@@ -15,7 +15,7 @@ def flow_boundary_time_model() -> Model:
     )
 
     model.flow_boundary.add(
-        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.0])]
+        Node(3, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.0])]
     )
 
     n_times = 100
@@ -25,7 +25,7 @@ def flow_boundary_time_model() -> Model:
     flow_rate = 1 + np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
 
     model.flow_boundary.add(
-        Node(3, Point(2, 0)), [flow_boundary.Time(time=time, flow_rate=flow_rate)]
+        Node(1, Point(2, 0)), [flow_boundary.Time(time=time, flow_rate=flow_rate)]
     )
 
     model.basin.add(
