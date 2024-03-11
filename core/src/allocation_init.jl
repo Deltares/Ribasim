@@ -438,6 +438,24 @@ function add_constraints_capacity!(
     return nothing
 end
 
+function add_constraints_user_source!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+
+    problem[:source_user] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_user],
+        F[(node_id, outflow_id(graph, node_id))] <= 0.0
+    )
+    return nothing
+end
+
 """
 Add the source constraints to the allocation problem.
 The actual threshold values will be set before each allocation solve.
@@ -725,6 +743,7 @@ function allocation_problem(
     # Add constraints to problem
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
+    add_constraints_user_source!(problem, p, allocation_network_id)
     add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_absolute_value_user_demand!(problem, p)
     add_constraints_absolute_value_basin!(problem)

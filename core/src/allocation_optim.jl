@@ -382,6 +382,32 @@ function adjust_basin_capacities!(
     return nothing
 end
 
+function adjust_user_returnflow_capacities!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
+    (; user_demand) = p
+    (; problem) = allocation_model
+    constraints_outflow = problem[:source_user]
+    F = problem[:F]
+
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
+        capacity = if priority_idx == 1
+            0.0
+        else
+            user_idx = findsorted(user_demand.node_id, node_id)
+            JuMP.normalizes_rhs(constraint) +
+            user_demand.return_factor[user_idx] * F[(node_id, outflow_id(graph, node_id))]
+        end
+
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+
+    return nothing
+end
+
 """
 Save the demands and allocated flows for UserDemand and Basin.
 Note: Basin supply (negative demand) is only saved for the first priority.
