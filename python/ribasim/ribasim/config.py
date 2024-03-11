@@ -125,6 +125,7 @@ class MultiNodeModel(NodeModel):
             existing_table = (
                 existing_member.df if existing_member.df is not None else pd.DataFrame()
             )
+            assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
             setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
@@ -132,7 +133,7 @@ class MultiNodeModel(NodeModel):
             node_type=self.__class__.__name__,
         )
         self.node.df = (
-            node_table
+            node_table  # type: ignore
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
