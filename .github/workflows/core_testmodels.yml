@@ -1,4 +1,4 @@
-name: Julia Tests
+name: Julia Run Testmodels
 on:
   push:
     branches: [main, update/pixi-lock, update/julia-manifest]
@@ -38,13 +38,6 @@ jobs:
           pixi-version: "v0.15.2"
       - name: Prepare pixi
         run: pixi run install-ci
-      - name: Test Ribasim Core
+      - name: Run testmodels with Ribasim Core
         run: |
-          pixi run test-ribasim-core-cov
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: core/src
-      - uses: codecov/codecov-action@v4
-        with:
-          files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
+          pixi run ribasim-core-testmodels

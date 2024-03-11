@@ -16,6 +16,8 @@ using DataStructures: OrderedDict
 using Dates
 using LibGit2
 
+include("utils.jl")
+
 "Add key config settings like solver settings to a dictionary"
 function add_config!(dict, config::Ribasim.Config)
     confdict = to_dict(getfield(config, :toml))
@@ -98,23 +100,6 @@ function run_dict(toml_path, config, timed)
     add_config!(dict, config)
     add_env!(dict)
     return dict
-end
-
-"Retrieve the names of the test models from a Python module"
-function get_testmodels()::Vector{String}
-    _, dirs, _ = first(walkdir("generated_testmodels"))
-
-    toml_paths = String[]
-    for dir in dirs
-        if !startswith(dir, "invalid_")
-            toml_path = normpath("generated_testmodels", dir, "ribasim.toml")
-            @assert isfile(toml_path)
-            push!(toml_paths, toml_path)
-        end
-    end
-
-    @assert length(toml_paths) > 10
-    return toml_paths
 end
 
 toml_paths = get_testmodels()
