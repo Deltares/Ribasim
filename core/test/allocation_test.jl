@@ -225,8 +225,7 @@ end
 
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈
-          [0.001, 0.002, 0.002]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈ [0.004, 0.001, 0.0]
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
