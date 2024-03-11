@@ -1,5 +1,8 @@
+from typing import Any
+
 import numpy as np
 from ribasim.config import Node, Solver
+from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -131,7 +134,7 @@ def misc_nodes_model() -> Model:
         solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
     )
 
-    basin_shared = [
+    basin_shared: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
         basin.State(level=[10.5]),
     ]

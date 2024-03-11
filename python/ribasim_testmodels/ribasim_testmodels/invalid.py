@@ -1,5 +1,8 @@
+from typing import Any
+
 import pandas as pd
 from ribasim.config import Node
+from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -18,7 +21,7 @@ def invalid_qh_model() -> Model:
         endtime="2020-12-01 00:00:00",
     )
 
-    tabulated_rating_curve_shared = [
+    tabulated_rating_curve_shared: list[TableModel[Any]] = [
         # Invalid: levels must not be repeated
         tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2]),
         tabulated_rating_curve.Time(
@@ -54,7 +57,7 @@ def invalid_fractional_flow_model() -> Model:
         endtime="2020-12-01 00:00:00",
     )
 
-    basin_shared = [
+    basin_shared: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
         basin.State(level=[1.4112729908597084]),
     ]
@@ -124,7 +127,7 @@ def invalid_discrete_control_model() -> Model:
         endtime="2020-12-01 00:00:00",
     )
 
-    basin_shared = [
+    basin_shared: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
         basin.State(level=[1.4112729908597084]),
     ]
@@ -197,7 +200,7 @@ def invalid_edge_types_model() -> Model:
         endtime="2020-12-01 00:00:00",
     )
 
-    basin_shared = [
+    basin_shared: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
         basin.State(level=[0.04471158417652035]),
     ]

@@ -30,7 +30,7 @@ def basic_model() -> ribasim.Model:
 
     # Setup basins
     level = [0.0, 1.0]
-    node_data = [
+    node_data: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1000.0], level=level),
         basin.Static(
             potential_evaporation=[0.001 / 86400], precipitation=[0.002 / 86400]

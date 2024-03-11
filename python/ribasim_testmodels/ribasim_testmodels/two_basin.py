@@ -1,4 +1,7 @@
+from typing import Any
+
 from ribasim.config import Node
+from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
@@ -21,7 +24,7 @@ def two_basin_model() -> Model:
     model.flow_boundary.add(
         Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]
     )
-    basin_shared = [
+    basin_shared: list[TableModel[Any]] = [
         basin.Profile(area=400.0, level=[0.0, 1.0]),
         basin.State(level=[0.01]),
     ]
