@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "06df95f6b7c964c608a5ed8a5c4e20c48a701a3c"
+project_hash = "01c388f950ce89ba903c883c710bf25774a0b7a3"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -591,9 +591,9 @@ version = "1.9.0"
 
 [[deps.HiGHS]]
 deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
-git-tree-sha1 = "f869b0a17d1a4f13aac08af8d0a050bdb70bccfd"
+git-tree-sha1 = "a216e32299172b83abfe699604584f413ffbb045"
 uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
-version = "1.8.1"
+version = "1.9.0"
 
 [[deps.HiGHS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -1247,7 +1247,7 @@ version = "3.5.14"
 deps = ["Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "Dictionaries", "DiffEqCallbacks", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEq", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "StructArrays", "Tables", "TerminalLoggers", "TimeZones", "TimerOutputs", "TranscodingStreams"]
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
-version = "2024.3.0"
+version = "2024.4.0"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "SHA", "Serialization"]

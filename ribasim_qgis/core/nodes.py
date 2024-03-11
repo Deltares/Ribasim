@@ -113,6 +113,16 @@ class Input(abc.ABC):
             index = fields.indexFromName(name)
             self.layer.setDefaultValueDefinition(index, definition)
 
+    def set_dropdown(self, name: str, options: set[str]) -> None:
+        """Use a dropdown menu for a field in the editor widget."""
+        layer = self.layer
+        index = layer.fields().indexFromName(name)
+        setup = QgsEditorWidgetSetup(
+            "ValueMap",
+            {"map": {node: node for node in options}},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
     def set_read_only(self) -> None:
         pass
 
@@ -160,6 +170,7 @@ class Node(Input):
         return [
             QgsField("name", QVariant.String),
             QgsField("node_type", QVariant.String),
+            QgsField("node_id", QVariant.Int),
             QgsField("subnetwork_id", QVariant.Int),
         ]
 
@@ -177,15 +188,11 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("node_type")
-        setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {"map": {node: node for node in NONSPATIALNODETYPES}},
-        )
-        layer.setEditorWidgetSetup(index, setup)
+        node_type_field = layer.fields().indexFromName("node_type")
+        self.set_dropdown("node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(1, True)
+        layer_form_config.setReuseLastValue(node_type_field, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
@@ -243,7 +250,7 @@ class Node(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "fid")"""
+        pal_layer.fieldName = """concat("name", ' #', "node_id")"""
         pal_layer.isExpression = True
         pal_layer.dist = 2.0
         labels = QgsVectorLayerSimpleLabeling(pal_layer)
@@ -255,7 +262,9 @@ class Edge(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("name", QVariant.String),
+            QgsField("from_node_type", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
+            QgsField("to_node_type", QVariant.String),
             QgsField("to_node_id", QVariant.Int),
             QgsField("edge_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
@@ -275,15 +284,12 @@ class Edge(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        index = layer.fields().indexFromName("edge_type")
-        setup = QgsEditorWidgetSetup(
-            "ValueMap",
-            {"map": {node: node for node in EDGETYPES}},
-        )
-        layer.setEditorWidgetSetup(index, setup)
+
+        self.set_dropdown("edge_type", EDGETYPES)
+        self.set_dropdown("from_node_type", NONSPATIALNODETYPES)
+        self.set_dropdown("to_node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(1, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
@@ -697,6 +703,7 @@ class DiscreteControlCondition(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
+            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("greater_than", QVariant.Double),
@@ -735,6 +742,7 @@ class PidControlStatic(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("active", QVariant.Bool),
+            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("target", QVariant.Double),
             QgsField("proportional", QVariant.Double),
@@ -756,6 +764,7 @@ class PidControlTime(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
+            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("target", QVariant.Double),
@@ -850,6 +859,7 @@ NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 EDGETYPES = {"flow", "control"}
+SPATIALCONTROLNODETYPES = {"DiscreteControl", "PidControl"}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:
