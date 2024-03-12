@@ -2,7 +2,7 @@ __version__ = "0.5.0"
 
 from collections.abc import Callable
 
-import ribasim
+from ribasim.model import Model
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
@@ -97,7 +97,7 @@ __all__ = [
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models
-constructors: dict[str, Callable[[], ribasim.Model]] = {}
+constructors: dict[str, Callable[[], Model]] = {}
 for model_name_model in __all__:
     model_name = model_name_model.removesuffix("_model")
     model_constructor = getattr(ribasim_testmodels, model_name_model)

@@ -95,7 +95,6 @@ function variable_nt(s::Any)
 end
 
 # functions used by sort(x; by)
-sort_by_fid(row) = row.fid
 sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
@@ -115,6 +114,7 @@ sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 const TimeSchemas = Union{
     BasinTimeV1,
     FlowBoundaryTimeV1,
+    FlowDemandTimeV1,
     LevelBoundaryTimeV1,
     PidControlTimeV1,
     TabulatedRatingCurveTimeV1,

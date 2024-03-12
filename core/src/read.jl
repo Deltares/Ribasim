@@ -567,7 +567,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     return DiscreteControl(
         NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
-        NodeID.(condition.listen_feature_type, condition.listen_feature_id),
+        NodeID.(condition.listen_node_type, condition.listen_node_id),
         condition.variable,
         look_ahead,
         condition.greater_than,
@@ -959,17 +959,9 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_nodetypes(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT node_type FROM Node ORDER BY fid"))
-end
-
 function get_ids(db::DB, nodetype)::Vector{Int}
-    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY fid"
+    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
-end
-
-function get_names(db::DB)::Vector{String}
-    return only(execute(columntable, db, "SELECT name FROM Node ORDER BY fid"))
 end
 
 function get_names(db::DB, nodetype)::Vector{String}

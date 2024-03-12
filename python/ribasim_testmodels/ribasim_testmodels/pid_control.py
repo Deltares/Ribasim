@@ -1,310 +1,177 @@
-import geopandas as gpd
-import numpy as np
-import pandas as pd
-import ribasim
+from ribasim.config import Node
+from ribasim.model import Model
+from ribasim.nodes import (
+    basin,
+    discrete_control,
+    flow_boundary,
+    level_boundary,
+    outlet,
+    pid_control,
+    pump,
+    tabulated_rating_curve,
+)
+from shapely.geometry import Point
 
 
-def pid_control_model():
+def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: FlowBoundary
-            (1.0, 0.0),  # 2: Basin
-            (2.0, 0.5),  # 3: Pump
-            (3.0, 0.0),  # 4: LevelBoundary
-            (1.5, 1.0),  # 5: PidControl
-            (2.0, -0.5),  # 6: Outlet
-            (1.5, -1.0),  # 7: PidControl
-        ]
-    )
-
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = [
-        "FlowBoundary",
-        "Basin",
-        "Pump",
-        "LevelBoundary",
-        "PidControl",
-        "Outlet",
-        "PidControl",
-    ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2, 3, 4, 6, 5, 7], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 6, 2, 3, 6], dtype=np.int64)
-
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": 5 * ["flow"] + 2 * ["control"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={"node_id": [2, 2], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [2],
-            "level": [6.0],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            data={
-                "node_id": [3],
-                "flow_rate": [0.0],  # Will be overwritten by PID controller
-            }
-        )
-    )
-
-    # Setup outlet:
-    outlet = ribasim.Outlet(
-        static=pd.DataFrame(
-            data={
-                "node_id": [6],
-                "flow_rate": [0.0],  # Will be overwritten by PID controller
-            }
-        )
-    )
-
-    # Setup flow boundary:
-    flow_boundary = ribasim.FlowBoundary(
-        static=pd.DataFrame(data={"node_id": [1], "flow_rate": [1e-3]})
-    )
-
-    # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        static=pd.DataFrame(
-            data={
-                "node_id": [4],
-                "level": [5.0],  # Not relevant
-            }
-        )
-    )
-
-    # Setup PID control:
-    pid_control = ribasim.PidControl(
-        time=pd.DataFrame(
-            data={
-                "node_id": 4 * [5, 7],
-                "time": [
-                    "2020-01-01 00:00:00",
-                    "2020-01-01 00:00:00",
-                    "2020-05-01 00:00:00",
-                    "2020-05-01 00:00:00",
-                    "2020-07-01 00:00:00",
-                    "2020-07-01 00:00:00",
-                    "2020-12-01 00:00:00",
-                    "2020-12-01 00:00:00",
-                ],
-                "listen_node_id": 4 * [2, 2],
-                "target": [5.0, 5.0, 5.0, 5.0, 7.5, 7.5, 7.5, 7.5],
-                "proportional": 4 * [-1e-3, 1e-3],
-                "integral": 4 * [-1e-7, 1e-7],
-                "derivative": 4 * [0.0, 0.0],
-            }
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        flow_boundary=flow_boundary,
-        level_boundary=level_boundary,
-        pump=pump,
-        outlet=outlet,
-        pid_control=pid_control,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-12-01 00:00:00",
     )
+
+    model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+    model.basin.add(
+        Node(2, Point(1, 0)),
+        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[6.0])],
+    )
+    # Flow rate will be overwritten by PID controller
+    model.pump.add(Node(3, Point(2, 0.5)), [pump.Static(flow_rate=[0.0])])
+
+    model.level_boundary.add(Node(4, Point(3, 0)), [level_boundary.Static(level=[5.0])])
+
+    model.pid_control.add(
+        Node(5, Point(1.5, 1)),
+        [
+            pid_control.Time(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                ],
+                listen_node_type="Basin",
+                listen_node_id=2,
+                target=[5.0, 5.0, 7.5, 7.5],
+                proportional=-1e-3,
+                integral=-1e-7,
+                derivative=0.0,
+            )
+        ],
+    )
+
+    # Flow rate will be overwritten by PID controller
+    model.outlet.add(Node(6, Point(2, -0.5)), [outlet.Static(flow_rate=[0.0])])
+    model.pid_control.add(
+        Node(7, Point(1.5, -1)),
+        [
+            pid_control.Time(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                ],
+                listen_node_type="Basin",
+                listen_node_id=2,
+                target=[5.0, 5.0, 7.5, 7.5],
+                proportional=1e-3,
+                integral=1e-7,
+                derivative=0.0,
+            )
+        ],
+    )
+
+    model.edge.add(model.flow_boundary[1], model.basin[2], "flow")
+    model.edge.add(model.basin[2], model.pump[3], "flow")
+    model.edge.add(model.pump[3], model.level_boundary[4], "flow")
+    model.edge.add(model.level_boundary[4], model.outlet[6], "flow")
+    model.edge.add(model.pid_control[5], model.pump[3], "control")
+    model.edge.add(model.outlet[6], model.basin[2], "flow")
+    model.edge.add(model.pid_control[7], model.outlet[6], "control")
 
     return model
 
 
-def discrete_control_of_pid_control_model():
+def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: LevelBoundary
-            (1.0, 0.0),  # 2: Pump
-            (2.0, 0.0),  # 3: Basin
-            (3.0, 0.0),  # 4: TabulatedRatingCurve
-            (4.0, 0.0),  # 5: Terminal
-            (1.0, 1.0),  # 6: PidControl
-            (0.0, 1.0),  # 7: DiscreteControl
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = [
-        "LevelBoundary",
-        "Outlet",
-        "Basin",
-        "TabulatedRatingCurve",
-        "Terminal",
-        "PidControl",
-        "DiscreteControl",
-    ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2, 3, 4, 6, 7], dtype=np.int64)
-    to_id = np.array([2, 3, 4, 5, 2, 6], dtype=np.int64)
-
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": 4 * ["flow"] + 2 * ["control"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={"node_id": [3, 3], "level": [0.0, 1.0], "area": [1000.0, 1000.0]}
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [3],
-            "level": [6.0],
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup pump:
-    outlet = ribasim.Outlet(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "flow_rate": [0.0],  # Will be overwritten by PID controller
-            }
-        )
-    )
-
-    # Set up a rating curve node:
-    # Discharge: lose 1% of storage volume per day at storage = 1000.0.
-    seconds_in_day = 24 * 3600
-    q1000 = 1000.0 * 0.01 / seconds_in_day
-
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=pd.DataFrame(
-            data={
-                "node_id": [4, 4],
-                "level": [0.0, 1.0],
-                "flow_rate": [0.0, q1000],
-            }
-        )
-    )
-
-    # Setup level boundary:
-    level_boundary = ribasim.LevelBoundary(
-        time=pd.DataFrame(
-            data={
-                "node_id": [1, 1],
-                "time": ["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
-                "level": [7.0, 3.0],
-            }
-        )
-    )
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(
-        static=pd.DataFrame(
-            data={
-                "node_id": [5],
-            }
-        )
-    )
-
-    # Setup PID control:
-    pid_control = ribasim.PidControl(
-        static=pd.DataFrame(
-            data={
-                "node_id": [6, 6],
-                "control_state": ["target_high", "target_low"],
-                "listen_node_id": [3, 3],
-                "target": [5.0, 3.0],
-                "proportional": 2 * [1e-2],
-                "integral": 2 * [1e-8],
-                "derivative": 2 * [-1e-1],
-            }
-        )
-    )
-
-    # Setup discrete control:
-    discrete_control = ribasim.DiscreteControl(
-        condition=pd.DataFrame(
-            data={
-                "node_id": [7],
-                "listen_feature_id": [1],
-                "variable": ["level"],
-                "greater_than": [5.0],
-            }
-        ),
-        logic=pd.DataFrame(
-            data={
-                "node_id": [7, 7],
-                "truth_state": ["T", "F"],
-                "control_state": ["target_high", "target_low"],
-            }
-        ),
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        outlet=outlet,
-        tabulated_rating_curve=rating_curve,
-        level_boundary=level_boundary,
-        terminal=terminal,
-        pid_control=pid_control,
-        discrete_control=discrete_control,
+    model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-12-01 00:00:00",
+    )
+
+    model.level_boundary.add(
+        Node(1, Point(0, 0)),
+        [
+            level_boundary.Time(
+                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"], level=[7.0, 3.0]
+            )
+        ],
+    )
+
+    # The flow_rate will be overwritten by PID controller
+    model.outlet.add(Node(2, Point(1, 0)), [outlet.Static(flow_rate=[0.0])])
+    model.basin.add(
+        Node(3, Point(2, 0)),
+        [basin.State(level=[6.0]), basin.Profile(area=1000.0, level=[0.0, 1.0])],
+    )
+    model.tabulated_rating_curve.add(
+        Node(4, Point(3, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
+    )
+    model.terminal.add(Node(5, Point(4, 0)))
+    model.pid_control.add(
+        Node(6, Point(1, 1)),
+        [
+            pid_control.Static(
+                listen_node_type="Basin",
+                listen_node_id=3,
+                control_state=["target_high", "target_low"],
+                target=[5.0, 3.0],
+                proportional=1e-2,
+                integral=1e-8,
+                derivative=-1e-1,
+            )
+        ],
+    )
+    model.discrete_control.add(
+        Node(7, Point(0, 1)),
+        [
+            discrete_control.Condition(
+                listen_node_type="LevelBoundary",
+                listen_node_id=[1],
+                variable="level",
+                greater_than=5.0,
+            ),
+            discrete_control.Logic(
+                truth_state=["T", "F"], control_state=["target_high", "target_low"]
+            ),
+        ],
+    )
+
+    model.edge.add(
+        model.level_boundary[1],
+        model.outlet[2],
+        "flow",
+    )
+    model.edge.add(
+        model.outlet[2],
+        model.basin[3],
+        "flow",
+    )
+    model.edge.add(
+        model.basin[3],
+        model.tabulated_rating_curve[4],
+        "flow",
+    )
+    model.edge.add(
+        model.tabulated_rating_curve[4],
+        model.terminal[5],
+        "flow",
+    )
+    model.edge.add(
+        model.pid_control[6],
+        model.outlet[2],
+        "control",
+    )
+    model.edge.add(
+        model.discrete_control[7],
+        model.pid_control[6],
+        "control",
     )
 
     return model

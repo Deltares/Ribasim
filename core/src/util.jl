@@ -613,7 +613,11 @@ function allocation_path_exists_in_graph(
 end
 
 function has_main_network(allocation::Allocation)::Bool
-    return first(allocation.allocation_network_ids) == 1
+    if !is_active(allocation)
+        false
+    else
+        first(allocation.allocation_network_ids) == 1
+    end
 end
 
 function is_main_network(allocation_network_id::Int)::Bool
