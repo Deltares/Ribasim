@@ -70,7 +70,7 @@ quartodoc:
     - title: Edge
       desc: The Edge database layer.
       contents:
-        - Edge
+        - EdgeTable
     - title: Node types
       desc: Available node types to model different situations.
       contents:
