@@ -1,4 +1,5 @@
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -36,6 +37,7 @@ __all__ = ("TableModel",)
 delimiter = " / "
 
 gpd.options.io_engine = "pyogrio"
+warnings.filterwarnings("ignore", category=UserWarning, module="pyogrio")
 
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
