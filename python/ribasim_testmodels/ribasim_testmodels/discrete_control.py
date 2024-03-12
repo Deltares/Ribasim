@@ -55,7 +55,7 @@ def pump_discrete_control_model() -> Model:
         [
             discrete_control.Condition(
                 listen_node_type="Basin",
-                listen_node_id=1,
+                listen_node_id=[1, 3],
                 variable="level",
                 greater_than=[0.8, 0.4],
             ),
