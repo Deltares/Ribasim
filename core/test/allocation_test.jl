@@ -1,5 +1,5 @@
 @testitem "Allocation solve" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
@@ -27,7 +27,7 @@
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.allocate!(p, allocation_model, 0.0, u)
+    Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
 
     F = allocation_model.problem[:F]
     @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0
@@ -198,7 +198,7 @@ end
 
 @testitem "allocation with main network optimization problem" begin
     using SQLite
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
     using JuMP
 
@@ -220,7 +220,7 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t, u; collect_demands = true)
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
@@ -231,7 +231,7 @@ end
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    Ribasim.allocate!(p, allocation_model, t, u)
+    Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.allocate)
 
     # Main network objective function
     objective = JuMP.objective_function(problem)

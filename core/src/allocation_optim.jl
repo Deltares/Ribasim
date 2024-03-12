@@ -1,3 +1,5 @@
+@enumx OptimizationType internal_sources collect_demands allocate
+
 """
 Add a term to the objective function given by the objective type,
 depending in the provided flow variable and the associated demand.
@@ -117,8 +119,8 @@ Assign the allocations to the UserDemand as determined by the solution of the al
 function assign_allocations!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int;
-    collect_demands::Bool = false,
+    priority_idx::Int,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand, allocation) = p
@@ -134,7 +136,7 @@ function assign_allocations!(
     for edge_id in edge_ids
         # If this edge is a source edge from the main network to a subnetwork,
         # and demands are being collected, add its flow to the demand of this edge
-        if collect_demands &&
+        if optimization_type == OptimizationType.collect_demands &&
            graph[edge_id...].allocation_network_id_source == allocation_network_id &&
            edge_id ∈ main_network_source_edges
             allocated = JuMP.value(F[edge_id])
@@ -172,8 +174,8 @@ Adjust the source flows.
 function adjust_source_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int;
-    collect_demands::Bool = false,
+    priority_idx::Int,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; problem) = allocation_model
     (; graph, allocation) = p
@@ -191,10 +193,10 @@ function adjust_source_capacities!(
             if priority_idx == 1
                 # If the optimization was just started, i.e. sources have to be reset
                 if edge_id in main_network_source_edges
-                    if collect_demands
+                    if optimization_type == OptimizationType.collect_demands
                         # Set the source capacity to effectively unlimited if subnetwork demands are being collected
                         source_capacity = Inf
-                    else
+                    elseif optimization_type == OptimizationType.allocate
                         # Set the source capacity to the value allocated to the subnetwork over this edge
                         source_capacity = subnetwork_allocateds[edge_id][priority_idx]
                     end
@@ -459,7 +461,7 @@ function save_allocation_flows!(
     t::Float64,
     allocation_model::AllocationModel,
     priority::Int,
-    collect_demands::Bool,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; allocation, graph) = p
@@ -484,7 +486,7 @@ function save_allocation_flows!(
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
             push!(record_flow.flow_rate, flow_rate)
-            push!(record_flow.collect_demands, collect_demands)
+            push!(record_flow.optimization_type, string(optimization_type))
         end
     end
 
@@ -501,7 +503,7 @@ function save_allocation_flows!(
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
             push!(record_flow.flow_rate, flow_rate)
-            push!(record_flow.collect_demands, collect_demands)
+            push!(record_flow.optimization_type, string(optimization_type))
         end
     end
 
@@ -516,8 +518,8 @@ function allocate!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
-    u::ComponentVector;
-    collect_demands::Bool = false,
+    u::ComponentVector,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; allocation) = p
     (; problem, allocation_network_id) = allocation_model
@@ -525,7 +527,7 @@ function allocate!(
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
-    if collect_demands
+    if optimization_type == OptimizationType.collect_demands
         for main_network_connection in keys(subnetwork_demands)
             if main_network_connection in main_network_source_edges
                 subnetwork_demands[main_network_connection] .= 0.0
@@ -534,7 +536,7 @@ function allocate!(
     end
 
     for priority_idx in eachindex(priorities)
-        adjust_source_capacities!(allocation_model, p, priority_idx; collect_demands)
+        adjust_source_capacities!(allocation_model, p, priority_idx, optimization_type)
 
         # Subtract the flows used by the allocation of the previous priority from the capacities of the edges
         # or set edge capacities if priority_idx = 1
@@ -561,7 +563,7 @@ function allocate!(
         end
 
         # Assign the allocations to the UserDemand for this priority
-        assign_allocations!(allocation_model, p, priority_idx; collect_demands)
+        assign_allocations!(allocation_model, p, priority_idx, optimization_type)
 
         # Save the demands and allocated flows for all nodes that have these
         save_demands_and_allocations!(p, allocation_model, t, priority_idx)
@@ -572,7 +574,7 @@ function allocate!(
             t,
             allocation_model,
             priorities[priority_idx],
-            collect_demands,
+            optimization_type,
         )
     end
 end

@@ -75,9 +75,9 @@
                 :subnetwork_id,
                 :priority,
                 :flow_rate,
-                :collect_demands,
+                :optimization_type,
             ),
-            (DateTime, Int, String, Int, String, Int, Int, Int, Float64, Bool),
+            (DateTime, Int, String, Int, String, Int, Int, Int, Float64, String),
         )
         @test Tables.schema(subgrid) ==
               Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))

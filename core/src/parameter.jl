@@ -94,7 +94,7 @@ struct Allocation
         subnetwork_id::Vector{Int},
         priority::Vector{Int},
         flow_rate::Vector{Float64},
-        collect_demands::BitVector,
+        optimization_type::Vector{String},
     }
 end
 

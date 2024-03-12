@@ -839,7 +839,7 @@ function Allocation(db::DB, config::Config)::Allocation
         subnetwork_id = Int[],
         priority = Int[],
         flow_rate = Float64[],
-        collect_demands = BitVector(),
+        optimization_type = String[],
     )
 
     allocation = Allocation(

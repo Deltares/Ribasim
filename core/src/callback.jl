@@ -502,7 +502,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            allocate!(p, allocation_model, t, u; collect_demands = true)
+            allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
         end
     end
 
@@ -510,7 +510,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate!(p, allocation_model, t, u)
+        allocate!(p, allocation_model, t, u, OptimizationType.allocate)
     end
 end
 
