@@ -2,7 +2,7 @@
     "[julia]": {
         "editor.formatOnSave": true
     },
-    "notebook.formatOnSave.enabled": true,
+    "notebook.formatOnSave.enabled": false,
     "notebook.codeActionsOnSave": {
         "source.fixAll.ruff": true,
         "source.organizeImports.ruff": true

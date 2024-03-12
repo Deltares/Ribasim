@@ -183,8 +183,8 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int
-    listen_feature_type::Union{Missing, String}
-    listen_feature_id::Int
+    listen_node_type::String
+    listen_node_id::Int
     variable::String
     greater_than::Float64
     look_ahead::Union{Missing, Float64}
@@ -199,7 +199,7 @@ end
 @version PidControlStaticV1 begin
     node_id::Int
     active::Union{Missing, Bool}
-    listen_node_type::Union{Missing, String}
+    listen_node_type::String
     listen_node_id::Int
     target::Float64
     proportional::Float64
@@ -210,7 +210,7 @@ end
 
 @version PidControlTimeV1 begin
     node_id::Int
-    listen_node_type::Union{Missing, String}
+    listen_node_type::String
     listen_node_id::Int
     time::DateTime
     target::Float64
