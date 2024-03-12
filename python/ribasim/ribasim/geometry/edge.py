@@ -14,7 +14,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
 
-__all__ = ("Edge",)
+__all__ = ("EdgeTable",)
 
 
 class NodeData(NamedTuple):
@@ -39,7 +39,7 @@ class EdgeSchema(pa.SchemaModel):
         add_missing_columns = True
 
 
-class Edge(SpatialTableModel[EdgeSchema]):
+class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
 
     def __init__(self, **kwargs):

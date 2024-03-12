@@ -34,7 +34,7 @@ from ribasim.config import (
     Terminal,
     UserDemand,
 )
-from ribasim.geometry.edge import Edge
+from ribasim.geometry.edge import EdgeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
@@ -72,7 +72,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
     level_demand: LevelDemand = Field(default_factory=LevelDemand)
 
-    edge: Edge = Field(default_factory=Edge)
+    edge: EdgeTable = Field(default_factory=EdgeTable)
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":

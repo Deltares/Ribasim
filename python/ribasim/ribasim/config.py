@@ -8,8 +8,7 @@ from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field
 from shapely.geometry import Point
 
-from ribasim import geometry
-from ribasim.geometry import BasinAreaSchema
+from ribasim.geometry import BasinAreaSchema, NodeTable
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import ChildModel, NodeModel, SpatialTableModel, TableModel
 
@@ -106,7 +105,7 @@ class Node(pydantic.BaseModel):
 
 
 class MultiNodeModel(NodeModel):
-    node: geometry.Node = Field(default_factory=geometry.Node)
+    node: NodeTable = Field(default_factory=NodeTable)
     _node_type: str
 
     def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:

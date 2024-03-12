@@ -11,7 +11,7 @@ from pandera.typing.geopandas import GeoSeries
 
 from ribasim.input_base import SpatialTableModel
 
-__all__ = ("Node",)
+__all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.SchemaModel):
@@ -28,7 +28,7 @@ class NodeSchema(pa.SchemaModel):
         coerce = True
 
 
-class Node(SpatialTableModel[NodeSchema]):
+class NodeTable(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
 
     def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
