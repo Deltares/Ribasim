@@ -964,11 +964,11 @@ def linear_resistance_demand_model():
 
     model.basin.add(
         Node(1, Point(0, 0)),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=1.0)],
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
     model.basin.add(
         Node(3, Point(2, 0)),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=1.0)],
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
 
     model.linear_resistance.add(
