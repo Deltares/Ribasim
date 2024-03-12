@@ -21,24 +21,24 @@ def invalid_qh_model() -> Model:
         endtime="2020-12-01 00:00:00",
     )
 
-    tabulated_rating_curve_shared: list[TableModel[Any]] = [
-        # Invalid: levels must not be repeated
-        tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2]),
-        tabulated_rating_curve.Time(
-            time=[
-                pd.Timestamp("2020-01-01 00:00:00"),
-                pd.Timestamp("2020-12-01 00:00:00"),
-            ],
-            # Invalid: levels must not be repeated
-            level=[0, 0],
-            flow_rate=[1, 2],
-        ),
-    ]
     model.tabulated_rating_curve.add(
-        Node(1, Point(0, 0)), tabulated_rating_curve_shared
+        Node(1, Point(0, 0)),
+        # Invalid: levels must not be repeated
+        [tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2])],
     )
     model.tabulated_rating_curve.add(
-        Node(2, Point(0, 1)), tabulated_rating_curve_shared
+        Node(2, Point(0, 1)),
+        [
+            tabulated_rating_curve.Time(
+                time=[
+                    pd.Timestamp("2020-01-01 00:00:00"),
+                    pd.Timestamp("2020-01-01 00:00:00"),
+                ],
+                # Invalid: levels must not be repeated
+                level=[0, 0],
+                flow_rate=[1, 2],
+            )
+        ],
     )
     model.basin.add(
         Node(3, Point(0, 2)),

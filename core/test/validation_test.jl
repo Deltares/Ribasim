@@ -254,7 +254,7 @@ end
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
-    @test logger.logs[4].kwargs[:edge_id] == 6
+    @test logger.logs[4].kwargs[:edge_id] == 7
     @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2)
     @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8)
 end

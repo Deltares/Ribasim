@@ -33,28 +33,46 @@ def pid_control_model() -> Model:
 
     model.level_boundary.add(Node(4, Point(3, 0)), [level_boundary.Static(level=[5.0])])
 
-    pid_control_time = pid_control.Time(
-        time=[
-            "2020-01-01 00:00:00",
-            "2020-05-01 00:00:00",
-            "2020-07-01 00:00:00",
-            "2020-12-01 00:00:00",
+    model.pid_control.add(
+        Node(5, Point(1.5, 1)),
+        [
+            pid_control.Time(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                ],
+                listen_node_type="Basin",
+                listen_node_id=2,
+                target=[5.0, 5.0, 7.5, 7.5],
+                proportional=-1e-3,
+                integral=-1e-7,
+                derivative=0.0,
+            )
         ],
-        listen_node_type="Basin",
-        listen_node_id=2,
-        target=[5.0, 5.0, 7.5, 7.5],
-        proportional=-1e-3,
-        integral=-1e-7,
-        derivative=0.0,
     )
-
-    model.pid_control.add(Node(5, Point(1.5, 1)), [pid_control_time])
 
     # Flow rate will be overwritten by PID controller
     model.outlet.add(Node(6, Point(2, -0.5)), [outlet.Static(flow_rate=[0.0])])
     model.pid_control.add(
         Node(7, Point(1.5, -1)),
-        [pid_control_time],
+        [
+            pid_control.Time(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-05-01 00:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-12-01 00:00:00",
+                ],
+                listen_node_type="Basin",
+                listen_node_id=2,
+                target=[5.0, 5.0, 7.5, 7.5],
+                proportional=1e-3,
+                integral=1e-7,
+                derivative=0.0,
+            )
+        ],
     )
 
     model.edge.add(model.flow_boundary[1], model.basin[2], "flow")
