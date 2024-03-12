@@ -901,25 +901,26 @@ def flow_demand_model() -> Model:
     )
 
     model.tabulated_rating_curve.add(
-        Node(2, Point(1, 0)),
+        Node(2, Point(1, 0), subnetwork_id=2),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
     )
 
     model.level_boundary.add(
-        Node(1, Point(0, 0)), [level_boundary.Static(node_id=[1], level=[1.0])]
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(node_id=[1], level=[1.0])],
     )
 
     model.basin.add(
-        Node(3, Point(2, 0)),
+        Node(3, Point(2, 0), subnetwork_id=2),
         [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
     model.basin.add(
-        Node(7, Point(3, -1)),
+        Node(7, Point(3, -1), subnetwork_id=2),
         [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
 
     model.user_demand.add(
-        Node(4, Point(3, 0)),
+        Node(4, Point(3, 0), subnetwork_id=2),
         [
             user_demand.Static(
                 priority=[3], demand=1e-3, return_factor=1.0, min_level=0.2
@@ -927,7 +928,7 @@ def flow_demand_model() -> Model:
         ],
     )
     model.user_demand.add(
-        Node(6, Point(2, -1)),
+        Node(6, Point(2, -1), subnetwork_id=2),
         [
             user_demand.Static(
                 priority=[1], demand=1e-3, return_factor=1.0, min_level=0.2
@@ -935,7 +936,7 @@ def flow_demand_model() -> Model:
         ],
     )
     model.user_demand.add(
-        Node(8, Point(3, -2)),
+        Node(8, Point(3, -2), subnetwork_id=2),
         [
             user_demand.Static(
                 priority=[4], demand=1e-3, return_factor=1.0, min_level=0.2
@@ -944,8 +945,24 @@ def flow_demand_model() -> Model:
     )
 
     model.flow_demand.add(
-        Node(5, Point(1, -1)), [flow_demand.Static(demand=2e-3, priority=[2])]
+        Node(5, Point(1, -1), subnetwork_id=2),
+        [flow_demand.Static(demand=2e-3, priority=[2])],
     )
+
+    model.edge.add(
+        model.level_boundary[1],
+        model.tabulated_rating_curve[2],
+        "flow",
+        subnetwork_id=2,
+    )
+    model.edge.add(model.tabulated_rating_curve[2], model.basin[3], "flow")
+    model.edge.add(model.basin[3], model.user_demand[4], "flow")
+    model.edge.add(model.user_demand[4], model.basin[7], "flow")
+    model.edge.add(model.basin[7], model.user_demand[8], "flow")
+    model.edge.add(model.user_demand[8], model.basin[7], "flow")
+    model.edge.add(model.basin[3], model.user_demand[6], "flow")
+    model.edge.add(model.user_demand[6], model.basin[7], "flow")
+    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2], "control")
 
     return model
 
@@ -963,20 +980,26 @@ def linear_resistance_demand_model():
     )
 
     model.basin.add(
-        Node(1, Point(0, 0)),
+        Node(1, Point(0, 0), subnetwork_id=2),
         [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
     model.basin.add(
-        Node(3, Point(2, 0)),
+        Node(3, Point(2, 0), subnetwork_id=2),
         [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
 
     model.linear_resistance.add(
-        Node(2, Point(0, 1)),
+        Node(2, Point(0, 1), subnetwork_id=2),
         [linear_resistance.Static(resistance=1.0, max_flow_rate=[2.0])],
     )
 
     model.flow_demand.add(
-        Node(4, Point(1, 1)), [flow_demand.Static(priority=[1], demand=2.0)]
+        Node(4, Point(1, 1), subnetwork_id=2),
+        [flow_demand.Static(priority=[1], demand=2.0)],
     )
+
+    model.edge.add(model.basin[1], model.linear_resistance[2], "flow", subnetwork_id=1)
+    model.edge.add(model.linear_resistance[2], model.basin[3], "flow")
+    model.edge.add(model.flow_demand[4], model.linear_resistance[2], "control")
+
     return model
