@@ -8,7 +8,7 @@ import shapely
 from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import DataFrame, Series
+from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 from shapely.geometry import LineString, MultiLineString, Point
 
@@ -41,10 +41,6 @@ class EdgeSchema(pa.SchemaModel):
 
 class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
-
-    def __init__(self, **kwargs):
-        kwargs.setdefault("df", DataFrame[EdgeSchema]())
-        super().__init__(**kwargs)
 
     def add(
         self,

@@ -15,7 +15,7 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.SchemaModel):
-    node_id: Series[int]
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int64Dtype] = pa.Field(

@@ -235,7 +235,7 @@ class TableModel(FileModel, Generic[TableT]):
         if self.df is not None and self.filepath is not None:
             self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
-        elif self.df is not None and db_path is not None:
+        elif db_path is not None:
             self.sort()
             self._write_table(db_path)
 
@@ -358,8 +358,8 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         ----------
         path : FilePath
         """
-
-        gdf = gpd.GeoDataFrame(data=self.df)
+        df = DataFrame[self.tableschema()]() if self.df is None else self.df  # type:ignore
+        gdf = gpd.GeoDataFrame(data=df)
         gdf = gdf.set_geometry("geometry")
         gdf.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
