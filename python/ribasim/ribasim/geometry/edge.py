@@ -63,7 +63,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             if geometry is None
             else [geometry]
         )
-        table_to_append = GeoDataFrame(
+        table_to_append = GeoDataFrame[EdgeSchema](
             data={
                 "from_node_type": pd.Series([from_node.node_type], dtype=str),
                 "from_node_id": pd.Series([from_node.node_id], dtype=int),
@@ -79,7 +79,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         if self.df is None:
             self.df = table_to_append
         else:
-            self.df = pd.concat([self.df, table_to_append])
+            self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
