@@ -8,8 +8,9 @@ import shapely
 from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import Series
+from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
@@ -41,6 +42,12 @@ class EdgeSchema(pa.SchemaModel):
 
 class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
+
+    @model_validator(mode="after")
+    def empty_table(self) -> "EdgeTable":
+        if self.df is None:
+            self.df = DataFrame[EdgeSchema]()
+        return self
 
     def add(
         self,
