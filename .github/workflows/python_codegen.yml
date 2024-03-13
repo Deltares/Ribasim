@@ -10,8 +10,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  mypy:
-    name: Mypy
+  codegen:
+    name: Codegen
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
