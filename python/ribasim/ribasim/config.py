@@ -5,7 +5,7 @@ from typing import Any
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -107,6 +107,11 @@ class Node(pydantic.BaseModel):
 class MultiNodeModel(NodeModel):
     node: NodeTable = Field(default_factory=NodeTable)
     _node_type: str
+
+    @model_validator(mode="after")
+    def filter(self) -> "MultiNodeModel":
+        self.node.filter(self.__class__.__name__)
+        return self
 
     def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
         if tables is None:
