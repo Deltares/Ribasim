@@ -237,26 +237,17 @@ end
 """
 Adjust the source capacities.
 """
-function adjust_source_capacities!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-)::Nothing
+function adjust_source_capacities!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
-    (; graph) = p
-    (; allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     F = problem[:F]
 
-    for edge_id in edge_ids
-        if graph[edge_id...].allocation_network_id_source == allocation_network_id
-            # If it is a source edge for this allocation problem
-            # Subtract the allocated flow from the source
-            JuMP.set_normalized_rhs(
-                source_constraints[edge_id],
-                JuMP.normalized_rhs(source_constraints[edge_id]) - JuMP.value(F[edge_id]),
-            )
-        end
+    for edge_id in only(source_constraints.axes)
+        # Subtract the allocated flow from the source
+        JuMP.set_normalized_rhs(
+            source_constraints[edge_id],
+            JuMP.normalized_rhs(source_constraints[edge_id]) - JuMP.value(F[edge_id]),
+        )
     end
     return nothing
 end
@@ -299,18 +290,12 @@ Set the values of the edge capacities. 2 cases:
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the edge capacities.
 """
-function adjust_edge_capacities!(allocation_model::AllocationModel, p::Parameters)::Nothing
-    (; graph) = p
-    (; problem, allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
+function adjust_edge_capacities!(allocation_model::AllocationModel)::Nothing
+    (; problem) = allocation_model
     constraints_capacity = problem[:capacity]
     F = problem[:F]
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
-    for edge_id in edge_ids
-        if edge_id ∈ main_network_source_edges
-            continue
-        end
+    for edge_id in only(constraints_capacity.axes)
         # Before an allocation solve, subtract the flow used by allocation for the previous priority
         # from the edge capacities
         JuMP.set_normalized_rhs(
@@ -651,8 +636,8 @@ function allocate!(
         )
 
         # Adjust capacities for the next priority
-        adjust_source_capacities!(allocation_model, p)
-        adjust_edge_capacities!(allocation_model, p)
+        adjust_source_capacities!(allocation_model)
+        adjust_edge_capacities!(allocation_model)
         adjust_basin_capacities!(allocation_model)
     end
 end
