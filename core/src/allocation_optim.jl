@@ -209,9 +209,8 @@ function set_initial_source_capacities!(
     optimization_type::OptimizationType.T,
 )::Nothing
     (; problem) = allocation_model
-    (; graph, allocation) = p
+    (; graph) = p
     (; allocation_network_id) = allocation_model
-    (; subnetwork_allocateds) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
@@ -223,12 +222,12 @@ function set_initial_source_capacities!(
                optimization_type != OptimizationType.collect_demands
                 # Reset the source to the current flow from the physical layer.
                 source_capacity = get_flow(graph, edge_id..., 0)
+                JuMP.set_normalized_rhs(
+                    source_constraints[edge_id],
+                    # It is assumed that the allocation procedure does not have to be differentiated.
+                    source_capacity,
+                )
             end
-            JuMP.set_normalized_rhs(
-                source_constraints[edge_id],
-                # It is assumed that the allocation procedure does not have to be differentiated.
-                source_capacity,
-            )
         end
     end
     return nothing
@@ -261,7 +260,7 @@ function set_initial_edge_capacities!(
     (; problem, capacity, allocation_network_id) = allocation_model
     edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
-    F = problem[:F]
+    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
     # Do not reset the edge capacities when collecting demands
     # (capacities have been reduced by flow from internal sources)
@@ -576,8 +575,11 @@ function allocate!(
     (; allocation) = p
     (; problem, allocation_network_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
-
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
+
+    if allocation_network_id == 1
+        @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
+    end
 
     # Reset the subnetwork demands to 0.0
     if optimization_type == OptimizationType.collect_demands
@@ -635,7 +637,7 @@ function allocate!(
             optimization_type,
         )
 
-        # Adjust capacities for the next priority
+        # Adjust capacities for the optimization of next priority
         adjust_source_capacities!(allocation_model)
         adjust_edge_capacities!(allocation_model)
         adjust_basin_capacities!(allocation_model)

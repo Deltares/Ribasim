@@ -134,6 +134,9 @@ function continuous_control!(
 
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
+        controlled_node_idx =
+            controls_pump ? findsorted(pump.node_id, controlled_node_id) :
+            findsorted(outlet.node_id, controlled_node_id)
 
         if !controls_pump
             src_id = inflow_id(graph, controlled_node_id)
@@ -152,7 +155,6 @@ function continuous_control!(
 
             # No flow out outlet if source level is lower than minimum crest level
             if src_level !== nothing
-                controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
                 factor_outlet *= reduction_factor(
                     src_level - outlet.min_crest_level[controlled_node_idx],
                     0.1,
