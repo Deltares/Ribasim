@@ -21,8 +21,8 @@ def backwater_model():
     ids = np.arange(1, node_type.size + 1, dtype=np.int64)
 
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.flow_boundary.add(
