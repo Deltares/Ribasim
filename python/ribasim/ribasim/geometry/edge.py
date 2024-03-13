@@ -1,18 +1,26 @@
-from typing import Any
+from typing import Any, NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
+from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import Series
+from pandera.typing import DataFrame, Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
 
-__all__ = ("Edge",)
+__all__ = ("EdgeTable",)
+
+
+class NodeData(NamedTuple):
+    node_id: int
+    node_type: str
+    geometry: Point
 
 
 class EdgeSchema(pa.SchemaModel):
@@ -31,15 +39,44 @@ class EdgeSchema(pa.SchemaModel):
         add_missing_columns = True
 
 
-class Edge(SpatialTableModel[EdgeSchema]):
-    """
-    Defines the connections between nodes.
+class EdgeTable(SpatialTableModel[EdgeSchema]):
+    """Defines the connections between nodes."""
 
-    Parameters
-    ----------
-    static : pandas.DataFrame
-        Table describing the flow connections.
-    """
+    def __init__(self, **kwargs):
+        kwargs.setdefault("df", DataFrame[EdgeSchema]())
+        super().__init__(**kwargs)
+
+    def add(
+        self,
+        from_node: NodeData,
+        to_node: NodeData,
+        edge_type: str,
+        geometry: LineString | MultiLineString | None = None,
+        name: str = "",
+        subnetwork_id: int | None = None,
+    ):
+        geometry_to_append = (
+            [LineString([from_node.geometry, to_node.geometry])]
+            if geometry is None
+            else [geometry]
+        )
+        table_to_append = GeoDataFrame(
+            data={
+                "from_node_type": pd.Series([from_node.node_type], dtype=str),
+                "from_node_id": pd.Series([from_node.node_id], dtype=int),
+                "to_node_type": pd.Series([to_node.node_type], dtype=str),
+                "to_node_id": pd.Series([to_node.node_id], dtype=int),
+                "edge_type": pd.Series([edge_type], dtype=str),
+                "name": pd.Series([name], dtype=str),
+                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int64Dtype()),
+            },
+            geometry=geometry_to_append,
+        )
+
+        if self.df is None:
+            self.df = table_to_append
+        else:
+            self.df = pd.concat([self.df, table_to_append])  # type: ignore
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None

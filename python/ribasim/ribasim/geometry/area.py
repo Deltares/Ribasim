@@ -8,5 +8,5 @@ from ribasim.schemas import _BaseSchema
 
 
 class BasinAreaSchema(_BaseSchema):
-    node_id: Series[int]
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
