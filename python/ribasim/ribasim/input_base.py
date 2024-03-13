@@ -17,6 +17,7 @@ import geopandas as gpd
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
+from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import (
     ConfigDict,
@@ -339,6 +340,8 @@ class TableModel(FileModel, Generic[TableT]):
 
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):
+    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+
     @classmethod
     def _from_db(cls, path: FilePath, table: str):
         with connect(path) as connection:
