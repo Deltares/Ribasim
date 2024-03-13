@@ -85,13 +85,7 @@ function set_objective_priority!(
             continue
         end
 
-        user_demand_idx = findsorted(node_id, node_id_user_demand)
-        if demand_from_timeseries[user_demand_idx]
-            d = demand_itp[user_demand_idx][priority_idx](t)
-            set_user_demand!(p, node_id_user_demand, priority_idx, d)
-        else
-            d = get_user_demand(p, node_id_user_demand, priority_idx)
-        end
+        d = get_user_demand(p, node_id_user_demand, priority_idx)
         demand_max = max(demand_max, d)
         add_user_demand_term!(edge_id, d, problem)
     end
@@ -203,7 +197,7 @@ function set_main_network_source_capacities!(
     return nothing
 end
 
-function set_initial_source_capacities!(
+function set_initial_capacities_source!(
     allocation_model::AllocationModel,
     p::Parameters,
     optimization_type::OptimizationType.T,
@@ -236,7 +230,7 @@ end
 """
 Adjust the source capacities.
 """
-function adjust_source_capacities!(allocation_model::AllocationModel)::Nothing
+function adjust_capacities_source!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
     source_constraints = problem[:source]
     F = problem[:F]
@@ -251,7 +245,7 @@ function adjust_source_capacities!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
-function set_initial_edge_capacities!(
+function set_initial_capacities_edge!(
     allocation_model::AllocationModel,
     p::Parameters,
     optimization_type::OptimizationType.T,
@@ -289,7 +283,7 @@ Set the values of the edge capacities. 2 cases:
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the edge capacities.
 """
-function adjust_edge_capacities!(allocation_model::AllocationModel)::Nothing
+function adjust_capacities_edge!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
     constraints_capacity = problem[:capacity]
     F = problem[:F]
@@ -388,7 +382,7 @@ function get_basin_demand(
     end
 end
 
-function set_initial_basin_capacities!(
+function set_initial_capacities_basin!(
     allocation_model::AllocationModel,
     p::Parameters,
     u::ComponentVector,
@@ -419,7 +413,7 @@ Set the values of the basin outflows. 2 cases:
 - Before an allocation solve, subtract the flow used by allocation for the previous priority
   from the capacities.
 """
-function adjust_basin_capacities!(allocation_model::AllocationModel)::Nothing
+function adjust_capacities_basin!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
     constraints_outflow = problem[:basin_outflow]
     F_basin_out = problem[:F_basin_out]
@@ -432,6 +426,60 @@ function adjust_basin_capacities!(allocation_model::AllocationModel)::Nothing
         )
     end
 
+    return nothing
+end
+
+function set_initial_demands_user!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+    optimization_type::OptimizationType.T,
+)::Nothing
+    (; allocation_network_id) = allocation_model
+    (; graph, user_demand, allocation) = p
+    (; node_id, demand_from_timeseries, demand_itp) = user_demand
+
+    # When collecting demands, use the reduced demands
+    # that are left over after using internal sources in the subnetwork
+    if optimization_type == OptimizationType.collect_demands
+        return nothing
+    end
+
+    # Read the demand from the interpolated timeseries
+    # for users for which the demand comes from there
+    for (i, id) in enumerate(node_id)
+        if demand_from_timeseries[i] &&
+           graph[id].allocation_network_id == allocation_network_id
+            for priority_idx in eachindex(allocation.priorities)
+                d = demand_itp[i][priority_idx](t)
+                set_user_demand!(p, id, priority_idx, d; reduced = false)
+            end
+        end
+    end
+    copy!(user_demand.demand_reduced, user_demand.demand)
+    return nothing
+end
+
+function adjust_demands_user!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
+    (; problem, allocation_network_id) = allocation_model
+    (; graph, user_demand) = p
+    F = problem[:F]
+
+    # Reduce the demand by what was allocated
+    for id in user_demand.node_id
+        if graph[id].allocation_network_id == allocation_network_id
+            d = max(
+                0.0,
+                get_user_demand(p, id, priority_idx) -
+                JuMP.value(F[(inflow_id(graph, id), id)]),
+            )
+            set_user_demand!(p, id, priority_idx, d)
+        end
+    end
     return nothing
 end
 
@@ -590,10 +638,13 @@ function allocate!(
         end
     end
 
-    # Set initial capacities which are reduced by usage in the adjust_*! methods
-    set_initial_source_capacities!(allocation_model, p, optimization_type)
-    set_initial_edge_capacities!(allocation_model, p, optimization_type)
-    set_initial_basin_capacities!(allocation_model, p, u, t, optimization_type)
+    # Set initial capacities which are reduced by usage in the adjust_capacities_*! methods
+    set_initial_capacities_source!(allocation_model, p, optimization_type)
+    set_initial_capacities_edge!(allocation_model, p, optimization_type)
+    set_initial_capacities_basin!(allocation_model, p, u, t, optimization_type)
+
+    # Set initial demands which are reduced by usage in the adjust_demands_*! methods
+    set_initial_demands_user!(allocation_model, p, t, optimization_type)
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
@@ -637,9 +688,12 @@ function allocate!(
             optimization_type,
         )
 
-        # Adjust capacities for the optimization of next priority
-        adjust_source_capacities!(allocation_model)
-        adjust_edge_capacities!(allocation_model)
-        adjust_basin_capacities!(allocation_model)
+        # Adjust capacities for the optimization for the next priority
+        adjust_capacities_source!(allocation_model)
+        adjust_capacities_edge!(allocation_model)
+        adjust_capacities_basin!(allocation_model)
+
+        # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
+        adjust_demands_user!(allocation_model, p, priority_idx)
     end
 end

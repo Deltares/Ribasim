@@ -626,23 +626,33 @@ end
 
 function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
     (; user_demand, allocation) = p
-    (; demand) = user_demand
+    (; demand_reduced) = user_demand
     user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
+    idx = (user_demand_idx - 1) * n_priorities + priority_idx
+    return demand_reduced[idx]
 end
 
 function set_user_demand!(
     p::Parameters,
     node_id::NodeID,
     priority_idx::Int,
-    value::Float64,
+    value::Float64;
+    reduced::Bool = true,
 )::Nothing
     (; user_demand, allocation) = p
-    (; demand) = user_demand
+    (; demand, demand_reduced) = user_demand
+
     user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
-    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
+    idx = (user_demand_idx - 1) * n_priorities + priority_idx
+
+    if reduced
+        demand_reduced[idx] = value
+    else
+        demand[idx] = value
+    end
+
     return nothing
 end
 

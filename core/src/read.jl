@@ -743,6 +743,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     end
 
     realized_bmi = zeros(length(node_ids))
+    demand_reduced = zero(demand)
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
     return UserDemand(
@@ -750,6 +751,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
         active,
         realized_bmi,
         demand,
+        demand_reduced,
         demand_itp,
         demand_from_timeseries,
         allocated,
