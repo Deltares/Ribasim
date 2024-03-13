@@ -180,7 +180,7 @@ end
 
     # Subnetworks interpreted as user_demands require variables and constraints to
     # support absolute value expressions in the objective function
-    allocation_model_main_network = Ribasim.get_allocation_model(p, 1)
+    allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
     problem = allocation_model_main_network.problem
     @test problem[:F_abs_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
     @test problem[:abs_positive_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
@@ -188,11 +188,11 @@ end
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
-    @test Ribasim.get_allocation_model(p, 3).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source].axes[1] ==
           [(NodeID(:Basin, 2), NodeID(:Pump, 11))]
-    @test Ribasim.get_allocation_model(p, 5).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(5)).problem[:source].axes[1] ==
           [(NodeID(:Basin, 6), NodeID(:Pump, 24))]
-    @test Ribasim.get_allocation_model(p, 7).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(7)).problem[:source].axes[1] ==
           [(NodeID(:Basin, 10), NodeID(:Pump, 38))]
 end
 

@@ -18,7 +18,7 @@
 
     graph[1, 2] = :yes
 
-    node_ids = Dict{Int, Set{NodeID}}()
+    node_ids = Dict{Int32, Set{NodeID}}()
     node_ids[0] = Set{NodeID}()
     node_ids[-1] = Set{NodeID}()
     push!(node_ids[0], NodeID(:Basin, 1))
@@ -55,7 +55,7 @@ end
         graph_data = Tuple,
     )
 
-    node_ids = Dict{Int, Set{NodeID}}()
+    node_ids = Dict{Int32, Set{NodeID}}()
     node_ids[1] = Set{NodeID}()
     push!(node_ids[1], NodeID(:Basin, 1))
     push!(node_ids[1], NodeID(:Basin, 2))
