@@ -132,7 +132,6 @@ def test_node_ids_unsequential(basic):
     model.validate_model_node_field_ids()
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
     basin_area = tabulated_rating_curve.basin.area.df
@@ -155,7 +154,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     # for node an explicit index was provided
     nrow = len(model_orig.basin.node.df)
     assert model_orig.basin.node.df.index.name is None
-    # assert model_orig.basin.node.df.index.equals(pd.Index(np.full(nrow, 0)))
+
     # for edge no index was provided, but it still needs to write it to file
     nrow = len(model_orig.edge.df)
     assert model_orig.edge.df.index.name is None
