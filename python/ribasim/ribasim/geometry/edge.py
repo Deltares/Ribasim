@@ -76,7 +76,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         if self.df is None:
             self.df = table_to_append
         else:
-            self.df = pd.concat([self.df, table_to_append])  # type: ignore
+            self.df = pd.concat([self.df, table_to_append])
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None

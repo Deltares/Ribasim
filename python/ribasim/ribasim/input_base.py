@@ -361,10 +361,9 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         ----------
         path : FilePath
         """
-
-        gdf = gpd.GeoDataFrame(data=self.df)
-        gdf = gdf.set_geometry("geometry")
-        gdf.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
+        if self.df is None:
+            return
+        self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
         if self.df is not None:

@@ -132,7 +132,7 @@ class MultiNodeModel(NodeModel):
             node_type=self.__class__.__name__,
         )
         self.node.df = (
-            node_table  # type: ignore
+            node_table
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
