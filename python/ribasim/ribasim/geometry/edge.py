@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
-from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import DataFrame, Series
-from pandera.typing.geopandas import GeoSeries
+from pandera.typing import Series
+from pandera.typing.geopandas import GeoDataFrame, GeoSeries
+from pydantic import model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
@@ -42,9 +42,12 @@ class EdgeSchema(pa.SchemaModel):
 class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
 
-    def __init__(self, **kwargs):
-        kwargs.setdefault("df", DataFrame[EdgeSchema]())
-        super().__init__(**kwargs)
+    @model_validator(mode="after")
+    def empty_table(self) -> "EdgeTable":
+        if self.df is None:
+            self.df = GeoDataFrame[EdgeSchema]()
+        self.df.set_geometry("geometry", inplace=True)
+        return self
 
     def add(
         self,
@@ -60,7 +63,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             if geometry is None
             else [geometry]
         )
-        table_to_append = GeoDataFrame(
+        table_to_append = GeoDataFrame[EdgeSchema](
             data={
                 "from_node_type": pd.Series([from_node.node_type], dtype=str),
                 "from_node_id": pd.Series([from_node.node_id], dtype=int),
@@ -76,7 +79,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         if self.df is None:
             self.df = table_to_append
         else:
-            self.df = pd.concat([self.df, table_to_append])  # type: ignore
+            self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None

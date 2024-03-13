@@ -31,6 +31,13 @@ class NodeSchema(pa.SchemaModel):
 class NodeTable(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
 
+    def filter(self, nodetype: str):
+        """Filter the node table based on the node type."""
+        if self.df is not None:
+            mask = self.df[self.df["node_type"] != nodetype].index
+            self.df.drop(mask, inplace=True)
+            self.df.reset_index(inplace=True, drop=True)
+
     def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
         if ax is None:
             _, ax = plt.subplots()
