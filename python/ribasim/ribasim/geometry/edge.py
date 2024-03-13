@@ -5,11 +5,10 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 import shapely
-from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.typing import DataFrame, Series
-from pandera.typing.geopandas import GeoSeries
+from pandera.typing import Series
+from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
@@ -46,7 +45,8 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
     @model_validator(mode="after")
     def empty_table(self) -> "EdgeTable":
         if self.df is None:
-            self.df = DataFrame[EdgeSchema]()
+            self.df = GeoDataFrame[EdgeSchema]()
+        self.df.set_geometry("geometry", inplace=True)
         return self
 
     def add(
