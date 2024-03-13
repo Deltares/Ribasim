@@ -78,9 +78,9 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
-    def plot(self, **kwargs) -> Axes:
+    def plot(self, **kwargs) -> Axes | None:
         if self.df is None:
-            return
+            return None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
         color_flow = kwargs.pop("color_flow", None)
