@@ -115,7 +115,6 @@ end
 @option struct Allocation <: TableOption
     timestep::Union{Float64, Nothing} = nothing
     use_allocation::Bool = false
-    objective_type::String = "linear_absolute"
 end
 
 @option @addnodetypes struct Toml <: TableOption

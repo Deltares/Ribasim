@@ -1,394 +1,223 @@
-import geopandas as gpd
-import numpy as np
+from typing import Any
+
 import pandas as pd
-import ribasim
+from ribasim.config import Node
+from ribasim.input_base import TableModel
+from ribasim.model import Model
+from ribasim.nodes import (
+    basin,
+    discrete_control,
+    flow_boundary,
+    fractional_flow,
+    pump,
+    tabulated_rating_curve,
+)
+from shapely.geometry import Point
 
 
-def invalid_qh_model():
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: TabulatedRatingCurve
-            (0.0, 1.0),  # 2: TabulatedRatingCurve,
-            (0.0, 2.0),  # 3: Basin
-        ]
-    )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-    node_type = 2 * ["TabulatedRatingCurve"] + ["Basin"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
+def invalid_qh_model() -> Model:
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-12-01 00:00:00",
     )
 
-    # Setup the edges:
-    from_id = np.array([], dtype=np.int64)
-    to_id = np.array([], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [3, 3],
-            "area": [0.01, 1.0],
-            "level": [0.0, 1.0],
-        }
-    )
-
-    state = pd.DataFrame(data={"node_id": [3], "level": 1.4112729908597084})
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    rating_curve_static = pd.DataFrame(
+    model.tabulated_rating_curve.add(
+        Node(1, Point(0, 0)),
         # Invalid: levels must not be repeated
-        data={"node_id": [1, 1], "level": [0.0, 0.0], "flow_rate": [1.0, 2.0]}
+        [tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2])],
     )
-    rating_curve_time = pd.DataFrame(
-        data={
-            "node_id": [2, 2],
-            "time": [
-                pd.Timestamp("2020-01"),
-                pd.Timestamp("2020-01"),
-            ],
-            # Invalid: levels must not be repeated
-            "level": [0.0, 0.0],
-            "flow_rate": [1.0, 2.0],
-        }
+    model.tabulated_rating_curve.add(
+        Node(2, Point(0, 1)),
+        [
+            tabulated_rating_curve.Time(
+                time=[
+                    pd.Timestamp("2020-01-01 00:00:00"),
+                    pd.Timestamp("2020-01-01 00:00:00"),
+                ],
+                # Invalid: levels must not be repeated
+                level=[0, 0],
+                flow_rate=[1, 2],
+            )
+        ],
     )
-
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=rating_curve_static, time=rating_curve_time
-    )
-
-    model = ribasim.Model(
-        network=ribasim.Network(
-            edge=edge,
-            node=node,
-        ),
-        basin=basin,
-        tabulated_rating_curve=rating_curve,
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+    model.basin.add(
+        Node(3, Point(0, 2)),
+        [
+            basin.State(level=[1.4112729908597084]),
+            basin.Profile(area=[0.01, 1], level=[0, 1]),
+        ],
     )
 
     return model
 
 
-def invalid_fractional_flow_model():
-    xy = np.array(
-        [
-            (0.0, 1.0),  # 1: Basin
-            (-1.0, 0.0),  # 2: Basin
-            (0.0, -1.0),  # 3: FractionalFlow
-            (1.0, 0.0),  # 4: FractionalFlow
-            (0.0, -2.0),  # 5: Terminal
-            (0.0, 2.0),  # 6: Terminal
-            (0.0, 0.0),  # 7: TabulatedRatingCurve
-            (-1.0, -1.0),  # 8: FractionalFlow
-        ]
+def invalid_fractional_flow_model() -> Model:
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-12-01 00:00:00",
     )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
 
-    node_type = [
-        "Basin",
-        "Basin",
-        "FractionalFlow",
-        "FractionalFlow",
-        "Terminal",
-        "Terminal",
-        "TabulatedRatingCurve",
-        "FractionalFlow",
+    basin_shared: list[TableModel[Any]] = [
+        basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
+        basin.State(level=[1.4112729908597084]),
     ]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
+    model.basin.add(Node(1, Point(0, 1)), basin_shared)
+    model.basin.add(Node(2, Point(-1, 0)), basin_shared)
+    # Invalid: fractions must be non-negative and add up to approximately 1
+    model.fractional_flow.add(
+        Node(3, Point(0, -1)), [fractional_flow.Static(fraction=[-0.1])]
+    )
+    model.fractional_flow.add(
+        Node(4, Point(1, 0)), [fractional_flow.Static(fraction=[0.5])]
+    )
+    model.terminal.add(Node(5, Point(0, -2)))
+    model.terminal.add(Node(6, Point(0, 2)))
+    model.tabulated_rating_curve.add(
+        Node(7, Point(0, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 50.0])],
+    )
+    # Invalid: #8 comes from a Basin
+    model.fractional_flow.add(
+        Node(8, Point(-1, -1)), [fractional_flow.Static(fraction=[1.0])]
     )
 
-    # Setup the edges:
+    model.edge.add(
+        model.basin[1],
+        model.tabulated_rating_curve[7],
+        "flow",
+    )
     # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
-    from_id = np.array([1, 7, 7, 3, 7, 4, 2], dtype=np.int64)
-    to_id = np.array([7, 2, 3, 5, 4, 6, 8], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": len(from_id) * ["flow"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
+    model.edge.add(
+        model.tabulated_rating_curve[7],
+        model.basin[2],
+        "flow",
     )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 2, 2],
-            "area": 2 * [0.01, 1.0],
-            "level": 2 * [0.0, 1.0],
-        }
+    model.edge.add(
+        model.tabulated_rating_curve[7],
+        model.fractional_flow[3],
+        "flow",
     )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1, 2],
-            "level": 1.4112729908597084,
-        }
+    model.edge.add(
+        model.fractional_flow[3],
+        model.terminal[5],
+        "flow",
     )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup terminal:
-    terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": [5, 6]}))
-
-    # Setup the fractional flow:
-    fractional_flow = ribasim.FractionalFlow(
-        # Invalid: fractions must be non-negative and add up to approximately 1
-        # Invalid: #8 comes from a Basin
-        static=pd.DataFrame(data={"node_id": [3, 4, 8], "fraction": [-0.1, 0.5, 1.0]})
+    model.edge.add(
+        model.tabulated_rating_curve[7],
+        model.fractional_flow[4],
+        "flow",
     )
-
-    # Setup the tabulated rating curve:
-    rating_curve = ribasim.TabulatedRatingCurve(
-        static=pd.DataFrame(
-            data={"node_id": [7, 7], "level": [0.0, 1.0], "flow_rate": [0.0, 50.0]}
-        )
+    model.edge.add(
+        model.fractional_flow[4],
+        model.terminal[6],
+        "flow",
     )
-
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        fractional_flow=fractional_flow,
-        tabulated_rating_curve=rating_curve,
-        terminal=terminal,
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+    model.edge.add(
+        model.basin[2],
+        model.fractional_flow[8],
+        "flow",
     )
 
     return model
 
 
-def invalid_discrete_control_model():
-    xy = np.array(
+def invalid_discrete_control_model() -> Model:
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2020-12-01 00:00:00",
+    )
+
+    basin_shared: list[TableModel[Any]] = [
+        basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
+        basin.State(level=[1.4112729908597084]),
+    ]
+    model.basin.add(Node(1, Point(0, 0)), basin_shared)
+    # Invalid: DiscreteControl node #4 with control state 'foo'
+    # points to this pump but this control state is not defined for
+    # this pump. The pump having a control state that is not defined
+    # for DiscreteControl node #4 is fine.
+    model.pump.add(
+        Node(2, Point(1, 0)), [pump.Static(control_state="bar", flow_rate=[0.5 / 3600])]
+    )
+    model.basin.add(Node(3, Point(2, 0)), basin_shared)
+    model.flow_boundary.add(
+        Node(4, Point(3, 0)),
         [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: Pump
-            (2.0, 0.0),  # 3: Basin
-            (3.0, 0.0),  # 4: FlowBoundary
-            (1.0, 1.0),  # 5: DiscreteControl
-        ]
+            flow_boundary.Time(
+                time=["2020-01-01 00:00:00", "2020-11-01 00:00:00"],
+                flow_rate=[1.0, 2.0],
+            )
+        ],
     )
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["Basin", "Pump", "Basin", "FlowBoundary", "DiscreteControl"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2, 4, 5], dtype=np.int64)
-    to_id = np.array([2, 3, 3, 2], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": ["flow", "flow", "flow", "control"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 3, 3],
-            "area": 2 * [0.01, 1.0],
-            "level": 2 * [0.0, 1.0],
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "level": 1.4112729908597084,
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            # Invalid: DiscreteControl node #4 with control state 'foo'
-            # points to this pump but this control state is not defined for
-            # this pump. The pump having a control state that is not defined
-            # for DiscreteControl node #4 is fine.
-            data={
-                "control_state": ["bar"],
-                "node_id": [2],
-                "flow_rate": [0.5 / 3600],
-            }
-        )
-    )
-
-    # Setup level boundary:
-    flow_boundary = ribasim.FlowBoundary(
-        time=pd.DataFrame(
-            data={
-                "node_id": 2 * [4],
-                "flow_rate": [1.0, 2.0],
-                "time": ["2020-01-01 00:00:00", "2020-11-01 00:00:00"],
-            }
-        )
-    )
-
-    # Setup the discrete control:
-    condition = pd.DataFrame(
-        data={
-            "node_id": 3 * [5],
-            "listen_feature_id": [1, 4, 4],
-            "variable": ["level", "flow_rate", "flow_rate"],
-            "greater_than": [0.5, 1.5, 1.5],
-            # Invalid: look_ahead can only be specified for timeseries variables.
-            # Invalid: this look_ahead will go past the provided timeseries during simulation.
-            # Invalid: look_ahead must be non-negative.
-            "look_ahead": [100.0, 40 * 24 * 60 * 60, -10.0],
-        }
-    )
-
-    logic = pd.DataFrame(
-        data={
-            "node_id": [5],
+    model.discrete_control.add(
+        Node(5, Point(1, 1)),
+        [
+            discrete_control.Condition(
+                listen_node_type=["Basin", "FlowBoundary", "FlowBoundary"],
+                listen_node_id=[1, 4, 4],
+                variable=["level", "flow_rate", "flow_rate"],
+                greater_than=[0.5, 1.5, 1.5],
+                # Invalid: look_ahead can only be specified for timeseries variables.
+                # Invalid: this look_ahead will go past the provided timeseries during simulation.
+                # Invalid: look_ahead must be non-negative.
+                look_ahead=[100.0, 40 * 24 * 60 * 60, -10.0],
+            ),
             # Invalid: DiscreteControl node #4 has 2 conditions so
             # truth states have to be of length 2
-            "truth_state": ["FFFF"],
-            "control_state": ["foo"],
-        }
+            discrete_control.Logic(truth_state=["FFFF"], control_state=["foo"]),
+        ],
     )
 
-    discrete_control = ribasim.DiscreteControl(condition=condition, logic=logic)
-
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        pump=pump,
-        flow_boundary=flow_boundary,
-        discrete_control=discrete_control,
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+    model.edge.add(
+        model.basin[1],
+        model.pump[2],
+        "flow",
+    )
+    model.edge.add(
+        model.pump[2],
+        model.basin[3],
+        "flow",
+    )
+    model.edge.add(
+        model.flow_boundary[4],
+        model.basin[3],
+        "flow",
+    )
+    model.edge.add(
+        model.discrete_control[5],
+        model.pump[2],
+        "control",
     )
 
     return model
 
 
-def invalid_edge_types_model():
+def invalid_edge_types_model() -> Model:
     """Set up a minimal model with invalid edge types."""
 
-    xy = np.array(
-        [
-            (0.0, 0.0),  # 1: Basin
-            (1.0, 0.0),  # 2: Pump
-            (2.0, 0.0),  # 3: Basin
-        ]
-    )
-
-    node_xy = gpd.points_from_xy(x=xy[:, 0], y=xy[:, 1])
-
-    node_type = ["Basin", "Pump", "Basin"]
-
-    # Make sure the feature id starts at 1: explicitly give an index.
-    node = ribasim.Node(
-        df=gpd.GeoDataFrame(
-            data={"node_type": node_type},
-            index=pd.Index(np.arange(len(xy)) + 1, name="fid"),
-            geometry=node_xy,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the edges:
-    from_id = np.array([1, 2], dtype=np.int64)
-    to_id = np.array([2, 3], dtype=np.int64)
-    lines = node.geometry_from_connectivity(from_id, to_id)
-    edge = ribasim.Edge(
-        df=gpd.GeoDataFrame(
-            data={
-                "from_node_id": from_id,
-                "to_node_id": to_id,
-                "edge_type": ["foo", "bar"],
-            },
-            geometry=lines,
-            crs="EPSG:28992",
-        )
-    )
-
-    # Setup the basins:
-    profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 3, 3],
-            "area": [0.01, 1000.0] * 2,
-            "level": [0.0, 1.0] * 2,
-        }
-    )
-
-    state = pd.DataFrame(
-        data={
-            "node_id": [1, 3],
-            "level": 0.04471158417652035,
-        }
-    )
-
-    basin = ribasim.Basin(profile=profile, state=state)
-
-    # Setup pump:
-    pump = ribasim.Pump(
-        static=pd.DataFrame(
-            data={
-                "node_id": [2],
-                "flow_rate": [0.5 / 3600],
-            }
-        )
-    )
-
-    # Setup a model:
-    model = ribasim.Model(
-        network=ribasim.Network(node=node, edge=edge),
-        basin=basin,
-        pump=pump,
+    model = Model(
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-12-01 00:00:00",
+    )
+
+    basin_shared: list[TableModel[Any]] = [
+        basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
+        basin.State(level=[0.04471158417652035]),
+    ]
+
+    model.basin.add(Node(1, Point(0, 0)), basin_shared)
+    model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[0.5 / 3600])])
+    model.basin.add(Node(3, Point(2, 0)), basin_shared)
+
+    model.edge.add(
+        model.basin[1],
+        model.pump[2],
+        "foo",
+    )
+    model.edge.add(
+        model.pump[2],
+        model.basin[3],
+        "bar",
     )
 
     return model

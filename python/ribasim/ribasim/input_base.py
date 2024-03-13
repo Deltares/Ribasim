@@ -1,4 +1,5 @@
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -36,6 +37,7 @@ __all__ = ("TableModel",)
 delimiter = " / "
 
 gpd.options.io_engine = "pyogrio"
+warnings.filterwarnings("ignore", category=UserWarning, module="pyogrio")
 
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
@@ -247,7 +249,8 @@ class TableModel(FileModel, Generic[TableT]):
             SQLite connection to the database.
         """
         table = self.tablename()
-        assert self.df is not None
+        if self.df is None:
+            return
 
         # Add `fid` to all tables as primary key
         # Enables editing values manually in QGIS
@@ -358,12 +361,11 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
         gdf = gpd.GeoDataFrame(data=self.df)
         gdf = gdf.set_geometry("geometry")
-        gdf.index.name = "fid"
-
-        gdf.to_file(path, layer=self.tablename(), driver="GPKG", index=True)
+        gdf.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
-        self.df.sort_index(inplace=True)
+        if self.df is not None:
+            self.df.sort_index(inplace=True)
 
 
 class ChildModel(BaseModel):
@@ -408,10 +410,6 @@ class NodeModel(ChildModel):
     def _layername(cls, field: str) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def add(*args, **kwargs):
-        # TODO This is the new API
-        pass
-
     def tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
@@ -424,16 +422,16 @@ class NodeModel(ChildModel):
             node_ids.update(table.node_ids())
         return node_ids
 
-    def node_ids_and_types(self) -> tuple[list[int], list[str]]:
-        ids = self.node_ids()
-        return list(ids), len(ids) * [self.get_input_type()]
-
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
-        for field in self.fields():
-            getattr(self, field)._save(
-                directory,
-                input_dir,
-            )
+        # TODO: stop sorting loop so that "node" comes first
+        for field in sorted(self.fields(), key=lambda x: x != "node"):
+            attr = getattr(self, field)
+            # TODO
+            if hasattr(attr, "_save"):
+                attr._save(
+                    directory,
+                    input_dir,
+                )
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

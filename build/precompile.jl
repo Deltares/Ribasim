@@ -3,5 +3,5 @@
 
 using Ribasim
 
-toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-Ribasim.main(toml_path)
+toml_path = normpath(@__DIR__, "../generated_testmodels/basic/ribasim.toml")
+@assert Ribasim.main(toml_path) == 0

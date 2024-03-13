@@ -4,14 +4,13 @@ This widgets displays the available input layers in the GeoPackage.
 This widget also allows enabling or disabling individual elements for a
 computation.
 """
+
 from __future__ import annotations
 
-from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -29,19 +28,17 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 from qgis.core import (
-    QgsFeature,
     QgsMapLayer,
     QgsProject,
     QgsVectorLayer,
 )
-from qgis.core.additions.edit import edit
 
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
 )
 from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
-from ribasim_qgis.core.topology import derive_connectivity, explode_lines
+from ribasim_qgis.core.topology import set_edge_properties
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -174,53 +171,14 @@ class DatasetWidget(QWidget):
         """Returns currently active path to Ribasim model (.toml)"""
         return Path(self.dataset_line_edit.text())
 
-    def explode_and_connect(self) -> None:
+    def connect_nodes(self) -> None:
         node = self.node_layer
         edge = self.edge_layer
         assert edge is not None
         assert node is not None
-        explode_lines(edge)
 
-        n_node = node.featureCount()
-        n_edge = edge.featureCount()
-        if n_node == 0 or n_edge == 0:
-            return
-
-        node_xy = np.empty((n_node, 2), dtype=float)
-        node_index = np.empty(n_node, dtype=int)
-        node_iterator = cast(Iterable[QgsFeature], node.getFeatures())
-        for i, feature in enumerate(node_iterator):
-            point = feature.geometry().asPoint()
-            node_xy[i, 0] = point.x()
-            node_xy[i, 1] = point.y()
-            node_index[i] = feature.attribute(0)  # Store the feature id
-
-        edge_xy = np.empty((n_edge, 2, 2), dtype=float)
-        edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
-        for i, feature in enumerate(edge_iterator):
-            geometry = feature.geometry().asPolyline()
-            for j, point in enumerate(geometry):
-                edge_xy[i, j, 0] = point.x()
-                edge_xy[i, j, 1] = point.y()
-        edge_xy = edge_xy.reshape((-1, 2))
-        from_id, to_id = derive_connectivity(node_index, node_xy, edge_xy)
-
-        fields = edge.fields()
-        field1 = fields.indexFromName("from_node_id")
-        field2 = fields.indexFromName("to_node_id")
-        try:
-            # Avoid infinite recursion
-            edge.blockSignals(True)
-            with edit(edge):
-                edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
-                for feature, id1, id2 in zip(edge_iterator, from_id, to_id):
-                    fid = feature.id()
-                    # Nota bene: will fail with numpy integers, has to be Python type!
-                    edge.changeAttributeValue(fid, field1, int(id1))
-                    edge.changeAttributeValue(fid, field2, int(id2))
-
-        finally:
-            edge.blockSignals(False)
+        if (node.featureCount() > 0) and (edge.featureCount() > 0):
+            set_edge_properties(node, edge)
 
         return
 
@@ -287,7 +245,7 @@ class DatasetWidget(QWidget):
         # Connect node and edge layer to derive connectivities.
         self.node_layer = node.layer
         self.edge_layer = edge.layer
-        self.edge_layer.editingStopped.connect(self.explode_and_connect)
+        self.edge_layer.editingStopped.connect(self.connect_nodes)
         return
 
     def new_model(self) -> None:
