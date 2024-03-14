@@ -624,13 +624,24 @@ function is_main_network(allocation_network_id::Int)::Bool
     return allocation_network_id == 1
 end
 
-function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
+function get_user_demand(
+    p::Parameters,
+    node_id::NodeID,
+    priority_idx::Int;
+    reduced::Bool = true,
+)::Float64
     (; user_demand, allocation) = p
-    (; demand_reduced) = user_demand
+    (; demand, demand_reduced) = user_demand
     user_demand_idx = findsorted(user_demand.node_id, node_id)
     n_priorities = length(allocation.priorities)
     idx = (user_demand_idx - 1) * n_priorities + priority_idx
-    return demand_reduced[idx]
+
+    if reduced
+        @assert is_active(allocation) "reduced demand accessed in non-allocation run"
+        return demand_reduced[idx]
+    else
+        return demand[idx]
+    end
 end
 
 function set_user_demand!(
@@ -648,6 +659,7 @@ function set_user_demand!(
     idx = (user_demand_idx - 1) * n_priorities + priority_idx
 
     if reduced
+        @assert is_active(allocation) "reduced demand accessed in non-allocation run"
         demand_reduced[idx] = value
     else
         demand[idx] = value
