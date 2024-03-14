@@ -867,5 +867,7 @@ def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:
     gpkg_names = geopackage.layers(path)
     nodes = {}
     for layername in gpkg_names:
-        nodes[layername] = NODES[layername](path)
+        klass = NODES.get(layername)
+        if klass is not None:
+            nodes[layername] = NODES[layername](path)
     return nodes
