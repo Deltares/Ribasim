@@ -560,7 +560,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     record = (
         time = Float64[],
-        control_node_id = Int[],
+        control_node_id = Int32[],
         truth_state = String[],
         control_state = String[],
     )
@@ -666,7 +666,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     t_end = seconds_since(config.endtime, config.starttime)
 
     # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int, StructVector{UserDemandTimeV1}} = Dict(
+    time_priority_dict::Dict{Int32, StructVector{UserDemandTimeV1}} = Dict(
         first(group).priority => StructVector(group) for
         group in IterTools.groupby(row -> row.priority, time)
     )
@@ -788,7 +788,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
 
-    basin_ids = Int[]
+    basin_ids = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
@@ -820,10 +820,10 @@ end
 function Allocation(db::DB, config::Config)::Allocation
     record_demand = (
         time = Float64[],
-        subnetwork_id = Int[],
+        subnetwork_id = Int32[],
         node_type = String[],
-        node_id = Int[],
-        priority = Int[],
+        node_id = Int32[],
+        priority = Int32[],
         demand = Float64[],
         allocated = Float64[],
         realized = Float64[],
@@ -831,19 +831,19 @@ function Allocation(db::DB, config::Config)::Allocation
 
     record_flow = (
         time = Float64[],
-        edge_id = Int[],
+        edge_id = Int32[],
         from_node_type = String[],
-        from_node_id = Int[],
+        from_node_id = Int32[],
         to_node_type = String[],
-        to_node_id = Int[],
-        subnetwork_id = Int[],
-        priority = Int[],
+        to_node_id = Int32[],
+        subnetwork_id = Int32[],
+        priority = Int32[],
         flow_rate = Float64[],
         collect_demands = BitVector(),
     )
 
     allocation = Allocation(
-        Int[],
+        Int32[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         get_all_priorities(db, config),
@@ -930,7 +930,7 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_ids(db::DB, nodetype)::Vector{Int}
+function get_ids(db::DB, nodetype)::Vector{Int32}
     sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
 end

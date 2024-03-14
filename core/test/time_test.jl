@@ -16,12 +16,12 @@
     flow_added_1 =
         filter(
             [:time, :from_node_id, :to_node_id] =>
-                (t, from, to) -> is_summer(t) && from === 1 && to === 1,
+                (t, from, to) -> is_summer(t) && from == 1 && to == 1,
             flow,
         ).flow_rate
     flow_1_to_2 = filter(
         [:time, :from_node_id, :to_node_id] =>
-            (t, from, to) -> is_summer(t) && from === 1 && to === 2,
+            (t, from, to) -> is_summer(t) && from == 1 && to == 2,
         flow,
     )
     @test flow_added_1 == flow_1_to_2.flow_rate
