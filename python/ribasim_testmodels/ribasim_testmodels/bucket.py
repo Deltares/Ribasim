@@ -12,8 +12,8 @@ def bucket_model() -> ribasim.Model:
     """Bucket model with just a single basin."""
 
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -40,8 +40,8 @@ def leaky_bucket_model() -> ribasim.Model:
     """Bucket model with dynamic forcing with missings."""
 
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-01-05 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-01-05",
     )
 
     model.basin.add(

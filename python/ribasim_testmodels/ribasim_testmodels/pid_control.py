@@ -17,8 +17,8 @@ def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     model.flow_boundary.add(
@@ -38,10 +38,10 @@ def pid_control_model() -> Model:
         [
             pid_control.Time(
                 time=[
-                    "2020-01-01 00:00:00",
-                    "2020-05-01 00:00:00",
-                    "2020-07-01 00:00:00",
-                    "2020-12-01 00:00:00",
+                    "2020-01-01",
+                    "2020-05-01",
+                    "2020-07-01",
+                    "2020-12-01",
                 ],
                 listen_node_type="Basin",
                 listen_node_id=2,
@@ -60,10 +60,10 @@ def pid_control_model() -> Model:
         [
             pid_control.Time(
                 time=[
-                    "2020-01-01 00:00:00",
-                    "2020-05-01 00:00:00",
-                    "2020-07-01 00:00:00",
-                    "2020-12-01 00:00:00",
+                    "2020-01-01",
+                    "2020-05-01",
+                    "2020-07-01",
+                    "2020-12-01",
                 ],
                 listen_node_type="Basin",
                 listen_node_id=2,
@@ -90,17 +90,13 @@ def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     model.level_boundary.add(
         Node(1, Point(0, 0)),
-        [
-            level_boundary.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"], level=[7.0, 3.0]
-            )
-        ],
+        [level_boundary.Time(time=["2020-01-01", "2021-01-01"], level=[7.0, 3.0])],
     )
 
     # The flow_rate will be overwritten by PID controller
