@@ -7,12 +7,16 @@
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.boundaryconcentration" BasinBoundaryconcentration
+@schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
+@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.levelboundary.time" LevelBoundaryTime
+@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
@@ -96,6 +100,22 @@ end
     urban_runoff::Union{Missing, Float64}
 end
 
+@version BasinBoundaryconcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    drainage_concentration::Union{Missing, Float64}
+    precipitation_concentration::Union{Missing, Float64}
+    urban_runoff_concentration::Union{Missing, Float64}
+end
+
+@version BasinConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
+end
+
 @version BasinProfileV1 begin
     node_id::Int32
     area::Float64
@@ -132,6 +152,13 @@ end
     level::Float64
 end
 
+@version LevelBoundaryConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
+end
+
 @version FlowBoundaryStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
@@ -142,6 +169,13 @@ end
     node_id::Int32
     time::DateTime
     flow_rate::Float64
+end
+
+@version FlowBoundaryConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
 end
 
 @version LinearResistanceStaticV1 begin

@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -116,7 +117,7 @@ def basic_model() -> ribasim.Model:
     model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
 
     # Setup flow boundary
-    flow_boundary_data = [
+    flow_boundary_data: Sequence[TableModel[Any]] = [
         flow_boundary.Static(flow_rate=[1e-4]),
         flow_boundary.Concentration(
             time="2020-01-01 00:00:00", substance=["Tracer"], concentration=[1.0]
