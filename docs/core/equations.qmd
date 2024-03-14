@@ -461,7 +461,7 @@ From left to right:
 UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
 $$
-Q_\text{user_demand, out} = r \cdot Q_\text{userdemand, in}.
+Q_\text{userdemand, out} = r \cdot Q_\text{userdemand, in}.
 $$
 
 Note that this means that the user_demand has a consumption rate of $(1-r)Q_\text{userdemand, in}$.
