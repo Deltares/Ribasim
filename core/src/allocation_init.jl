@@ -441,7 +441,7 @@ end
 function add_constraints_user_source!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
