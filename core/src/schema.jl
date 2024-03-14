@@ -258,12 +258,12 @@ end
 @version FlowDemandStaticV1 begin
     node_id::Int
     demand::Float64
-    priority::Int
+    priority::Int32
 end
 
 @version FlowDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64
-    priority::Int
+    priority::Int32
 end

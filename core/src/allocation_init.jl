@@ -410,7 +410,7 @@ The variable indices are the node_ids of the nodes with a flow demand in the sub
 function add_variables_flow_buffer!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
 
@@ -912,7 +912,7 @@ flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 oth
 function add_constraints_flow_demand_outflow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]

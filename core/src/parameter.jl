@@ -542,7 +542,7 @@ struct FlowDemand
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}
-    priority::Vector{Int}
+    priority::Vector{Int32}
 end
 
 "Subgrid linearly interpolates basin levels."
