@@ -245,9 +245,9 @@ optimization_type = Ribasim.OptimizationType.allocate
 
 Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 1.0)
 
-Ribasim.set_initial_source_capacities!(allocation_model, p, optimization_type)
-Ribasim.set_initial_edge_capacities!(allocation_model, p, optimization_type)
-Ribasim.set_initial_basin_capacities!(allocation_model, p, u, t, optimization_type)
+Ribasim.set_initial_capacities_source!(allocation_model, p, optimization_type)
+Ribasim.set_initial_capacities_edge!(allocation_model, p, optimization_type)
+Ribasim.set_initial_capacities_basin!(allocation_model, p, u, t, optimization_type)
 Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
 
 println(p.allocation.allocation_models[1].problem)
