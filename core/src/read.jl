@@ -635,110 +635,142 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     )
 end
 
+function user_demand_static!(
+    active::BitVector,
+    demand::Vector{Float64},
+    demand_itp::Vector{Vector{ScalarInterpolation}},
+    return_factor::Vector{Float64},
+    min_level::Vector{Float64},
+    static::StructVector{UserDemandStaticV1},
+    node_ids::Vector{NodeID},
+    priorities::Vector{Int32},
+)::Nothing
+    user_demand_idx = 1
+    for group in IterTools.groupby(row -> row.node_id, static)
+        first_row = first(group)
+        while node_ids[user_demand_idx] < NodeID(NodeType.UserDemand, first_row.node_id)
+            user_demand_idx += 1
+        end
+
+        active[user_demand_idx] = coalesce(first_row.active, true)
+        return_factor[user_demand_idx] = first_row.return_factor
+        min_level[user_demand_idx] = first_row.min_level
+
+        priority_idx = 1
+        for row in group
+            while priorities[priority_idx] < row.priority
+                priority_idx += 1
+            end
+            demand_itp[user_demand_idx][priority_idx].u .= row.demand
+            demand[(user_demand_idx - 1) * length(priorities) + priority_idx] = row.demand
+        end
+    end
+    return nothing
+end
+
+function user_demand_time!(
+    active::BitVector,
+    demand::Vector{Float64},
+    demand_itp::Vector{Vector{ScalarInterpolation}},
+    demand_from_timeseries::BitVector,
+    return_factor::Vector{Float64},
+    min_level::Vector{Float64},
+    time::StructVector{UserDemandTimeV1},
+    node_ids::Vector{NodeID},
+    priorities::Vector{Int32},
+    config::Config,
+)::Bool
+    errors = false
+    t_end = seconds_since(config.endtime, config.starttime)
+    user_demand_idx = 1
+    for group in IterTools.groupby(row -> (row.node_id, row.priority), time)
+        first_row = first(group)
+        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
+        while node_ids[user_demand_idx] < node_id
+            user_demand_idx += 1
+        end
+
+        active[user_demand_idx] = true
+        demand_from_timeseries[user_demand_idx] = true
+        return_factor[user_demand_idx] = first_row.return_factor
+        min_level[user_demand_idx] = first_row.min_level
+
+        priority_idx = findsorted(priorities, first_row.priority)
+        demand_p_itp, is_valid = get_scalar_interpolation(
+            config.starttime,
+            t_end,
+            StructVector(group),
+            node_id,
+            :demand;
+            default_value = 0.0,
+        )
+        demand[(user_demand_idx - 1) * length(priorities) + priority_idx] =
+            demand_p_itp(0.0)
+
+        if is_valid
+            demand_itp[user_demand_idx][priority_idx] = demand_p_itp
+        else
+            @error "The demand(t) relationship for UserDemand $node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+            errors = true
+        end
+    end
+    return errors
+end
+
 function UserDemand(db::DB, config::Config)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, valid =
-        static_and_time_node_ids(db, static, time, "UserDemand")
-
-    time_node_id_vec = NodeID.(NodeType.UserDemand, time.node_id)
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
 
     if !valid
         error("Problems encountered when parsing UserDemand static and time node IDs.")
     end
 
-    # All priorities used in the model
+    # Initialize vectors for UserDemand fields
     priorities = get_all_priorities(db, config)
-
-    active = BitVector()
-    min_level = Float64[]
-    return_factor = Float64[]
-    demand_itp = Vector{ScalarInterpolation}[]
-
-    errors = false
+    n = length(node_ids)
+    active = BitVector(ones(Bool, n))
+    realized_bmi = zeros(n)
+    demand = zeros(n * length(priorities))
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
-    t_end = seconds_since(config.endtime, config.starttime)
+    demand_itp = [
+        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
+    ]
+    demand_from_timeseries = BitVector(zeros(Bool, n))
+    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+    return_factor = zeros(n)
+    min_level = zeros(n)
 
-    # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int32, StructVector{UserDemandTimeV1}} = Dict(
-        first(group).priority => StructVector(group) for
-        group in IterTools.groupby(row -> row.priority, time)
+    # Process static table
+    user_demand_static!(
+        active,
+        demand,
+        demand_itp,
+        return_factor,
+        min_level,
+        static,
+        node_ids,
+        priorities,
     )
 
-    demand = Float64[]
-
-    # Whether the demand of a UserDemand node is given by a timeseries
-    demand_from_timeseries = BitVector()
-
-    for node_id in node_ids
-        first_row = nothing
-        demand_itp_node_id = Vector{ScalarInterpolation}()
-
-        if node_id in static_node_ids
-            push!(demand_from_timeseries, false)
-            rows = searchsorted(NodeID.(NodeType.UserDemand, static.node_id), node_id)
-            static_id = view(static, rows)
-            for p in priorities
-                idx = findsorted(static_id.priority, p)
-                demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
-                demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
-                push!(demand_itp_node_id, demand_p_itp)
-                push!(demand, demand_p)
-            end
-            push!(demand_itp, demand_itp_node_id)
-            first_row = first(static_id)
-            is_active = coalesce(first_row.active, true)
-
-        elseif node_id in time_node_ids
-            push!(demand_from_timeseries, true)
-            for p in priorities
-                push!(demand, 0.0)
-                if p in keys(time_priority_dict)
-                    demand_p_itp, is_valid = get_scalar_interpolation(
-                        config.starttime,
-                        t_end,
-                        time_priority_dict[p],
-                        node_id,
-                        :demand;
-                        default_value = 0.0,
-                    )
-                    if is_valid
-                        push!(demand_itp_node_id, demand_p_itp)
-                    else
-                        @error "The demand(t) relationship for UserDemand #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
-                        errors = true
-                    end
-                else
-                    demand_p_itp = LinearInterpolation([0.0, 0.0], trivial_timespan)
-                    push!(demand_itp_node_id, demand_p_itp)
-                end
-            end
-            push!(demand_itp, demand_itp_node_id)
-
-            first_row_idx = searchsortedfirst(time_node_id_vec, node_id)
-            first_row = time[first_row_idx]
-            is_active = true
-        else
-            @error "UserDemand node #$node_id data not in any table."
-            errors = true
-        end
-
-        if !isnothing(first_row)
-            min_level_ = coalesce(first_row.min_level, 0.0)
-            return_factor_ = first_row.return_factor
-            push!(active, is_active)
-            push!(min_level, min_level_)
-            push!(return_factor, return_factor_)
-        end
-    end
+    # Process time table
+    errors = user_demand_time!(
+        active,
+        demand,
+        demand_itp,
+        demand_from_timeseries,
+        return_factor,
+        min_level,
+        time,
+        node_ids,
+        priorities,
+        config,
+    )
 
     if errors
         error("Errors occurred when parsing UserDemand data.")
     end
-
-    realized_bmi = zeros(length(node_ids))
-    allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
     return UserDemand(
         node_ids,
