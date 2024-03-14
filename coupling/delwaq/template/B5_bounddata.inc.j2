@@ -14,15 +14,15 @@ ITEM 'FlowBoundary'
 CONCENTRATIONS 'Continuity' 'FlowBoundary'
 DATA 1 1
 
-{% for boundary in boundaries %}
+{% for boundary in boundaries -%}
 ITEM '{{ boundary.name }}'
 CONCENTRATIONS {{ boundary.substances|join(' ')}}
-DATA 1 {{ boundary.concentrations|join(' ')}}
+DATA {{ boundary.concentrations|join(' ')}}
 
-{% endfor %}
-{% for state in states %}
+{% endfor -%}
+{% for state in states -%}
 ITEM '{{ state.name }}'
 CONCENTRATIONS {{ state.substances|join(' ')}}
 DATA {{ state.concentrations|join(' ')}}
 
-{% endfor %}
+{% endfor -%}

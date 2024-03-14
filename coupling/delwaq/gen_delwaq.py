@@ -1,10 +1,11 @@
 """Setup a Delwaq model from a Ribasim model and results."""
+
 import csv
-import math
 import shutil
 from datetime import timedelta
 from pathlib import Path
 
+import geopandas as gpd
 import meshkernel as mk
 import numpy as np
 import pandas as pd
@@ -25,24 +26,24 @@ fillvolume = 0.0
 
 # Read in model and results
 modelfn = Path("../../generated_testmodels/basic/ribasim.toml")
-modelfn = Path("../../nl/hws.toml")  # fixed hws model
+# modelfn = Path("../../hws_2024_3_0/hws.toml")  # fixed hws model
 model = ribasim.Model.read(modelfn)
+# model.write("nl_2024/ribasim.toml")  # write to new location
 basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
 flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
-
+node = gpd.read_file(modelfn.parent / "database.gpkg", layer="Node", fid_as_index=True)
 output_folder = Path("model")
 
 # Setup metadata
-if model.solver.dt is None:
+if model.solver.saveat is None:
     timestep = timedelta(seconds=3600)
 elif isinstance(model.solver.dt, list):
     raise ValueError("Multiple timesteps not supported")
 else:
-    timestep = timedelta(seconds=model.solver.dt)
+    timestep = timedelta(seconds=model.solver.saveat)
 
 # Setup topology, write to pointer file
-node = model.network.node.df
-edge = model.network.edge.df
+edge = model.edge.df
 edge = edge[edge.edge_type == "flow"]  # no control or allocation stuff please
 
 # Flows on non-existing edges indicate where the boundaries are
@@ -52,12 +53,15 @@ nboundary = g.edge_id.isna().sum()
 boundary_nodes = g.to_node_id[g.edge_id.isna()]
 new_boundary_ids = np.tile(-np.arange(1, nboundary + 1), tg.ngroups)
 flows.from_node_id.loc[flows.edge_id.isna()] = new_boundary_ids
-flows.to_csv(output_folder / "flows.csv", index=False)  # not needed
+# flows.to_csv(output_folder / "flows.csv", index=False)  # not needed
 
 
 tg = flows.groupby("time")
 pointer = tg.get_group(flows.time[0])
-pointer.drop(columns=["time", "flow", "edge_id"], inplace=True)
+pointer.drop(
+    columns=["time", "from_node_type", "to_node_type", "flow_rate", "edge_id"],
+    inplace=True,
+)
 write_pointer(output_folder / "ribasim.poi", pointer)
 
 total_segments = len(node.index)
@@ -109,7 +113,7 @@ volumes_nbasin = pd.DataFrame(
 )
 volumes = pd.concat([basins, volumes_nbasin])
 volumes.sort_values(by=["time", "node_id"], inplace=True)
-volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
+# volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
 volumes.drop(columns=["node_id"], inplace=True)
 write_volumes(output_folder / "ribasim.vol", volumes)
 volumes.storage = 1  # m/s
@@ -122,46 +126,46 @@ lengths = np.repeat(edge.geometry.length.to_numpy() / 2, 2).astype("float32")
 lengths = pd.DataFrame(
     {
         "time": np.repeat(rtime, len(lengths)),
-        "flow": np.tile(list(lengths), len(rtime)),
+        "flow_rate": np.tile(list(lengths), len(rtime)),
     }
 )
 write_flows(output_folder / "ribasim.len", lengths)
 
 # Find our boundaries
-bnd = node[node.index.isin(boundary_nodes)]["type"].reset_index()
 
 boundaries = []
 substances = set()
 
 
 def make_boundary(id, type):
-    return type + "_" + "#" + str(id)
+    return type[:10] + "_" + "#" + str(id)
 
 
-for i, row in model.level_boundary.static.df.iterrows():
-    if not math.isnan(row.concentration):
-        bid = make_boundary(row.node_id, "LevelBoundary")
-        boundaries.append(
-            {
-                "name": bid,
-                "concentrations": [row.concentration],
-                "substances": ["Cl"],
-            }
-        )
-        substances.add("Cl")
+for i, row in model.level_boundary.concentration.df.groupby(["node_id"]):
+    row = row.drop_duplicates(subset=["substance"])
+    bid = make_boundary(row.node_id.iloc[0], "LevelBoundary")
+    boundaries.append(
+        {
+            "name": bid,
+            "concentrations": row.concentration.to_list(),
+            "substances": row.substance.to_list(),
+        }
+    )
+    substances.update(row.substance)
 
 
-for i, row in model.flow_boundary.static.df.iterrows():
-    if not math.isnan(row.concentration):
-        bid = make_boundary(row.node_id, "FlowBoundary")
-        substances.add(bid)
-        boundaries.append(
-            {
-                "name": bid,
-                "concentrations": [row.concentration],
-                "substances": [bid],
-            }
-        )
+for i, row in model.flow_boundary.concentration.df.groupby("node_id"):
+    row = row.drop_duplicates(subset=["substance"])
+    bid = make_boundary(row.node_id.iloc[0], "FlowBoundary")
+    boundaries.append(
+        {
+            "name": bid,
+            "concentrations": row.concentration.to_list(),
+            "substances": row.substance.to_list(),
+        }
+    )
+    substances.update(row.substance)
+
 
 template = env.get_template("B5_bounddata.inc.j2")
 with open(output_folder / "B5_bounddata.inc", mode="w") as f:
@@ -172,10 +176,10 @@ with open(output_folder / "B5_bounddata.inc", mode="w") as f:
         )
     )
 
-
-bnd["fid"] = bnd["type"] + "_" + "#" + bnd["fid"].astype(str)
+bnd = node[node.index.isin(boundary_nodes)]["node_type"].reset_index()
+bnd["fid"] = bnd["node_type"].str[:10] + "_" + "#" + bnd["fid"].astype(str)
 bnd["comment"] = ""
-bnd = bnd[["fid", "comment", "type"]]
+bnd = bnd[["fid", "comment", "node_type"]]
 bnd.to_csv(
     output_folder / "ribasim_bndlist.inc",
     index=False,

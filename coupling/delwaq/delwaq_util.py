@@ -2,6 +2,7 @@
 
 import struct
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
@@ -80,7 +81,7 @@ def write_flows(fn: str, data: pd.DataFrame):
     with open(fn, "wb") as f:
         for time, group in data.groupby("time"):
             f.write(struct.pack("<i", int(time)))
-            f.write(group.flow.to_numpy().astype("float32").tobytes())
+            f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
 # model = ribasim_testmodels.dutch_waterways_model()
@@ -91,8 +92,10 @@ def write_flows(fn: str, data: pd.DataFrame):
 
 
 def ugridify(model: ribasim.Model):
-    node_df = model.network.node.df
-    edge_df = model.network.edge.df[model.network.edge.df.edge_type == "flow"]
+    node_df = gpd.read_file(
+        model.input_dir / "database.gpkg", layer="Node", fid_as_index=True
+    )
+    edge_df = model.edge.df[model.edge.df.edge_type == "flow"]
 
     # from node_id to the node_dim index
     node_lookup = pd.Series(
@@ -151,12 +154,12 @@ def ugridify(model: ribasim.Model):
     flow_df.edge_id = flow_df.edge_id.astype(np.int64)
 
     flow_df[edge_dim] = edge_lookup[flow_df.edge_id].to_numpy()
-    flow_da = flow_df.set_index(["time", edge_dim]).flow.to_xarray()
+    flow_da = flow_df.set_index(["time", edge_dim]).flow_rate.to_xarray()
     uds["flow"] = flow_da
 
     bc_flow_df = all_flow_df[all_flow_df.edge_id.isna()].copy()
     bc_flow_df = bc_flow_df.rename(
-        columns={"flow": "boundary_flow", "from_node_id": "node_id"}
+        columns={"flow_rate": "boundary_flow", "from_node_id": "node_id"}
     ).drop(columns=["edge_id", "to_node_id"])
     bc_flow_df[node_dim] = node_lookup[bc_flow_df.node_id].to_numpy()
     bc_flow_df
