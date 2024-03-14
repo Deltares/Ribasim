@@ -61,7 +61,7 @@ function nodetype(
 end
 
 @version PumpStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
@@ -70,7 +70,7 @@ end
 end
 
 @version OutletStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
@@ -80,7 +80,7 @@ end
 end
 
 @version BasinStaticV1 begin
-    node_id::Int
+    node_id::Int32
     drainage::Union{Missing, Float64}
     potential_evaporation::Union{Missing, Float64}
     infiltration::Union{Missing, Float64}
@@ -89,7 +89,7 @@ end
 end
 
 @version BasinTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     drainage::Union{Missing, Float64}
     potential_evaporation::Union{Missing, Float64}
@@ -99,55 +99,55 @@ end
 end
 
 @version BasinProfileV1 begin
-    node_id::Int
+    node_id::Int32
     area::Float64
     level::Float64
 end
 
 @version BasinStateV1 begin
-    node_id::Int
+    node_id::Int32
     level::Float64
 end
 
 @version BasinSubgridV1 begin
-    subgrid_id::Int
-    node_id::Int
+    subgrid_id::Int32
+    node_id::Int32
     basin_level::Float64
     subgrid_level::Float64
 end
 
 @version FractionalFlowStaticV1 begin
-    node_id::Int
+    node_id::Int32
     fraction::Float64
     control_state::Union{Missing, String}
 end
 
 @version LevelBoundaryStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     level::Float64
 end
 
 @version LevelBoundaryTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     level::Float64
 end
 
 @version FlowBoundaryStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     flow_rate::Float64
 end
 
 @version FlowBoundaryTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     flow_rate::Float64
 end
 
 @version LinearResistanceStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     resistance::Float64
     max_flow_rate::Union{Missing, Float64}
@@ -155,7 +155,7 @@ end
 end
 
 @version ManningResistanceStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     length::Float64
     manning_n::Float64
@@ -165,7 +165,7 @@ end
 end
 
 @version TabulatedRatingCurveStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     level::Float64
     flow_rate::Float64
@@ -173,36 +173,36 @@ end
 end
 
 @version TabulatedRatingCurveTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     level::Float64
     flow_rate::Float64
 end
 
 @version TerminalStaticV1 begin
-    node_id::Int
+    node_id::Int32
 end
 
 @version DiscreteControlConditionV1 begin
-    node_id::Int
+    node_id::Int32
     listen_node_type::String
-    listen_node_id::Int
+    listen_node_id::Int32
     variable::String
     greater_than::Float64
     look_ahead::Union{Missing, Float64}
 end
 
 @version DiscreteControlLogicV1 begin
-    node_id::Int
+    node_id::Int32
     truth_state::String
     control_state::String
 end
 
 @version PidControlStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     listen_node_type::String
-    listen_node_id::Int
+    listen_node_id::Int32
     target::Float64
     proportional::Float64
     integral::Float64
@@ -211,9 +211,9 @@ end
 end
 
 @version PidControlTimeV1 begin
-    node_id::Int
+    node_id::Int32
     listen_node_type::String
-    listen_node_id::Int
+    listen_node_id::Int32
     time::DateTime
     target::Float64
     proportional::Float64
@@ -223,36 +223,36 @@ end
 end
 
 @version UserDemandStaticV1 begin
-    node_id::Int
+    node_id::Int32
     active::Union{Missing, Bool}
     demand::Float64
     return_factor::Float64
     min_level::Float64
-    priority::Int
+    priority::Int32
 end
 
 @version UserDemandTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     demand::Float64
     return_factor::Float64
     min_level::Float64
-    priority::Int
+    priority::Int32
 end
 
 @version LevelDemandStaticV1 begin
-    node_id::Int
+    node_id::Int32
     min_level::Float64
     max_level::Float64
-    priority::Int
+    priority::Int32
 end
 
 @version LevelDemandTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     min_level::Float64
     max_level::Float64
-    priority::Int
+    priority::Int32
 end
 
 @version FlowDemandStaticV1 begin

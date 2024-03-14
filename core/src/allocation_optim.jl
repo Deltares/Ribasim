@@ -605,7 +605,7 @@ function save_demands_and_allocations!(
             push!(record_demand.time, t)
             push!(record_demand.subnetwork_id, allocation_network_id)
             push!(record_demand.node_type, string(node_id.type))
-            push!(record_demand.node_id, Int(node_id))
+            push!(record_demand.node_id, Int32(node_id))
             push!(record_demand.priority, priorities[priority_idx])
             push!(record_demand.demand, demand)
             push!(record_demand.allocated, allocated)
@@ -625,7 +625,7 @@ function save_allocation_flows!(
     p::Parameters,
     t::Float64,
     allocation_model::AllocationModel,
-    priority::Int,
+    priority::Int32,
     collect_demands::Bool,
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
@@ -645,9 +645,9 @@ function save_allocation_flows!(
             push!(record_flow.time, t)
             push!(record_flow.edge_id, edge_metadata.id)
             push!(record_flow.from_node_type, string(node_ids[i].type))
-            push!(record_flow.from_node_id, Int(node_ids[i]))
+            push!(record_flow.from_node_id, Int32(node_ids[i]))
             push!(record_flow.to_node_type, string(node_ids[i + 1].type))
-            push!(record_flow.to_node_id, Int(node_ids[i + 1]))
+            push!(record_flow.to_node_id, Int32(node_ids[i + 1]))
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
             push!(record_flow.flow_rate, flow_rate)

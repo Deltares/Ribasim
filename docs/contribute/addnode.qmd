@@ -33,7 +33,7 @@ There can be several schemas associated with a single node type. To define a sch
 node_id: node ID of the NewNodeType node
 """
 @version NewNodeTypeStaticV1 begin
-    node_id::Int
+    node_id::Int32
     # Other fields
 end
 ```

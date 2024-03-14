@@ -17,8 +17,8 @@ from shapely.geometry import Point
 
 def invalid_qh_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     model.tabulated_rating_curve.add(
@@ -31,8 +31,8 @@ def invalid_qh_model() -> Model:
         [
             tabulated_rating_curve.Time(
                 time=[
-                    pd.Timestamp("2020-01-01 00:00:00"),
-                    pd.Timestamp("2020-01-01 00:00:00"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-01-01"),
                 ],
                 # Invalid: levels must not be repeated
                 level=[0, 0],
@@ -53,8 +53,8 @@ def invalid_qh_model() -> Model:
 
 def invalid_fractional_flow_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -123,8 +123,8 @@ def invalid_fractional_flow_model() -> Model:
 
 def invalid_discrete_control_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -144,7 +144,7 @@ def invalid_discrete_control_model() -> Model:
         Node(4, Point(3, 0)),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2020-11-01 00:00:00"],
+                time=["2020-01-01", "2020-11-01"],
                 flow_rate=[1.0, 2.0],
             )
         ],
@@ -196,8 +196,8 @@ def invalid_edge_types_model() -> Model:
     """Set up a minimal model with invalid edge types."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
