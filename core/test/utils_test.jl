@@ -5,8 +5,8 @@
     @test sprint(show, id) === "Basin #2"
     @test id < NodeID(:Basin, 3)
     @test_throws ErrorException id < NodeID(:Pump, 3)
-    @test Int(id) === 2
-    @test convert(Int, id) === 2
+    @test Int32(id) === Int32(2)
+    @test convert(Int32, id) === Int32(2)
 end
 
 @testitem "id_index" begin

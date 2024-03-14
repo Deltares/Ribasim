@@ -24,8 +24,8 @@ def user_demand_model() -> Model:
     """Create a UserDemand test model with static and dynamic UserDemand on the same basin."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         solver=Solver(algorithm="Tsit5"),
     )
 
@@ -74,8 +74,8 @@ def subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-04-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-04-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -158,8 +158,8 @@ def looped_subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -284,8 +284,8 @@ def minimal_subnetwork_model() -> Model:
     """Create a subnetwork that is minimal with non-trivial allocation."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -316,7 +316,7 @@ def minimal_subnetwork_model() -> Model:
         Node(6, Point(1, 4), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -342,8 +342,8 @@ def fractional_flow_subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -356,7 +356,7 @@ def fractional_flow_subnetwork_model() -> Model:
         Node(1, Point(0, 0), subnetwork_id=2),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 flow_rate=[2.0e-3, 4.0e-3],
             )
         ],
@@ -388,7 +388,7 @@ def fractional_flow_subnetwork_model() -> Model:
         Node(9, Point(3, 5), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -429,8 +429,8 @@ def allocation_example_model() -> Model:
     """Generate a model that is used as an example of allocation in the docs."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-01-20 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-01-20",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -508,7 +508,7 @@ def allocation_example_model() -> Model:
         Node(13, Point(5, 1), subnetwork_id=2),
         [
             user_demand.Time(
-                time=2 * ["2020-01-01 00:00:00", "2020-01-20 00:00:00"],
+                time=2 * ["2020-01-01", "2020-01-20"],
                 demand=[0.0, 1.0, 1.2, 1.2],
                 return_factor=0.0,
                 min_level=-1.0,
@@ -541,8 +541,8 @@ def main_network_with_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-03-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-03-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -659,7 +659,7 @@ def main_network_with_subnetworks_model() -> Model:
         Node(32, Point(17, 8), subnetwork_id=5),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -843,8 +843,8 @@ def main_network_with_subnetworks_model() -> Model:
 
 def level_demand_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-02-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-02-01",
         allocation=Allocation(use_allocation=True, timestep=1e5),
     )
     model.flow_boundary.add(
@@ -855,7 +855,7 @@ def level_demand_model() -> Model:
         [
             basin.Profile(area=1000.0, level=[0.0, 1.0]),
             basin.Time(
-                time=["2020-01-01 00:00:00", "2020-01-16 00:00:00"],
+                time=["2020-01-01", "2020-01-16"],
                 precipitation=[1e-6, 0.0],
             ),
             basin.State(level=[0.5]),

@@ -1,7 +1,6 @@
 import pytest
 import ribasim
 import tomli
-from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
@@ -17,9 +16,9 @@ def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
         # We set this on write, needed for GeoPackage.
         a.index.name = "fid"
         a.index.name = "fid"
-    else:
-        a = a.reset_index(drop=True)
-        b = b.reset_index(drop=True)
+
+    a = a.reset_index(drop=True)
+    b = b.reset_index(drop=True)
 
     # avoid comparing datetime64[ns] with datetime64[ms]
     if "time" in a:
@@ -34,7 +33,6 @@ def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
     return assert_frame_equal(a, b)
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_basic(basic, tmp_path):
     model_orig = basic
     toml_path = tmp_path / "basic/ribasim.toml"
@@ -46,19 +44,10 @@ def test_basic(basic, tmp_path):
 
     assert toml_dict["ribasim_version"] == ribasim.__version__
 
-    index_a = model_orig.network.node.df.index.to_numpy(int)
-    index_b = model_loaded.network.node.df.index.to_numpy(int)
-    assert_array_equal(index_a, index_b)
-    __assert_equal(
-        model_orig.network.node.df, model_loaded.network.node.df, is_network=True
-    )
-    __assert_equal(
-        model_orig.network.edge.df, model_loaded.network.edge.df, is_network=True
-    )
+    __assert_equal(model_orig.edge.df, model_loaded.edge.df, is_network=True)
     assert model_loaded.basin.time.df is None
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_basic_arrow(basic_arrow, tmp_path):
     model_orig = basic_arrow
     model_orig.write(tmp_path / "basic_arrow/ribasim.toml")
@@ -67,18 +56,12 @@ def test_basic_arrow(basic_arrow, tmp_path):
     __assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient/ribasim.toml")
     model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
 
-    __assert_equal(
-        model_orig.network.node.df, model_loaded.network.node.df, is_network=True
-    )
-    __assert_equal(
-        model_orig.network.edge.df, model_loaded.network.edge.df, is_network=True
-    )
+    __assert_equal(model_orig.edge.df, model_loaded.edge.df, is_network=True)
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time[0] == time.df.time[0]
@@ -111,7 +94,6 @@ def test_extra_columns(basic_transient):
         terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_sort(level_setpoint_with_minmax, tmp_path):
     model = level_setpoint_with_minmax
     table = model.discrete_control.condition

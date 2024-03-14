@@ -23,8 +23,8 @@ from shapely.geometry import Point
 def basic_model() -> ribasim.Model:
     # Setup model
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -251,8 +251,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     # Setup tabulated rating curve:
@@ -332,8 +332,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 def outlet_model():
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         solver=ribasim.Solver(saveat=0),
     )
 
@@ -352,9 +352,9 @@ def outlet_model():
         [
             level_boundary.Time(
                 time=[
-                    "2020-01-01 00:00:00",
-                    "2020-06-01 00:00:00",
-                    "2021-01-01 00:00:00",
+                    "2020-01-01",
+                    "2020-06-01",
+                    "2021-01-01",
                 ],
                 level=[1.0, 3.0, 3.0],
             )

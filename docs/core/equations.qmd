@@ -449,7 +449,7 @@ $$
 # UserDemand allocation
 UserDemands have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a UserDemand is given by
 $$
-    Q_\text{user_demand, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+    Q_\text{userdemand, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
 
 From left to right:
@@ -461,10 +461,10 @@ From left to right:
 UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
 $$
-Q_\text{user_demand, out} = r \cdot Q_\text{user_demand, in}.
+Q_\text{user_demand, out} = r \cdot Q_\text{userdemand, in}.
 $$
 
-Note that this means that the user_demand has a consumption rate of $(1-r)Q_\text{user_demand, in}$.
+Note that this means that the user_demand has a consumption rate of $(1-r)Q_\text{userdemand, in}$.
 
 # PID controller {#sec-PID}
 

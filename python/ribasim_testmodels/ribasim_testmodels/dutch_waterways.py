@@ -19,8 +19,8 @@ def dutch_waterways_model() -> Model:
     """Set up a model that is representative of the main Dutch rivers."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     profile_level = np.array([1.86, 3.21, 4.91, 6.61, 8.31, 10.07, 10.17, 10.27, 11.61, 12.94, 13.05, 13.69, 14.32, 14.96, 15.59])  # fmt: skip
@@ -31,9 +31,9 @@ def dutch_waterways_model() -> Model:
 
     # Flow rate curve from sine series
     n_times = 250
-    time = pd.date_range(
-        start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
-    ).astype("datetime64[s]")
+    time = pd.date_range(start="2020-01-01", end="2021-01-01", periods=n_times).astype(
+        "datetime64[s]"
+    )
     flow_rate = np.zeros(n_times)
     x = np.linspace(0, 1, n_times)
     n_terms = 5

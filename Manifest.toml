@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "01c388f950ce89ba903c883c710bf25774a0b7a3"
+project_hash = "a66ce8b152bba81b582cbf6d8a2e07a88d016add"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -1075,9 +1075,9 @@ version = "6.74.0"
 
 [[deps.OteraEngine]]
 deps = ["Markdown", "Pkg", "TOML"]
-git-tree-sha1 = "2a8dc8b023055dbfeff7f752bb7fe3e8c9ab60e9"
+git-tree-sha1 = "0d57df750e20a4534a117398dc04eb237d86ea70"
 uuid = "b2d7f28f-acd6-4007-8b26-bc27716e5513"
-version = "0.5.0"
+version = "0.4.1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
