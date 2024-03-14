@@ -44,9 +44,9 @@
 
     # Test getting and setting UserDemand demands
     (; user_demand) = p
-    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π))
+    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π); reduced = false)
     @test user_demand.demand[4] ≈ π
-    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
+    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2; reduced = false) ≈ π
 end
 
 @testitem "Allocation objective: linear absolute" begin
@@ -220,6 +220,7 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 

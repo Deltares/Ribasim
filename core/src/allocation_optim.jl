@@ -57,7 +57,7 @@ function set_objective_priority!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand, allocation, basin) = p
-    (; demand_itp, demand_from_timeseries, node_id) = user_demand
+    (; node_id) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
