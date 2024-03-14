@@ -33,7 +33,6 @@ function parse_static_and_time(
     vals_out = []
 
     node_ids = NodeID.(nodetype, get_ids(db, nodetype))
-    node_names = get_names(db, nodetype)
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -96,7 +95,7 @@ function parse_static_and_time(
     t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
 
-    for (node_idx, (node_id, node_name)) in enumerate(zip(node_ids, node_names))
+    for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static_node_id_vec, node_id)
@@ -153,7 +152,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) #$node_id has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $node_id has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -167,7 +166,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node  $(repr(node_name)) #$node_id data not in any table."
+            @error "$node_id data not in any table."
             errors = true
         end
     end
@@ -179,11 +178,10 @@ function static_and_time_node_ids(
     static::StructVector,
     time::StructVector,
     node_type::String,
-)::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Vector{String}, Bool}
+)::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
     static_node_ids = Set(NodeID.(node_type, static.node_id))
     time_node_ids = Set(NodeID.(node_type, time.node_id))
     node_ids = NodeID.(node_type, get_ids(db, node_type))
-    node_names = get_names(db, node_type)
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
     if !isempty(doubles)
@@ -194,7 +192,7 @@ function static_and_time_node_ids(
         errors = true
         @error "$node_type node IDs don't match."
     end
-    return static_node_ids, time_node_ids, node_ids, node_names, !errors
+    return static_node_ids, time_node_ids, node_ids, !errors
 end
 
 const nonconservative_nodetypes =
@@ -257,7 +255,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
+    static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
 
     if !valid
@@ -271,7 +269,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     active = BitVector()
     errors = false
 
-    for (node_id, node_name) in zip(node_ids, node_names)
+    for node_id in node_ids
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -362,8 +360,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "LevelBoundary")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "LevelBoundary")
 
     if !valid
         error("Problems encountered when parsing LevelBoundary static and time node IDs.")
@@ -390,8 +387,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "FlowBoundary")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "FlowBoundary")
 
     if !valid
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
@@ -560,7 +556,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     record = (
         time = Float64[],
-        control_node_id = Int[],
+        control_node_id = Int32[],
         truth_state = String[],
         control_state = String[],
     )
@@ -582,8 +578,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "PidControl")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "PidControl")
 
     if !valid
         error("Problems encountered when parsing PidControl static and time node IDs.")
@@ -644,7 +639,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, _, valid =
+    static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, "UserDemand")
 
     time_node_id_vec = NodeID.(NodeType.UserDemand, time.node_id)
@@ -666,7 +661,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     t_end = seconds_since(config.endtime, config.starttime)
 
     # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int, StructVector{UserDemandTimeV1}} = Dict(
+    time_priority_dict::Dict{Int32, StructVector{UserDemandTimeV1}} = Dict(
         first(group).priority => StructVector(group) for
         group in IterTools.groupby(row -> row.priority, time)
     )
@@ -790,7 +785,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
 
-    basin_ids = Int[]
+    basin_ids = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
@@ -822,10 +817,10 @@ end
 function Allocation(db::DB, config::Config)::Allocation
     record_demand = (
         time = Float64[],
-        subnetwork_id = Int[],
+        subnetwork_id = Int32[],
         node_type = String[],
-        node_id = Int[],
-        priority = Int[],
+        node_id = Int32[],
+        priority = Int32[],
         demand = Float64[],
         allocated = Float64[],
         realized = Float64[],
@@ -833,19 +828,19 @@ function Allocation(db::DB, config::Config)::Allocation
 
     record_flow = (
         time = Float64[],
-        edge_id = Int[],
+        edge_id = Int32[],
         from_node_type = String[],
-        from_node_id = Int[],
+        from_node_id = Int32[],
         to_node_type = String[],
-        to_node_id = Int[],
-        subnetwork_id = Int[],
-        priority = Int[],
+        to_node_id = Int32[],
+        subnetwork_id = Int32[],
+        priority = Int32[],
         flow_rate = Float64[],
         optimization_type = String[],
     )
 
     allocation = Allocation(
-        Int[],
+        Int32[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         get_all_priorities(db, config),
@@ -932,13 +927,8 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_ids(db::DB, nodetype)::Vector{Int}
+function get_ids(db::DB, nodetype)::Vector{Int32}
     sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
-    return only(execute(columntable, db, sql))
-end
-
-function get_names(db::DB, nodetype)::Vector{String}
-    sql = "SELECT name FROM Node where node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 

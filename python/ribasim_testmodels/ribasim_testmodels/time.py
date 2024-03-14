@@ -10,8 +10,8 @@ def flow_boundary_time_model() -> Model:
     """Set up a minimal model with time-varying flow boundary"""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.flow_boundary.add(
@@ -19,9 +19,9 @@ def flow_boundary_time_model() -> Model:
     )
 
     n_times = 100
-    time = pd.date_range(
-        start="2020-03-01 00:00:00", end="2020-10-01 00:00:00", periods=n_times
-    ).astype("datetime64[s]")
+    time = pd.date_range(start="2020-03-01", end="2020-10-01", periods=n_times).astype(
+        "datetime64[s]"
+    )
     flow_rate = 1 + np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
 
     model.flow_boundary.add(

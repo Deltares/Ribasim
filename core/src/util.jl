@@ -312,7 +312,7 @@ Data is matched based on the node_id, which is sorted.
 """
 function set_static_value!(
     table::NamedTuple,
-    node_id::Vector{Int},
+    node_id::Vector{Int32},
     static::StructVector,
 )::NamedTuple
     for (i, id) in enumerate(node_id)
@@ -331,7 +331,7 @@ The most recent applicable data is non-NaN data for a given ID that is on or bef
 """
 function set_current_value!(
     table::NamedTuple,
-    node_id::Vector{Int},
+    node_id::Vector{Int32},
     time::StructVector,
     t::DateTime,
 )::NamedTuple
@@ -620,7 +620,7 @@ function has_main_network(allocation::Allocation)::Bool
     end
 end
 
-function is_main_network(allocation_network_id::Int)::Bool
+function is_main_network(allocation_network_id::Int32)::Bool
     return allocation_network_id == 1
 end
 
@@ -668,8 +668,8 @@ function set_user_demand!(
     return nothing
 end
 
-function get_all_priorities(db::DB, config::Config)::Vector{Int}
-    priorities = Set{Int}()
+function get_all_priorities(db::DB, config::Config)::Vector{Int32}
+    priorities = Set{Int32}()
 
     # TODO: Is there a way to automatically grab all tables with a priority column?
     for type in

@@ -20,8 +20,8 @@ def pump_discrete_control_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -119,15 +119,15 @@ def flow_condition_model() -> Model:
     """Set up a basic model that involves discrete control based on a flow condition"""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.flow_boundary.add(
         Node(1, Point(0, 0)),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2022-01-01 00:00:00"],
+                time=["2020-01-01", "2022-01-01"],
                 flow_rate=[0.0, 40 / 86400],
             )
         ],
@@ -183,17 +183,13 @@ def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.level_boundary.add(
         Node(1, Point(0, 0)),
-        [
-            level_boundary.Time(
-                time=["2020-01-01 00:00:00", "2022-01-01 00:00:00"], level=[5.0, 10.0]
-            )
-        ],
+        [level_boundary.Time(time=["2020-01-01", "2022-01-01"], level=[5.0, 10.0])],
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[5e3])]
@@ -263,8 +259,8 @@ def tabulated_rating_curve_control_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -329,8 +325,8 @@ def level_setpoint_with_minmax_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(

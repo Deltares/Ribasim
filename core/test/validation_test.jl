@@ -123,7 +123,7 @@ end
     fractional_flow = Ribasim.FractionalFlow(
         [NodeID(:FractionalFlow, 5)],
         [1.0],
-        Dict{Tuple{Int, String}, NamedTuple}(),
+        Dict{Tuple{NodeID, String}, NamedTuple}(),
     )
 
     logger = TestLogger(; min_level = Debug)
@@ -376,7 +376,13 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(1, NodeID(:Basin, 10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(
+            Int32(1),
+            NodeID(:Basin, 10),
+            node_to_basin,
+            [-1.0, 0.0],
+            [-1.0, 0.0],
+        )
     end
 
     @test length(logger.logs) == 1
@@ -388,7 +394,7 @@ end
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
-            1,
+            Int32(1),
             NodeID(:Basin, 9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
@@ -424,7 +430,7 @@ end
             [0.0, -0.0],
             [0.9],
             [0.9],
-            [1],
+            Int32[1],
         )
     end
 

@@ -195,9 +195,10 @@ class Model(FileModel):
             with open(filepath, "rb") as f:
                 config = tomli.load(f)
 
-            context_file_loading.get()["directory"] = filepath.parent / config.get(
-                "input_dir", "."
-            )
+            directory = filepath.parent / config.get("input_dir", ".")
+            context_file_loading.get()["directory"] = directory
+            context_file_loading.get()["database"] = directory / "database.gpkg"
+
             return config
         else:
             return {}

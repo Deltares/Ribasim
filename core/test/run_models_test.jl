@@ -41,15 +41,15 @@
                 :to_node_id,
                 :flow_rate,
             ),
-            (DateTime, Union{Int, Missing}, String, Int, String, Int, Float64),
+            (DateTime, Union{Int32, Missing}, String, Int32, String, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (:time, :node_id, :storage, :level),
-            (DateTime, Int, Float64, Float64),
+            (DateTime, Int32, Float64, Float64),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),
-            (DateTime, Int, String, String),
+            (DateTime, Int32, String, String),
         )
         @test Tables.schema(allocation) == Tables.Schema(
             (
@@ -62,7 +62,7 @@
                 :allocated,
                 :realized,
             ),
-            (DateTime, Int, String, Int, Int, Float64, Float64, Float64),
+            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
         )
         @test Tables.schema(allocation_flow) == Tables.Schema(
             (
@@ -77,10 +77,12 @@
                 :flow_rate,
                 :optimization_type,
             ),
-            (DateTime, Int, String, Int, String, Int, Int, Int, Float64, String),
+            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
         )
-        @test Tables.schema(subgrid) ==
-              Tables.Schema((:time, :subgrid_id, :subgrid_level), (DateTime, Int, Float64))
+        @test Tables.schema(subgrid) == Tables.Schema(
+            (:time, :subgrid_id, :subgrid_level),
+            (DateTime, Int32, Float64),
+        )
     end
 
     @testset "Results size" begin
@@ -358,7 +360,7 @@ end
     t = model.saved.flow.t
     flow = DataFrame(Ribasim.flow_table(model))
     outlet_flow =
-        filter([:from_node_id, :to_node_id] => (from, to) -> from === 2 && to === 3, flow)
+        filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
     t_min_crest_level =
         level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
@@ -489,7 +491,7 @@ end
         df = DataFrame(Ribasim.flow_table(model))
         flow =
             filter(
-                [:from_node_id, :to_node_id] => (from, to) -> from === 3 && to === 2,
+                [:from_node_id, :to_node_id] => (from, to) -> from == 3 && to == 2,
                 df,
             ).flow_rate
         flow, Ribasim.tsaves(model)

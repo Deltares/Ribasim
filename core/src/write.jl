@@ -81,7 +81,7 @@ function basin_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    node_id::Vector{Int},
+    node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
 }
@@ -90,7 +90,7 @@ function basin_table(
     ntsteps = length(data.time)
 
     time = repeat(data.time; inner = nbasin)
-    node_id = repeat(Int.(data.node_id); outer = ntsteps)
+    node_id = repeat(Int32.(data.node_id); outer = ntsteps)
 
     return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
 end
@@ -100,11 +100,11 @@ function flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Union{Int, Missing}},
+    edge_id::Vector{Union{Int32, Missing}},
     from_node_type::Vector{String},
-    from_node_id::Vector{Int},
+    from_node_id::Vector{Int32},
     to_node_type::Vector{String},
-    to_node_id::Vector{Int},
+    to_node_id::Vector{Int32},
     flow_rate::FlatVector{Float64},
 }
     (; config, saved, integrator) = model
@@ -114,10 +114,10 @@ function flow_table(
 
     # self-loops have no edge ID
     from_node_type = String[]
-    from_node_id = Int[]
+    from_node_id = Int32[]
     to_node_type = String[]
-    to_node_id = Int[]
-    unique_edge_ids_flow = Union{Int, Missing}[]
+    to_node_id = Int32[]
+    unique_edge_ids_flow = Union{Int32, Missing}[]
 
     vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
     for (node_id, index) in flow_vertical_dict
@@ -177,7 +177,7 @@ function discrete_control_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    control_node_id::Vector{Int},
+    control_node_id::Vector{Int32},
     truth_state::Vector{String},
     control_state::Vector{String},
 }
@@ -193,10 +193,10 @@ function allocation_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    subnetwork_id::Vector{Int},
+    subnetwork_id::Vector{Int32},
     node_type::Vector{String},
-    node_id::Vector{Int},
-    priority::Vector{Int},
+    node_id::Vector{Int32},
+    priority::Vector{Int32},
     demand::Vector{Float64},
     allocated::Vector{Float64},
     realized::Vector{Float64},
@@ -221,13 +221,13 @@ function allocation_flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Int},
+    edge_id::Vector{Int32},
     from_node_type::Vector{String},
-    from_node_id::Vector{Int},
+    from_node_id::Vector{Int32},
     to_node_type::Vector{String},
-    to_node_id::Vector{Int},
-    subnetwork_id::Vector{Int},
-    priority::Vector{Int},
+    to_node_id::Vector{Int32},
+    subnetwork_id::Vector{Int32},
+    priority::Vector{Int32},
     flow_rate::Vector{Float64},
     optimization_type::Vector{String},
 }
@@ -254,7 +254,7 @@ function subgrid_level_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    subgrid_id::Vector{Int},
+    subgrid_id::Vector{Int32},
     subgrid_level::Vector{Float64},
 }
     (; config, saved, integrator) = model

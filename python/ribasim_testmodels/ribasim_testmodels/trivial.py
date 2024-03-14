@@ -8,8 +8,8 @@ def trivial_model() -> Model:
     """Trivial model with just a basin, tabulated rating curve and terminal node"""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         results=Results(subgrid=True, compression=False),
     )
 
