@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
+    MultiNodeModel,
     Outlet,
     PidControl,
     Pump,
@@ -38,7 +40,6 @@ from ribasim.geometry.edge import EdgeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
-    NodeModel,
     context_file_loading,
 )
 
@@ -79,7 +80,7 @@ class Model(FileModel):
         for (
             k,
             v,
-        ) in self.children().items():
+        ) in self._children().items():
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
         return self
@@ -101,7 +102,13 @@ class Model(FileModel):
         INDENT = "    "
         for field in self.fields():
             attr = getattr(self, field)
-            content.append(f"{INDENT}{field}={repr(attr)},")
+            if isinstance(attr, EdgeTable):
+                content.append(f"{INDENT}{field}=Edge(...),")
+            else:
+                if isinstance(attr, MultiNodeModel) and attr.node.df is None:
+                    # Skip unused node types
+                    continue
+                content.append(f"{INDENT}{field}={repr(attr)},")
 
         content.append(")")
         return "\n".join(content)
@@ -123,17 +130,17 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
-        for sub in self.nodes().values():
+        for sub in self._nodes():
             sub._save(directory, input_dir)
 
-    def nodes(self):
-        return {
-            k: getattr(self, k)
-            for k in self.model_fields.keys()
-            if isinstance(getattr(self, k), NodeModel)
-        }
+    def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
+        """Return all non-empty MultiNodeModel instances."""
+        for key in self.model_fields.keys():
+            attr = getattr(self, key)
+            if isinstance(attr, MultiNodeModel) and attr.node.df is not None:
+                yield attr
 
-    def children(self):
+    def _children(self):
         return {
             k: getattr(self, k)
             for k in self.model_fields.keys()
@@ -230,7 +237,7 @@ class Model(FileModel):
             ax.axis("off")
 
         self.edge.plot(ax=ax, zorder=2)
-        for node in self.nodes().values():
+        for node in self._nodes():
             node.node.plot(ax=ax, zorder=3)
         # TODO
         # self.plot_control_listen(ax)

@@ -233,10 +233,10 @@ class TableModel(FileModel, Generic[TableT]):
     ) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
-        if self.df is not None and self.filepath is not None:
+        if self.filepath is not None:
             self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
-        elif self.df is not None and db_path is not None:
+        elif db_path is not None:
             self.sort()
             self._write_table(db_path)
 
@@ -249,9 +249,8 @@ class TableModel(FileModel, Generic[TableT]):
         connection : Connection
             SQLite connection to the database.
         """
+        assert self.df is not None
         table = self.tablename()
-        if self.df is None:
-            return
 
         # Add `fid` to all tables as primary key
         # Enables editing values manually in QGIS
@@ -361,8 +360,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         ----------
         path : FilePath
         """
-        if self.df is None:
-            return
+        assert self.df is not None
         self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
@@ -412,28 +410,21 @@ class NodeModel(ChildModel):
     def _layername(cls, field: str) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def tables(self) -> Generator[TableModel[Any], Any, None]:
+    def _tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
-            if isinstance(attr, TableModel):
+            if isinstance(attr, TableModel) and attr.df is not None:
                 yield attr
 
     def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
-        for table in self.tables():
+        for table in self._tables():
             node_ids.update(table.node_ids())
         return node_ids
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
-        # TODO: stop sorting loop so that "node" comes first
-        for field in sorted(self.fields(), key=lambda x: x != "node"):
-            attr = getattr(self, field)
-            # TODO
-            if hasattr(attr, "_save"):
-                attr._save(
-                    directory,
-                    input_dir,
-                )
+        for table in self._tables():
+            table._save(directory, input_dir)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.
