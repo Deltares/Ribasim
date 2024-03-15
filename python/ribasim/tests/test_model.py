@@ -173,3 +173,12 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         query = "select fid from Edge"
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
+
+
+def test_node_table(basic):
+    model = basic
+    node = model.node_table()
+    df = node.df
+    assert df.geometry.is_unique
+    assert df.node_type.iloc[0] == "Basin"
+    assert df.node_type.iloc[-1] == "Terminal"
