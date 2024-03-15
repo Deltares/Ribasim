@@ -155,8 +155,7 @@ function valid_edges(graph::MetaGraph)::Bool
 
         if !(type_dst in neighbortypes(type_src))
             errors = true
-            edge_id = graph[id_src, id_dst].id
-            @error "Cannot connect a $type_src to a $type_dst." edge_id id_src id_dst
+            @error "Cannot connect a $type_src to a $type_dst." id_src id_dst
         end
     end
     return !errors

@@ -363,10 +363,6 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         assert self.df is not None
         self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
-    def sort(self):
-        if self.df is not None:
-            self.df.sort_index(inplace=True)
-
 
 class ChildModel(BaseModel):
     _parent: Any | None = None
