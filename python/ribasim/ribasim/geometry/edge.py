@@ -85,6 +85,16 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
+    def sort(self):
+        assert self.df is not None
+        sort_keys = [
+            "from_node_type",
+            "from_node_id",
+            "to_node_type",
+            "to_node_id",
+        ]
+        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+
     def plot(self, **kwargs) -> Axes:
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
