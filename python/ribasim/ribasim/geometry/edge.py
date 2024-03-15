@@ -16,6 +16,8 @@ from ribasim.input_base import SpatialTableModel
 
 __all__ = ("EdgeTable",)
 
+SPATIALCONTROLNODETYPES = {"LevelDemand", "DiscreteControl", "PidControl"}
+
 
 class NodeData(NamedTuple):
     node_id: int
@@ -53,7 +55,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         self,
         from_node: NodeData,
         to_node: NodeData,
-        edge_type: str,
         geometry: LineString | MultiLineString | None = None,
         name: str = "",
         subnetwork_id: int | None = None,
@@ -62,6 +63,9 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None
             else [geometry]
+        )
+        edge_type = (
+            "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
         table_to_append = GeoDataFrame[EdgeSchema](
             data={

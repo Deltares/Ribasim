@@ -42,12 +42,10 @@ def flow_boundary_time_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[3],
         model.basin[2],
-        "flow",
     )
 
     return model
