@@ -360,6 +360,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         ----------
         path : FilePath
         """
+        assert self.df is not None
         self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
 
     def sort(self):
