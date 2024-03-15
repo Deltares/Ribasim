@@ -84,16 +84,9 @@ def write_flows(fn: str, data: pd.DataFrame):
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
-# model = ribasim_testmodels.dutch_waterways_model()
-# model = ribasim_testmodels.basic_transient_model()
-
-# add optional dependency xugrid and add method:
-# model.to_xugrid()
-
-
 def ugridify(model: ribasim.Model):
     node_df = gpd.read_file(
-        model.input_dir / "database.gpkg", layer="Node", fid_as_index=True
+        model.filepath.parent / "database.gpkg", layer="Node", fid_as_index=True
     )
     edge_df = model.edge.df[model.edge.df.edge_type == "flow"]
 
@@ -168,6 +161,3 @@ def ugridify(model: ribasim.Model):
     # this does not visualize properly, and is selected on load, maybe due to alphabetical order
     uds["boundary_flow"] = bc_flow_da
     return uds
-
-
-# uds.ugrid.to_netcdf("flow.nc")

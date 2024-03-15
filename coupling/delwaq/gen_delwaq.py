@@ -176,7 +176,7 @@ with open(output_folder / "B5_bounddata.inc", mode="w") as f:
         )
     )
 
-bnd = node[node.index.isin(boundary_nodes)]["node_type"].reset_index()
+bnd = node[node.node_id.isin(boundary_nodes)]["node_type"].reset_index()
 bnd["fid"] = bnd["node_type"].str[:10] + "_" + "#" + bnd["fid"].astype(str)
 bnd["comment"] = ""
 bnd = bnd[["fid", "comment", "node_type"]]
