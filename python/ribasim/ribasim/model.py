@@ -247,8 +247,7 @@ class Model(FileModel):
             ax.axis("off")
 
         self.edge.plot(ax=ax, zorder=2)
-        for node in self._nodes():
-            node.node.plot(ax=ax, zorder=3)
+        self.node_table().plot(ax=ax, zorder=3)
         # TODO
         # self.plot_control_listen(ax)
         # self.node.plot(ax=ax, zorder=3)

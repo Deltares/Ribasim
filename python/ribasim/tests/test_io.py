@@ -131,7 +131,6 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     __assert_equal(edge.df, edge_loaded.df)
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     model1dir = tmp_path / "model1"
@@ -148,9 +147,9 @@ def test_roundtrip(trivial, tmp_path):
         model2dir / "ribasim.toml"
     ).read_text()
 
-    # check if all tables are the same
-    __assert_equal(model1.network.node.df, model2.network.node.df, is_network=True)
-    __assert_equal(model1.network.edge.df, model2.network.edge.df, is_network=True)
+    # check if all tables are the sameF
+    __assert_equal(model1.node_table().df, model2.node_table().df, is_network=True)
+    __assert_equal(model1.edge.df, model2.edge.df, is_network=True)
     for node1, node2 in zip(model1._nodes(), model2._nodes()):
         for table1, table2 in zip(node1._tables(), node2._tables()):
             __assert_equal(table1.df, table2.df)

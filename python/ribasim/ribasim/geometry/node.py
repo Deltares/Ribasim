@@ -35,8 +35,12 @@ class NodeTable(SpatialTableModel[NodeSchema]):
         """Filter the node table based on the node type."""
         if self.df is not None:
             mask = self.df[self.df["node_type"] != nodetype].index
-            self.df.drop(mask, inplace=True)
-            self.df.reset_index(inplace=True, drop=True)
+            if mask.empty:
+                # Avoid creating tables for unused node types
+                self.df = None
+            else:
+                self.df.drop(mask, inplace=True)
+                self.df.reset_index(inplace=True, drop=True)
 
     def sort(self):
         assert self.df is not None

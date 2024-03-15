@@ -124,26 +124,33 @@ class MultiNodeModel(NodeModel):
             )
 
         for table in tables:
-            member_name = _pascal_to_snake(table.__class__.__name__)
-            existing_member = getattr(self, member_name)
-            existing_table = (
-                existing_member.df if existing_member.df is not None else pd.DataFrame()
-            )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
-            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
+            member_name = _pascal_to_snake(table.__class__.__name__)
+            existing_member = getattr(self, member_name)
+            if existing_member.df is None:
+                setattr(self, member_name, table_to_append)
+            else:
+                combined_table = pd.concat([existing_member.df, table_to_append])
+                # TODO this causes self.node.df to contain only the last added node
+                setattr(self, member_name, combined_table)
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__,
         )
-        self.node.df = (
-            node_table
-            if self.node.df is None
-            else pd.concat([self.node.df, node_table])
-        )
+        if self.node.df is None:
+            self.node.df = node_table
+        else:
+            self.node.df = pd.concat([self.node.df, node_table])
+
+        # TODO remove before merging
+        return self.node.df
 
     def __getitem__(self, index):
-        row = self.node.df[self.node.df["node_id"] == index].iloc[0]
+        is_node_id = self.node.df["node_id"] == index
+        rows = self.node.df[is_node_id]
+        row = rows.iloc[0]
+        # bug: self.node.df contains only the last added Basin #12
         return NodeData(
             node_id=index, node_type=row["node_type"], geometry=row["geometry"]
         )
