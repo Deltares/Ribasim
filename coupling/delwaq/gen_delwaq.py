@@ -138,7 +138,7 @@ substances = set()
 
 
 def make_boundary(id, type):
-    return type[:10] + "_" + "#" + str(id)
+    return type[:10] + "_" + str(id)
 
 
 for i, row in model.level_boundary.concentration.df.groupby(["node_id"]):
@@ -176,8 +176,8 @@ with open(output_folder / "B5_bounddata.inc", mode="w") as f:
         )
     )
 
-bnd = node[node.node_id.isin(boundary_nodes)]["node_type"].reset_index()
-bnd["fid"] = bnd["node_type"].str[:10] + "_" + "#" + bnd["fid"].astype(str)
+bnd = node[node.node_id.isin(boundary_nodes)].reset_index(drop=True)
+bnd["fid"] = bnd["node_type"].str[:10] + "_" + bnd["node_id"].astype(str)
 bnd["comment"] = ""
 bnd = bnd[["fid", "comment", "node_type"]]
 bnd.to_csv(
