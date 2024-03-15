@@ -55,19 +55,16 @@ def backwater_model():
             model.edge.add(
                 model.flow_boundary[1],
                 model.basin[2],
-                "flow",
             )
         else:
             model.edge.add(
                 model.manning_resistance[id - 1],
                 model.basin[id],
-                "flow",
             )
 
         model.edge.add(
             model.basin[id],
             model.manning_resistance[id + 1],
-            "flow",
         )
 
     model.level_boundary.add(
@@ -76,7 +73,6 @@ def backwater_model():
     model.edge.add(
         model.manning_resistance[101],
         model.level_boundary[102],
-        "flow",
     )
 
     return model
