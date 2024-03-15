@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
@@ -37,6 +38,7 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
@@ -139,6 +141,14 @@ class Model(FileModel):
             attr = getattr(self, key)
             if isinstance(attr, MultiNodeModel) and attr.node.df is not None:
                 yield attr
+
+    def node_table(self) -> NodeTable:
+        """Compute the full NodeTable from all node types."""
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = pd.concat(df_chunks, ignore_index=True)  # type: ignore
+        node_table = NodeTable(df=df)
+        node_table.sort()
+        return node_table
 
     def _children(self):
         return {
