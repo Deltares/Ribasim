@@ -147,10 +147,7 @@ class MultiNodeModel(NodeModel):
         return self.node.df
 
     def __getitem__(self, index):
-        is_node_id = self.node.df["node_id"] == index
-        rows = self.node.df[is_node_id]
-        row = rows.iloc[0]
-        # bug: self.node.df contains only the last added Basin #12
+        row = self.node.df[self.node.df["node_id"] == index].iloc[0]
         return NodeData(
             node_id=index, node_type=row["node_type"], geometry=row["geometry"]
         )
