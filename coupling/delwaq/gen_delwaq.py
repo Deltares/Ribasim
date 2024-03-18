@@ -37,19 +37,16 @@ output_folder = delwaq_dir / "model"
 output_folder.mkdir(exist_ok=True)
 
 # Setup metadata
-if model.solver.saveat is None:
-    timestep = timedelta(seconds=3600)
-elif isinstance(model.solver.dt, list):
-    raise ValueError("Multiple timesteps not supported")
+if model.solver.saveat == 0 or np.isposinf(model.solver.saveat):
+    raise ValueError("Unsupported saveat, must be positive and finite.")
 else:
     timestep = timedelta(seconds=model.solver.saveat)
 
 # Setup topology, write to pointer file
 edge = model.edge.df
 assert edge is not None
-edge = edge[edge.edge_type == "flow"]  # no control or allocation stuff please
+assert (edge.edge_type == "flow").all(), "control edges not yet supported"
 edge.set_crs(epsg=28992, inplace=True, allow_override=True)
-assert edge is not None
 
 # Flows on non-existing edges indicate where the boundaries are
 tg = flows.groupby("time")

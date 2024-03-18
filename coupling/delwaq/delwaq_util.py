@@ -3,7 +3,6 @@
 import struct
 from pathlib import Path
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
@@ -86,17 +85,20 @@ def write_flows(fn: Path | str, data: pd.DataFrame):
 
 
 def ugridify(model: ribasim.Model):
-    node_df = gpd.read_file(
-        model.filepath.parent / "database.gpkg", layer="Node", fid_as_index=True
-    )
-    edge_df = model.edge.df[model.edge.df.edge_type == "flow"]
+    node_df = model.node_table().df
+    edge_df = model.edge.df.copy()
     edge_df.set_crs(epsg=28992, inplace=True, allow_override=True)
     node_df.set_crs(epsg=28992, inplace=True, allow_override=True)
 
+    node_id = node_df.node_id.to_numpy(dtype="int32")
+    edge_id = edge_df.index.to_numpy(dtype="int32")
+    from_node_id = node_df.node_id.to_numpy(dtype="int32")
+    to_node_id = node_df.node_id.to_numpy(dtype="int32")
+
     # from node_id to the node_dim index
     node_lookup = pd.Series(
-        index=node_df.index.rename("node_id"),
-        data=node_df.index.argsort(),
+        index=node_id,
+        data=node_id.argsort().astype("int32"),
         name="node_index",
     )
 
@@ -106,8 +108,8 @@ def ugridify(model: ribasim.Model):
         fill_value=-1,
         edge_node_connectivity=np.column_stack(
             (
-                node_lookup[edge_df.from_node_id],
-                node_lookup[edge_df.to_node_id],
+                node_lookup[from_node_id],
+                node_lookup[to_node_id],
             )
         ),
         name="ribasim_network",
@@ -119,9 +121,9 @@ def ugridify(model: ribasim.Model):
     node_dim = grid.node_dimension
 
     uds = xu.UgridDataset(None, grid)
-    uds = uds.assign_coords(node_id=(node_dim, node_df.index))
-    uds = uds.assign_coords(from_node_id=(edge_dim, edge_df.from_node_id))
-    uds = uds.assign_coords(to_node_id=(edge_dim, edge_df.to_node_id))
-    uds = uds.assign_coords(edge_id=(edge_dim, edge_df.index))
+    uds = uds.assign_coords(node_id=(node_dim, node_id))
+    uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
+    uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
+    uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
 
     return uds
