@@ -84,38 +84,31 @@ def invalid_fractional_flow_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[7],
-        "flow",
     )
     # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[3],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[3],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[4],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[4],
         model.terminal[6],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.fractional_flow[8],
-        "flow",
     )
 
     return model
@@ -171,22 +164,18 @@ def invalid_discrete_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[4],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[2],
-        "control",
     )
 
     return model
@@ -212,12 +201,13 @@ def invalid_edge_types_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "foo",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "bar",
     )
+
+    assert model.edge.df is not None
+    model.edge.df["edge_type"] = ["foo", "bar"]
 
     return model
