@@ -46,7 +46,7 @@ from ribasim.utils import _pascal_to_snake
 
 
 class Allocation(ChildModel):
-    timestep: float | None = None
+    timestep: float = 86400.0
     use_allocation: bool = False
 
 

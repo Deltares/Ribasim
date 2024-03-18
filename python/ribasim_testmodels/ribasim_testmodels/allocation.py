@@ -844,7 +844,7 @@ def main_network_with_subnetworks_model() -> Model:
 
 
 def level_demand_model() -> Model:
-    """Generate a small model which contains a level demand."""
+    """Small model with a LevelDemand."""
 
     model = Model(
         starttime="2020-01-01",
@@ -892,7 +892,7 @@ def level_demand_model() -> Model:
 
 
 def flow_demand_model() -> Model:
-    """Generate a small model which contains a flow demand."""
+    """Small model with a FlowDemand."""
 
     model = Model(
         starttime="2020-01-01 00:00:00",
@@ -967,10 +967,7 @@ def flow_demand_model() -> Model:
 
 
 def linear_resistance_demand_model():
-    """
-    Generate a small model which contains a flow demand for a node which
-    also has a max flow rate.
-    """
+    """Small model with a FlowDemand for a node with a max flow rate."""
 
     model = Model(
         starttime="2020-01-01 00:00:00",
