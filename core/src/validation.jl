@@ -155,8 +155,7 @@ function valid_edges(graph::MetaGraph)::Bool
 
         if !(type_dst in neighbortypes(type_src))
             errors = true
-            edge_id = graph[id_src, id_dst].id
-            @error "Cannot connect a $type_src to a $type_dst." edge_id id_src id_dst
+            @error "Cannot connect a $type_src to a $type_dst." id_src id_dst
         end
     end
     return !errors
@@ -338,7 +337,7 @@ end
 Validate the entries for a single subgrid element.
 """
 function valid_subgrid(
-    subgrid_id::Int,
+    subgrid_id::Int32,
     node_id::NodeID,
     node_to_basin::Dict{NodeID, Int},
     basin_level::Vector{Float64},
@@ -369,7 +368,7 @@ function valid_demand(
     demand_itp::Vector{
         Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
     },
-    priorities::Vector{Int},
+    priorities::Vector{Int32},
 )::Bool
     errors = false
 
@@ -384,7 +383,7 @@ function valid_demand(
     return !errors
 end
 
-function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int, Set{NodeID}})::Bool
+function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
     for (allocation_network_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
@@ -582,7 +581,7 @@ end
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
-function valid_sources(p::Parameters, allocation_network_id::Int)::Bool
+function valid_sources(p::Parameters, allocation_network_id::Int32)::Bool
     (; graph) = p
 
     edge_ids = graph[].edge_ids[allocation_network_id]

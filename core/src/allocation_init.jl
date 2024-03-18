@@ -22,7 +22,7 @@ end
 Find all nodes in the subnetwork which will be used in the allocation network.
 Some nodes are skipped to optimize allocation optimization.
 """
-function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int)::Nothing
+function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int32)::Nothing
     (; graph, basin, fractional_flow, allocation) = p
     (; main_network_connections) = allocation
 
@@ -105,7 +105,7 @@ This loop finds allocation network edges in several ways:
 """
 function find_allocation_graph_edges!(
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Tuple{Vector{Vector{NodeID}}, SparseMatrixCSC{Float64, Int}}
     (; graph) = p
 
@@ -189,7 +189,7 @@ function process_allocation_graph_edges!(
     capacity::SparseMatrixCSC{Float64, Int},
     edges_composite::Vector{Vector{NodeID}},
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::SparseMatrixCSC{Float64, Int}
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
@@ -285,7 +285,7 @@ const allocation_source_nodetypes =
 """
 Remove allocation UserDemand return flow edges that are upstream of the UserDemand itself.
 """
-function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int)::Nothing
+function avoid_using_own_returnflow!(p::Parameters, allocation_network_id::Int32)::Nothing
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -310,7 +310,7 @@ end
 Add the edges connecting the main network work to a subnetwork to both the main network
 and subnetwork allocation network.
 """
-function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int)::Nothing
+function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int32)::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -330,7 +330,7 @@ Build the graph used for the allocation problem.
 """
 function allocation_graph(
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::SparseMatrixCSC{Float64, Int}
     # Find out which nodes in the subnetwork are used in the allocation network
     allocation_graph_used_nodes!(p, allocation_network_id)
@@ -360,7 +360,7 @@ Non-negativivity constraints are also immediately added to the flow variables.
 function add_variables_flow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -375,7 +375,7 @@ The variable indices are the node_ids of the basins in the subnetwork.
 function add_variables_basin!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     node_ids_basin = [
@@ -398,7 +398,7 @@ posing the appropriate constraints.
 function add_variables_absolute_value!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
@@ -444,7 +444,7 @@ function add_constraints_capacity!(
     problem::JuMP.Model,
     capacity::SparseMatrixCSC{Float64, Int},
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
@@ -476,7 +476,7 @@ flow over source edge <= source flow in subnetwork
 function add_constraints_source!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -556,7 +556,7 @@ sum(flows out of node node) == flows into node + flow from storage and vertical 
 function add_constraints_flow_conservation!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
@@ -594,7 +594,7 @@ outflow from user_demand <= return factor * inflow to user_demand
 function add_constraints_user_demand_returnflow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph, user_demand) = p
     F = problem[:F]
@@ -710,7 +710,7 @@ flow after fractional_flow node <= fraction * inflow
 function add_constraints_fractional_flow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Nothing
     (; graph, fractional_flow) = p
     F = problem[:F]
@@ -775,7 +775,7 @@ Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 function allocation_problem(
     p::Parameters,
     capacity::SparseMatrixCSC{Float64, Int},
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::JuMP.Model
     optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
     problem = JuMP.direct_model(optimizer)
@@ -811,7 +811,7 @@ Outputs
 An AllocationModel object.
 """
 function AllocationModel(
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
     p::Parameters,
     Δt_allocation::Float64,
 )::AllocationModel

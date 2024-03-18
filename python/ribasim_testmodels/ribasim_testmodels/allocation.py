@@ -24,8 +24,8 @@ def user_demand_model() -> Model:
     """Create a UserDemand test model with static and dynamic UserDemand on the same basin."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         solver=Solver(algorithm="Tsit5"),
     )
 
@@ -60,10 +60,10 @@ def user_demand_model() -> Model:
     )
     model.terminal.add(Node(4, Point(2, 0)))
 
-    model.edge.add(model.basin[1], model.user_demand[2], "flow")
-    model.edge.add(model.basin[1], model.user_demand[3], "flow")
-    model.edge.add(model.user_demand[2], model.terminal[4], "flow")
-    model.edge.add(model.user_demand[3], model.terminal[4], "flow")
+    model.edge.add(model.basin[1], model.user_demand[2])
+    model.edge.add(model.basin[1], model.user_demand[3])
+    model.edge.add(model.user_demand[2], model.terminal[4])
+    model.edge.add(model.user_demand[3], model.terminal[4])
 
     return model
 
@@ -74,8 +74,8 @@ def subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-04-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-04-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -133,21 +133,21 @@ def subnetwork_model() -> Model:
     )
     model.outlet.add(Node(13, Point(2, 4), subnetwork_id=2), outlet_data)
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.outlet[3], "flow")
-    model.edge.add(model.outlet[3], model.terminal[4], "flow")
-    model.edge.add(model.basin[2], model.user_demand[10], "flow")
-    model.edge.add(model.basin[2], model.pump[5], "flow")
-    model.edge.add(model.pump[5], model.basin[6], "flow")
-    model.edge.add(model.basin[6], model.outlet[7], "flow")
-    model.edge.add(model.outlet[7], model.basin[8], "flow")
-    model.edge.add(model.basin[6], model.user_demand[11], "flow")
-    model.edge.add(model.basin[8], model.user_demand[12], "flow")
-    model.edge.add(model.basin[6], model.outlet[13], "flow")
-    model.edge.add(model.outlet[13], model.terminal[9], "flow")
-    model.edge.add(model.user_demand[10], model.basin[2], "flow")
-    model.edge.add(model.user_demand[11], model.basin[6], "flow")
-    model.edge.add(model.user_demand[12], model.basin[8], "flow")
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.outlet[3])
+    model.edge.add(model.outlet[3], model.terminal[4])
+    model.edge.add(model.basin[2], model.user_demand[10])
+    model.edge.add(model.basin[2], model.pump[5])
+    model.edge.add(model.pump[5], model.basin[6])
+    model.edge.add(model.basin[6], model.outlet[7])
+    model.edge.add(model.outlet[7], model.basin[8])
+    model.edge.add(model.basin[6], model.user_demand[11])
+    model.edge.add(model.basin[8], model.user_demand[12])
+    model.edge.add(model.basin[6], model.outlet[13])
+    model.edge.add(model.outlet[13], model.terminal[9])
+    model.edge.add(model.user_demand[10], model.basin[2])
+    model.edge.add(model.user_demand[11], model.basin[6])
+    model.edge.add(model.user_demand[12], model.basin[8])
 
     return model
 
@@ -158,8 +158,8 @@ def looped_subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -247,35 +247,35 @@ def looped_subnetwork_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[5], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.outlet[3], "flow")
-    model.edge.add(model.outlet[3], model.terminal[4], "flow")
-    model.edge.add(model.basin[2], model.user_demand[1], "flow")
-    model.edge.add(model.basin[2], model.pump[6], "flow")
-    model.edge.add(model.pump[6], model.basin[9], "flow")
-    model.edge.add(model.basin[9], model.outlet[8], "flow")
-    model.edge.add(model.outlet[8], model.basin[7], "flow")
-    model.edge.add(model.basin[7], model.user_demand[12], "flow")
-    model.edge.add(model.basin[9], model.tabulated_rating_curve[13], "flow")
-    model.edge.add(model.tabulated_rating_curve[13], model.basin[15], "flow")
-    model.edge.add(model.basin[15], model.pump[16], "flow")
-    model.edge.add(model.pump[16], model.basin[17], "flow")
-    model.edge.add(model.basin[17], model.user_demand[20], "flow")
-    model.edge.add(model.basin[15], model.tabulated_rating_curve[19], "flow")
-    model.edge.add(model.tabulated_rating_curve[19], model.basin[21], "flow")
-    model.edge.add(model.basin[15], model.user_demand[18], "flow")
-    model.edge.add(model.user_demand[18], model.basin[21], "flow")
-    model.edge.add(model.basin[21], model.outlet[22], "flow")
-    model.edge.add(model.outlet[22], model.terminal[23], "flow")
-    model.edge.add(model.basin[9], model.outlet[10], "flow")
-    model.edge.add(model.outlet[10], model.basin[11], "flow")
-    model.edge.add(model.basin[11], model.tabulated_rating_curve[14], "flow")
-    model.edge.add(model.tabulated_rating_curve[14], model.basin[17], "flow")
-    model.edge.add(model.user_demand[1], model.basin[2], "flow")
-    model.edge.add(model.user_demand[12], model.basin[7], "flow")
-    model.edge.add(model.user_demand[20], model.basin[17], "flow")
-    model.edge.add(model.basin[11], model.user_demand[24], "flow")
-    model.edge.add(model.user_demand[24], model.basin[11], "flow")
+    model.edge.add(model.flow_boundary[5], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.outlet[3])
+    model.edge.add(model.outlet[3], model.terminal[4])
+    model.edge.add(model.basin[2], model.user_demand[1])
+    model.edge.add(model.basin[2], model.pump[6])
+    model.edge.add(model.pump[6], model.basin[9])
+    model.edge.add(model.basin[9], model.outlet[8])
+    model.edge.add(model.outlet[8], model.basin[7])
+    model.edge.add(model.basin[7], model.user_demand[12])
+    model.edge.add(model.basin[9], model.tabulated_rating_curve[13])
+    model.edge.add(model.tabulated_rating_curve[13], model.basin[15])
+    model.edge.add(model.basin[15], model.pump[16])
+    model.edge.add(model.pump[16], model.basin[17])
+    model.edge.add(model.basin[17], model.user_demand[20])
+    model.edge.add(model.basin[15], model.tabulated_rating_curve[19])
+    model.edge.add(model.tabulated_rating_curve[19], model.basin[21])
+    model.edge.add(model.basin[15], model.user_demand[18])
+    model.edge.add(model.user_demand[18], model.basin[21])
+    model.edge.add(model.basin[21], model.outlet[22])
+    model.edge.add(model.outlet[22], model.terminal[23])
+    model.edge.add(model.basin[9], model.outlet[10])
+    model.edge.add(model.outlet[10], model.basin[11])
+    model.edge.add(model.basin[11], model.tabulated_rating_curve[14])
+    model.edge.add(model.tabulated_rating_curve[14], model.basin[17])
+    model.edge.add(model.user_demand[1], model.basin[2])
+    model.edge.add(model.user_demand[12], model.basin[7])
+    model.edge.add(model.user_demand[20], model.basin[17])
+    model.edge.add(model.basin[11], model.user_demand[24])
+    model.edge.add(model.user_demand[24], model.basin[11])
 
     return model
 
@@ -284,8 +284,8 @@ def minimal_subnetwork_model() -> Model:
     """Create a subnetwork that is minimal with non-trivial allocation."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -316,7 +316,7 @@ def minimal_subnetwork_model() -> Model:
         Node(6, Point(1, 4), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -325,13 +325,13 @@ def minimal_subnetwork_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.pump[3], "flow")
-    model.edge.add(model.pump[3], model.basin[4], "flow")
-    model.edge.add(model.basin[4], model.user_demand[5], "flow")
-    model.edge.add(model.basin[4], model.user_demand[6], "flow")
-    model.edge.add(model.user_demand[5], model.basin[4], "flow")
-    model.edge.add(model.user_demand[6], model.basin[4], "flow")
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.pump[3])
+    model.edge.add(model.pump[3], model.basin[4])
+    model.edge.add(model.basin[4], model.user_demand[5])
+    model.edge.add(model.basin[4], model.user_demand[6])
+    model.edge.add(model.user_demand[5], model.basin[4])
+    model.edge.add(model.user_demand[6], model.basin[4])
 
     return model
 
@@ -342,8 +342,8 @@ def fractional_flow_subnetwork_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -356,7 +356,7 @@ def fractional_flow_subnetwork_model() -> Model:
         Node(1, Point(0, 0), subnetwork_id=2),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 flow_rate=[2.0e-3, 4.0e-3],
             )
         ],
@@ -388,7 +388,7 @@ def fractional_flow_subnetwork_model() -> Model:
         Node(9, Point(3, 5), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -409,18 +409,18 @@ def fractional_flow_subnetwork_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.tabulated_rating_curve[3], "flow")
-    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[4], "flow")
-    model.edge.add(model.fractional_flow[4], model.basin[5], "flow")
-    model.edge.add(model.basin[5], model.user_demand[6], "flow")
-    model.edge.add(model.user_demand[6], model.basin[5], "flow")
-    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[7], "flow")
-    model.edge.add(model.fractional_flow[7], model.basin[8], "flow")
-    model.edge.add(model.basin[8], model.user_demand[9], "flow")
-    model.edge.add(model.user_demand[9], model.basin[8], "flow")
-    model.edge.add(model.discrete_control[10], model.fractional_flow[4], "control")
-    model.edge.add(model.discrete_control[10], model.fractional_flow[7], "control")
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.tabulated_rating_curve[3])
+    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[4])
+    model.edge.add(model.fractional_flow[4], model.basin[5])
+    model.edge.add(model.basin[5], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[5])
+    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[7])
+    model.edge.add(model.fractional_flow[7], model.basin[8])
+    model.edge.add(model.basin[8], model.user_demand[9])
+    model.edge.add(model.user_demand[9], model.basin[8])
+    model.edge.add(model.discrete_control[10], model.fractional_flow[4])
+    model.edge.add(model.discrete_control[10], model.fractional_flow[7])
 
     return model
 
@@ -429,8 +429,8 @@ def allocation_example_model() -> Model:
     """Generate a model that is used as an example of allocation in the docs."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-01-20 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-01-20",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -508,7 +508,7 @@ def allocation_example_model() -> Model:
         Node(13, Point(5, 1), subnetwork_id=2),
         [
             user_demand.Time(
-                time=2 * ["2020-01-01 00:00:00", "2020-01-20 00:00:00"],
+                time=2 * ["2020-01-01", "2020-01-20"],
                 demand=[0.0, 1.0, 1.2, 1.2],
                 return_factor=0.0,
                 min_level=-1.0,
@@ -517,22 +517,22 @@ def allocation_example_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.user_demand[3], "flow")
-    model.edge.add(model.basin[2], model.linear_resistance[4], "flow")
-    model.edge.add(model.linear_resistance[4], model.basin[5], "flow")
-    model.edge.add(model.basin[5], model.user_demand[6], "flow")
-    model.edge.add(model.basin[5], model.tabulated_rating_curve[7], "flow")
-    model.edge.add(model.tabulated_rating_curve[7], model.fractional_flow[8], "flow")
-    model.edge.add(model.user_demand[3], model.basin[2], "flow")
-    model.edge.add(model.user_demand[6], model.basin[5], "flow")
-    model.edge.add(model.tabulated_rating_curve[7], model.fractional_flow[9], "flow")
-    model.edge.add(model.fractional_flow[8], model.terminal[10], "flow")
-    model.edge.add(model.fractional_flow[9], model.basin[12], "flow")
-    model.edge.add(model.basin[12], model.user_demand[13], "flow")
-    model.edge.add(model.user_demand[13], model.terminal[10], "flow")
-    model.edge.add(model.discrete_control[11], model.fractional_flow[8], "control")
-    model.edge.add(model.discrete_control[11], model.fractional_flow[9], "control")
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.user_demand[3])
+    model.edge.add(model.basin[2], model.linear_resistance[4])
+    model.edge.add(model.linear_resistance[4], model.basin[5])
+    model.edge.add(model.basin[5], model.user_demand[6])
+    model.edge.add(model.basin[5], model.tabulated_rating_curve[7])
+    model.edge.add(model.tabulated_rating_curve[7], model.fractional_flow[8])
+    model.edge.add(model.user_demand[3], model.basin[2])
+    model.edge.add(model.user_demand[6], model.basin[5])
+    model.edge.add(model.tabulated_rating_curve[7], model.fractional_flow[9])
+    model.edge.add(model.fractional_flow[8], model.terminal[10])
+    model.edge.add(model.fractional_flow[9], model.basin[12])
+    model.edge.add(model.basin[12], model.user_demand[13])
+    model.edge.add(model.user_demand[13], model.terminal[10])
+    model.edge.add(model.discrete_control[11], model.fractional_flow[8])
+    model.edge.add(model.discrete_control[11], model.fractional_flow[9])
 
     return model
 
@@ -541,8 +541,8 @@ def main_network_with_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-03-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-03-01",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -659,7 +659,7 @@ def main_network_with_subnetworks_model() -> Model:
         Node(32, Point(17, 8), subnetwork_id=5),
         [
             user_demand.Time(
-                time=["2020-01-01 00:00:00", "2021-01-01 00:00:00"],
+                time=["2020-01-01", "2021-01-01"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -769,82 +769,82 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=1)
-    model.edge.add(model.basin[2], model.linear_resistance[3], "flow")
-    model.edge.add(model.linear_resistance[3], model.basin[4], "flow")
-    model.edge.add(model.basin[4], model.linear_resistance[5], "flow")
-    model.edge.add(model.linear_resistance[5], model.basin[6], "flow")
-    model.edge.add(model.basin[6], model.linear_resistance[7], "flow")
-    model.edge.add(model.linear_resistance[7], model.basin[8], "flow")
-    model.edge.add(model.basin[8], model.linear_resistance[9], "flow")
-    model.edge.add(model.linear_resistance[9], model.basin[10], "flow")
-    model.edge.add(model.pump[11], model.basin[12], "flow")
-    model.edge.add(model.basin[12], model.outlet[13], "flow")
-    model.edge.add(model.outlet[13], model.terminal[14], "flow")
-    model.edge.add(model.basin[12], model.user_demand[20], "flow")
-    model.edge.add(model.basin[12], model.pump[15], "flow")
-    model.edge.add(model.pump[15], model.basin[16], "flow")
-    model.edge.add(model.basin[16], model.outlet[17], "flow")
-    model.edge.add(model.outlet[17], model.basin[18], "flow")
-    model.edge.add(model.basin[16], model.user_demand[21], "flow")
-    model.edge.add(model.basin[18], model.user_demand[22], "flow")
-    model.edge.add(model.basin[16], model.outlet[23], "flow")
-    model.edge.add(model.outlet[23], model.terminal[19], "flow")
-    model.edge.add(model.user_demand[20], model.basin[12], "flow")
-    model.edge.add(model.user_demand[21], model.basin[16], "flow")
-    model.edge.add(model.user_demand[22], model.basin[18], "flow")
-    model.edge.add(model.pump[24], model.basin[25], "flow")
-    model.edge.add(model.basin[25], model.tabulated_rating_curve[26], "flow")
-    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[27], "flow")
-    model.edge.add(model.fractional_flow[27], model.basin[28], "flow")
-    model.edge.add(model.basin[28], model.user_demand[29], "flow")
-    model.edge.add(model.user_demand[29], model.basin[28], "flow")
-    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[30], "flow")
-    model.edge.add(model.fractional_flow[30], model.basin[31], "flow")
-    model.edge.add(model.basin[31], model.user_demand[32], "flow")
-    model.edge.add(model.user_demand[32], model.basin[31], "flow")
-    model.edge.add(model.discrete_control[33], model.fractional_flow[27], "control")
-    model.edge.add(model.discrete_control[33], model.fractional_flow[30], "control")
-    model.edge.add(model.pump[38], model.basin[35], "flow")
-    model.edge.add(model.basin[35], model.outlet[36], "flow")
-    model.edge.add(model.outlet[36], model.terminal[37], "flow")
-    model.edge.add(model.basin[35], model.user_demand[34], "flow")
-    model.edge.add(model.basin[35], model.pump[39], "flow")
-    model.edge.add(model.pump[39], model.basin[42], "flow")
-    model.edge.add(model.basin[42], model.outlet[41], "flow")
-    model.edge.add(model.outlet[41], model.basin[40], "flow")
-    model.edge.add(model.basin[40], model.user_demand[45], "flow")
-    model.edge.add(model.basin[42], model.tabulated_rating_curve[46], "flow")
-    model.edge.add(model.tabulated_rating_curve[46], model.basin[48], "flow")
-    model.edge.add(model.basin[48], model.pump[49], "flow")
-    model.edge.add(model.pump[49], model.basin[50], "flow")
-    model.edge.add(model.basin[50], model.user_demand[53], "flow")
-    model.edge.add(model.basin[48], model.tabulated_rating_curve[52], "flow")
-    model.edge.add(model.tabulated_rating_curve[52], model.basin[54], "flow")
-    model.edge.add(model.basin[48], model.user_demand[51], "flow")
-    model.edge.add(model.user_demand[51], model.basin[54], "flow")
-    model.edge.add(model.basin[54], model.outlet[55], "flow")
-    model.edge.add(model.outlet[55], model.terminal[56], "flow")
-    model.edge.add(model.basin[42], model.outlet[43], "flow")
-    model.edge.add(model.outlet[43], model.basin[44], "flow")
-    model.edge.add(model.basin[44], model.tabulated_rating_curve[47], "flow")
-    model.edge.add(model.tabulated_rating_curve[47], model.basin[50], "flow")
-    model.edge.add(model.user_demand[34], model.basin[35], "flow")
-    model.edge.add(model.user_demand[45], model.basin[40], "flow")
-    model.edge.add(model.user_demand[53], model.basin[50], "flow")
-    model.edge.add(model.basin[44], model.user_demand[57], "flow")
-    model.edge.add(model.user_demand[57], model.basin[44], "flow")
-    model.edge.add(model.basin[2], model.pump[11], "flow", subnetwork_id=3)
-    model.edge.add(model.basin[6], model.pump[24], "flow", subnetwork_id=5)
-    model.edge.add(model.basin[10], model.pump[38], "flow", subnetwork_id=7)
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=1)
+    model.edge.add(model.basin[2], model.linear_resistance[3])
+    model.edge.add(model.linear_resistance[3], model.basin[4])
+    model.edge.add(model.basin[4], model.linear_resistance[5])
+    model.edge.add(model.linear_resistance[5], model.basin[6])
+    model.edge.add(model.basin[6], model.linear_resistance[7])
+    model.edge.add(model.linear_resistance[7], model.basin[8])
+    model.edge.add(model.basin[8], model.linear_resistance[9])
+    model.edge.add(model.linear_resistance[9], model.basin[10])
+    model.edge.add(model.pump[11], model.basin[12])
+    model.edge.add(model.basin[12], model.outlet[13])
+    model.edge.add(model.outlet[13], model.terminal[14])
+    model.edge.add(model.basin[12], model.user_demand[20])
+    model.edge.add(model.basin[12], model.pump[15])
+    model.edge.add(model.pump[15], model.basin[16])
+    model.edge.add(model.basin[16], model.outlet[17])
+    model.edge.add(model.outlet[17], model.basin[18])
+    model.edge.add(model.basin[16], model.user_demand[21])
+    model.edge.add(model.basin[18], model.user_demand[22])
+    model.edge.add(model.basin[16], model.outlet[23])
+    model.edge.add(model.outlet[23], model.terminal[19])
+    model.edge.add(model.user_demand[20], model.basin[12])
+    model.edge.add(model.user_demand[21], model.basin[16])
+    model.edge.add(model.user_demand[22], model.basin[18])
+    model.edge.add(model.pump[24], model.basin[25])
+    model.edge.add(model.basin[25], model.tabulated_rating_curve[26])
+    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[27])
+    model.edge.add(model.fractional_flow[27], model.basin[28])
+    model.edge.add(model.basin[28], model.user_demand[29])
+    model.edge.add(model.user_demand[29], model.basin[28])
+    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[30])
+    model.edge.add(model.fractional_flow[30], model.basin[31])
+    model.edge.add(model.basin[31], model.user_demand[32])
+    model.edge.add(model.user_demand[32], model.basin[31])
+    model.edge.add(model.discrete_control[33], model.fractional_flow[27])
+    model.edge.add(model.discrete_control[33], model.fractional_flow[30])
+    model.edge.add(model.pump[38], model.basin[35])
+    model.edge.add(model.basin[35], model.outlet[36])
+    model.edge.add(model.outlet[36], model.terminal[37])
+    model.edge.add(model.basin[35], model.user_demand[34])
+    model.edge.add(model.basin[35], model.pump[39])
+    model.edge.add(model.pump[39], model.basin[42])
+    model.edge.add(model.basin[42], model.outlet[41])
+    model.edge.add(model.outlet[41], model.basin[40])
+    model.edge.add(model.basin[40], model.user_demand[45])
+    model.edge.add(model.basin[42], model.tabulated_rating_curve[46])
+    model.edge.add(model.tabulated_rating_curve[46], model.basin[48])
+    model.edge.add(model.basin[48], model.pump[49])
+    model.edge.add(model.pump[49], model.basin[50])
+    model.edge.add(model.basin[50], model.user_demand[53])
+    model.edge.add(model.basin[48], model.tabulated_rating_curve[52])
+    model.edge.add(model.tabulated_rating_curve[52], model.basin[54])
+    model.edge.add(model.basin[48], model.user_demand[51])
+    model.edge.add(model.user_demand[51], model.basin[54])
+    model.edge.add(model.basin[54], model.outlet[55])
+    model.edge.add(model.outlet[55], model.terminal[56])
+    model.edge.add(model.basin[42], model.outlet[43])
+    model.edge.add(model.outlet[43], model.basin[44])
+    model.edge.add(model.basin[44], model.tabulated_rating_curve[47])
+    model.edge.add(model.tabulated_rating_curve[47], model.basin[50])
+    model.edge.add(model.user_demand[34], model.basin[35])
+    model.edge.add(model.user_demand[45], model.basin[40])
+    model.edge.add(model.user_demand[53], model.basin[50])
+    model.edge.add(model.basin[44], model.user_demand[57])
+    model.edge.add(model.user_demand[57], model.basin[44])
+    model.edge.add(model.basin[2], model.pump[11], subnetwork_id=3)
+    model.edge.add(model.basin[6], model.pump[24], subnetwork_id=5)
+    model.edge.add(model.basin[10], model.pump[38], subnetwork_id=7)
 
     return model
 
 
 def level_demand_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-02-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-02-01",
         allocation=Allocation(use_allocation=True, timestep=1e5),
     )
     model.flow_boundary.add(
@@ -855,7 +855,7 @@ def level_demand_model() -> Model:
         [
             basin.Profile(area=1000.0, level=[0.0, 1.0]),
             basin.Time(
-                time=["2020-01-01 00:00:00", "2020-01-16 00:00:00"],
+                time=["2020-01-01", "2020-01-16"],
                 precipitation=[1e-6, 0.0],
             ),
             basin.State(level=[0.5]),
@@ -878,10 +878,10 @@ def level_demand_model() -> Model:
         [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[0.5])],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow", subnetwork_id=2)
-    model.edge.add(model.basin[2], model.user_demand[3], "flow")
-    model.edge.add(model.level_demand[4], model.basin[2], "control")
-    model.edge.add(model.user_demand[3], model.basin[5], "flow")
-    model.edge.add(model.level_demand[4], model.basin[5], "control")
+    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.basin[2], model.user_demand[3])
+    model.edge.add(model.level_demand[4], model.basin[2])
+    model.edge.add(model.user_demand[3], model.basin[5])
+    model.edge.add(model.level_demand[4], model.basin[5])
 
     return model

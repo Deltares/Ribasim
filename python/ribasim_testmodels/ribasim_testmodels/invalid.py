@@ -17,8 +17,8 @@ from shapely.geometry import Point
 
 def invalid_qh_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     model.tabulated_rating_curve.add(
@@ -31,8 +31,8 @@ def invalid_qh_model() -> Model:
         [
             tabulated_rating_curve.Time(
                 time=[
-                    pd.Timestamp("2020-01-01 00:00:00"),
-                    pd.Timestamp("2020-01-01 00:00:00"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-01-01"),
                 ],
                 # Invalid: levels must not be repeated
                 level=[0, 0],
@@ -53,8 +53,8 @@ def invalid_qh_model() -> Model:
 
 def invalid_fractional_flow_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -84,38 +84,31 @@ def invalid_fractional_flow_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[7],
-        "flow",
     )
     # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[3],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[3],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[4],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[4],
         model.terminal[6],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.fractional_flow[8],
-        "flow",
     )
 
     return model
@@ -123,8 +116,8 @@ def invalid_fractional_flow_model() -> Model:
 
 def invalid_discrete_control_model() -> Model:
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -144,7 +137,7 @@ def invalid_discrete_control_model() -> Model:
         Node(4, Point(3, 0)),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2020-11-01 00:00:00"],
+                time=["2020-01-01", "2020-11-01"],
                 flow_rate=[1.0, 2.0],
             )
         ],
@@ -171,22 +164,18 @@ def invalid_discrete_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[4],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[2],
-        "control",
     )
 
     return model
@@ -196,8 +185,8 @@ def invalid_edge_types_model() -> Model:
     """Set up a minimal model with invalid edge types."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-12-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2020-12-01",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -212,12 +201,13 @@ def invalid_edge_types_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "foo",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "bar",
     )
+
+    assert model.edge.df is not None
+    model.edge.df["edge_type"] = ["foo", "bar"]
 
     return model

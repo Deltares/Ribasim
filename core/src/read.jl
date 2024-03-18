@@ -33,7 +33,6 @@ function parse_static_and_time(
     vals_out = []
 
     node_ids = NodeID.(nodetype, get_ids(db, nodetype))
-    node_names = get_names(db, nodetype)
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -96,7 +95,7 @@ function parse_static_and_time(
     t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
 
-    for (node_idx, (node_id, node_name)) in enumerate(zip(node_ids, node_names))
+    for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static_node_id_vec, node_id)
@@ -153,7 +152,7 @@ function parse_static_and_time(
                     )
                     if !is_valid
                         errors = true
-                        @error "A $parameter_name time series for $nodetype node $(repr(node_name)) #$node_id has repeated times, this can not be interpolated."
+                        @error "A $parameter_name time series for $node_id has repeated times, this can not be interpolated."
                     end
                 else
                     # Activity of transient nodes is assumed to be true
@@ -167,7 +166,7 @@ function parse_static_and_time(
                 getfield(out, parameter_name)[node_idx] = val
             end
         else
-            @error "$nodetype node  $(repr(node_name)) #$node_id data not in any table."
+            @error "$node_id data not in any table."
             errors = true
         end
     end
@@ -179,11 +178,10 @@ function static_and_time_node_ids(
     static::StructVector,
     time::StructVector,
     node_type::String,
-)::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Vector{String}, Bool}
+)::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
     static_node_ids = Set(NodeID.(node_type, static.node_id))
     time_node_ids = Set(NodeID.(node_type, time.node_id))
     node_ids = NodeID.(node_type, get_ids(db, node_type))
-    node_names = get_names(db, node_type)
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
     if !isempty(doubles)
@@ -194,7 +192,7 @@ function static_and_time_node_ids(
         errors = true
         @error "$node_type node IDs don't match."
     end
-    return static_node_ids, time_node_ids, node_ids, node_names, !errors
+    return static_node_ids, time_node_ids, node_ids, !errors
 end
 
 const nonconservative_nodetypes =
@@ -257,7 +255,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
+    static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
 
     if !valid
@@ -271,7 +269,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     active = BitVector()
     errors = false
 
-    for (node_id, node_name) in zip(node_ids, node_names)
+    for node_id in node_ids
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -362,8 +360,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "LevelBoundary")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "LevelBoundary")
 
     if !valid
         error("Problems encountered when parsing LevelBoundary static and time node IDs.")
@@ -390,8 +387,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "FlowBoundary")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "FlowBoundary")
 
     if !valid
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
@@ -560,7 +556,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     record = (
         time = Float64[],
-        control_node_id = Int[],
+        control_node_id = Int32[],
         truth_state = String[],
         control_state = String[],
     )
@@ -582,8 +578,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, node_names, valid =
-        static_and_time_node_ids(db, static, time, "PidControl")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "PidControl")
 
     if !valid
         error("Problems encountered when parsing PidControl static and time node IDs.")
@@ -640,110 +635,136 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     )
 end
 
+function user_demand_static!(
+    active::BitVector,
+    demand::Vector{Float64},
+    demand_itp::Vector{Vector{ScalarInterpolation}},
+    return_factor::Vector{Float64},
+    min_level::Vector{Float64},
+    static::StructVector{UserDemandStaticV1},
+    node_ids::Vector{NodeID},
+    priorities::Vector{Int32},
+)::Nothing
+    for group in IterTools.groupby(row -> row.node_id, static)
+        first_row = first(group)
+        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
+        user_demand_idx = findsorted(node_ids, node_id)
+
+        active[user_demand_idx] = coalesce(first_row.active, true)
+        return_factor[user_demand_idx] = first_row.return_factor
+        min_level[user_demand_idx] = first_row.min_level
+
+        for row in group
+            priority_idx = findsorted(priorities, row.priority)
+            demand_itp[user_demand_idx][priority_idx].u .= row.demand
+            demand[(user_demand_idx - 1) * length(priorities) + priority_idx] = row.demand
+        end
+    end
+    return nothing
+end
+
+function user_demand_time!(
+    active::BitVector,
+    demand::Vector{Float64},
+    demand_itp::Vector{Vector{ScalarInterpolation}},
+    demand_from_timeseries::BitVector,
+    return_factor::Vector{Float64},
+    min_level::Vector{Float64},
+    time::StructVector{UserDemandTimeV1},
+    node_ids::Vector{NodeID},
+    priorities::Vector{Int32},
+    config::Config,
+)::Bool
+    errors = false
+    t_end = seconds_since(config.endtime, config.starttime)
+
+    for group in IterTools.groupby(row -> (row.node_id, row.priority), time)
+        first_row = first(group)
+        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
+        user_demand_idx = findsorted(node_ids, node_id)
+
+        active[user_demand_idx] = true
+        demand_from_timeseries[user_demand_idx] = true
+        return_factor[user_demand_idx] = first_row.return_factor
+        min_level[user_demand_idx] = first_row.min_level
+
+        priority_idx = findsorted(priorities, first_row.priority)
+        demand_p_itp, is_valid = get_scalar_interpolation(
+            config.starttime,
+            t_end,
+            StructVector(group),
+            node_id,
+            :demand;
+            default_value = 0.0,
+        )
+        demand[(user_demand_idx - 1) * length(priorities) + priority_idx] =
+            demand_p_itp(0.0)
+
+        if is_valid
+            demand_itp[user_demand_idx][priority_idx] = demand_p_itp
+        else
+            @error "The demand(t) relationship for UserDemand $node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+            errors = true
+        end
+    end
+    return errors
+end
+
 function UserDemand(db::DB, config::Config)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
 
-    static_node_ids, time_node_ids, node_ids, _, valid =
-        static_and_time_node_ids(db, static, time, "UserDemand")
-
-    time_node_id_vec = NodeID.(NodeType.UserDemand, time.node_id)
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
 
     if !valid
         error("Problems encountered when parsing UserDemand static and time node IDs.")
     end
 
-    # All priorities used in the model
+    # Initialize vectors for UserDemand fields
     priorities = get_all_priorities(db, config)
-
-    active = BitVector()
-    min_level = Float64[]
-    return_factor = Float64[]
-    demand_itp = Vector{ScalarInterpolation}[]
-
-    errors = false
+    n_user = length(node_ids)
+    n_priority = length(priorities)
+    active = BitVector(ones(Bool, n_user))
+    realized_bmi = zeros(n_user)
+    demand = zeros(n_user * n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
-    t_end = seconds_since(config.endtime, config.starttime)
+    demand_itp = [
+        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
+    ]
+    demand_from_timeseries = BitVector(zeros(Bool, n_user))
+    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+    return_factor = zeros(n_user)
+    min_level = zeros(n_user)
 
-    # Create a dictionary priority => time data for that priority
-    time_priority_dict::Dict{Int, StructVector{UserDemandTimeV1}} = Dict(
-        first(group).priority => StructVector(group) for
-        group in IterTools.groupby(row -> row.priority, time)
+    # Process static table
+    user_demand_static!(
+        active,
+        demand,
+        demand_itp,
+        return_factor,
+        min_level,
+        static,
+        node_ids,
+        priorities,
     )
 
-    demand = Float64[]
-
-    # Whether the demand of a UserDemand node is given by a timeseries
-    demand_from_timeseries = BitVector()
-
-    for node_id in node_ids
-        first_row = nothing
-        demand_itp_node_id = Vector{ScalarInterpolation}()
-
-        if node_id in static_node_ids
-            push!(demand_from_timeseries, false)
-            rows = searchsorted(NodeID.(NodeType.UserDemand, static.node_id), node_id)
-            static_id = view(static, rows)
-            for p in priorities
-                idx = findsorted(static_id.priority, p)
-                demand_p = !isnothing(idx) ? static_id[idx].demand : 0.0
-                demand_p_itp = LinearInterpolation([demand_p, demand_p], trivial_timespan)
-                push!(demand_itp_node_id, demand_p_itp)
-                push!(demand, demand_p)
-            end
-            push!(demand_itp, demand_itp_node_id)
-            first_row = first(static_id)
-            is_active = coalesce(first_row.active, true)
-
-        elseif node_id in time_node_ids
-            push!(demand_from_timeseries, true)
-            for p in priorities
-                push!(demand, 0.0)
-                if p in keys(time_priority_dict)
-                    demand_p_itp, is_valid = get_scalar_interpolation(
-                        config.starttime,
-                        t_end,
-                        time_priority_dict[p],
-                        node_id,
-                        :demand;
-                        default_value = 0.0,
-                    )
-                    if is_valid
-                        push!(demand_itp_node_id, demand_p_itp)
-                    else
-                        @error "The demand(t) relationship for UserDemand #$node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
-                        errors = true
-                    end
-                else
-                    demand_p_itp = LinearInterpolation([0.0, 0.0], trivial_timespan)
-                    push!(demand_itp_node_id, demand_p_itp)
-                end
-            end
-            push!(demand_itp, demand_itp_node_id)
-
-            first_row_idx = searchsortedfirst(time_node_id_vec, node_id)
-            first_row = time[first_row_idx]
-            is_active = true
-        else
-            @error "UserDemand node #$node_id data not in any table."
-            errors = true
-        end
-
-        if !isnothing(first_row)
-            min_level_ = coalesce(first_row.min_level, 0.0)
-            return_factor_ = first_row.return_factor
-            push!(active, is_active)
-            push!(min_level, min_level_)
-            push!(return_factor, return_factor_)
-        end
-    end
+    # Process time table
+    errors = user_demand_time!(
+        active,
+        demand,
+        demand_itp,
+        demand_from_timeseries,
+        return_factor,
+        min_level,
+        time,
+        node_ids,
+        priorities,
+        config,
+    )
 
     if errors
         error("Errors occurred when parsing UserDemand data.")
     end
-
-    realized_bmi = zeros(length(node_ids))
-    allocated = [fill(Inf, length(priorities)) for id in node_ids]
 
     return UserDemand(
         node_ids,
@@ -788,7 +809,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
 
-    basin_ids = Int[]
+    basin_ids = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
@@ -820,10 +841,10 @@ end
 function Allocation(db::DB, config::Config)::Allocation
     record_demand = (
         time = Float64[],
-        subnetwork_id = Int[],
+        subnetwork_id = Int32[],
         node_type = String[],
-        node_id = Int[],
-        priority = Int[],
+        node_id = Int32[],
+        priority = Int32[],
         demand = Float64[],
         allocated = Float64[],
         realized = Float64[],
@@ -831,19 +852,19 @@ function Allocation(db::DB, config::Config)::Allocation
 
     record_flow = (
         time = Float64[],
-        edge_id = Int[],
+        edge_id = Int32[],
         from_node_type = String[],
-        from_node_id = Int[],
+        from_node_id = Int32[],
         to_node_type = String[],
-        to_node_id = Int[],
-        subnetwork_id = Int[],
-        priority = Int[],
+        to_node_id = Int32[],
+        subnetwork_id = Int32[],
+        priority = Int32[],
         flow_rate = Float64[],
         collect_demands = BitVector(),
     )
 
     allocation = Allocation(
-        Int[],
+        Int32[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         get_all_priorities(db, config),
@@ -930,13 +951,8 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_ids(db::DB, nodetype)::Vector{Int}
+function get_ids(db::DB, nodetype)::Vector{Int32}
     sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
-    return only(execute(columntable, db, sql))
-end
-
-function get_names(db::DB, nodetype)::Vector{String}
-    sql = "SELECT name FROM Node where node_type = $(esc_id(nodetype)) ORDER BY fid"
     return only(execute(columntable, db, sql))
 end
 

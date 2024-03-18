@@ -20,8 +20,8 @@ def pump_discrete_control_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -84,32 +84,26 @@ def pump_discrete_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.linear_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[1],
         model.pump[4],
-        "flow",
     )
     model.edge.add(
         model.pump[4],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[4],
-        "control",
     )
     model.edge.add(
         model.discrete_control[6],
         model.linear_resistance[2],
-        "control",
     )
 
     return model
@@ -119,15 +113,15 @@ def flow_condition_model() -> Model:
     """Set up a basic model that involves discrete control based on a flow condition"""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.flow_boundary.add(
         Node(1, Point(0, 0)),
         [
             flow_boundary.Time(
-                time=["2020-01-01 00:00:00", "2022-01-01 00:00:00"],
+                time=["2020-01-01", "2022-01-01"],
                 flow_rate=[0.0, 40 / 86400],
             )
         ],
@@ -158,22 +152,18 @@ def flow_condition_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.pump[3],
-        "flow",
     )
     model.edge.add(
         model.pump[3],
         model.terminal[4],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[3],
-        "control",
     )
 
     return model
@@ -183,17 +173,13 @@ def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.level_boundary.add(
         Node(1, Point(0, 0)),
-        [
-            level_boundary.Time(
-                time=["2020-01-01 00:00:00", "2022-01-01 00:00:00"], level=[5.0, 10.0]
-            )
-        ],
+        [level_boundary.Time(time=["2020-01-01", "2022-01-01"], level=[5.0, 10.0])],
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[5e3])]
@@ -228,27 +214,22 @@ def level_boundary_condition_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.linear_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[3],
         model.outlet[4],
-        "flow",
     )
     model.edge.add(
         model.outlet[4],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[6],
         model.outlet[4],
-        "control",
     )
 
     return model
@@ -263,8 +244,8 @@ def tabulated_rating_curve_control_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -305,17 +286,14 @@ def tabulated_rating_curve_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[4],
         model.tabulated_rating_curve[2],
-        "control",
     )
 
     return model
@@ -329,8 +307,8 @@ def level_setpoint_with_minmax_model() -> Model:
     """
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.basin.add(
@@ -376,42 +354,34 @@ def level_setpoint_with_minmax_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[3],
-        "flow",
     )
     model.edge.add(
         model.pump[3],
         model.level_boundary[4],
-        "flow",
     )
     model.edge.add(
         model.level_boundary[4],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.basin[1],
-        "flow",
     )
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[5],
         model.terminal[6],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[7],
         model.pump[2],
-        "control",
     )
     model.edge.add(
         model.discrete_control[7],
         model.pump[3],
-        "control",
     )
 
     return model

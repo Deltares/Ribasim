@@ -331,7 +331,7 @@ function discrete_control_affect!(
         record = discrete_control.record
 
         push!(record.time, integrator.t)
-        push!(record.control_node_id, Int(discrete_control_node_id))
+        push!(record.control_node_id, Int32(discrete_control_node_id))
         push!(record.truth_state, truth_state_used)
         push!(record.control_state, control_state_new)
 
@@ -347,7 +347,7 @@ function discrete_control_affect!(
     return control_state_change
 end
 
-function get_allocation_model(p::Parameters, allocation_network_id::Int)::AllocationModel
+function get_allocation_model(p::Parameters, allocation_network_id::Int32)::AllocationModel
     (; allocation) = p
     (; allocation_network_ids, allocation_models) = allocation
     idx = findsorted(allocation_network_ids, allocation_network_id)
@@ -360,7 +360,7 @@ end
 
 function get_main_network_connections(
     p::Parameters,
-    allocation_network_id::Int,
+    allocation_network_id::Int32,
 )::Vector{Tuple{NodeID, NodeID}}
     (; allocation) = p
     (; allocation_network_ids, main_network_connections) = allocation

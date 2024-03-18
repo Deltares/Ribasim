@@ -123,7 +123,7 @@ end
     fractional_flow = Ribasim.FractionalFlow(
         [NodeID(:FractionalFlow, 5)],
         [1.0],
-        Dict{Tuple{Int, String}, NamedTuple}(),
+        Dict{Tuple{NodeID, String}, NamedTuple}(),
     )
 
     logger = TestLogger(; min_level = Debug)
@@ -254,7 +254,6 @@ end
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
-    @test logger.logs[4].kwargs[:edge_id] == 7
     @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2)
     @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8)
 end
@@ -376,7 +375,13 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(1, NodeID(:Basin, 10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(
+            Int32(1),
+            NodeID(:Basin, 10),
+            node_to_basin,
+            [-1.0, 0.0],
+            [-1.0, 0.0],
+        )
     end
 
     @test length(logger.logs) == 1
@@ -388,7 +393,7 @@ end
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
-            1,
+            Int32(1),
             NodeID(:Basin, 9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
@@ -423,7 +428,7 @@ end
             [0.0, -0.0],
             [0.9],
             [0.9],
-            [1],
+            Int32[1],
         )
     end
 

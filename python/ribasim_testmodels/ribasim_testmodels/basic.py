@@ -23,8 +23,8 @@ from shapely.geometry import Point
 def basic_model() -> ribasim.Model:
     # Setup model
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -149,62 +149,52 @@ def basic_model() -> ribasim.Model:
     model.terminal.add(Node(14, Point(3.0, -2.0)))
 
     # Setup edges
-    model.edge.add(model.basin[1], model.manning_resistance[2], "flow")
-    model.edge.add(model.manning_resistance[2], model.basin[3], "flow")
+    model.edge.add(model.basin[1], model.manning_resistance[2])
+    model.edge.add(model.manning_resistance[2], model.basin[3])
     model.edge.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[4],
         model.fractional_flow[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[4],
         model.fractional_flow[8],
-        "flow",
     )
-    model.edge.add(model.fractional_flow[5], model.basin[6], "flow")
-    model.edge.add(model.basin[6], model.pump[7], "flow")
-    model.edge.add(model.fractional_flow[8], model.basin[9], "flow")
-    model.edge.add(model.pump[7], model.basin[9], "flow")
-    model.edge.add(model.basin[9], model.linear_resistance[10], "flow")
+    model.edge.add(model.fractional_flow[5], model.basin[6])
+    model.edge.add(model.basin[6], model.pump[7])
+    model.edge.add(model.fractional_flow[8], model.basin[9])
+    model.edge.add(model.pump[7], model.basin[9])
+    model.edge.add(model.basin[9], model.linear_resistance[10])
     model.edge.add(
         model.level_boundary[11],
         model.linear_resistance[12],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[12],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[4],
         model.fractional_flow[13],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[13],
         model.terminal[14],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[15],
         model.basin[6],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[16],
         model.basin[1],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[10],
         model.level_boundary[17],
-        "flow",
     )
 
     return model
@@ -278,8 +268,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
     # Setup a model:
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     # Setup tabulated rating curve:
@@ -336,22 +326,18 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
-        "flow",
     )
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[3],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[2],
         model.basin[4],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[3],
         model.basin[4],
-        "flow",
     )
     return model
 
@@ -359,8 +345,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 def outlet_model():
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
         solver=ribasim.Solver(saveat=0),
     )
 
@@ -379,9 +365,9 @@ def outlet_model():
         [
             level_boundary.Time(
                 time=[
-                    "2020-01-01 00:00:00",
-                    "2020-06-01 00:00:00",
-                    "2021-01-01 00:00:00",
+                    "2020-01-01",
+                    "2020-06-01",
+                    "2021-01-01",
                 ],
                 level=[1.0, 3.0, 3.0],
             )
@@ -395,7 +381,7 @@ def outlet_model():
     )
 
     # Setup the edges
-    model.edge.add(model.level_boundary[1], model.outlet[2], "flow")
-    model.edge.add(model.outlet[2], model.basin[3], "flow")
+    model.edge.add(model.level_boundary[1], model.outlet[2])
+    model.edge.add(model.outlet[2], model.basin[3])
 
     return model

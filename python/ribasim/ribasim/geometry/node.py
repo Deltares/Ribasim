@@ -38,6 +38,11 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             self.df.drop(mask, inplace=True)
             self.df.reset_index(inplace=True, drop=True)
 
+    def sort(self):
+        assert self.df is not None
+        sort_keys = ["node_type", "node_id"]
+        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+
     def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
         if ax is None:
             _, ax = plt.subplots()

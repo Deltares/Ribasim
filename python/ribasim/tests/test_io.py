@@ -1,57 +1,50 @@
+from datetime import datetime
+
 import pytest
 import ribasim
 import tomli
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
+from ribasim import Model
 from ribasim.nodes import pump, terminal
 
 
-def __assert_equal(a: DataFrame, b: DataFrame, is_network=False) -> None:
-    """Like pandas.testing.assert_frame_equal, but ignoring the index."""
+def __assert_equal(a: DataFrame, b: DataFrame) -> None:
+    """Lenient version of pandas.testing.assert_frame_equal."""
     if a is None and b is None:
-        return True
-
-    if is_network:
-        # We set this on write, needed for GeoPackage.
-        a.index.name = "fid"
-        a.index.name = "fid"
+        return
+    elif a is None or b is None:
+        assert False
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
+    a.drop(columns=["fid"], inplace=True, errors="ignore")
+    b.drop(columns=["fid"], inplace=True, errors="ignore")
 
-    # avoid comparing datetime64[ns] with datetime64[ms]
-    if "time" in a:
-        a["time"] = a.time.astype("datetime64[ns]")
-        b["time"] = b.time.astype("datetime64[ns]")
-
-    if "fid" in a:
-        a.drop(columns=["fid"], inplace=True)
-    if "fid" in b:
-        b.drop(columns=["fid"], inplace=True)
-
-    return assert_frame_equal(a, b)
+    assert_frame_equal(a, b)
 
 
 def test_basic(basic, tmp_path):
     model_orig = basic
     toml_path = tmp_path / "basic/ribasim.toml"
     model_orig.write(toml_path)
-    model_loaded = ribasim.Model(filepath=toml_path)
+    model_loaded = Model.read(toml_path)
 
     with open(toml_path, "rb") as f:
         toml_dict = tomli.load(f)
 
     assert toml_dict["ribasim_version"] == ribasim.__version__
 
-    __assert_equal(model_orig.edge.df, model_loaded.edge.df, is_network=True)
+    __assert_equal(model_orig.edge.df, model_loaded.edge.df)
+    __assert_equal(model_orig.node_table().df, model_loaded.node_table().df)
     assert model_loaded.basin.time.df is None
 
 
 def test_basic_arrow(basic_arrow, tmp_path):
     model_orig = basic_arrow
     model_orig.write(tmp_path / "basic_arrow/ribasim.toml")
-    model_loaded = ribasim.Model(filepath=tmp_path / "basic_arrow/ribasim.toml")
+    model_loaded = Model.read(tmp_path / "basic_arrow/ribasim.toml")
 
     __assert_equal(model_orig.basin.profile.df, model_loaded.basin.profile.df)
 
@@ -59,9 +52,9 @@ def test_basic_arrow(basic_arrow, tmp_path):
 def test_basic_transient(basic_transient, tmp_path):
     model_orig = basic_transient
     model_orig.write(tmp_path / "basic_transient/ribasim.toml")
-    model_loaded = ribasim.Model(filepath=tmp_path / "basic_transient/ribasim.toml")
+    model_loaded = Model.read(tmp_path / "basic_transient/ribasim.toml")
 
-    __assert_equal(model_orig.edge.df, model_loaded.edge.df, is_network=True)
+    __assert_equal(model_orig.edge.df, model_loaded.edge.df)
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time[0] == time.df.time[0]
@@ -97,6 +90,7 @@ def test_extra_columns(basic_transient):
 def test_sort(level_setpoint_with_minmax, tmp_path):
     model = level_setpoint_with_minmax
     table = model.discrete_control.condition
+    edge = model.edge
 
     # apply a wrong sort, then call the sort method to restore order
     table.df.sort_values("greater_than", ascending=False, inplace=True)
@@ -110,25 +104,33 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0
 
+    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
+    assert edge.df.iloc[0]["from_node_type"] != "Basin"
+    edge.sort()
+    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+
     # re-apply wrong sort, then check if it gets sorted on write
     table.df.sort_values("greater_than", ascending=False, inplace=True)
+    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
     assert table.df.iloc[0]["greater_than"] == 5.0
     model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
     table_loaded = model_loaded.discrete_control.condition
+    edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
+    assert edge.df.iloc[0]["from_node_type"] == "Basin"
     __assert_equal(table.df, table_loaded.df)
+    __assert_equal(edge.df, edge_loaded.df)
 
 
-@pytest.mark.xfail(reason="Needs Model read implementation")
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path
     model1.write(model1dir / "ribasim.toml")
-    model2 = ribasim.Model(filepath=model1dir / "ribasim.toml")
+    model2 = Model.read(model1dir / "ribasim.toml")
     model2.write(model2dir / "ribasim.toml")
 
     assert (model1dir / "database.gpkg").is_file()
@@ -139,8 +141,18 @@ def test_roundtrip(trivial, tmp_path):
     ).read_text()
 
     # check if all tables are the same
-    __assert_equal(model1.network.node.df, model2.network.node.df, is_network=True)
-    __assert_equal(model1.network.edge.df, model2.network.edge.df, is_network=True)
-    for node1, node2 in zip(model1.nodes().values(), model2.nodes().values()):
-        for table1, table2 in zip(node1.tables(), node2.tables()):
+    __assert_equal(model1.node_table().df, model2.node_table().df)
+    __assert_equal(model1.edge.df, model2.edge.df)
+    for node1, node2 in zip(model1._nodes(), model2._nodes()):
+        for table1, table2 in zip(node1._tables(), node2._tables()):
             __assert_equal(table1.df, table2.df)
+
+
+def test_datetime_timezone():
+    # Due to a pydantic issue, a time zone was added.
+    # https://github.com/Deltares/Ribasim/issues/1282
+    model = ribasim.Model(starttime="2000-01-01", endtime="2001-01-01 00:00:00")
+    assert isinstance(model.starttime, datetime)
+    assert isinstance(model.endtime, datetime)
+    assert model.starttime.tzinfo is None
+    assert model.endtime.tzinfo is None

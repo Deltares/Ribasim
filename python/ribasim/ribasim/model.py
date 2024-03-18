@@ -1,7 +1,9 @@
 import datetime
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
@@ -25,6 +27,7 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
+    MultiNodeModel,
     Outlet,
     PidControl,
     Pump,
@@ -35,10 +38,10 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
-    NodeModel,
     context_file_loading,
 )
 
@@ -79,7 +82,7 @@ class Model(FileModel):
         for (
             k,
             v,
-        ) in self.children().items():
+        ) in self._children().items():
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
         return self
@@ -101,7 +104,13 @@ class Model(FileModel):
         INDENT = "    "
         for field in self.fields():
             attr = getattr(self, field)
-            content.append(f"{INDENT}{field}={repr(attr)},")
+            if isinstance(attr, EdgeTable):
+                content.append(f"{INDENT}{field}=Edge(...),")
+            else:
+                if isinstance(attr, MultiNodeModel) and attr.node.df is None:
+                    # Skip unused node types
+                    continue
+                content.append(f"{INDENT}{field}={repr(attr)},")
 
         content.append(")")
         return "\n".join(content)
@@ -123,17 +132,30 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
-        for sub in self.nodes().values():
+        for sub in self._nodes():
             sub._save(directory, input_dir)
 
-    def nodes(self):
-        return {
-            k: getattr(self, k)
-            for k in self.model_fields.keys()
-            if isinstance(getattr(self, k), NodeModel)
-        }
+    def node_table(self) -> NodeTable:
+        """Compute the full NodeTable from all node types."""
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = pd.concat(df_chunks, ignore_index=True)
+        node_table = NodeTable(df=df)
+        node_table.sort()
+        return node_table
 
-    def children(self):
+    def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
+        """Return all non-empty MultiNodeModel instances."""
+        for key in self.model_fields.keys():
+            attr = getattr(self, key)
+            if (
+                isinstance(attr, MultiNodeModel)
+                and attr.node.df is not None
+                # Model.read creates empty node tables (#1278)
+                and not attr.node.df.empty
+            ):
+                yield attr
+
+    def _children(self):
         return {
             k: getattr(self, k)
             for k in self.model_fields.keys()
@@ -229,12 +251,12 @@ class Model(FileModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
+        node = self.node_table()
         self.edge.plot(ax=ax, zorder=2)
-        for node in self.nodes().values():
-            node.node.plot(ax=ax, zorder=3)
+        node.plot(ax=ax, zorder=3)
         # TODO
         # self.plot_control_listen(ax)
-        # self.node.plot(ax=ax, zorder=3)
+        # node.plot(ax=ax, zorder=3)
 
         handles, labels = ax.get_legend_handles_labels()
 
@@ -243,7 +265,7 @@ class Model(FileModel):
         #     (
         #         handles_subnetworks,
         #         labels_subnetworks,
-        #     ) = self.network.node.plot_allocation_networks(ax=ax, zorder=1)
+        #     ) = node.plot_allocation_networks(ax=ax, zorder=1)
         #     handles += handles_subnetworks
         #     labels += labels_subnetworks
 

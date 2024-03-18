@@ -18,11 +18,11 @@ def backwater_model():
     node_type[0] = "FlowBoundary"
     node_type[-1] = "LevelBoundary"
 
-    ids = np.arange(1, node_type.size + 1, dtype=np.int64)
+    ids = np.arange(1, node_type.size + 1, dtype=int)
 
     model = ribasim.Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     model.flow_boundary.add(
@@ -55,19 +55,16 @@ def backwater_model():
             model.edge.add(
                 model.flow_boundary[1],
                 model.basin[2],
-                "flow",
             )
         else:
             model.edge.add(
                 model.manning_resistance[id - 1],
                 model.basin[id],
-                "flow",
             )
 
         model.edge.add(
             model.basin[id],
             model.manning_resistance[id + 1],
-            "flow",
         )
 
     model.level_boundary.add(
@@ -76,7 +73,6 @@ def backwater_model():
     model.edge.add(
         model.manning_resistance[101],
         model.level_boundary[102],
-        "flow",
     )
 
     return model

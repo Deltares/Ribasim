@@ -19,8 +19,8 @@ def dutch_waterways_model() -> Model:
     """Set up a model that is representative of the main Dutch rivers."""
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime="2020-01-01",
+        endtime="2021-01-01",
     )
 
     profile_level = np.array([1.86, 3.21, 4.91, 6.61, 8.31, 10.07, 10.17, 10.27, 11.61, 12.94, 13.05, 13.69, 14.32, 14.96, 15.59])  # fmt: skip
@@ -31,9 +31,9 @@ def dutch_waterways_model() -> Model:
 
     # Flow rate curve from sine series
     n_times = 250
-    time = pd.date_range(
-        start="2020-01-01 00:00:00", end="2021-01-01 00:00:00", periods=n_times
-    ).astype("datetime64[s]")
+    time = pd.date_range(start="2020-01-01", end="2021-01-01", periods=n_times).astype(
+        "datetime64[s]"
+    )
     flow_rate = np.zeros(n_times)
     x = np.linspace(0, 1, n_times)
     n_terms = 5
@@ -152,115 +152,93 @@ def dutch_waterways_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
         name="Pannerdensch Kanaal",
     )
     model.edge.add(
         model.basin[2],
         model.linear_resistance[3],
-        "flow",
         name="Start IJssel",
     )
     model.edge.add(
         model.linear_resistance[3],
         model.basin[5],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.linear_resistance[4],
-        "flow",
         name="Start Nederrijn",
     )
     model.edge.add(
         model.linear_resistance[4],
         model.basin[6],
-        "flow",
     )
     model.edge.add(
         model.basin[6],
         model.pump[9],
-        "flow",
     )
     model.edge.add(
         model.pump[9],
         model.basin[10],
-        "flow",
     )
     model.edge.add(
         model.basin[10],
         model.linear_resistance[11],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[11],
         model.basin[12],
-        "flow",
     )
     model.edge.add(
         model.basin[12],
         model.pump[14],
-        "flow",
     )
     model.edge.add(
         model.pump[14],
         model.basin[15],
-        "flow",
     )
     model.edge.add(
         model.basin[6],
         model.tabulated_rating_curve[8],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[8],
         model.basin[10],
-        "flow",
     )
     model.edge.add(
         model.basin[12],
         model.tabulated_rating_curve[13],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[13],
         model.basin[15],
-        "flow",
     )
     model.edge.add(
         model.basin[5],
         model.linear_resistance[18],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[18],
         model.level_boundary[7],
-        "flow",
     )
     model.edge.add(
         model.basin[15],
         model.linear_resistance[19],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[19],
         model.level_boundary[16],
-        "flow",
     )
     model.edge.add(
         model.pid_control[20],
         model.pump[14],
-        "control",
     )
     model.edge.add(
         model.discrete_control[17],
         model.tabulated_rating_curve[8],
-        "control",
     )
     model.edge.add(
         model.discrete_control[17],
         model.pump[9],
-        "control",
     )
 
     return model

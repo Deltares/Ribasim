@@ -15,25 +15,25 @@ NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
 struct NodeID
     type::NodeType.T
-    value::Int
+    value::Int32
 end
 
-NodeID(type::Symbol, value::Int) = NodeID(NodeType.T(type), value)
-NodeID(type::AbstractString, value::Int) = NodeID(NodeType.T(type), value)
+NodeID(type::Symbol, value::Integer) = NodeID(NodeType.T(type), value)
+NodeID(type::AbstractString, value::Integer) = NodeID(NodeType.T(type), value)
 
-Base.Int(id::NodeID) = id.value
-Base.convert(::Type{Int}, id::NodeID) = id.value
+Base.Int32(id::NodeID) = id.value
+Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
-Base.show(io::IO, id::NodeID) = print(io, id.type, " #", Int(id))
+Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
     if id_1.type != id_2.type
         error("Cannot compare NodeIDs of different types")
     end
-    return Int(id_1) < Int(id_2)
+    return id_1.value < id_2.value
 end
 
-Base.to_index(id::NodeID) = Int(id)
+Base.to_index(id::NodeID) = Int(id.value)
 
 const ScalarInterpolation =
     LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
@@ -49,7 +49,7 @@ problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
-    allocation_network_id::Int
+    allocation_network_id::Int32
     capacity::SparseMatrixCSC{Float64, Int}
     problem::JuMP.Model
     Δt_allocation::Float64
@@ -68,31 +68,31 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     output file
 """
 struct Allocation
-    allocation_network_ids::Vector{Int}
+    allocation_network_ids::Vector{Int32}
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
-    priorities::Vector{Int}
+    priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     record_demand::@NamedTuple{
         time::Vector{Float64},
-        subnetwork_id::Vector{Int},
+        subnetwork_id::Vector{Int32},
         node_type::Vector{String},
-        node_id::Vector{Int},
-        priority::Vector{Int},
+        node_id::Vector{Int32},
+        priority::Vector{Int32},
         demand::Vector{Float64},
         allocated::Vector{Float64},
         realized::Vector{Float64},
     }
     record_flow::@NamedTuple{
         time::Vector{Float64},
-        edge_id::Vector{Int},
+        edge_id::Vector{Int32},
         from_node_type::Vector{String},
-        from_node_id::Vector{Int},
+        from_node_id::Vector{Int32},
         to_node_type::Vector{String},
-        to_node_id::Vector{Int},
-        subnetwork_id::Vector{Int},
-        priority::Vector{Int},
+        to_node_id::Vector{Int32},
+        subnetwork_id::Vector{Int32},
+        priority::Vector{Int32},
         flow_rate::Vector{Float64},
         collect_demands::BitVector,
     }
@@ -107,7 +107,7 @@ allocation_network_id: Allocation network ID (0 if not in subnetwork)
 """
 struct NodeMetadata
     type::Symbol
-    allocation_network_id::Int
+    allocation_network_id::Int32
 end
 
 """
@@ -123,9 +123,9 @@ node_ids: if this edge has allocation flow, these are all the
     nodes from the physical layer this edge consists of
 """
 struct EdgeMetadata
-    id::Int
+    id::Int32
     type::EdgeType.T
-    allocation_network_id_source::Int
+    allocation_network_id_source::Int32
     from_id::NodeID
     to_id::NodeID
     allocation_flow::Bool
@@ -447,7 +447,7 @@ struct DiscreteControl <: AbstractParameterNode
     logic_mapping::Dict{Tuple{NodeID, String}, String}
     record::@NamedTuple{
         time::Vector{Float64},
-        control_node_id::Vector{Int},
+        control_node_id::Vector{Int32},
         truth_state::Vector{String},
         control_state::Vector{String},
     }
@@ -535,12 +535,12 @@ struct LevelDemand
     node_id::Vector{NodeID}
     min_level::Vector{LinearInterpolation}
     max_level::Vector{LinearInterpolation}
-    priority::Vector{Int}
+    priority::Vector{Int32}
 end
 
 "Subgrid linearly interpolates basin levels."
 struct Subgrid
-    basin_index::Vector{Int}
+    basin_index::Vector{Int32}
     interpolations::Vector{ScalarInterpolation}
     level::Vector{Float64}
 end
@@ -555,9 +555,9 @@ struct Parameters{T, C1, C2}
         NodeMetadata,
         EdgeMetadata,
         @NamedTuple{
-            node_ids::Dict{Int, Set{NodeID}},
-            edge_ids::Dict{Int, Set{Tuple{NodeID, NodeID}}},
-            edges_source::Dict{Int, Set{EdgeMetadata}},
+            node_ids::Dict{Int32, Set{NodeID}},
+            edge_ids::Dict{Int32, Set{Tuple{NodeID, NodeID}}},
+            edges_source::Dict{Int32, Set{EdgeMetadata}},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
             flow::T,
             flow_prev::Vector{Float64},
