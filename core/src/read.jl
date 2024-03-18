@@ -645,22 +645,17 @@ function user_demand_static!(
     node_ids::Vector{NodeID},
     priorities::Vector{Int32},
 )::Nothing
-    user_demand_idx = 1
     for group in IterTools.groupby(row -> row.node_id, static)
         first_row = first(group)
-        while node_ids[user_demand_idx] < NodeID(NodeType.UserDemand, first_row.node_id)
-            user_demand_idx += 1
-        end
+        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
+        user_demand_idx = findsorted(node_ids, node_id)
 
         active[user_demand_idx] = coalesce(first_row.active, true)
         return_factor[user_demand_idx] = first_row.return_factor
         min_level[user_demand_idx] = first_row.min_level
 
-        priority_idx = 1
         for row in group
-            while priorities[priority_idx] < row.priority
-                priority_idx += 1
-            end
+            priority_idx = findsorted(priorities, row.priority)
             demand_itp[user_demand_idx][priority_idx].u .= row.demand
             demand[(user_demand_idx - 1) * length(priorities) + priority_idx] = row.demand
         end
@@ -682,13 +677,11 @@ function user_demand_time!(
 )::Bool
     errors = false
     t_end = seconds_since(config.endtime, config.starttime)
-    user_demand_idx = 1
+
     for group in IterTools.groupby(row -> (row.node_id, row.priority), time)
         first_row = first(group)
         node_id = NodeID(NodeType.UserDemand, first_row.node_id)
-        while node_ids[user_demand_idx] < node_id
-            user_demand_idx += 1
-        end
+        user_demand_idx = findsorted(node_ids, node_id)
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
@@ -729,18 +722,19 @@ function UserDemand(db::DB, config::Config)::UserDemand
 
     # Initialize vectors for UserDemand fields
     priorities = get_all_priorities(db, config)
-    n = length(node_ids)
-    active = BitVector(ones(Bool, n))
-    realized_bmi = zeros(n)
-    demand = zeros(n * length(priorities))
+    n_user = length(node_ids)
+    n_priority = length(priorities)
+    active = BitVector(ones(Bool, n_user))
+    realized_bmi = zeros(n_user)
+    demand = zeros(n_user * n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
-    demand_from_timeseries = BitVector(zeros(Bool, n))
+    demand_from_timeseries = BitVector(zeros(Bool, n_user))
     allocated = [fill(Inf, length(priorities)) for id in node_ids]
-    return_factor = zeros(n)
-    min_level = zeros(n)
+    return_factor = zeros(n_user)
+    min_level = zeros(n_user)
 
     # Process static table
     user_demand_static!(
