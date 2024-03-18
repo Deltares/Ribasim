@@ -260,14 +260,13 @@ class Model(FileModel):
 
         handles, labels = ax.get_legend_handles_labels()
 
-        # TODO
-        # if indicate_subnetworks:
-        #     (
-        #         handles_subnetworks,
-        #         labels_subnetworks,
-        #     ) = node.plot_allocation_networks(ax=ax, zorder=1)
-        #     handles += handles_subnetworks
-        #     labels += labels_subnetworks
+        if indicate_subnetworks:
+            (
+                handles_subnetworks,
+                labels_subnetworks,
+            ) = node.plot_allocation_networks(ax=ax, zorder=1)
+            handles += handles_subnetworks
+            labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
