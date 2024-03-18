@@ -90,18 +90,14 @@ def ugridify(model: ribasim.Model):
         model.filepath.parent / "database.gpkg", layer="Node", fid_as_index=True
     )
     edge_df = model.edge.df[model.edge.df.edge_type == "flow"]
+    edge_df.set_crs(epsg=28992, inplace=True, allow_override=True)
+    node_df.set_crs(epsg=28992, inplace=True, allow_override=True)
 
     # from node_id to the node_dim index
     node_lookup = pd.Series(
         index=node_df.index.rename("node_id"),
         data=node_df.index.argsort(),
         name="node_index",
-    )
-    # from edge_id to the edge_dim index
-    edge_lookup = pd.Series(
-        index=edge_df.index.rename("edge_id"),
-        data=edge_df.index.argsort(),
-        name="edge_index",
     )
 
     grid = xu.Ugrid1d(
@@ -127,38 +123,5 @@ def ugridify(model: ribasim.Model):
     uds = uds.assign_coords(from_node_id=(edge_dim, edge_df.from_node_id))
     uds = uds.assign_coords(to_node_id=(edge_dim, edge_df.to_node_id))
     uds = uds.assign_coords(edge_id=(edge_dim, edge_df.index))
-    # MDAL doesn't like string coordinates
-    # uds = uds.assign_coords(node_name=(node_dim, node_df.name))
-    # uds = uds.assign_coords(node_type=(node_dim, node_df["type"]))
-    # uds = uds.assign_coords(edge_name=(edge_dim, edge_df.name))
 
-    results_dir = model.filepath.parent / model.results_dir
-
-    # Split out the boundary condition flows, since are on nodes, not edges.
-    # Use pyarrow backend since it doesn't convert the edge_id to float to handle missings.
-    all_flow_df = pd.read_feather(results_dir / "flow.arrow")
-
-    # https://github.com/pydata/xarray/issues/6318 datetime64[ms] gives trouble
-    all_flow_df.time = all_flow_df.time.astype("datetime64[ns]")
-
-    flow_df = all_flow_df[all_flow_df.edge_id.notna()].copy()
-    # The numpy_nullable backend converts to float to handle missing,
-    # now we can convert it back since there are no missings left here.
-    # The pyarrow backend fixes this, but then we get object dtypes after to_xarray()
-    flow_df.edge_id = flow_df.edge_id.astype(np.int64)
-
-    flow_df[edge_dim] = edge_lookup[flow_df.edge_id].to_numpy()
-    flow_da = flow_df.set_index(["time", edge_dim]).flow_rate.to_xarray()
-    uds["flow"] = flow_da
-
-    bc_flow_df = all_flow_df[all_flow_df.edge_id.isna()].copy()
-    bc_flow_df = bc_flow_df.rename(
-        columns={"flow_rate": "boundary_flow", "from_node_id": "node_id"}
-    ).drop(columns=["edge_id", "to_node_id"])
-    bc_flow_df[node_dim] = node_lookup[bc_flow_df.node_id].to_numpy()
-    bc_flow_df
-    bc_flow_da = bc_flow_df.set_index(["time", node_dim]).boundary_flow.to_xarray()
-    # perhaps not the best name?
-    # this does not visualize properly, and is selected on load, maybe due to alphabetical order
-    uds["boundary_flow"] = bc_flow_da
     return uds

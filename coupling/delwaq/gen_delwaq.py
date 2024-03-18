@@ -6,11 +6,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import geopandas as gpd
-import meshkernel as mk
 import numpy as np
 import pandas as pd
 import ribasim
-import xugrid as xu
 from delwaq_util import (
     strfdelta,
     ugridify,
@@ -50,6 +48,7 @@ else:
 edge = model.edge.df
 assert edge is not None
 edge = edge[edge.edge_type == "flow"]  # no control or allocation stuff please
+edge.set_crs(epsg=28992, inplace=True, allow_override=True)
 assert edge is not None
 
 # Flows on non-existing edges indicate where the boundaries are
@@ -84,14 +83,8 @@ with open(output_folder / "ribasim.atr", mode="w") as f:
     )
 
 # Generate mesh and write to NetCDF
-edges = np.array(list(zip(edge.from_node_id, edge.to_node_id))).flatten()
-mesh1d = mk.Mesh1d(node.geometry.x, node.geometry.y, edges)
-ugrid = xu.Ugrid1d.from_meshkernel(mesh1d)
-ugrid.set_crs(epsg=28992)
-ds = ugrid.to_dataset()
-# ds.to_netcdf("ribasim.nc")
-ds = ugridify(model)
-ds.ugrid.to_netcdf(output_folder / "ribasim.nc")
+uds = ugridify(model)
+uds.ugrid.to_netcdf(output_folder / "ribasim.nc")
 
 # Generate area and flows
 # File format is int32, float32 based
