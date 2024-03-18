@@ -30,9 +30,9 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run --environment ${{ matrix.environment }} install-ci
+        run: pixi run --environment ${{ matrix.pixi-environment }} install-ci
       - name: Test Ribasim Python
-        run: pixi run --environment ${{ matrix.environment }} test-ribasim-python-cov
+        run: pixi run --environment ${{ matrix.pixi-environment }} test-ribasim-python-cov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
