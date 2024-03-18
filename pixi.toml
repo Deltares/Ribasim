@@ -190,7 +190,6 @@ python = "3.11.*"
 python = "3.10.*"
 
 [environments]
-default=["py312"]
 py312=["py312"]
 py311=["py311"]
 py310=["py310"]
