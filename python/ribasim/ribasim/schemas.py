@@ -11,6 +11,22 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
+class BasinBoundaryconcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    drainage_concentration: Series[float] = pa.Field(nullable=True)
+    precipitation_concentration: Series[float] = pa.Field(nullable=True)
+    urban_runoff_concentration: Series[float] = pa.Field(nullable=True)
+
+
+class BasinConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class BasinProfileSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     area: Series[float] = pa.Field(nullable=False)
@@ -63,6 +79,13 @@ class DiscreteControlLogicSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=False)
 
 
+class FlowBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class FlowBoundaryStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -79,6 +102,13 @@ class FractionalFlowStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     fraction: Series[float] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=True)
+
+
+class LevelBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
 
 
 class LevelBoundaryStaticSchema(_BaseSchema):
