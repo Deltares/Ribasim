@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
@@ -38,6 +39,7 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
@@ -136,11 +138,24 @@ class Model(FileModel):
         for sub in self._nodes():
             sub._save(directory, input_dir)
 
+    def node_table(self) -> NodeTable:
+        """Compute the full NodeTable from all node types."""
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = pd.concat(df_chunks, ignore_index=True)
+        node_table = NodeTable(df=df)
+        node_table.sort()
+        return node_table
+
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
         """Return all non-empty MultiNodeModel instances."""
         for key in self.model_fields.keys():
             attr = getattr(self, key)
-            if isinstance(attr, MultiNodeModel) and attr.node.df is not None:
+            if (
+                isinstance(attr, MultiNodeModel)
+                and attr.node.df is not None
+                # Model.read creates empty node tables (#1278)
+                and not attr.node.df.empty
+            ):
                 yield attr
 
     def _children(self):
@@ -239,12 +254,12 @@ class Model(FileModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
+        node = self.node_table()
         self.edge.plot(ax=ax, zorder=2)
-        for node in self._nodes():
-            node.node.plot(ax=ax, zorder=3)
+        node.plot(ax=ax, zorder=3)
         # TODO
         # self.plot_control_listen(ax)
-        # self.node.plot(ax=ax, zorder=3)
+        # node.plot(ax=ax, zorder=3)
 
         handles, labels = ax.get_legend_handles_labels()
 
@@ -253,7 +268,7 @@ class Model(FileModel):
         #     (
         #         handles_subnetworks,
         #         labels_subnetworks,
-        #     ) = self.network.node.plot_allocation_networks(ax=ax, zorder=1)
+        #     ) = node.plot_allocation_networks(ax=ax, zorder=1)
         #     handles += handles_subnetworks
         #     labels += labels_subnetworks
 
