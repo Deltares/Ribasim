@@ -152,115 +152,93 @@ def dutch_waterways_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
         name="Pannerdensch Kanaal",
     )
     model.edge.add(
         model.basin[2],
         model.linear_resistance[3],
-        "flow",
         name="Start IJssel",
     )
     model.edge.add(
         model.linear_resistance[3],
         model.basin[5],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.linear_resistance[4],
-        "flow",
         name="Start Nederrijn",
     )
     model.edge.add(
         model.linear_resistance[4],
         model.basin[6],
-        "flow",
     )
     model.edge.add(
         model.basin[6],
         model.pump[9],
-        "flow",
     )
     model.edge.add(
         model.pump[9],
         model.basin[10],
-        "flow",
     )
     model.edge.add(
         model.basin[10],
         model.linear_resistance[11],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[11],
         model.basin[12],
-        "flow",
     )
     model.edge.add(
         model.basin[12],
         model.pump[14],
-        "flow",
     )
     model.edge.add(
         model.pump[14],
         model.basin[15],
-        "flow",
     )
     model.edge.add(
         model.basin[6],
         model.tabulated_rating_curve[8],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[8],
         model.basin[10],
-        "flow",
     )
     model.edge.add(
         model.basin[12],
         model.tabulated_rating_curve[13],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[13],
         model.basin[15],
-        "flow",
     )
     model.edge.add(
         model.basin[5],
         model.linear_resistance[18],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[18],
         model.level_boundary[7],
-        "flow",
     )
     model.edge.add(
         model.basin[15],
         model.linear_resistance[19],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[19],
         model.level_boundary[16],
-        "flow",
     )
     model.edge.add(
         model.pid_control[20],
         model.pump[14],
-        "control",
     )
     model.edge.add(
         model.discrete_control[17],
         model.tabulated_rating_curve[8],
-        "control",
     )
     model.edge.add(
         model.discrete_control[17],
         model.pump[9],
-        "control",
     )
 
     return model

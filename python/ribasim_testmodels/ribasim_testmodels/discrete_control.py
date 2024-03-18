@@ -84,32 +84,26 @@ def pump_discrete_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.linear_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[1],
         model.pump[4],
-        "flow",
     )
     model.edge.add(
         model.pump[4],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[4],
-        "control",
     )
     model.edge.add(
         model.discrete_control[6],
         model.linear_resistance[2],
-        "control",
     )
 
     return model
@@ -158,22 +152,18 @@ def flow_condition_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.pump[3],
-        "flow",
     )
     model.edge.add(
         model.pump[3],
         model.terminal[4],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[3],
-        "control",
     )
 
     return model
@@ -224,27 +214,22 @@ def level_boundary_condition_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.linear_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[3],
         model.outlet[4],
-        "flow",
     )
     model.edge.add(
         model.outlet[4],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[6],
         model.outlet[4],
-        "control",
     )
 
     return model
@@ -301,17 +286,14 @@ def tabulated_rating_curve_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[4],
         model.tabulated_rating_curve[2],
-        "control",
     )
 
     return model
@@ -372,42 +354,34 @@ def level_setpoint_with_minmax_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[3],
-        "flow",
     )
     model.edge.add(
         model.pump[3],
         model.level_boundary[4],
-        "flow",
     )
     model.edge.add(
         model.level_boundary[4],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.basin[1],
-        "flow",
     )
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[5],
         model.terminal[6],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[7],
         model.pump[2],
-        "control",
     )
     model.edge.add(
         model.discrete_control[7],
         model.pump[3],
-        "control",
     )
 
     return model
