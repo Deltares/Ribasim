@@ -3,13 +3,10 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
-import geopandas as gpd
-import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
-from matplotlib.collections import LineCollection
 from pydantic import (
     DirectoryPath,
     Field,
@@ -245,7 +242,7 @@ class Model(FileModel):
         )
 
         # Listen edges from PidControl
-        for table in [self.pid_control.static.df, self.pid_control.time.df]:
+        for table in (self.pid_control.static.df, self.pid_control.time.df):
             if table is None:
                 continue
 
@@ -268,38 +265,31 @@ class Model(FileModel):
 
         # Collect geometry data
         node = self.node_table().df
-        control_nodes_geometry = gpd.GeoSeries(
-            df_listen_edge.merge(
-                node,
-                left_on=["control_node_id", "control_node_type"],
-                right_on=["node_id", "node_type"],
-                how="left",
-            )["geometry"]
-        )
-        listen_nodes_geometry = gpd.GeoSeries(
-            df_listen_edge.merge(
-                node,
-                left_on=["listen_node_id", "listen_node_type"],
-                right_on=["node_id", "node_type"],
-                how="left",
-            )["geometry"]
-        )
+        control_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["control_node_id", "control_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
+
+        listen_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["listen_node_id", "listen_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
 
         # Plot listen edges
-        line_segments = LineCollection(
-            np.hstack(
-                [
-                    listen_nodes_geometry.x.to_numpy().reshape(-1, 1),
-                    listen_nodes_geometry.y.to_numpy().reshape(-1, 1),
-                    control_nodes_geometry.x.to_numpy().reshape(-1, 1),
-                    control_nodes_geometry.y.to_numpy().reshape(-1, 1),
-                ]
-            ).reshape(-1, 2, 2),
-            color="gray",
-            ls="--",
-            label="Listen edge",
-        )
-        ax.add_collection(line_segments)
+        for i, (point_listen, point_control) in enumerate(
+            zip(listen_nodes_geometry, control_nodes_geometry)
+        ):
+            ax.plot(
+                [point_listen.x, point_control.x],
+                [point_listen.y, point_control.y],
+                color="gray",
+                ls="--",
+                label="Listen edge" if i == 0 else None,
+            )
         return
 
     def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
