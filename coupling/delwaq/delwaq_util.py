@@ -1,6 +1,7 @@
 """Utilities to write Delwaq (binary) input files."""
 
 import struct
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -19,7 +20,7 @@ def strfdelta(tdelta):
     return f"{days:03d}{hours:02d}{minutes:02d}{seconds:02d}"
 
 
-def write_pointer(fn: str, data: pd.DataFrame):
+def write_pointer(fn: Path | str, data: pd.DataFrame):
     """Write pointer file for Delwaq.
 
     The format is a matrix of int32 of edges
@@ -34,7 +35,7 @@ def write_pointer(fn: str, data: pd.DataFrame):
             f.write(struct.pack("<4i", a, b, 0, 0))
 
 
-def write_lengths(fn: str, data: np.ndarray[np.float32]):
+def write_lengths(fn: Path | str, data: np.ndarray[np.float32]):
     """Write lengths file for Delwaq.
 
     The format is an int defining time/edges (?)
@@ -50,7 +51,7 @@ def write_lengths(fn: str, data: np.ndarray[np.float32]):
         f.write(data.astype("float32").tobytes())
 
 
-def write_volumes(fn: str, data: pd.DataFrame):
+def write_volumes(fn: Path | str, data: pd.DataFrame):
     """Write volumes file for Delwaq.
 
     The format is an int defining the time
@@ -67,7 +68,7 @@ def write_volumes(fn: str, data: pd.DataFrame):
             f.write(group.storage.to_numpy().astype("float32").tobytes())
 
 
-def write_flows(fn: str, data: pd.DataFrame):
+def write_flows(fn: Path | str, data: pd.DataFrame):
     """Write flows file for Delwaq.
 
     The format is an int defining the time

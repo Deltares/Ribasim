@@ -20,19 +20,23 @@ from delwaq_util import (
 )
 from jinja2 import Environment, FileSystemLoader
 
-env = Environment(loader=FileSystemLoader("template"))
+delwaq_dir = Path(__file__).parent
+repo_dir = delwaq_dir.parents[1]
+
+env = Environment(loader=FileSystemLoader(delwaq_dir / "template"))
 
 fillvolume = 0.0
 
 # Read in model and results
-modelfn = Path("../../generated_testmodels/basic/ribasim.toml")
-# modelfn = Path("../../hws_2024_3_0/hws.toml")  # fixed hws model
+modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
+# modelfn = Path("hws_2024_3_0/hws.toml")  # fixed hws model
 model = ribasim.Model.read(modelfn)
 # model.write("nl_2024/ribasim.toml")  # write to new location
 basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
 flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
 node = gpd.read_file(modelfn.parent / "database.gpkg", layer="Node", fid_as_index=True)
-output_folder = Path("model")
+output_folder = delwaq_dir / "model"
+output_folder.mkdir(exist_ok=True)
 
 # Setup metadata
 if model.solver.saveat is None:
@@ -44,7 +48,9 @@ else:
 
 # Setup topology, write to pointer file
 edge = model.edge.df
+assert edge is not None
 edge = edge[edge.edge_type == "flow"]  # no control or allocation stuff please
+assert edge is not None
 
 # Flows on non-existing edges indicate where the boundaries are
 tg = flows.groupby("time")
@@ -52,12 +58,12 @@ g = tg.get_group(flows.time[0])
 nboundary = g.edge_id.isna().sum()
 boundary_nodes = g.to_node_id[g.edge_id.isna()]
 new_boundary_ids = np.tile(-np.arange(1, nboundary + 1), tg.ngroups)
-flows.from_node_id.loc[flows.edge_id.isna()] = new_boundary_ids
+flows.loc[flows.edge_id.isna(), "from_node_id"] = new_boundary_ids
 # flows.to_csv(output_folder / "flows.csv", index=False)  # not needed
 
 
 tg = flows.groupby("time")
-pointer = tg.get_group(flows.time[0])
+pointer = tg.get_group(flows.time[0]).copy()
 pointer.drop(
     columns=["time", "from_node_type", "to_node_type", "flow_rate", "edge_id"],
     inplace=True,
@@ -141,6 +147,7 @@ def make_boundary(id, type):
     return type[:10] + "_" + str(id)
 
 
+assert model.level_boundary.concentration.df is not None
 for i, row in model.level_boundary.concentration.df.groupby(["node_id"]):
     row = row.drop_duplicates(subset=["substance"])
     bid = make_boundary(row.node_id.iloc[0], "LevelBoundary")
@@ -154,6 +161,7 @@ for i, row in model.level_boundary.concentration.df.groupby(["node_id"]):
     substances.update(row.substance)
 
 
+assert model.flow_boundary.concentration.df is not None
 for i, row in model.flow_boundary.concentration.df.groupby("node_id"):
     row = row.drop_duplicates(subset=["substance"])
     bid = make_boundary(row.node_id.iloc[0], "FlowBoundary")
@@ -189,7 +197,7 @@ bnd.to_csv(
     quoting=csv.QUOTE_ALL,
 )
 
-dimrc = Path("reference/dimr_config.xml")
+dimrc = delwaq_dir / "reference/dimr_config.xml"
 shutil.copy(dimrc, output_folder / "dimr_config.xml")
 
 # Write input template
