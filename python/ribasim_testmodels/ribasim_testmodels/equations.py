@@ -39,12 +39,10 @@ def linear_resistance_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.linear_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.linear_resistance[2],
         model.level_boundary[3],
-        "flow",
     )
 
     return model
@@ -79,12 +77,10 @@ def rating_curve_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
-        "flow",
     )
 
     return model
@@ -114,12 +110,10 @@ def manning_resistance_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.manning_resistance[2],
-        "flow",
     )
     model.edge.add(
         model.manning_resistance[2],
         model.basin[3],
-        "flow",
     )
 
     return model
@@ -156,32 +150,26 @@ def misc_nodes_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.fractional_flow[2],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[3],
         model.pump[4],
-        "flow",
     )
     model.edge.add(
         model.pump[4],
         model.basin[5],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[1],
         model.fractional_flow[6],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[6],
         model.terminal[7],
-        "flow",
     )
 
     return model
@@ -221,17 +209,14 @@ def pid_control_equation_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.terminal[3],
-        "flow",
     )
     model.edge.add(
         model.pid_control[4],
         model.pump[2],
-        "control",
     )
 
     return model

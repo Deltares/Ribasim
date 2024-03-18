@@ -97,6 +97,7 @@ def test_extra_columns(basic_transient):
 def test_sort(level_setpoint_with_minmax, tmp_path):
     model = level_setpoint_with_minmax
     table = model.discrete_control.condition
+    edge = model.edge
 
     # apply a wrong sort, then call the sort method to restore order
     table.df.sort_values("greater_than", ascending=False, inplace=True)
@@ -110,15 +111,24 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0
 
+    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
+    assert edge.df.iloc[0]["from_node_type"] != "Basin"
+    edge.sort()
+    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+
     # re-apply wrong sort, then check if it gets sorted on write
     table.df.sort_values("greater_than", ascending=False, inplace=True)
+    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
     assert table.df.iloc[0]["greater_than"] == 5.0
     model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
     table_loaded = model_loaded.discrete_control.condition
+    edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
+    assert edge.df.iloc[0]["from_node_type"] == "Basin"
     __assert_equal(table.df, table_loaded.df)
+    __assert_equal(edge.df, edge_loaded.df)
 
 
 @pytest.mark.xfail(reason="Needs Model read implementation")
@@ -141,6 +151,6 @@ def test_roundtrip(trivial, tmp_path):
     # check if all tables are the same
     __assert_equal(model1.network.node.df, model2.network.node.df, is_network=True)
     __assert_equal(model1.network.edge.df, model2.network.edge.df, is_network=True)
-    for node1, node2 in zip(model1.nodes().values(), model2.nodes().values()):
-        for table1, table2 in zip(node1.tables(), node2.tables()):
+    for node1, node2 in zip(model1._nodes(), model2._nodes()):
+        for table1, table2 in zip(node1._tables(), node2._tables()):
             __assert_equal(table1.df, table2.df)
