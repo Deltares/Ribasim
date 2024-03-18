@@ -462,12 +462,14 @@ end
 
 function set_initial_demands_level!(
     allocation_model::AllocationModel,
+    u::ComponentVector,
     p::Parameters,
     t::Float64,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; basin) = p
-    (; node_id, demand, demand_reduced) = basin
+    (; allocation_network_id) = allocation_model
+    (; graph, basin) = p
+    (; node_id, demand) = basin
 
     # When collecting demands, use the reduced demands
     # that are left over after using internal sources in the subnetwork
@@ -477,6 +479,7 @@ function set_initial_demands_level!(
 
     for (i, id) in enumerate(node_id)
         if graph[id].allocation_network_id == allocation_network_id
+            demand[i] = get_basin_demand(allocation_model, u, p, t, id)
         end
     end
 
@@ -503,6 +506,22 @@ function adjust_demands_user!(
             set_user_demand!(p, id, priority_idx, d)
         end
     end
+    return nothing
+end
+
+function adjust_demands_level!(allocation_model::AllocationModel, p::Parameters)::Nothing
+    (; graph, basin) = p
+    (; node_id, demand) = basin
+    (; allocation_network_id, problem) = allocation_model
+    F_basin_in = problem[:F_basin_in]
+
+    # Reduce the demand by what was allocated
+    for (i, id) in enumerate(node_id)
+        if graph[id].allocation_network_id == allocation_network_id
+            demand[i] -= JuMP.value(F_basin_in[id])
+        end
+    end
+
     return nothing
 end
 
@@ -668,7 +687,7 @@ function allocate!(
 
     # Set initial demands which are reduced by usage in the adjust_demands_*! methods
     set_initial_demands_user!(allocation_model, p, t, optimization_type)
-    set_initial_demands_level!()
+    set_initial_demands_level!(allocation_model, u, p, t, optimization_type)
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
@@ -719,5 +738,6 @@ function allocate!(
 
         # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
         adjust_demands_user!(allocation_model, p, priority_idx)
+        adjust_demands_level!(allocation_model, p)
     end
 end

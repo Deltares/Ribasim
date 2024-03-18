@@ -166,7 +166,6 @@ struct Basin{T, C} <: AbstractParameterNode
     storage::Vector{Vector{Float64}}
     # Demands for allocation if applicable
     demand::Vector{Float64}
-    demand_reduced::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 

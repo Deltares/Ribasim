@@ -510,7 +510,6 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     check_no_nans(table, "Basin")
 
     demand = zeros(n)
-    demand_reduced = zeros(n)
 
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
@@ -524,7 +523,6 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         level,
         storage,
         demand,
-        demand_reduced,
         time,
     )
 end
