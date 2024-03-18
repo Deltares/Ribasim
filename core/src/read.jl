@@ -493,10 +493,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         current_area = DiffCache(current_area, chunk_sizes)
     end
 
-    precipitation = zeros(length(node_id))
-    potential_evaporation = zeros(length(node_id))
-    drainage = zeros(length(node_id))
-    infiltration = zeros(length(node_id))
+    precipitation = zeros(n)
+    potential_evaporation = zeros(n)
+    drainage = zeros(n)
+    infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
@@ -509,7 +509,8 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    demand = zeros(length(node_id))
+    demand = zeros(n)
+    demand_reduced = zeros(n)
 
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
@@ -523,6 +524,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         level,
         storage,
         demand,
+        demand_reduced,
         time,
     )
 end

@@ -460,6 +460,29 @@ function set_initial_demands_user!(
     return nothing
 end
 
+function set_initial_demands_level!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    t::Float64,
+    optimization_type::OptimizationType.T,
+)::Nothing
+    (; basin) = p
+    (; node_id, demand, demand_reduced) = basin
+
+    # When collecting demands, use the reduced demands
+    # that are left over after using internal sources in the subnetwork
+    if optimization_type == OptimizationType.collect_demands
+        return nothing
+    end
+
+    for (i, id) in enumerate(node_id)
+        if graph[id].allocation_network_id == allocation_network_id
+        end
+    end
+
+    return nothing
+end
+
 function adjust_demands_user!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -645,6 +668,7 @@ function allocate!(
 
     # Set initial demands which are reduced by usage in the adjust_demands_*! methods
     set_initial_demands_user!(allocation_model, p, t, optimization_type)
+    set_initial_demands_level!()
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
