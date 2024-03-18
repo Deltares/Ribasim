@@ -952,17 +952,16 @@ def flow_demand_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.tabulated_rating_curve[2],
-        "flow",
         subnetwork_id=2,
     )
-    model.edge.add(model.tabulated_rating_curve[2], model.basin[3], "flow")
-    model.edge.add(model.basin[3], model.user_demand[4], "flow")
-    model.edge.add(model.user_demand[4], model.basin[7], "flow")
-    model.edge.add(model.basin[7], model.user_demand[8], "flow")
-    model.edge.add(model.user_demand[8], model.basin[7], "flow")
-    model.edge.add(model.basin[3], model.user_demand[6], "flow")
-    model.edge.add(model.user_demand[6], model.basin[7], "flow")
-    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2], "control")
+    model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
+    model.edge.add(model.basin[3], model.user_demand[4])
+    model.edge.add(model.user_demand[4], model.basin[7])
+    model.edge.add(model.basin[7], model.user_demand[8])
+    model.edge.add(model.user_demand[8], model.basin[7])
+    model.edge.add(model.basin[3], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[7])
+    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
 
     return model
 
@@ -998,8 +997,8 @@ def linear_resistance_demand_model():
         [flow_demand.Static(priority=[1], demand=2.0)],
     )
 
-    model.edge.add(model.basin[1], model.linear_resistance[2], "flow", subnetwork_id=1)
-    model.edge.add(model.linear_resistance[2], model.basin[3], "flow")
-    model.edge.add(model.flow_demand[4], model.linear_resistance[2], "control")
+    model.edge.add(model.basin[1], model.linear_resistance[2], subnetwork_id=1)
+    model.edge.add(model.linear_resistance[2], model.basin[3])
+    model.edge.add(model.flow_demand[4], model.linear_resistance[2])
 
     return model
