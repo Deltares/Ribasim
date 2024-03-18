@@ -138,7 +138,7 @@ class Model(FileModel):
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]
-        df = pd.concat(df_chunks, ignore_index=True)  # type: ignore
+        df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
         return node_table
