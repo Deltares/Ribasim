@@ -326,7 +326,7 @@ end
 
 @testitem "flow_demand" begin
     using JuMP
-    using Ribasim: NodeID, NodeType
+    using Ribasim: NodeID, NodeType, OptimizationType
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -373,31 +373,53 @@ end
     @test constraint_flow_demand_outflow.set.upper == 0.0
 
     t = 0.0
+    (; u) = model.integrator
+    Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 1)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        1,
+        OptimizationType.internal_sources,
+    )
     objective = JuMP.objective_function(problem)
     @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
-    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t)
+    # Reduced demand
+    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t) - 0.001
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     # Priority 2
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 2)
-    # The flow at priority 1 through the node with a flow demand at priority 2
-    # is subtracted from this flow demand
-    @test flow_demand.demand[1] ≈
-          flow_demand.demand_itp[1](t) -
-          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 6), 1)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        2,
+        OptimizationType.internal_sources,
+    )
+    # No demand left
+    @test flow_demand.demand[1] ≈ 0.0
+    # Allocated
+    @test JuMP.value(only(F_flow_buffer_in)) == 0.001
     @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     # Priority 3
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 3)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        3,
+        OptimizationType.allocate,
+    )
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities
     @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
     # So flow from the flow buffer is used for UserDemand #4
-    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ==
-          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 4), 3)
+    @test JuMP.value(only(F_flow_buffer_out)) == 0.001
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
