@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    name: Python ${{ matrix.python-version }} - ${{ matrix.os }}
+    name: Python ${{ matrix.pixi-environment }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
