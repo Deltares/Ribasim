@@ -1,0 +1,5 @@
+model
+*.map
+*.nc
+*.pdf
+*.out

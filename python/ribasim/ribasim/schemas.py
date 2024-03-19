@@ -48,6 +48,23 @@ class BasinTimeSchema(_BaseSchema):
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
+# No capital for concentration to get Basin / boundaryconcentration
+class BasinBoundaryconcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    drainage_concentration: Series[float] = pa.Field(nullable=True)
+    precipitation_concentration: Series[float] = pa.Field(nullable=True)
+    urban_runoff_concentration: Series[float] = pa.Field(nullable=True)
+
+
+class BasinConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     listen_node_type: Series[str] = pa.Field(nullable=False)
@@ -75,6 +92,13 @@ class FlowBoundaryTimeSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
+class FlowBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class FractionalFlowStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     fraction: Series[float] = pa.Field(nullable=False)
@@ -91,6 +115,13 @@ class LevelBoundaryTimeSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
+
+
+class LevelBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
 
 
 class LevelDemandStaticSchema(_BaseSchema):
