@@ -9,7 +9,9 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
+    flow_demand,
     fractional_flow,
+    level_boundary,
     level_demand,
     linear_resistance,
     outlet,
@@ -842,6 +844,8 @@ def main_network_with_subnetworks_model() -> Model:
 
 
 def level_demand_model() -> Model:
+    """Small model with a LevelDemand."""
+
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
@@ -883,5 +887,115 @@ def level_demand_model() -> Model:
     model.edge.add(model.level_demand[4], model.basin[2])
     model.edge.add(model.user_demand[3], model.basin[5])
     model.edge.add(model.level_demand[4], model.basin[5])
+
+    return model
+
+
+def flow_demand_model() -> Model:
+    """Small model with a FlowDemand."""
+
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        allocation=Allocation(use_allocation=True, timestep=1e5),
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
+    )
+
+    model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(node_id=[1], level=[1.0])],
+    )
+
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(7, Point(3, -1), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.user_demand.add(
+        Node(4, Point(3, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[3], demand=1e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+    model.user_demand.add(
+        Node(6, Point(2, -1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[1], demand=1e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+    model.user_demand.add(
+        Node(8, Point(3, -2), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[4], demand=1e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+
+    model.flow_demand.add(
+        Node(5, Point(1, -1), subnetwork_id=2),
+        [flow_demand.Static(demand=2e-3, priority=[2])],
+    )
+
+    model.edge.add(
+        model.level_boundary[1],
+        model.tabulated_rating_curve[2],
+        subnetwork_id=2,
+    )
+    model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
+    model.edge.add(model.basin[3], model.user_demand[4])
+    model.edge.add(model.user_demand[4], model.basin[7])
+    model.edge.add(model.basin[7], model.user_demand[8])
+    model.edge.add(model.user_demand[8], model.basin[7])
+    model.edge.add(model.basin[3], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[7])
+    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
+
+    return model
+
+
+def linear_resistance_demand_model():
+    """Small model with a FlowDemand for a node with a max flow rate."""
+
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        allocation=Allocation(use_allocation=True),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.linear_resistance.add(
+        Node(2, Point(0, 1), subnetwork_id=2),
+        [linear_resistance.Static(resistance=1.0, max_flow_rate=[2.0])],
+    )
+
+    model.flow_demand.add(
+        Node(4, Point(1, 1), subnetwork_id=2),
+        [flow_demand.Static(priority=[1], demand=2.0)],
+    )
+
+    model.edge.add(model.basin[1], model.linear_resistance[2], subnetwork_id=1)
+    model.edge.add(model.linear_resistance[2], model.basin[3])
+    model.edge.add(model.flow_demand[4], model.linear_resistance[2])
 
     return model

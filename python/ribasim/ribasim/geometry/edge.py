@@ -16,7 +16,7 @@ from ribasim.input_base import SpatialTableModel
 
 __all__ = ("EdgeTable",)
 
-SPATIALCONTROLNODETYPES = {"LevelDemand", "DiscreteControl", "PidControl"}
+SPATIALCONTROLNODETYPES = {"LevelDemand", "FlowDemand", "DiscreteControl", "PidControl"}
 
 
 class NodeData(NamedTuple):

@@ -115,6 +115,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "PidControl": "x",
             "UserDemand": "s",
             "LevelDemand": "o",
+            "FlowDemand": "h",
             "": "o",
         }
 
@@ -133,6 +134,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "PidControl": "k",
             "UserDemand": "g",
             "LevelDemand": "k",
+            "FlowDemand": "r",
             "": "k",
         }
         if self.df is None:

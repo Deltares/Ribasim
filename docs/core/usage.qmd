@@ -198,6 +198,9 @@ name it must have in the database if it is stored there.
 - LevelDemand: Indicates minimum and maximum target level of connected basins for allocation
   - `LevelDemand / static`: static target levels
   - `LevelDemand / time`: dynamic target levels
+- FlowDemand: sets non-consuming flow demand
+   - `FlowDemand / static`: flow demands
+   - `FlowDemand / time`: dynamic flow demands
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
@@ -447,7 +450,7 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int32   | -            | sorted
 active        | Bool    | -            | (optional, default true)
-demand        | Float64 | $m^3 s^{-1}$ | -
+demand        | Float64 | $m^3 s^{-1}$ | non-negative
 return_factor | Float64 | -            | between [0 - 1]
 min_level     | Float64 | $m$          | -
 priority      | Int32   | -            | positive, sorted per node id
@@ -467,13 +470,13 @@ column        | type     | unit         | restriction
 node_id       | Int32    | -            | sorted
 priority      | Int32    | -            | positive, sorted per node id
 time          | DateTime | -            | sorted per priority per node id
-demand        | Float64  | $m^3 s^{-1}$ | -
+demand        | Float64  | $m^3 s^{-1}$ | non-negative
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | -
 
 # LevelDemand {#sec-level_demand}
 
-An `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
+A `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
 above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
 The same `LevelDemand` node can be used for basins in different subnetworks.
@@ -497,6 +500,29 @@ time          | DateTime | -            | sorted per node id
 min_level     | Float64  | $m$          | -
 max_level     | Float64  | $m$          | -
 priority      | Int32    | -            | positive
+
+# FlowDemand {#sec-level_demand}
+
+A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one single priority.
+FlowDemand nodes can set a flow demand only for a single connector node.
+
+column        | type     | unit         | restriction
+------------- | -------- | ------------ | -----------
+node_id       | Int32    | -            | sorted
+priority      | Int32    | -            | positive
+demand        | Float64  | $m^3 s^{-1}$ | non-negative
+
+## FlowDemand / time
+
+This table is the transient form of the `FlowDemand` table, in which a time-dependent demand can be supplied.
+Similar to the static version, only a single priority per `FlowDemand` node can be provided.
+
+column        | type     | unit         | restriction
+------------- | -------- | ------------ | -----------
+node_id       | Int32    | -            | sorted
+time          | DateTime | -            | sorted per node id
+priority      | Int32    | -            | positive
+demand        | Float64  | $m^3 s^{-1}$ | non-negative
 
 # LevelBoundary {#sec-level-boundary}
 

@@ -23,6 +23,8 @@ from ribasim.schemas import (
     DiscreteControlLogicSchema,
     FlowBoundaryStaticSchema,
     FlowBoundaryTimeSchema,
+    FlowDemandStaticSchema,
+    FlowDemandTimeSchema,
     FractionalFlowStaticSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
@@ -44,7 +46,7 @@ from ribasim.utils import _pascal_to_snake
 
 
 class Allocation(ChildModel):
-    timestep: float | None = None
+    timestep: float = 86400.0
     use_allocation: bool = False
 
 
@@ -210,7 +212,7 @@ class UserDemand(MultiNodeModel):
 class LevelDemand(MultiNodeModel):
     static: TableModel[LevelDemandStaticSchema] = Field(
         default_factory=TableModel[LevelDemandStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id", "priority"]},
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
     time: TableModel[LevelDemandTimeSchema] = Field(
         default_factory=TableModel[LevelDemandTimeSchema],
@@ -225,6 +227,17 @@ class FlowBoundary(MultiNodeModel):
     )
     time: TableModel[FlowBoundaryTimeSchema] = Field(
         default_factory=TableModel[FlowBoundaryTimeSchema],
+        json_schema_extra={"sort_keys": ["node_id", "time"]},
+    )
+
+
+class FlowDemand(MultiNodeModel):
+    static: TableModel[FlowDemandStaticSchema] = Field(
+        default_factory=TableModel[FlowDemandStaticSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    time: TableModel[FlowDemandTimeSchema] = Field(
+        default_factory=TableModel[FlowDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "time"]},
     )
 

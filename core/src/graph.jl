@@ -54,6 +54,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             flow_vertical_dict[node_id] = flow_vertical_counter
         end
     end
+
+    errors = false
     for (;
         fid,
         from_node_type,
@@ -76,6 +78,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         end
         edge_metadata =
             EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
+        if haskey(graph, id_src, id_dst)
+            errors = true
+            @error "Duplicate edge" id_src id_dst
+        end
         graph[id_src, id_dst] = edge_metadata
         if edge_type == EdgeType.flow
             flow_counter += 1
@@ -87,6 +93,9 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             end
             push!(edges_source[subnetwork_id], edge_metadata)
         end
+    end
+    if errors
+        error("Invalid edges found")
     end
 
     if incomplete_subnetwork(graph, node_ids)

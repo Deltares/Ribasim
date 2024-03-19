@@ -322,3 +322,101 @@ end
     u_stage_6(τ) = storage[stage_6_start_idx]
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
 end
+
+@testitem "flow_demand" begin
+    using JuMP
+    using Ribasim: NodeID, NodeType
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    (; graph, allocation, flow_demand) = p
+
+    # Test has_external_demand
+    @test !any(
+        Ribasim.has_external_demand(graph, node_id, :flow_demand)[1] for
+        node_id in graph[].node_ids[2] if node_id.value != 2
+    )
+    @test Ribasim.has_external_demand(
+        graph,
+        NodeID(NodeType.TabulatedRatingCurve, 2),
+        :flow_demand,
+    )[1]
+
+    allocation_model = allocation.allocation_models[1]
+    (; problem) = allocation_model
+
+    F = problem[:F]
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
+
+    node_id_with_flow_demand = NodeID(NodeType.TabulatedRatingCurve, 2)
+    constraint_flow_out = problem[:flow_demand_outflow][node_id_with_flow_demand]
+
+    # Test flow conservation constraint containing flow buffer
+    constraint_with_flow_buffer = JuMP.constraint_object(
+        problem[:flow_conservation_flow_demand][node_id_with_flow_demand],
+    )
+    @test constraint_with_flow_buffer.func ==
+          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] -
+          F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)] +
+          F_flow_buffer_in[node_id_with_flow_demand] -
+          F_flow_buffer_out[node_id_with_flow_demand]
+
+    constraint_flow_demand_outflow =
+        JuMP.constraint_object(problem[:flow_demand_outflow][node_id_with_flow_demand])
+    @test constraint_flow_demand_outflow.func ==
+          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] + 0.0
+    @test constraint_flow_demand_outflow.set.upper == 0.0
+
+    t = 0.0
+
+    # Priority 1
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 1)
+    objective = JuMP.objective_function(problem)
+    @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
+    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t)
+    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
+
+    # Priority 2
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 2)
+    # The flow at priority 1 through the node with a flow demand at priority 2
+    # is subtracted from this flow demand
+    @test flow_demand.demand[1] ≈
+          flow_demand.demand_itp[1](t) -
+          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 6), 1)
+    @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
+
+    # Priority 3
+    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 3)
+    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
+    # The flow from the source is used up in previous priorities
+    @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
+    # So flow from the flow buffer is used for UserDemand #4
+    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ==
+          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 4), 3)
+end
+
+@testitem "flow_demand_with_max_flow_rate" begin
+    using Ribasim: NodeID, NodeType
+    using JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/linear_resistance_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+
+    # Test for pump max flow capacity constraint
+    (; problem) = model.integrator.p.allocation.allocation_models[1]
+    constraint = JuMP.constraint_object(
+        problem[:capacity][(
+            NodeID(NodeType.Basin, 1),
+            NodeID(NodeType.LinearResistance, 2),
+        )],
+    )
+    @test constraint.set.upper == 2.0
+end

@@ -21,6 +21,7 @@ from ribasim.config import (
     Basin,
     DiscreteControl,
     FlowBoundary,
+    FlowDemand,
     FractionalFlow,
     LevelBoundary,
     LevelDemand,
@@ -53,27 +54,29 @@ class Model(FileModel):
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
-    allocation: Allocation = Field(default_factory=Allocation)
     logging: Logging = Field(default_factory=Logging)
     solver: Solver = Field(default_factory=Solver)
     results: Results = Field(default_factory=Results)
 
+    allocation: Allocation = Field(default_factory=Allocation)
+
     basin: Basin = Field(default_factory=Basin)
+    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
+    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
+    flow_demand: FlowDemand = Field(default_factory=FlowDemand)
+    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
+    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    outlet: Outlet = Field(default_factory=Outlet)
+    pid_control: PidControl = Field(default_factory=PidControl)
+    pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(
         default_factory=TabulatedRatingCurve
     )
-    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
-    pump: Pump = Field(default_factory=Pump)
-    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
-    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
-    outlet: Outlet = Field(default_factory=Outlet)
     terminal: Terminal = Field(default_factory=Terminal)
-    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
-    pid_control: PidControl = Field(default_factory=PidControl)
     user_demand: UserDemand = Field(default_factory=UserDemand)
-    level_demand: LevelDemand = Field(default_factory=LevelDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
 

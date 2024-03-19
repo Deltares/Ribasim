@@ -18,7 +18,7 @@ neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary
 neighbortypes(::Val{:flow_boundary}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
-    Set((:linear_resistance, :manning_resistance, :pump, :outlet))
+    Set((:linear_resistance, :manning_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
 neighbortypes(::Val{:manning_resistance}) = Set((:basin, :level_boundary))
 neighbortypes(::Val{:discrete_control}) = Set((
@@ -33,6 +33,8 @@ neighbortypes(::Val{:discrete_control}) = Set((
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:flow_demand}) =
+    Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -60,6 +62,7 @@ n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -79,6 +82,7 @@ n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -110,6 +114,7 @@ sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 const TimeSchemas = Union{
     BasinTimeV1,
     FlowBoundaryTimeV1,
+    FlowDemandTimeV1,
     LevelBoundaryTimeV1,
     PidControlTimeV1,
     TabulatedRatingCurveTimeV1,
