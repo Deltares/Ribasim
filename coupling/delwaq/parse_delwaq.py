@@ -7,11 +7,13 @@ import ribasim
 import xarray as xr
 import xugrid as xu
 
-output_folder = Path("model")
+delwaq_dir = Path(__file__).parent
+repo_dir = delwaq_dir.parents[1]
+output_folder = delwaq_dir / "model"
 
 # TODO Have a shared config...
-modelfn = Path("../../generated_testmodels/basic/ribasim.toml")
-# modelfn = Path("../../hws_2024_3_0/hws.toml")
+modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
+# modelfn = repo_dir / "models/hws_2024_3_0/hws.toml"
 model = ribasim.Model.read(modelfn)
 
 # Output of Delwaq
