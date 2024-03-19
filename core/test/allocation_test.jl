@@ -374,6 +374,7 @@ end
 
     t = 0.0
     (; u) = model.integrator
+    optimization_type = OptimizationType.internal_sources
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1
@@ -383,7 +384,7 @@ end
         p,
         t,
         1,
-        OptimizationType.internal_sources,
+        optimization_type,
     )
     objective = JuMP.objective_function(problem)
     @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
@@ -398,7 +399,7 @@ end
         p,
         t,
         2,
-        OptimizationType.internal_sources,
+        optimization_type,
     )
     # No demand left
     @test flow_demand.demand[1] ≈ 0.0
@@ -413,7 +414,7 @@ end
         p,
         t,
         3,
-        OptimizationType.allocate,
+        optimization_type,
     )
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities

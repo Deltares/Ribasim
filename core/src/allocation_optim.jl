@@ -211,10 +211,9 @@ internal_sources: 0.0
 collect_demands: Inf
 allocate: the total flow allocated to this inlet from the main network
 """
-function set_capacities_inlet!(
+function set_initial_capacities_inlet!(
     allocation_model::AllocationModel,
     p::Parameters,
-    priority_idx::Int,
     optimization_type::OptimizationType.T,
 )::Nothing
     (; problem) = allocation_model
@@ -233,16 +232,14 @@ function set_capacities_inlet!(
             # Set the source capacity to effectively unlimited if subnetwork demands are being collected
             Inf
         elseif optimization_type == OptimizationType.allocate
-            # Set the source capacity to the value allocated to the subnetwork over this edge
-            subnetwork_allocateds[edge_id][priority_idx]
+            # Set the source capacity to the sum over priorities of the values allocated to the subnetwork over this edge
+            sum(subnetwork_allocateds[edge_id])
         end
-        JuMP.set_normalized_rhs(
-            source_constraints[edge_id],
-            # It is assumed that the allocation procedure does not have to be differentiated.
-            source_capacity,
-        )
+        @show optimization_type
+        @show source_constraints[edge_id]
+        @show source_capacity
+        JuMP.set_normalized_rhs(source_constraints[edge_id], source_capacity)
     end
-
     return nothing
 end
 
@@ -850,7 +847,6 @@ function allocate_priority!(
     (; allocation) = p
     (; priorities) = allocation
 
-    set_capacities_inlet!(allocation_model, p, priority_idx, optimization_type)
     set_capacities_flow_demand_outflow!(allocation_model, p, priority_idx)
 
     # Set the objective depending on the demands
@@ -946,6 +942,8 @@ function allocate!(
             end
         end
     end
+
+    set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
     if optimization_type != OptimizationType.collect_demands
         set_initial_values!(allocation_model, p, u, t)
