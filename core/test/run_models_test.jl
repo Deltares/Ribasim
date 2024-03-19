@@ -234,6 +234,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
+    @test allunique(Ribasim.tsaves(model))
     @test length(model.integrator.p.basin.precipitation) == 4
     @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()

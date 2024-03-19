@@ -75,6 +75,19 @@ class FlowBoundaryTimeSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
+class FlowDemandStaticSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    demand: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False, default=0)
+
+
+class FlowDemandTimeSchema(_BaseSchema):
+    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    demand: Series[float] = pa.Field(nullable=False)
+    priority: Series[int] = pa.Field(nullable=False, default=0)
+
+
 class FractionalFlowStaticSchema(_BaseSchema):
     node_id: Series[int] = pa.Field(nullable=False, default=0)
     fraction: Series[float] = pa.Field(nullable=False)

@@ -36,6 +36,8 @@ function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int3
             use_node = true
         elseif has_fractional_flow_outneighbors
             use_node = true
+        elseif has_external_demand(graph, node_id, :flow_demand)[1]
+            use_node = true
         end
 
         if use_node
@@ -124,6 +126,17 @@ function find_allocation_graph_edges!(
 
         # If the current node_id is in the current subnetwork
         if node_id in node_ids
+
+            # Capacity for nodes that have both a flow demand and a max flow rate
+            if has_external_demand(graph, node_id, :flow_demand)[1]
+                node = getfield(p, graph[node_id].type)
+                if is_flow_constraining(node)
+                    node_idx = findsorted(node.node_id, node_id)
+                    capacity[inflow_id(graph, node_id), node_id] =
+                        node.max_flow_rate[node_idx]
+                end
+            end
+
             # Direct connections in the subnetwork between nodes that
             # are in the allocation network
             for inneighbor_id in inneighbor_ids
@@ -247,7 +260,7 @@ function process_allocation_graph_edges!(
 
             # Find flow constraints
             if is_flow_constraining(node)
-                problem_node_idx = Ribasim.findsorted(node.node_id, node_id_2)
+                problem_node_idx = findsorted(node.node_id, node_id_2)
                 edge_capacity = min(edge_capacity, node.max_flow_rate[problem_node_idx])
             end
 
@@ -370,7 +383,7 @@ end
 
 """
 Add the variables for supply/demand of a basin to the problem.
-The variable indices are the node_ids of the basins in the subnetwork.
+The variable indices are the node_ids of the basins with a level demand in the subnetwork.
 """
 function add_variables_basin!(
     problem::JuMP.Model,
@@ -390,6 +403,32 @@ function add_variables_basin!(
 end
 
 """
+Add the variables for supply/demand of a node with a flow demand to the problem.
+The variable indices are the node_ids of the nodes with a flow demand in the subnetwork.
+"""
+function add_variables_flow_buffer!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int32,
+)::Nothing
+    (; graph) = p
+
+    node_ids_flow_demand = NodeID[]
+
+    for node_id in graph[].node_ids[allocation_network_id]
+        if has_external_demand(graph, node_id, :flow_demand)[1]
+            push!(node_ids_flow_demand, node_id)
+        end
+    end
+
+    problem[:F_flow_buffer_in] =
+        JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] >= 0.0)
+    problem[:F_flow_buffer_out] =
+        JuMP.@variable(problem, F_flow_buffer_out[node_id = node_ids_flow_demand,] >= 0.0)
+    return nothing
+end
+
+"""
 Certain allocation distribution types use absolute values in the objective function.
 Since most optimization packages do not support the absolute value function directly,
 New variables are introduced that act as the absolute value of an expression by
@@ -405,14 +444,18 @@ function add_variables_absolute_value!(
 
     node_ids = graph[].node_ids[allocation_network_id]
     node_ids_user_demand = NodeID[]
-    node_ids_basin = NodeID[]
+    node_ids_level_demand = NodeID[]
+    node_ids_flow_demand = NodeID[]
 
     for node_id in node_ids
         type = node_id.type
         if type == NodeType.UserDemand
             push!(node_ids_user_demand, node_id)
-        elseif type == NodeType.Basin
-            push!(node_ids_basin, node_id)
+        elseif type == NodeType.Basin &&
+               has_external_demand(graph, node_id, :level_demand)[1]
+            push!(node_ids_level_demand, node_id)
+        elseif has_external_demand(graph, node_id, :flow_demand)[1]
+            push!(node_ids_flow_demand, node_id)
         end
     end
 
@@ -427,7 +470,10 @@ function add_variables_absolute_value!(
 
     problem[:F_abs_user_demand] =
         JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
-    problem[:F_abs_basin] = JuMP.@variable(problem, F_abs_basin[node_id = node_ids_basin])
+    problem[:F_abs_level_demand] =
+        JuMP.@variable(problem, F_abs_level_demand[node_id = node_ids_level_demand])
+    problem[:F_abs_flow_demand] =
+        JuMP.@variable(problem, F_abs_flow_demand[node_id = node_ids_flow_demand])
 
     return nothing
 end
@@ -547,13 +593,80 @@ function get_basin_outflow(
 end
 
 """
-Add the flow conservation constraints to the allocation problem.
-The constraint indices are UserDemand node IDs.
+Add the subnetwork inlet flow conservation constraints to the allocation problem.
+The constraint indices are node IDs subnetwork inlet edge dst IDs.
 
 Constraint:
-sum(flows out of node node) == flows into node + flow from storage and vertical fluxes
+sum(flows into node) == sum(flows out of node)
 """
-function add_constraints_flow_conservation!(
+function add_constraints_conservation_subnetwork!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int32,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+    node_ids_inlets = [
+        edge[2] for edge in get_main_network_connections(p, allocation_network_id) if
+        edge[2].type != NodeType.Basin
+    ]
+    problem[:flow_conservation_inlets] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_inlets],
+        sum([
+            F[(node_id, outneighbor_id)] for
+            outneighbor_id in outflow_ids_allocation(graph, node_id)
+        ]) == sum([
+            F[(inneighbor_id, node_id)] for
+            inneighbor_id in inflow_ids_allocation(graph, node_id)
+        ]),
+        base_name = "flow_conservation_inlet"
+    )
+    return nothing
+end
+
+"""
+Add the conservation constraints for connector nodes with a flow demand to the allocation problem.
+The constraint indices are node IDs of the nodes with the flow demand
+(so not the IDs of the FlowDemand nodes).
+
+Constraint:
+flow into node + flow out of buffer = flow out of node + flow into buffer
+"""
+function add_constraints_conservation_flow_demand!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int32,
+)::Nothing
+    F = problem[:F]
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
+    (; graph) = p
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_flow_demand = [
+        node_id for
+        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
+    ]
+    problem[:flow_conservation_flow_demand] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_flow_demand],
+        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] +
+        F_flow_buffer_in[node_id] ==
+        F[(only(inflow_ids_allocation(graph, node_id)), node_id)] +
+        F_flow_buffer_out[node_id],
+        base_name = "flow_conservation_flow_demand"
+    )
+    return nothing
+end
+
+"""
+Add the basin flow conservation constraints to the allocation problem.
+The constraint indices are Basin node IDs.
+
+Constraint:
+sum(flows out of basin) == sum(flows into basin) + flow from storage and vertical fluxes
+"""
+function add_constraints_conservation_basin!(
     problem::JuMP.Model,
     p::Parameters,
     allocation_network_id::Int32,
@@ -561,16 +674,11 @@ function add_constraints_flow_conservation!(
     (; graph) = p
     F = problem[:F]
     node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_conservation =
-        [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
-    for edge in main_network_source_edges
-        push!(node_ids_conservation, edge[2])
-    end
-    unique!(node_ids_conservation)
-    problem[:flow_conservation] = JuMP.@constraint(
+
+    node_ids_basin = [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
+    problem[:flow_conservation_basin] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_conservation],
+        [node_id = node_ids_basin],
         get_basin_inflow(problem, node_id) + sum([
             F[(node_id, outneighbor_id)] for
             outneighbor_id in outflow_ids_allocation(graph, node_id)
@@ -579,7 +687,7 @@ function add_constraints_flow_conservation!(
             F[(inneighbor_id, node_id)] for
             inneighbor_id in inflow_ids_allocation(graph, node_id)
         ]),
-        base_name = "flow_conservation",
+        base_name = "flow_conservation_basin"
     )
     return nothing
 end
@@ -587,7 +695,6 @@ end
 """
 Add the UserDemand returnflow constraints to the allocation problem.
 The constraint indices are UserDemand node IDs.
-
 Constraint:
 outflow from user_demand <= return factor * inflow to user_demand
 """
@@ -686,17 +793,37 @@ function add_constraints_absolute_value_user_demand!(
 end
 
 """
-Add constraints so that variables F_abs_basin act as the
+Add constraints so that variables F_abs_level_demand act as the
 absolute value of the expression comparing flow to a basin to its demand.
 """
-function add_constraints_absolute_value_basin!(problem::JuMP.Model)::Nothing
+function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Nothing
     F_basin_in = problem[:F_basin_in]
-    F_abs_basin = problem[:F_abs_basin]
+    F_abs_level_demand = problem[:F_abs_level_demand]
     flow_per_node =
-        Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_basin.axes))
+        Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_level_demand.axes))
 
-    add_constraints_absolute_value!(problem, flow_per_node, F_abs_basin, "basin")
+    add_constraints_absolute_value!(problem, flow_per_node, F_abs_level_demand, "basin")
 
+    return nothing
+end
+
+"""
+Add constraints so that variables F_abs_flow_demand act as the
+absolute value of the expression comparing flow to a flow buffer to the flow demand.
+"""
+function add_constraints_absolute_value_flow_demand!(problem::JuMP.Model)::Nothing
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
+    flow_per_node = Dict(
+        node_id => F_flow_buffer_in[node_id] for node_id in only(F_abs_flow_demand.axes)
+    )
+
+    add_constraints_absolute_value!(
+        problem,
+        flow_per_node,
+        F_abs_flow_demand,
+        "flow_demand",
+    )
     return nothing
 end
 
@@ -770,6 +897,52 @@ function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
 end
 
 """
+Add the buffer outflow constraints to the allocation problem.
+The constraint indices are the node IDs of the nodes that have a flow demand.
+
+Constraint:
+flow out of buffer <= flow buffer capacity
+"""
+function add_constraints_buffer!(problem::JuMP.Model)::Nothing
+    F_flow_buffer_out = problem[:F_flow_buffer_out]
+    problem[:flow_buffer_outflow] = JuMP.@constraint(
+        problem,
+        [node_id = only(F_flow_buffer_out.axes)],
+        F_flow_buffer_out[node_id] <= 0.0,
+        base_name = "flow_buffer_outflow"
+    )
+    return nothing
+end
+
+"""
+Add the flow demand node outflow constraints to the allocation problem.
+The constraint indices are the node IDs of the nodes that have a flow demand.
+
+Constraint:
+flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 otherwise
+"""
+function add_constraints_flow_demand_outflow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    allocation_network_id::Int32,
+)::Nothing
+    (; graph) = p
+    F = problem[:F]
+    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids_flow_demand = [
+        node_id for
+        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
+    ]
+    problem[:flow_demand_outflow] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_flow_demand],
+        F[(node_id, only(outflow_ids_allocation(graph, node_id)))] <= 0.0,
+        base_name = "flow_demand_outflow"
+    )
+    return nothing
+end
+
+"""
 Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
@@ -784,16 +957,24 @@ function allocation_problem(
     add_variables_flow!(problem, p, allocation_network_id)
     add_variables_basin!(problem, p, allocation_network_id)
     add_variables_absolute_value!(problem, p, allocation_network_id)
+    add_variables_flow_buffer!(problem, p, allocation_network_id)
 
     # Add constraints to problem
+    add_constraints_conservation_basin!(problem, p, allocation_network_id)
+    add_constraints_conservation_flow_demand!(problem, p, allocation_network_id)
+    add_constraints_conservation_subnetwork!(problem, p, allocation_network_id)
+
+    add_constraints_absolute_value_user_demand!(problem, p)
+    add_constraints_absolute_value_flow_demand!(problem)
+    add_constraints_absolute_value_level_demand!(problem)
+
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
-    add_constraints_flow_conservation!(problem, p, allocation_network_id)
     add_constraints_user_demand_returnflow!(problem, p, allocation_network_id)
-    add_constraints_absolute_value_user_demand!(problem, p)
-    add_constraints_absolute_value_basin!(problem)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
+    add_constraints_flow_demand_outflow!(problem, p, allocation_network_id)
+    add_constraints_buffer!(problem)
 
     return problem
 end
@@ -803,6 +984,7 @@ Construct the JuMP.jl problem for allocation.
 
 Inputs
 ------
+allocation_network_id: the ID of this allocation network
 p: Ribasim problem parameters
 Δt_allocation: The timestep between successive allocation solves
 
