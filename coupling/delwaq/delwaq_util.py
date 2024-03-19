@@ -1,6 +1,7 @@
 """Utilities to write Delwaq (binary) input files."""
 
 import struct
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -48,7 +49,7 @@ def write_lengths(fn: Path | str, data: np.ndarray[np.float32]):
         f.write(data.astype("float32").tobytes())
 
 
-def write_volumes(fn: Path | str, data: pd.DataFrame):
+def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
     """Write volumes file for Delwaq.
 
     The format is an int defining the time
@@ -64,8 +65,12 @@ def write_volumes(fn: Path | str, data: pd.DataFrame):
             f.write(struct.pack("<i", int(time)))
             f.write(group.storage.to_numpy().astype("float32").tobytes())
 
+        # Delwaq needs an extra timestep after the end
+        f.write(struct.pack("<i", int(time + timestep.total_seconds())))
+        f.write(group.storage.to_numpy().astype("float32").tobytes())
 
-def write_flows(fn: Path | str, data: pd.DataFrame):
+
+def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
     """Write flows file for Delwaq.
 
     The format is an int defining the time
@@ -81,6 +86,10 @@ def write_flows(fn: Path | str, data: pd.DataFrame):
             f.write(struct.pack("<i", int(time)))
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
+        # Delwaq needs an extra timestep after the end
+        f.write(struct.pack("<i", int(time + timestep.total_seconds())))
+        f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
+
 
 def ugridify(model: ribasim.Model):
     node_df = model.node_table().df
@@ -91,6 +100,7 @@ def ugridify(model: ribasim.Model):
     node_df.sort_values("node_id", inplace=True)
 
     edge_df = model.edge.df.copy()
+    # edge_df = edge_df[edge_df.edge_type == "flow"]
     edge_df.set_crs(epsg=28992, inplace=True, allow_override=True)
     node_df.set_crs(epsg=28992, inplace=True, allow_override=True)
 

@@ -27,7 +27,7 @@ fillvolume = 0.0
 
 # Read in model and results
 modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
-# modelfn = Path("hws_2024_3_0/hws.toml")  # fixed hws model
+# modelfn = repo_dir / "models/hws_2024_3_2/hws.toml"
 model = ribasim.Model.read(modelfn)
 # model.write("nl_2024/ribasim.toml")  # write to new location
 basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
@@ -46,6 +46,7 @@ else:
 edge = model.edge.df
 assert edge is not None
 assert (edge.edge_type == "flow").all(), "control edges not yet supported"
+# edge = edge[edge.edge_type == "flow"]
 edge.set_crs(epsg=28992, inplace=True, allow_override=True)
 
 # Flows on non-existing edges indicate where the boundaries are
@@ -88,9 +89,9 @@ uds.ugrid.to_netcdf(output_folder / "ribasim.nc")
 # Time is internal clock, not real time!
 flows.time = (flows.time - flows.time[0]).dt.total_seconds().astype("int32")
 flows.drop(columns=["edge_id", "from_node_id", "to_node_id"], inplace=True)
-write_flows(output_folder / "ribasim.flo", flows)
+write_flows(output_folder / "ribasim.flo", flows, timestep)
 write_flows(
-    output_folder / "ribasim.are", flows
+    output_folder / "ribasim.are", flows, timestep
 )  # same as flow, so velocity becomes 1 m/s
 
 
@@ -111,9 +112,9 @@ volumes = pd.concat([basins, volumes_nbasin])
 volumes.sort_values(by=["time", "node_id"], inplace=True)
 # volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
 volumes.drop(columns=["node_id"], inplace=True)
-write_volumes(output_folder / "ribasim.vol", volumes)
+write_volumes(output_folder / "ribasim.vol", volumes, timestep)
 volumes.storage = 1  # m/s
-write_volumes(output_folder / "ribasim.vel", volumes)
+write_volumes(output_folder / "ribasim.vel", volumes, timestep)
 
 # Length file
 # Timestep and flattened (2, nsegments) of identical lengths
@@ -125,7 +126,7 @@ lengths = pd.DataFrame(
         "flow_rate": np.tile(list(lengths), len(rtime)),
     }
 )
-write_flows(output_folder / "ribasim.len", lengths)
+write_flows(output_folder / "ribasim.len", lengths, timestep)
 
 # Find our boundaries
 
