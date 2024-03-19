@@ -36,12 +36,12 @@
 
     # Control times
     t_1 = discrete_control.record.time[3]
-    t_1_index = findfirst(t .≈ t_1)
-    @test level[1, t_1_index] ≈ discrete_control.greater_than[1]
+    t_1_index = findfirst(>=(t_1), t)
+    @test level[1, t_1_index] <= discrete_control.greater_than[1]
 
     t_2 = discrete_control.record.time[4]
-    t_2_index = findfirst(t .≈ t_2)
-    @test level[2, t_2_index] ≈ discrete_control.greater_than[2]
+    t_2_index = findfirst(>=(t_2), t)
+    @test level[2, t_2_index] >= discrete_control.greater_than[2]
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
@@ -170,14 +170,14 @@ end
     level_min = greater_than[1]
     setpoint = greater_than[2]
 
-    t_1_none_index = findfirst(t .≈ t_none_1)
-    t_in_index = findfirst(t .≈ t_in)
-    t_2_none_index = findfirst(t .≈ t_none_2)
+    t_1_none_index = findfirst(>=(t_none_1), t)
+    t_in_index = findfirst(>=(t_in), t)
+    t_2_none_index = findfirst(>=(t_none_2), t)
 
     @test record.control_state == ["out", "none", "in", "none"]
-    @test level[t_1_none_index] ≈ setpoint
-    @test level[t_in_index] ≈ level_min
-    @test level[t_2_none_index] ≈ setpoint
+    @test level[t_1_none_index] <= setpoint
+    @test level[t_in_index] >= level_min
+    @test level[t_2_none_index] <= setpoint
 end
 
 @testitem "Set PID target with DiscreteControl" begin

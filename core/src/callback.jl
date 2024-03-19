@@ -37,14 +37,18 @@ function create_callbacks(
     callbacks = SciMLBase.DECallback[]
 
     tstops = get_tstops(basin.time.time, starttime)
-    basin_cb = PresetTimeCallback(tstops, update_basin)
+    basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
     integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
-    tabulated_rating_curve_cb = PresetTimeCallback(tstops, update_tabulated_rating_curve!)
+    tabulated_rating_curve_cb = PresetTimeCallback(
+        tstops,
+        update_tabulated_rating_curve!;
+        save_positions = (false, false),
+    )
     push!(callbacks, tabulated_rating_curve_cb)
 
     if config.allocation.use_allocation
@@ -52,6 +56,7 @@ function create_callbacks(
             update_allocation!,
             config.allocation.timestep;
             initial_affect = false,
+            save_positions = (false, false),
         )
         push!(callbacks, allocation_cb)
     end
@@ -88,7 +93,8 @@ function create_callbacks(
             discrete_control_condition,
             discrete_control_affect_upcrossing!,
             discrete_control_affect_downcrossing!,
-            n_conditions,
+            n_conditions;
+            save_positions = (false, false),
         )
         push!(callbacks, discrete_control_cb)
     end
