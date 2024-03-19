@@ -232,7 +232,65 @@ class Model(FileModel):
         return self
 
     def plot_control_listen(self, ax):
-        raise NotImplementedError()
+        df_listen_edge = pd.DataFrame(
+            data={
+                "control_node_id": pd.Series([], dtype="int"),
+                "control_node_type": pd.Series([], dtype="str"),
+                "listen_node_id": pd.Series([], dtype="int"),
+                "listen_node_type": pd.Series([], dtype="str"),
+            }
+        )
+
+        # Listen edges from PidControl
+        for table in (self.pid_control.static.df, self.pid_control.time.df):
+            if table is None:
+                continue
+
+            to_add = table[
+                ["node_id", "listen_node_id", "listen_node_type"]
+            ].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
+            to_add["control_node_type"] = "PidControl"
+            df_listen_edge = pd.concat([df_listen_edge, to_add])
+
+        # Listen edges from DiscreteControl
+        condition = self.discrete_control.condition.df
+        if condition is not None:
+            to_add = condition[
+                ["node_id", "listen_node_id", "listen_node_type"]
+            ].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
+            to_add["control_node_type"] = "DiscreteControl"
+            df_listen_edge = pd.concat([df_listen_edge, to_add])
+
+        # Collect geometry data
+        node = self.node_table().df
+        control_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["control_node_id", "control_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
+
+        listen_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["listen_node_id", "listen_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
+
+        # Plot listen edges
+        for i, (point_listen, point_control) in enumerate(
+            zip(listen_nodes_geometry, control_nodes_geometry)
+        ):
+            ax.plot(
+                [point_listen.x, point_control.x],
+                [point_listen.y, point_control.y],
+                color="gray",
+                ls="--",
+                label="Listen edge" if i == 0 else None,
+            )
+        return
 
     def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
         """
@@ -253,21 +311,18 @@ class Model(FileModel):
 
         node = self.node_table()
         self.edge.plot(ax=ax, zorder=2)
+        self.plot_control_listen(ax)
         node.plot(ax=ax, zorder=3)
-        # TODO
-        # self.plot_control_listen(ax)
-        # node.plot(ax=ax, zorder=3)
 
         handles, labels = ax.get_legend_handles_labels()
 
-        # TODO
-        # if indicate_subnetworks:
-        #     (
-        #         handles_subnetworks,
-        #         labels_subnetworks,
-        #     ) = node.plot_allocation_networks(ax=ax, zorder=1)
-        #     handles += handles_subnetworks
-        #     labels += labels_subnetworks
+        if indicate_subnetworks:
+            (
+                handles_subnetworks,
+                labels_subnetworks,
+            ) = node.plot_allocation_networks(ax=ax, zorder=1)
+            handles += handles_subnetworks
+            labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 

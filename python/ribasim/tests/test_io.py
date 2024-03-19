@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 import ribasim
 import tomli
@@ -144,3 +146,13 @@ def test_roundtrip(trivial, tmp_path):
     for node1, node2 in zip(model1._nodes(), model2._nodes()):
         for table1, table2 in zip(node1._tables(), node2._tables()):
             __assert_equal(table1.df, table2.df)
+
+
+def test_datetime_timezone():
+    # Due to a pydantic issue, a time zone was added.
+    # https://github.com/Deltares/Ribasim/issues/1282
+    model = ribasim.Model(starttime="2000-01-01", endtime="2001-01-01 00:00:00")
+    assert isinstance(model.starttime, datetime)
+    assert isinstance(model.endtime, datetime)
+    assert model.starttime.tzinfo is None
+    assert model.endtime.tzinfo is None
