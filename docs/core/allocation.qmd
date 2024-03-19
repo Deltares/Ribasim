@@ -5,16 +5,26 @@ title: "Allocation"
 # Introduction
 Allocation is the process of assigning an allocated abstraction flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
-The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+
+:::{.callout-note}
+within this *Allocation* section the main network is also considered to be a subnetwork.
+:::
 
 # The high level algorithm
-The allocation algorithm consists of 3 types of optimization problems:
+The allocation algorithm contains 3 types of optimization:
 
-1. **Subnetwork demand collection**: Collect the demands of a subnetwork from the main network by optimizing with unlimited capacity from the main network;
-2. **Main network allocation**: Allocate to subnetworks with the above collected demand, and demands in the main network;
-3. **Subnetwork allocation**: Allocate to demands in the subnetworks with the flows allocated to the subnetwork in the main network allocation.
+- `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;
+-  `collect_demands`, where flows are allocated within a subnetwork by only using the main network inlet as a source, with demands reduced by allocations in `internal_sources`;
+- `allocate`, where all available sources are used and the final allocated flows for the users are determined.
 
-The total allocation algorithm consists of performing 1 for all subnetworks, then performing 2, then performing 3 for all subnetworks. Not having a main network is also supported, then 1 and 2 are skipped.
+The full algorithm goes thtrough the following steps:
+
+1. Perform `internal_sources` and `collect_demands` for all subnetworks apart from the main network;
+2. Perform `allocate` for the main network;
+3. Perform `allocate` for the other subnetworks.
+
+Not having a main network is also supported, then 1 and 2 are skipped.
 
 # Elements of allocation
 
@@ -205,26 +215,22 @@ The allocation problem for an allocation network at time $t$ is solved per prior
 $$
     C_S^p \leftarrow C_S;
 $$
-2. Set the capacities of the edges that end in a UserDemand to their priority 1 demands:
+2. Set the the demands if they come from a timeseries,
 $$
-    (C_S^p)_{i,j} \leftarrow d_j^1(t) \quad\text{ for all } (i,j) \in U_S;
+    d_j^1 \leftarrow d_j^1(t)
 $$
+this is skipped for `collect_demands`.
 3. Maximize the objective function given the constraints;
 4. Subtract the used flows from the edge capacities:
 $$
     C_S^p \leftarrow C_S^p - F;
 $$
+also reduce the demands by the allocated flows and source capacities by the used flows.
 5. Repeat steps 2-4 for the remaining priorities up to $p_{\max}$.
-
-:::{.callout-note}
-In the future there will be 2 more optimization solves:
-- One before optimizing for demands, taking the demand/supply from basins into account;
-- One after optimizing for demands, taking preferences over sources into account.
-:::
 
 ## Example
 
-The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation):
+The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation-user-demand):
 
 
 ```{julia}
