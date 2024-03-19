@@ -556,7 +556,7 @@ function save_demands_and_allocations!(
             user_demand_idx = findsorted(user_demand.node_id, node_id)
             demand = user_demand.demand[user_demand_idx]
             allocated = user_demand.allocated[user_demand_idx][priority_idx]
-            #NOTE: istantaneous
+            #NOTE: instantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
         elseif node_id.type == NodeType.Basin &&

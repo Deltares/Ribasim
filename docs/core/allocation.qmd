@@ -97,7 +97,7 @@ A new graph is created from the subnetwork, which we call an allocation network.
 The allocation network consists of:
 
 - Nodes $V'_S \subset V_S$. Nodes that are represented in the allocation network are:
-nodes of type `Basin`, `UserDemand` and `Terminal`, nodes that have fractinal flow downstream neighbors, nodes that have a flow demand and nodes that are connected to a source edge.
+nodes of type `Basin`, `UserDemand` and `Terminal`, nodes that have `FractionalFlow` downstream neighbors, nodes that have a flow demand and nodes that are connected to a source edge.
 - Edges $E_S$, which are either edges that also appear between nodes in the subnetwork or represent a sequence of those, creating a shortcut.
 
 For notational convenience, we use the notation
