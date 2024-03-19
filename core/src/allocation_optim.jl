@@ -162,6 +162,13 @@ function assign_allocations!(
     return nothing
 end
 
+"""
+Set the capacities of the main network to subnetwork inlets.
+Per optimization type:
+internal_sources: 0.0
+collect_demands: Inf
+allocate: the total flow allocated to this inlet from the main network
+"""
 function set_main_network_source_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -197,6 +204,10 @@ function set_main_network_source_capacities!(
     return nothing
 end
 
+"""
+Set the capacities of the sources in the subnetwork
+as the latest instantaneous flow out of the source in the physical layer
+"""
 function set_initial_capacities_source!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -228,7 +239,7 @@ function set_initial_capacities_source!(
 end
 
 """
-Adjust the source capacities.
+Adjust the source capacities by the flow used from the sources.
 """
 function adjust_capacities_source!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
@@ -245,6 +256,10 @@ function adjust_capacities_source!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
+"""
+Set the capacities of the allocation flow edges as determined by
+the smallest max_flow_rate of a node on this edge
+"""
 function set_initial_capacities_edge!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -382,6 +397,10 @@ function get_basin_demand(
     end
 end
 
+"""
+Set the initial capacity of each basin in the subnetwork as
+vertical fluxes + the disk of storage above the maximum level / Δt_allocation
+"""
 function set_initial_capacities_basin!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -429,6 +448,10 @@ function adjust_capacities_basin!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
+"""
+Set the demands of the user demand nodes as given
+by either a coupled model or a timeseries
+"""
 function set_initial_demands_user!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -460,6 +483,10 @@ function set_initial_demands_user!(
     return nothing
 end
 
+"""
+Set the initial demand of each basin in the subnetwork as
+- vertical fluxes + the disk of missing storage below the minimum level / Δt_allocation
+"""
 function set_initial_demands_level!(
     allocation_model::AllocationModel,
     u::ComponentVector,
@@ -486,6 +513,10 @@ function set_initial_demands_level!(
     return nothing
 end
 
+"""
+Subtract the allocated flow to the user from its demand,
+to obtain the reduced demand used for goal programming
+"""
 function adjust_demands_user!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -509,6 +540,10 @@ function adjust_demands_user!(
     return nothing
 end
 
+"""
+Subtract the allocated flow to the basin from its demand,
+to obtain the reduced demand used for goal programming
+"""
 function adjust_demands_level!(allocation_model::AllocationModel, p::Parameters)::Nothing
     (; graph, basin) = p
     (; node_id, demand) = basin
