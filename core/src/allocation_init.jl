@@ -927,6 +927,7 @@ function allocation_problem(
 
     add_constraints_capacity!(problem, capacity, p, allocation_network_id)
     add_constraints_source!(problem, p, allocation_network_id)
+    add_constraints_user_source!(problem, p, allocation_network_id)
     add_constraints_fractional_flow!(problem, p, allocation_network_id)
     add_constraints_basin_flow!(problem)
     add_constraints_flow_demand_outflow!(problem, p, allocation_network_id)
