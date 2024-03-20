@@ -44,9 +44,9 @@ function get_models()
 end
 
 # Setup template with whitespace settings that mainly strips whitespace.
-# See model.py.jinja for the layout of the template.
+# See schemas.py.jinja for the layout of the template.
 model_template = Template(
-    normpath(@__DIR__, "templates", "model.py.jinja");
+    normpath(@__DIR__, "templates", "schemas.py.jinja");
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
