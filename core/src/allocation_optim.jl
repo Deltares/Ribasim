@@ -436,7 +436,7 @@ function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::
     return nothing
 end
 
-function adjust_capacities_user_returnflow!(
+function adjust_capacities_returnflow!(
     allocation_model::AllocationModel,
     p::Parameters,
 )::Nothing
@@ -451,7 +451,7 @@ function adjust_capacities_user_returnflow!(
         capacity =
             JuMP.normalized_rhs(constraint) +
             user_demand.return_factor[user_idx] *
-            JuMP.value(F[(node_id, outflow_id(graph, node_id))])
+            JuMP.value(F[(inflow_id(graph, node_id), node_id)])
 
         JuMP.set_normalized_rhs(constraint, capacity)
     end
@@ -764,7 +764,7 @@ function allocate_priority!(
         collect_demands,
     )
 
-    adjust_capacities_user_returnflow!(allocation_model, p)
+    adjust_capacities_returnflow!(allocation_model, p)
     return nothing
 end
 
