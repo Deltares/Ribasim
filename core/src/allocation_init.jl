@@ -485,6 +485,13 @@ function add_constraints_capacity!(
     return nothing
 end
 
+"""
+Add capacity constraints to the outflow edge of UserDemand nodes.
+The constraint indices are the UserDemand node IDs.
+
+Constraint:
+flow over UserDemand edge outflow edge <= cumulative return flow from previous priorities
+"""
 function add_constraints_user_source!(
     problem::JuMP.Model,
     p::Parameters,

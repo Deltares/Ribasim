@@ -424,6 +424,9 @@ function adjust_capacities_basin!(
     return nothing
 end
 
+"""
+Set the initial capacities of the UserDemand return flow sources to 0.
+"""
 function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
     constraints_outflow = problem[:source_user]
@@ -436,6 +439,10 @@ function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::
     return nothing
 end
 
+"""
+Add the return flow fraction of the inflow to the UserDemand nodes
+to the capacity of the outflow source.
+"""
 function adjust_capacities_returnflow!(
     allocation_model::AllocationModel,
     p::Parameters,
