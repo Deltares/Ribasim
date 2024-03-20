@@ -538,6 +538,13 @@ struct LevelDemand
     priority::Vector{Int32}
 end
 
+struct FlowDemand
+    node_id::Vector{NodeID}
+    demand_itp::Vector{ScalarInterpolation}
+    demand::Vector{Float64}
+    priority::Vector{Int32}
+end
+
 "Subgrid linearly interpolates basin levels."
 struct Subgrid
     basin_index::Vector{Int32}
@@ -586,5 +593,6 @@ struct Parameters{T, C1, C2}
     pid_control::PidControl{T}
     user_demand::UserDemand
     level_demand::LevelDemand
+    flow_demand::FlowDemand
     subgrid::Subgrid
 end

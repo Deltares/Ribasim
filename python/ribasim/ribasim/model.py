@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
@@ -20,6 +21,7 @@ from ribasim.config import (
     Basin,
     DiscreteControl,
     FlowBoundary,
+    FlowDemand,
     FractionalFlow,
     LevelBoundary,
     LevelDemand,
@@ -37,6 +39,7 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
@@ -51,27 +54,29 @@ class Model(FileModel):
     input_dir: Path = Field(default_factory=lambda: Path("."))
     results_dir: Path = Field(default_factory=lambda: Path("results"))
 
-    allocation: Allocation = Field(default_factory=Allocation)
     logging: Logging = Field(default_factory=Logging)
     solver: Solver = Field(default_factory=Solver)
     results: Results = Field(default_factory=Results)
 
+    allocation: Allocation = Field(default_factory=Allocation)
+
     basin: Basin = Field(default_factory=Basin)
+    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
+    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
+    flow_demand: FlowDemand = Field(default_factory=FlowDemand)
+    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
+    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
+    level_demand: LevelDemand = Field(default_factory=LevelDemand)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    outlet: Outlet = Field(default_factory=Outlet)
+    pid_control: PidControl = Field(default_factory=PidControl)
+    pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(
         default_factory=TabulatedRatingCurve
     )
-    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
-    pump: Pump = Field(default_factory=Pump)
-    level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
-    flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
-    outlet: Outlet = Field(default_factory=Outlet)
     terminal: Terminal = Field(default_factory=Terminal)
-    discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
-    pid_control: PidControl = Field(default_factory=PidControl)
     user_demand: UserDemand = Field(default_factory=UserDemand)
-    level_demand: LevelDemand = Field(default_factory=LevelDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
 
@@ -133,11 +138,24 @@ class Model(FileModel):
         for sub in self._nodes():
             sub._save(directory, input_dir)
 
+    def node_table(self) -> NodeTable:
+        """Compute the full NodeTable from all node types."""
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = pd.concat(df_chunks, ignore_index=True)
+        node_table = NodeTable(df=df)
+        node_table.sort()
+        return node_table
+
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
         """Return all non-empty MultiNodeModel instances."""
         for key in self.model_fields.keys():
             attr = getattr(self, key)
-            if isinstance(attr, MultiNodeModel) and attr.node.df is not None:
+            if (
+                isinstance(attr, MultiNodeModel)
+                and attr.node.df is not None
+                # Model.read creates empty node tables (#1278)
+                and not attr.node.df.empty
+            ):
                 yield attr
 
     def _children(self):
@@ -217,7 +235,65 @@ class Model(FileModel):
         return self
 
     def plot_control_listen(self, ax):
-        raise NotImplementedError()
+        df_listen_edge = pd.DataFrame(
+            data={
+                "control_node_id": pd.Series([], dtype="int"),
+                "control_node_type": pd.Series([], dtype="str"),
+                "listen_node_id": pd.Series([], dtype="int"),
+                "listen_node_type": pd.Series([], dtype="str"),
+            }
+        )
+
+        # Listen edges from PidControl
+        for table in (self.pid_control.static.df, self.pid_control.time.df):
+            if table is None:
+                continue
+
+            to_add = table[
+                ["node_id", "listen_node_id", "listen_node_type"]
+            ].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
+            to_add["control_node_type"] = "PidControl"
+            df_listen_edge = pd.concat([df_listen_edge, to_add])
+
+        # Listen edges from DiscreteControl
+        condition = self.discrete_control.condition.df
+        if condition is not None:
+            to_add = condition[
+                ["node_id", "listen_node_id", "listen_node_type"]
+            ].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
+            to_add["control_node_type"] = "DiscreteControl"
+            df_listen_edge = pd.concat([df_listen_edge, to_add])
+
+        # Collect geometry data
+        node = self.node_table().df
+        control_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["control_node_id", "control_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
+
+        listen_nodes_geometry = df_listen_edge.merge(
+            node,
+            left_on=["listen_node_id", "listen_node_type"],
+            right_on=["node_id", "node_type"],
+            how="left",
+        )["geometry"]
+
+        # Plot listen edges
+        for i, (point_listen, point_control) in enumerate(
+            zip(listen_nodes_geometry, control_nodes_geometry)
+        ):
+            ax.plot(
+                [point_listen.x, point_control.x],
+                [point_listen.y, point_control.y],
+                color="gray",
+                ls="--",
+                label="Listen edge" if i == 0 else None,
+            )
+        return
 
     def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
         """
@@ -236,23 +312,20 @@ class Model(FileModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
+        node = self.node_table()
         self.edge.plot(ax=ax, zorder=2)
-        for node in self._nodes():
-            node.node.plot(ax=ax, zorder=3)
-        # TODO
-        # self.plot_control_listen(ax)
-        # self.node.plot(ax=ax, zorder=3)
+        self.plot_control_listen(ax)
+        node.plot(ax=ax, zorder=3)
 
         handles, labels = ax.get_legend_handles_labels()
 
-        # TODO
-        # if indicate_subnetworks:
-        #     (
-        #         handles_subnetworks,
-        #         labels_subnetworks,
-        #     ) = self.network.node.plot_allocation_networks(ax=ax, zorder=1)
-        #     handles += handles_subnetworks
-        #     labels += labels_subnetworks
+        if indicate_subnetworks:
+            (
+                handles_subnetworks,
+                labels_subnetworks,
+            ) = node.plot_allocation_networks(ax=ax, zorder=1)
+            handles += handles_subnetworks
+            labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 

@@ -7,8 +7,10 @@ from ribasim.model import Model
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
+    flow_demand_model,
     fractional_flow_subnetwork_model,
     level_demand_model,
+    linear_resistance_demand_model,
     looped_subnetwork_model,
     main_network_with_subnetworks_model,
     minimal_subnetwork_model,
@@ -64,6 +66,7 @@ __all__ = [
     "dutch_waterways_model",
     "flow_boundary_time_model",
     "flow_condition_model",
+    "flow_demand_model",
     "fractional_flow_subnetwork_model",
     "invalid_discrete_control_model",
     "invalid_edge_types_model",
@@ -73,6 +76,7 @@ __all__ = [
     "level_boundary_condition_model",
     "level_demand_model",
     "level_setpoint_with_minmax_model",
+    "linear_resistance_demand_model",
     "linear_resistance_model",
     "looped_subnetwork_model",
     "main_network_with_subnetworks_model",

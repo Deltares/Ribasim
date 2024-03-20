@@ -87,3 +87,5 @@ quartodoc:
         - nodes.terminal
         - nodes.discrete_control
         - nodes.pid_control
+        - nodes.flow_demand
+        - nodes.level_demand
