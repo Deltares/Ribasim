@@ -937,20 +937,22 @@ function allocate_priority!(
     return nothing
 end
 
+"""
+Set the initial capacities and demands which are recudes by usage in the
+adjust_capacities_*! and adjust_demands_*! functions respectively.
+"""
 function set_initial_values!(
     allocation_model::AllocationModel,
     p::Parameters,
     u::ComponentVector,
     t::Float64,
 )::Nothing
-    # Set initial capacities which are reduced by usage in the adjust_capacities_*! methods
     set_initial_capacities_source!(allocation_model, p)
     set_initial_capacities_edge!(allocation_model, p)
     set_initial_capacities_basin!(allocation_model, p, u, t)
     set_initial_capacities_buffer!(allocation_model)
     set_initial_capacities_returnflow!(allocation_model)
 
-    # Set initial demands which are reduced by usage in the adjust_demands_*! methods
     set_initial_demands_user!(allocation_model, p, t)
     set_initial_demands_level!(allocation_model, u, p, t)
     set_initial_demands_flow!(allocation_model, p, t)
