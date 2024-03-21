@@ -108,15 +108,18 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph, user_demand) = p
+    (; graph, user_demand, basin) = p
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
+    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated) = basin
     flow = get_tmp(flow, 0)
+    vertical_flux = get_tmp(vertical_flux, 0)
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
     end
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
+    @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
@@ -125,6 +128,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     end
 
     copyto!(flow_prev, flow)
+    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
@@ -439,11 +443,11 @@ function save_flow(u, t, integrator)
         end
     end
 
-    mean_flow_all = vcat(flow_integrated)
-    mean_flow_all ./= Δt
+    flow_mean = copy(flow_integrated)
+    flow_mean ./= Δt
     fill!(flow_integrated, 0.0)
 
-    return mean_flow_all
+    return flow_mean
 end
 
 function update_subgrid_level!(integrator)::Nothing
@@ -463,17 +467,18 @@ end
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
     (; basin) = integrator.p
-    (; node_id, time) = basin
+    (; node_id, time, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
+    vertical_flux = get_tmp(vertical_flux, integrator.u)
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
 
     table = (;
-        basin.precipitation,
-        basin.potential_evaporation,
-        basin.drainage,
-        basin.infiltration,
+        vertical_flux.precipitation,
+        vertical_flux.potential_evaporation,
+        vertical_flux.drainage,
+        vertical_flux.infiltration,
     )
 
     for row in timeblock

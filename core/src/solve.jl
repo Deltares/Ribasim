@@ -19,7 +19,7 @@ function water_balance!(
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate_basins!(du, basin, graph, storage)
+    formulate_basins!(du, basin, storage)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
@@ -54,12 +54,13 @@ Currently at less than 0.1 m.
 function formulate_basins!(
     du::AbstractVector,
     basin::Basin,
-    graph::MetaGraph,
     storage::AbstractVector,
 )::Nothing
-    (; node_id, current_level, current_area) = basin
+    (; node_id, current_level, current_area, vertical_flux_from_input, vertical_flux) =
+        basin
     current_level = get_tmp(current_level, storage)
     current_area = get_tmp(current_area, storage)
+    vertical_flux = get_tmp(vertical_flux, storage)
 
     for (i, id) in enumerate(node_id)
         # add all precipitation that falls within the profile
@@ -71,10 +72,15 @@ function formulate_basins!(
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
 
-        precipitation = fixed_area * basin.precipitation[i]
-        evaporation = area * factor * basin.potential_evaporation[i]
-        drainage = basin.drainage[i]
-        infiltration = factor * basin.infiltration[i]
+        precipitation = fixed_area * vertical_flux_from_input.precipitation[i]
+        evaporation = area * factor * vertical_flux_from_input.potential_evaporation[i]
+        drainage = vertical_flux_from_input.drainage[i]
+        infiltration = factor * vertical_flux_from_input.infiltration[i]
+
+        vertical_flux.precipitation[i] = precipitation
+        vertical_flux.potential_evaporation[i] = evaporation
+        vertical_flux.drainage[i] = drainage
+        vertical_flux.infiltration[i] = infiltration
 
         influx = precipitation - evaporation + drainage - infiltration
         du.storage[i] += influx

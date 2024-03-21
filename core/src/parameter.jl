@@ -151,12 +151,13 @@ else
     T = Vector{Float64}
 end
 """
-struct Basin{T, C} <: AbstractParameterNode
+struct Basin{T, C, V1, V2} <: AbstractParameterNode
     node_id::Indices{NodeID}
-    precipitation::Vector{Float64}
-    potential_evaporation::Vector{Float64}
-    drainage::Vector{Float64}
-    infiltration::Vector{Float64}
+    # Vertical fluxes
+    vertical_flux_from_input::V1
+    vertical_flux::V2
+    vertical_flux_prev::V1
+    vertical_flux_integrated::V1
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -171,10 +172,10 @@ struct Basin{T, C} <: AbstractParameterNode
 
     function Basin(
         node_id,
-        precipitation,
-        potential_evaporation,
-        drainage,
-        infiltration,
+        vertical_flux_from_input::V1,
+        vertical_flux::V2,
+        vertical_flux_prev,
+        vertical_flux_integrated,
         current_level::T,
         current_area::T,
         area,
@@ -182,15 +183,15 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         demand,
         time::StructVector{BasinTimeV1, C, Int},
-    ) where {T, C}
+    ) where {T, C, V1, V2}
         is_valid = valid_profiles(node_id, level, area)
         is_valid || error("Invalid Basin / profile table.")
-        return new{T, C}(
+        return new{T, C, V1, V2}(
             node_id,
-            precipitation,
-            potential_evaporation,
-            drainage,
-            infiltration,
+            vertical_flux_from_input,
+            vertical_flux,
+            vertical_flux_prev,
+            vertical_flux_integrated,
             current_level,
             current_area,
             area,
