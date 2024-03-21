@@ -121,7 +121,7 @@ def subnetwork_model() -> Model:
         Node(11, Point(3, 3), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[5.0], return_factor=0.9, min_level=0.9, priority=1
+                demand=[5.0], return_factor=0.5, min_level=0.9, priority=1
             )
         ],
     )
@@ -939,7 +939,7 @@ def flow_demand_model() -> Model:
         Node(8, Point(3, -2), subnetwork_id=2),
         [
             user_demand.Static(
-                priority=[4], demand=1e-3, return_factor=1.0, min_level=0.2
+                priority=[4], demand=2e-3, return_factor=1.0, min_level=0.2
             )
         ],
     )

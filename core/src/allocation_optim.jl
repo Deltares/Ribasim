@@ -425,6 +425,48 @@ function adjust_capacities_basin!(
 end
 
 """
+Set the initial capacities of the UserDemand return flow sources to 0.
+"""
+function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::Nothing
+    (; problem) = allocation_model
+    constraints_outflow = problem[:source_user]
+
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
+        capacity = 0.0
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+    return nothing
+end
+
+"""
+Add the return flow fraction of the inflow to the UserDemand nodes
+to the capacity of the outflow source.
+"""
+function adjust_capacities_returnflow!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+)::Nothing
+    (; graph, user_demand) = p
+    (; problem) = allocation_model
+    constraints_outflow = problem[:source_user]
+    F = problem[:F]
+
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
+        user_idx = findsorted(user_demand.node_id, node_id)
+        capacity =
+            JuMP.normalized_rhs(constraint) +
+            user_demand.return_factor[user_idx] *
+            JuMP.value(F[(inflow_id(graph, node_id), node_id)])
+
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+
+    return nothing
+end
+
+"""
 Set the demand of the flow demand nodes. 2 cases:
 - Before the first allocation solve, set the demands to their full value;
 - Before an allocation solve, subtract the flow trough the node with a flow demand
@@ -728,6 +770,8 @@ function allocate_priority!(
         priorities[priority_idx],
         collect_demands,
     )
+
+    adjust_capacities_returnflow!(allocation_model, p)
     return nothing
 end
 
@@ -755,6 +799,8 @@ function allocate!(
             end
         end
     end
+
+    set_initial_capacities_returnflow!(allocation_model)
 
     for priority_idx in eachindex(priorities)
         allocate_priority!(allocation_model, u, p, t, priority_idx; collect_demands)
