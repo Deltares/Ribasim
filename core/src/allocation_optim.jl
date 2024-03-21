@@ -323,7 +323,7 @@ function get_basin_data(
     (; graph, basin, level_demand) = p
     (; Δt_allocation) = allocation_model
     @assert node_id.type == NodeType.Basin
-    influx = get_flow(graph, node_id, 0.0)
+    influx = 0.0
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
