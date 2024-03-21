@@ -524,8 +524,52 @@ function set_initial_demands_level!(
 end
 
 """
-Subtract the allocated flow to the user from its demand,
-to obtain the reduced demand used for goal programming
+Set the initial capacities of the UserDemand return flow sources to 0.
+"""
+function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::Nothing
+    (; problem) = allocation_model
+    constraints_outflow = problem[:source_user]
+
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
+        capacity = 0.0
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+    return nothing
+end
+
+"""
+Add the return flow fraction of the inflow to the UserDemand nodes
+to the capacity of the outflow source.
+"""
+function adjust_capacities_returnflow!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+)::Nothing
+    (; graph, user_demand) = p
+    (; problem) = allocation_model
+    constraints_outflow = problem[:source_user]
+    F = problem[:F]
+
+    for node_id in only(constraints_outflow.axes)
+        constraint = constraints_outflow[node_id]
+        user_idx = findsorted(user_demand.node_id, node_id)
+        capacity =
+            JuMP.normalized_rhs(constraint) +
+            user_demand.return_factor[user_idx] *
+            JuMP.value(F[(inflow_id(graph, node_id), node_id)])
+
+        JuMP.set_normalized_rhs(constraint, capacity)
+    end
+
+    return nothing
+end
+
+"""
+Set the demand of the flow demand nodes. 2 cases:
+- Before the first allocation solve, set the demands to their full value;
+- Before an allocation solve, subtract the flow trough the node with a flow demand
+  from the total flow demand (which will be used at the priority of the flow demand only).
 """
 function adjust_demands_user!(
     allocation_model::AllocationModel,
@@ -887,6 +931,7 @@ function allocate_priority!(
     adjust_capacities_edge!(allocation_model)
     adjust_capacities_basin!(allocation_model)
     adjust_capacities_buffer!(allocation_model)
+    adjust_capacities_returnflow!(allocation_model, p)
 
     # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
     adjust_demands_user!(allocation_model, p, priority_idx)
@@ -906,6 +951,7 @@ function set_initial_values!(
     set_initial_capacities_edge!(allocation_model, p)
     set_initial_capacities_basin!(allocation_model, p, u, t)
     set_initial_capacities_buffer!(allocation_model)
+    set_initial_capacities_returnflow!(allocation_model)
 
     # Set initial demands which are reduced by usage in the adjust_demands_*! methods
     set_initial_demands_user!(allocation_model, p, t)

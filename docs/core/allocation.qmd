@@ -132,8 +132,9 @@ The capacities are determined in different ways:
 
 There are also capacities for special edges:
 
-- $C^B_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins.
+- $C^{LD}_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins based on level demand (this capacity is 0 for basins that have no level demand).
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
+- $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
 
 # The optimization problem
 
@@ -208,25 +209,23 @@ $$
 When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork.
 :::
 
-Similar constraints hold for the flow out of basins and flow demand buffers:
+Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
 $$
-F^\text{basin out}_{i} \le (C^B_S)_i, \quad \forall i \in B_S,
+F^\text{basin out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in B_S,
+$$
+
+$$
+F^\text{buffer out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in FD_S,
 $$
 
 $$
-F^\text{buffer out}_{i} \le (C^FD_S)_i, \quad \forall i \in FD_S.
+F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{j\}.
+$$
+Here we use that each UserDemand node in the allocation network has a unique  outflow edge. The user outflow source capacities are increased after each optimization solve by the return fraction:
+$$
+    r_i \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
 $$
 
-
-- `UserDemand` outflow: The outflow of the UserDemand is dictated by the inflow and the return factor:
-$$
-    F_{ik} = r_k \cdot F_{kj} \quad
-    \quad \forall k \in U_S, \quad
-    V^{\text{in}}_S(k) = \{i\},\;
-     V^{\text{out}}_S(k) = \{j\}.
-$$ {#eq-returnflowconstraint}
-Here we use that each UserDemand node in the allocation network has a unique in-edge and out-edge.
-- User demand: UserDemand demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
     F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
@@ -236,33 +235,6 @@ $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
 
-## Final notes on the allocation problem
-
-### UserDemands using their own return flow
-
-If not explicitly avoided, UserDemands can use their own return flow in this allocation problem formulation.
-Therefore, return flow of UserDemand is only taken into account by allocation if that return flow is downstream of the UserDemand where it comes from. That is, if there is no path in the directed allocation network from the UserDemand outflow node back to the UserDemand.
-
-# Solving the allocation problem {#sec-solving-allocation}
-
-The allocation problem for an allocation network at time $t$ is solved per priority, as follows:
-
-1. Define a capacity matrix with capacities as described above, that will be updated for each priority:
-$$
-    C_S^p \leftarrow C_S;
-$$
-2. Set the the demands if they come from a timeseries,
-$$
-    d_j^1 \leftarrow d_j^1(t)
-$$
-this is skipped for `collect_demands`.
-3. Maximize the objective function given the constraints;
-4. Subtract the used flows from the edge capacities:
-$$
-    C_S^p \leftarrow C_S^p - F;
-$$
-also reduce the demands by the allocated flows and source capacities by the used flows.
-5. Repeat steps 2-4 for the remaining priorities up to $p_{\max}$.
 
 ## Example
 
