@@ -14,7 +14,6 @@ function water_balance!(
 
     du .= 0.0
     get_tmp(graph[].flow, storage) .= 0.0
-    get_tmp(graph[].flow_vertical, storage) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
@@ -79,7 +78,6 @@ function formulate_basins!(
 
         influx = precipitation - evaporation + drainage - infiltration
         du.storage[i] += influx
-        set_flow!(graph, id, influx)
     end
     return nothing
 end
@@ -303,7 +301,6 @@ function formulate_flow!(
 
         # Return flow is immediate
         set_flow!(graph, id, dst_id, q * return_factor[i])
-        set_flow!(graph, id, -q * (1 - return_factor[i]))
     end
     return nothing
 end
@@ -506,28 +503,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    level_boundary::LevelBoundary,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-    (; node_id) = level_boundary
-
-    for id in node_id
-        for in_id in inflow_ids(graph, id)
-            q = get_flow(graph, in_id, id, storage)
-            add_flow!(graph, id, -q)
-        end
-        for out_id in outflow_ids(graph, id)
-            q = get_flow(graph, id, out_id, storage)
-            add_flow!(graph, id, q)
-        end
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -547,7 +522,6 @@ function formulate_flow!(
 
             # Adding water is always possible
             set_flow!(graph, id, dst_id, rate)
-            set_flow!(graph, id, rate)
         end
     end
 end
@@ -663,6 +637,5 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
 
     # do these last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
-    formulate_flow!(level_boundary, p, storage, t)
     formulate_flow!(terminal, p, storage, t)
 end

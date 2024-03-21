@@ -109,26 +109,14 @@ Integrate flows over the last timestep
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; graph, user_demand) = p
-    (;
-        flow,
-        flow_dict,
-        flow_vertical,
-        flow_prev,
-        flow_vertical_prev,
-        flow_integrated,
-        flow_vertical_integrated,
-    ) = graph[]
+    (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     flow = get_tmp(flow, 0)
-    flow_vertical = get_tmp(flow_vertical, 0)
-
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
-        copyto!(flow_vertical_prev, flow_vertical)
     end
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
-    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
 
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
@@ -137,7 +125,6 @@ function integrate_flows!(u, t, integrator)::Nothing
     end
 
     copyto!(flow_prev, flow)
-    copyto!(flow_vertical_prev, flow_vertical)
     return nothing
 end
 
@@ -435,7 +422,7 @@ them to SavedValues"
 function save_flow(u, t, integrator)
     (; dt, p) = integrator
     (; graph) = p
-    (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
+    (; flow_integrated, saveat) = graph[]
 
     Δt = if iszero(saveat)
         dt
@@ -452,9 +439,8 @@ function save_flow(u, t, integrator)
         end
     end
 
-    mean_flow_all = vcat(flow_vertical_integrated, flow_integrated)
+    mean_flow_all = vcat(flow_integrated)
     mean_flow_all ./= Δt
-    fill!(flow_vertical_integrated, 0.0)
     fill!(flow_integrated, 0.0)
 
     return mean_flow_all

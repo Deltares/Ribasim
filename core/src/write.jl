@@ -110,7 +110,7 @@ function flow_table(
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; graph) = integrator.p
-    (; flow_dict, flow_vertical_dict) = graph[]
+    (; flow_dict) = graph[]
 
     # self-loops have no edge ID
     from_node_type = String[]
@@ -118,19 +118,6 @@ function flow_table(
     to_node_type = String[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
-
-    vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
-    for (node_id, index) in flow_vertical_dict
-        vertical_flow_node_ids[index] = node_id
-    end
-
-    for id in vertical_flow_node_ids
-        push!(from_node_type, string(id.type))
-        push!(from_node_id, id.value)
-        push!(to_node_type, string(id.type))
-        push!(to_node_id, id.value)
-        push!(unique_edge_ids_flow, missing)
-    end
 
     flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
     for (edge_id, index) in flow_dict
