@@ -235,9 +235,6 @@ function set_initial_capacities_inlet!(
             # Set the source capacity to the sum over priorities of the values allocated to the subnetwork over this edge
             sum(subnetwork_allocateds[edge_id])
         end
-        @show optimization_type
-        @show source_constraints[edge_id]
-        @show source_capacity
         JuMP.set_normalized_rhs(source_constraints[edge_id], source_capacity)
     end
     return nothing
