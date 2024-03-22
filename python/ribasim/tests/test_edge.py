@@ -32,3 +32,8 @@ def test_validation(edge):
 
 def test_edge_plot(edge):
     edge.plot()
+
+
+def test_edge_indexing(edge):
+    with pytest.raises(NotImplementedError):
+        edge[1]
