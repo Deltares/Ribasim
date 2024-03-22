@@ -191,6 +191,10 @@ def test_indexing(basic):
     result = model.basin[1]
     assert isinstance(result, NodeData)
 
+    # Also test with a numpy type
+    result = model.basin[np.int32(1)]
+    assert isinstance(result, NodeData)
+
     with pytest.raises(TypeError, match="Basin index must be an integer, not list"):
         model.basin[[1, 3, 6]]
 
