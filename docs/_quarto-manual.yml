@@ -1,0 +1,11 @@
+project:
+  type: book
+
+book:
+  title: "Ribasim User Guide"
+  chapters:
+    - index.qmd
+
+format:
+  typst:
+    toc: true
