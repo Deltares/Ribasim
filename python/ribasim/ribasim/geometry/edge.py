@@ -159,3 +159,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             )
 
         return ax
+
+    def __getitem__(self, _):
+        raise NotImplementedError

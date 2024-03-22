@@ -144,8 +144,16 @@ class MultiNodeModel(NodeModel):
             else pd.concat([self.node.df, node_table])
         )
 
-    def __getitem__(self, index):
-        row = self.node.df[self.node.df["node_id"] == index].iloc[0]
+    def __getitem__(self, index: int):
+        # Unlike TableModel, support only indexing single rows:
+        if not isinstance(index, int):
+            node_model_name = type(self).__name__
+            indextype = type(index).__name__
+            raise TypeError(
+                f"{node_model_name} index must be an integer, not {indextype}"
+            )
+
+        row = self.node[index].iloc[0]
         return NodeData(
             node_id=index, node_type=row["node_type"], geometry=row["geometry"]
         )

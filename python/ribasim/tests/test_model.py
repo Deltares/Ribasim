@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 from ribasim.config import Solver
+from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
 from shapely import Point
@@ -182,3 +183,30 @@ def test_node_table(basic):
     assert df.geometry.is_unique
     assert df.node_type.iloc[0] == "Basin"
     assert df.node_type.iloc[-1] == "Terminal"
+
+
+def test_indexing(basic):
+    model = basic
+
+    result = model.basin[1]
+    assert isinstance(result, NodeData)
+
+    with pytest.raises(TypeError, match="Basin index must be an integer, not list"):
+        model.basin[[1, 3, 6]]
+
+    result = model.basin.static[1]
+    assert isinstance(result, pd.DataFrame)
+
+    result = model.basin.static[[1, 3, 6]]
+    assert isinstance(result, pd.DataFrame)
+
+    with pytest.raises(
+        IndexError, match=re.escape("Basin / static does not contain node_id: [2]")
+    ):
+        model.basin.static[2]
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Cannot index into Basin / time: it contains no data."),
+    ):
+        model.basin.time[1]
