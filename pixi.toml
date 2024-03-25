@@ -142,7 +142,6 @@ ribasim-core-testmodels = { cmd = "julia --project utils/testmodelrun.jl", depen
 github-release = "python utils/github-release.py"
 
 [dependencies]
-alive-progress = "*"
 build = "*"
 geopandas = "*"
 gh = "*"
