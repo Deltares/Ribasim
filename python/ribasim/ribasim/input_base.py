@@ -424,7 +424,11 @@ class NodeModel(ChildModel):
     def _tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
-            if isinstance(attr, TableModel) and attr.df is not None:
+            if (
+                isinstance(attr, TableModel)
+                and (attr.df is not None)
+                and not (isinstance(attr, NodeModel))
+            ):
                 yield attr
 
     def node_ids(self) -> set[int]:

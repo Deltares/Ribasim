@@ -135,6 +135,8 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
+        node = self.node_table()
+        node._save(directory, input_dir)
         for sub in self._nodes():
             sub._save(directory, input_dir)
 
