@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
@@ -98,10 +99,10 @@ class Node(pydantic.BaseModel):
     def into_geodataframe(self, node_type: str) -> GeoDataFrame:
         return GeoDataFrame(
             data={
-                "node_id": pd.Series([self.node_id], dtype=int),
+                "node_id": pd.Series([self.node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
-                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int64Dtype()),
+                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
             },
             geometry=[self.geometry],
         )

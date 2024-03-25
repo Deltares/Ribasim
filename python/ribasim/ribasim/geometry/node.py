@@ -15,10 +15,10 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.SchemaModel):
-    node_id: Series[int]
+    node_id: Series[np.int32]
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
-    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
+    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)

@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
@@ -237,10 +238,10 @@ class Model(FileModel):
     def plot_control_listen(self, ax):
         df_listen_edge = pd.DataFrame(
             data={
-                "control_node_id": pd.Series([], dtype="int"),
-                "control_node_type": pd.Series([], dtype="str"),
-                "listen_node_id": pd.Series([], dtype="int"),
-                "listen_node_type": pd.Series([], dtype="str"),
+                "control_node_id": pd.Series([], dtype=np.int32),
+                "control_node_type": pd.Series([], dtype=str),
+                "listen_node_id": pd.Series([], dtype=np.int32),
+                "listen_node_type": pd.Series([], dtype=str),
             }
         )
 
