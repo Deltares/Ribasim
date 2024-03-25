@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "a66ce8b152bba81b582cbf6d8a2e07a88d016add"
+project_hash = "22708fb864a341d70b001d75765852e92f1f5399"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -1075,9 +1075,9 @@ version = "6.74.0"
 
 [[deps.OteraEngine]]
 deps = ["Markdown", "Pkg", "TOML"]
-git-tree-sha1 = "0d57df750e20a4534a117398dc04eb237d86ea70"
+git-tree-sha1 = "69e36fecf524a1da7d76a8ae3e70a221d86d2867"
 uuid = "b2d7f28f-acd6-4007-8b26-bc27716e5513"
-version = "0.4.1"
+version = "0.5.1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
@@ -1247,7 +1247,7 @@ version = "3.5.14"
 deps = ["Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "Dictionaries", "DiffEqCallbacks", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEq", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "StructArrays", "Tables", "TerminalLoggers", "TimeZones", "TimerOutputs", "TranscodingStreams"]
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
-version = "2024.4.0"
+version = "2024.5.0"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "SHA", "Serialization"]

@@ -14,6 +14,7 @@ from typing import (
 )
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -336,6 +337,20 @@ class TableModel(FileModel, Generic[TableT]):
             return self.__repr__()
         else:
             return f"<div>{self.tablename()}</div>" + self.df._repr_html_()
+
+    def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
+        tablename = self.tablename()
+        if self.df is None:
+            raise ValueError(f"Cannot index into {tablename}: it contains no data.")
+
+        # Allow for indexing with multiple values.
+        np_index = np.atleast_1d(index)
+        missing = np.setdiff1d(np_index, self.df["node_id"].unique())
+        if missing.size > 0:
+            raise IndexError(f"{tablename} does not contain node_id: {missing}")
+
+        # Index with .loc[..., :] to always return a DataFrame.
+        return self.df.loc[self.df["node_id"].isin(np_index), :]
 
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):
