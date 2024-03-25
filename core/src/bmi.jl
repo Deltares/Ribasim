@@ -37,9 +37,9 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     elseif name == "basin.level"
         get_tmp(model.integrator.p.basin.current_level, 0)
     elseif name == "basin.infiltration"
-        model.integrator.p.basin.infiltration
+        get_tmp(model.integrator.p.basin.vertical_flux, 0).infiltration
     elseif name == "basin.drainage"
-        model.integrator.p.basin.drainage
+        get_tmp(model.integrator.p.basin.vertical_flux, 0).drainage
     elseif name == "basin.subgrid_level"
         model.integrator.p.subgrid.level
     elseif name == "user_demand.demand"

@@ -554,7 +554,7 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2}
+struct Parameters{T, C1, C2, V1, V2}
     starttime::DateTime
     graph::MetaGraph{
         Int64,
@@ -576,7 +576,7 @@ struct Parameters{T, C1, C2}
         Float64,
     }
     allocation::Allocation
-    basin::Basin{T, C1}
+    basin::Basin{T, C1, V1, V2}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}

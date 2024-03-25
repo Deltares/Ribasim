@@ -36,12 +36,12 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
+    push!(callbacks, integrating_flows_cb)
+
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
     push!(callbacks, basin_cb)
-
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
-    push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
@@ -485,8 +485,10 @@ end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
-    (; basin) = integrator.p
-    (; node_id, time, vertical_flux, vertical_flux_prev) = basin
+    (; p, u) = integrator
+    (; basin) = p
+    (; storage) = u
+    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
     vertical_flux = get_tmp(vertical_flux, integrator.u)
 
@@ -494,10 +496,10 @@ function update_basin(integrator)::Nothing
     timeblock = view(time, rows)
 
     table = (;
-        vertical_flux.precipitation,
-        vertical_flux.potential_evaporation,
-        vertical_flux.drainage,
-        vertical_flux.infiltration,
+        vertical_flux_from_input.precipitation,
+        vertical_flux_from_input.potential_evaporation,
+        vertical_flux_from_input.drainage,
+        vertical_flux_from_input.infiltration,
     )
 
     for row in timeblock
@@ -506,6 +508,9 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
+    for (i, id) in enumerate(basin.node_id)
+        update_vertical_flux!(basin, storage, i)
+    end
     copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
