@@ -61,16 +61,17 @@ function create_callbacks(
         push!(callbacks, allocation_cb)
     end
 
+    # If saveat is a vector which contains 0.0 this callback will still be called
+    # at t = 0.0 despite save_start = false
+    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
+    save_vertical_flux_cb =
+        SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
+    push!(callbacks, save_vertical_flux_cb)
+
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(
-        save_flow,
-        saved_flow;
-        # If saveat is a vector which contains 0.0 this callback will still be called
-        # at t = 0.0 despite save_start = false
-        saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat,
-        save_start = false,
-    )
+    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -85,7 +86,7 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_subgrid_level)
+    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -421,14 +422,10 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     end
 end
 
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
-function save_flow(u, t, integrator)
-    (; dt, p) = integrator
-    (; graph) = p
-    (; flow_integrated, saveat) = graph[]
-
-    Δt = if iszero(saveat)
+function get_Δt(integrator, graph)::Float64
+    (; t, dt) = integrator
+    (; saveat) = graph[]
+    if iszero(saveat)
         dt
     elseif isinf(saveat)
         t
@@ -442,12 +439,34 @@ function save_flow(u, t, integrator)
             iszero(rem) ? saveat : rem
         end
     end
+end
 
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
+function save_flow(u, t, integrator)
+    (; p) = integrator
+    (; graph) = p
+    (; flow_integrated) = graph[]
+
+    Δt = get_Δt(integrator, graph)
     flow_mean = copy(flow_integrated)
     flow_mean ./= Δt
     fill!(flow_integrated, 0.0)
 
     return flow_mean
+end
+
+function save_vertical_flux(u, t, integrator)
+    (; p) = integrator
+    (; basin, graph) = p
+    (; vertical_flux_integrated) = basin
+
+    Δt = get_Δt(integrator, graph)
+    vertical_flux_mean = copy(vertical_flux_integrated)
+    vertical_flux_mean ./= Δt
+    fill!(vertical_flux_mean, 0.0)
+
+    return vertical_flux_mean
 end
 
 function update_subgrid_level!(integrator)::Nothing
@@ -467,7 +486,7 @@ end
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
     (; basin) = integrator.p
-    (; node_id, time, vertical_flux) = basin
+    (; node_id, time, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
     vertical_flux = get_tmp(vertical_flux, integrator.u)
 
@@ -487,6 +506,7 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
+    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 

@@ -84,15 +84,57 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
+    precipitation::Vector{Float64},
+    evaporation::Vector{Float64},
+    drainage::Vector{Float64},
+    infiltration::Vector{Float64},
 }
+    (; saved) = model
+    (; vertical_flux) = saved
+
     data = get_storages_and_levels(model)
+    storage = vec(data.storage)
+    level = vec(data.level)
+
     nbasin = length(data.node_id)
     ntsteps = length(data.time)
+    nrows = nbasin * ntsteps
+
+    precipitation = zeros(nrows)
+    evaporation = zeros(nrows)
+    drainage = zeros(nrows)
+    infiltration = zeros(nrows)
+
+    idx_row = 0
+
+    for vec in vertical_flux.saveval
+        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
+            vec.precipitation,
+            vec.potential_evaporation,
+            vec.drainage,
+            vec.infiltration,
+        )
+            idx_row += 1
+            precipitation[idx_row] = precipitation_
+            evaporation[idx_row] = evaporation_
+            drainage[idx_row] = drainage_
+            infiltration[idx_row] = infiltration_
+        end
+    end
 
     time = repeat(data.time; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
 
-    return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
+    return (;
+        time,
+        node_id,
+        storage,
+        level,
+        precipitation,
+        evaporation,
+        drainage,
+        infiltration,
+    )
 end
 
 "Create a flow result table from the saved data"
@@ -112,7 +154,6 @@ function flow_table(
     (; graph) = integrator.p
     (; flow_dict) = graph[]
 
-    # self-loops have no edge ID
     from_node_type = String[]
     from_node_id = Int32[]
     to_node_type = String[]
