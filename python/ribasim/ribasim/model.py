@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
@@ -14,6 +15,11 @@ from pydantic import (
     field_serializer,
     model_validator,
 )
+
+try:
+    import xugrid
+except ImportError:
+    xugrid = None
 
 import ribasim
 from ribasim.config import (
@@ -330,3 +336,58 @@ class Model(FileModel):
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
+
+    def to_xugrid(self) -> xugrid.UgridDataset:
+        """Convert the network to a xugrid.UgridDataset."""
+        node_df = self.node_table().df
+
+        # This will need to be adopted for locally unique node IDs,
+        # otherwise the `node_lookup` with `argsort` is not correct.
+        assert node_df.node_id.is_unique
+        node_df.sort_values("node_id", inplace=True)
+
+        edge_df = self.edge.df.copy()
+        # We assume only the flow network is of interest.
+        edge_df = edge_df[edge_df.edge_type == "flow"]
+
+        node_id = node_df.node_id.to_numpy(dtype="int32")
+        from_node_id = edge_df.from_node_id.to_numpy(dtype="int32")
+        to_node_id = edge_df.to_node_id.to_numpy(dtype="int32")
+
+        # from node_id to the node_dim index
+        node_lookup = pd.Series(
+            index=node_id,
+            data=node_id.argsort().astype("int32"),
+            name="node_index",
+        )
+
+        if node_df.crs is None:
+            # can be removed when CRS is required, #1254
+            projected = False
+        else:
+            projected = node_df.crs.is_projected
+
+        grid = xugrid.Ugrid1d(
+            node_x=node_df.geometry.x,
+            node_y=node_df.geometry.y,
+            fill_value=-1,
+            edge_node_connectivity=np.column_stack(
+                (
+                    node_lookup[from_node_id],
+                    node_lookup[to_node_id],
+                )
+            ),
+            name="ribasim",
+            projected=projected,
+            crs=node_df.crs,
+        )
+
+        edge_dim = grid.edge_dimension
+        node_dim = grid.node_dimension
+
+        uds = xugrid.UgridDataset(None, grid)
+        uds = uds.assign_coords(node_id=(node_dim, node_id))
+        uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
+        uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+
+        return uds
