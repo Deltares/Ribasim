@@ -34,16 +34,6 @@ zip -r ribasim_qgis.zip ribasim_qgis]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
-    <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli">
-        <options>
-          <option name="run-build-if-dependency-failed" value="CANCEL" />
-          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-    </dependencies>
     <cleanup />
   </settings>
 </build-type>
