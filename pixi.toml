@@ -142,6 +142,7 @@ ribasim-core-testmodels = { cmd = "julia --project utils/testmodelrun.jl", depen
 github-release = "python utils/github-release.py"
 
 [dependencies]
+alive-progress = "*"
 build = "*"
 geopandas = "*"
 gh = "*"
@@ -179,7 +180,6 @@ typing-extensions = ">=4.6"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
-alive-progress = ">=3.1.5,<3.2"
 
 [feature.py312.dependencies]
 python = "3.12.*"
