@@ -3,6 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import tomli
@@ -138,6 +139,16 @@ class Model(FileModel):
         self.edge._save(directory, input_dir)
         for sub in self._nodes():
             sub._save(directory, input_dir)
+
+        # Temporarily require unique node_id for #1262
+        # and copy them to the fid for #1306.
+        df = gpd.read_file(db_path, layer="Node")
+        if not df["node_id"].is_unique:
+            raise ValueError("node_id must be unique")
+        df.set_index("node_id", drop=False, inplace=True)
+        df.sort_index(inplace=True)
+        df.index.name = "fid"
+        df.to_file(db_path, layer="Node", driver="GPKG", index=True)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
