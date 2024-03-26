@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 from matplotlib.patches import Patch
+from pandera.dtypes import Int32
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
@@ -15,7 +16,7 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.SchemaModel):
-    node_id: Series[np.int32]
+    node_id: Series[Int32]
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(

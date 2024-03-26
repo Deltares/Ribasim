@@ -7,6 +7,7 @@ import pandera as pa
 import shapely
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
+from pandera.dtypes import Int32
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import model_validator
@@ -28,9 +29,9 @@ class NodeData(NamedTuple):
 class EdgeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     from_node_type: Series[str] = pa.Field(nullable=True)
-    from_node_id: Series[np.int32] = pa.Field(default=0, coerce=True)
+    from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     to_node_type: Series[str] = pa.Field(nullable=True)
-    to_node_id: Series[np.int32] = pa.Field(default=0, coerce=True)
+    to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
