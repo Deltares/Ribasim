@@ -23,7 +23,7 @@
     @test isapprox(flow_1_to_2.flow_rate, flow_expected, rtol = 0.005)
 end
 
-@test "vertical_flux_means" begin
+@testitem "vertical_flux_means" begin
     using DataFrames: DataFrame
 
     toml_path =

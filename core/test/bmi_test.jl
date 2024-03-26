@@ -61,8 +61,10 @@ end
     for name in [
         "basin.storage",
         "basin.level",
-        "basin.infiltration",
-        "basin.drainage",
+        "basin.infiltration_instantaneous",
+        "basin.drainage_instantaneous",
+        "basin.infiltration_integrated",
+        "basin.drainage_integrated",
         "basin.subgrid_level",
         "user_demand.demand",
         "user_demand.realized",
