@@ -17,11 +17,6 @@ from pydantic import (
     model_validator,
 )
 
-try:
-    import xugrid
-except ImportError:
-    xugrid = None
-
 import ribasim
 from ribasim.config import (
     Allocation,
@@ -52,6 +47,12 @@ from ribasim.input_base import (
     FileModel,
     context_file_loading,
 )
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import xugrid
+except ImportError:
+    xugrid = MissingOptionalModule("xugrid")
 
 
 class Model(FileModel):
@@ -354,21 +355,21 @@ class Model(FileModel):
 
         # This will need to be adopted for locally unique node IDs,
         # otherwise the `node_lookup` with `argsort` is not correct.
-        assert node_df.node_id.is_unique
+        assert node_df.node_id.is_unique, "node_id must be unique"
         node_df.sort_values("node_id", inplace=True)
 
         edge_df = self.edge.df.copy()
         # We assume only the flow network is of interest.
         edge_df = edge_df[edge_df.edge_type == "flow"]
 
-        node_id = node_df.node_id.to_numpy(dtype="int32")
-        from_node_id = edge_df.from_node_id.to_numpy(dtype="int32")
-        to_node_id = edge_df.to_node_id.to_numpy(dtype="int32")
+        node_id = node_df.node_id.to_numpy()
+        from_node_id = edge_df.from_node_id.to_numpy()
+        to_node_id = edge_df.to_node_id.to_numpy()
 
         # from node_id to the node_dim index
         node_lookup = pd.Series(
             index=node_id,
-            data=node_id.argsort().astype("int32"),
+            data=node_id.argsort().astype(np.int32),
             name="node_index",
         )
 
