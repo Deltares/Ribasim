@@ -3,6 +3,8 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
+import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
@@ -45,6 +47,12 @@ from ribasim.input_base import (
     FileModel,
     context_file_loading,
 )
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import xugrid
+except ImportError:
+    xugrid = MissingOptionalModule("xugrid")
 
 
 class Model(FileModel):
@@ -137,6 +145,16 @@ class Model(FileModel):
         self.edge._save(directory, input_dir)
         for sub in self._nodes():
             sub._save(directory, input_dir)
+
+        # Temporarily require unique node_id for #1262
+        # and copy them to the fid for #1306.
+        df = gpd.read_file(db_path, layer="Node")
+        if not df["node_id"].is_unique:
+            raise ValueError("node_id must be unique")
+        df.set_index("node_id", drop=False, inplace=True)
+        df.sort_index(inplace=True)
+        df.index.name = "fid"
+        df.to_file(db_path, layer="Node", driver="GPKG", index=True)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
@@ -237,10 +255,10 @@ class Model(FileModel):
     def plot_control_listen(self, ax):
         df_listen_edge = pd.DataFrame(
             data={
-                "control_node_id": pd.Series([], dtype="int"),
-                "control_node_type": pd.Series([], dtype="str"),
-                "listen_node_id": pd.Series([], dtype="int"),
-                "listen_node_type": pd.Series([], dtype="str"),
+                "control_node_id": pd.Series([], dtype=np.int32),
+                "control_node_type": pd.Series([], dtype=str),
+                "listen_node_id": pd.Series([], dtype=np.int32),
+                "listen_node_type": pd.Series([], dtype=str),
             }
         )
 
@@ -330,3 +348,59 @@ class Model(FileModel):
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
 
         return ax
+
+    def to_xugrid(self):
+        """Convert the network to a xugrid.UgridDataset."""
+        node_df = self.node_table().df
+
+        # This will need to be adopted for locally unique node IDs,
+        # otherwise the `node_lookup` with `argsort` is not correct.
+        if not node_df.node_id.is_unique:
+            raise ValueError("node_id must be unique")
+        node_df.sort_values("node_id", inplace=True)
+
+        edge_df = self.edge.df.copy()
+        # We assume only the flow network is of interest.
+        edge_df = edge_df[edge_df.edge_type == "flow"]
+
+        node_id = node_df.node_id.to_numpy()
+        from_node_id = edge_df.from_node_id.to_numpy()
+        to_node_id = edge_df.to_node_id.to_numpy()
+
+        # from node_id to the node_dim index
+        node_lookup = pd.Series(
+            index=node_id,
+            data=node_id.argsort().astype(np.int32),
+            name="node_index",
+        )
+
+        if node_df.crs is None:
+            # TODO: can be removed when CRS is required, #1254
+            projected = False
+        else:
+            projected = node_df.crs.is_projected
+
+        grid = xugrid.Ugrid1d(
+            node_x=node_df.geometry.x,
+            node_y=node_df.geometry.y,
+            fill_value=-1,
+            edge_node_connectivity=np.column_stack(
+                (
+                    node_lookup[from_node_id],
+                    node_lookup[to_node_id],
+                )
+            ),
+            name="ribasim",
+            projected=projected,
+            crs=node_df.crs,
+        )
+
+        edge_dim = grid.edge_dimension
+        node_dim = grid.node_dimension
+
+        uds = xugrid.UgridDataset(None, grid)
+        uds = uds.assign_coords(node_id=(node_dim, node_id))
+        uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
+        uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+
+        return uds

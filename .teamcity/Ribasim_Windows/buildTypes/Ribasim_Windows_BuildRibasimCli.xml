@@ -12,7 +12,7 @@
     <build-runners>
       <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install-ci" />
+          <param name="script.content" value="pixi run --environment=dev install-ci" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -51,11 +51,10 @@ pixi run build-ribasim-cli]]></param>
           <param name="github_authentication_type" value="token" />
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
+          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
         </parameters>
       </extension>
     </build-extensions>
     <cleanup />
   </settings>
 </build-type>
-

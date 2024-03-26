@@ -1,7 +1,9 @@
+import numbers
 from collections.abc import Sequence
 from enum import Enum
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
@@ -97,10 +99,10 @@ class Node(pydantic.BaseModel):
     def into_geodataframe(self, node_type: str) -> GeoDataFrame:
         return GeoDataFrame(
             data={
-                "node_id": pd.Series([self.node_id], dtype=int),
+                "node_id": pd.Series([self.node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
-                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int64Dtype()),
+                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
             },
             geometry=[self.geometry],
         )
@@ -144,10 +146,18 @@ class MultiNodeModel(NodeModel):
             else pd.concat([self.node.df, node_table])
         )
 
-    def __getitem__(self, index):
-        row = self.node.df[self.node.df["node_id"] == index].iloc[0]
+    def __getitem__(self, index: int) -> NodeData:
+        # Unlike TableModel, support only indexing single rows.
+        if not isinstance(index, numbers.Integral):
+            node_model_name = type(self).__name__
+            indextype = type(index).__name__
+            raise TypeError(
+                f"{node_model_name} index must be an integer, not {indextype}"
+            )
+
+        row = self.node[index].iloc[0]
         return NodeData(
-            node_id=index, node_type=row["node_type"], geometry=row["geometry"]
+            node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
         )
 
 
