@@ -355,7 +355,8 @@ class Model(FileModel):
 
         # This will need to be adopted for locally unique node IDs,
         # otherwise the `node_lookup` with `argsort` is not correct.
-        assert node_df.node_id.is_unique, "node_id must be unique"
+        if not node_df.node_id.is_unique:
+            raise ValueError("node_id must be unique")
         node_df.sort_values("node_id", inplace=True)
 
         edge_df = self.edge.df.copy()
