@@ -136,7 +136,7 @@ end
     @test model.integrator.u.storage ≈ [1000]
     vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
     @test vertical_flux.precipitation == [0.0]
-    @test vertical_flux.potential_evaporation == [0.0]
+    @test vertical_flux.evaporation == [0.0]
     @test vertical_flux.drainage == [0.0]
     @test vertical_flux.infiltration == [0.0]
     @test successful_retcode(model)
@@ -154,7 +154,7 @@ end
     stor = model.integrator.u.storage
     vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
     prec = vertical_flux.precipitation
-    evap = vertical_flux.potential_evaporation
+    evap = vertical_flux.evaporation
     drng = vertical_flux.drainage
     infl = vertical_flux.infiltration
     # The dynamic data has missings, but these are not set.

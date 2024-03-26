@@ -47,9 +47,12 @@ function set_current_basin_properties!(basin::Basin, storage::AbstractVector)::N
     end
 end
 
+"""
+Smoothly let the evaporation flux go to 0 when at small water depths
+Currently at less than 0.1 m.
+"""
 function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::Number
-    (; node_id, current_level, current_area, vertical_flux_from_input, vertical_flux) =
-        basin
+    (; current_level, current_area, vertical_flux_from_input, vertical_flux) = basin
     current_level = get_tmp(current_level, storage)
     current_area = get_tmp(current_area, storage)
     vertical_flux = get_tmp(vertical_flux, storage)
@@ -68,7 +71,7 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::N
     infiltration = factor * vertical_flux_from_input.infiltration[i]
 
     vertical_flux.precipitation[i] = precipitation
-    vertical_flux.potential_evaporation[i] = evaporation
+    vertical_flux.evaporation[i] = evaporation
     vertical_flux.drainage[i] = drainage
     vertical_flux.infiltration[i] = infiltration
 
@@ -76,10 +79,6 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::N
     return influx
 end
 
-"""
-Smoothly let the evaporation flux go to 0 when at small water depths
-Currently at less than 0.1 m.
-"""
 function formulate_basins!(
     du::AbstractVector,
     basin::Basin,

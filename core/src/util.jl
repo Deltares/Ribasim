@@ -707,3 +707,25 @@ function Base.get(
         nothing
     end
 end
+
+"""
+Get the time interval between (flow) saves
+"""
+function get_Δt(integrator, graph)::Float64
+    (; t, dt) = integrator
+    (; saveat) = graph[]
+    if iszero(saveat)
+        dt
+    elseif isinf(saveat)
+        t
+    else
+        t_end = integrator.sol.prob.tspan[2]
+        if t_end - t > saveat
+            saveat
+        else
+            # The last interval might be shorter than saveat
+            rem = t % saveat
+            iszero(rem) ? saveat : rem
+        end
+    end
+end

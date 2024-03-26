@@ -151,13 +151,13 @@ else
     T = Vector{Float64}
 end
 """
-struct Basin{T, C, V1, V2} <: AbstractParameterNode
+struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Indices{NodeID}
     # Vertical fluxes
     vertical_flux_from_input::V1
     vertical_flux::V2
-    vertical_flux_prev::V1
-    vertical_flux_integrated::V1
+    vertical_flux_prev::V3
+    vertical_flux_integrated::V3
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -174,7 +174,7 @@ struct Basin{T, C, V1, V2} <: AbstractParameterNode
         node_id,
         vertical_flux_from_input::V1,
         vertical_flux::V2,
-        vertical_flux_prev,
+        vertical_flux_prev::V3,
         vertical_flux_integrated,
         current_level::T,
         current_area::T,
@@ -183,10 +183,10 @@ struct Basin{T, C, V1, V2} <: AbstractParameterNode
         storage,
         demand,
         time::StructVector{BasinTimeV1, C, Int},
-    ) where {T, C, V1, V2}
+    ) where {T, C, V1, V2, V3}
         is_valid = valid_profiles(node_id, level, area)
         is_valid || error("Invalid Basin / profile table.")
-        return new{T, C, V1, V2}(
+        return new{T, C, V1, V2, V3}(
             node_id,
             vertical_flux_from_input,
             vertical_flux,
@@ -554,7 +554,7 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2, V1, V2}
+struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
     graph::MetaGraph{
         Int64,
@@ -576,7 +576,7 @@ struct Parameters{T, C1, C2, V1, V2}
         Float64,
     }
     allocation::Allocation
-    basin::Basin{T, C1, V1, V2}
+    basin::Basin{T, C1, V1, V2, V3}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}

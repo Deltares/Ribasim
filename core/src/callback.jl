@@ -422,25 +422,6 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     end
 end
 
-function get_Δt(integrator, graph)::Float64
-    (; t, dt) = integrator
-    (; saveat) = graph[]
-    if iszero(saveat)
-        dt
-    elseif isinf(saveat)
-        t
-    else
-        t_end = integrator.sol.prob.tspan[2]
-        if t_end - t > saveat
-            saveat
-        else
-            # The last interval might be shorter than saveat
-            rem = t % saveat
-            iszero(rem) ? saveat : rem
-        end
-    end
-end
-
 "Compute the average flows over the last saveat interval and write
 them to SavedValues"
 function save_flow(u, t, integrator)
@@ -456,6 +437,8 @@ function save_flow(u, t, integrator)
     return flow_mean
 end
 
+"Compute the average vertical fluxes over the last saveat interval and write
+them to SavedValues"
 function save_vertical_flux(u, t, integrator)
     (; p) = integrator
     (; basin, graph) = p
@@ -511,6 +494,8 @@ function update_basin(integrator)::Nothing
     for (i, id) in enumerate(basin.node_id)
         update_vertical_flux!(basin, storage, i)
     end
+
+    # Forget about vertical fluxes before basin update
     copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end

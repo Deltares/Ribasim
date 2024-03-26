@@ -328,9 +328,8 @@ function get_basin_data(
     _, basin_idx = id_index(basin.node_id, node_id)
     # NOTE: Instantaneous
     influx =
-        vertical_flux.precipitation[basin_idx] -
-        vertical_flux.potential_evaporation[basin_idx] + vertical_flux.drainage[basin_idx] -
-        vertical_flux.infiltration[basin_idx]
+        vertical_flux.precipitation[basin_idx] - vertical_flux.evaporation[basin_idx] +
+        vertical_flux.drainage[basin_idx] - vertical_flux.infiltration[basin_idx]
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)

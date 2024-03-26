@@ -490,6 +490,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
 
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
+    evaporation = zeros(n)
     drainage = zeros(n)
     infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
@@ -506,9 +507,14 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = zero(vertical_flux_from_input)
-    vertical_flux_prev = zero(vertical_flux_from_input)
-    vertical_flux_integrated = zero(vertical_flux_from_input)
+    vertical_flux = ComponentVector(;
+        precipitation = copy(precipitation),
+        evaporation,
+        drainage = copy(drainage),
+        infiltration = copy(infiltration),
+    )
+    vertical_flux_prev = zero(vertical_flux)
+    vertical_flux_integrated = zero(vertical_flux)
 
     if config.solver.autodiff
         current_level = DiffCache(current_level, chunk_sizes)
