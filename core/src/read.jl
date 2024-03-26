@@ -515,6 +515,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
     vertical_flux_prev = zero(vertical_flux)
     vertical_flux_integrated = zero(vertical_flux)
+    vertical_flux_bmi = zero(vertical_flux)
 
     if config.solver.autodiff
         current_level = DiffCache(current_level, chunk_sizes)
@@ -530,6 +531,7 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
         vertical_flux,
         vertical_flux_prev,
         vertical_flux_integrated,
+        vertical_flux_bmi,
         current_level,
         current_area,
         area,

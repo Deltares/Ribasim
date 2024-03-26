@@ -158,6 +158,7 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     vertical_flux::V2
     vertical_flux_prev::V3
     vertical_flux_integrated::V3
+    vertical_flux_bmi::V3
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -176,6 +177,7 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
         vertical_flux::V2,
         vertical_flux_prev::V3,
         vertical_flux_integrated,
+        vertical_flux_bmi,
         current_level::T,
         current_area::T,
         area,
@@ -192,6 +194,7 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
             vertical_flux,
             vertical_flux_prev,
             vertical_flux_integrated,
+            vertical_flux_bmi,
             current_level,
             current_area,
             area,

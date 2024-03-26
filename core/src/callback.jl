@@ -111,7 +111,8 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; graph, user_demand, basin) = p
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
-    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated) = basin
+    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
+        basin
     flow = get_tmp(flow, 0)
     vertical_flux = get_tmp(vertical_flux, 0)
     if !isempty(flow_prev) && isnan(flow_prev[1])
@@ -121,6 +122,7 @@ function integrate_flows!(u, t, integrator)::Nothing
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
     @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
+    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
