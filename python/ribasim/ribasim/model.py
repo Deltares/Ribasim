@@ -373,7 +373,7 @@ class Model(FileModel):
         )
 
         if node_df.crs is None:
-            # can be removed when CRS is required, #1254
+            # TODO: can be removed when CRS is required, #1254
             projected = False
         else:
             projected = node_df.crs.is_projected
