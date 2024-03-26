@@ -18,7 +18,7 @@ source /usr/share/Modules/init/bash
 
 module load pixi
 pixi --version
-pixi run install-ci]]></param>
+pixi run --environment=dev install-ci]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -70,4 +70,3 @@ pixi run build-ribasim-cli]]></param>
     <cleanup />
   </settings>
 </build-type>
-
