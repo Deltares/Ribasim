@@ -705,21 +705,30 @@ derivative       | Float64  | -        | -
 
 ## Basin - `basin.arrow`
 
-The basin table contains results of the storage and level of each basin at every solver
-timestep. The initial condition is also written to the file.
+The basin table contains:
 
-column   | type     | unit
--------- | -------- | ----
-time     | DateTime | -
-node_id  | Int32    | -
-storage  | Float64  | $m^3$
-level    | Float64  | $m$
+- results of the storage and level of each basin, which are instantaneous values;
+- results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated. This means that for the final time in the table the mean vertical fluxes are not computed, and thus left $0$.
+
+The initial condition is also written to the file.
+
+column        | type     | unit
+------------- | -------- | ----
+time          | DateTime | -
+node_id       | Int32    | -
+storage       | Float64  | $m^3$
+level         | Float64  | $m$
+precipitation | Float64  | $m^3 s^{-1}$
+evaporation   | Float64  | $m^3 s^{-1}$
+drainage      | Float64  | $m^3 s^{-1}$
+infiltration  | Float64  | $m^3 s^{-1}$
+
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 
 ## Flow - `flow.arrow`
 
-The flow table contains calculated mean flows for every flow edge in the model.
+The flow table contains calculated mean flows over the `saveat` intervals for every flow edge in the model.
 In the time column the start of the period is indicated.
 
 column         | type                  | unit
@@ -734,8 +743,6 @@ flow_rate      | Float64               | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
-Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
-Flows out of the model always have a negative sign, and additions a positive sign.
 
 ## DiscreteControl - `control.arrow`
 
