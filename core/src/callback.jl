@@ -158,7 +158,7 @@ function save_vertical_flux(u, t, integrator)
     Δt = get_Δt(integrator, graph)
     vertical_flux_mean = copy(vertical_flux_integrated)
     vertical_flux_mean ./= Δt
-    fill!(vertical_flux_mean, 0.0)
+    fill!(vertical_flux_integrated, 0.0)
 
     return vertical_flux_mean
 end
