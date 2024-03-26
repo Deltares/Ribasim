@@ -349,7 +349,7 @@ class Model(FileModel):
 
         return ax
 
-    def to_xugrid(self) -> xugrid.UgridDataset:
+    def to_xugrid(self):
         """Convert the network to a xugrid.UgridDataset."""
         node_df = self.node_table().df
 
