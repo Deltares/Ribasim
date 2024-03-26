@@ -133,6 +133,36 @@ function integrate_flows!(u, t, integrator)::Nothing
     return nothing
 end
 
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
+function save_flow(u, t, integrator)
+    (; p) = integrator
+    (; graph) = p
+    (; flow_integrated) = graph[]
+
+    Δt = get_Δt(integrator, graph)
+    flow_mean = copy(flow_integrated)
+    flow_mean ./= Δt
+    fill!(flow_integrated, 0.0)
+
+    return flow_mean
+end
+
+"Compute the average vertical fluxes over the last saveat interval and write
+them to SavedValues"
+function save_vertical_flux(u, t, integrator)
+    (; p) = integrator
+    (; basin, graph) = p
+    (; vertical_flux_integrated) = basin
+
+    Δt = get_Δt(integrator, graph)
+    vertical_flux_mean = copy(vertical_flux_integrated)
+    vertical_flux_mean ./= Δt
+    fill!(vertical_flux_mean, 0.0)
+
+    return vertical_flux_mean
+end
+
 """
 Listens for changes in condition truths.
 """
@@ -420,36 +450,6 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
             set_fractional_flow_in_allocation!(p, node_id, value)
         end
     end
-end
-
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
-function save_flow(u, t, integrator)
-    (; p) = integrator
-    (; graph) = p
-    (; flow_integrated) = graph[]
-
-    Δt = get_Δt(integrator, graph)
-    flow_mean = copy(flow_integrated)
-    flow_mean ./= Δt
-    fill!(flow_integrated, 0.0)
-
-    return flow_mean
-end
-
-"Compute the average vertical fluxes over the last saveat interval and write
-them to SavedValues"
-function save_vertical_flux(u, t, integrator)
-    (; p) = integrator
-    (; basin, graph) = p
-    (; vertical_flux_integrated) = basin
-
-    Δt = get_Δt(integrator, graph)
-    vertical_flux_mean = copy(vertical_flux_integrated)
-    vertical_flux_mean ./= Δt
-    fill!(vertical_flux_mean, 0.0)
-
-    return vertical_flux_mean
 end
 
 function update_subgrid_level!(integrator)::Nothing
