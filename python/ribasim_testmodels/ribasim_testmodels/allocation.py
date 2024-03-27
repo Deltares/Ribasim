@@ -558,52 +558,53 @@ def main_network_with_subnetworks_model() -> Model:
     ]
 
     model.flow_boundary.add(
-        Node(1, Point(0, -1), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1.0])]
+        Node(100, Point(0, -1), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[1.0])],
     )
-    model.basin.add(Node(2, Point(3, 1), subnetwork_id=1), basin_data)
+    model.basin.add(Node(100, Point(3, 1), subnetwork_id=1), basin_data)
     model.linear_resistance.add(
-        Node(3, Point(6, -1), subnetwork_id=1),
+        Node(100, Point(6, -1), subnetwork_id=1),
         [linear_resistance.Static(resistance=[0.001])],
     )
-    model.basin.add(Node(4, Point(9, 1), subnetwork_id=1), basin_data)
+    model.basin.add(Node(200, Point(9, 1), subnetwork_id=1), basin_data)
     model.linear_resistance.add(
-        Node(5, Point(12, -1), subnetwork_id=1),
+        Node(200, Point(12, -1), subnetwork_id=1),
         [linear_resistance.Static(resistance=[0.001])],
     )
-    model.basin.add(Node(6, Point(15, 1), subnetwork_id=1), basin_data)
+    model.basin.add(Node(300, Point(15, 1), subnetwork_id=1), basin_data)
     model.linear_resistance.add(
-        Node(7, Point(18, -1), subnetwork_id=1),
+        Node(300, Point(18, -1), subnetwork_id=1),
         [linear_resistance.Static(resistance=[0.001])],
     )
-    model.basin.add(Node(8, Point(21, 1), subnetwork_id=1), basin_data)
+    model.basin.add(Node(400, Point(21, 1), subnetwork_id=1), basin_data)
     model.linear_resistance.add(
-        Node(9, Point(24, -1), subnetwork_id=1),
+        Node(400, Point(24, -1), subnetwork_id=1),
         [linear_resistance.Static(resistance=[0.001])],
     )
-    model.basin.add(Node(10, Point(27, 1), subnetwork_id=1), basin_data)
+    model.basin.add(Node(500, Point(27, 1), subnetwork_id=1), basin_data)
     model.pump.add(
-        Node(11, Point(3, 4), subnetwork_id=3),
+        Node(100, Point(3, 4), subnetwork_id=3),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
-    model.basin.add(Node(12, Point(2, 4), subnetwork_id=3), large_basin_data)
+    model.basin.add(Node(600, Point(2, 4), subnetwork_id=3), large_basin_data)
     model.outlet.add(
-        Node(13, Point(1, 4), subnetwork_id=3),
+        Node(100, Point(1, 4), subnetwork_id=3),
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
-    model.terminal.add(Node(14, Point(0, 4), subnetwork_id=3))
+    model.terminal.add(Node(100, Point(0, 4), subnetwork_id=3))
     model.pump.add(
-        Node(15, Point(2, 5), subnetwork_id=3),
+        Node(200, Point(2, 5), subnetwork_id=3),
         [pump.Static(flow_rate=[4.0], max_flow_rate=4.0)],
     )
-    model.basin.add(Node(16, Point(2, 6), subnetwork_id=3), large_basin_data)
+    model.basin.add(Node(700, Point(2, 6), subnetwork_id=3), large_basin_data)
     model.outlet.add(
-        Node(17, Point(1, 6), subnetwork_id=3),
+        Node(200, Point(1, 6), subnetwork_id=3),
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
-    model.basin.add(Node(18, Point(0, 6), subnetwork_id=3), large_basin_data)
-    model.terminal.add(Node(19, Point(2, 8), subnetwork_id=3))
+    model.basin.add(Node(800, Point(0, 6), subnetwork_id=3), large_basin_data)
+    model.terminal.add(Node(200, Point(2, 8), subnetwork_id=3))
     model.user_demand.add(
-        Node(20, Point(2, 3), subnetwork_id=3),
+        Node(100, Point(2, 3), subnetwork_id=3),
         [
             user_demand.Static(
                 demand=[4.0], return_factor=0.9, min_level=0.9, priority=2
@@ -611,7 +612,7 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.user_demand.add(
-        Node(21, Point(3, 6), subnetwork_id=3),
+        Node(200, Point(3, 6), subnetwork_id=3),
         [
             user_demand.Static(
                 demand=[5.0], return_factor=0.9, min_level=0.9, priority=1
@@ -619,7 +620,7 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.user_demand.add(
-        Node(22, Point(0, 7), subnetwork_id=3),
+        Node(300, Point(0, 7), subnetwork_id=3),
         [
             user_demand.Static(
                 demand=[3.0], return_factor=0.9, min_level=0.9, priority=2
@@ -627,25 +628,25 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.outlet.add(
-        Node(23, Point(2, 7), subnetwork_id=3),
+        Node(300, Point(2, 7), subnetwork_id=3),
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
     model.pump.add(
-        Node(24, Point(14, 3), subnetwork_id=5),
+        Node(300, Point(14, 3), subnetwork_id=5),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
-    model.basin.add(Node(25, Point(14, 4), subnetwork_id=5), basin_data)
+    model.basin.add(Node(900, Point(14, 4), subnetwork_id=5), basin_data)
     model.tabulated_rating_curve.add(
-        Node(26, Point(14, 5), subnetwork_id=5),
+        Node(100, Point(14, 5), subnetwork_id=5),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-4])],
     )
     model.fractional_flow.add(
-        Node(27, Point(13, 6), subnetwork_id=5),
+        Node(100, Point(13, 6), subnetwork_id=5),
         [fractional_flow.Static(fraction=[0.25, 0.75], control_state=["A", "B"])],
     )
-    model.basin.add(Node(28, Point(12, 7), subnetwork_id=5), basin_data)
+    model.basin.add(Node(1000, Point(12, 7), subnetwork_id=5), basin_data)
     model.user_demand.add(
-        Node(29, Point(11, 8), subnetwork_id=5),
+        Node(400, Point(11, 8), subnetwork_id=5),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=1
@@ -653,12 +654,12 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.fractional_flow.add(
-        Node(30, Point(15, 6), subnetwork_id=5),
+        Node(200, Point(15, 6), subnetwork_id=5),
         [fractional_flow.Static(fraction=[0.75, 0.25], control_state=["A", "B"])],
     )
-    model.basin.add(Node(31, Point(16, 7), subnetwork_id=5), basin_data)
+    model.basin.add(Node(1100, Point(16, 7), subnetwork_id=5), basin_data)
     model.user_demand.add(
-        Node(32, Point(17, 8), subnetwork_id=5),
+        Node(500, Point(17, 8), subnetwork_id=5),
         [
             user_demand.Time(
                 time=["2020-01-01", "2021-01-01"],
@@ -670,11 +671,11 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.discrete_control.add(
-        Node(33, Point(13, 5), subnetwork_id=5),
+        Node(100, Point(13, 5), subnetwork_id=5),
         [
             discrete_control.Condition(
                 listen_node_type="Basin",
-                listen_node_id=[25],
+                listen_node_id=[900],
                 variable="level",
                 greater_than=0.003,
             ),
@@ -682,40 +683,40 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.user_demand.add(
-        Node(34, Point(26, 3), subnetwork_id=7),
+        Node(600, Point(26, 3), subnetwork_id=7),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=2
             )
         ],
     )
-    model.basin.add(Node(35, Point(26, 4), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1200, Point(26, 4), subnetwork_id=7), basin_data)
     model.outlet.add(
-        Node(36, Point(25, 4), subnetwork_id=7),
+        Node(400, Point(25, 4), subnetwork_id=7),
         [outlet.Static(flow_rate=[0.003], max_flow_rate=3.0)],
     )
-    model.terminal.add(Node(37, Point(24, 4), subnetwork_id=7))
+    model.terminal.add(Node(300, Point(24, 4), subnetwork_id=7))
     model.pump.add(
-        Node(38, Point(28, 4), subnetwork_id=7),
+        Node(400, Point(28, 4), subnetwork_id=7),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.pump.add(
-        Node(39, Point(26, 5), subnetwork_id=7),
+        Node(500, Point(26, 5), subnetwork_id=7),
         [pump.Static(flow_rate=[4e-3], max_flow_rate=0.004)],
     )
-    model.basin.add(Node(40, Point(24, 6), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1300, Point(24, 6), subnetwork_id=7), basin_data)
     model.outlet.add(
-        Node(41, Point(25, 6), subnetwork_id=7),
+        Node(500, Point(25, 6), subnetwork_id=7),
         [outlet.Static(flow_rate=[0.003], max_flow_rate=3.0)],
     )
-    model.basin.add(Node(42, Point(26, 6), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1400, Point(26, 6), subnetwork_id=7), basin_data)
     model.outlet.add(
-        Node(43, Point(27, 6), subnetwork_id=7),
+        Node(600, Point(27, 6), subnetwork_id=7),
         [outlet.Static(flow_rate=[0.003], max_flow_rate=3.0)],
     )
-    model.basin.add(Node(44, Point(28, 6), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1500, Point(28, 6), subnetwork_id=7), basin_data)
     model.user_demand.add(
-        Node(45, Point(24, 7), subnetwork_id=7),
+        Node(700, Point(24, 7), subnetwork_id=7),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=1
@@ -723,21 +724,21 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(46, Point(26, 7), subnetwork_id=7),
+        Node(200, Point(26, 7), subnetwork_id=7),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
     )
     model.tabulated_rating_curve.add(
-        Node(47, Point(28, 7), subnetwork_id=7),
+        Node(300, Point(28, 7), subnetwork_id=7),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
     )
-    model.basin.add(Node(48, Point(26, 8), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1600, Point(26, 8), subnetwork_id=7), basin_data)
     model.pump.add(
-        Node(49, Point(27, 8), subnetwork_id=7),
+        Node(600, Point(27, 8), subnetwork_id=7),
         [pump.Static(flow_rate=[4e-3], max_flow_rate=0.004)],
     )
-    model.basin.add(Node(50, Point(28, 8), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1700, Point(28, 8), subnetwork_id=7), basin_data)
     model.user_demand.add(
-        Node(51, Point(25, 9), subnetwork_id=7),
+        Node(800, Point(25, 9), subnetwork_id=7),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=3
@@ -745,25 +746,25 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(52, Point(26, 9), subnetwork_id=7),
+        Node(400, Point(26, 9), subnetwork_id=7),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
     )
     model.user_demand.add(
-        Node(53, Point(28, 9), subnetwork_id=7),
+        Node(900, Point(28, 9), subnetwork_id=7),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=3
             )
         ],
     )
-    model.basin.add(Node(54, Point(26, 10), subnetwork_id=7), basin_data)
+    model.basin.add(Node(1800, Point(26, 10), subnetwork_id=7), basin_data)
     model.outlet.add(
-        Node(55, Point(26, 11), subnetwork_id=7),
+        Node(700, Point(26, 11), subnetwork_id=7),
         [outlet.Static(flow_rate=[0.003], max_flow_rate=3.0)],
     )
-    model.terminal.add(Node(56, Point(26, 12), subnetwork_id=7))
+    model.terminal.add(Node(400, Point(26, 12), subnetwork_id=7))
     model.user_demand.add(
-        Node(57, Point(29, 6), subnetwork_id=7),
+        Node(1000, Point(29, 6), subnetwork_id=7),
         [
             user_demand.Static(
                 demand=[1e-3], return_factor=0.9, min_level=0.9, priority=2
@@ -771,74 +772,74 @@ def main_network_with_subnetworks_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=1)
-    model.edge.add(model.basin[2], model.linear_resistance[3])
-    model.edge.add(model.linear_resistance[3], model.basin[4])
-    model.edge.add(model.basin[4], model.linear_resistance[5])
-    model.edge.add(model.linear_resistance[5], model.basin[6])
-    model.edge.add(model.basin[6], model.linear_resistance[7])
-    model.edge.add(model.linear_resistance[7], model.basin[8])
-    model.edge.add(model.basin[8], model.linear_resistance[9])
-    model.edge.add(model.linear_resistance[9], model.basin[10])
-    model.edge.add(model.pump[11], model.basin[12])
-    model.edge.add(model.basin[12], model.outlet[13])
-    model.edge.add(model.outlet[13], model.terminal[14])
-    model.edge.add(model.basin[12], model.user_demand[20])
-    model.edge.add(model.basin[12], model.pump[15])
-    model.edge.add(model.pump[15], model.basin[16])
-    model.edge.add(model.basin[16], model.outlet[17])
-    model.edge.add(model.outlet[17], model.basin[18])
-    model.edge.add(model.basin[16], model.user_demand[21])
-    model.edge.add(model.basin[18], model.user_demand[22])
-    model.edge.add(model.basin[16], model.outlet[23])
-    model.edge.add(model.outlet[23], model.terminal[19])
-    model.edge.add(model.user_demand[20], model.basin[12])
-    model.edge.add(model.user_demand[21], model.basin[16])
-    model.edge.add(model.user_demand[22], model.basin[18])
-    model.edge.add(model.pump[24], model.basin[25])
-    model.edge.add(model.basin[25], model.tabulated_rating_curve[26])
-    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[27])
-    model.edge.add(model.fractional_flow[27], model.basin[28])
-    model.edge.add(model.basin[28], model.user_demand[29])
-    model.edge.add(model.user_demand[29], model.basin[28])
-    model.edge.add(model.tabulated_rating_curve[26], model.fractional_flow[30])
-    model.edge.add(model.fractional_flow[30], model.basin[31])
-    model.edge.add(model.basin[31], model.user_demand[32])
-    model.edge.add(model.user_demand[32], model.basin[31])
-    model.edge.add(model.discrete_control[33], model.fractional_flow[27])
-    model.edge.add(model.discrete_control[33], model.fractional_flow[30])
-    model.edge.add(model.pump[38], model.basin[35])
-    model.edge.add(model.basin[35], model.outlet[36])
-    model.edge.add(model.outlet[36], model.terminal[37])
-    model.edge.add(model.basin[35], model.user_demand[34])
-    model.edge.add(model.basin[35], model.pump[39])
-    model.edge.add(model.pump[39], model.basin[42])
-    model.edge.add(model.basin[42], model.outlet[41])
-    model.edge.add(model.outlet[41], model.basin[40])
-    model.edge.add(model.basin[40], model.user_demand[45])
-    model.edge.add(model.basin[42], model.tabulated_rating_curve[46])
-    model.edge.add(model.tabulated_rating_curve[46], model.basin[48])
-    model.edge.add(model.basin[48], model.pump[49])
-    model.edge.add(model.pump[49], model.basin[50])
-    model.edge.add(model.basin[50], model.user_demand[53])
-    model.edge.add(model.basin[48], model.tabulated_rating_curve[52])
-    model.edge.add(model.tabulated_rating_curve[52], model.basin[54])
-    model.edge.add(model.basin[48], model.user_demand[51])
-    model.edge.add(model.user_demand[51], model.basin[54])
-    model.edge.add(model.basin[54], model.outlet[55])
-    model.edge.add(model.outlet[55], model.terminal[56])
-    model.edge.add(model.basin[42], model.outlet[43])
-    model.edge.add(model.outlet[43], model.basin[44])
-    model.edge.add(model.basin[44], model.tabulated_rating_curve[47])
-    model.edge.add(model.tabulated_rating_curve[47], model.basin[50])
-    model.edge.add(model.user_demand[34], model.basin[35])
-    model.edge.add(model.user_demand[45], model.basin[40])
-    model.edge.add(model.user_demand[53], model.basin[50])
-    model.edge.add(model.basin[44], model.user_demand[57])
-    model.edge.add(model.user_demand[57], model.basin[44])
-    model.edge.add(model.basin[2], model.pump[11], subnetwork_id=3)
-    model.edge.add(model.basin[6], model.pump[24], subnetwork_id=5)
-    model.edge.add(model.basin[10], model.pump[38], subnetwork_id=7)
+    model.edge.add(model.flow_boundary[100], model.basin[100], subnetwork_id=1)
+    model.edge.add(model.basin[100], model.linear_resistance[100])
+    model.edge.add(model.linear_resistance[100], model.basin[200])
+    model.edge.add(model.basin[200], model.linear_resistance[200])
+    model.edge.add(model.linear_resistance[200], model.basin[300])
+    model.edge.add(model.basin[300], model.linear_resistance[300])
+    model.edge.add(model.linear_resistance[300], model.basin[400])
+    model.edge.add(model.basin[400], model.linear_resistance[400])
+    model.edge.add(model.linear_resistance[400], model.basin[500])
+    model.edge.add(model.pump[100], model.basin[600])
+    model.edge.add(model.basin[600], model.outlet[100])
+    model.edge.add(model.outlet[100], model.terminal[100])
+    model.edge.add(model.basin[600], model.user_demand[100])
+    model.edge.add(model.basin[600], model.pump[200])
+    model.edge.add(model.pump[200], model.basin[700])
+    model.edge.add(model.basin[700], model.outlet[200])
+    model.edge.add(model.outlet[200], model.basin[800])
+    model.edge.add(model.basin[700], model.user_demand[200])
+    model.edge.add(model.basin[800], model.user_demand[300])
+    model.edge.add(model.basin[700], model.outlet[300])
+    model.edge.add(model.outlet[300], model.terminal[200])
+    model.edge.add(model.user_demand[100], model.basin[600])
+    model.edge.add(model.user_demand[200], model.basin[700])
+    model.edge.add(model.user_demand[300], model.basin[800])
+    model.edge.add(model.pump[300], model.basin[900])
+    model.edge.add(model.basin[900], model.tabulated_rating_curve[100])
+    model.edge.add(model.tabulated_rating_curve[100], model.fractional_flow[100])
+    model.edge.add(model.fractional_flow[100], model.basin[1000])
+    model.edge.add(model.basin[1000], model.user_demand[400])
+    model.edge.add(model.user_demand[400], model.basin[1000])
+    model.edge.add(model.tabulated_rating_curve[100], model.fractional_flow[200])
+    model.edge.add(model.fractional_flow[200], model.basin[1100])
+    model.edge.add(model.basin[1100], model.user_demand[500])
+    model.edge.add(model.user_demand[500], model.basin[1100])
+    model.edge.add(model.discrete_control[100], model.fractional_flow[100])
+    model.edge.add(model.discrete_control[100], model.fractional_flow[200])
+    model.edge.add(model.pump[400], model.basin[1200])
+    model.edge.add(model.basin[1200], model.outlet[400])
+    model.edge.add(model.outlet[400], model.terminal[300])
+    model.edge.add(model.basin[1200], model.user_demand[600])
+    model.edge.add(model.basin[1200], model.pump[500])
+    model.edge.add(model.pump[500], model.basin[1400])
+    model.edge.add(model.basin[1400], model.outlet[500])
+    model.edge.add(model.outlet[500], model.basin[1300])
+    model.edge.add(model.basin[1300], model.user_demand[700])
+    model.edge.add(model.basin[1400], model.tabulated_rating_curve[200])
+    model.edge.add(model.tabulated_rating_curve[200], model.basin[1600])
+    model.edge.add(model.basin[1600], model.pump[600])
+    model.edge.add(model.pump[600], model.basin[1700])
+    model.edge.add(model.basin[1700], model.user_demand[900])
+    model.edge.add(model.basin[1600], model.tabulated_rating_curve[400])
+    model.edge.add(model.tabulated_rating_curve[400], model.basin[1800])
+    model.edge.add(model.basin[1600], model.user_demand[800])
+    model.edge.add(model.user_demand[800], model.basin[1800])
+    model.edge.add(model.basin[1800], model.outlet[700])
+    model.edge.add(model.outlet[700], model.terminal[400])
+    model.edge.add(model.basin[1400], model.outlet[600])
+    model.edge.add(model.outlet[600], model.basin[1500])
+    model.edge.add(model.basin[1500], model.tabulated_rating_curve[300])
+    model.edge.add(model.tabulated_rating_curve[300], model.basin[1700])
+    model.edge.add(model.user_demand[600], model.basin[1200])
+    model.edge.add(model.user_demand[700], model.basin[1300])
+    model.edge.add(model.user_demand[900], model.basin[1700])
+    model.edge.add(model.basin[1500], model.user_demand[1000])
+    model.edge.add(model.user_demand[1000], model.basin[1500])
+    model.edge.add(model.basin[100], model.pump[100], subnetwork_id=3)
+    model.edge.add(model.basin[300], model.pump[300], subnetwork_id=5)
+    model.edge.add(model.basin[500], model.pump[400], subnetwork_id=7)
 
     return model
 

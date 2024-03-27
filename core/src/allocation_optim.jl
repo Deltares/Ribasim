@@ -273,16 +273,13 @@ function adjust_capacities_edge!(
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
-    for edge_id in edge_ids
-        c = capacity[edge_id...]
+    for (edge_id, c) in capacity.data
 
         # These edges have no capacity constraints:
         # - With infinite capacity
