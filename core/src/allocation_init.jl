@@ -475,15 +475,15 @@ function add_constraints_capacity!(
     F = problem[:F]
     edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
-    for edge in edge_ids
-        if !isinf(get(capacity, edge...)) && edge ∉ main_network_source_edges
+    for (edge, c) in capacity.data
+        if !isinf(c) && edge ∉ main_network_source_edges
             push!(edge_ids_finite_capacity, edge)
         end
     end
     problem[:capacity] = JuMP.@constraint(
         problem,
         [edge = edge_ids_finite_capacity],
-        F[edge] <= get(capacity, edge...),
+        F[edge] <= capacity[edge...],
         base_name = "capacity"
     )
     return nothing

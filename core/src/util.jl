@@ -707,11 +707,3 @@ function Base.get(
         nothing
     end
 end
-
-function Base.get(
-    array::JuMP.Containers.SparseAxisArray,
-    node_id_src::NodeID,
-    node_id_dst::NodeID,
-)::Float64
-    get(array.data, (node_id_src, node_id_dst), 0.0)
-end

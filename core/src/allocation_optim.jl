@@ -281,8 +281,7 @@ function adjust_capacities_edge!(
 
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
-    for edge_id in edge_ids
-        c = get(capacity, edge_id...)
+    for (edge_id, c) in capacity.data
 
         # These edges have no capacity constraints:
         # - With infinite capacity
