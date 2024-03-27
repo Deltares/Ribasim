@@ -178,7 +178,10 @@ function get_value(
 
     if variable == "level"
         if node_id.type == NodeType.Basin
-            _, basin_idx = id_index(basin.node_id, node_id)
+            has_index, basin_idx = id_index(basin.node_id, node_id)
+            if !has_index
+                error("Discrete control listen node $node_id does not exist.")
+            end
             _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
         elseif node_id.type == NodeType.LevelBoundary
             level_boundary_idx = findsorted(level_boundary.node_id, node_id)

@@ -50,7 +50,7 @@ problem: The JuMP.jl model for solving the allocation problem
 """
 struct AllocationModel
     allocation_network_id::Int32
-    capacity::SparseMatrixCSC{Float64, Int}
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
