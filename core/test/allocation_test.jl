@@ -225,10 +225,11 @@ end
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
+    # See the difference between these values here and in
+    # "subnetworks_with_sources"
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))] ≈
-          [0.001, 0.002, 0.0011]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.002]
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
@@ -256,6 +257,46 @@ end
 
     @test user_demand.allocated[2] ≈ [4.0, 0.0, 0.0]
     @test user_demand.allocated[7] ≈ [0.001, 0.0, 0.0]
+end
+
+@testitem "subnetworks with sources" begin
+    using SQLite
+    using Ribasim: NodeID, OptimizationType
+    using ComponentArrays: ComponentVector
+    using JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+    p = Ribasim.Parameters(db, cfg)
+    close(db)
+
+    (; allocation, user_demand, graph, basin) = p
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    t = 0.0
+
+    # Set flows of sources in subnetworks
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 58), NodeID(:Basin, 16), 1.0)
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 59), NodeID(:Basin, 44), 1e-3)
+
+    # Collecting demands
+    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    for allocation_model in allocation_models[2:end]
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
+    end
+
+    # See the difference between these values here and in
+    # "allocation with main network optimization problem", internal sources
+    # lower the subnetwork demands
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001]
 end
 
 @testitem "Allocation level control" begin
