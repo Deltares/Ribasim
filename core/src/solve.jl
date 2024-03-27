@@ -137,7 +137,6 @@ function continuous_control!(
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
 
-        # No flow of outlet if source level is lower than target level
         if !controls_pump
             src_id = inflow_id(graph, controlled_node_id)
             dst_id = outflow_id(graph, controlled_node_id)
@@ -145,11 +144,21 @@ function continuous_control!(
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
 
-            if src_level === nothing || dst_level === nothing
-                factor_outlet = 1.0
-            else
+            factor_outlet = 1.0
+
+            # No flow of outlet if source level is lower than target level
+            if !(src_level === nothing || dst_level === nothing)
                 Δlevel = src_level - dst_level
-                factor_outlet = reduction_factor(Δlevel, 0.1)
+                factor_outlet *= reduction_factor(Δlevel, 0.1)
+            end
+
+            # No flow out outlet if source level is lower than minimum crest level
+            if src_level !== nothing
+                controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
+                factor_outlet *= reduction_factor(
+                    src_level - outlet.min_crest_level[controlled_node_idx],
+                    0.1,
+                )
             end
         else
             factor_outlet = 1.0
@@ -213,17 +222,6 @@ function continuous_control!(
             max_flow_rate[controlled_node_idx],
         )
 
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
-        if controls_pump
-            pump_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] -= flow_rate
-        else
-            outlet_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] += flow_rate
-        end
-
         # Set flow for connected edges
         src_id = inflow_id(graph, controlled_node_id)
         dst_id = outflow_id(graph, controlled_node_id)
@@ -231,9 +229,17 @@ function continuous_control!(
         set_flow!(graph, src_id, controlled_node_id, flow_rate)
         set_flow!(graph, controlled_node_id, dst_id, flow_rate)
 
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
             du.storage[dst_idx] += flow_rate
+        end
+
+        has_index, src_idx = id_index(basin.node_id, src_id)
+        if has_index
+            du.storage[src_idx] -= flow_rate
         end
 
         # When the controlled pump flows out into fractional flow nodes
