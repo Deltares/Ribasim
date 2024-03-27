@@ -473,7 +473,6 @@ function add_constraints_capacity!(
     (; graph) = p
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
-    edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
     for (edge, c) in capacity.data
         if !isinf(c) && edge ∉ main_network_source_edges

@@ -273,9 +273,7 @@ function adjust_capacities_edge!(
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
