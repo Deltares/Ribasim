@@ -104,7 +104,7 @@ class Model(FileModel):
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
         # However, we always want to write `input_dir` and `results_dir`
-        # By overriding `BaseModel.model_post_init` we can set the explicitly,
+        # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         self.model_fields_set.update({"input_dir", "results_dir"})
 
