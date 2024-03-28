@@ -95,7 +95,6 @@ end
 end
 
 @testitem "vertical basin flux" begin
-    using Ribasim
     import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
