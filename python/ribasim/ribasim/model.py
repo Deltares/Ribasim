@@ -1,5 +1,6 @@
 import datetime
 from collections.abc import Generator
+from os import PathLike
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,6 @@ from matplotlib import pyplot as plt
 from pydantic import (
     DirectoryPath,
     Field,
-    FilePath,
     field_serializer,
     model_validator,
 )
@@ -128,7 +128,7 @@ class Model(FileModel):
         content.append(")")
         return "\n".join(content)
 
-    def _write_toml(self, fn: FilePath) -> FilePath:
+    def _write_toml(self, fn: Path) -> Path:
         """
         Write the model data to a TOML file.
 
@@ -139,11 +139,9 @@ class Model(FileModel):
 
         Returns
         -------
-        FilePath
+        Path
             The file path of the written TOML file.
         """
-        fn = Path(fn)
-
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
@@ -217,11 +215,11 @@ class Model(FileModel):
         self.validate_model_node_ids()
 
     @classmethod
-    def read(cls, filepath: FilePath) -> "Model":
+    def read(cls, filepath: str | PathLike[str]) -> "Model":
         """Read model from TOML file."""
         return cls(filepath=filepath)  # type: ignore
 
-    def write(self, filepath: Path | str) -> Path:
+    def write(self, filepath: str | PathLike[str]) -> Path:
         """
         Write the contents of the model to disk and save it as a TOML configuration file.
 
@@ -229,7 +227,7 @@ class Model(FileModel):
 
         Parameters
         ----------
-        filepath: FilePath ending in .toml
+        filepath: str | PathLike[str] A file path with .toml extension
         """
         # TODO
         # self.validate_model()
