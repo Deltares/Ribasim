@@ -58,8 +58,8 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    input_dir: Path = Field(default_factory=lambda: Path("."))
-    results_dir: Path = Field(default_factory=lambda: Path("results"))
+    input_dir: Path = Field(default=Path("."))
+    results_dir: Path = Field(default=Path("results"))
 
     logging: Logging = Field(default_factory=Logging)
     solver: Solver = Field(default_factory=Solver)
@@ -102,7 +102,10 @@ class Model(FileModel):
         return str(path)
 
     def model_post_init(self, __context: Any) -> None:
-        # Always write dir fields
+        # When serializing we exclude fields that are set to their default values
+        # However, we always want to write `input_dir` and `results_dir`
+        # By overriding `BaseModel.model_post_init` we can set the explicitly,
+        # and enforce that they are always written.
         self.model_fields_set.update({"input_dir", "results_dir"})
 
     def __repr__(self) -> str:
@@ -125,7 +128,20 @@ class Model(FileModel):
         content.append(")")
         return "\n".join(content)
 
-    def _write_toml(self, fn: FilePath):
+    def _write_toml(self, fn: FilePath) -> FilePath:
+        """
+        Write the model data to a TOML file.
+
+        Parameters
+        ----------
+        fn : FilePath
+            The file path where the TOML file will be written.
+
+        Returns
+        -------
+        FilePath
+            The file path of the written TOML file.
+        """
         fn = Path(fn)
 
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
@@ -171,7 +187,7 @@ class Model(FileModel):
             if (
                 isinstance(attr, MultiNodeModel)
                 and attr.node.df is not None
-                # Model.read creates empty node tables (#1278)
+                # TODO: Model.read creates empty node tables (#1278)
                 and not attr.node.df.empty
             ):
                 yield attr
@@ -350,7 +366,11 @@ class Model(FileModel):
         return ax
 
     def to_xugrid(self):
-        """Convert the network to a xugrid.UgridDataset."""
+        """
+        Convert the network to a `xugrid.UgridDataset`.
+        This method will throw `ImportError`,
+        if the optional dependency `xugrid` isn't installed.
+        """
         node_df = self.node_table().df
 
         # This will need to be adopted for locally unique node IDs,
