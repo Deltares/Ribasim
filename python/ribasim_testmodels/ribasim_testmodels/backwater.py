@@ -18,7 +18,7 @@ def backwater_model():
     node_type[0] = "FlowBoundary"
     node_type[-1] = "LevelBoundary"
 
-    ids = np.arange(1, node_type.size + 1, dtype=int)
+    ids = np.arange(1, node_type.size + 1, dtype=np.int32)
 
     model = ribasim.Model(
         starttime="2020-01-01",

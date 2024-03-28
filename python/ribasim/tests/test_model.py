@@ -4,6 +4,7 @@ from sqlite3 import connect
 import numpy as np
 import pandas as pd
 import pytest
+import xugrid
 from pydantic import ValidationError
 from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
@@ -181,6 +182,8 @@ def test_node_table(basic):
     node = model.node_table()
     df = node.df
     assert df.geometry.is_unique
+    assert df.node_id.dtype == np.int32
+    assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.node_type.iloc[0] == "Basin"
     assert df.node_type.iloc[-1] == "Terminal"
 
@@ -214,3 +217,15 @@ def test_indexing(basic):
         match=re.escape("Cannot index into Basin / time: it contains no data."),
     ):
         model.basin.time[1]
+
+
+def test_xugrid(basic, tmp_path):
+    uds = basic.to_xugrid()
+    assert isinstance(uds, xugrid.UgridDataset)
+    assert uds.grid.edge_dimension == "ribasim_nEdges"
+    assert uds.grid.node_dimension == "ribasim_nNodes"
+    assert uds.grid.crs is None
+    assert uds.node_id.dtype == np.int32
+    uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
+    uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
+    assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"

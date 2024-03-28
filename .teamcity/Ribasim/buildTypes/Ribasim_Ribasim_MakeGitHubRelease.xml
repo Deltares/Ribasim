@@ -4,7 +4,7 @@
   <description />
   <settings>
     <parameters>
-      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
+      <param name="env.GITHUB_TOKEN" value="%github_deltares-service-account_access_token%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2523" name="Push release to GitHub" type="simpleRunner">
@@ -14,8 +14,7 @@ set -euxo pipefail
 . /usr/share/Modules/init/bash
 
 module load pixi
-pixi run github-release
-]]></param>
+pixi run github-release]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -112,3 +111,4 @@ pixi run github-release
     </cleanup>
   </settings>
 </build-type>
+

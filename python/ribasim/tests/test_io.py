@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import numpy as np
 import pytest
 import ribasim
 import tomli
@@ -57,7 +58,8 @@ def test_basic_transient(basic_transient, tmp_path):
     __assert_equal(model_orig.edge.df, model_loaded.edge.df)
 
     time = model_loaded.basin.time
-    assert model_orig.basin.time.df.time[0] == time.df.time[0]
+    assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
+    assert time.df.node_id.dtype == np.int32
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 7)
 
