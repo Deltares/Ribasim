@@ -1,5 +1,6 @@
-struct SavedResults
+struct SavedResults{V1 <: ComponentVector{Float64}}
     flow::SavedValues{Float64, Vector{Float64}}
+    vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
 end
 

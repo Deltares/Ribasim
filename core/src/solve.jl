@@ -14,13 +14,12 @@ function water_balance!(
 
     du .= 0.0
     get_tmp(graph[].flow, storage) .= 0.0
-    get_tmp(graph[].flow_vertical, storage) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate_basins!(du, basin, graph, storage)
+    formulate_basins!(du, basin, storage)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
@@ -52,34 +51,42 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
+function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::Nothing
+    (; current_level, current_area, vertical_flux_from_input, vertical_flux) = basin
+    current_level = get_tmp(current_level, storage)
+    current_area = get_tmp(current_area, storage)
+    vertical_flux = get_tmp(vertical_flux, storage)
+
+    level = current_level[i]
+    area = current_area[i]
+
+    bottom = basin.level[i][1]
+    fixed_area = basin.area[i][end]
+    depth = max(level - bottom, 0.0)
+    factor = reduction_factor(depth, 0.1)
+
+    precipitation = fixed_area * vertical_flux_from_input.precipitation[i]
+    evaporation = area * factor * vertical_flux_from_input.potential_evaporation[i]
+    drainage = vertical_flux_from_input.drainage[i]
+    infiltration = factor * vertical_flux_from_input.infiltration[i]
+
+    vertical_flux.precipitation[i] = precipitation
+    vertical_flux.evaporation[i] = evaporation
+    vertical_flux.drainage[i] = drainage
+    vertical_flux.infiltration[i] = infiltration
+
+    return nothing
+end
+
 function formulate_basins!(
     du::AbstractVector,
     basin::Basin,
-    graph::MetaGraph,
     storage::AbstractVector,
 )::Nothing
-    (; node_id, current_level, current_area) = basin
-    current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_area, storage)
-
-    for (i, id) in enumerate(node_id)
+    for (i, id) in enumerate(basin.node_id)
         # add all precipitation that falls within the profile
-        level = current_level[i]
-        area = current_area[i]
-
-        bottom = basin.level[i][1]
-        fixed_area = basin.area[i][end]
-        depth = max(level - bottom, 0.0)
-        factor = reduction_factor(depth, 0.1)
-
-        precipitation = fixed_area * basin.precipitation[i]
-        evaporation = area * factor * basin.potential_evaporation[i]
-        drainage = basin.drainage[i]
-        infiltration = factor * basin.infiltration[i]
-
-        influx = precipitation - evaporation + drainage - infiltration
-        du.storage[i] += influx
-        set_flow!(graph, id, influx)
+        update_vertical_flux!(basin, storage, i)
+        du.storage[i] += get_influx(basin, i)
     end
     return nothing
 end
@@ -303,7 +310,6 @@ function formulate_flow!(
 
         # Return flow is immediate
         set_flow!(graph, id, dst_id, q * return_factor[i])
-        set_flow!(graph, id, -q * (1 - return_factor[i]))
     end
     return nothing
 end
@@ -506,28 +512,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    level_boundary::LevelBoundary,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-    (; node_id) = level_boundary
-
-    for id in node_id
-        for in_id in inflow_ids(graph, id)
-            q = get_flow(graph, in_id, id, storage)
-            add_flow!(graph, id, -q)
-        end
-        for out_id in outflow_ids(graph, id)
-            q = get_flow(graph, id, out_id, storage)
-            add_flow!(graph, id, q)
-        end
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -547,7 +531,6 @@ function formulate_flow!(
 
             # Adding water is always possible
             set_flow!(graph, id, dst_id, rate)
-            set_flow!(graph, id, rate)
         end
     end
 end
@@ -663,6 +646,5 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
 
     # do these last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
-    formulate_flow!(level_boundary, p, storage, t)
     formulate_flow!(terminal, p, storage, t)
 end

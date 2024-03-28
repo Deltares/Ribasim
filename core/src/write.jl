@@ -84,15 +84,53 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
+    precipitation::Vector{Union{Missing, Float64}},
+    evaporation::Vector{Union{Missing, Float64}},
+    drainage::Vector{Union{Missing, Float64}},
+    infiltration::Vector{Union{Missing, Float64}},
 }
+    (; saved) = model
+    (; vertical_flux) = saved
+
     data = get_storages_and_levels(model)
+    storage = vec(data.storage)
+    level = vec(data.level)
+
     nbasin = length(data.node_id)
     ntsteps = length(data.time)
+    nrows = nbasin * ntsteps
+
+    precipitation = Vector{Union{Missing, Float64}}(missing, nrows)
+    evaporation = Vector{Union{Missing, Float64}}(missing, nrows)
+    drainage = Vector{Union{Missing, Float64}}(missing, nrows)
+    infiltration = Vector{Union{Missing, Float64}}(missing, nrows)
+
+    idx_row = 0
+
+    for vec in vertical_flux.saveval
+        for (precipitation_, evaporation_, drainage_, infiltration_) in
+            zip(vec.precipitation, vec.evaporation, vec.drainage, vec.infiltration)
+            idx_row += 1
+            precipitation[idx_row] = precipitation_
+            evaporation[idx_row] = evaporation_
+            drainage[idx_row] = drainage_
+            infiltration[idx_row] = infiltration_
+        end
+    end
 
     time = repeat(data.time; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
 
-    return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
+    return (;
+        time,
+        node_id,
+        storage,
+        level,
+        precipitation,
+        evaporation,
+        drainage,
+        infiltration,
+    )
 end
 
 "Create a flow result table from the saved data"
@@ -110,27 +148,13 @@ function flow_table(
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; graph) = integrator.p
-    (; flow_dict, flow_vertical_dict) = graph[]
+    (; flow_dict) = graph[]
 
-    # self-loops have no edge ID
     from_node_type = String[]
     from_node_id = Int32[]
     to_node_type = String[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
-
-    vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
-    for (node_id, index) in flow_vertical_dict
-        vertical_flow_node_ids[index] = node_id
-    end
-
-    for id in vertical_flow_node_ids
-        push!(from_node_type, string(id.type))
-        push!(from_node_id, id.value)
-        push!(to_node_type, string(id.type))
-        push!(to_node_id, id.value)
-        push!(unique_edge_ids_flow, missing)
-    end
 
     flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
     for (edge_id, index) in flow_dict

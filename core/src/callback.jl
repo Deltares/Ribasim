@@ -36,12 +36,12 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
+    push!(callbacks, integrating_flows_cb)
+
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
     push!(callbacks, basin_cb)
-
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
-    push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
@@ -61,16 +61,17 @@ function create_callbacks(
         push!(callbacks, allocation_cb)
     end
 
+    # If saveat is a vector which contains 0.0 this callback will still be called
+    # at t = 0.0 despite save_start = false
+    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
+    save_vertical_flux_cb =
+        SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
+    push!(callbacks, save_vertical_flux_cb)
+
     # save the flows over time, as a Vector of the nonzeros(flow)
     saved_flow = SavedValues(Float64, Vector{Float64})
-    save_flow_cb = SavingCallback(
-        save_flow,
-        saved_flow;
-        # If saveat is a vector which contains 0.0 this callback will still be called
-        # at t = 0.0 despite save_start = false
-        saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat,
-        save_start = false,
-    )
+    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
     # interpolate the levels
@@ -85,7 +86,7 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_subgrid_level)
+    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
 
     n_conditions = length(discrete_control.node_id)
     if n_conditions > 0
@@ -108,27 +109,20 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph, user_demand) = p
-    (;
-        flow,
-        flow_dict,
-        flow_vertical,
-        flow_prev,
-        flow_vertical_prev,
-        flow_integrated,
-        flow_vertical_integrated,
-    ) = graph[]
+    (; graph, user_demand, basin) = p
+    (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
+    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
+        basin
     flow = get_tmp(flow, 0)
-    flow_vertical = get_tmp(flow_vertical, 0)
-
+    vertical_flux = get_tmp(vertical_flux, 0)
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
-        copyto!(flow_vertical_prev, flow_vertical)
     end
 
     @. flow_integrated += 0.5 * (flow + flow_prev) * dt
-    @. flow_vertical_integrated += 0.5 * (flow_vertical + flow_vertical_prev) * dt
+    @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
+    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
@@ -137,8 +131,35 @@ function integrate_flows!(u, t, integrator)::Nothing
     end
 
     copyto!(flow_prev, flow)
-    copyto!(flow_vertical_prev, flow_vertical)
+    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
+end
+
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
+function save_flow(u, t, integrator)
+    (; flow_integrated) = integrator.p.graph[]
+
+    Δt = get_Δt(integrator)
+    flow_mean = copy(flow_integrated)
+    flow_mean ./= Δt
+    fill!(flow_integrated, 0.0)
+
+    return flow_mean
+end
+
+"Compute the average vertical fluxes over the last saveat interval and write
+them to SavedValues"
+function save_vertical_flux(u, t, integrator)
+    (; basin) = integrator.p
+    (; vertical_flux_integrated) = basin
+
+    Δt = get_Δt(integrator)
+    vertical_flux_mean = copy(vertical_flux_integrated)
+    vertical_flux_mean ./= Δt
+    fill!(vertical_flux_integrated, 0.0)
+
+    return vertical_flux_mean
 end
 
 """
@@ -430,36 +451,6 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     end
 end
 
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
-function save_flow(u, t, integrator)
-    (; dt, p) = integrator
-    (; graph) = p
-    (; flow_integrated, flow_vertical_integrated, saveat) = graph[]
-
-    Δt = if iszero(saveat)
-        dt
-    elseif isinf(saveat)
-        t
-    else
-        t_end = integrator.sol.prob.tspan[2]
-        if t_end - t > saveat
-            saveat
-        else
-            # The last interval might be shorter than saveat
-            rem = t % saveat
-            iszero(rem) ? saveat : rem
-        end
-    end
-
-    mean_flow_all = vcat(flow_vertical_integrated, flow_integrated)
-    mean_flow_all ./= Δt
-    fill!(flow_vertical_integrated, 0.0)
-    fill!(flow_integrated, 0.0)
-
-    return mean_flow_all
-end
-
 function update_subgrid_level!(integrator)::Nothing
     basin_level = get_tmp(integrator.p.basin.current_level, 0)
     subgrid = integrator.p.subgrid
@@ -476,18 +467,21 @@ end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin(integrator)::Nothing
-    (; basin) = integrator.p
-    (; node_id, time) = basin
+    (; p, u) = integrator
+    (; basin) = p
+    (; storage) = u
+    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
+    vertical_flux = get_tmp(vertical_flux, integrator.u)
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
 
     table = (;
-        basin.precipitation,
-        basin.potential_evaporation,
-        basin.drainage,
-        basin.infiltration,
+        vertical_flux_from_input.precipitation,
+        vertical_flux_from_input.potential_evaporation,
+        vertical_flux_from_input.drainage,
+        vertical_flux_from_input.infiltration,
     )
 
     for row in timeblock
@@ -496,6 +490,12 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
+    for (i, id) in enumerate(basin.node_id)
+        update_vertical_flux!(basin, storage, i)
+    end
+
+    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
+    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
