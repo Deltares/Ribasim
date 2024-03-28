@@ -363,7 +363,6 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
             if exists(connection, table):
                 df = gpd.read_file(path, layer=table, fid_as_index=True)
             else:
-                print(f"Can't read from {path}:{table}")
                 df = None
 
             return df
