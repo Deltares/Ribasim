@@ -32,6 +32,7 @@ from pydantic import (
     validate_call,
 )
 
+import ribasim
 from ribasim.types import FilePath
 
 __all__ = ("TableModel",)
@@ -427,7 +428,7 @@ class NodeModel(ChildModel):
             if (
                 isinstance(attr, TableModel)
                 and (attr.df is not None)
-                and not (isinstance(attr, SpatialTableModel))
+                and not (isinstance(attr, ribasim.geometry.node.NodeTable))
             ):
                 yield attr
 
