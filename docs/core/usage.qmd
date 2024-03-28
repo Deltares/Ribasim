@@ -708,20 +708,20 @@ derivative       | Float64  | -        | -
 The basin table contains:
 
 - results of the storage and level of each basin, which are instantaneous values;
-- results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated. This means that for the final time in the table the mean vertical fluxes are not computed, and thus left $0$.
+- results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated. This means that for the final time in the table the mean vertical fluxes are not computed, and thus are `missing`.
 
 The initial condition is also written to the file.
 
-column        | type     | unit
-------------- | -------- | ----
-time          | DateTime | -
-node_id       | Int32    | -
-storage       | Float64  | $m^3$
-level         | Float64  | $m$
-precipitation | Float64  | $m^3 s^{-1}$
-evaporation   | Float64  | $m^3 s^{-1}$
-drainage      | Float64  | $m^3 s^{-1}$
-infiltration  | Float64  | $m^3 s^{-1}$
+column        | type                     | unit
+------------- | ------------------------ | ----
+time          | DateTime                 | -
+node_id       | Int32                    | -
+storage       | Float64                  | $m^3$
+level         | Float64                  | $m$
+precipitation | Union{Float64, Missing}  | $m^3 s^{-1}$
+evaporation   | Union{Float64, Missing}  | $m^3 s^{-1}$
+drainage      | Union{Float64, Missing}  | $m^3 s^{-1}$
+infiltration  | Union{Float64, Missing}  | $m^3 s^{-1}$
 
 
 The table is sorted by time, and per time it is sorted by `node_id`.
@@ -734,7 +734,7 @@ In the time column the start of the period is indicated.
 column         | type                  | unit
 -------------- | --------------------- | ----
 time           | DateTime              | -
-edge_id        | Union{Int32, Missing} | -
+edge_id        | Int32                 | -
 from_node_type | String                | -
 from_node_id   | Int32                 | -
 to_node_type   | String                | -
@@ -743,6 +743,7 @@ flow_rate      | Float64               | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
+Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 
 ## DiscreteControl - `control.arrow`
 

@@ -711,9 +711,9 @@ end
 """
 Get the time interval between (flow) saves
 """
-function get_Δt(integrator, graph)::Float64
-    (; t, dt) = integrator
-    (; saveat) = graph[]
+function get_Δt(integrator)::Float64
+    (; p, t, dt) = integrator
+    (; saveat) = p.graph[]
     if iszero(saveat)
         dt
     elseif isinf(saveat)
@@ -728,4 +728,20 @@ function get_Δt(integrator, graph)::Float64
             iszero(rem) ? saveat : rem
         end
     end
+end
+
+function get_influx(basin::Basin, node_id::NodeID)::Float64
+    has_index, basin_idx = id_index(basin.node_id, node_id)
+    if !has_index
+        error("Sum of vertical fluxes requested for non-basin $id.")
+    end
+    return get_influx(basin, basin_idx)
+end
+
+function get_influx(basin::Basin, basin_idx::Int)::Float64
+    (; vertical_flux) = basin
+    vertical_flux = get_tmp(vertical_flux, 0)
+    (; precipitation, evaporation, drainage, infiltration) = vertical_flux
+    return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
+           infiltration[basin_idx]
 end

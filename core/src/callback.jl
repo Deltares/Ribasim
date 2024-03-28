@@ -138,11 +138,9 @@ end
 "Compute the average flows over the last saveat interval and write
 them to SavedValues"
 function save_flow(u, t, integrator)
-    (; p) = integrator
-    (; graph) = p
-    (; flow_integrated) = graph[]
+    (; flow_integrated) = integrator.p.graph[]
 
-    Δt = get_Δt(integrator, graph)
+    Δt = get_Δt(integrator)
     flow_mean = copy(flow_integrated)
     flow_mean ./= Δt
     fill!(flow_integrated, 0.0)
@@ -153,11 +151,10 @@ end
 "Compute the average vertical fluxes over the last saveat interval and write
 them to SavedValues"
 function save_vertical_flux(u, t, integrator)
-    (; p) = integrator
-    (; basin, graph) = p
+    (; basin) = integrator.p
     (; vertical_flux_integrated) = basin
 
-    Δt = get_Δt(integrator, graph)
+    Δt = get_Δt(integrator)
     vertical_flux_mean = copy(vertical_flux_integrated)
     vertical_flux_mean ./= Δt
     fill!(vertical_flux_integrated, 0.0)
@@ -497,7 +494,7 @@ function update_basin(integrator)::Nothing
         update_vertical_flux!(basin, storage, i)
     end
 
-    # Forget about vertical fluxes before basin update
+    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
     copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end

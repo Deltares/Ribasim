@@ -84,10 +84,10 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
-    precipitation::Vector{Float64},
-    evaporation::Vector{Float64},
-    drainage::Vector{Float64},
-    infiltration::Vector{Float64},
+    precipitation::Vector{Union{Missing, Float64}},
+    evaporation::Vector{Union{Missing, Float64}},
+    drainage::Vector{Union{Missing, Float64}},
+    infiltration::Vector{Union{Missing, Float64}},
 }
     (; saved) = model
     (; vertical_flux) = saved
@@ -100,10 +100,10 @@ function basin_table(
     ntsteps = length(data.time)
     nrows = nbasin * ntsteps
 
-    precipitation = zeros(nrows)
-    evaporation = zeros(nrows)
-    drainage = zeros(nrows)
-    infiltration = zeros(nrows)
+    precipitation = Vector{Union{Missing, Float64}}(missing, nrows)
+    evaporation = Vector{Union{Missing, Float64}}(missing, nrows)
+    drainage = Vector{Union{Missing, Float64}}(missing, nrows)
+    infiltration = Vector{Union{Missing, Float64}}(missing, nrows)
 
     idx_row = 0
 

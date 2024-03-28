@@ -54,7 +54,16 @@
                 :drainage,
                 :infiltration,
             ),
-            (DateTime, Int32, Float64, Float64, Float64, Float64, Float64, Float64),
+            (
+                DateTime,
+                Int32,
+                Float64,
+                Float64,
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+            ),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),

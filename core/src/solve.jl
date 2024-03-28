@@ -51,7 +51,7 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::Number
+function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::Nothing
     (; current_level, current_area, vertical_flux_from_input, vertical_flux) = basin
     current_level = get_tmp(current_level, storage)
     current_area = get_tmp(current_area, storage)
@@ -75,8 +75,7 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector, i::Int)::N
     vertical_flux.drainage[i] = drainage
     vertical_flux.infiltration[i] = infiltration
 
-    influx = precipitation - evaporation + drainage - infiltration
-    return influx
+    return nothing
 end
 
 function formulate_basins!(
@@ -86,8 +85,8 @@ function formulate_basins!(
 )::Nothing
     for (i, id) in enumerate(basin.node_id)
         # add all precipitation that falls within the profile
-        influx = update_vertical_flux!(basin, storage, i)
-        du.storage[i] += influx
+        update_vertical_flux!(basin, storage, i)
+        du.storage[i] += get_influx(basin, i)
     end
     return nothing
 end
