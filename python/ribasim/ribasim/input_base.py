@@ -427,7 +427,7 @@ class NodeModel(ChildModel):
             if (
                 isinstance(attr, TableModel)
                 and (attr.df is not None)
-                and not (isinstance(attr, NodeModel))
+                and not (isinstance(attr, SpatialTableModel))
             ):
                 yield attr
 
