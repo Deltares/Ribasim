@@ -28,6 +28,7 @@ def user_demand_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         solver=Solver(algorithm="Tsit5"),
     )
 
@@ -78,6 +79,7 @@ def subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-04-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -162,6 +164,7 @@ def looped_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -288,6 +291,7 @@ def minimal_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -346,6 +350,7 @@ def fractional_flow_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -433,6 +438,7 @@ def allocation_example_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-01-20",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -545,6 +551,7 @@ def main_network_with_subnetworks_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -849,6 +856,7 @@ def level_demand_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
     )
     model.flow_boundary.add(
@@ -897,6 +905,7 @@ def flow_demand_model() -> Model:
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
     )
 
@@ -972,6 +981,7 @@ def linear_resistance_demand_model():
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True),
     )
 

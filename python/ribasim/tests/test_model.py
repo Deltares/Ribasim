@@ -224,7 +224,6 @@ def test_xugrid(basic, tmp_path):
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
     assert uds.grid.node_dimension == "ribasim_nNodes"
-    assert uds.grid.crs is None
     assert uds.node_id.dtype == np.int32
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
     uds = xugrid.open_dataset(tmp_path / "ribasim.nc")

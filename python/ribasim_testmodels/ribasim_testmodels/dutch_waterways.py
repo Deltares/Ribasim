@@ -21,6 +21,7 @@ def dutch_waterways_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     profile_level = np.array([1.86, 3.21, 4.91, 6.61, 8.31, 10.07, 10.17, 10.27, 11.61, 12.94, 13.05, 13.69, 14.32, 14.96, 15.59])  # fmt: skip

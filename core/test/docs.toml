@@ -2,6 +2,7 @@
 # can also be set to a date-time like 1979-05-27T07:32:00
 starttime = 2019-01-01 # required
 endtime = 2021-01-01   # required
+crs = "EPSG:28992"     # required
 
 # input files
 input_dir = "."         # required

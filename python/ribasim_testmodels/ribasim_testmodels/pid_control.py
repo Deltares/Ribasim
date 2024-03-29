@@ -19,6 +19,7 @@ def pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -92,6 +93,7 @@ def discrete_control_of_pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.level_boundary.add(

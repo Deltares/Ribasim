@@ -9,6 +9,7 @@ import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
+from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -39,7 +40,7 @@ from ribasim.config import (
     Terminal,
     UserDemand,
 )
-from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.edge import EdgeSchema, EdgeTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
@@ -86,6 +87,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
+    crs: str
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":
@@ -95,6 +97,13 @@ class Model(FileModel):
         ) in self._children().items():
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
+        return self
+
+    @model_validator(mode="after")
+    def ensure_edge_table_is_present(self) -> "Model":
+        if self.edge.df is None:
+            self.edge.df = GeoDataFrame[EdgeSchema]()
+        self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
     @field_serializer("input_dir", "results_dir")
@@ -155,7 +164,7 @@ class Model(FileModel):
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
-        self.edge._save(directory, input_dir)
+        self.edge._save(directory, input_dir, self.crs)
 
         node = self.node_table()
         # Temporarily require unique node_id for #1262
@@ -165,14 +174,14 @@ class Model(FileModel):
         node.df.set_index("node_id", drop=False, inplace=True)
         node.df.sort_index(inplace=True)
         node.df.index.name = "fid"
-        node._save(directory, input_dir)
+        node._save(directory, input_dir, self.crs)
 
         for sub in self._nodes():
-            sub._save(directory, input_dir)
+            sub._save(directory, input_dir, self.crs)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
-        df_chunks = [node.node.df for node in self._nodes()]
+        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
