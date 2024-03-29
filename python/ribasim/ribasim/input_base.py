@@ -355,16 +355,14 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
     def _write_geopackage(self, path: Path, crs: str) -> None:
         """
-        Write the contents of the input to a geopackage.
+        Write the contents of the input to the GeoPackage.
 
         Parameters
         ----------
         path : Path
         """
         assert self.df is not None
-        self.df.set_crs(crs).to_file(
-            path, layer=self.tablename(), driver="GPKG", mode="a"
-        )
+        self.df.set_crs(crs).to_file(path, layer=self.tablename(), driver="GPKG")
 
 
 class ChildModel(BaseModel):
