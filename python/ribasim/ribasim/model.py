@@ -401,12 +401,6 @@ class Model(FileModel):
             name="node_index",
         )
 
-        if node_df.crs is None:
-            # TODO: can be removed when CRS is required, #1254
-            projected = False
-        else:
-            projected = node_df.crs.is_projected
-
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
             node_y=node_df.geometry.y,
@@ -418,7 +412,7 @@ class Model(FileModel):
                 )
             ),
             name="ribasim",
-            projected=projected,
+            projected=node_df.crs.is_projected,
             crs=node_df.crs,
         )
 

@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 import xugrid
 from pydantic import ValidationError
+from pyproj import CRS
 from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
@@ -139,6 +140,7 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     basin_area = tabulated_rating_curve.basin.area.df
     assert basin_area is not None
     assert basin_area.geometry.geom_type.iloc[0] == "Polygon"
+    assert basin_area.crs == CRS.from_epsg(28992)
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
     model_new = Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
     pd.testing.assert_series_equal(
@@ -186,6 +188,16 @@ def test_node_table(basic):
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.node_type.iloc[0] == "Basin"
     assert df.node_type.iloc[-1] == "Terminal"
+    assert df.crs == CRS.from_epsg(28992)
+
+
+def test_edge_table(basic):
+    model = basic
+    df = model.edge.df
+    assert df.geometry.is_unique
+    assert df.from_node_id.dtype == np.int32
+    assert df.subnetwork_id.dtype == pd.Int32Dtype()
+    assert df.crs == CRS.from_epsg(28992)
 
 
 def test_indexing(basic):
@@ -224,6 +236,7 @@ def test_xugrid(basic, tmp_path):
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
     assert uds.grid.node_dimension == "ribasim_nNodes"
+    assert uds.grid.crs == CRS.from_epsg(28992)
     assert uds.node_id.dtype == np.int32
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
     uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
