@@ -24,7 +24,7 @@ The full algorithm goes through the following steps:
 2. Perform `allocate` for the main network;
 3. Perform `allocate` for the other subnetworks.
 
-Not having a main network is also supported, then 1 and 2 are skipped.
+If no main network is present, then 1 and 2 are skipped.
 
 # Elements of allocation
 
