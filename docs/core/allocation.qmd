@@ -18,13 +18,13 @@ The allocation algorithm contains 3 types of optimization:
 -  `collect_demands`, where flows are allocated within a subnetwork by only using the main network inlet as a source, with demands reduced by allocations in `internal_sources`;
 - `allocate`, where all available sources are used and the final allocated flows for the users are determined.
 
-The full algorithm goes thtrough the following steps:
+The full algorithm goes through the following steps:
 
-1. Perform `internal_sources` and `collect_demands` for all subnetworks apart from the main network;
+1. Perform `internal_sources` followed by `collect_demands` for all subnetworks apart from the main network;
 2. Perform `allocate` for the main network;
 3. Perform `allocate` for the other subnetworks.
 
-Not having a main network is also supported, then 1 and 2 are skipped.
+If no main network is present, then 1 and 2 are skipped.
 
 # Elements of allocation
 
