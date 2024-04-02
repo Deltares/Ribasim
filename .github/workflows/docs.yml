@@ -15,12 +15,7 @@ permissions:
 jobs:
   publish:
     name: Docs Julia
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     permissions:
       contents: write
     steps:
