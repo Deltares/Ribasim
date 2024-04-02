@@ -15,7 +15,7 @@ permissions:
 jobs:
   publish:
     name: Docs Julia
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
