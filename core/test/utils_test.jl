@@ -43,6 +43,7 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
+        [2.0, 3.0],
         darea,
         area,
         level,
@@ -115,6 +116,7 @@ end
     demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
+        zeros(1),
         zeros(1),
         zeros(1),
         zeros(1),

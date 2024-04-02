@@ -44,8 +44,26 @@
             (DateTime, Union{Int32, Missing}, String, Int32, String, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
-            (:time, :node_id, :storage, :level),
-            (DateTime, Int32, Float64, Float64),
+            (
+                :time,
+                :node_id,
+                :storage,
+                :level,
+                :precipitation,
+                :evaporation,
+                :drainage,
+                :infiltration,
+            ),
+            (
+                DateTime,
+                Int32,
+                Float64,
+                Float64,
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+                Union{Missing, Float64},
+            ),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),
@@ -88,8 +106,8 @@
     @testset "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
-        # t0 has no flow, 2 flow edges and 2 boundary condition flows
-        @test nrow(flow) == (nsaved - 1) * 4
+        # t0 has no flow, 2 flow edges
+        @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved
         @test nrow(control) == 0
         @test nrow(allocation) == 0
@@ -98,9 +116,9 @@
 
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:4], -1) == [-1, -1, 1, 2]
-        @test flow.from_node_id[1:4] == [6, 922, 6, 0]
-        @test flow.to_node_id[1:4] == [6, 922, 0, 922]
+        @test coalesce.(flow.edge_id[1:2], -1) == [1, 2]
+        @test flow.from_node_id[1:2] == [6, 0]
+        @test flow.to_node_id[1:2] == [0, 922]
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
@@ -125,10 +143,11 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.u.storage ≈ [1000]
-    @test model.integrator.p.basin.precipitation == [0.0]
-    @test model.integrator.p.basin.potential_evaporation == [0.0]
-    @test model.integrator.p.basin.drainage == [0.0]
-    @test model.integrator.p.basin.infiltration == [0.0]
+    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    @test vertical_flux.precipitation == [0.0]
+    @test vertical_flux.evaporation == [0.0]
+    @test vertical_flux.drainage == [0.0]
+    @test vertical_flux.infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -142,10 +161,11 @@ end
     @test model isa Ribasim.Model
 
     stor = model.integrator.u.storage
-    prec = model.integrator.p.basin.precipitation
-    evap = model.integrator.p.basin.potential_evaporation
-    drng = model.integrator.p.basin.drainage
-    infl = model.integrator.p.basin.infiltration
+    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    prec = vertical_flux.precipitation
+    evap = vertical_flux.evaporation
+    drng = vertical_flux.drainage
+    infl = vertical_flux.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -235,7 +255,8 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test length(model.integrator.p.basin.precipitation) == 4
+    precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
+    @test length(precipitation) == 4
     @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()
 end

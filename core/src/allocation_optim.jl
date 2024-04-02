@@ -356,9 +356,13 @@ function get_basin_data(
     node_id::NodeID,
 )
     (; graph, basin, level_demand) = p
+    (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
     @assert node_id.type == NodeType.Basin
-    influx = get_flow(graph, node_id, 0.0)
+    vertical_flux = get_tmp(vertical_flux, 0)
+    _, basin_idx = id_index(basin.node_id, node_id)
+    # NOTE: Instantaneous
+    influx = get_influx(basin, node_id)
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)

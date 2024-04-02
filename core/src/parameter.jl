@@ -151,12 +151,14 @@ else
     T = Vector{Float64}
 end
 """
-struct Basin{T, C} <: AbstractParameterNode
+struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Indices{NodeID}
-    precipitation::Vector{Float64}
-    potential_evaporation::Vector{Float64}
-    drainage::Vector{Float64}
-    infiltration::Vector{Float64}
+    # Vertical fluxes
+    vertical_flux_from_input::V1
+    vertical_flux::V2
+    vertical_flux_prev::V3
+    vertical_flux_integrated::V3
+    vertical_flux_bmi::V3
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -171,10 +173,11 @@ struct Basin{T, C} <: AbstractParameterNode
 
     function Basin(
         node_id,
-        precipitation,
-        potential_evaporation,
-        drainage,
-        infiltration,
+        vertical_flux_from_input::V1,
+        vertical_flux::V2,
+        vertical_flux_prev::V3,
+        vertical_flux_integrated::V3,
+        vertical_flux_bmi::V3,
         current_level::T,
         current_area::T,
         area,
@@ -182,15 +185,16 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         demand,
         time::StructVector{BasinTimeV1, C, Int},
-    ) where {T, C}
+    ) where {T, C, V1, V2, V3}
         is_valid = valid_profiles(node_id, level, area)
         is_valid || error("Invalid Basin / profile table.")
-        return new{T, C}(
+        return new{T, C, V1, V2, V3}(
             node_id,
-            precipitation,
-            potential_evaporation,
-            drainage,
-            infiltration,
+            vertical_flux_from_input,
+            vertical_flux,
+            vertical_flux_prev,
+            vertical_flux_integrated,
+            vertical_flux_bmi,
             current_level,
             current_area,
             area,
@@ -560,7 +564,7 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2}
+struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
     graph::MetaGraph{
         Int64,
@@ -576,17 +580,13 @@ struct Parameters{T, C1, C2}
             flow::T,
             flow_prev::Vector{Float64},
             flow_integrated::Vector{Float64},
-            flow_vertical_dict::Dict{NodeID, Int},
-            flow_vertical::T,
-            flow_vertical_prev::Vector{Float64},
-            flow_vertical_integrated::Vector{Float64},
             saveat::Float64,
         },
         MetaGraphsNext.var"#11#13",
         Float64,
     }
     allocation::Allocation
-    basin::Basin{T, C1}
+    basin::Basin{T, C1, V1, V2, V3}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}
