@@ -123,8 +123,6 @@ function continuous_control!(
 
     current_area = get_tmp(current_area, u)
     storage = u.storage
-    outlet_flow_rate = get_tmp(outlet.flow_rate, u)
-    pump_flow_rate = get_tmp(pump.flow_rate, u)
     error = get_tmp(error, u)
 
     set_error!(pid_control, p, u, t)
@@ -143,8 +141,10 @@ function continuous_control!(
 
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
+        controlled_node_idx =
+            controls_pump ? findsorted(pump.node_id, controlled_node_id) :
+            findsorted(outlet.node_id, controlled_node_id)
 
-        # No flow of outlet if source level is lower than target level
         if !controls_pump
             src_id = inflow_id(graph, controlled_node_id)
             dst_id = outflow_id(graph, controlled_node_id)
@@ -152,28 +152,27 @@ function continuous_control!(
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
 
-            if src_level === nothing || dst_level === nothing
-                factor_outlet = 1.0
-            else
+            factor_outlet = 1.0
+
+            # No flow of outlet if source level is lower than target level
+            if !(src_level === nothing || dst_level === nothing)
                 Δlevel = src_level - dst_level
-                factor_outlet = reduction_factor(Δlevel, 0.1)
+                factor_outlet *= reduction_factor(Δlevel, 0.1)
+            end
+
+            # No flow out outlet if source level is lower than minimum crest level
+            if src_level !== nothing
+                factor_outlet *= reduction_factor(
+                    src_level - outlet.min_crest_level[controlled_node_idx],
+                    0.1,
+                )
             end
         else
             factor_outlet = 1.0
         end
 
-        if controls_pump
-            controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
-            factor_basin =
-                low_storage_factor(storage, basin.node_id, listened_node_id, 10.0)
-        else
-            controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
-
-            # Upstream node of outlet does not have to be a basin
-            upstream_node_id = inflow_id(graph, controlled_node_id)
-            factor_basin =
-                low_storage_factor(storage, basin.node_id, upstream_node_id, 10.0)
-        end
+        id_inflow = inflow_id(graph, controlled_node_id)
+        factor_basin = low_storage_factor(storage, basin.node_id, id_inflow, 10.0)
 
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
@@ -220,17 +219,6 @@ function continuous_control!(
             max_flow_rate[controlled_node_idx],
         )
 
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
-        if controls_pump
-            pump_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] -= flow_rate
-        else
-            outlet_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] += flow_rate
-        end
-
         # Set flow for connected edges
         src_id = inflow_id(graph, controlled_node_id)
         dst_id = outflow_id(graph, controlled_node_id)
@@ -238,9 +226,17 @@ function continuous_control!(
         set_flow!(graph, src_id, controlled_node_id, flow_rate)
         set_flow!(graph, controlled_node_id, dst_id, flow_rate)
 
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
             du.storage[dst_idx] += flow_rate
+        end
+
+        has_index, src_idx = id_index(basin.node_id, src_id)
+        if has_index
+            du.storage[src_idx] -= flow_rate
         end
 
         # When the controlled pump flows out into fractional flow nodes
@@ -271,8 +267,15 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, allocated, active, demand, demand_itp, return_factor, min_level) =
-        user_demand
+    (;
+        node_id,
+        allocated,
+        active,
+        demand_itp,
+        return_factor,
+        min_level,
+        demand_from_timeseries,
+    ) = user_demand
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -290,7 +293,11 @@ function formulate_flow!(
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
             alloc_prio = allocated[i][priority_idx]
-            demand_prio = demand_itp[i][priority_idx](t)
+            demand_prio = if demand_from_timeseries[i]
+                demand_itp[i][priority_idx](t)
+            else
+                get_user_demand(p, id, priority_idx; reduced = false)
+            end
             alloc = min(alloc_prio, demand_prio)
             q += alloc
         end

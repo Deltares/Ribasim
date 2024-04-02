@@ -742,6 +742,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     active = BitVector(ones(Bool, n_user))
     realized_bmi = zeros(n_user)
     demand = zeros(n_user * n_priority)
+    demand_reduced = zeros(n_user * n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
@@ -786,6 +787,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
         active,
         realized_bmi,
         demand,
+        demand_reduced,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -902,7 +904,7 @@ function Allocation(db::DB, config::Config)::Allocation
         subnetwork_id = Int32[],
         priority = Int32[],
         flow_rate = Float64[],
-        collect_demands = BitVector(),
+        optimization_type = String[],
     )
 
     allocation = Allocation(

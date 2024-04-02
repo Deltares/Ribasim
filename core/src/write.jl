@@ -253,7 +253,7 @@ function allocation_flow_table(
     subnetwork_id::Vector{Int32},
     priority::Vector{Int32},
     flow_rate::Vector{Float64},
-    collect_demands::BitVector,
+    optimization_type::Vector{String},
 }
     (; config) = model
     (; record_flow) = model.integrator.p.allocation
@@ -270,7 +270,7 @@ function allocation_flow_table(
         record_flow.subnetwork_id,
         record_flow.priority,
         record_flow.flow_rate,
-        record_flow.collect_demands,
+        record_flow.optimization_type,
     )
 end
 
