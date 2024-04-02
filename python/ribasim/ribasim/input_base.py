@@ -32,7 +32,7 @@ from pydantic import (
     validate_call,
 )
 
-from ribasim.types import FilePath
+import ribasim
 
 __all__ = ("TableModel",)
 
@@ -285,7 +285,7 @@ class TableModel(FileModel, Generic[TableT]):
         )
 
     @classmethod
-    def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:
+    def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
         with connect(path) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
@@ -298,7 +298,7 @@ class TableModel(FileModel, Generic[TableT]):
             return df
 
     @classmethod
-    def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
+    def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
 
@@ -357,23 +357,22 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     @classmethod
-    def _from_db(cls, path: FilePath, table: str):
+    def _from_db(cls, path: Path, table: str):
         with connect(path) as connection:
             if exists(connection, table):
                 df = gpd.read_file(path, layer=table, fid_as_index=True)
             else:
-                print(f"Can't read from {path}:{table}")
                 df = None
 
             return df
 
-    def _write_table(self, path: FilePath) -> None:
+    def _write_table(self, path: Path) -> None:
         """
         Write the contents of the input to a database.
 
         Parameters
         ----------
-        path : FilePath
+        path : Path
         """
         assert self.df is not None
         self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
@@ -424,7 +423,11 @@ class NodeModel(ChildModel):
     def _tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
-            if isinstance(attr, TableModel) and attr.df is not None:
+            if (
+                isinstance(attr, TableModel)
+                and (attr.df is not None)
+                and not (isinstance(attr, ribasim.geometry.node.NodeTable))
+            ):
                 yield attr
 
     def node_ids(self) -> set[int]:

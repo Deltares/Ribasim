@@ -488,15 +488,11 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     current_level = zeros(n)
     current_area = zeros(n)
 
-    if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_sizes)
-        current_area = DiffCache(current_area, chunk_sizes)
-    end
-
-    precipitation = zeros(length(node_id))
-    potential_evaporation = zeros(length(node_id))
-    drainage = zeros(length(node_id))
-    infiltration = zeros(length(node_id))
+    precipitation = zeros(n)
+    potential_evaporation = zeros(n)
+    evaporation = zeros(n)
+    drainage = zeros(n)
+    infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
@@ -509,14 +505,33 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
+    vertical_flux_from_input =
+        ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
+    vertical_flux = ComponentVector(;
+        precipitation = copy(precipitation),
+        evaporation,
+        drainage = copy(drainage),
+        infiltration = copy(infiltration),
+    )
+    vertical_flux_prev = zero(vertical_flux)
+    vertical_flux_integrated = zero(vertical_flux)
+    vertical_flux_bmi = zero(vertical_flux)
+
+    if config.solver.autodiff
+        current_level = DiffCache(current_level, chunk_sizes)
+        current_area = DiffCache(current_area, chunk_sizes)
+        vertical_flux = DiffCache(vertical_flux, chunk_sizes)
+    end
+
     demand = zeros(length(node_id))
 
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
-        precipitation,
-        potential_evaporation,
-        drainage,
-        infiltration,
+        vertical_flux_from_input,
+        vertical_flux,
+        vertical_flux_prev,
+        vertical_flux_integrated,
+        vertical_flux_bmi,
         current_level,
         current_area,
         area,
@@ -727,6 +742,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     active = BitVector(ones(Bool, n_user))
     realized_bmi = zeros(n_user)
     demand = zeros(n_user * n_priority)
+    demand_reduced = zeros(n_user * n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
@@ -771,6 +787,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
         active,
         realized_bmi,
         demand,
+        demand_reduced,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -887,7 +904,7 @@ function Allocation(db::DB, config::Config)::Allocation
         subnetwork_id = Int32[],
         priority = Int32[],
         flow_rate = Float64[],
-        collect_demands = BitVector(),
+        optimization_type = String[],
     )
 
     allocation = Allocation(

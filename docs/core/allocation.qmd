@@ -5,16 +5,26 @@ title: "Allocation"
 # Introduction
 Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
-The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+
+:::{.callout-note}
+within this *Allocation* section the main network is also considered to be a subnetwork.
+:::
 
 # The high level algorithm
-The allocation algorithm consists of 3 types of optimization problems:
+The allocation algorithm contains 3 types of optimization:
 
-1. **Subnetwork demand collection**: Collect the demands of a subnetwork from the main network by optimizing with unlimited capacity from the main network;
-2. **Main network allocation**: Allocate to subnetworks with the above collected demand, and demands in the main network;
-3. **Subnetwork allocation**: Allocate to demands in the subnetworks with the flows allocated to the subnetwork in the main network allocation.
+- `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;
+- `collect_demands`, where flows are allocated within a subnetwork by only using the main network inlet(s) as a source, with demands reduced by allocations in `internal_sources`. The allocated flows in this optimization type are not used. The goal is to see the flow through the main network inlet(s), which is interpreted as the subnetwork demand;
+- `allocate`, where all available sources are used and the final allocated flows for the users are determined.
 
-The total allocation algorithm consists of performing 1 for all subnetworks, then performing 2, then performing 3 for all subnetworks. Not having a main network is also supported, then 1 and 2 are skipped.
+The full algorithm goes through the following steps:
+
+1. Perform `internal_sources` followed by `collect_demands` for all subnetworks apart from the main network;
+2. Perform `allocate` for the main network;
+3. Perform `allocate` for the other subnetworks.
+
+If no main network is present, then 1 and 2 are skipped.
 
 # Elements of allocation
 
@@ -228,7 +238,7 @@ $$ {#eq-fractionalflowconstraint}
 
 ## Example
 
-The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation):
+The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation-user-demand):
 
 
 ```{julia}
@@ -247,10 +257,8 @@ t = 0.0
 priority_idx = 1
 
 Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 1.0)
-
-Ribasim.adjust_capacities_edge!(allocation_model, p, priority_idx)
-Ribasim.adjust_capacities_source!(allocation_model, p, priority_idx)
 Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
+Ribasim.set_initial_values!(allocation_model, p, u, t)
 
 println(p.allocation.allocation_models[1].problem)
 ```

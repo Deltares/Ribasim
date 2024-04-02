@@ -15,6 +15,7 @@ from ribasim_testmodels.allocation import (
     main_network_with_subnetworks_model,
     minimal_subnetwork_model,
     subnetwork_model,
+    subnetworks_with_sources_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -91,6 +92,7 @@ __all__ = [
     "pump_discrete_control_model",
     "rating_curve_model",
     "subnetwork_model",
+    "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "trivial_model",
