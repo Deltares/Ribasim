@@ -293,9 +293,11 @@ function formulate_flow!(
         # effectively allocated = demand.
         for priority_idx in eachindex(allocated[i])
             alloc_prio = allocated[i][priority_idx]
-            demand_prio =
-                demand_from_timeseries[i] ? demand_itp[i][priority_idx](t) :
+            demand_prio = if demand_from_timeseries[i]
+                demand_itp[i][priority_idx](t)
+            else
                 get_user_demand(p, id, priority_idx; reduced = false)
+            end
             alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
