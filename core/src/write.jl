@@ -84,26 +84,27 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
-    precipitation::Vector{Union{Missing, Float64}},
-    evaporation::Vector{Union{Missing, Float64}},
-    drainage::Vector{Union{Missing, Float64}},
-    infiltration::Vector{Union{Missing, Float64}},
+    precipitation::Vector{Float64},
+    evaporation::Vector{Float64},
+    drainage::Vector{Float64},
+    infiltration::Vector{Float64},
 }
     (; saved) = model
     (; vertical_flux) = saved
 
+    # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
-    storage = vec(data.storage)
-    level = vec(data.level)
+    storage = vec(data.storage[:, begin:(end - 1)])
+    level = vec(data.level[:, begin:(end - 1)])
 
     nbasin = length(data.node_id)
-    ntsteps = length(data.time)
+    ntsteps = length(data.time) - 1
     nrows = nbasin * ntsteps
 
-    precipitation = Vector{Union{Missing, Float64}}(missing, nrows)
-    evaporation = Vector{Union{Missing, Float64}}(missing, nrows)
-    drainage = Vector{Union{Missing, Float64}}(missing, nrows)
-    infiltration = Vector{Union{Missing, Float64}}(missing, nrows)
+    precipitation = zeros(nrows)
+    evaporation = zeros(nrows)
+    drainage = zeros(nrows)
+    infiltration = zeros(nrows)
 
     idx_row = 0
 
@@ -118,7 +119,7 @@ function basin_table(
         end
     end
 
-    time = repeat(data.time; inner = nbasin)
+    time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
 
     return (;

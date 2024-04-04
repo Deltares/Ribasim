@@ -34,14 +34,6 @@ end
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
 
-    # No vertical flux data for last saveat
-    t_end = last(basin_table).time
-    data_end = filter(:time => t -> t == t_end, basin_table)
-    @test all(ismissing.(data_end.precipitation))
-    @test all(ismissing.(data_end.evaporation))
-    @test all(ismissing.(data_end.drainage))
-    @test all(ismissing.(data_end.infiltration))
-
     time_table = DataFrame(basin.time)
     time_table[!, "basin_idx"] = [
         Ribasim.id_index(basin.node_id, node_id)[2] for
@@ -65,9 +57,6 @@ end
             time_table.mean_area[idx_1] = mean_area
         end
     end
-
-    filter!(:time => t -> t !== t_end, basin_table)
-    filter!(:time => t -> t !== t_end, time_table)
 
     @test all(
         isapprox(
