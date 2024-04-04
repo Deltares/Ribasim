@@ -59,6 +59,7 @@ except ImportError:
 class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
+    crs: str
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))
@@ -88,7 +89,6 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
-    crs: str
 
     @model_validator(mode="after")
     def set_node_parent(self) -> "Model":
