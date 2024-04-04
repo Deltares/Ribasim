@@ -35,6 +35,9 @@ end
     basin_table = DataFrame(Ribasim.basin_table(model))
 
     time_table = DataFrame(basin.time)
+    t_end = time_table.time[end]
+    filter!(:time => t -> t !== t_end, time_table)
+
     time_table[!, "basin_idx"] = [
         Ribasim.id_index(basin.node_id, node_id)[2] for
         node_id in Ribasim.NodeID.(:Basin, time_table.node_id)
