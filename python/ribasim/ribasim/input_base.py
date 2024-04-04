@@ -1,5 +1,4 @@
 import re
-import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -39,7 +38,6 @@ __all__ = ("TableModel",)
 delimiter = " / "
 
 gpd.options.io_engine = "pyogrio"
-warnings.filterwarnings("ignore", category=UserWarning, module="pyogrio")
 
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
@@ -134,15 +132,6 @@ class FileModel(BaseModel, ABC):
         self.filepath = filepath
         self.model_config["validate_assignment"] = True
 
-    @abstractmethod
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        """Save this instance to disk.
-
-        This method needs to be implemented by any class deriving from
-        FileModel.
-        """
-        raise NotImplementedError()
-
     @classmethod
     @abstractmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -227,11 +216,7 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {}
 
-    def _save(
-        self,
-        directory: DirectoryPath,
-        input_dir: DirectoryPath,
-    ) -> None:
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.filepath is not None:
@@ -239,9 +224,9 @@ class TableModel(FileModel, Generic[TableT]):
             self._write_arrow(self.filepath, directory, input_dir)
         elif db_path is not None:
             self.sort()
-            self._write_table(db_path)
+            self._write_geopackage(db_path)
 
-    def _write_table(self, temp_path: Path) -> None:
+    def _write_geopackage(self, temp_path: Path) -> None:
         """
         Write the contents of the input to a database.
 
@@ -366,16 +351,16 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
             return df
 
-    def _write_table(self, path: Path) -> None:
+    def _write_geopackage(self, path: Path) -> None:
         """
-        Write the contents of the input to a database.
+        Write the contents of the input to the GeoPackage.
 
         Parameters
         ----------
         path : Path
         """
         assert self.df is not None
-        self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
+        self.df.to_file(path, layer=self.tablename(), driver="GPKG")
 
 
 class ChildModel(BaseModel):
@@ -436,7 +421,7 @@ class NodeModel(ChildModel):
             node_ids.update(table.node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
         for table in self._tables():
             table._save(directory, input_dir)
 

@@ -19,7 +19,7 @@ def two_basin_model() -> Model:
     The right basin fills up and discharges over the rating curve.
     """
 
-    model = Model(starttime="2020-01-01", endtime="2021-01-01")
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 
     model.flow_boundary.add(
         Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]

@@ -22,6 +22,7 @@ def pump_discrete_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
@@ -115,6 +116,7 @@ def flow_condition_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -175,6 +177,7 @@ def level_boundary_condition_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.level_boundary.add(
@@ -246,6 +249,7 @@ def tabulated_rating_curve_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
@@ -309,6 +313,7 @@ def level_setpoint_with_minmax_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
