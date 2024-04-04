@@ -137,6 +137,7 @@ def test_node_ids_unsequential(basic):
 
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
+    model_orig.set_crs(model_orig.crs)
     basin_area = tabulated_rating_curve.basin.area.df
     assert basin_area is not None
     assert basin_area.geometry.geom_type.iloc[0] == "Polygon"

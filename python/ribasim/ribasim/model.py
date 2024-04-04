@@ -182,12 +182,13 @@ class Model(FileModel):
             sub._save(directory, input_dir)
 
     def set_crs(self, crs: str) -> None:
-        self.edge.df.set_crs(crs)
+        self.edge.df = self.edge.df.set_crs(crs)
         for sub in self._nodes():
+            if sub.node.df is not None:
+                sub.node.df = sub.node.df.set_crs(crs)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
-                    # TODO: that is missing node tables now
-                    table.df.set_crs(crs)
+                    table.df = table.df.set_crs(crs)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
