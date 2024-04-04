@@ -503,24 +503,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    terminal::Terminal,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-    (; node_id) = terminal
-
-    for id in node_id
-        for upstream_id in inflow_ids(graph, id)
-            q = get_flow(graph, upstream_id, id, storage)
-            add_flow!(graph, id, -q)
-        end
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -637,12 +619,10 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         manning_resistance,
         tabulated_rating_curve,
         flow_boundary,
-        level_boundary,
         pump,
         outlet,
         user_demand,
         fractional_flow,
-        terminal,
     ) = p
 
     formulate_flow!(linear_resistance, p, storage, t)
@@ -653,7 +633,6 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(outlet, p, storage, t)
     formulate_flow!(user_demand, p, storage, t)
 
-    # do these last since they rely on formulated input flows
+    # do this last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
-    formulate_flow!(terminal, p, storage, t)
 end
