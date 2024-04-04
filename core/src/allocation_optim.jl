@@ -840,12 +840,28 @@ function save_allocation_flows!(
     F_basin_out = problem[:F_basin_out]
 
     # Edge flows
-    for allocation_edge in first(F.axes)
+    allocation_edge_idx = 1
+    allocation_edges = first(F.axes)
+    n_allocation_edges = length(allocation_edges)
+
+    while allocation_edge_idx <= n_allocation_edges
+        allocation_edge = allocation_edges[allocation_edge_idx]
         flow_rate = JuMP.value(F[allocation_edge])
+
+        # Check whether the next allocation edge is the reverse of the current
+        # allocation edge
+        if allocation_edge_idx < n_allocation_edges &&
+           allocation_edges[allocation_edge_idx + 1] == reverse(allocation_edge)
+            # Combine the flow rates of bidirectional allocation edges
+            allocation_edge_idx += 1
+            flow_rate -= JuMP.value(F[allocation_edges[allocation_edge_idx]])
+        end
+
         edge_metadata = graph[allocation_edge...]
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
+            # Check in which direction this edge in the physical layer exists
             if haskey(graph, node_ids[i], node_ids[i + 1])
                 id_from = node_ids[i]
                 id_to = node_ids[i + 1]
@@ -867,6 +883,8 @@ function save_allocation_flows!(
             push!(record_flow.flow_rate, flow_rate_signed)
             push!(record_flow.optimization_type, string(optimization_type))
         end
+
+        allocation_edge_idx += 1
     end
 
     # Basin flows
