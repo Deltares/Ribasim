@@ -480,7 +480,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = get_tmp(p.basin.current_level, u)
+    h_actual = get_tmp(p.basin.current_level, u)[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -496,7 +496,7 @@ end
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:ManningResistance, 101),
-        NodeID(:LevelBoundary, 102),
+        NodeID(:Basin, 102),
         0,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
