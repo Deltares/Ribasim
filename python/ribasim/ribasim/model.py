@@ -157,6 +157,19 @@ class Model(FileModel):
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
 
+        node = self.node_table()
+        # Temporarily require unique node_id for #1262
+        # and copy them to the fid for #1306.
+        if not node.df["node_id"].is_unique:
+            raise ValueError("node_id must be unique")
+        node.df.set_index("node_id", drop=False, inplace=True)
+        node.df.sort_index(inplace=True)
+        node.df.index.name = "fid"
+        node._save(directory, input_dir)
+
+        for sub in self._nodes():
+            sub._save(directory, input_dir)
+
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]

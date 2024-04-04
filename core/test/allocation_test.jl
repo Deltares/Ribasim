@@ -167,34 +167,34 @@ end
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
-    @test only(main_network_connections[2]) == (NodeID(:Basin, 100), NodeID(:Pump, 100))
-    @test only(main_network_connections[3]) == (NodeID(:Basin, 300), NodeID(:Pump, 300))
-    @test only(main_network_connections[4]) == (NodeID(:Basin, 500), NodeID(:Pump, 400))
+    @test only(main_network_connections[2]) == (NodeID(:Basin, 2), NodeID(:Pump, 11))
+    @test only(main_network_connections[3]) == (NodeID(:Basin, 6), NodeID(:Pump, 24))
+    @test only(main_network_connections[4]) == (NodeID(:Basin, 10), NodeID(:Pump, 38))
 
     # main-sub connections are part of main network allocation network
     allocation_edges_main_network = graph[].edge_ids[1]
     @test [
-        (NodeID(:Basin, 100), NodeID(:Pump, 100)),
-        (NodeID(:Basin, 300), NodeID(:Pump, 300)),
-        (NodeID(:Basin, 500), NodeID(:Pump, 400)),
+        (NodeID(:Basin, 2), NodeID(:Pump, 11)),
+        (NodeID(:Basin, 6), NodeID(:Pump, 24)),
+        (NodeID(:Basin, 10), NodeID(:Pump, 38)),
     ] ⊆ allocation_edges_main_network
 
     # Subnetworks interpreted as user_demands require variables and constraints to
     # support absolute value expressions in the objective function
     allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
     problem = allocation_model_main_network.problem
-    @test problem[:F_abs_user_demand].axes[1] == NodeID.(:Pump, [100, 300, 400])
-    @test problem[:abs_positive_user_demand].axes[1] == NodeID.(:Pump, [100, 300, 400])
-    @test problem[:abs_negative_user_demand].axes[1] == NodeID.(:Pump, [100, 300, 400])
+    @test problem[:F_abs_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    @test problem[:abs_positive_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    @test problem[:abs_negative_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
     @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source].axes[1] ==
-          [(NodeID(:Basin, 100), NodeID(:Pump, 100))]
+          [(NodeID(:Basin, 2), NodeID(:Pump, 11))]
     @test Ribasim.get_allocation_model(p, Int32(5)).problem[:source].axes[1] ==
-          [(NodeID(:Basin, 300), NodeID(:Pump, 300))]
+          [(NodeID(:Basin, 6), NodeID(:Pump, 24))]
     @test Ribasim.get_allocation_model(p, Int32(7)).problem[:source].axes[1] ==
-          [(NodeID(:Basin, 500), NodeID(:Pump, 400))]
+          [(NodeID(:Basin, 10), NodeID(:Pump, 38))]
 end
 
 @testitem "allocation with main network optimization problem" begin
@@ -225,10 +225,11 @@ end
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
-    @test subnetwork_demands[(NodeID(:Basin, 100), NodeID(:Pump, 100))] ≈ [4.0, 4.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 300), NodeID(:Pump, 300))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 500), NodeID(:Pump, 400))][1:20] ≈
-          [0.001, 0.002]
+    # See the difference between these values here and in
+    # "subnetworks_with_sources"
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.002]
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
@@ -239,20 +240,20 @@ end
     objective = JuMP.objective_function(problem)
     objective_variables = keys(objective.terms)
     F_abs_user_demand = problem[:F_abs_user_demand]
-    @test F_abs_user_demand[NodeID(:Pump, 100)] ∈ objective_variables
-    @test F_abs_user_demand[NodeID(:Pump, 300)] ∈ objective_variables
-    @test F_abs_user_demand[NodeID(:Pump, 400)] ∈ objective_variables
+    @test F_abs_user_demand[NodeID(:Pump, 11)] ∈ objective_variables
+    @test F_abs_user_demand[NodeID(:Pump, 24)] ∈ objective_variables
+    @test F_abs_user_demand[NodeID(:Pump, 38)] ∈ objective_variables
 
     # Running full allocation algorithm
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 100), NodeID(:Basin, 100), 4.5)
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
-    @test subnetwork_allocateds[NodeID(:Basin, 100), NodeID(:Pump, 100)] ≈
+    @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
           [4.0, 0.49500000, 0.0]
-    @test subnetwork_allocateds[NodeID(:Basin, 300), NodeID(:Pump, 300)] ≈
+    @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
           [0.00399999999, 0.0, 0.0]
-    @test subnetwork_allocateds[NodeID(:Basin, 500), NodeID(:Pump, 400)] ≈ [0.001, 0.0, 0.0]
+    @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
 
     @test user_demand.allocated[2] ≈ [4.0, 0.0, 0.0]
     @test user_demand.allocated[7] ≈ [0.001, 0.0, 0.0]
