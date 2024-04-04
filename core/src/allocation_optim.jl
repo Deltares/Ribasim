@@ -78,7 +78,7 @@ function set_objective_priority!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand, flow_demand, allocation, basin) = p
-    (; node_id) = user_demand
+    (; node_id, demand_reduced) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -114,7 +114,8 @@ function set_objective_priority!(
 
         if to_node_id.type == NodeType.UserDemand
             # UserDemand
-            d = get_user_demand(p, to_node_id, priority_idx)
+            user_demand_idx = findsorted(node_id, to_node_id)
+            d = demand_reduced[user_demand_idx, priority_idx]
             add_user_demand_term!(edge_id, d, problem)
         else
             has_demand, demand_node_id =
@@ -183,7 +184,7 @@ function assign_allocations!(
             if user_demand_node_id.type == NodeType.UserDemand
                 allocated = JuMP.value(F[edge_id])
                 user_demand_idx = findsorted(user_demand.node_id, user_demand_node_id)
-                user_demand.allocated[user_demand_idx][priority_idx] = allocated
+                user_demand.allocated[user_demand_idx, priority_idx] = allocated
             end
         end
     end
@@ -484,7 +485,7 @@ function set_initial_demands_user!(
 )::Nothing
     (; allocation_network_id) = allocation_model
     (; graph, user_demand, allocation) = p
-    (; node_id, demand_from_timeseries, demand_itp) = user_demand
+    (; node_id, demand_from_timeseries, demand_itp, demand, demand_reduced) = user_demand
 
     # Read the demand from the interpolated timeseries
     # for users for which the demand comes from there
@@ -492,12 +493,11 @@ function set_initial_demands_user!(
         if demand_from_timeseries[i] &&
            graph[id].allocation_network_id == allocation_network_id
             for priority_idx in eachindex(allocation.priorities)
-                d = demand_itp[i][priority_idx](t)
-                set_user_demand!(p, id, priority_idx, d; reduced = false)
+                demand[i, priority_idx] = demand_itp[i][priority_idx](t)
             end
         end
     end
-    copy!(user_demand.demand_reduced, user_demand.demand)
+    copy!(demand_reduced, demand)
     return nothing
 end
 
@@ -579,17 +579,17 @@ function adjust_demands_user!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand) = p
+    (; node_id, demand_reduced) = user_demand
     F = problem[:F]
 
     # Reduce the demand by what was allocated
-    for id in user_demand.node_id
+    for (i, id) in enumerate(node_id)
         if graph[id].allocation_network_id == allocation_network_id
             d = max(
                 0.0,
-                get_user_demand(p, id, priority_idx) -
-                JuMP.value(F[(inflow_id(graph, id), id)]),
+                demand_reduced[i, priority_idx] - JuMP.value(F[(inflow_id(graph, id), id)]),
             )
-            set_user_demand!(p, id, priority_idx, d)
+            demand_reduced[i, priority_idx] = d
         end
     end
     return nothing
@@ -758,8 +758,8 @@ function save_demands_and_allocations!(
         if node_id.type == NodeType.UserDemand
             has_demand = true
             user_demand_idx = findsorted(user_demand.node_id, node_id)
-            demand = get_user_demand(p, node_id, priority_idx; reduced = false)
-            allocated = user_demand.allocated[user_demand_idx][priority_idx]
+            demand = user_demand.demand[user_demand_idx, priority_idx]
+            allocated = user_demand.allocated[user_demand_idx, priority_idx]
             #NOTE: instantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
