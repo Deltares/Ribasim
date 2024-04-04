@@ -444,7 +444,8 @@ function formulate_flow!(
 
         h_a = get_level(p, basin_a_id, t; storage)
         h_b = get_level(p, basin_b_id, t; storage)
-        bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
+        bottom_a = basin_bottom(basin, basin_a_id)
+        bottom_b = basin_bottom(basin, basin_b_id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]

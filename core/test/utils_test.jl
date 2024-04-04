@@ -56,30 +56,6 @@ end
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5)) === 0.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7)) === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 6)) === nothing
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (0.0, 4.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 0),
-        NodeID(:Pump, 6),
-    ) === (0.0, 0.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (4.0, 4.0)
-    @test_throws "No bottom defined on either side of Pump #6" Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 1),
-        NodeID(:Pump, 6),
-    )
 end
 
 @testitem "Convert levels to storages" begin

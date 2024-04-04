@@ -18,9 +18,9 @@ neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary
 neighbortypes(::Val{:flow_boundary}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
-    Set((:linear_resistance, :manning_resistance, :pump, :outlet, :tabulated_rating_curve))
+    Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
-neighbortypes(::Val{:manning_resistance}) = Set((:basin, :level_boundary))
+neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
     :outlet,

@@ -411,23 +411,6 @@ function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
     end
 end
 
-"Get the bottom on both ends of a node. If only one has a bottom, use that for both."
-function basin_bottoms(
-    basin::Basin,
-    basin_a_id::NodeID,
-    basin_b_id::NodeID,
-    id::NodeID,
-)::Tuple{Float64, Float64}
-    bottom_a = basin_bottom(basin, basin_a_id)
-    bottom_b = basin_bottom(basin, basin_b_id)
-    if bottom_a === bottom_b === nothing
-        error(lazy"No bottom defined on either side of $id")
-    end
-    bottom_a = something(bottom_a, bottom_b)
-    bottom_b = something(bottom_b, bottom_a)
-    return bottom_a, bottom_b
-end
-
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
