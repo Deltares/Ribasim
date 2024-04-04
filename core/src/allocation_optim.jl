@@ -846,15 +846,25 @@ function save_allocation_flows!(
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
+            if haskey(graph, node_ids[i], node_ids[i + 1])
+                id_from = node_ids[i]
+                id_to = node_ids[i + 1]
+                flow_rate_signed = flow_rate
+            else
+                id_from = node_ids[i + 1]
+                id_to = node_ids[i]
+                flow_rate_signed = -flow_rate
+            end
+
             push!(record_flow.time, t)
             push!(record_flow.edge_id, edge_metadata.id)
-            push!(record_flow.from_node_type, string(node_ids[i].type))
-            push!(record_flow.from_node_id, Int32(node_ids[i]))
-            push!(record_flow.to_node_type, string(node_ids[i + 1].type))
-            push!(record_flow.to_node_id, Int32(node_ids[i + 1]))
+            push!(record_flow.from_node_type, string(id_from.type))
+            push!(record_flow.from_node_id, Int32(id_from))
+            push!(record_flow.to_node_type, string(id_to.type))
+            push!(record_flow.to_node_id, Int32(id_to))
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
-            push!(record_flow.flow_rate, flow_rate)
+            push!(record_flow.flow_rate, flow_rate_signed)
             push!(record_flow.optimization_type, string(optimization_type))
         end
     end
