@@ -24,6 +24,7 @@ end
 
 """
 Add nonzeros for basins connected to eachother via 1 node and possibly a fractional flow node
+Basins are also assumed to depend on themselves (main diagonal terms)
 """
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
