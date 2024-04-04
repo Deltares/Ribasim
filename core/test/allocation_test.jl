@@ -1,5 +1,5 @@
 @testitem "Allocation solve" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
@@ -27,7 +27,7 @@
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.allocate!(p, allocation_model, 0.0, u)
+    Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
 
     # Last priority (= 2) flows
     F = allocation_model.problem[:F]
@@ -45,9 +45,9 @@
 
     # Test getting and setting UserDemand demands
     (; user_demand) = p
-    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π))
+    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π); reduced = false)
     @test user_demand.demand[4] ≈ π
-    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2) ≈ π
+    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2; reduced = false) ≈ π
 end
 
 @testitem "Allocation objective: linear absolute" begin
@@ -199,7 +199,7 @@ end
 
 @testitem "allocation with main network optimization problem" begin
     using SQLite
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
     using JuMP
 
@@ -221,18 +221,19 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t, u; collect_demands = true)
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
     @test subnetwork_demands[(NodeID(:Basin, 100), NodeID(:Pump, 100))] ≈ [4.0, 4.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 300), NodeID(:Pump, 300))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 500), NodeID(:Pump, 400))] ≈
-          [0.001, 0.002, 0.0011]
+    @test subnetwork_demands[(NodeID(:Basin, 500), NodeID(:Pump, 400))][1:20] ≈
+          [0.001, 0.002]
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    Ribasim.allocate!(p, allocation_model, t, u)
+    Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.allocate)
 
     # Main network objective function
     objective = JuMP.objective_function(problem)
@@ -255,6 +256,46 @@ end
 
     @test user_demand.allocated[2] ≈ [4.0, 0.0, 0.0]
     @test user_demand.allocated[7] ≈ [0.001, 0.0, 0.0]
+end
+
+@testitem "subnetworks with sources" begin
+    using SQLite
+    using Ribasim: NodeID, OptimizationType
+    using ComponentArrays: ComponentVector
+    using JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+    p = Ribasim.Parameters(db, cfg)
+    close(db)
+
+    (; allocation, user_demand, graph, basin) = p
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    t = 0.0
+
+    # Set flows of sources in subnetworks
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 58), NodeID(:Basin, 16), 1.0)
+    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 59), NodeID(:Basin, 44), 1e-3)
+
+    # Collecting demands
+    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    for allocation_model in allocation_models[2:end]
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
+        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
+    end
+
+    # See the difference between these values here and in
+    # "allocation with main network optimization problem", internal sources
+    # lower the subnetwork demands
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001]
 end
 
 @testitem "Allocation level control" begin
@@ -326,7 +367,7 @@ end
 
 @testitem "flow_demand" begin
     using JuMP
-    using Ribasim: NodeID, NodeType
+    using Ribasim: NodeID, NodeType, OptimizationType
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -373,38 +414,68 @@ end
     @test constraint_flow_demand_outflow.set.upper == 0.0
 
     t = 0.0
+    (; u) = model.integrator
+    optimization_type = OptimizationType.internal_sources
+    Ribasim.set_initial_values!(allocation_model, p, u, t)
 
-    ## Priority 1
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 1)
+    # Priority 1
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        1,
+        optimization_type,
+    )
     objective = JuMP.objective_function(problem)
     @test F_abs_flow_demand[node_id_with_flow_demand] in keys(objective.terms)
-    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t)
+    # Reduced demand
+    @test flow_demand.demand[1] == flow_demand.demand_itp[1](t) - 0.001
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     ## Priority 2
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 2)
-    # The flow at priority 1 through the node with a flow demand at priority 2
-    # is subtracted from this flow demand
-    @test flow_demand.demand[1] ≈
-          flow_demand.demand_itp[1](t) -
-          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 6), 1)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        2,
+        optimization_type,
+    )
+    # No demand left
+    @test flow_demand.demand[1] ≈ 0.0
+    # Allocated
+    @test JuMP.value(only(F_flow_buffer_in)) == 0.001
     @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     ## Priority 3
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 3)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        3,
+        optimization_type,
+    )
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities
     @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
     # So flow from the flow buffer is used for UserDemand #4
-    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ==
-          Ribasim.get_user_demand(p, NodeID(NodeType.UserDemand, 4), 3)
+    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) == 0.001
     # Flow taken from buffer
     @test JuMP.value(only(F_flow_buffer_out)) == user_demand.demand_itp[1][3](t)
     # No flow coming from level boundary
     @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) == 0
 
     ## Priority 4
-    Ribasim.allocate_priority!(allocation_model, model.integrator.u, p, t, 4)
+    Ribasim.allocate_priority!(
+        allocation_model,
+        model.integrator.u,
+        p,
+        t,
+        4,
+        optimization_type,
+    )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
     @assert JuMP.value(F[(NodeID(NodeType.UserDemand, 4), NodeID(NodeType.Basin, 7))]) +

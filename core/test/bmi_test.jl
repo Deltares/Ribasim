@@ -63,6 +63,8 @@ end
         "basin.level",
         "basin.infiltration",
         "basin.drainage",
+        "basin.infiltration_integrated",
+        "basin.drainage_integrated",
         "basin.subgrid_level",
         "user_demand.demand",
         "user_demand.realized",
@@ -90,4 +92,21 @@ end
     @test all(isapprox.(realized, demand * 0.4day; rtol = 1e-3))
     BMI.update_until(model, 0.6day)
     @test all(isapprox.(realized, demand * 0.6day; rtol = 1e-3))
+end
+
+@testitem "vertical basin flux" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    drainage = BMI.get_value_ptr(model, "basin.drainage")
+    drainage_flux = [1.0, 2.0, 3.0, 4.0]
+    drainage .= drainage_flux
+
+    Δt = 5 * 86400.0
+    BMI.update_until(model, Δt)
+
+    drainage_integrated = BMI.get_value_ptr(model, "basin.drainage_integrated")
+    @test drainage_integrated ≈ Δt * drainage_flux
 end

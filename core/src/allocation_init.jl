@@ -370,8 +370,7 @@ function add_variables_basin!(
     (; graph) = p
     node_ids_basin = [
         node_id for node_id in graph[].node_ids[allocation_network_id] if
-        graph[node_id].type == :basin &&
-        has_external_demand(graph, node_id, :level_demand)[1]
+        graph[node_id].type == :basin
     ]
     problem[:F_basin_in] =
         JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
@@ -429,8 +428,7 @@ function add_variables_absolute_value!(
         type = node_id.type
         if type == NodeType.UserDemand
             push!(node_ids_user_demand, node_id)
-        elseif type == NodeType.Basin &&
-               has_external_demand(graph, node_id, :level_demand)[1]
+        elseif type == NodeType.Basin
             push!(node_ids_level_demand, node_id)
         elseif has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)

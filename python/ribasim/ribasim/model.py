@@ -1,5 +1,6 @@
 import datetime
 from collections.abc import Generator
+from os import PathLike
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,6 @@ from matplotlib import pyplot as plt
 from pydantic import (
     DirectoryPath,
     Field,
-    FilePath,
     field_serializer,
     model_validator,
 )
@@ -58,8 +58,8 @@ class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
 
-    input_dir: Path = Field(default_factory=lambda: Path("."))
-    results_dir: Path = Field(default_factory=lambda: Path("results"))
+    input_dir: Path = Field(default=Path("."))
+    results_dir: Path = Field(default=Path("results"))
 
     logging: Logging = Field(default_factory=Logging)
     solver: Solver = Field(default_factory=Solver)
@@ -102,7 +102,10 @@ class Model(FileModel):
         return str(path)
 
     def model_post_init(self, __context: Any) -> None:
-        # Always write dir fields
+        # When serializing we exclude fields that are set to their default values
+        # However, we always want to write `input_dir` and `results_dir`
+        # By overriding `BaseModel.model_post_init` we can set them explicitly,
+        # and enforce that they are always written.
         self.model_fields_set.update({"input_dir", "results_dir"})
 
     def __repr__(self) -> str:
@@ -125,9 +128,20 @@ class Model(FileModel):
         content.append(")")
         return "\n".join(content)
 
-    def _write_toml(self, fn: FilePath):
-        fn = Path(fn)
+    def _write_toml(self, fn: Path) -> Path:
+        """
+        Write the model data to a TOML file.
 
+        Parameters
+        ----------
+        fn : FilePath
+            The file path where the TOML file will be written.
+
+        Returns
+        -------
+        Path
+            The file path of the written TOML file.
+        """
         content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
@@ -142,8 +156,6 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
-        for sub in self._nodes():
-            sub._save(directory, input_dir)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
@@ -160,7 +172,7 @@ class Model(FileModel):
             if (
                 isinstance(attr, MultiNodeModel)
                 and attr.node.df is not None
-                # Model.read creates empty node tables (#1278)
+                # TODO: Model.read creates empty node tables (#1278)
                 and not attr.node.df.empty
             ):
                 yield attr
@@ -190,11 +202,11 @@ class Model(FileModel):
         self.validate_model_node_ids()
 
     @classmethod
-    def read(cls, filepath: FilePath) -> "Model":
+    def read(cls, filepath: str | PathLike[str]) -> "Model":
         """Read model from TOML file."""
         return cls(filepath=filepath)  # type: ignore
 
-    def write(self, filepath: Path | str) -> Path:
+    def write(self, filepath: str | PathLike[str]) -> Path:
         """
         Write the contents of the model to disk and save it as a TOML configuration file.
 
@@ -202,7 +214,7 @@ class Model(FileModel):
 
         Parameters
         ----------
-        filepath: FilePath ending in .toml
+        filepath: str | PathLike[str] A file path with .toml extension
         """
         # TODO
         # self.validate_model()
@@ -339,7 +351,11 @@ class Model(FileModel):
         return ax
 
     def to_xugrid(self):
-        """Convert the network to a xugrid.UgridDataset."""
+        """
+        Convert the network to a `xugrid.UgridDataset`.
+        This method will throw `ImportError`,
+        if the optional dependency `xugrid` isn't installed.
+        """
         node_df = self.node_table().df
 
         # This will need to be adopted for locally unique node IDs,

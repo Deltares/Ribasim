@@ -844,6 +844,26 @@ def main_network_with_subnetworks_model() -> Model:
     return model
 
 
+def subnetworks_with_sources_model() -> Model:
+    """Generate a model with subnetworks which contain sources."""
+
+    model = main_network_with_subnetworks_model()
+
+    model.flow_boundary.add(
+        Node(58, Point(3, 5), subnetwork_id=3),
+        [flow_boundary.Static(flow_rate=[0.003])],
+    )
+    model.flow_boundary.add(
+        Node(59, Point(28, 5), subnetwork_id=7),
+        [flow_boundary.Static(flow_rate=[0.003])],
+    )
+
+    model.edge.add(model.flow_boundary[58], model.basin[16], subnetwork_id=3)
+    model.edge.add(model.flow_boundary[59], model.basin[44], subnetwork_id=7)
+
+    return model
+
+
 def level_demand_model() -> Model:
     """Small model with a LevelDemand."""
 

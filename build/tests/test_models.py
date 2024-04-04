@@ -1,4 +1,3 @@
-import platform
 import subprocess
 from pathlib import Path
 
@@ -16,11 +15,7 @@ def test_ribasim_cli(model_constructor, tmp_path):
     assert isinstance(model, ribasim.Model)
     model.write(tmp_path / "ribasim.toml")
 
-    extension = ".exe" if platform.system() == "Windows" else ""
-
-    executable = (
-        Path(__file__).parents[1] / "ribasim_cli" / "bin" / f"ribasim{extension}"
-    )
+    executable = Path(__file__).parents[1] / "ribasim_cli" / "bin" / "ribasim"
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
     if model_constructor.__name__.startswith("invalid_"):
