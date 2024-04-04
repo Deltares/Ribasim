@@ -10,6 +10,7 @@ def trivial_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         results=Results(subgrid=True, compression=False),
     )
 

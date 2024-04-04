@@ -117,7 +117,7 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
     assert table.df.iloc[0]["greater_than"] == 5.0
-    model_loaded = ribasim.Model(filepath=tmp_path / "basic/ribasim.toml")
+    model_loaded = ribasim.Model.read(filepath=tmp_path / "basic/ribasim.toml")
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
@@ -153,7 +153,9 @@ def test_roundtrip(trivial, tmp_path):
 def test_datetime_timezone():
     # Due to a pydantic issue, a time zone was added.
     # https://github.com/Deltares/Ribasim/issues/1282
-    model = ribasim.Model(starttime="2000-01-01", endtime="2001-01-01 00:00:00")
+    model = ribasim.Model(
+        starttime="2000-01-01", endtime="2001-01-01 00:00:00", crs="EPSG:28992"
+    )
     assert isinstance(model.starttime, datetime)
     assert isinstance(model.endtime, datetime)
     assert model.starttime.tzinfo is None

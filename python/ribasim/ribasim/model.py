@@ -9,6 +9,7 @@ import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
+from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -39,11 +40,12 @@ from ribasim.config import (
     Terminal,
     UserDemand,
 )
-from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.edge import EdgeSchema, EdgeTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
+    SpatialTableModel,
     context_file_loading,
 )
 from ribasim.utils import MissingOptionalModule
@@ -57,6 +59,7 @@ except ImportError:
 class Model(FileModel):
     starttime: datetime.datetime
     endtime: datetime.datetime
+    crs: str
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))
@@ -95,6 +98,13 @@ class Model(FileModel):
         ) in self._children().items():
             setattr(v, "_parent", self)
             setattr(v, "_parent_field", k)
+        return self
+
+    @model_validator(mode="after")
+    def ensure_edge_table_is_present(self) -> "Model":
+        if self.edge.df is None:
+            self.edge.df = GeoDataFrame[EdgeSchema]()
+        self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
     @field_serializer("input_dir", "results_dir")
@@ -151,6 +161,7 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+        self.set_crs(self.crs)
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
@@ -170,9 +181,19 @@ class Model(FileModel):
         for sub in self._nodes():
             sub._save(directory, input_dir)
 
+    def set_crs(self, crs: str) -> None:
+        self.crs = crs
+        self.edge.df = self.edge.df.set_crs(crs)
+        for sub in self._nodes():
+            if sub.node.df is not None:
+                sub.node.df = sub.node.df.set_crs(crs)
+            for table in sub._tables():
+                if isinstance(table, SpatialTableModel) and table.df is not None:
+                    table.df = table.df.set_crs(crs)
+
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
-        df_chunks = [node.node.df for node in self._nodes()]
+        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
@@ -392,12 +413,6 @@ class Model(FileModel):
             name="node_index",
         )
 
-        if node_df.crs is None:
-            # TODO: can be removed when CRS is required, #1254
-            projected = False
-        else:
-            projected = node_df.crs.is_projected
-
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
             node_y=node_df.geometry.y,
@@ -409,7 +424,7 @@ class Model(FileModel):
                 )
             ),
             name="ribasim",
-            projected=projected,
+            projected=node_df.crs.is_projected,
             crs=node_df.crs,
         )
 
