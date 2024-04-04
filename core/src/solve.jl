@@ -266,12 +266,13 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Number,
 )::Nothing
-    (; graph, basin) = p
+    (; graph, basin, allocation) = p
     (;
         node_id,
         allocated,
         active,
         demand_itp,
+        demand,
         return_factor,
         min_level,
         demand_from_timeseries,
@@ -291,12 +292,12 @@ function formulate_flow!(
         # and the current demand.
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
-        for priority_idx in eachindex(allocated[i])
-            alloc_prio = allocated[i][priority_idx]
+        for priority_idx in eachindex(allocation.priorities)
+            alloc_prio = allocated[i, priority_idx]
             demand_prio = if demand_from_timeseries[i]
                 demand_itp[i][priority_idx](t)
             else
-                get_user_demand(p, id, priority_idx; reduced = false)
+                demand[i, priority_idx]
             end
             alloc = min(alloc_prio, demand_prio)
             q += alloc

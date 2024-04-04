@@ -496,11 +496,11 @@ struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     realized_bmi::Vector{Float64}
-    demand::Vector{Float64}
-    demand_reduced::Vector{Float64}
+    demand::Matrix{Float64}
+    demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::BitVector
-    allocated::Vector{Vector{Float64}}
+    allocated::Matrix{Float64}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
 

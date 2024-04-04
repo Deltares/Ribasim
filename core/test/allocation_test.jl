@@ -38,16 +38,10 @@
     @test JuMP.value(F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]) ≈ 0.5
     @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:UserDemand, 11))]) ≈ 0.0
 
-    allocated = p.user_demand.allocated
-    @test allocated[1] ≈ [0.0, 0.5]
-    @test allocated[2] ≈ [4.0, 0.0]
-    @test allocated[3] ≈ [0.0, 2.0]
-
-    # Test getting and setting UserDemand demands
-    (; user_demand) = p
-    Ribasim.set_user_demand!(p, NodeID(:UserDemand, 11), 2, Float64(π); reduced = false)
-    @test user_demand.demand[4] ≈ π
-    @test Ribasim.get_user_demand(p, NodeID(:UserDemand, 11), 2; reduced = false) ≈ π
+    (; allocated) = p.user_demand
+    @test allocated[1, :] ≈ [0.0, 0.5]
+    @test allocated[2, :] ≈ [4.0, 0.0]
+    @test allocated[3, :] ≈ [0.0, 2.0]
 end
 
 @testitem "Allocation objective: linear absolute" begin
@@ -197,7 +191,7 @@ end
           [(NodeID(:Basin, 10), NodeID(:Pump, 38))]
 end
 
-@testitem "allocation with main network optimization problem" begin
+@testitem "Allocation with main network optimization problem" begin
     using SQLite
     using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
@@ -255,8 +249,8 @@ end
           [0.00399999999, 0.0, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
 
-    @test user_demand.allocated[2] ≈ [4.0, 0.0, 0.0]
-    @test user_demand.allocated[7] ≈ [0.001, 0.0, 0.0]
+    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0]
+    @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0]
 end
 
 @testitem "subnetworks with sources" begin
