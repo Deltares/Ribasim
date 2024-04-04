@@ -209,9 +209,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 7, 10]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
-    @test jac_prototype.nzval == ones(9)
+    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
+    @test jac_prototype.nzval == ones(10)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
