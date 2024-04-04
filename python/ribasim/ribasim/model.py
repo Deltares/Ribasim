@@ -45,6 +45,7 @@ from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
+    SpatialTableModel,
     context_file_loading,
 )
 from ribasim.utils import MissingOptionalModule
@@ -160,11 +161,12 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+        self.set_crs(self.crs)
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
-        self.edge._save(directory, input_dir, self.crs)
+        self.edge._save(directory, input_dir)
 
         node = self.node_table()
         # Temporarily require unique node_id for #1262
@@ -174,10 +176,18 @@ class Model(FileModel):
         node.df.set_index("node_id", drop=False, inplace=True)
         node.df.sort_index(inplace=True)
         node.df.index.name = "fid"
-        node._save(directory, input_dir, self.crs)
+        node._save(directory, input_dir)
 
         for sub in self._nodes():
-            sub._save(directory, input_dir, self.crs)
+            sub._save(directory, input_dir)
+
+    def set_crs(self, crs: str) -> None:
+        self.edge.df.set_crs(crs)
+        for sub in self._nodes():
+            for table in sub._tables():
+                if isinstance(table, SpatialTableModel) and table.df is not None:
+                    # TODO: that is missing node tables now
+                    table.df.set_crs(crs)
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""

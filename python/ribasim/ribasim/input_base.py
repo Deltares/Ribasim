@@ -216,9 +216,7 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {}
 
-    def _save(
-        self, directory: DirectoryPath, input_dir: DirectoryPath, crs: str
-    ) -> None:
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
         if self.filepath is not None:
@@ -226,9 +224,9 @@ class TableModel(FileModel, Generic[TableT]):
             self._write_arrow(self.filepath, directory, input_dir)
         elif db_path is not None:
             self.sort()
-            self._write_geopackage(db_path, crs)
+            self._write_geopackage(db_path)
 
-    def _write_geopackage(self, temp_path: Path, crs: str) -> None:
+    def _write_geopackage(self, temp_path: Path) -> None:
         """
         Write the contents of the input to a database.
 
@@ -353,7 +351,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
             return df
 
-    def _write_geopackage(self, path: Path, crs: str) -> None:
+    def _write_geopackage(self, path: Path) -> None:
         """
         Write the contents of the input to the GeoPackage.
 
@@ -362,7 +360,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         path : Path
         """
         assert self.df is not None
-        self.df.set_crs(crs).to_file(path, layer=self.tablename(), driver="GPKG")
+        self.df.to_file(path, layer=self.tablename(), driver="GPKG")
 
 
 class ChildModel(BaseModel):
@@ -423,9 +421,9 @@ class NodeModel(ChildModel):
             node_ids.update(table.node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, crs: str):
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
         for table in self._tables():
-            table._save(directory, input_dir, crs)
+            table._save(directory, input_dir)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.
