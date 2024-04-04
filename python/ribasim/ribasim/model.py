@@ -182,6 +182,7 @@ class Model(FileModel):
             sub._save(directory, input_dir)
 
     def set_crs(self, crs: str) -> None:
+        self.crs = crs
         self.edge.df = self.edge.df.set_crs(crs)
         for sub in self._nodes():
             if sub.node.df is not None:
