@@ -196,6 +196,7 @@ end
     using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
     using JuMP
+    using DataFrames: DataFrame, ByRow, transform!
 
     toml_path = normpath(
         @__DIR__,
@@ -209,7 +210,8 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds, record_flow) =
+        allocation
     t = 0.0
 
     # Collecting demands
@@ -248,6 +250,16 @@ end
     @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
           [0.00399999999, 0.0, 0.0]
     @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈ [0.001, 0.0, 0.0]
+
+    # Test for existence of edges in allocation flow record
+    allocation_flow = DataFrame(record_flow)
+    transform!(
+        allocation_flow,
+        [:from_node_type, :from_node_id, :to_node_type, :to_node_id] =>
+            ByRow((a, b, c, d) -> haskey(graph, NodeID(a, b), NodeID(c, d))) =>
+                :edge_exists,
+    )
+    @test all(allocation_flow.edge_exists)
 
     @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0]
     @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0]
