@@ -69,8 +69,8 @@ function create_callbacks(
         SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
     push!(callbacks, save_vertical_flux_cb)
 
-    # save the flows over time, as a Vector of the nonzeros(flow)
-    saved_flow = SavedValues(Float64, Vector{Float64})
+    # save the flows over time
+    saved_flow = SavedValues(Float64, SavedFlow)
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
@@ -138,14 +138,39 @@ end
 "Compute the average flows over the last saveat interval and write
 them to SavedValues"
 function save_flow(u, t, integrator)
-    (; flow_integrated) = integrator.p.graph[]
+    (; graph) = integrator.p
+    (; flow_integrated, flow_dict) = graph[]
+    (; node_id) = integrator.p.basin
 
     Δt = get_Δt(integrator)
     flow_mean = copy(flow_integrated)
     flow_mean ./= Δt
     fill!(flow_integrated, 0.0)
 
-    return flow_mean
+    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
+    inflow_mean = zeros(length(node_id))
+    outflow_mean = zeros(length(node_id))
+
+    for (i, basin_id) in enumerate(node_id)
+        for in_id in inflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[in_id, basin_id]]
+            if q > 0
+                inflow_mean[i] += q
+            else
+                outflow_mean[i] -= q
+            end
+        end
+        for out_id in outflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[basin_id, out_id]]
+            if q > 0
+                outflow_mean[i] += q
+            else
+                inflow_mean[i] -= q
+            end
+        end
+    end
+
+    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 
 "Compute the average vertical fluxes over the last saveat interval and write

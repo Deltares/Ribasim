@@ -84,31 +84,35 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
+    inflow_rate::Vector{Float64},
+    outflow_rate::Vector{Float64},
+    storage_rate::Vector{Float64},
     precipitation::Vector{Float64},
     evaporation::Vector{Float64},
     drainage::Vector{Float64},
     infiltration::Vector{Float64},
+    error::Vector{Float64},
 }
     (; saved) = model
-    (; vertical_flux) = saved
-
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
+    Δstorage = vec(diff(data.storage; dims = 2))
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
     nrows = nbasin * ntsteps
 
+    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
+    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
     precipitation = zeros(nrows)
     evaporation = zeros(nrows)
     drainage = zeros(nrows)
     infiltration = zeros(nrows)
 
     idx_row = 0
-
-    for vec in vertical_flux.saveval
+    for vec in saved.vertical_flux.saveval
         for (precipitation_, evaporation_, drainage_, infiltration_) in
             zip(vec.precipitation, vec.evaporation, vec.drainage, vec.infiltration)
             idx_row += 1
@@ -120,17 +124,27 @@ function basin_table(
     end
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
+    Δtime_seconds = 0.001 * Dates.value.(diff(data.time))
+    Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
+    storage_rate = Δstorage ./ Δtime
+    error =
+        inflow_rate - outflow_rate - storage_rate + precipitation - evaporation + drainage -
+        infiltration
 
     return (;
         time,
         node_id,
         storage,
         level,
+        inflow_rate,
+        outflow_rate,
+        storage_rate,
         precipitation,
         evaporation,
         drainage,
         infiltration,
+        error,
     )
 end
 
@@ -184,7 +198,7 @@ function flow_table(
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval)
+    flow_rate = FlatVector(saveval, :flow)
 
     return (;
         time,
