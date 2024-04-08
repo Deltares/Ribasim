@@ -13,7 +13,7 @@ from shapely.geometry import Point
 def doc_example_model():
     """Demonstrating model for the cascade polder project from our partner"""
 
-    model = Model(starttime="2020-01-01", endtime="2021-01-01")
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 
     # Set up basins
     time = pd.date_range(model.starttime, model.endtime)
