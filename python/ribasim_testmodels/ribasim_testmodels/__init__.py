@@ -34,7 +34,7 @@ from ribasim_testmodels.discrete_control import (
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
-from ribasim_testmodels.doc_example import doc_example_model
+from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.dutch_waterways import dutch_waterways_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
@@ -65,7 +65,6 @@ __all__ = [
     "basic_transient_model",
     "bucket_model",
     "discrete_control_of_pid_control_model",
-    "doc_example_model",
     "dutch_waterways_model",
     "flow_boundary_time_model",
     "flow_condition_model",
@@ -81,6 +80,7 @@ __all__ = [
     "level_setpoint_with_minmax_model",
     "linear_resistance_demand_model",
     "linear_resistance_model",
+    "local_pidcontrolled_cascade_model",
     "looped_subnetwork_model",
     "main_network_with_subnetworks_model",
     "manning_resistance_model",
