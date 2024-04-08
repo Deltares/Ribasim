@@ -108,11 +108,15 @@ This loop finds allocation network edges in several ways:
 function find_allocation_graph_edges!(
     p::Parameters,
     allocation_network_id::Int32,
-)::Tuple{Vector{Vector{NodeID}}, SparseMatrixCSC{Float64, Int}}
+)::Tuple{
+    Vector{Vector{NodeID}},
+    JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+}
     (; graph) = p
 
     edges_composite = Vector{NodeID}[]
-    capacity = spzeros(nv(graph), nv(graph))
+    dict = Dict{Tuple{NodeID, NodeID}, Float64}()
+    capacity = JuMP.Containers.SparseAxisArray(dict)
 
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = Set{Tuple{NodeID, NodeID}}()
@@ -199,11 +203,11 @@ For the composite allocation network edges:
 - Find out their allowed flow direction(s)
 """
 function process_allocation_graph_edges!(
-    capacity::SparseMatrixCSC{Float64, Int},
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     edges_composite::Vector{Vector{NodeID}},
     p::Parameters,
     allocation_network_id::Int32,
-)::SparseMatrixCSC{Float64, Int}
+)::Nothing
     (; graph) = p
     node_ids = graph[].node_ids[allocation_network_id]
     edge_ids = graph[].edge_ids[allocation_network_id]
@@ -289,7 +293,7 @@ function process_allocation_graph_edges!(
             push!(edge_ids, (node_id_2, node_id_1))
         end
     end
-    return capacity
+    return nothing
 end
 
 const allocation_source_nodetypes =
@@ -320,7 +324,7 @@ Build the graph used for the allocation problem.
 function allocation_graph(
     p::Parameters,
     allocation_network_id::Int32,
-)::SparseMatrixCSC{Float64, Int}
+)::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     # Find out which nodes in the subnetwork are used in the allocation network
     allocation_graph_used_nodes!(p, allocation_network_id)
 
@@ -460,17 +464,16 @@ flow over edge <= edge capacity
 """
 function add_constraints_capacity!(
     problem::JuMP.Model,
-    capacity::SparseMatrixCSC{Float64, Int},
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     p::Parameters,
     allocation_network_id::Int32,
 )::Nothing
     (; graph) = p
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
-    edge_ids = graph[].edge_ids[allocation_network_id]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
-    for edge in edge_ids
-        if !isinf(capacity[edge...]) && edge ∉ main_network_source_edges
+    for (edge, c) in capacity.data
+        if !isinf(c) && edge ∉ main_network_source_edges
             push!(edge_ids_finite_capacity, edge)
         end
     end
@@ -909,7 +912,7 @@ Construct the allocation problem for the current subnetwork as a JuMP.jl model.
 """
 function allocation_problem(
     p::Parameters,
-    capacity::SparseMatrixCSC{Float64, Int},
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     allocation_network_id::Int32,
 )::JuMP.Model
     optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)

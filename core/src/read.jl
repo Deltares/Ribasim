@@ -652,7 +652,7 @@ end
 
 function user_demand_static!(
     active::BitVector,
-    demand::Vector{Float64},
+    demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     return_factor::Vector{Float64},
     min_level::Vector{Float64},
@@ -672,7 +672,7 @@ function user_demand_static!(
         for row in group
             priority_idx = findsorted(priorities, row.priority)
             demand_itp[user_demand_idx][priority_idx].u .= row.demand
-            demand[(user_demand_idx - 1) * length(priorities) + priority_idx] = row.demand
+            demand[user_demand_idx, priority_idx] = row.demand
         end
     end
     return nothing
@@ -680,7 +680,7 @@ end
 
 function user_demand_time!(
     active::BitVector,
-    demand::Vector{Float64},
+    demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::BitVector,
     return_factor::Vector{Float64},
@@ -712,8 +712,7 @@ function user_demand_time!(
             :demand;
             default_value = 0.0,
         )
-        demand[(user_demand_idx - 1) * length(priorities) + priority_idx] =
-            demand_p_itp(0.0)
+        demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
 
         if is_valid
             demand_itp[user_demand_idx][priority_idx] = demand_p_itp
@@ -741,14 +740,14 @@ function UserDemand(db::DB, config::Config)::UserDemand
     n_priority = length(priorities)
     active = BitVector(ones(Bool, n_user))
     realized_bmi = zeros(n_user)
-    demand = zeros(n_user * n_priority)
-    demand_reduced = zeros(n_user * n_priority)
+    demand = zeros(n_user, n_priority)
+    demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = BitVector(zeros(Bool, n_user))
-    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+    allocated = fill(Inf, n_user, n_priority)
     return_factor = zeros(n_user)
     min_level = zeros(n_user)
 

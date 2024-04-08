@@ -3,6 +3,11 @@
 starttime = 2019-01-01 # required
 endtime = 2021-01-01   # required
 
+# Coordinate Reference System
+# The accepted strings are documented here:
+# https://proj.org/en/9.4/development/reference/functions.html#c.proj_create
+crs = "EPSG:4326"      # required
+
 # input files
 input_dir = "."         # required
 results_dir = "results" # required

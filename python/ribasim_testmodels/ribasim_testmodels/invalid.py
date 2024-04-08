@@ -19,6 +19,7 @@ def invalid_qh_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.tabulated_rating_curve.add(
@@ -55,6 +56,7 @@ def invalid_fractional_flow_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -118,6 +120,7 @@ def invalid_discrete_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -187,6 +190,7 @@ def invalid_edge_types_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [

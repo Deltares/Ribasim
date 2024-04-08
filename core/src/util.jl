@@ -411,23 +411,6 @@ function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
     end
 end
 
-"Get the bottom on both ends of a node. If only one has a bottom, use that for both."
-function basin_bottoms(
-    basin::Basin,
-    basin_a_id::NodeID,
-    basin_b_id::NodeID,
-    id::NodeID,
-)::Tuple{Float64, Float64}
-    bottom_a = basin_bottom(basin, basin_a_id)
-    bottom_b = basin_bottom(basin, basin_b_id)
-    if bottom_a === bottom_b === nothing
-        error(lazy"No bottom defined on either side of $id")
-    end
-    bottom_a = something(bottom_a, bottom_b)
-    bottom_b = something(bottom_b, bottom_a)
-    return bottom_a, bottom_b
-end
-
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
@@ -598,50 +581,6 @@ end
 
 function is_main_network(allocation_network_id::Int32)::Bool
     return allocation_network_id == 1
-end
-
-function get_user_demand(
-    p::Parameters,
-    node_id::NodeID,
-    priority_idx::Int;
-    reduced::Bool = true,
-)::Float64
-    (; user_demand, allocation) = p
-    (; demand, demand_reduced) = user_demand
-    user_demand_idx = findsorted(user_demand.node_id, node_id)
-    n_priorities = length(allocation.priorities)
-    idx = (user_demand_idx - 1) * n_priorities + priority_idx
-
-    if reduced
-        @assert is_active(allocation) "reduced demand accessed in non-allocation run"
-        return demand_reduced[idx]
-    else
-        return demand[idx]
-    end
-end
-
-function set_user_demand!(
-    p::Parameters,
-    node_id::NodeID,
-    priority_idx::Int,
-    value::Float64;
-    reduced::Bool = true,
-)::Nothing
-    (; user_demand, allocation) = p
-    (; demand, demand_reduced) = user_demand
-
-    user_demand_idx = findsorted(user_demand.node_id, node_id)
-    n_priorities = length(allocation.priorities)
-    idx = (user_demand_idx - 1) * n_priorities + priority_idx
-
-    if reduced
-        @assert is_active(allocation) "reduced demand accessed in non-allocation run"
-        demand_reduced[idx] = value
-    else
-        demand[idx] = value
-    end
-
-    return nothing
 end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}

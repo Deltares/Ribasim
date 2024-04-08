@@ -78,7 +78,7 @@ function set_objective_priority!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand, flow_demand, allocation, basin) = p
-    (; node_id) = user_demand
+    (; node_id, demand_reduced) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
 
@@ -114,7 +114,8 @@ function set_objective_priority!(
 
         if to_node_id.type == NodeType.UserDemand
             # UserDemand
-            d = get_user_demand(p, to_node_id, priority_idx)
+            user_demand_idx = findsorted(node_id, to_node_id)
+            d = demand_reduced[user_demand_idx, priority_idx]
             add_user_demand_term!(edge_id, d, problem)
         else
             has_demand, demand_node_id =
@@ -183,7 +184,7 @@ function assign_allocations!(
             if user_demand_node_id.type == NodeType.UserDemand
                 allocated = JuMP.value(F[edge_id])
                 user_demand_idx = findsorted(user_demand.node_id, user_demand_node_id)
-                user_demand.allocated[user_demand_idx][priority_idx] = allocated
+                user_demand.allocated[user_demand_idx, priority_idx] = allocated
             end
         end
     end
@@ -298,14 +299,11 @@ function set_initial_capacities_edge!(
     allocation_model::AllocationModel,
     p::Parameters,
 )::Nothing
-    (; graph) = p
     (; problem, capacity, allocation_network_id) = allocation_model
-    edge_ids = graph[].edge_ids[allocation_network_id]
     constraints_capacity = problem[:capacity]
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
 
-    for edge_id in edge_ids
-        c = capacity[edge_id...]
+    for (edge_id, c) in capacity.data
 
         # These edges have no capacity constraints:
         # - With infinite capacity
@@ -484,7 +482,7 @@ function set_initial_demands_user!(
 )::Nothing
     (; allocation_network_id) = allocation_model
     (; graph, user_demand, allocation) = p
-    (; node_id, demand_from_timeseries, demand_itp) = user_demand
+    (; node_id, demand_from_timeseries, demand_itp, demand, demand_reduced) = user_demand
 
     # Read the demand from the interpolated timeseries
     # for users for which the demand comes from there
@@ -492,12 +490,11 @@ function set_initial_demands_user!(
         if demand_from_timeseries[i] &&
            graph[id].allocation_network_id == allocation_network_id
             for priority_idx in eachindex(allocation.priorities)
-                d = demand_itp[i][priority_idx](t)
-                set_user_demand!(p, id, priority_idx, d; reduced = false)
+                demand[i, priority_idx] = demand_itp[i][priority_idx](t)
             end
         end
     end
-    copy!(user_demand.demand_reduced, user_demand.demand)
+    copy!(demand_reduced, demand)
     return nothing
 end
 
@@ -579,17 +576,17 @@ function adjust_demands_user!(
 )::Nothing
     (; problem, allocation_network_id) = allocation_model
     (; graph, user_demand) = p
+    (; node_id, demand_reduced) = user_demand
     F = problem[:F]
 
     # Reduce the demand by what was allocated
-    for id in user_demand.node_id
+    for (i, id) in enumerate(node_id)
         if graph[id].allocation_network_id == allocation_network_id
             d = max(
                 0.0,
-                get_user_demand(p, id, priority_idx) -
-                JuMP.value(F[(inflow_id(graph, id), id)]),
+                demand_reduced[i, priority_idx] - JuMP.value(F[(inflow_id(graph, id), id)]),
             )
-            set_user_demand!(p, id, priority_idx, d)
+            demand_reduced[i, priority_idx] = d
         end
     end
     return nothing
@@ -758,8 +755,8 @@ function save_demands_and_allocations!(
         if node_id.type == NodeType.UserDemand
             has_demand = true
             user_demand_idx = findsorted(user_demand.node_id, node_id)
-            demand = user_demand.demand[user_demand_idx]
-            allocated = user_demand.allocated[user_demand_idx][priority_idx]
+            demand = user_demand.demand[user_demand_idx, priority_idx]
+            allocated = user_demand.allocated[user_demand_idx, priority_idx]
             #NOTE: instantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
@@ -840,23 +837,51 @@ function save_allocation_flows!(
     F_basin_out = problem[:F_basin_out]
 
     # Edge flows
-    for allocation_edge in first(F.axes)
+    allocation_edge_idx = 1
+    allocation_edges = first(F.axes)
+    n_allocation_edges = length(allocation_edges)
+
+    while allocation_edge_idx <= n_allocation_edges
+        allocation_edge = allocation_edges[allocation_edge_idx]
         flow_rate = JuMP.value(F[allocation_edge])
+
+        # Check whether the next allocation edge is the reverse of the current
+        # allocation edge
+        if allocation_edge_idx < n_allocation_edges &&
+           allocation_edges[allocation_edge_idx + 1] == reverse(allocation_edge)
+            # Combine the flow rates of bidirectional allocation edges
+            allocation_edge_idx += 1
+            flow_rate -= JuMP.value(F[allocation_edges[allocation_edge_idx]])
+        end
+
         edge_metadata = graph[allocation_edge...]
         (; node_ids) = edge_metadata
 
         for i in eachindex(node_ids)[1:(end - 1)]
+            # Check in which direction this edge in the physical layer exists
+            if haskey(graph, node_ids[i], node_ids[i + 1])
+                id_from = node_ids[i]
+                id_to = node_ids[i + 1]
+                flow_rate_signed = flow_rate
+            else
+                id_from = node_ids[i + 1]
+                id_to = node_ids[i]
+                flow_rate_signed = -flow_rate
+            end
+
             push!(record_flow.time, t)
             push!(record_flow.edge_id, edge_metadata.id)
-            push!(record_flow.from_node_type, string(node_ids[i].type))
-            push!(record_flow.from_node_id, Int32(node_ids[i]))
-            push!(record_flow.to_node_type, string(node_ids[i + 1].type))
-            push!(record_flow.to_node_id, Int32(node_ids[i + 1]))
+            push!(record_flow.from_node_type, string(id_from.type))
+            push!(record_flow.from_node_id, Int32(id_from))
+            push!(record_flow.to_node_type, string(id_to.type))
+            push!(record_flow.to_node_id, Int32(id_to))
             push!(record_flow.subnetwork_id, allocation_network_id)
             push!(record_flow.priority, priority)
-            push!(record_flow.flow_rate, flow_rate)
+            push!(record_flow.flow_rate, flow_rate_signed)
             push!(record_flow.optimization_type, string(optimization_type))
         end
+
+        allocation_edge_idx += 1
     end
 
     # Basin flows
