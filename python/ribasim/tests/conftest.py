@@ -20,6 +20,11 @@ def basic_transient() -> ribasim.Model:
 
 
 @pytest.fixture()
+def bucket() -> ribasim.Model:
+    return ribasim_testmodels.bucket_model()
+
+
+@pytest.fixture()
 def tabulated_rating_curve() -> ribasim.Model:
     return ribasim_testmodels.tabulated_rating_curve_model()
 

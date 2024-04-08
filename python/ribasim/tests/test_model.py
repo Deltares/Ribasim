@@ -242,3 +242,14 @@ def test_xugrid(basic, tmp_path):
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
     uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
     assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
+
+
+def test_to_crs(bucket: Model):
+    model = bucket
+
+    # Reproject to World Geodetic System 1984
+    model.to_crs("EPSG:4326")
+
+    # Assert that the bucket is still at Deltares' headquarter
+    assert model.basin.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
+    assert model.basin.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)

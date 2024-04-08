@@ -161,6 +161,7 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+        # Set CRS of the tables to the CRS stored in the Model object
         self.set_crs(self.crs)
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,14 +183,23 @@ class Model(FileModel):
             sub._save(directory, input_dir)
 
     def set_crs(self, crs: str) -> None:
-        self.crs = crs
-        self.edge.df = self.edge.df.set_crs(crs)
+        self._apply_crs_function("set_crs", crs)
+
+    def to_crs(self, crs: str) -> None:
+        # Set CRS of the tables to the CRS stored in the Model object
+        self.set_crs(self.crs)
+        self._apply_crs_function("to_crs", crs)
+
+    def _apply_crs_function(self, function_name: str, crs: str) -> None:
+        """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
+        self.edge.df = getattr(self.edge.df, function_name)(crs)
         for sub in self._nodes():
             if sub.node.df is not None:
-                sub.node.df = sub.node.df.set_crs(crs)
+                sub.node.df = getattr(sub.node.df, function_name)(crs)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
-                    table.df = table.df.set_crs(crs)
+                    table.df = getattr(table.df, function_name)(crs)
+        self.crs = crs
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
