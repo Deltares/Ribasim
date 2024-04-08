@@ -185,10 +185,10 @@ class Model(FileModel):
         self._apply_spatial_function("set_crs", crs)
 
     def to_crs(self, crs: str) -> None:
+        self.set_crs(self.crs)
         self._apply_spatial_function("to_crs", crs)
 
     def _apply_spatial_function(self, function_name: str, crs: str) -> None:
-        self.crs = crs
         self.edge.df = getattr(self.edge.df, function_name)(crs)
         for sub in self._nodes():
             if sub.node.df is not None:
@@ -196,6 +196,7 @@ class Model(FileModel):
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
                     table.df = getattr(table.df, function_name)(crs)
+        self.crs = crs
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
