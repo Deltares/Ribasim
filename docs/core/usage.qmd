@@ -705,23 +705,24 @@ derivative       | Float64  | -        | -
 
 ## Basin - `basin.arrow`
 
-The basin table contains:
+The Basin table contains:
 
-- results of the storage and level of each basin, which are instantaneous values;
-- results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated. This means that for the final time in the table the mean vertical fluxes are not computed, and thus are `missing`.
+- Results of the storage and level of each basin, which are instantaneous values;
+- Results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated.
+- The final state of the model is not part of this file, and will be placed in a separate output state file in the future.
 
 The initial condition is also written to the file.
 
-column        | type                     | unit
-------------- | ------------------------ | ----
-time          | DateTime                 | -
-node_id       | Int32                    | -
-storage       | Float64                  | $m^3$
-level         | Float64                  | $m$
-precipitation | Union{Float64, Missing}  | $m^3 s^{-1}$
-evaporation   | Union{Float64, Missing}  | $m^3 s^{-1}$
-drainage      | Union{Float64, Missing}  | $m^3 s^{-1}$
-infiltration  | Union{Float64, Missing}  | $m^3 s^{-1}$
+column        | type     | unit
+------------- | ---------| ----
+time          | DateTime | -
+node_id       | Int32    | -
+storage       | Float64  | $m^3$
+level         | Float64  | $m$
+precipitation | Float64  | $m^3 s^{-1}$
+evaporation   | Float64  | $m^3 s^{-1}$
+drainage      | Float64  | $m^3 s^{-1}$
+infiltration  | Float64  | $m^3 s^{-1}$
 
 
 The table is sorted by time, and per time it is sorted by `node_id`.
