@@ -54,16 +54,7 @@
                 :drainage,
                 :infiltration,
             ),
-            (
-                DateTime,
-                Int32,
-                Float64,
-                Float64,
-                Union{Missing, Float64},
-                Union{Missing, Float64},
-                Union{Missing, Float64},
-                Union{Missing, Float64},
-            ),
+            (DateTime, Int32, Float64, Float64, Float64, Float64, Float64, Float64),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),
@@ -108,7 +99,7 @@
         @test nsaved > 10
         # t0 has no flow, 2 flow edges
         @test nrow(flow) == (nsaved - 1) * 2
-        @test nrow(basin) == nsaved
+        @test nrow(basin) == nsaved - 1
         @test nrow(control) == 0
         @test nrow(allocation) == 0
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
