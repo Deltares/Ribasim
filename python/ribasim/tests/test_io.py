@@ -106,14 +106,12 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0
 
-    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
-    assert edge.df.iloc[0]["from_node_type"] != "Basin"
-    edge.sort()
-    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+    # The edge table is not sorted
+    assert edge.df.iloc[1]["from_node_type"] == "Pump"
+    assert edge.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
     table.df.sort_values("greater_than", ascending=False, inplace=True)
-    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
     assert table.df.iloc[0]["greater_than"] == 5.0
@@ -121,7 +119,8 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+    assert edge.df.iloc[1]["from_node_type"] == "Pump"
+    assert edge.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(edge.df, edge_loaded.df)
 

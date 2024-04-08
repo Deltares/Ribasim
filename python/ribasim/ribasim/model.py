@@ -403,6 +403,7 @@ class Model(FileModel):
         edge_df = edge_df[edge_df.edge_type == "flow"]
 
         node_id = node_df.node_id.to_numpy()
+        edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
 
@@ -433,6 +434,7 @@ class Model(FileModel):
 
         uds = xugrid.UgridDataset(None, grid)
         uds = uds.assign_coords(node_id=(node_dim, node_id))
+        uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
         uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
 

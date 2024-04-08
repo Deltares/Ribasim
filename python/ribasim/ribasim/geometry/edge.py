@@ -76,21 +76,17 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             crs=self.df.crs,
         )
 
-        self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
+        self.df = GeoDataFrame[EdgeSchema](
+            pd.concat([self.df, table_to_append], ignore_index=True)
+        )
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
     def sort(self):
-        assert self.df is not None
-        sort_keys = [
-            "from_node_type",
-            "from_node_id",
-            "to_node_type",
-            "to_node_id",
-        ]
-        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+        # To keep the fid / edge_id as stable as possible, don't sort the edges.
+        return None
 
     def plot(self, **kwargs) -> Axes:
         assert self.df is not None
