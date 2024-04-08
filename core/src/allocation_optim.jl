@@ -5,7 +5,7 @@ function add_objective_term!(
     demand::Float64,
     F::JuMP.VariableRef,
 )::Nothing
-    if demand ≈ 0
+    if abs(demand) < 1e-5
         return
     end
     JuMP.add_to_expression!(ex, 1.0 / demand^2, F, F)
