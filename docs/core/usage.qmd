@@ -705,10 +705,11 @@ derivative       | Float64  | -        | -
 
 ## Basin - `basin.arrow`
 
-The basin table contains:
+The Basin table contains:
 
-- results of the storage and level of each basin, which are instantaneous values;
-- results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated.
+- Results of the storage and level of each basin, which are instantaneous values;
+- Results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated.
+- The final state of the model is not part of this file, and will be placed in a separate output state file in the future.
 
 The initial condition is also written to the file.
 
