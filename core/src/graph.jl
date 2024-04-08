@@ -180,15 +180,6 @@ function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number):
 end
 
 """
-Add the given flow q to the existing flow over the edge between the given nodes.
-"""
-function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow) = graph[]
-    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
-    return nothing
-end
-
-"""
 Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
 """
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
