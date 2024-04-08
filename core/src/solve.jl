@@ -154,14 +154,16 @@ function continuous_control!(
 
             factor_outlet = 1.0
 
-            # No flow of outlet if source level is lower than target level
+            # No flow out of outlet if source level is lower than reference level
             if !(src_level === nothing || dst_level === nothing)
                 Δlevel = src_level - dst_level
                 factor_outlet *= reduction_factor(Δlevel, 0.1)
             end
 
-            # No flow out outlet if source level is lower than minimum crest level
+            # No flow out of outlet if source level is lower than minimum crest level
             if src_level !== nothing
+                controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
+
                 factor_outlet *= reduction_factor(
                     src_level - outlet.min_crest_level[controlled_node_idx],
                     0.1,
