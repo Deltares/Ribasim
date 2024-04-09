@@ -1,16 +1,26 @@
 @enumx OptimizationType internal_sources collect_demands allocate
 
+"""
+Add an objective term (1 - flow/demand)^2. If the absolute
+value of the demand is very small, this would lead to huge coefficients,
+so in that case a term of the form (flow - demand)^2 is used.
+"""
 function add_objective_term!(
     ex::JuMP.QuadExpr,
     demand::Float64,
     F::JuMP.VariableRef,
 )::Nothing
     if abs(demand) < 1e-5
-        return
+        # Error term (F - d)^2
+        JuMP.add_to_expression!(ex, 1.0, F, F)
+        JuMP.add_to_expression!(ex, -2.0 * demand, F)
+        JuMP.add_to_expression!(ex, demand^2)
+    else
+        # Error term (1 - F/d)^2
+        JuMP.add_to_expression!(ex, 1.0 / demand^2, F, F)
+        JuMP.add_to_expression!(ex, -2.0 / demand, F)
+        JuMP.add_to_expression!(ex, 1.0)
     end
-    JuMP.add_to_expression!(ex, 1.0 / demand^2, F, F)
-    JuMP.add_to_expression!(ex, -2.0 / demand, F)
-    JuMP.add_to_expression!(ex, 1.0)
     return nothing
 end
 

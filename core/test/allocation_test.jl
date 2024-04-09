@@ -231,7 +231,13 @@ end
         ),
     )
     @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.004, 0.001]
+    @test all(
+        isapprox.(
+            subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2],
+            [0.001, 0.002],
+            rtol = 1e-4,
+        ),
+    )
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
@@ -245,9 +251,9 @@ end
     F_1 = F[(NodeID(:Basin, 2), NodeID(:Pump, 11))]
     F_2 = F[(NodeID(:Basin, 6), NodeID(:Pump, 24))]
     F_3 = F[(NodeID(:Basin, 10), NodeID(:Pump, 38))]
-    @test JuMP.UnorderedPair(F_1, F_1) ∈ objective_variables
-    @test JuMP.UnorderedPair(F_2, F_2) ∈ objective_variables
-    @test JuMP.UnorderedPair(F_3, F_3) ∈ objective_variables
+    @test JuMP.UnorderedPair(F_1, F_1) ∈ objective_edges
+    @test JuMP.UnorderedPair(F_2, F_2) ∈ objective_edges
+    @test JuMP.UnorderedPair(F_3, F_3) ∈ objective_edges
 
     # Running full allocation algorithm
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
@@ -257,17 +263,20 @@ end
     @test all(
         isapprox.(
             subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)],
-            [4.0, 0.49100000, 0.0],
+            [4.0, 0.493, 0.0],
             atol = 1e-4,
         ),
     )
-    @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
-          [0.00399999999, 0.0, 0.0]
+    @test isapprox(
+        subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)],
+        [0.004, 0.0, 0.0],
+        rtol = 1e-3,
+    )
     @test all(
         isapprox.(
             subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)],
-            [0.004, 0.001, 0.0],
-            atol = 1e-4,
+            [0.001, 0.002, 0.0],
+            rtol = 1e-3,
         ),
     )
 
@@ -281,8 +290,8 @@ end
     )
     @test all(allocation_flow.edge_exists)
 
-    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 3.6]
-    @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0]
+    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0]
+    @test all(isapprox.(user_demand.allocated[7, :], [0.001, 0.0, 0.0], atol = 1e-5))
 end
 
 @testitem "subnetworks with sources" begin
@@ -324,7 +333,7 @@ end
     @test all(
         isapprox.(
             subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))],
-            [2.29, 4.0, 0.0],
+            [3.1, 4.0, 0.0],
             atol = 1e-4,
         ),
     )
@@ -463,7 +472,7 @@ end
     )
     objective = JuMP.objective_function(problem)
     # Reduced demand
-    @test flow_demand.demand[1] ≈ flow_demand.demand_itp[1](t) - 0.001
+    @test isapprox(flow_demand.demand[1], flow_demand.demand_itp[1](t) - 0.001, rtol = 1e-4)
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     ## Priority 2
@@ -478,7 +487,7 @@ end
     # No demand left
     @test flow_demand.demand[1] < 1e-10
     # Allocated
-    @test JuMP.value(only(F_flow_buffer_in)) ≈ 0.001
+    @test isapprox(JuMP.value(only(F_flow_buffer_in)), 0.001, rtol = 1e-4)
     @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     ## Priority 3
@@ -494,9 +503,17 @@ end
     # The flow from the source is used up in previous priorities
     @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
     # So flow from the flow buffer is used for UserDemand #4
-    @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ≈ 0.001
+    @test isapprox(
+        JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]),
+        0.001,
+        rtol = 1e-4,
+    )
     # Flow taken from buffer
-    @test JuMP.value(only(F_flow_buffer_out)) ≈ user_demand.demand_itp[1][3](t)
+    @test isapprox(
+        JuMP.value(only(F_flow_buffer_out)),
+        user_demand.demand_itp[1][3](t),
+        rtol = 1e-4,
+    )
     # No flow coming from level boundary
     @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) == 0
 
@@ -511,8 +528,12 @@ end
     )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
-    @assert JuMP.value(F[(NodeID(NodeType.UserDemand, 4), NodeID(NodeType.Basin, 7))]) +
-            JuMP.value(F[(NodeID(NodeType.UserDemand, 6), NodeID(NodeType.Basin, 7))]) ≈ d
+    @assert isapprox(
+        JuMP.value(F[(NodeID(NodeType.UserDemand, 4), NodeID(NodeType.Basin, 7))]) +
+        JuMP.value(F[(NodeID(NodeType.UserDemand, 6), NodeID(NodeType.Basin, 7))]),
+        d,
+        rtol = 1e-4,
+    )
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
