@@ -715,23 +715,25 @@ The Basin table contains:
 - The `inflow_rate` and `outflow_rate` are the sum of the flows into and out of the Basin respectively.
   The actual flows determine in which term they are counted, not the edge direction.
 - The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level.
-- The `error` is the result of adding all terms of the water balance; `inflow_rate` - `outflow_rate` - `storage_rate` + `precipitation` - `evaporation` + `drainage` - `infiltration`.
+- The `balance_error` is the difference of all Basin flows and the `storage_rate`, that is (`inflow_rate` + `precipitation` + `drainage` - `outflow_rate` - `evaporation` - `infiltration`) - `storage_rate`.
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
+- The `relative_error` is the fraction of the `balance_error` over the `inflow_rate` or `outflow_rate`, whichever is the smallest.
 
-column        | type     | unit
-------------- | ---------| ----
-time          | DateTime | -
-node_id       | Int32    | -
-storage       | Float64  | $m^3$
-level         | Float64  | $m$
-inflow_rate   | Float64  | $m^3 s^{-1}$
-outflow_rate  | Float64  | $m^3 s^{-1}$
-storage_rate  | Float64  | $m^3 s^{-1}$
-precipitation | Float64  | $m^3 s^{-1}$
-evaporation   | Float64  | $m^3 s^{-1}$
-drainage      | Float64  | $m^3 s^{-1}$
-infiltration  | Float64  | $m^3 s^{-1}$
-error         | Float64  | $m^3 s^{-1}$
+column         | type     | unit
+-------------- | ---------| ----
+time           | DateTime | -
+node_id        | Int32    | -
+storage        | Float64  | $m^3$
+level          | Float64  | $m$
+inflow_rate    | Float64  | $m^3 s^{-1}$
+outflow_rate   | Float64  | $m^3 s^{-1}$
+storage_rate   | Float64  | $m^3 s^{-1}$
+precipitation  | Float64  | $m^3 s^{-1}$
+evaporation    | Float64  | $m^3 s^{-1}$
+drainage       | Float64  | $m^3 s^{-1}$
+infiltration   | Float64  | $m^3 s^{-1}$
+balance_error  | Float64  | $m^3 s^{-1}$
+relative_error | Float64  | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 

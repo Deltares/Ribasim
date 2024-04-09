@@ -57,11 +57,13 @@
                 :evaporation,
                 :drainage,
                 :infiltration,
-                :error,
+                :balance_error,
+                :relative_error,
             ),
             (
                 DateTime,
                 Int32,
+                Float64,
                 Float64,
                 Float64,
                 Float64,
@@ -138,7 +140,9 @@
         @test flow.flow_rate[1] == basin.outflow_rate[1]
         @test all(==(0), basin.drainage)
         @test all(==(0), basin.infiltration)
-        @test all(q -> abs(q) < 1e-5, basin.error)
+        @test all(q -> abs(q) < 1e-5, basin.balance_error)
+        # No inflow, so relative error is 0
+        @test all(==(0), basin.relative_error)
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]

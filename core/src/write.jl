@@ -91,7 +91,8 @@ function basin_table(
     evaporation::Vector{Float64},
     drainage::Vector{Float64},
     infiltration::Vector{Float64},
-    error::Vector{Float64},
+    balance_error::Vector{Float64},
+    relative_error::Vector{Float64},
 }
     (; saved) = model
     # The last timestep is not included; there is no period over which to compute flows.
@@ -110,6 +111,8 @@ function basin_table(
     evaporation = zeros(nrows)
     drainage = zeros(nrows)
     infiltration = zeros(nrows)
+    balance_error = zeros(nrows)
+    relative_error = zeros(nrows)
 
     idx_row = 0
     for vec in saved.vertical_flux.saveval
@@ -128,9 +131,20 @@ function basin_table(
     Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
     storage_rate = Δstorage ./ Δtime
-    error =
-        inflow_rate - outflow_rate - storage_rate + precipitation - evaporation + drainage -
-        infiltration
+
+    for i in 1:nrows
+        balance_error[i] =
+            (
+                inflow_rate[i] + precipitation[i] + drainage[i] - outflow_rate[i] -
+                evaporation[i] - infiltration[i]
+            ) - storage_rate[i]
+        min_flow_rate = min(inflow_rate[i], outflow_rate[i])
+        relative_error[i] = if min_flow_rate == 0
+            0.0
+        else
+            balance_error[i] ./ min_flow_rate
+        end
+    end
 
     return (;
         time,
@@ -144,7 +158,8 @@ function basin_table(
         evaporation,
         drainage,
         infiltration,
-        error,
+        balance_error,
+        relative_error,
     )
 end
 
