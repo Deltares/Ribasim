@@ -712,12 +712,12 @@ The Basin table contains:
   In the time column the start of the period is indicated.
 - The initial condition is written to the file, but the final state is not.
   It will be placed in a separate output state file in the future.
-- The `inflow_rate` and `outflow_rate` are the sum of the flows into and out of the Basin respectively.
+- The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
   The actual flows determine in which term they are counted, not the edge direction.
-- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level.
-- The `balance_error` is the difference of all Basin flows and the `storage_rate`, that is (`inflow_rate` + `precipitation` + `drainage` - `outflow_rate` - `evaporation` - `infiltration`) - `storage_rate`.
+- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level. In the equations below this number is split out into two non-negative numbers, `storage_increase` and `storage_decrease`.
+- The `balance_error` is the difference of all Basin inflows (`total_inflow`) and outflows (`total_outflow`), that is (`inflow_rate` + `precipitation` + `drainage` - `storage_increase`) - (`outflow_rate` + `evaporation` + `infiltration` - `storage_decrease`).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
-- The `relative_error` is the fraction of the `balance_error` over the `inflow_rate` or `outflow_rate`, whichever is the smallest.
+- The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
 
 column         | type     | unit
 -------------- | ---------| ----

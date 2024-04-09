@@ -133,16 +133,16 @@ function basin_table(
     storage_rate = Δstorage ./ Δtime
 
     for i in 1:nrows
-        balance_error[i] =
-            (
-                inflow_rate[i] + precipitation[i] + drainage[i] - outflow_rate[i] -
-                evaporation[i] - infiltration[i]
-            ) - storage_rate[i]
-        min_flow_rate = min(inflow_rate[i], outflow_rate[i])
-        relative_error[i] = if min_flow_rate == 0
-            0.0
-        else
-            balance_error[i] ./ min_flow_rate
+        storage_flow = storage_rate[i]
+        storage_increase = storage_flow > 0.0 ? storage_flow : 0.0
+        storage_decrease = storage_flow > 0.0 ? 0.0 : -storage_flow
+
+        total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
+        total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
+        balance_error[i] = total_in - total_out
+        mean_flow_rate = 0.5 * (total_in + total_out)
+        if mean_flow_rate != 0
+            relative_error[i] = balance_error[i] / mean_flow_rate
         end
     end
 
