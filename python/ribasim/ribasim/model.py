@@ -174,8 +174,8 @@ class Model(FileModel):
         if not node.df["node_id"].is_unique:
             raise ValueError("node_id must be unique")
         node.df.set_index("node_id", drop=False, inplace=True)
-        node.df.sort_index(inplace=True)
         node.df.index.name = "fid"
+        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -197,6 +197,7 @@ class Model(FileModel):
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
+        node_table.df.index.name = "fid"
         return node_table
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:

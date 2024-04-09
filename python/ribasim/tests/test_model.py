@@ -162,7 +162,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 
     # for edge no index was provided, but it still needs to write it to file
     nrow = len(model_orig.edge.df)
-    assert model_orig.edge.df.index.name is None
+    assert model_orig.edge.df.index.name == "fid"
     assert model_orig.edge.df.index.equals(pd.RangeIndex(nrow))
 
     model_orig.write(tmp_path / "basic/ribasim.toml")

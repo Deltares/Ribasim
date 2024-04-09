@@ -79,7 +79,7 @@ def test_repr():
     assert isinstance(pump_static._repr_html_(), str)
 
 
-def test_extra_columns(basic_transient):
+def test_extra_columns():
     terminal_static = terminal.Static(meta_id=[-1, -2, -3])
     assert "meta_id" in terminal_static.df.columns
     assert (terminal_static.df.meta_id == [-1, -2, -3]).all()
@@ -127,6 +127,8 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
 
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
+    # set custom Edge index
+    model1.edge.df.index = [15, 12]
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path
@@ -140,6 +142,10 @@ def test_roundtrip(trivial, tmp_path):
     assert (model1dir / "ribasim.toml").read_text() == (
         model2dir / "ribasim.toml"
     ).read_text()
+
+    # check if custom Edge indexes are retained (sorted)
+    assert (model1.edge.df.index == [12, 15]).all()
+    assert (model2.edge.df.index == [12, 15]).all()
 
     # check if all tables are the same
     __assert_equal(model1.node_table().df, model2.node_table().df)
