@@ -1010,12 +1010,21 @@ function exists(db::DB, tablename::String)
 end
 
 """
+    seconds(period::Millisecond)::Float64
+
+Convert a period of type Millisecond to a Float64 in seconds.
+You get Millisecond objects when subtracting two DateTime objects.
+Dates.value returns the number of milliseconds.
+"""
+seconds(period::Millisecond)::Float64 = 0.001 * Dates.value(period)
+
+"""
     seconds_since(t::DateTime, t0::DateTime)::Float64
 
 Convert a DateTime to a float that is the number of seconds since the start of the
 simulation. This is used to convert between the solver's inner float time, and the calendar.
 """
-seconds_since(t::DateTime, t0::DateTime)::Float64 = 0.001 * Dates.value(t - t0)
+seconds_since(t::DateTime, t0::DateTime)::Float64 = seconds(t - t0)
 
 """
     datetime_since(t::Real, t0::DateTime)::DateTime

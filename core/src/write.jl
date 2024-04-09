@@ -127,7 +127,7 @@ function basin_table(
     end
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
-    Δtime_seconds = 0.001 * Dates.value.(diff(data.time))
+    Δtime_seconds = seconds.(diff(data.time))
     Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
     storage_rate = Δstorage ./ Δtime
