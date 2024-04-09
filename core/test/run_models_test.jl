@@ -8,7 +8,8 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
@@ -49,12 +50,31 @@
                 :node_id,
                 :storage,
                 :level,
+                :inflow_rate,
+                :outflow_rate,
+                :storage_rate,
                 :precipitation,
                 :evaporation,
                 :drainage,
                 :infiltration,
+                :balance_error,
+                :relative_error,
             ),
-            (DateTime, Int32, Float64, Float64, Float64, Float64, Float64, Float64),
+            (
+                DateTime,
+                Int32,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+            ),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),
@@ -113,6 +133,15 @@
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
+        @test basin.storage_rate[1] ≈
+              (basin.storage[2] - basin.storage[1]) / config.solver.saveat
+        @test all(==(0), basin.inflow_rate)
+        @test all(>(0), basin.outflow_rate)
+        @test flow.flow_rate[1] == basin.outflow_rate[1]
+        @test all(==(0), basin.drainage)
+        @test all(==(0), basin.infiltration)
+        @test all(q -> abs(q) < 1e-7, basin.balance_error)
+        @test all(q -> abs(q) < 0.01, basin.relative_error)
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]
