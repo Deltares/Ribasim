@@ -134,8 +134,8 @@ function basin_table(
 
     for i in 1:nrows
         storage_flow = storage_rate[i]
-        storage_increase = storage_flow > 0.0 ? storage_flow : 0.0
-        storage_decrease = storage_flow > 0.0 ? 0.0 : -storage_flow
+        storage_increase = max(storage_flow, 0.0)
+        storage_decrease = max(-storage_flow, 0.0)
 
         total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
         total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
