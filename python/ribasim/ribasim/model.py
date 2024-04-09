@@ -175,8 +175,8 @@ class Model(FileModel):
         if not node.df["node_id"].is_unique:
             raise ValueError("node_id must be unique")
         node.df.set_index("node_id", drop=False, inplace=True)
-        node.df.sort_index(inplace=True)
         node.df.index.name = "fid"
+        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -207,6 +207,7 @@ class Model(FileModel):
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
+        node_table.df.index.name = "fid"
         return node_table
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
@@ -413,6 +414,7 @@ class Model(FileModel):
         edge_df = edge_df[edge_df.edge_type == "flow"]
 
         node_id = node_df.node_id.to_numpy()
+        edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
 
@@ -443,6 +445,7 @@ class Model(FileModel):
 
         uds = xugrid.UgridDataset(None, grid)
         uds = uds.assign_coords(node_id=(node_dim, node_id))
+        uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
         uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
 
