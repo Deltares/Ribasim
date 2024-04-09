@@ -55,7 +55,7 @@ end
 @testitem "get_value_ptr_all_values" begin
     import BasicModelInterface as BMI
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
     for name in [
