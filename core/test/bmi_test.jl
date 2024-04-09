@@ -55,7 +55,7 @@ end
 @testitem "get_value_ptr_all_values" begin
     import BasicModelInterface as BMI
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
 
     for name in [
@@ -73,7 +73,7 @@ end
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)
         # get_value_ptr does not copy
-        @test value_first === value_second
+        @test value_first === value_second || pointer(value_first) == pointer(value_second)
     end
 end
 
