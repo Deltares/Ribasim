@@ -321,11 +321,17 @@ class Model(FileModel):
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Listen edges from DiscreteControl
-        condition = self.discrete_control.condition.df
-        if condition is not None:
-            to_add = condition[
+        for table in (
+            self.discrete_control.condition.df,
+            self.discrete_control.compound_variable.df,
+        ):
+            if table is None:
+                continue
+
+            to_add = table[
                 ["node_id", "listen_node_id", "listen_node_type"]
             ].drop_duplicates()
+            to_add = to_add[to_add["listen_node_type"] != "compound"]
             to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
             to_add["control_node_type"] = "DiscreteControl"
             df_listen_edge = pd.concat([df_listen_edge, to_add])

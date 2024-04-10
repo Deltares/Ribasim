@@ -48,6 +48,15 @@ class BasinTimeSchema(_BaseSchema):
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
+class DiscreteControlCompoundVariableSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    name: Series[str] = pa.Field(nullable=False)
+    listen_node_type: Series[str] = pa.Field(nullable=False)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    variable: Series[str] = pa.Field(nullable=False)
+    weight: Series[float] = pa.Field(nullable=False)
+
+
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     listen_node_type: Series[str] = pa.Field(nullable=False)

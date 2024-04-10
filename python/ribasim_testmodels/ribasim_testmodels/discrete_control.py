@@ -390,3 +390,63 @@ def level_setpoint_with_minmax_model() -> Model:
     )
 
     return model
+
+
+def compound_variable_condition_model() -> Model:
+    """
+    Set up a minimal model containing a condition on a compound variable
+    for discrete control.
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(1, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+    model.flow_boundary.add(
+        Node(2, Point(0, 0)), [flow_boundary.Static(flow_rate=[0.0])]
+    )
+    model.flow_boundary.add(
+        Node(3, Point(0, 1)),
+        [flow_boundary.Time(time=["2020-01-01", "2022-01-01"], flow_rate=[0.0, 2.0])],
+    )
+    model.pump.add(
+        Node(4, Point(2, 0)),
+        [pump.Static(control_state=["Off", "On"], flow_rate=[0.0, 1.0])],
+    )
+    model.terminal.add(Node(5, Point(3, 0)))
+    model.discrete_control.add(
+        Node(6, Point(1, 1)),
+        [
+            discrete_control.CompoundVariable(
+                name="flow_mean",
+                listen_node_type="FlowBoundary",
+                listen_node_id=[2, 3],
+                variable="flow",
+                weight=0.5,
+            ),
+            discrete_control.Condition(
+                listen_node_type="compound",
+                listen_node_id=[0],  # Irrelevant
+                variable="flow_mean",
+                greater_than=1.0,
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
+        ],
+    )
+
+    model.edge.add(model.flow_boundary[2], model.basin[1])
+    model.edge.add(model.flow_boundary[3], model.basin[1])
+    model.edge.add(model.basin[1], model.pump[4])
+    model.edge.add(model.pump[4], model.terminal[5])
+    model.edge.add(model.discrete_control[6], model.pump[4])
+
+    return model
