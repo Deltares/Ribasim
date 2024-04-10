@@ -360,7 +360,9 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         path : Path
         """
         assert self.df is not None
-        self.df.to_file(path, layer=self.tablename(), driver="GPKG")
+        # the index name must be fid otherwise it will generate a separate fid column
+        self.df.index.name = "fid"
+        self.df.to_file(path, layer=self.tablename(), index=True, driver="GPKG")
 
 
 class ChildModel(BaseModel):

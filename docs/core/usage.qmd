@@ -707,23 +707,33 @@ derivative       | Float64  | -        | -
 
 The Basin table contains:
 
-- Results of the storage and level of each basin, which are instantaneous values;
-- Results of the vertical fluxes on each basin, which are mean values over the `saveat` intervals. In the time column the start of the period is indicated.
-- The final state of the model is not part of this file, and will be placed in a separate output state file in the future.
+- Results of the storage and level of each Basin, which are instantaneous values;
+- Results of the fluxes on each Basin, which are mean values over the `saveat` intervals.
+  In the time column the start of the period is indicated.
+- The initial condition is written to the file, but the final state is not.
+  It will be placed in a separate output state file in the future.
+- The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
+  The actual flows determine in which term they are counted, not the edge direction.
+- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level. In the equations below this number is split out into two non-negative numbers, `storage_increase` and `storage_decrease`.
+- The `balance_error` is the difference of all Basin inflows (`total_inflow`) and outflows (`total_outflow`), that is (`inflow_rate` + `precipitation` + `drainage` - `storage_increase`) - (`outflow_rate` + `evaporation` + `infiltration` - `storage_decrease`).
+  It can be used to check if the numerical error when solving the water balance is sufficiently small.
+- The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
 
-The initial condition is also written to the file.
-
-column        | type     | unit
-------------- | ---------| ----
-time          | DateTime | -
-node_id       | Int32    | -
-storage       | Float64  | $m^3$
-level         | Float64  | $m$
-precipitation | Float64  | $m^3 s^{-1}$
-evaporation   | Float64  | $m^3 s^{-1}$
-drainage      | Float64  | $m^3 s^{-1}$
-infiltration  | Float64  | $m^3 s^{-1}$
-
+column         | type     | unit
+-------------- | ---------| ----
+time           | DateTime | -
+node_id        | Int32    | -
+storage        | Float64  | $m^3$
+level          | Float64  | $m$
+inflow_rate    | Float64  | $m^3 s^{-1}$
+outflow_rate   | Float64  | $m^3 s^{-1}$
+storage_rate   | Float64  | $m^3 s^{-1}$
+precipitation  | Float64  | $m^3 s^{-1}$
+evaporation    | Float64  | $m^3 s^{-1}$
+drainage       | Float64  | $m^3 s^{-1}$
+infiltration   | Float64  | $m^3 s^{-1}$
+balance_error  | Float64  | $m^3 s^{-1}$
+relative_error | Float64  | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 

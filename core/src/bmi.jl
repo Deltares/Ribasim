@@ -31,7 +31,7 @@ function BMI.update_until(model::Model, time)::Model
     return model
 end
 
-function BMI.get_value_ptr(model::Model, name::AbstractString)
+function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
     if name == "basin.storage"
         model.integrator.u.storage
     elseif name == "basin.level"
@@ -47,7 +47,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)
     elseif name == "basin.subgrid_level"
         model.integrator.p.subgrid.level
     elseif name == "user_demand.demand"
-        model.integrator.p.user_demand.demand
+        vec(model.integrator.p.user_demand.demand)
     elseif name == "user_demand.realized"
         model.integrator.p.user_demand.realized_bmi
     else
