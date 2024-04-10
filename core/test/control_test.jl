@@ -54,7 +54,7 @@ end
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
-    Δt = discrete_control.look_ahead[1]
+    Δt = discrete_control.look_ahead[1][1]
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
@@ -78,7 +78,7 @@ end
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
-    Δt = discrete_control.look_ahead[1]
+    Δt = discrete_control.look_ahead[1][1]
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]

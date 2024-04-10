@@ -552,29 +552,32 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             end
         end
     end
-    for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
-        if !iszero(Δt)
-            node_type = node_id.type
-            # TODO: If more transient listen variables must be supported, this validation must be more specific
-            # (e.g. for some node some variables are transient, some not).
-            if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
-                errors = true
-                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
-            else
-                if Δt < 0
+    for (look_aheads, variables, listen_node_ids) in
+        zip(look_ahead, variable, listen_node_id)
+        for (Δt, var, node_id) in zip(look_aheads, variables, listen_node_ids)
+            if !iszero(Δt)
+                node_type = node_id.type
+                # TODO: If more transient listen variables must be supported, this validation must be more specific
+                # (e.g. for some node some variables are transient, some not).
+                if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                     errors = true
-                    @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                    @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
                 else
-                    node = getfield(p, graph[node_id].type)
-                    idx = if node_type == NodeType.Basin
-                        id_index(node.node_id, node_id)
-                    else
-                        searchsortedfirst(node.node_id, node_id)
-                    end
-                    interpolation = getfield(node, Symbol(var))[idx]
-                    if t_end + Δt > interpolation.t[end]
+                    if Δt < 0
                         errors = true
-                        @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                        @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                    else
+                        node = getfield(p, graph[node_id].type)
+                        idx = if node_type == NodeType.Basin
+                            id_index(node.node_id, node_id)
+                        else
+                            searchsortedfirst(node.node_id, node_id)
+                        end
+                        interpolation = getfield(node, Symbol(var))[idx]
+                        if t_end + Δt > interpolation.t[end]
+                            errors = true
+                            @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                        end
                     end
                 end
             end

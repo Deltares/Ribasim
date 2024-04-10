@@ -277,7 +277,10 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    is_basin = id_index(basin.node_id, discrete_control.listen_node_id[condition_idx])[1]
+    listen_node_ids = discrete_control.listen_node_id[condition_idx]
+    is_basin =
+        length(listen_node_ids) == 1 ? id_index(basin.node_id, only(listen_node_ids))[1] :
+        false
     # NOTE: The above no longer works when listen feature ids can be something other than node ids
     # I think the more durable option is to give all possible condition types a different variable string,
     # e.g. basin.level and level_boundary.level
@@ -374,7 +377,7 @@ function discrete_control_affect!(
             discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
         else
             error(
-                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node $discrete_control_node_id.",
+                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for $discrete_control_node_id.",
             )
         end
 
