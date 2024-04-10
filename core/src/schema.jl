@@ -191,6 +191,7 @@ end
     listen_node_id::Int
     variable::String
     weight::Float64
+    look_ahead::Union{Missing, Float64}
 end
 
 @version DiscreteControlConditionV1 begin

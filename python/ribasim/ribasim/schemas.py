@@ -55,6 +55,7 @@ class DiscreteControlCompoundvariableSchema(_BaseSchema):
     listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     variable: Series[str] = pa.Field(nullable=False)
     weight: Series[float] = pa.Field(nullable=False)
+    look_ahead: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):

@@ -542,8 +542,48 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
 end
 
+function get_compound_variables(compound_variable, condition)
+    listen_node_id = Vector{NodeID}[]
+    variable = Vector{String}[]
+    weight = Vector{Float64}[]
+    look_ahead = Vector{Float64}[]
+
+    for cond in condition
+        if cond.listen_node_type == "compound"
+            compound_variable_data = filter(
+                row -> (row.node_id, row.name) == (cond.node_id, cond.variable),
+                compound_variable,
+            )
+            listen_node_id_data =
+                NodeID.(
+                    compound_variable_data.listen_node_type,
+                    compound_variable_data.listen_node_id,
+                )
+            @assert !isempty(listen_node_id_data) "No compound variable data found for name $(cond.variable)."
+            variable_data = compound_variable_data.variable
+            weight_data = compound_variable_data.weight
+            look_ahead_data = coalesce.(compound_variable_data.look_ahead, 0.0)
+        else
+            listen_node_id_data = [NodeID(cond.listen_node_type, cond.listen_node_id)]
+            variable_data = [cond.variable]
+            weight_data = [1.0]
+            look_ahead_data = [coalesce(cond.look_ahead, 0.0)]
+        end
+
+        push!(listen_node_id, listen_node_id_data)
+        push!(variable, variable_data)
+        push!(weight, weight_data)
+        push!(look_ahead, look_ahead_data)
+    end
+    return listen_node_id, variable, weight, look_ahead
+end
+
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
+    compound_variable = load_structvector(db, config, DiscreteControlCompoundvariableV1)
     condition = load_structvector(db, config, DiscreteControlConditionV1)
+
+    listen_node_id, variable, weight, look_ahead =
+        get_compound_variables(compound_variable, condition)
 
     condition_value = fill(false, length(condition.node_id))
     control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
@@ -557,7 +597,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic = load_structvector(db, config, DiscreteControlLogicV1)
-
     logic_mapping = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state, control_state_) in
@@ -567,7 +606,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
-    look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
         time = Float64[],
@@ -578,8 +616,9 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
 
     return DiscreteControl(
         NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
-        NodeID.(condition.listen_node_type, condition.listen_node_id),
-        condition.variable,
+        listen_node_id,
+        variable,
+        weight,
         look_ahead,
         condition.greater_than,
         condition_value,

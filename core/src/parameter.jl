@@ -455,9 +455,10 @@ record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    listen_node_id::Vector{NodeID}
-    variable::Vector{String}
-    look_ahead::Vector{Float64}
+    listen_node_id::Vector{Vector{NodeID}}
+    variable::Vector{Vector{String}}
+    weight::Vector{Vector{Float64}}
+    look_ahead::Vector{Vector{Float64}}
     greater_than::Vector{Float64}
     condition_value::Vector{Bool}
     control_state::Dict{NodeID, Tuple{String, Float64}}
