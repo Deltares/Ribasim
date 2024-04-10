@@ -281,15 +281,16 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     is_basin =
         length(listen_node_ids) == 1 ? id_index(basin.node_id, only(listen_node_ids))[1] :
         false
+
     # NOTE: The above no longer works when listen feature ids can be something other than node ids
     # I think the more durable option is to give all possible condition types a different variable string,
     # e.g. basin.level and level_boundary.level
-    if variable[condition_idx] == "level" && control_state_change && is_basin
+    if variable[condition_idx][1] == "level" && control_state_change && is_basin
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
-        _, condition_basin_idx = id_index(basin.node_id, listen_node_id[condition_idx])
+        _, condition_basin_idx = id_index(basin.node_id, listen_node_id[condition_idx][1])
 
         if du[condition_basin_idx] < 0.0
             condition_value[condition_idx] = false
@@ -316,13 +317,18 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    if variable[condition_idx] == "level" && control_state_change
+    listen_node_ids = discrete_control.listen_node_id[condition_idx]
+    is_basin =
+        length(listen_node_ids) == 1 ? id_index(basin.node_id, only(listen_node_ids))[1] :
+        false
+
+    if variable[condition_idx][1] == "level" && control_state_change && is_basin
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
         has_index, condition_basin_idx =
-            id_index(basin.node_id, listen_node_id[condition_idx])
+            id_index(basin.node_id, listen_node_id[condition_idx][1])
 
         if has_index && du[condition_basin_idx] > 0.0
             condition_value[condition_idx] = true
