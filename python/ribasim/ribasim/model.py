@@ -249,7 +249,7 @@ class Model(FileModel):
     @classmethod
     def read(cls, filepath: str | PathLike[str]) -> "Model":
         """Read model from TOML file."""
-        return cls(filepath=Path(filepath))  # type: ignore
+        return cls(filepath=filepath)  # type: ignore
 
     def write(self, filepath: str | PathLike[str]) -> Path:
         """
