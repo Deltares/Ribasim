@@ -426,7 +426,7 @@ def compound_variable_condition_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(1, 1)),
         [
-            discrete_control.CompoundVariable(
+            discrete_control.Compoundvariable(
                 name="flow_mean",
                 listen_node_type="FlowBoundary",
                 listen_node_id=[2, 3],

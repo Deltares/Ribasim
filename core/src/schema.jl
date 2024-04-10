@@ -2,7 +2,7 @@
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.discretecontrol.compoundvariable" DiscreteControlCompoundVariable
+@schema "ribasim.discretecontrol.compoundvariable" DiscreteControlCompoundvariable
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -184,7 +184,7 @@ end
     node_id::Int32
 end
 
-@version DiscreteControlCompoundVariableV1 begin
+@version DiscreteControlCompoundvariableV1 begin
     node_id::Int32
     name::String
     listen_node_type::String
