@@ -194,15 +194,20 @@ function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_node_id, variable, greater_than, look_ahead)) in enumerate(
+    for (i, (listen_node_ids, variables, weights, greater_than, look_aheads)) in enumerate(
         zip(
             discrete_control.listen_node_id,
             discrete_control.variable,
+            discrete_control.weight,
             discrete_control.greater_than,
             discrete_control.look_ahead,
         ),
     )
-        value = get_value(p, listen_node_id, variable, look_ahead, u, t)
+        value = 0.0
+        for (listen_node_id, variable, weight, look_ahead) in
+            zip(listen_node_ids, variables, weights, look_aheads)
+            value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+        end
         diff = value - greater_than
         out[i] = diff
     end

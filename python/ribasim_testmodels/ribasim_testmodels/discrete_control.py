@@ -430,7 +430,7 @@ def compound_variable_condition_model() -> Model:
                 name="flow_mean",
                 listen_node_type="FlowBoundary",
                 listen_node_id=[2, 3],
-                variable="flow",
+                variable="flow_rate",
                 weight=0.5,
             ),
             discrete_control.Condition(
