@@ -233,7 +233,7 @@ def test_indexing(basic):
 
 
 def test_xugrid(basic, tmp_path):
-    uds = basic.to_xugrid()
+    uds = basic.to_xugrid(add_results=False)
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
     assert uds.grid.node_dimension == "ribasim_nNodes"
@@ -242,6 +242,13 @@ def test_xugrid(basic, tmp_path):
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
     uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
     assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
+
+    with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
+        basic.to_xugrid(add_results=True)
+
+    basic.write(tmp_path / "ribasim.toml")
+    with pytest.raises(FileNotFoundError, match="Cannot find results"):
+        basic.to_xugrid(add_results=True)
 
 
 def test_to_crs(bucket: Model):

@@ -264,10 +264,10 @@ class Model(FileModel):
         # TODO
         # self.validate_model()
         filepath = Path(filepath)
+        self.filepath = filepath
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
         context_file_loading.set({})
-        filepath = Path(filepath)
         directory = filepath.parent
         directory.mkdir(parents=True, exist_ok=True)
         self._save(directory, self.input_dir)
@@ -280,7 +280,7 @@ class Model(FileModel):
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
         context_file_loading.set({})
 
-        if filepath is not None:
+        if filepath is not None and filepath.is_file():
             with open(filepath, "rb") as f:
                 config = tomli.load(f)
 
@@ -395,9 +395,10 @@ class Model(FileModel):
 
         return ax
 
-    def to_xugrid(self):
+    def to_xugrid(self, add_results: bool = True):
         """
-        Convert the network to a `xugrid.UgridDataset`.
+        Convert the network and results to a `xugrid.UgridDataset`.
+        To get the network only, set `add_results=False`.
         This method will throw `ImportError`,
         if the optional dependency `xugrid` isn't installed.
         """
@@ -448,5 +449,64 @@ class Model(FileModel):
         uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
         uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+
+        if add_results:
+            uds = self._add_results(uds)
+
+        return uds
+
+    def _add_results(self, uds):
+        toml_path = self.filepath
+        if toml_path is None:
+            raise FileNotFoundError("Model must be written to disk to add results.")
+
+        results_path = toml_path.parent / self.results_dir
+        basin_path = results_path / "basin.arrow"
+        flow_path = results_path / "flow.arrow"
+
+        if not basin_path.is_file() or not flow_path.is_file():
+            raise FileNotFoundError(
+                f"Cannot find results in '{results_path}', "
+                "perhaps the model needs to be run first."
+            )
+
+        basin_df = pd.read_feather(basin_path)
+        flow_df = pd.read_feather(flow_path)
+
+        edge_dim = uds.grid.edge_dimension
+        node_dim = uds.grid.node_dimension
+
+        # from node_id to the node_dim index
+        node_lookup = pd.Series(
+            index=uds["node_id"],
+            data=uds[edge_dim],
+            name="node_index",
+        )
+        # from edge_id to the edge_dim index
+        edge_lookup = pd.Series(
+            index=uds["edge_id"],
+            data=uds[edge_dim],
+            name="edge_index",
+        )
+
+        basin_df = pd.read_feather(basin_path)
+        flow_df = pd.read_feather(flow_path)
+
+        # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
+        flow_df["time"] = flow_df["time"].astype("datetime64[ns]")
+        basin_df["time"] = basin_df["time"].astype("datetime64[ns]")
+
+        # add flow results to the UgridDataset
+        flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
+        flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
+        uds[flow_da.name] = flow_da
+
+        # add basin results to the UgridDataset
+        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
+        basin_df.drop(columns=["node_id"], inplace=True)
+        basin_ds = basin_df.set_index(["time", node_dim]).to_xarray()
+
+        for var_name, da in basin_ds.data_vars.items():
+            uds[var_name] = da
 
         return uds
