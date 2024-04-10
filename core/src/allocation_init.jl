@@ -5,7 +5,8 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
-            if graph[outflow_id].allocation_network_id != 1
+            if (graph[outflow_id].allocation_network_id != 1) |
+               (graph[node_id, outflow_id].allocation_network_id_source == 1)
                 main_network_source_edges =
                     get_main_network_connections(p, graph[outflow_id].allocation_network_id)
                 edge = (node_id, outflow_id)
@@ -406,55 +407,6 @@ function add_variables_flow_buffer!(
 end
 
 """
-Certain allocation distribution types use absolute values in the objective function.
-Since most optimization packages do not support the absolute value function directly,
-New variables are introduced that act as the absolute value of an expression by
-posing the appropriate constraints.
-"""
-function add_variables_absolute_value!(
-    problem::JuMP.Model,
-    p::Parameters,
-    allocation_network_id::Int32,
-)::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
-
-    node_ids = graph[].node_ids[allocation_network_id]
-    node_ids_user_demand = NodeID[]
-    node_ids_level_demand = NodeID[]
-    node_ids_flow_demand = NodeID[]
-
-    for node_id in node_ids
-        type = node_id.type
-        if type == NodeType.UserDemand
-            push!(node_ids_user_demand, node_id)
-        elseif type == NodeType.Basin
-            push!(node_ids_level_demand, node_id)
-        elseif has_external_demand(graph, node_id, :flow_demand)[1]
-            push!(node_ids_flow_demand, node_id)
-        end
-    end
-
-    # For the main network, connections to subnetworks are treated as UserDemands
-    if is_main_network(allocation_network_id)
-        for connections_subnetwork in main_network_connections
-            for connection in connections_subnetwork
-                push!(node_ids_user_demand, connection[2])
-            end
-        end
-    end
-
-    problem[:F_abs_user_demand] =
-        JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
-    problem[:F_abs_level_demand] =
-        JuMP.@variable(problem, F_abs_level_demand[node_id = node_ids_level_demand])
-    problem[:F_abs_flow_demand] =
-        JuMP.@variable(problem, F_abs_flow_demand[node_id = node_ids_flow_demand])
-
-    return nothing
-end
-
-"""
 Add the flow capacity constraints to the allocation problem.
 Only finite capacities get a constraint.
 The constraint indices are (edge_source_id, edge_dst_id).
@@ -468,7 +420,6 @@ function add_constraints_capacity!(
     p::Parameters,
     allocation_network_id::Int32,
 )::Nothing
-    (; graph) = p
     main_network_source_edges = get_main_network_connections(p, allocation_network_id)
     F = problem[:F]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
@@ -821,7 +772,6 @@ function allocation_problem(
     # Add variables to problem
     add_variables_flow!(problem, p, allocation_network_id)
     add_variables_basin!(problem, p, allocation_network_id)
-    add_variables_absolute_value!(problem, p, allocation_network_id)
     add_variables_flow_buffer!(problem, p, allocation_network_id)
 
     # Add constraints to problem

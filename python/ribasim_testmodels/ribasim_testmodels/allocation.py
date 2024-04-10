@@ -1039,23 +1039,22 @@ def fair_distribution_model():
         allocation=Allocation(use_allocation=True),
     )
 
-    model.flow_boundary.add(
+    model.level_boundary.add(
         Node(1, Point(0, 0), subnetwork_id=1),
         [
-            flow_boundary.Time(
-                time=pd.date_range(start="2020-01", end="2020-05", freq="MS"),
-                flow_rate=np.arange(0, 12.5, 2.5),
+            level_boundary.Static(
+                level=[1.0],
             )
         ],
     )
 
-    model.linear_resistance.add(
+    model.pump.add(
         Node(
             2,
             Point(1, 0),
             subnetwork_id=1,
         ),
-        [linear_resistance.Static(flow_rate=[9.0], max_flow_rate=9.0)],
+        [pump.Static(flow_rate=9.0, max_flow_rate=[9.0])],
     )
 
     model.basin.add(
@@ -1086,7 +1085,7 @@ def fair_distribution_model():
         Node(7, Point(2, -1), subnetwork_id=1),
         [
             user_demand.Static(
-                priority=[1], demand=1.0, return_factor=1.0, min_level=0.2
+                priority=[1], demand=2.0, return_factor=1.0, min_level=0.2
             )
         ],
     )
@@ -1095,7 +1094,7 @@ def fair_distribution_model():
         Node(8, Point(4, 1), subnetwork_id=1),
         [
             user_demand.Static(
-                priority=[1], demand=1.0, return_factor=1.0, min_level=0.2
+                priority=[1], demand=3.0, return_factor=1.0, min_level=0.2
             )
         ],
     )
@@ -1103,13 +1102,17 @@ def fair_distribution_model():
     model.user_demand.add(
         Node(9, Point(4, -1), subnetwork_id=1),
         [
-            user_demand.Static(
-                priority=[1], demand=1.0, return_factor=1.0, min_level=0.2
+            user_demand.Time(
+                priority=1,
+                time=pd.date_range(start="2020-01", end="2021-01", freq="MS"),
+                demand=np.linspace(1.0, 5.0, 13),
+                return_factor=1.0,
+                min_level=0.2,
             )
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.pump[2])
+    model.edge.add(model.level_boundary[1], model.pump[2], subnetwork_id=1)
     model.edge.add(model.pump[2], model.basin[3])
     model.edge.add(model.basin[3], model.linear_resistance[4])
     model.edge.add(model.linear_resistance[4], model.basin[5])
@@ -1117,5 +1120,9 @@ def fair_distribution_model():
     model.edge.add(model.basin[3], model.user_demand[7])
     model.edge.add(model.basin[5], model.user_demand[8])
     model.edge.add(model.basin[5], model.user_demand[9])
+    model.edge.add(model.user_demand[6], model.basin[3])
+    model.edge.add(model.user_demand[7], model.basin[3])
+    model.edge.add(model.user_demand[8], model.basin[5])
+    model.edge.add(model.user_demand[9], model.basin[5])
 
     return model

@@ -16,10 +16,10 @@ function add_objective_term!(
         JuMP.add_to_expression!(ex, -2.0 * demand, F)
         JuMP.add_to_expression!(ex, demand^2)
     else
-        # Error term (1 - F/d)^2
-        JuMP.add_to_expression!(ex, 1.0 / demand^2, F, F)
-        JuMP.add_to_expression!(ex, -2.0 / demand, F)
-        JuMP.add_to_expression!(ex, 1.0)
+        # Error term d*(1 - F/d)^2
+        JuMP.add_to_expression!(ex, 1.0 / demand, F, F)
+        JuMP.add_to_expression!(ex, -2.0, F)
+        JuMP.add_to_expression!(ex, demand)
     end
     return nothing
 end
@@ -46,7 +46,7 @@ function set_objective_priority!(
 
     # Terms for subnetworks as UserDemand
     if is_main_network(allocation_network_id)
-        for connections_subnetwork in main_network_connections
+        for connections_subnetwork in main_network_connections[2:end]
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
                 F_inlet = F[connection]
@@ -209,7 +209,8 @@ function set_initial_capacities_source!(
     for edge_id in edge_ids
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
             # If it is a source edge for this allocation problem
-            if edge_id ∉ main_network_source_edges
+            if (edge_id ∉ main_network_source_edges) |
+               is_main_network(allocation_network_id)
                 # Reset the source to the current flow from the physical layer.
                 source_capacity = get_flow(graph, edge_id..., 0)
                 JuMP.set_normalized_rhs(

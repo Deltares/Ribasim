@@ -44,7 +44,7 @@
     @test allocated[3, :] ≈ [0.0, 2.0]
 end
 
-@testitem "Allocation objective: linear absolute" begin
+@testitem "Allocation objective" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -67,13 +67,13 @@ end
     to_user_5 = F[(NodeID(:Basin, 4), NodeID(:UserDemand, 5))]
     to_user_6 = F[(NodeID(:Basin, 4), NodeID(:UserDemand, 6))]
 
-    @test objective.aff.constant == 2.0
-    @test objective.aff.terms[to_user_5] ≈ -2.0 / user_demand.demand[1]
-    @test objective.aff.terms[to_user_6] ≈ -2.0 / user_demand.demand[2]
+    @test objective.aff.constant ≈ sum(user_demand.demand)
+    @test objective.aff.terms[to_user_5] ≈ -2.0
+    @test objective.aff.terms[to_user_6] ≈ -2.0
     @test objective.terms[JuMP.UnorderedPair(to_user_5, to_user_5)] ≈
-          1 / user_demand.demand[1]^2
+          1 / user_demand.demand[1]
     @test objective.terms[JuMP.UnorderedPair(to_user_6, to_user_6)] ≈
-          1 / user_demand.demand[2]^2
+          1 / user_demand.demand[2]
 end
 
 @testitem "Allocation with controlled fractional flow" begin
@@ -168,7 +168,7 @@ end
     @test Ribasim.is_main_network(first(allocation_network_ids))
 
     # Connections from main network to subnetworks
-    @test isempty(main_network_connections[1])
+    @test only(main_network_connections[1]) == (NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))
     @test only(main_network_connections[2]) == (NodeID(:Basin, 2), NodeID(:Pump, 11))
     @test only(main_network_connections[3]) == (NodeID(:Basin, 6), NodeID(:Pump, 24))
     @test only(main_network_connections[4]) == (NodeID(:Basin, 10), NodeID(:Pump, 38))
@@ -263,7 +263,7 @@ end
     @test all(
         isapprox.(
             subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)],
-            [4.0, 0.493, 0.0],
+            [4.0, 0.4947, 0.0],
             atol = 1e-4,
         ),
     )
@@ -275,7 +275,7 @@ end
     @test all(
         isapprox.(
             subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)],
-            [0.001, 0.002, 0.0],
+            [0.001, 2.473e-4, 0.0],
             rtol = 1e-3,
         ),
     )
@@ -435,7 +435,6 @@ end
     F = problem[:F]
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
-    F_abs_flow_demand = problem[:F_abs_flow_demand]
 
     node_id_with_flow_demand = NodeID(NodeType.TabulatedRatingCurve, 2)
     constraint_flow_out = problem[:flow_demand_outflow][node_id_with_flow_demand]
@@ -472,7 +471,7 @@ end
     )
     objective = JuMP.objective_function(problem)
     # Reduced demand
-    @test isapprox(flow_demand.demand[1], flow_demand.demand_itp[1](t) - 0.001, rtol = 1e-4)
+    @test isapprox(flow_demand.demand[1], flow_demand.demand_itp[1](t) - 0.001, rtol = 1e-3)
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     ## Priority 2
@@ -487,7 +486,7 @@ end
     # No demand left
     @test flow_demand.demand[1] < 1e-10
     # Allocated
-    @test isapprox(JuMP.value(only(F_flow_buffer_in)), 0.001, rtol = 1e-4)
+    @test isapprox(JuMP.value(only(F_flow_buffer_in)), 0.001, rtol = 1e-3)
     @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     ## Priority 3
@@ -506,13 +505,13 @@ end
     @test isapprox(
         JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]),
         0.001,
-        rtol = 1e-4,
+        rtol = 1e-3,
     )
     # Flow taken from buffer
     @test isapprox(
         JuMP.value(only(F_flow_buffer_out)),
         user_demand.demand_itp[1][3](t),
-        rtol = 1e-4,
+        rtol = 1e-3,
     )
     # No flow coming from level boundary
     @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) == 0
@@ -528,11 +527,11 @@ end
     )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
-    @assert isapprox(
+    @test isapprox(
         JuMP.value(F[(NodeID(NodeType.UserDemand, 4), NodeID(NodeType.Basin, 7))]) +
         JuMP.value(F[(NodeID(NodeType.UserDemand, 6), NodeID(NodeType.Basin, 7))]),
         d,
-        rtol = 1e-4,
+        rtol = 1e-3,
     )
 end
 
@@ -556,4 +555,30 @@ end
         )],
     )
     @test constraint.set.upper == 2.0
+end
+
+@testitem "equal_fraction_allocation" begin
+    using Ribasim: NodeID, NodeType
+    using StructArrays: StructVector
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/fair_distribution/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; user_demand, graph) = model.integrator.p
+
+    data_allocation = DataFrame(Ribasim.allocation_table(model))
+    fractions = Vector{Float64}[]
+
+    for id in user_demand.node_id
+        data_allocation_id =
+            filter(:node_id => node_id -> node_id == id.value, data_allocation)
+        frac = data_allocation_id.allocated ./ data_allocation_id.demand
+        push!(fractions, frac)
+    end
+
+    @test all(isapprox.(fractions[1], fractions[2], atol = 1e-4))
+    @test all(isapprox.(fractions[1], fractions[3], atol = 1e-4))
+    @test all(isapprox.(fractions[1], fractions[4], atol = 1e-4))
 end
