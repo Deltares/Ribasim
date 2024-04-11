@@ -1,4 +1,4 @@
-name: Python Lint
+name: Mypy Type Check
 on:
   push:
     branches: [main, update/pixi-lock]
