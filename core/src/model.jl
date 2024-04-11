@@ -44,6 +44,11 @@ function Model(config::Config)::Model
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
+    t_end = seconds_since(config.endtime, config.starttime)
+    if t_end < 0
+        error("starttime > endtime")
+    end
+
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
@@ -108,7 +113,6 @@ function Model(config::Config)::Model
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
-    t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
