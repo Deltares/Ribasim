@@ -45,8 +45,8 @@ function Model(config::Config)::Model
     end
 
     t_end = seconds_since(config.endtime, config.starttime)
-    if t_end < 0
-        error("starttime > endtime")
+    if t_end <= 0
+        error("Model starttime is not before endtime.")
     end
 
     # All data from the database that we need during runtime is copied into memory,
