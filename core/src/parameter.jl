@@ -445,8 +445,10 @@ end
 """
 node_id: node ID of the DiscreteControl node; these are not unique but repeated
     by the amount of conditions of this DiscreteControl node
-listen_node_id: the ID of the node being condition on
-variable: the name of the variable in the condition
+listen_node_id: the IDs of the nodes being condition on
+variable: the names of the variables in the condition
+weight: the weight of the variables in the condition
+look_ahead: the look ahead of variables  in the condition in seconds
 greater_than: The threshold value in the condition
 condition_value: The current value of each condition
 control_state: Dictionary: node ID => (control state, control state start)

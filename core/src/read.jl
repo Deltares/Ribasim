@@ -542,6 +542,10 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
 end
 
+"""
+Parse compound variables from the compound variable table, and turn
+variables in the condition table into trivial compound variables
+"""
 function get_compound_variables(compound_variable, condition)
     listen_node_id = Vector{NodeID}[]
     variable = Vector{String}[]
