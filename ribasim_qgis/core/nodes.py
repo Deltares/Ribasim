@@ -709,6 +709,7 @@ class DiscreteControlCompoundvariable(Input):
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("weight", QVariant.Double),
+            QgsField("look_ahead", QVariant.Double),
         ]
 
 
@@ -729,6 +730,7 @@ class DiscreteControlCondition(Input):
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("greater_than", QVariant.Double),
+            QgsField("look_ahead", QVariant.Double),
         ]
 
 
