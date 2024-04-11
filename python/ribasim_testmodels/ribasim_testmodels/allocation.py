@@ -1034,7 +1034,7 @@ def linear_resistance_demand_model():
 def fair_distribution_model():
     model = Model(
         starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        endtime="2020-01-07 00:00:00",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True),
     )
