@@ -73,7 +73,7 @@ end
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)
         # get_value_ptr does not copy
-        @test value_first === value_second
+        @test value_first === value_second || pointer(value_first) == pointer(value_second)
     end
 end
 

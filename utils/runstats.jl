@@ -106,7 +106,7 @@ toml_paths = get_testmodels()
 runs = OrderedDict{String, Any}[]
 for toml_path in toml_paths
     config = Ribasim.Config(toml_path)
-    println(basename(toml_path))
+    println(basename(dirname(toml_path)))
     # run first to compile, if this takes too long perhaps we can shorten the duration
     Ribasim.run(config)
     timed = @timed Ribasim.run(config)

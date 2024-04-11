@@ -29,8 +29,11 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 def test_basic(basic, tmp_path):
     model_orig = basic
     toml_path = tmp_path / "basic/ribasim.toml"
+    assert model_orig.filepath is None
     model_orig.write(toml_path)
+    assert model_orig.filepath == toml_path
     model_loaded = Model.read(toml_path)
+    assert model_loaded.filepath == toml_path
 
     with open(toml_path, "rb") as f:
         toml_dict = tomli.load(f)
@@ -79,7 +82,7 @@ def test_repr():
     assert isinstance(pump_static._repr_html_(), str)
 
 
-def test_extra_columns(basic_transient):
+def test_extra_columns():
     terminal_static = terminal.Static(meta_id=[-1, -2, -3])
     assert "meta_id" in terminal_static.df.columns
     assert (terminal_static.df.meta_id == [-1, -2, -3]).all()
@@ -106,14 +109,12 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0
 
-    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
-    assert edge.df.iloc[0]["from_node_type"] != "Basin"
-    edge.sort()
-    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+    # The edge table is not sorted
+    assert edge.df.iloc[1]["from_node_type"] == "Pump"
+    assert edge.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
     table.df.sort_values("greater_than", ascending=False, inplace=True)
-    edge.df.sort_values("from_node_type", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
     assert table.df.iloc[0]["greater_than"] == 5.0
@@ -121,13 +122,16 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[0]["from_node_type"] == "Basin"
+    assert edge.df.iloc[1]["from_node_type"] == "Pump"
+    assert edge.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(edge.df, edge_loaded.df)
 
 
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
+    # set custom Edge index
+    model1.edge.df.index = [15, 12]
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path
@@ -141,6 +145,10 @@ def test_roundtrip(trivial, tmp_path):
     assert (model1dir / "ribasim.toml").read_text() == (
         model2dir / "ribasim.toml"
     ).read_text()
+
+    # check if custom Edge indexes are retained (sorted)
+    assert (model1.edge.df.index == [12, 15]).all()
+    assert (model2.edge.df.index == [12, 15]).all()
 
     # check if all tables are the same
     __assert_equal(model1.node_table().df, model2.node_table().df)
