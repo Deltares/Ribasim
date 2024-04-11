@@ -29,8 +29,11 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 def test_basic(basic, tmp_path):
     model_orig = basic
     toml_path = tmp_path / "basic/ribasim.toml"
+    assert model_orig.filepath is None
     model_orig.write(toml_path)
+    assert model_orig.filepath == toml_path
     model_loaded = Model.read(toml_path)
+    assert model_loaded.filepath == toml_path
 
     with open(toml_path, "rb") as f:
         toml_dict = tomli.load(f)
