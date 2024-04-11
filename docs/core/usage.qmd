@@ -628,10 +628,18 @@ DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.
 
 ## DiscreteControl / compoundvariable
 
+The compound variable schema defines linear combinations of variables which can be used in conditions. This means that
+this schema defines new variables with the given name that look like
+$$
+\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
+$$
+
+which can be for instance an average or a difference of variables. If a variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+
 column            | type     | unit    | restriction
 ----------------- | -------- | ------- | -----------
 node_id           | Int32    | -       | sorted
-name              | String   | -       | -
+name              | String   | -       | sorted per node_id
 listen_node_type  | String   | -       | known node type
 listen_node_id    | Int32    | -       | sorted per node_id
 variable          | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
@@ -640,7 +648,8 @@ look_ahead        | Float64  | $s$     | Only on transient boundary conditions, 
 
 ## DiscreteControl / condition
 
-The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen feature id is grater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen node id is greater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+Compound variables from the schema above can also be used, in which case the listen node ID and look ahead in this schema are ignored.
 
 column            | type     | unit    | restriction
 ----------------- | -------- | ------- | -----------

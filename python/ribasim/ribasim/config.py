@@ -290,13 +290,11 @@ class ManningResistance(MultiNodeModel):
 class DiscreteControl(MultiNodeModel):
     compoundvariable: TableModel[DiscreteControlCompoundvariableSchema] = Field(
         default_factory=TableModel[DiscreteControlCompoundvariableSchema],
-        json_schema_extra={"sort_keys": ["name"]},
+        json_schema_extra={"sort_keys": ["node_id", "name"]},
     )
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
-        json_schema_extra={
-            "sort_keys": ["node_id", "listen_node_id", "variable", "greater_than"]
-        },
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(
         default_factory=TableModel[DiscreteControlLogicSchema],
