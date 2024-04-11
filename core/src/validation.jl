@@ -102,7 +102,10 @@ sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
+sort_by_condition(row) =
+    (row.node_id, row.listen_node_type, row.listen_node_id, row.variable, row.greater_than)
 sort_by_id_name(row) = (row.node_id, row.name)
+sort_by_truth_state(row) = (row.node_id, row.truth_state)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -112,6 +115,8 @@ sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlCompoundvariableV1}) = sort_by_id_name
+sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
+sort_by_function(table::StructVector{DiscreteControlLogicV1}) = sort_by_truth_state
 
 const TimeSchemas = Union{
     BasinTimeV1,
