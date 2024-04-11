@@ -1,0 +1,38 @@
+---
+title: "Continuous integration"
+---
+
+Continuous integration is about commits being merged frequently and automatically. When a new commit is made, a series of tests will be done to make sure that this commit is error-free, appliance format, robust in difference environment and safe to be merged. This process drive each new development through building, testing, quality checking, it is like a pipeline.
+
+This page contains an extensive explanation on how the Ribasim pipeline works.
+
+# Github actions
+When a new development is to be merged into the main branch, one can either make a pull request or commit to main branch directly. Before a commit is added to main branch, a series of GitHub action will be performed. Github actions includes following checks:
+
+* Julia Run Testmodels: This is to make sure all the test models can be run successfully
+* Julia Tests: Run Julia unit tests on multiple platforms, depends on generated testmodels
+* Docs: Executes our documentation examples
+* Pre-commit: Checks code quality with linters, adjust the format
+* Python codegen: Check that code generation wouldn't change any files
+* Python lint (Run mypy on our Python codebase) TODO: Rename "Python Lint" to "Mypy" and "python_lint.yml" to "mypy.yml"
+* Ribasim Python tests (Run Ribasim Python tests on multiple platforms and multiple Python versions, depends on ribasim_testmodels)
+* QGIS Tests (Run QGIS tests, very limited at the moment)
+
+```{mermaid}
+graph TD
+    A[New development]-->B[Github actions]
+    B-->C[Merge]
+```
+
+# TeamCity
+Ribasim has another cloud-based CI/CD pipeline that is in the TeamCity. But TeamCity is not always triggered. TeamCity is only used in the following circumustance:
+
+* When it takes too long to run on Github Action,
+
+```{mermaid}
+graph TD
+    A-->B
+    A-->C
+    B-->D
+    C-->D
+```
