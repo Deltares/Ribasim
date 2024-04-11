@@ -416,7 +416,7 @@ def compound_variable_condition_model() -> Model:
     )
     model.flow_boundary.add(
         Node(3, Point(0, 1)),
-        [flow_boundary.Time(time=["2020-01-01", "2022-01-01"], flow_rate=[0.0, 2.0])],
+        [flow_boundary.Time(time=["2020-01-01", "2021-01-01"], flow_rate=[0.0, 2.0])],
     )
     model.pump.add(
         Node(4, Point(2, 0)),
@@ -437,7 +437,7 @@ def compound_variable_condition_model() -> Model:
                 listen_node_type="compound",
                 listen_node_id=[0],  # Irrelevant
                 variable="flow_mean",
-                greater_than=1.0,
+                greater_than=0.5,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],

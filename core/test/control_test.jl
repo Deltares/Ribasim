@@ -206,3 +206,23 @@ end
     @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-1)
     @test isapprox(level[end], target_low, atol = 1e-1)
 end
+
+@testitem "Compound condition" begin
+    using Ribasim: NodeID
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/compound_variable_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; discrete_control) = model.integrator.p
+    (; listen_node_id, variable, weight, record) = discrete_control
+
+    @test listen_node_id == [[NodeID(:FlowBoundary, 2), NodeID(:FlowBoundary, 3)]]
+    @test variable == [["flow_rate", "flow_rate"]]
+    @test weight == [[0.5, 0.5]]
+    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
+    @test record.truth_state == ["F", "T"]
+    @test record.control_state == ["Off", "On"]
+end
