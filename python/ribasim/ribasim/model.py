@@ -479,7 +479,7 @@ class Model(FileModel):
         # from node_id to the node_dim index
         node_lookup = pd.Series(
             index=uds["node_id"],
-            data=uds[edge_dim],
+            data=uds[node_dim],
             name="node_index",
         )
         # from edge_id to the edge_dim index
