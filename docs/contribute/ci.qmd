@@ -13,10 +13,10 @@ When a new development is to be merged into the main branch, one can either make
 * Julia Tests: Run Julia unit tests on multiple platforms, depends on generated testmodels
 * Docs: Executes our documentation examples
 * Pre-commit: Checks code quality with linters, adjust the format
-* Python codegen: Check that code generation wouldn't change any files
-* Python lint (Run mypy on our Python codebase) TODO: Rename "Python Lint" to "Mypy" and "python_lint.yml" to "mypy.yml"
-* Ribasim Python tests (Run Ribasim Python tests on multiple platforms and multiple Python versions, depends on ribasim_testmodels)
-* QGIS Tests (Run QGIS tests, very limited at the moment)
+* Python codegen: Check file difference and make sure that code generation wouldn't change any files
+* Mypy: Run mypy on our Python codebase to check types
+* Ribasim Python tests: Run Ribasim Python tests on multiple platforms and multiple Python versions, depends on ribasim_testmodels
+* QGIS Tests: Run QGIS unit tests
 
 ```{mermaid}
 graph TD
@@ -27,12 +27,11 @@ graph TD
 # TeamCity
 Ribasim has another cloud-based CI/CD pipeline that is in the TeamCity. But TeamCity is not always triggered. TeamCity is only used in the following circumustance:
 
-* When it takes too long to run on Github Action,
+* When a action takes too long to run on Github Action
+* When the release depends on the artifects
+* When other TeamCity projects depend on artifacts of Ribasim (e.g. the coupler)
 
 ```{mermaid}
 graph TD
-    A-->B
-    A-->C
-    B-->D
-    C-->D
+    A[TeamCity]-->B[Github]:monitoring
 ```
