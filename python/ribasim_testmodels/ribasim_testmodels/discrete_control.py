@@ -58,9 +58,11 @@ def pump_discrete_control_model() -> Model:
                 listen_node_type="Basin",
                 listen_node_id=[1, 3],
                 variable="level",
+                compound_variable_id=[1, 2],
             ),
             discrete_control.Condition(
                 greater_than=[0.8, 0.4],
+                compound_variable_id=[1, 2],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "FT", "TT"],
@@ -75,9 +77,11 @@ def pump_discrete_control_model() -> Model:
                 listen_node_type="Basin",
                 listen_node_id=[3],
                 variable="level",
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[0.45],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"],
@@ -149,9 +153,11 @@ def flow_condition_model() -> Model:
                 listen_node_id=[1],
                 variable="flow_rate",
                 look_ahead=60 * 86400,
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[20 / (86400)],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["off", "on"]),
         ],
@@ -214,9 +220,11 @@ def level_boundary_condition_model() -> Model:
                 listen_node_id=[1],
                 variable="level",
                 look_ahead=60 * 86400,
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[6.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
         ],
@@ -287,6 +295,7 @@ def tabulated_rating_curve_control_model() -> Model:
                 listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[0.5],
@@ -356,10 +365,12 @@ def level_setpoint_with_minmax_model() -> Model:
                 listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 # min, setpoint, max
                 greater_than=[5.0, 10.0, 15.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["FFF", "U**", "T*F", "**D", "TTT"],
@@ -443,9 +454,11 @@ def compound_variable_condition_model() -> Model:
                 listen_node_id=[2, 3],
                 variable="flow_rate",
                 weight=0.5,
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[0.5],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],

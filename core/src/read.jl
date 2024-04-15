@@ -546,17 +546,26 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
     condition = load_structvector(db, config, DiscreteControlConditionV1)
 
+    node_id = NodeID[]
     listen_node_id = Vector{NodeID}[]
     variable = Vector{String}[]
     weight = Vector{Float64}[]
     look_ahead = Vector{Float64}[]
 
     for id in unique(condition.node_id)
-        group = filter(row -> row.node_id == id, compound_variable)
-        push!(listen_node_id, NodeID.(group.listen_node_type, group.listen_node_id))
-        push!(variable, group.variable)
-        push!(weight, coalesce.(group.weight, 1.0))
-        push!(look_ahead, coalesce.(group.look_ahead, 0.0))
+        group_id = filter(row -> row.node_id == id, compound_variable)
+        for group_variable in
+            StructVector.(IterTools.groupby(row -> row.compound_variable_id, group_id))
+            first_row = first(group_variable)
+            push!(node_id, NodeID(NodeType.DiscreteControl, first_row.node_id))
+            push!(
+                listen_node_id,
+                NodeID.(group_variable.listen_node_type, group_variable.listen_node_id),
+            )
+            push!(variable, group_variable.variable)
+            push!(weight, coalesce.(group_variable.weight, 1.0))
+            push!(look_ahead, coalesce.(group_variable.look_ahead, 0.0))
+        end
     end
 
     condition_value = fill(false, length(condition.node_id))
@@ -589,7 +598,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
+        node_id, # Not unique
         listen_node_id,
         variable,
         weight,

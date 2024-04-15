@@ -133,9 +133,11 @@ def discrete_control_of_pid_control_model() -> Model:
                 listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[5.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["target_high", "target_low"]

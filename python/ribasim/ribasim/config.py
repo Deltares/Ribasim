@@ -310,7 +310,7 @@ class DiscreteControl(MultiNodeModel):
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(
         default_factory=TableModel[DiscreteControlLogicSchema],
-        json_schema_extra={"sort_keys": ["node_id", "truth_state"]},
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
 
 

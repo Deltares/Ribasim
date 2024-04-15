@@ -186,6 +186,7 @@ end
 
 @version DiscreteControlVariableV1 begin
     node_id::Int32
+    compound_variable_id::Int
     listen_node_type::String
     listen_node_id::Int
     variable::String
@@ -195,6 +196,7 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int32
+    compound_variable_id::Int
     greater_than::Float64
 end
 

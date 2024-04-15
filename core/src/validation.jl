@@ -118,7 +118,6 @@ sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
 sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_id_greater_than
-sort_by_function(table::StructVector{DiscreteControlLogicV1}) = sort_by_truth_state
 
 const TimeSchemas = Union{
     BasinTimeV1,

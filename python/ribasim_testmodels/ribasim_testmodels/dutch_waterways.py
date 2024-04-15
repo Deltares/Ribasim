@@ -125,9 +125,11 @@ def dutch_waterways_model() -> Model:
                 listen_node_type="FlowBoundary",
                 listen_node_id=[1],
                 variable="flow_rate",
+                compound_variable_id=1,
             ),
             discrete_control.Condition(
                 greater_than=[250, 275, 750, 800],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["FFFF", "U***", "T**F", "***D", "TTTT"],

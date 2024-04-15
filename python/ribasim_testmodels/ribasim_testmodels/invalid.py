@@ -156,9 +156,11 @@ def invalid_discrete_control_model() -> Model:
                 # Invalid: this look_ahead will go past the provided timeseries during simulation.
                 # Invalid: look_ahead must be non-negative.
                 look_ahead=[100.0, 40 * 24 * 60 * 60, -10.0],
+                compound_variable_id=[1, 2, 3],
             ),
             discrete_control.Condition(
                 greater_than=[0.5, 1.5, 1.5],
+                compound_variable_id=[1, 2, 3],
             ),
             # Invalid: DiscreteControl node #4 has 2 conditions so
             # truth states have to be of length 2
