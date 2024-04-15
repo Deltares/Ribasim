@@ -691,10 +691,10 @@ class FlowBoundaryTime(Input):
         ]
 
 
-class DiscreteControlCompoundvariable(Input):
+class DiscreteControlVariable(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "DiscreteControl / compoundvariable"
+        return "DiscreteControl / variable"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -704,7 +704,6 @@ class DiscreteControlCompoundvariable(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("name", QVariant.String),
             QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
@@ -726,11 +725,7 @@ class DiscreteControlCondition(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
-            QgsField("listen_node_id", QVariant.Int),
-            QgsField("variable", QVariant.String),
             QgsField("greater_than", QVariant.Double),
-            QgsField("look_ahead", QVariant.Double),
         ]
 
 

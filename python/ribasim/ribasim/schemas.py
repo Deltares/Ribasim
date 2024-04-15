@@ -48,29 +48,24 @@ class BasinTimeSchema(_BaseSchema):
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
-class DiscreteControlCompoundvariableSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    name: Series[str] = pa.Field(nullable=False)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
-    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    variable: Series[str] = pa.Field(nullable=False)
-    weight: Series[float] = pa.Field(nullable=False)
-    look_ahead: Series[float] = pa.Field(nullable=True)
-
-
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
-    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
-    look_ahead: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlLogicSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     truth_state: Series[str] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=False)
+
+
+class DiscreteControlVariableSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_type: Series[str] = pa.Field(nullable=False)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    variable: Series[str] = pa.Field(nullable=False)
+    weight: Series[float] = pa.Field(nullable=True)
+    look_ahead: Series[float] = pa.Field(nullable=True)
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):

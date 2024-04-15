@@ -121,10 +121,12 @@ def dutch_waterways_model() -> Model:
     model.discrete_control.add(
         Node(17, Point(183612, 441833), name="Controller Driel"),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="FlowBoundary",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="flow_rate",
+            ),
+            discrete_control.Condition(
                 greater_than=[250, 275, 750, 800],
             ),
             discrete_control.Logic(

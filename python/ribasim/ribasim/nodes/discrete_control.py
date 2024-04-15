@@ -2,15 +2,15 @@ from pandas import DataFrame
 
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
-    DiscreteControlCompoundvariableSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
+    DiscreteControlVariableSchema,
 )
 
-__all__ = ["Condition", "Logic", "Compoundvariable"]
+__all__ = ["Condition", "Logic", "Variable"]
 
 
-class Compoundvariable(TableModel[DiscreteControlCompoundvariableSchema]):
+class Variable(TableModel[DiscreteControlVariableSchema]):
     def __init__(self, **kwargs):
         super().__init__(df=DataFrame(dict(**kwargs)))
 

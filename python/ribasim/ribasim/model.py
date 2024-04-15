@@ -323,7 +323,7 @@ class Model(FileModel):
         # Listen edges from DiscreteControl
         for table in (
             self.discrete_control.condition.df,
-            self.discrete_control.compoundvariable.df,
+            self.discrete_control.variable.df,
         ):
             if table is None:
                 continue

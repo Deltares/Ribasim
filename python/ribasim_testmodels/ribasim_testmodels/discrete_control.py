@@ -54,10 +54,12 @@ def pump_discrete_control_model() -> Model:
     model.discrete_control.add(
         Node(5, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[1, 3],
                 variable="level",
+            ),
+            discrete_control.Condition(
                 greater_than=[0.8, 0.4],
             ),
             discrete_control.Logic(
@@ -69,10 +71,12 @@ def pump_discrete_control_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(2, -1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
-                listen_node_id=3,
+                listen_node_id=[3],
                 variable="level",
+            ),
+            discrete_control.Condition(
                 greater_than=[0.45],
             ),
             discrete_control.Logic(
@@ -140,12 +144,14 @@ def flow_condition_model() -> Model:
     model.discrete_control.add(
         Node(5, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="FlowBoundary",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="flow_rate",
-                greater_than=[20 / (86400)],
                 look_ahead=60 * 86400,
+            ),
+            discrete_control.Condition(
+                greater_than=[20 / (86400)],
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["off", "on"]),
         ],
@@ -203,12 +209,14 @@ def level_boundary_condition_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(1.5, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=6.0,
                 look_ahead=60 * 86400,
+            ),
+            discrete_control.Condition(
+                greater_than=[6.0],
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
         ],
@@ -275,11 +283,13 @@ def tabulated_rating_curve_control_model() -> Model:
     model.discrete_control.add(
         Node(4, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=0.5,
+            ),
+            discrete_control.Condition(
+                greater_than=[0.5],
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["low", "high"]
@@ -342,10 +352,12 @@ def level_setpoint_with_minmax_model() -> Model:
     model.discrete_control.add(
         Node(7, Point(1, 0)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="level",
+            ),
+            discrete_control.Condition(
                 # min, setpoint, max
                 greater_than=[5.0, 10.0, 15.0],
             ),
@@ -426,18 +438,14 @@ def compound_variable_condition_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(1, 1)),
         [
-            discrete_control.Compoundvariable(
-                name="flow_mean",
+            discrete_control.Variable(
                 listen_node_type="FlowBoundary",
                 listen_node_id=[2, 3],
                 variable="flow_rate",
                 weight=0.5,
             ),
             discrete_control.Condition(
-                listen_node_type="compound",
-                listen_node_id=[0],  # Irrelevant
-                variable="flow_mean",
-                greater_than=0.5,
+                greater_than=[0.5],
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],

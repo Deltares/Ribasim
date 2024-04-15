@@ -1,8 +1,8 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
+@schema "ribasim.discretecontrol.variable" DiscreteControlVariable
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.discretecontrol.compoundvariable" DiscreteControlCompoundvariable
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -184,23 +184,18 @@ end
     node_id::Int32
 end
 
-@version DiscreteControlCompoundvariableV1 begin
+@version DiscreteControlVariableV1 begin
     node_id::Int32
-    name::String
     listen_node_type::String
     listen_node_id::Int
     variable::String
-    weight::Float64
+    weight::Union{Missing, Float64}
     look_ahead::Union{Missing, Float64}
 end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int32
-    listen_node_type::String
-    listen_node_id::Int32
-    variable::String
     greater_than::Float64
-    look_ahead::Union{Missing, Float64}
 end
 
 @version DiscreteControlLogicV1 begin
