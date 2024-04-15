@@ -1,26 +1,67 @@
 @enumx OptimizationType internal_sources collect_demands allocate
 
 """
-Add an objective term `demand * (1 - flow/demand)^2`. If the absolute
-value of the demand is very small, this would lead to huge coefficients,
-so in that case a term of the form (flow - demand)^2 is used.
+Add a term to the objective function given by the objective type,
+depending in the provided flow variable and the associated demand.
 """
 function add_objective_term!(
-    ex::JuMP.QuadExpr,
     demand::Float64,
-    F::JuMP.VariableRef,
+    constraint_abs_positive::Union{JuMP.ConstraintRef, Nothing} = nothing,
+    constraint_abs_negative::Union{JuMP.ConstraintRef, Nothing} = nothing,
 )::Nothing
-    if abs(demand) < 1e-5
-        # Error term (F - d)^2 = F² - 2dF + d²
-        JuMP.add_to_expression!(ex, 1.0, F, F)
-        JuMP.add_to_expression!(ex, -2.0 * demand, F)
-        JuMP.add_to_expression!(ex, demand^2)
-    else
-        # Error term d*(1 - F/d)^2 = F²/d - 2F + d
-        JuMP.add_to_expression!(ex, 1.0 / demand, F, F)
-        JuMP.add_to_expression!(ex, -2.0, F)
-        JuMP.add_to_expression!(ex, demand)
+    # Objective function ∑ |F - d|
+    JuMP.set_normalized_rhs(constraint_abs_positive, -demand)
+    JuMP.set_normalized_rhs(constraint_abs_negative, demand)
+    return nothing
+end
+
+"""
+Add a term to the expression of the objective function corresponding to
+the demand of a UserDemand.
+"""
+function add_user_demand_term!(
+    edge::Tuple{NodeID, NodeID},
+    demand::Float64,
+    problem::JuMP.Model,
+)::Nothing
+    node_id_user_demand = edge[2]
+
+    constraint_abs_positive = problem[:abs_positive_user_demand][node_id_user_demand]
+    constraint_abs_negative = problem[:abs_negative_user_demand][node_id_user_demand]
+
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
+end
+
+"""
+Add a term to the expression of the objective function corresponding to
+the demand of a node with a a flow demand.
+"""
+function add_flow_demand_term!(
+    edge::Tuple{NodeID, NodeID},
+    demand::Float64,
+    problem::JuMP.Model,
+)::Nothing
+    node_id_flow_demand = edge[2]
+
+    constraint_abs_positive = problem[:abs_positive_flow_demand][node_id_flow_demand]
+    constraint_abs_negative = problem[:abs_negative_flow_demand][node_id_flow_demand]
+
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
+end
+
+"""
+Add a term to the expression of the objective function corresponding to
+the demand of a basin.
+"""
+function add_basin_term!(problem::JuMP.Model, demand::Float64, node_id::NodeID)::Nothing
+    constraint_abs_positive = get(problem[:abs_positive_basin], node_id)
+    constraint_abs_negative = get(problem[:abs_negative_basin], node_id)
+
+    if isnothing(constraint_abs_positive)
+        return
     end
+
+    add_objective_term!(demand, constraint_abs_positive, constraint_abs_negative)
     return nothing
 end
 
@@ -40,17 +81,29 @@ function set_objective_priority!(
     (; node_id, demand_reduced) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     edge_ids = graph[].edge_ids[allocation_network_id]
-    F = problem[:F]
 
-    ex = JuMP.QuadExpr()
+    ex = JuMP.AffExpr()
+
+    F_abs_user_demand = problem[:F_abs_user_demand]
+    F_abs_level_demand = problem[:F_abs_level_demand]
+    F_abs_flow_demand = problem[:F_abs_flow_demand]
+
+    if !isempty(only(F_abs_user_demand.axes))
+        ex += sum(F_abs_user_demand)
+    end
+    if !isempty(only(F_abs_level_demand.axes))
+        ex += sum(F_abs_level_demand)
+    end
+    if !isempty(only(F_abs_flow_demand.axes))
+        ex += sum(F_abs_flow_demand)
+    end
 
     # Terms for subnetworks as UserDemand
     if is_main_network(allocation_network_id)
-        for connections_subnetwork in main_network_connections[2:end]
+        for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
-                F_inlet = F[connection]
-                add_objective_term!(ex, d, F_inlet)
+                add_user_demand_term!(connection, d, problem)
             end
         end
     end
@@ -63,8 +116,7 @@ function set_objective_priority!(
             # UserDemand
             user_demand_idx = findsorted(node_id, to_node_id)
             d = demand_reduced[user_demand_idx, priority_idx]
-            F_ud = F[edge_id]
-            add_objective_term!(ex, d, F_ud)
+            add_user_demand_term!(edge_id, d, problem)
         else
             has_demand, demand_node_id =
                 has_external_demand(graph, to_node_id, :flow_demand)
@@ -75,9 +127,8 @@ function set_objective_priority!(
                     priority_idx == flow_priority_idx ?
                     flow_demand.demand[findsorted(flow_demand.node_id, demand_node_id)] :
                     0.0
-                F_fd = F[edge_id]
 
-                add_objective_term!(ex, d, F_fd)
+                add_flow_demand_term!(edge_id, d, problem)
             end
         end
     end
@@ -91,8 +142,7 @@ function set_objective_priority!(
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
         _, basin_idx = id_index(basin.node_id, node_id)
         basin.demand[basin_idx] = d
-        F_ld = F_basin_in[node_id]
-        add_objective_term!(ex, d, F_ld)
+        add_basin_term!(problem, d, node_id)
     end
 
     new_objective = JuMP.@expression(problem, ex)
@@ -209,8 +259,7 @@ function set_initial_capacities_source!(
     for edge_id in edge_ids
         if graph[edge_id...].allocation_network_id_source == allocation_network_id
             # If it is a source edge for this allocation problem
-            if (edge_id ∉ main_network_source_edges) |
-               is_main_network(allocation_network_id)
+            if edge_id ∉ main_network_source_edges
                 # Reset the source to the current flow from the physical layer.
                 source_capacity = get_flow(graph, edge_id..., 0)
                 JuMP.set_normalized_rhs(

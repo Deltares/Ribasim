@@ -7,7 +7,6 @@ from ribasim.model import Model
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
-    fair_distribution_model,
     flow_demand_model,
     fractional_flow_subnetwork_model,
     level_demand_model,
@@ -67,7 +66,6 @@ __all__ = [
     "bucket_model",
     "discrete_control_of_pid_control_model",
     "dutch_waterways_model",
-    "fair_distribution_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
