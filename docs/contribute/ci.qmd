@@ -19,19 +19,53 @@ When a new development is to be merged into the main branch, one can either make
 * QGIS Tests: Run QGIS unit tests
 
 ```{mermaid}
-graph TD
+graph LR
     A[New development]-->B[Github actions]
     B-->C[Merge]
 ```
 
 # TeamCity
-Ribasim has another cloud-based CI/CD pipeline that is in the TeamCity. But TeamCity is not always triggered. TeamCity is only used in the following circumustance:
-
-* When a action takes too long to run on Github Action
-* When the release depends on the artifects
-* When other TeamCity projects depend on artifacts of Ribasim (e.g. the coupler)
+Ribasim has another cloud-based CI/CD pipeline that is in the TeamCity. TeamCity closely monitors Github and manage the release process.
 
 ```{mermaid}
-graph TD
-    A[TeamCity]-->B[Github]:monitoring
+graph LR
+    A[TeamCity]-->|Monitoring|B[Github]
+    A-->C(Release)
+```
+
+But TeamCity is not always triggered by every new development. TeamCity is only used or triggered in the following circumustances:
+
+* When a action takes too long to run on Github Action
+* When the release depends on the artifects. For example, a new build needs to be publish
+
+    TeamCity constantly monitors and has the information of every commit and when a commit is with a tag starts with `v20`, it trigger the release process.
+
+* When other TeamCity projects depend on artifacts of Ribasim (e.g. the coupler)
+
+In the release, we publish the generated testmodels, ribasim cli in Windows and Linux, Ribasim QGIS, and source code
+
+When TeamCity detects an release tag, the release process will be triggered. TeamCity will start to pack the artifects.
+
+We have the following pipeline to generate artifects for releasing:
+
+* Generate Testmodels: produces generated_testmodels artifect which is part of release.
+* Make GitHub Release: uses artifacts and it makes release
+* Build libribasim: builds binary of Ribasim in Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
+* Build ribasim_cli: builds command line interface in Linux and Windows,its artifact is tested in `Test ribasim_cli` and used by release
+* Test ribasim_api: tests libribasim artifact in Linux and Windows
+* Test ribasim_cli: tests ribasim_cli artifact in Linux and Windows
+
+::: {.callout-note}
+Make Github Release does not publish Test libribasim and Test ribasim_cli. It only publish artifect of Build libribasim and Build ribasim_cli if they past their tests.
+:::
+
+```{mermaid}
+graph LR
+    A[Make Github Release]-->B(Release)
+    F[Generate Testmodels]-->A
+    G[Make QGIS plugin]-->A
+    H[Build libribasim]---D[Test libribasim]
+    D-->A
+    C[Build ribasim_cli] --- E[Test ribasim_cli]
+    E-->A
 ```
