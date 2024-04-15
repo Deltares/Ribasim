@@ -206,7 +206,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if ntimes > 0 && round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
-    step!(integrator, dt; stop_at_tdt = true)
+    step!(integrator, dt, true)
     return model
 end
 
@@ -222,9 +222,14 @@ function SciMLBase.solve!(model::Model)::Model
         for _ in TimeChoiceIterator(integrator, times)
             update_allocation!(integrator)
         end
+
+        # https://github.com/SciML/SciMLBase.jl/issues/669
+        if integrator.sol.retcode != ReturnCode.Default
+            return integrator.sol
+        end
+        integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
     else
         solve!(integrator)
     end
-    check_error!(integrator)
     return model
 end

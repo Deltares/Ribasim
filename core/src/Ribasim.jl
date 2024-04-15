@@ -53,10 +53,10 @@ using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, get_tmp
 using SciMLBase:
     init,
-    check_error!,
     solve!,
     step!,
     SciMLBase,
+    ReturnCode,
     successful_retcode,
     CallbackSet,
     ODEFunction,
