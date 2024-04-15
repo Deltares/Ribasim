@@ -53,6 +53,7 @@ using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
 using PreallocationTools: DiffCache, get_tmp
 using SciMLBase:
     init,
+    check_error!,
     solve!,
     step!,
     SciMLBase,
@@ -62,7 +63,8 @@ using SciMLBase:
     ODEProblem,
     ODESolution,
     VectorContinuousCallback,
-    get_proposed_dt
+    get_proposed_dt,
+    TimeChoiceIterator
 using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector

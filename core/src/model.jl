@@ -29,6 +29,9 @@ end
 
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
+    if !valid_config(config)
+        error("Invalid configuration in TOML.")
+    end
     return Model(config)
 end
 
@@ -188,10 +191,40 @@ function SciMLBase.successful_retcode(model::Model)::Bool
 end
 
 """
-    solve!(model::Model)::ODESolution
+    step!(model::Model, dt::Float64)::Model
+
+Take Model timesteps until `t + dt` is reached exactly.
+"""
+function SciMLBase.step!(model::Model, dt::Float64)::Model
+    (; config, integrator) = model
+    (; t) = integrator
+    # If we are at an allocation time, run allocation before the next physical
+    # layer timestep. This allows allocation over period (t, t + dt) to use variables
+    # set over BMI at time t before calling this function.
+    # Also, don't run allocation at t = 0 since there are no flows yet (#1389).
+    ntimes = t / config.allocation.timestep
+    if ntimes > 0 && round(ntimes) ≈ ntimes
+        update_allocation!(integrator)
+    end
+    step!(integrator, dt; stop_at_tdt = true)
+    return model
+end
+
+"""
+    solve!(model::Model)::Model
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::ODESolution
-    return solve!(model.integrator)
+function SciMLBase.solve!(model::Model)::Model
+    (; config, integrator) = model
+    if config.allocation.use_allocation
+        times = range(integrator.sol.prob.tspan...; step = config.allocation.timestep)
+        for _ in TimeChoiceIterator(integrator, times)
+            update_allocation!(integrator)
+        end
+    else
+        solve!(integrator)
+    end
+    check_error!(integrator)
+    return model
 end
