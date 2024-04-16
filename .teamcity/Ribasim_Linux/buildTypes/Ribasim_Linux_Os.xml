@@ -4,6 +4,7 @@
   <description>Template for agent that uses Linux OS</description>
   <settings>
     <options>
+      <option name="cleanBuild" value="true" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters />
