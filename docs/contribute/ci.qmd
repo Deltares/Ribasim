@@ -1,0 +1,77 @@
+---
+title: "Continuous integration"
+---
+
+Continuous integration (CI) is about commits being merged frequently.
+When proposing new changes to the code base a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) is opened.
+When a new commit in that pull request, a series of tests will be done to make sure that this commit is error-free and robust in different environments.
+This process drive each new development through building, testing, quality checking.
+
+```{mermaid}
+graph LR
+    A[New development]-->B[Continuous integration]
+    B-->C[Merge]
+```
+
+
+This page contains an extensive explanation on how the Ribasim continuous integration works.
+
+# Github actions
+
+With [GitHub Actions](https://docs.github.com/en/actions), Github provides their own continuous integration service.
+They include the following checks:
+
+* Julia Run Testmodels: This is to make sure all the test models can be run successfully
+* Julia Tests: Runs Julia unit tests on multiple platforms
+* Docs: Builds the documentation and executes the examples
+* Pre-commit: Checks Python code quality with linters and enforces formatting
+* Python codegen: Makes sure code generation is still up to date by checking that code generation wouldn't change any files
+* Mypy: Runs mypy on our Python codebase to check types
+* Ribasim Python tests: Runs Ribasim Python tests on multiple platforms and multiple Python versions
+* QGIS Tests: Runs QGIS unit tests
+
+
+# TeamCity
+Ribasim has another cloud-based CI service based on [TeamCity](https://www.jetbrains.com/teamcity/).
+TeamCity interacts with Github and manages the release process.
+
+```{mermaid}
+graph LR
+    A[TeamCity]-->|Monitoring|B[Github]
+    A-->C(Release)
+```
+
+## Conditions of using TeamCity
+TeamCity is not always triggered by every new development.
+For a certain workflow, TeamCity is only used under the following conditions:
+
+* When the workflow takes too long to run on Github Action
+* When the release depends on the artifacts of the workflow.
+* When other TeamCity projects depend on artifacts of Ribasim (e.g. iMOD coupler)
+
+## Release process
+In the release, we include the generated testmodels, Ribasim CLI on Windows and Linux, Ribasim QGIS, and the source code.
+
+We have the following pipeline to generate artifects for releasing:
+
+* Generate Testmodels: produces generated_testmodels artifact which is part of the release.
+* Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the Github repository. When a tag starts with `v20` is added, it triggers the release process.
+* Build libribasim: builds library of Ribasim on Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
+* Build ribasim_cli: builds CLI application on Linux and Windows, its artifact is tested in `Test ribasim_cli` and used by release
+* Test ribasim_api: tests libribasim artifact on Linux and Windows
+* Test ribasim_cli: tests ribasim_cli artifact on Linux and Windows
+
+::: {.callout-note}
+Make Github Release does not publish artifacts of "Test libribasim" and "Test ribasim_cli". It only publishes artifacts of "Build libribasim" and "Build ribasim_cli" if the beforementioned tests pass.
+:::
+
+```{mermaid}
+graph LR
+    A[Make Github Release]-->B(Release)
+    F[Generate Testmodels]-->A
+    G[Make QGIS plugin]-->A
+    H[Build libribasim]---D[Test libribasim]
+    D-->A
+    C[Build ribasim_cli] --- E[Test ribasim_cli]
+    E-->A
+```
