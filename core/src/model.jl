@@ -112,6 +112,7 @@ function Model(config::Config)::Model
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
