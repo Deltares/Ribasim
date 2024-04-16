@@ -379,3 +379,97 @@ def compound_variable_condition_model() -> Model:
     model.edge.add(model.discrete_control[6], model.pump[4])
 
     return model
+
+
+def level_range_model() -> Model:
+    """
+    Set up a minimal model in which the level of a basin is kept within an acceptable range
+    around a setpoint while being affected by time-varying forcing.
+    This is done by bringing the level back to the setpoint once the level goes beyond this range.
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[20.0]),
+            basin.Time(time=["2020-01-01", "2020-07-01"], precipitation=[0.0, 3e-6]),
+        ],
+    )
+    model.pump.add(
+        Node(2, Point(1, 1)),
+        [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 2e-3, 0.0])],
+    )
+    model.pump.add(
+        Node(3, Point(1, -1)),
+        [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 0.0, 2e-3])],
+    )
+    model.level_boundary.add(
+        Node(4, Point(2, 0)), [level_boundary.Static(level=[10.0])]
+    )
+    model.tabulated_rating_curve.add(
+        Node(5, Point(-1, 0)),
+        [tabulated_rating_curve.Static(level=[2.0, 15.0], flow_rate=[0.0, 2e-3])],
+    )
+    model.terminal.add(Node(6, Point(-2, 0)))
+    model.discrete_control.add(
+        Node(7, Point(1, 0)),
+        [
+            discrete_control.Variable(
+                listen_node_type="Basin",
+                listen_node_id=[1],
+                variable="level",
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                # min, max
+                greater_than=[5.0, 15.0],
+                compound_variable_id=1,
+            ),
+            discrete_control.Logic(
+                truth_state=["FF", "TF", "TT"],
+                control_state=["in", "none", "out"],
+            ),
+        ],
+    )
+
+    model.edge.add(
+        model.basin[1],
+        model.pump[3],
+    )
+    model.edge.add(
+        model.pump[3],
+        model.level_boundary[4],
+    )
+    model.edge.add(
+        model.level_boundary[4],
+        model.pump[2],
+    )
+    model.edge.add(
+        model.pump[2],
+        model.basin[1],
+    )
+    model.edge.add(
+        model.basin[1],
+        model.tabulated_rating_curve[5],
+    )
+    model.edge.add(
+        model.tabulated_rating_curve[5],
+        model.terminal[6],
+    )
+    model.edge.add(
+        model.discrete_control[7],
+        model.pump[2],
+    )
+    model.edge.add(
+        model.discrete_control[7],
+        model.pump[3],
+    )
+
+    return model
