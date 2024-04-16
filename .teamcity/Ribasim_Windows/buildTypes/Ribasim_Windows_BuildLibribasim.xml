@@ -10,7 +10,9 @@
     <parameters />
     <build-runners />
     <vcs-settings />
-    <requirements />
+    <requirements>
+      <contains id="RQ_417" name="teamcity.agent.jvm.os.name" value="Windows" />
+    </requirements>
     <build-triggers />
     <cleanup />
   </settings>
