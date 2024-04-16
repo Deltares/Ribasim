@@ -709,3 +709,19 @@ function get_influx(basin::Basin, basin_idx::Int)::Float64
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
+
+function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
+    (; greater_than) = discrete_control
+    condition_idx_now = 1
+
+    for (compound_variable_idx, vec) in enumerate(greater_than)
+        l = length(vec)
+
+        if condition_idx_now + l > condition_idx
+            greater_than_idx = condition_idx - condition_idx_now + 1
+            return compound_variable_idx, greater_than_idx
+        end
+
+        condition_idx_now += l
+    end
+end

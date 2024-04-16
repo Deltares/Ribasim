@@ -13,11 +13,13 @@ function set_initial_discrete_controlled_parameters!(
     condition_diffs = zeros(Float64, n_conditions)
     discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
 
+    # Set the discrete control value (bool) per compound variable
     idx_start = 1
-    for (i, vec) in enumerate(discrete_control.condition_value)
+    for (compound_variable_idx, vec) in enumerate(discrete_control.condition_value)
         l = length(vec)
         idx_end = idx_start + l - 1
-        discrete_control.condition_value[i] .= (condition_diffs[idx_start:idx_end] .> 0)
+        discrete_control.condition_value[compound_variable_idx] .=
+            (condition_diffs[idx_start:idx_end] .> 0)
         idx_start += l
     end
 
@@ -202,6 +204,7 @@ function discrete_control_condition(out, u, t, integrator)
     (; discrete_control) = p
     condition_idx = 0
 
+    # Loop over compound variables
     for (listen_node_ids, variables, weights, greater_thans, look_aheads) in zip(
         discrete_control.listen_node_id,
         discrete_control.variable,
@@ -214,6 +217,7 @@ function discrete_control_condition(out, u, t, integrator)
             zip(listen_node_ids, variables, weights, look_aheads)
             value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
         end
+        # Loop over greater_than values for this compound_variable
         for greater_than in greater_thans
             condition_idx += 1
             diff = value - greater_than
@@ -266,22 +270,6 @@ function get_value(
     end
 
     return value
-end
-
-function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
-    (; greater_than) = discrete_control
-    condition_idx_now = 1
-
-    for (compound_variable_idx, vec) in enumerate(greater_than)
-        l = length(vec)
-
-        if condition_idx_now + l > condition_idx
-            greater_than_idx = condition_idx - condition_idx_now + 1
-            return compound_variable_idx, greater_than_idx
-        end
-
-        condition_idx_now += l
-    end
 end
 
 """

@@ -443,14 +443,13 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node; these are not unique but repeated
-    by the amount of conditions of this DiscreteControl node
-listen_node_id: the IDs of the nodes being condition on
-variable: the names of the variables in the condition
-weight: the weight of the variables in the condition
-look_ahead: the look ahead of variables  in the condition in seconds
-greater_than: The threshold value in the condition
-condition_value: The current value of each condition
+node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
+listen_node_id: the IDs of the nodes being condition on per compound variable
+variable: the names of the variables in the condition per compound variable
+weight: the weight of the variables in the condition per compound variable
+look_ahead: the look ahead of variables in the condition in seconds per compound_variable
+greater_than: The threshold values per compound variable
+condition_value: The current truth value of each condition per compound_variable per greater_than
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results

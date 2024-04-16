@@ -552,9 +552,11 @@ function parse_variables_and_conditions(compound_variable, condition)
     condition_value = BitVector[]
     errors = false
 
+    # Loop over unique discrete_control node IDs (on which at least one condition is defined)
     for id in unique(condition.node_id)
         condition_group_id = filter(row -> row.node_id == id, condition)
         variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        # Loop over compound variables for this node ID
         for compound_variable_id in unique(condition_group_id.compound_variable_id)
             condition_group_variable = filter(
                 row -> row.compound_variable_id == compound_variable_id,
