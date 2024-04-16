@@ -47,11 +47,6 @@ function Model(config::Config)::Model
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
-    t_end = seconds_since(config.endtime, config.starttime)
-    if t_end <= 0
-        error("Model starttime is not before endtime.")
-    end
-
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
