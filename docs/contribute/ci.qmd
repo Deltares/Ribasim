@@ -2,30 +2,38 @@
 title: "Continuous integration"
 ---
 
-Continuous integration is about commits being merged frequently and automatically. When a new commit is made, a series of tests will be done to make sure that this commit is error-free, appliance format, robust in difference environment and safe to be merged. This process drive each new development through building, testing, quality checking, it is like a pipeline.
-
-This page contains an extensive explanation on how the Ribasim pipeline works.
-
-# Github actions
-When a new development is to be merged into the main branch, one can either make a pull request or commit to main branch directly. Before a commit is added to main branch, a series of GitHub action will be performed. Github actions includes following checks:
-
-* Julia Run Testmodels: This is to make sure all the test models can be run successfully
-* Julia Tests: Run Julia unit tests on multiple platforms, depends on generated testmodels
-* Docs: Executes our documentation examples
-* Pre-commit: Checks code quality with linters, adjust the format
-* Python codegen: Check file difference and make sure that code generation wouldn't change any files
-* Mypy: Run mypy on our Python codebase to check types
-* Ribasim Python tests: Run Ribasim Python tests on multiple platforms and multiple Python versions, depends on ribasim_testmodels
-* QGIS Tests: Run QGIS unit tests
+Continuous integration (CI) is about commits being merged frequently.
+When proposing new changes to the code base a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) is opened.
+When a new commit in that pull request, a series of tests will be done to make sure that this commit is error-free and robust in different environments.
+This process drive each new development through building, testing, quality checking.
 
 ```{mermaid}
 graph LR
-    A[New development]-->B[Github actions]
+    A[New development]-->B[Continuous integration]
     B-->C[Merge]
 ```
 
+
+This page contains an extensive explanation on how the Ribasim continuous integration works.
+
+# Github actions
+
+With [GitHub Actions](https://docs.github.com/en/actions), Github provides their own continuous integration service.
+They include the following checks:
+
+* Julia Run Testmodels: This is to make sure all the test models can be run successfully
+* Julia Tests: Runs Julia unit tests on multiple platforms
+* Docs: Builds the documentation and executes the examples
+* Pre-commit: Checks Python code quality with linters and enforces formatting
+* Python codegen: Makes sure code generation is still up to date by checking that code generation wouldn't change any files
+* Mypy: Runs mypy on our Python codebase to check types
+* Ribasim Python tests: Runs Ribasim Python tests on multiple platforms and multiple Python versions
+* QGIS Tests: Runs QGIS unit tests
+
+
 # TeamCity
-Ribasim has another cloud-based CI/CD pipeline that is in the TeamCity. TeamCity closely monitors Github and manage the release process.
+Ribasim has another cloud-based CI service based on [TeamCity](https://www.jetbrains.com/teamcity/).
+TeamCity interacts with Github and manages the release process.
 
 ```{mermaid}
 graph LR
@@ -33,30 +41,28 @@ graph LR
     A-->C(Release)
 ```
 
-But TeamCity is not always triggered by every new development. TeamCity is only used or triggered in the following circumustances:
+## Conditions of using TeamCity
+TeamCity is not always triggered by every new development.
+For a certain workflow, TeamCity is only used under the following conditions:
 
-* When a action takes too long to run on Github Action
-* When the release depends on the artifects. For example, a new build needs to be publish
+* When the workflow takes too long to run on Github Action
+* When the release depends on the artifacts of the workflow.
+* When other TeamCity projects depend on artifacts of Ribasim (e.g. iMOD coupler)
 
-    TeamCity constantly monitors and has the information of every commit and when a commit is with a tag starts with `v20`, it trigger the release process.
-
-* When other TeamCity projects depend on artifacts of Ribasim (e.g. the coupler)
-
-In the release, we publish the generated testmodels, ribasim cli in Windows and Linux, Ribasim QGIS, and source code
-
-When TeamCity detects an release tag, the release process will be triggered. TeamCity will start to pack the artifects.
+## Release process
+In the release, we include the generated testmodels, Ribasim CLI on Windows and Linux, Ribasim QGIS, and the source code.
 
 We have the following pipeline to generate artifects for releasing:
 
-* Generate Testmodels: produces generated_testmodels artifect which is part of release.
-* Make GitHub Release: uses artifacts and it makes release
-* Build libribasim: builds binary of Ribasim in Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
-* Build ribasim_cli: builds command line interface in Linux and Windows,its artifact is tested in `Test ribasim_cli` and used by release
-* Test ribasim_api: tests libribasim artifact in Linux and Windows
-* Test ribasim_cli: tests ribasim_cli artifact in Linux and Windows
+* Generate Testmodels: produces generated_testmodels artifact which is part of the release.
+* Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the Github repository. When a tag starts with `v20` is added, it triggers the release process.
+* Build libribasim: builds library of Ribasim on Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
+* Build ribasim_cli: builds CLI application on Linux and Windows, its artifact is tested in `Test ribasim_cli` and used by release
+* Test ribasim_api: tests libribasim artifact on Linux and Windows
+* Test ribasim_cli: tests ribasim_cli artifact on Linux and Windows
 
 ::: {.callout-note}
-Make Github Release does not publish Test libribasim and Test ribasim_cli. It only publish artifect of Build libribasim and Build ribasim_cli if they past their tests.
+Make Github Release does not publish artifacts of "Test libribasim" and "Test ribasim_cli". It only publishes artifacts of "Build libribasim" and "Build ribasim_cli" if the beforementioned tests pass.
 :::
 
 ```{mermaid}
