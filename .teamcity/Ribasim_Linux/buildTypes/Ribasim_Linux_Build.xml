@@ -46,7 +46,7 @@ pixi run build-libribasim]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_275" name="env.OS" value="Linux" />
+      <contains id="RQ_275" name="env.OS" value="Linux" />
     </requirements>
     <build-triggers />
     <build-extensions>
