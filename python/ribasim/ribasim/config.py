@@ -23,6 +23,7 @@ from ribasim.schemas import (
     BasinTimeSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
+    DiscreteControlVariableSchema,
     FlowBoundaryStaticSchema,
     FlowBoundaryTimeSchema,
     FlowDemandStaticSchema,
@@ -287,10 +288,25 @@ class ManningResistance(MultiNodeModel):
 
 
 class DiscreteControl(MultiNodeModel):
+    variable: TableModel[DiscreteControlVariableSchema] = Field(
+        default_factory=TableModel[DiscreteControlVariableSchema],
+        json_schema_extra={
+            "sort_keys": [
+                "node_id",
+                "listen_node_type",
+                "listen_node_id",
+                "variable",
+            ]
+        },
+    )
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": ["node_id", "listen_node_id", "variable", "greater_than"]
+            "sort_keys": [
+                "node_id",
+                "compound_variable_id",
+                "greater_than",
+            ]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(
