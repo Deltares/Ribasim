@@ -2,7 +2,7 @@
 title: "Continuous integration"
 ---
 
-Continuous integration (CI) is about commits being merged frequently.
+Continuous integration (CI) is about commits being merged frequently, resulting in new features being released frequently.
 When proposing new changes to the code base a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) is opened.
 When a new commit in that pull request, a series of tests will be done to make sure that this commit is error-free and robust in different environments.
 This process drive each new development through building, testing, quality checking.
@@ -42,10 +42,9 @@ graph LR
 ```
 
 ## Conditions of using TeamCity
-TeamCity is not always triggered by every new development.
-For a certain workflow, TeamCity is only used under the following conditions:
+TeamCity only runs workflows with the following conditions:
 
-* When the workflow takes too long to run on Github Action
+* When the workflow would take too long to run on Github Action
 * When the release depends on the artifacts of the workflow.
 * When other TeamCity projects depend on artifacts of Ribasim (e.g. iMOD coupler)
 
