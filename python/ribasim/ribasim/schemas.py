@@ -32,7 +32,7 @@ class BasinStaticSchema(_BaseSchema):
 
 
 class BasinSubgridSchema(_BaseSchema):
-    subgrid_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    subgrid_id: Series[Int32] = pa.Field(nullable=False)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     basin_level: Series[float] = pa.Field(nullable=False)
     subgrid_level: Series[float] = pa.Field(nullable=False)
@@ -51,7 +51,7 @@ class BasinTimeSchema(_BaseSchema):
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     listen_node_type: Series[str] = pa.Field(nullable=False)
-    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False)
     variable: Series[str] = pa.Field(nullable=False)
     greater_than: Series[float] = pa.Field(nullable=False)
     look_ahead: Series[float] = pa.Field(nullable=True)
@@ -78,14 +78,14 @@ class FlowBoundaryTimeSchema(_BaseSchema):
 class FlowDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     demand: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
 
 
 class FlowDemandTimeSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
 
 
 class FractionalFlowStaticSchema(_BaseSchema):
@@ -110,7 +110,7 @@ class LevelDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     min_level: Series[float] = pa.Field(nullable=False)
     max_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
 
 
 class LevelDemandTimeSchema(_BaseSchema):
@@ -118,7 +118,7 @@ class LevelDemandTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
     max_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
 
 
 class LinearResistanceStaticSchema(_BaseSchema):
@@ -153,7 +153,7 @@ class PidControlStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     listen_node_type: Series[str] = pa.Field(nullable=False)
-    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
     integral: Series[float] = pa.Field(nullable=False)
@@ -164,7 +164,7 @@ class PidControlStaticSchema(_BaseSchema):
 class PidControlTimeSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     listen_node_type: Series[str] = pa.Field(nullable=False)
-    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False)
     time: Series[Timestamp] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
@@ -207,7 +207,7 @@ class UserDemandStaticSchema(_BaseSchema):
     demand: Series[float] = pa.Field(nullable=False)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
 
 
 class UserDemandTimeSchema(_BaseSchema):
@@ -216,4 +216,4 @@ class UserDemandTimeSchema(_BaseSchema):
     demand: Series[float] = pa.Field(nullable=False)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
-    priority: Series[Int32] = pa.Field(nullable=False, default=0)
+    priority: Series[Int32] = pa.Field(nullable=False)
