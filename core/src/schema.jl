@@ -186,9 +186,9 @@ end
 
 @version DiscreteControlVariableV1 begin
     node_id::Int32
-    compound_variable_id::Int
+    compound_variable_id::Int32
     listen_node_type::String
-    listen_node_id::Int
+    listen_node_id::Int32
     variable::String
     weight::Union{Missing, Float64}
     look_ahead::Union{Missing, Float64}
@@ -196,7 +196,7 @@ end
 
 @version DiscreteControlConditionV1 begin
     node_id::Int32
-    compound_variable_id::Int
+    compound_variable_id::Int32
     greater_than::Float64
 end
 
