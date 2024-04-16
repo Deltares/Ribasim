@@ -46,7 +46,7 @@ pixi run build-libribasim]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
+      <equals id="RQ_275" name="teamcity.agent.jvm.os.name" value="Linux" />
     </requirements>
     <build-triggers />
     <build-extensions>
