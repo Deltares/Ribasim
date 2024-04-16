@@ -10,9 +10,7 @@
     <parameters />
     <build-runners />
     <vcs-settings />
-    <requirements>
-      <contains id="RQ_275" name="env.OS" value="Windows" />
-    </requirements>
+    <requirements />
     <build-triggers />
     <cleanup />
   </settings>
