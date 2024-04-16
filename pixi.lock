@@ -218,7 +218,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.2.1-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.0-h1e5e2c1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py312hfb8ada1_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py312hfb8ada1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -503,7 +503,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.2.1-hd75f5a5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.0-h6c6cd50_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py312haf8ecfc_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py312h83c8a23_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -763,7 +763,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.1-h0d3ecfb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.0-h3d3088e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py312h9e53831_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py312h88edd18_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -1023,7 +1023,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.2.1-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.0-heb0c069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py312h2ab9e98_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py312h2ab9e98_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -1438,7 +1438,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/owslib-0.30.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py312hfb8ada1_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py312hfb8ada1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -1910,7 +1910,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/owslib-0.30.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py312haf8ecfc_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py312h83c8a23_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -2363,7 +2363,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/owslib-0.30.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py312h9e53831_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py312h88edd18_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -2806,7 +2806,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/owslib-0.30.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py312h2ab9e98_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py312h2ab9e98_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -3186,7 +3186,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.2.1-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.0-h1e5e2c1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py310hcc13569_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py310hcc13569_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -3472,7 +3472,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.2.1-hd75f5a5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.0-h6c6cd50_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py310hdba192b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py310h276d7da_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -3733,7 +3733,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.1-h0d3ecfb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.0-h3d3088e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py310h6e3cc31_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py310h401b61c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -3993,7 +3993,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.2.1-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.0-heb0c069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py310hecd3228_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py310hecd3228_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -4305,7 +4305,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.2.1-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.0-h1e5e2c1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py311h320fe9a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py311h320fe9a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -4590,7 +4590,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.2.1-hd75f5a5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.0-h6c6cd50_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py311h1eadf79_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py311h8f6166a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -4850,7 +4850,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.1-h0d3ecfb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.0-h3d3088e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py311h6e08293_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py311hfbe21a1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -5109,7 +5109,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.2.1-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.0-heb0c069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py311hf63dbb6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py311hf63dbb6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -5420,7 +5420,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.2.1-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.0-h1e5e2c1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py312hfb8ada1_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py312hfb8ada1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -5705,7 +5705,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.2.1-hd75f5a5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.0-h6c6cd50_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py312haf8ecfc_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py312h83c8a23_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -5965,7 +5965,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.1-h0d3ecfb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.0-h3d3088e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py312h9e53831_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py312h88edd18_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -6225,7 +6225,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.2.1-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.0-heb0c069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py312h2ab9e98_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py312h2ab9e98_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.1.240316-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.18.3-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.18.3-pyhd8ed1ab_0.conda
@@ -24853,15 +24853,34 @@ packages:
   timestamp: 1710076089469
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py310h6e3cc31_0
-  subdir: osx-arm64
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py310h6e3cc31_0.conda
-  sha256: de01fb65d9199d689826980f5344fe8d5dc062368937f1bfd6be496697167c4d
-  md5: 8aea77a4caf3494045d029bac49a0618
+  version: 2.2.0
+  build: py310h276d7da_0
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py310h276d7da_0.conda
+  sha256: 7f5e7e9a37d546ec5de12d5816c200cd96a9bd0f20b81c5be99a38b080c9c359
+  md5: 68f06445075e982fcfcdeadbba006899
   depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
+  - libcxx >=15
+  - numpy >=1.22.4,<2.0a0
+  - python >=3.10,<3.11.0a0
+  - python-dateutil >=2.8.1
+  - python-tzdata >=2022a
+  - python_abi 3.10.* *_cp310
+  - pytz >=2020.1
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 12146747
+  timestamp: 1705729279528
+- kind: conda
+  name: pandas
+  version: 2.2.0
+  build: py310h401b61c_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py310h401b61c_0.conda
+  sha256: 687124f7e2cd7efe4c6c756f497ef11d79a51b64ddfcaf719c55b950b819733e
+  md5: 9e8399edb9bb82b4ebfdb0153f7d3c10
+  depends:
+  - libcxx >=15
   - numpy >=1.22.4,<2.0a0
   - python >=3.10,<3.11.0a0
   - python >=3.10,<3.11.0a0 *_cpython
@@ -24871,16 +24890,16 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 11637557
-  timestamp: 1702058059753
+  size: 12010785
+  timestamp: 1705729323620
 - kind: conda
   name: pandas
-  version: 2.1.4
+  version: 2.2.0
   build: py310hcc13569_0
   subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py310hcc13569_0.conda
-  sha256: d0743541397140a25a89ab0686933005a4c104d95c23ff1c322f903a50b18099
-  md5: 410f7e83992a591e492c25049a859254
+  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py310hcc13569_0.conda
+  sha256: 540cb88ff475938dc8fd0b55a911db5daf509603eca385d2bad55013bf17e453
+  md5: 514c836161e8b2e43e7d8fb7a28a92c4
   depends:
   - libgcc-ng >=12
   - libstdcxx-ng >=12
@@ -24892,37 +24911,16 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 12413413
-  timestamp: 1702057653692
+  size: 13003103
+  timestamp: 1705729043583
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py310hdba192b_0
-  subdir: osx-64
-  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py310hdba192b_0.conda
-  sha256: 4bbbe713bc989f34ba9487a633c2c7c658e34732c57fa72fb78d555c2c85913a
-  md5: c31d7eb88b7ab366eb743e52a919cd22
-  depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
-  - numpy >=1.22.4,<2.0a0
-  - python >=3.10,<3.11.0a0
-  - python-dateutil >=2.8.1
-  - python-tzdata >=2022a
-  - python_abi 3.10.* *_cp310
-  - pytz >=2020.1
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 11742775
-  timestamp: 1702058116054
-- kind: conda
-  name: pandas
-  version: 2.1.4
+  version: 2.2.0
   build: py310hecd3228_0
   subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py310hecd3228_0.conda
-  sha256: ff1b3ed37c84fd85652b9965df9db6a218effa617145d7eda6589bdb1b752c03
-  md5: 6e13abfa9738c97746bb4ce0fb117462
+  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py310hecd3228_0.conda
+  sha256: ed67f5d8410a8aee055b088b6a25dbd2c92efb15ecebed068a1f3c6d7d19039b
+  md5: ac5e16abe38d98df009a578b91cfcc66
   depends:
   - numpy >=1.22.4,<2.0a0
   - python >=3.10,<3.11.0a0
@@ -24935,37 +24933,16 @@ packages:
   - vc14_runtime >=14.29.30139
   license: BSD-3-Clause
   license_family: BSD
-  size: 11318695
-  timestamp: 1702058188712
+  size: 11829063
+  timestamp: 1705729584473
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py311h1eadf79_0
-  subdir: osx-64
-  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py311h1eadf79_0.conda
-  sha256: 994d226d29293c1b118c0902af50719c5fc25c63c2c6cf7be7808b44226e19eb
-  md5: 905aff7f27a734e251526b9a7ecc20ac
-  depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
-  - numpy >=1.23.5,<2.0a0
-  - python >=3.11,<3.12.0a0
-  - python-dateutil >=2.8.1
-  - python-tzdata >=2022a
-  - python_abi 3.11.* *_cp311
-  - pytz >=2020.1
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 14378188
-  timestamp: 1702058207156
-- kind: conda
-  name: pandas
-  version: 2.1.4
+  version: 2.2.0
   build: py311h320fe9a_0
   subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py311h320fe9a_0.conda
-  sha256: 4f40035c77c381e0151c0fb0b39d0dfc343947f7d283c2bced2123273c5d4884
-  md5: e44ccb61b6621bf3f8053ae66eba7397
+  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py311h320fe9a_0.conda
+  sha256: 2198fb053d15ac5e1ea73990b6a1d6a08b4312bbb3364890cfd7d984840119e9
+  md5: b9e7a2cb2c47bbb99c05d1892500be45
   depends:
   - libgcc-ng >=12
   - libstdcxx-ng >=12
@@ -24977,19 +24954,60 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 14990951
-  timestamp: 1702057771639
+  size: 15736776
+  timestamp: 1705728915635
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py311h6e08293_0
-  subdir: osx-arm64
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py311h6e08293_0.conda
-  sha256: fa6c79cf5252c22ef8141a405ea9650ea9df2d6436c003b279086e146eaef1e5
-  md5: 5130445e7fe8465365dab3ed3694c770
+  version: 2.2.0
+  build: py311h8f6166a_0
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py311h8f6166a_0.conda
+  sha256: 79c7fac5c24e2e82f9a53f7070a7e689c048e9dce374d7810c7ef0797855853d
+  md5: dcfc21d98671c8b540fdc8ccb201e0da
   depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
+  - libcxx >=15
+  - numpy >=1.23.5,<2.0a0
+  - python >=3.11,<3.12.0a0
+  - python-dateutil >=2.8.1
+  - python-tzdata >=2022a
+  - python_abi 3.11.* *_cp311
+  - pytz >=2020.1
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 14860946
+  timestamp: 1705729295540
+- kind: conda
+  name: pandas
+  version: 2.2.0
+  build: py311hf63dbb6_0
+  subdir: win-64
+  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py311hf63dbb6_0.conda
+  sha256: 20dbb4f8013b39b6f62350b1e82e3c97a00573f6d54e86152c8e27fda69f3a32
+  md5: 19e55b3676a5f783c44d864fbb29ef41
+  depends:
+  - numpy >=1.23.5,<2.0a0
+  - python >=3.11,<3.12.0a0
+  - python-dateutil >=2.8.1
+  - python-tzdata >=2022a
+  - python_abi 3.11.* *_cp311
+  - pytz >=2020.1
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 14570059
+  timestamp: 1705729588827
+- kind: conda
+  name: pandas
+  version: 2.2.0
+  build: py311hfbe21a1_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py311hfbe21a1_0.conda
+  sha256: 2d170862546523a1cb2a3e6c3ccaa4bcb1d7ef72b19a1424ec11f610441e52c4
+  md5: a54f46dfc3f62fe0632cef8a65c2837d
+  depends:
+  - libcxx >=15
   - numpy >=1.23.5,<2.0a0
   - python >=3.11,<3.12.0a0
   - python >=3.11,<3.12.0a0 *_cpython
@@ -24999,40 +25017,18 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 14300774
-  timestamp: 1702058260980
+  size: 14827676
+  timestamp: 1705729324480
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py311hf63dbb6_0
-  subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py311hf63dbb6_0.conda
-  sha256: be6d27e9c7e83c4dbc40003f2d62b79a5af0a3febb3a69a496d867763d983958
-  md5: 5179a87c529fa08864d899f05e16345b
-  depends:
-  - numpy >=1.23.5,<2.0a0
-  - python >=3.11,<3.12.0a0
-  - python-dateutil >=2.8.1
-  - python-tzdata >=2022a
-  - python_abi 3.11.* *_cp311
-  - pytz >=2020.1
-  - ucrt >=10.0.20348.0
-  - vc >=14.2,<15
-  - vc14_runtime >=14.29.30139
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 13785578
-  timestamp: 1702058272745
-- kind: conda
-  name: pandas
-  version: 2.1.4
+  version: 2.2.0
   build: py312h2ab9e98_0
   subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.1.4-py312h2ab9e98_0.conda
-  sha256: 7adc39b8cc3a3d8109f4b802d3f5e5a450580b33c0cf6a089095f094ddfcbe07
-  md5: 6dbc5833a37e7d175571db62ad17c466
+  url: https://conda.anaconda.org/conda-forge/win-64/pandas-2.2.0-py312h2ab9e98_0.conda
+  sha256: 94a41280895fc7a30f44ab032e5170f2e6aafe8ba82f2f4614acb88dd2a8f562
+  md5: 5cf40988e95c84634230633bc28b8cc7
   depends:
-  - numpy >=1.26.2,<2.0a0
+  - numpy >=1.26.3,<2.0a0
   - python >=3.12,<3.13.0a0
   - python-dateutil >=2.8.1
   - python-tzdata >=2022a
@@ -25043,20 +25039,39 @@ packages:
   - vc14_runtime >=14.29.30139
   license: BSD-3-Clause
   license_family: BSD
-  size: 13499010
-  timestamp: 1702058413592
+  size: 14202823
+  timestamp: 1705729643544
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py312h9e53831_0
-  subdir: osx-arm64
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.1.4-py312h9e53831_0.conda
-  sha256: 0262d7d91d74b8f41c5b051b58b4159d8a9f2a226e4f90157368a85eeabb05be
-  md5: e85369cef4da4eb9e9c44fcc3f43c62b
+  version: 2.2.0
+  build: py312h83c8a23_0
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.2.0-py312h83c8a23_0.conda
+  sha256: 72b58d623b6d58ce55bed5d81244caa60df7a739090fac380875091525fd1e7d
+  md5: b5a2e09aa631f35983fe291fcc340f6e
   depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
-  - numpy >=1.26.2,<2.0a0
+  - libcxx >=15
+  - numpy >=1.26.3,<2.0a0
+  - python >=3.12,<3.13.0a0
+  - python-dateutil >=2.8.1
+  - python-tzdata >=2022a
+  - python_abi 3.12.* *_cp312
+  - pytz >=2020.1
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 14588536
+  timestamp: 1705729344060
+- kind: conda
+  name: pandas
+  version: 2.2.0
+  build: py312h88edd18_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.2.0-py312h88edd18_0.conda
+  sha256: 96718cc34d54c72c380c75387ecf5ef8838f56acc9fa6fac882a914afb073a6f
+  md5: 118b50e4e7c92c1554cdd5b14816a122
+  depends:
+  - libcxx >=15
+  - numpy >=1.26.3,<2.0a0
   - python >=3.12,<3.13.0a0
   - python >=3.12,<3.13.0a0 *_cpython
   - python-dateutil >=2.8.1
@@ -25065,41 +25080,20 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 13892865
-  timestamp: 1702058090296
+  size: 14480741
+  timestamp: 1705729364215
 - kind: conda
   name: pandas
-  version: 2.1.4
-  build: py312haf8ecfc_0
-  subdir: osx-64
-  url: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.1.4-py312haf8ecfc_0.conda
-  sha256: 380e341b01aa281a6517f23ed665ce152033f594baa3271c655bb97ac5347405
-  md5: cb889a75192ef98a17c3f431f6518dd2
-  depends:
-  - __osx >=10.9
-  - libcxx >=16.0.6
-  - numpy >=1.26.2,<2.0a0
-  - python >=3.12,<3.13.0a0
-  - python-dateutil >=2.8.1
-  - python-tzdata >=2022a
-  - python_abi 3.12.* *_cp312
-  - pytz >=2020.1
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 14000086
-  timestamp: 1702057909228
-- kind: conda
-  name: pandas
-  version: 2.1.4
+  version: 2.2.0
   build: py312hfb8ada1_0
   subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.1.4-py312hfb8ada1_0.conda
-  sha256: 6001697a26c9e6eab57bb1b545a634bf249b19184ffede725abe231466e6efb3
-  md5: d0745ae74c2b26571b692ddde112eebb
+  url: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.2.0-py312hfb8ada1_0.conda
+  sha256: 4f0fdce898e94d5c5b7970ac8c39497949af86e5985c9094f325f696bc2cea9a
+  md5: 07dc8151dda37002f69a95cec87f0526
   depends:
   - libgcc-ng >=12
   - libstdcxx-ng >=12
-  - numpy >=1.26.2,<2.0a0
+  - numpy >=1.26.3,<2.0a0
   - python >=3.12,<3.13.0a0
   - python-dateutil >=2.8.1
   - python-tzdata >=2022a
@@ -25107,8 +25101,8 @@ packages:
   - pytz >=2020.1
   license: BSD-3-Clause
   license_family: BSD
-  size: 14679642
-  timestamp: 1702057691853
+  size: 15434235
+  timestamp: 1705729082425
 - kind: conda
   name: pandas-stubs
   version: 2.2.1.240316
