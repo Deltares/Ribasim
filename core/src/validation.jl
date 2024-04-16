@@ -597,29 +597,31 @@ end
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
-function valid_sources(p::Parameters, allocation_network_id::Int32)::Bool
+function valid_sources(
+    p::Parameters,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+    subnetwork_id::Int32,
+)::Bool
     (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
 
     errors = false
 
-    for edge in edge_ids
+    for edge in keys(capacity.data)
         (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
+        if graph[id_source, id_dst].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
-            if is_main_network(allocation_network_id)
+            if is_main_network(subnetwork_id)
                 if !from_source_node
                     errors = true
                     @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
+                from_main_network = is_main_network(graph[id_source].subnetwork_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
                 end
             end
         end

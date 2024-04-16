@@ -5,9 +5,9 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     (; subnetwork_demands, subnetwork_allocateds) = allocation
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
-            if graph[outflow_id].allocation_network_id != 1
+            if graph[outflow_id].subnetwork_id != 1
                 main_network_source_edges =
-                    get_main_network_connections(p, graph[outflow_id].allocation_network_id)
+                    get_main_network_connections(p, graph[outflow_id].subnetwork_id)
                 edge = (node_id, outflow_id)
                 push!(main_network_source_edges, edge)
                 subnetwork_demands[edge] = zeros(n_priorities)
@@ -19,281 +19,56 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
 end
 
 """
-Find all nodes in the subnetwork which will be used in the allocation network.
-Some nodes are skipped to optimize allocation optimization.
-"""
-function allocation_graph_used_nodes!(p::Parameters, allocation_network_id::Int32)::Nothing
-    (; graph, basin, fractional_flow, allocation) = p
-    (; main_network_connections) = allocation
-
-    node_ids = graph[].node_ids[allocation_network_id]
-    used_nodes = Set{NodeID}()
-    for node_id in node_ids
-        use_node = false
-        has_fractional_flow_outneighbors =
-            get_fractional_flow_connected_basins(node_id, basin, fractional_flow, graph)[3]
-        if node_id.type in [NodeType.UserDemand, NodeType.Basin, NodeType.Terminal]
-            use_node = true
-        elseif has_fractional_flow_outneighbors
-            use_node = true
-        elseif has_external_demand(graph, node_id, :flow_demand)[1]
-            use_node = true
-        end
-
-        if use_node
-            push!(used_nodes, node_id)
-        end
-    end
-
-    # Add nodes in the allocation network for nodes connected to the source edges
-    # One of these nodes can be outside the subnetwork, as long as the edge
-    # connects to the subnetwork
-    edges_source = graph[].edges_source
-    for edge_metadata in get(edges_source, allocation_network_id, Set{EdgeMetadata}())
-        (; from_id, to_id) = edge_metadata
-        push!(used_nodes, from_id)
-        push!(used_nodes, to_id)
-    end
-
-    filter!(in(used_nodes), node_ids)
-
-    # For the main network, include nodes that connect the main network to a subnetwork
-    # (also includes nodes not in the main network in the input)
-    if is_main_network(allocation_network_id)
-        for connections_subnetwork in main_network_connections
-            for connection in connections_subnetwork
-                union!(node_ids, connection)
-            end
-        end
-    end
-    return nothing
-end
-
-"""
 Find out whether the given edge is a source for an allocation network.
 """
 function is_allocation_source(graph::MetaGraph, id_src::NodeID, id_dst::NodeID)::Bool
-    return haskey(graph, id_src, id_dst) &&
-           graph[id_src, id_dst].allocation_network_id_source != 0
+    return haskey(graph, id_src, id_dst) && graph[id_src, id_dst].subnetwork_id_source != 0
 end
 
 """
-Add to the edge metadata that the given edge is used for allocation flow.
-If the edge does not exist, it is created.
+Get the fixed capacity of the edges in the subnetwork
 """
-function indicate_allocation_flow!(
-    graph::MetaGraph,
-    node_ids::AbstractVector{NodeID},
-)::Nothing
-    id_src = first(node_ids)
-    id_dst = last(node_ids)
-
-    if !haskey(graph, id_src, id_dst)
-        edge_metadata = EdgeMetadata(0, EdgeType.none, 0, id_src, id_dst, true, node_ids)
-    else
-        edge_metadata = graph[id_src, id_dst]
-        edge_metadata = @set edge_metadata.allocation_flow = true
-        edge_metadata = @set edge_metadata.node_ids = node_ids
-    end
-    graph[id_src, id_dst] = edge_metadata
-    return nothing
-end
-
-"""
-This loop finds allocation network edges in several ways:
-- Between allocation network nodes whose equivalent in the subnetwork are directly connected
-- Between allocation network nodes whose equivalent in the subnetwork are connected
-  with one or more allocation network nodes in between
-"""
-function find_allocation_graph_edges!(
+function get_subnetwork_capacity(
     p::Parameters,
-    allocation_network_id::Int32,
-)::Tuple{
-    Vector{Vector{NodeID}},
-    JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-}
+    subnetwork_id::Int32,
+)::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     (; graph) = p
+    node_ids_subnetwork = graph[].node_ids[subnetwork_id]
 
-    edges_composite = Vector{NodeID}[]
     dict = Dict{Tuple{NodeID, NodeID}, Float64}()
     capacity = JuMP.Containers.SparseAxisArray(dict)
 
-    node_ids = graph[].node_ids[allocation_network_id]
-    edge_ids = Set{Tuple{NodeID, NodeID}}()
-    graph[].edge_ids[allocation_network_id] = edge_ids
+    for edge_metadata in values(graph.edge_data)
+        if edge_metadata.from_id ∈ node_ids_subnetwork &&
+           edge_metadata.to_id ∈ node_ids_subnetwork
+            node_src = getfield(p, graph[edge_metadata.from_id].type)
+            node_dst = getfield(p, graph[edge_metadata.to_id].type)
 
-    # Loop over all IDs in the model
-    for node_id in labels(graph)
-        inneighbor_ids = inflow_ids(graph, node_id)
-        outneighbor_ids = outflow_ids(graph, node_id)
-        neighbor_ids = inoutflow_ids(graph, node_id)
+            capacity_edge = Inf
 
-        # If the current node_id is in the current subnetwork
-        if node_id in node_ids
-
-            # Capacity for nodes that have both a flow demand and a max flow rate
-            if has_external_demand(graph, node_id, :flow_demand)[1]
-                node = getfield(p, graph[node_id].type)
-                if is_flow_constraining(node)
-                    node_idx = findsorted(node.node_id, node_id)
-                    capacity[inflow_id(graph, node_id), node_id] =
-                        node.max_flow_rate[node_idx]
-                end
+            if is_flow_constraining(node_src)
+                node_src_idx = findsorted(node_src.node_id, edge_metadata.from_id)
+                capacity_node_src = node_src.max_flow_rate[node_src_idx]
+                capacity_edge = min(capacity_edge, capacity_node_src)
+            end
+            if is_flow_constraining(node_dst)
+                node_dst_idx = findsorted(node_dst.node_id, edge_metadata.to_id)
+                capacity_node_dst = node_dst.max_flow_rate[node_dst_idx]
+                capacity_edge = min(capacity_edge, capacity_node_dst)
             end
 
-            # Direct connections in the subnetwork between nodes that
-            # are in the allocation network
-            for inneighbor_id in inneighbor_ids
-                if inneighbor_id in node_ids
-                    # The opposite of source edges must not be made
-                    if is_allocation_source(graph, node_id, inneighbor_id)
-                        continue
-                    end
-                    indicate_allocation_flow!(graph, [inneighbor_id, node_id])
-                    push!(edge_ids, (inneighbor_id, node_id))
-                    # These direct connections cannot have capacity constraints
-                    capacity[node_id, inneighbor_id] = Inf
-                end
-            end
-            # Direct connections in the subnetwork between nodes that
-            # are in the allocation network
-            for outneighbor_id in outneighbor_ids
-                if outneighbor_id in node_ids
-                    # The opposite of source edges must not be made
-                    if is_allocation_source(graph, outneighbor_id, node_id)
-                        continue
-                    end
-                    indicate_allocation_flow!(graph, [node_id, outneighbor_id])
-                    push!(edge_ids, (node_id, outneighbor_id))
-                    # if subnetwork_outneighbor_id in user_demand.node_id: Capacity depends on user demand at a given priority
-                    # else: These direct connections cannot have capacity constraints
-                    capacity[node_id, outneighbor_id] = Inf
-                end
-            end
+            capacity[edge_metadata.from_id, edge_metadata.to_id] = capacity_edge
 
-        elseif graph[node_id].allocation_network_id == allocation_network_id
-
-            # Try to find an existing allocation network composite edge to add the current subnetwork_node_id to
-            found_edge = false
-            for edge_composite in edges_composite
-                if edge_composite[1] in neighbor_ids
-                    pushfirst!(edge_composite, node_id)
-                    found_edge = true
-                    break
-                elseif edge_composite[end] in neighbor_ids
-                    push!(edge_composite, node_id)
-                    found_edge = true
-                    break
-                end
-            end
-
-            # Start a new allocation network composite edge if no existing edge to append to was found
-            if !found_edge
-                push!(edges_composite, [node_id])
+            if !(
+                is_flow_direction_constraining(node_src) |
+                is_flow_direction_constraining(node_dst)
+            )
+                capacity[edge_metadata.from_id, edge_metadata.to_id] = capacity_edge
             end
         end
     end
-    return edges_composite, capacity
-end
 
-"""
-For the composite allocation network edges:
-- Find out whether they are connected to allocation network nodes on both ends
-- Compute their capacity
-- Find out their allowed flow direction(s)
-"""
-function process_allocation_graph_edges!(
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    edges_composite::Vector{Vector{NodeID}},
-    p::Parameters,
-    allocation_network_id::Int32,
-)::Nothing
-    (; graph) = p
-    node_ids = graph[].node_ids[allocation_network_id]
-    edge_ids = graph[].edge_ids[allocation_network_id]
-
-    for edge_composite in edges_composite
-        # Find allocation network node connected to this edge on the first end
-        node_id_1 = nothing
-        neighbors_side_1 = inoutflow_ids(graph, edge_composite[1])
-        for neighbor_node_id in neighbors_side_1
-            if neighbor_node_id in node_ids
-                node_id_1 = neighbor_node_id
-                pushfirst!(edge_composite, neighbor_node_id)
-                break
-            end
-        end
-
-        # No connection to an allocation node found on this side, so edge is discarded
-        if isnothing(node_id_1)
-            continue
-        end
-
-        # Find allocation network node connected to this edge on the second end
-        node_id_2 = nothing
-        neighbors_side_2 = inoutflow_ids(graph, edge_composite[end])
-        for neighbor_node_id in neighbors_side_2
-            if neighbor_node_id in node_ids
-                node_id_2 = neighbor_node_id
-                # Make sure this allocation network node is distinct from the other one
-                if node_id_2 ≠ node_id_1
-                    push!(edge_composite, neighbor_node_id)
-                    break
-                end
-            end
-        end
-
-        # No connection to allocation network node found on this side, so edge is discarded
-        if isnothing(node_id_2)
-            continue
-        end
-
-        if node_id_1 == node_id_2
-            continue
-        end
-
-        # Find capacity of this composite allocation network edge
-        positive_flow = true
-        negative_flow = true
-        edge_capacity = Inf
-        # The start and end subnetwork nodes of the composite allocation network
-        # edge are now nodes that have an equivalent in the allocation network,
-        # these do not constrain the composite edge capacity
-        for (node_id_1, node_id_2, node_id_3) in IterTools.partition(edge_composite, 3, 1)
-            node = getfield(p, graph[node_id_2].type)
-
-            # Find flow constraints
-            if is_flow_constraining(node)
-                problem_node_idx = findsorted(node.node_id, node_id_2)
-                edge_capacity = min(edge_capacity, node.max_flow_rate[problem_node_idx])
-            end
-
-            # Find flow direction constraints
-            if is_flow_direction_constraining(node)
-                inneighbor_node_id = inflow_id(graph, node_id_2)
-
-                if inneighbor_node_id == node_id_1
-                    negative_flow = false
-                elseif inneighbor_node_id == node_id_3
-                    positive_flow = false
-                end
-            end
-        end
-
-        # Add composite allocation network edge(s)
-        if positive_flow
-            indicate_allocation_flow!(graph, edge_composite)
-            capacity[node_id_1, node_id_2] = edge_capacity
-            push!(edge_ids, (node_id_1, node_id_2))
-        end
-
-        if negative_flow
-            indicate_allocation_flow!(graph, reverse(edge_composite))
-            capacity[node_id_2, node_id_1] = edge_capacity
-            push!(edge_ids, (node_id_2, node_id_1))
-        end
-    end
-    return nothing
+    return capacity
 end
 
 const allocation_source_nodetypes =
@@ -303,39 +78,39 @@ const allocation_source_nodetypes =
 Add the edges connecting the main network work to a subnetwork to both the main network
 and subnetwork allocation network.
 """
-function add_subnetwork_connections!(p::Parameters, allocation_network_id::Int32)::Nothing
+function add_subnetwork_connections!(
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
-    edge_ids = graph[].edge_ids[allocation_network_id]
 
-    if is_main_network(allocation_network_id)
+    if is_main_network(subnetwork_id)
         for connections in main_network_connections
-            union!(edge_ids, connections)
+            for connection in connections
+                capacity[connection...] = Inf
+            end
         end
     else
-        union!(edge_ids, get_main_network_connections(p, allocation_network_id))
+        for connection in get_main_network_connections(p, subnetwork_id)
+            capacity[connection...] = Inf
+        end
     end
     return nothing
 end
 
 """
-Build the graph used for the allocation problem.
+Process the subnetwork.
 """
-function allocation_graph(
+function subnetwork(
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    # Find out which nodes in the subnetwork are used in the allocation network
-    allocation_graph_used_nodes!(p, allocation_network_id)
+    capacity = get_subnetwork_capacity(p, subnetwork_id)
+    add_subnetwork_connections!(capacity, p, subnetwork_id)
 
-    # Find the edges in the allocation network
-    edges_composite, capacity = find_allocation_graph_edges!(p, allocation_network_id)
-
-    # Process the edges in the allocation network
-    process_allocation_graph_edges!(capacity, edges_composite, p, allocation_network_id)
-    add_subnetwork_connections!(p, allocation_network_id)
-
-    if !valid_sources(p, allocation_network_id)
+    if !valid_sources(p, capacity, subnetwork_id)
         error("Errors in sources in allocation network.")
     end
 
@@ -349,12 +124,10 @@ Non-negativivity constraints are also immediately added to the flow variables.
 """
 function add_variables_flow!(
     problem::JuMP.Model,
-    p::Parameters,
-    allocation_network_id::Int32,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
 )::Nothing
-    (; graph) = p
-    edge_ids = graph[].edge_ids[allocation_network_id]
-    problem[:F] = JuMP.@variable(problem, F[edge_id = edge_ids,] >= 0.0)
+    edges = keys(capacity.data)
+    problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
     return nothing
 end
 
@@ -365,12 +138,12 @@ The variable indices are the node_ids of the basins with a level demand in the s
 function add_variables_basin!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
     node_ids_basin = [
-        node_id for node_id in graph[].node_ids[allocation_network_id] if
-        graph[node_id].type == :basin
+        node_id for
+        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin
     ]
     problem[:F_basin_in] =
         JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
@@ -386,13 +159,13 @@ The variable indices are the node_ids of the nodes with a flow demand in the sub
 function add_variables_flow_buffer!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
 
     node_ids_flow_demand = NodeID[]
 
-    for node_id in graph[].node_ids[allocation_network_id]
+    for node_id in graph[].node_ids[subnetwork_id]
         if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
         end
@@ -414,12 +187,12 @@ posing the appropriate constraints.
 function add_variables_absolute_value!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph, allocation) = p
     (; main_network_connections) = allocation
 
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
     node_ids_user_demand = NodeID[]
     node_ids_level_demand = NodeID[]
     node_ids_flow_demand = NodeID[]
@@ -436,7 +209,7 @@ function add_variables_absolute_value!(
     end
 
     # For the main network, connections to subnetworks are treated as UserDemands
-    if is_main_network(allocation_network_id)
+    if is_main_network(subnetwork_id)
         for connections_subnetwork in main_network_connections
             for connection in connections_subnetwork
                 push!(node_ids_user_demand, connection[2])
@@ -466,10 +239,10 @@ function add_constraints_capacity!(
     problem::JuMP.Model,
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
-    main_network_source_edges = get_main_network_connections(p, allocation_network_id)
+    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
     F = problem[:F]
     edge_ids_finite_capacity = Tuple{NodeID, NodeID}[]
     for (edge, c) in capacity.data
@@ -496,11 +269,11 @@ flow over UserDemand edge outflow edge <= cumulative return flow from previous p
 function add_constraints_user_source!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
     node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
 
     problem[:source_user] = JuMP.@constraint(
@@ -522,50 +295,24 @@ flow over source edge <= source flow in subnetwork
 function add_constraints_source!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
-    edge_ids = graph[].edge_ids[allocation_network_id]
-    edge_ids_source = [
-        edge_id for edge_id in edge_ids if
-        graph[edge_id...].allocation_network_id_source == allocation_network_id
-    ]
+    edges_source = Tuple{NodeID, NodeID}[]
+    for edge_metadata in values(graph.edge_data)
+        edge = (edge_metadata.from_id, edge_metadata.to_id)
+        if graph[edge...].subnetwork_id_source == subnetwork_id
+            push!(edges_source, edge)
+        end
+    end
     F = problem[:F]
     problem[:source] = JuMP.@constraint(
         problem,
-        [edge_id = edge_ids_source],
+        [edge_id = edges_source],
         F[edge_id] <= 0.0,
         base_name = "source"
     )
     return nothing
-end
-
-"""
-Get the inneighbors of the given ID such that the connecting edge
-is an allocation flow edge.
-"""
-function inflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
-    inflow_ids = NodeID[]
-    for inneighbor_id in inneighbor_labels(graph, node_id)
-        if graph[inneighbor_id, node_id].allocation_flow
-            push!(inflow_ids, inneighbor_id)
-        end
-    end
-    return inflow_ids
-end
-
-"""
-Get the outneighbors of the given ID such that the connecting edge
-is an allocation flow edge.
-"""
-function outflow_ids_allocation(graph::MetaGraph, node_id::NodeID)
-    outflow_ids = NodeID[]
-    for outneighbor_id in outneighbor_labels(graph, node_id)
-        if graph[node_id, outneighbor_id].allocation_flow
-            push!(outflow_ids, outneighbor_id)
-        end
-    end
-    return outflow_ids
 end
 
 function get_basin_inflow(
@@ -602,12 +349,12 @@ sum(flows into node) == sum(flows out of node)
 function add_constraints_conservation_subnetwork!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
     node_ids_inlets = [
-        edge[2] for edge in get_main_network_connections(p, allocation_network_id) if
+        edge[2] for edge in get_main_network_connections(p, subnetwork_id) if
         edge[2].type != NodeType.Basin
     ]
     problem[:flow_conservation_inlets] = JuMP.@constraint(
@@ -636,13 +383,13 @@ flow into node + flow out of buffer = flow out of node + flow into buffer
 function add_constraints_conservation_flow_demand!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     F = problem[:F]
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
     (; graph) = p
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
     node_ids_flow_demand = [
         node_id for
         node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
@@ -669,23 +416,21 @@ sum(flows out of basin) == sum(flows into basin) + flow from storage and vertica
 function add_constraints_conservation_basin!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
 
     node_ids_basin = [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
     problem[:flow_conservation_basin] = JuMP.@constraint(
         problem,
         [node_id = node_ids_basin],
         get_basin_inflow(problem, node_id) + sum([
-            F[(node_id, outneighbor_id)] for
-            outneighbor_id in outflow_ids_allocation(graph, node_id)
+            F[(node_id, outneighbor_id)] for outneighbor_id in outflow_ids(graph, node_id)
         ]) ==
         get_basin_outflow(problem, node_id) + sum([
-            F[(inneighbor_id, node_id)] for
-            inneighbor_id in inflow_ids_allocation(graph, node_id)
+            F[(inneighbor_id, node_id)] for inneighbor_id in inflow_ids(graph, node_id)
         ]),
         base_name = "flow_conservation_basin"
     )
@@ -743,7 +488,7 @@ function add_constraints_absolute_value_user_demand!(
     F_abs_user_demand = problem[:F_abs_user_demand]
 
     flow_per_node = Dict(
-        node_id => F[(only(inflow_ids_allocation(graph, node_id)), node_id)] for
+        node_id => F[(inflow_id(graph, node_id), node_id)] for
         node_id in only(F_abs_user_demand.axes)
     )
 
@@ -802,11 +547,11 @@ flow after fractional_flow node <= fraction * inflow
 function add_constraints_fractional_flow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph, fractional_flow) = p
     F = problem[:F]
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
 
     edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
     fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
@@ -889,11 +634,11 @@ flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 oth
 function add_constraints_flow_demand_outflow!(
     problem::JuMP.Model,
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
     F = problem[:F]
-    node_ids = graph[].node_ids[allocation_network_id]
+    node_ids = graph[].node_ids[subnetwork_id]
     node_ids_flow_demand = [
         node_id for
         node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
@@ -908,37 +653,37 @@ function add_constraints_flow_demand_outflow!(
 end
 
 """
-Construct the allocation problem for the current subnetwork as a JuMP.jl model.
+Construct the allocation problem for the current subnetwork as a JuMP model.
 """
 function allocation_problem(
     p::Parameters,
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::JuMP.Model
     optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
     problem = JuMP.direct_model(optimizer)
 
     # Add variables to problem
-    add_variables_flow!(problem, p, allocation_network_id)
-    add_variables_basin!(problem, p, allocation_network_id)
-    add_variables_absolute_value!(problem, p, allocation_network_id)
-    add_variables_flow_buffer!(problem, p, allocation_network_id)
+    add_variables_flow!(problem, capacity)
+    add_variables_basin!(problem, p, subnetwork_id)
+    add_variables_absolute_value!(problem, p, subnetwork_id)
+    add_variables_flow_buffer!(problem, p, subnetwork_id)
 
     # Add constraints to problem
-    add_constraints_conservation_basin!(problem, p, allocation_network_id)
-    add_constraints_conservation_flow_demand!(problem, p, allocation_network_id)
-    add_constraints_conservation_subnetwork!(problem, p, allocation_network_id)
+    add_constraints_conservation_basin!(problem, p, subnetwork_id)
+    add_constraints_conservation_flow_demand!(problem, p, subnetwork_id)
+    add_constraints_conservation_subnetwork!(problem, p, subnetwork_id)
 
     add_constraints_absolute_value_user_demand!(problem, p)
     add_constraints_absolute_value_flow_demand!(problem)
     add_constraints_absolute_value_level_demand!(problem)
 
-    add_constraints_capacity!(problem, capacity, p, allocation_network_id)
-    add_constraints_source!(problem, p, allocation_network_id)
-    add_constraints_user_source!(problem, p, allocation_network_id)
-    add_constraints_fractional_flow!(problem, p, allocation_network_id)
+    add_constraints_capacity!(problem, capacity, p, subnetwork_id)
+    add_constraints_source!(problem, p, subnetwork_id)
+    add_constraints_user_source!(problem, p, subnetwork_id)
+    add_constraints_fractional_flow!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
-    add_constraints_flow_demand_outflow!(problem, p, allocation_network_id)
+    add_constraints_flow_demand_outflow!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)
 
     return problem
@@ -949,7 +694,7 @@ Construct the JuMP.jl problem for allocation.
 
 Inputs
 ------
-allocation_network_id: the ID of this allocation network
+subnetwork_id: the ID of this allocation network
 p: Ribasim problem parameters
 Δt_allocation: The timestep between successive allocation solves
 
@@ -958,15 +703,14 @@ Outputs
 An AllocationModel object.
 """
 function AllocationModel(
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
     p::Parameters,
     Δt_allocation::Float64,
 )::AllocationModel
-    # Add allocation network data to the model MetaGraph
-    capacity = allocation_graph(p, allocation_network_id)
+    capacity = subnetwork(p, subnetwork_id)
 
     # The JuMP.jl allocation problem
-    problem = allocation_problem(p, capacity, allocation_network_id)
+    problem = allocation_problem(p, capacity, subnetwork_id)
 
-    return AllocationModel(allocation_network_id, capacity, problem, Δt_allocation)
+    return AllocationModel(subnetwork_id, capacity, problem, Δt_allocation)
 end

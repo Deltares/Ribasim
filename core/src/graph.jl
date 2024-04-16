@@ -16,8 +16,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()
-    # Allocation edges per subnetwork
-    edge_ids = Dict{Int32, Set{Tuple{NodeID, NodeID}}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
     # The number of flow edges
@@ -69,7 +67,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             subnetwork_id = 0
         end
         edge_metadata =
-            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
+            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, NodeID[])
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
@@ -102,7 +100,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
     graph_data = (;
         node_ids,
-        edge_ids,
         edges_source,
         flow_dict,
         flow,
