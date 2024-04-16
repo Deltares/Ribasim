@@ -218,15 +218,21 @@ Solve a Model until the configured `endtime`.
 function SciMLBase.solve!(model::Model)::Model
     (; config, integrator) = model
     if config.allocation.use_allocation
-        times = range(integrator.sol.prob.tspan...; step = config.allocation.timestep)
-        for _ in TimeChoiceIterator(integrator, times)
+        (; tspan) = integrator.sol.prob
+        (; timestep) = config.allocation
+        allocation_times = timestep:timestep:(tspan[end] - timestep)
+        n_allocation_times = length(allocation_times)
+        # Don't run allocation at t = 0 since there are no flows yet (#1389).
+        step!(integrator, timestep, true)
+        for _ in 1:n_allocation_times
             update_allocation!(integrator)
+            step!(integrator, timestep, true)
         end
 
-        # https://github.com/SciML/SciMLBase.jl/issues/669
         if integrator.sol.retcode != ReturnCode.Default
-            return integrator.sol
+            return model
         end
+        # TODO replace with `check_error!` https://github.com/SciML/SciMLBase.jl/issues/669
         integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
     else
         solve!(integrator)

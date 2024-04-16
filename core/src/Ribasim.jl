@@ -63,8 +63,7 @@ using SciMLBase:
     ODEProblem,
     ODESolution,
     VectorContinuousCallback,
-    get_proposed_dt,
-    TimeChoiceIterator
+    get_proposed_dt
 using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
