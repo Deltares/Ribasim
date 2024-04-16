@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="ba056ffa-f17b-4684-add1-3fcaee0c2a81" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="8d8feddb-d93b-4f56-a7de-d7423c535eb5" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Build</name>
   <settings>
     <options>
@@ -8,20 +8,11 @@
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_2415" />
-      <setting-ref ref="RUNNER_2416" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_2415" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[#!/bin/bash
-# black magic
-source /usr/share/Modules/init/bash
-
-module load pixi
-pixi --version
+          <param name="script.content"><![CDATA[pixi --version
 pixi run --environment=dev install-ci]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
@@ -30,13 +21,7 @@ pixi run --environment=dev install-ci]]></param>
       </runner>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[#!/bin/bash
-# black magic
-source /usr/share/Modules/init/bash
-
-module load pixi
-module load gcc/11.3.0
-pixi run remove-artifacts
+          <param name="script.content"><![CDATA[pixi run remove-artifacts
 pixi run build-libribasim]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
@@ -50,7 +35,7 @@ pixi run build-libribasim]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <equals id="RQ_275" name="teamcity.agent.jvm.os.name" value="Linux" />
+      <equals id="RQ_275" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers />
     <build-extensions>
