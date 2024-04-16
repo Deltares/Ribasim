@@ -4,6 +4,7 @@
   <description />
   <settings ref="Ribasim_Windows_Build">
     <disabled-settings>
+      <setting-ref ref="RQ_275" />
       <setting-ref ref="RUNNER_2415" />
       <setting-ref ref="RUNNER_2416" />
     </disabled-settings>
