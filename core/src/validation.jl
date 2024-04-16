@@ -151,6 +151,17 @@ function sorted_table!(
     return table
 end
 
+function valid_config(config::Config)::Bool
+    errors = false
+
+    if config.starttime >= config.endtime
+        errors = true
+        @error "The model starttime must be before the endtime."
+    end
+
+    return !errors
+end
+
 """
 Test for each node given its node type whether the nodes that
 # are downstream ('down-edge') of this node are of an allowed type
