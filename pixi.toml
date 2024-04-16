@@ -155,7 +155,7 @@ hatchling = "*"
 matplotlib = "*"
 netCDF4 = "*"
 numpy = "*"
-pandas = "==2.1.4" # Avoid excessive deprecation warnings from pandera (#984)
+pandas = "*"
 pandas-stubs = "*"
 pandera = "*"
 pip = "*"
