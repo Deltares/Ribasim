@@ -54,8 +54,7 @@ function main(ARGS::Vector{String})::Cint
         config = Config(arg)
         mkpath(results_path(config, "."))
         open(results_path(config, "ribasim.log"), "w") do io
-            logger =
-                Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
+            logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
                 cli = (; ribasim_version = string(pkgversion(Ribasim)))
                 (; starttime, endtime) = config
@@ -63,13 +62,13 @@ function main(ARGS::Vector{String})::Cint
                     @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
                 end
                 @info "Starting a Ribasim simulation." cli.ribasim_version starttime endtime
-                model = Ribasim.run(config)
+                model = run(config)
                 if successful_retcode(model)
                     @info "The model finished successfully"
                     return 0
                 end
 
-                t = Ribasim.datetime_since(model.integrator.t, starttime)
+                t = datetime_since(model.integrator.t, starttime)
                 retcode = model.integrator.sol.retcode
                 @error "The model exited at model time $t with return code $retcode.\nSee https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"
                 return 1
