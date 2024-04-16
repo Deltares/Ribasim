@@ -29,6 +29,9 @@ end
 
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
+    if !valid_config(config)
+        error("Invalid configuration in TOML.")
+    end
     return Model(config)
 end
 
@@ -42,11 +45,6 @@ function Model(config::Config)::Model
     # Setup timing logging
     if config.logging.timing
         TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
-    end
-
-    t_end = seconds_since(config.endtime, config.starttime)
-    if t_end <= 0
-        error("Model starttime is not before endtime.")
     end
 
     # All data from the database that we need during runtime is copied into memory,
@@ -114,6 +112,7 @@ function Model(config::Config)::Model
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
@@ -188,10 +187,51 @@ function SciMLBase.successful_retcode(model::Model)::Bool
 end
 
 """
-    solve!(model::Model)::ODESolution
+    step!(model::Model, dt::Float64)::Model
+
+Take Model timesteps until `t + dt` is reached exactly.
+"""
+function SciMLBase.step!(model::Model, dt::Float64)::Model
+    (; config, integrator) = model
+    (; t) = integrator
+    # If we are at an allocation time, run allocation before the next physical
+    # layer timestep. This allows allocation over period (t, t + dt) to use variables
+    # set over BMI at time t before calling this function.
+    # Also, don't run allocation at t = 0 since there are no flows yet (#1389).
+    ntimes = t / config.allocation.timestep
+    if t > 0 && round(ntimes) ≈ ntimes
+        update_allocation!(integrator)
+    end
+    step!(integrator, dt, true)
+    return model
+end
+
+"""
+    solve!(model::Model)::Model
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::ODESolution
-    return solve!(model.integrator)
+function SciMLBase.solve!(model::Model)::Model
+    (; config, integrator) = model
+    if config.allocation.use_allocation
+        (; tspan) = integrator.sol.prob
+        (; timestep) = config.allocation
+        allocation_times = timestep:timestep:(tspan[end] - timestep)
+        n_allocation_times = length(allocation_times)
+        # Don't run allocation at t = 0 since there are no flows yet (#1389).
+        step!(integrator, timestep, true)
+        for _ in 1:n_allocation_times
+            update_allocation!(integrator)
+            step!(integrator, timestep, true)
+        end
+
+        if integrator.sol.retcode != ReturnCode.Default
+            return model
+        end
+        # TODO replace with `check_error!` https://github.com/SciML/SciMLBase.jl/issues/669
+        integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
+    else
+        solve!(integrator)
+    end
+    return model
 end
