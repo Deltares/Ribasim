@@ -9,7 +9,7 @@ function set_initial_discrete_controlled_parameters!(
     (; p) = integrator
     (; discrete_control) = p
 
-    n_conditions = sum(length(vec) for vec in discrete_control.condition_value)
+    n_conditions = sum(length(vec) for vec in discrete_control.condition_value; init = 0)
     condition_diffs = zeros(Float64, n_conditions)
     discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
 

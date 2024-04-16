@@ -102,9 +102,7 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     assert table.df.iloc[0]["greater_than"] == 15.0
     assert table._sort_keys == [
         "node_id",
-        "listen_node_type",
-        "listen_node_id",
-        "variable",
+        "compound_variable_id",
         "greater_than",
     ]
     table.sort()
