@@ -60,16 +60,6 @@ function create_callbacks(
     )
     push!(callbacks, tabulated_rating_curve_cb)
 
-    if config.allocation.use_allocation
-        allocation_cb = PeriodicCallback(
-            update_allocation!,
-            config.allocation.timestep;
-            initial_affect = false,
-            save_positions = (false, false),
-        )
-        push!(callbacks, allocation_cb)
-    end
-
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat

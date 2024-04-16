@@ -683,7 +683,7 @@ function get_Δt(integrator)::Float64
     elseif isinf(saveat)
         t
     else
-        t_end = integrator.sol.prob.tspan[2]
+        t_end = integrator.sol.prob.tspan[end]
         if t_end - t > saveat
             saveat
         else

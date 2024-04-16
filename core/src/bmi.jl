@@ -17,16 +17,15 @@ function BMI.update(model::Model)::Model
     return model
 end
 
-function BMI.update_until(model::Model, time)::Model
-    integrator = model.integrator
-    t = integrator.t
+function BMI.update_until(model::Model, time::Float64)::Model
+    (; t) = model.integrator
     dt = time - t
     if dt < 0
         error("The model has already passed the given timestamp.")
     elseif dt == 0
         return model
     else
-        step!(integrator, dt, true)
+        step!(model, dt)
     end
     return model
 end

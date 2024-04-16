@@ -2,12 +2,10 @@
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Test ribasim_api</name>
   <description />
-  <settings>
+  <settings ref="Ribasim_Linux">
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
-      <option name="cleanBuild" value="true" />
       <option name="executionTimeoutMin" value="120" />
-      <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
@@ -49,7 +47,6 @@ pixi run test-ribasim-api]]></param>
     </vcs-settings>
     <requirements>
       <does-not-equal id="RQ_315" name="env.OS" value="Windows_NT" />
-      <equals id="RQ_275" name="teamcity.agent.jvm.os.name" value="Linux" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_642" type="schedulingTrigger">
