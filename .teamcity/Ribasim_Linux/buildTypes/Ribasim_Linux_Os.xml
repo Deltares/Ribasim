@@ -9,7 +9,9 @@
     <parameters />
     <build-runners />
     <vcs-settings />
-    <requirements />
+    <requirements>
+      <equals id="RQ_418" name="teamcity.agent.jvm.os.name" value="Linux" />
+    </requirements>
     <build-triggers />
     <cleanup />
   </settings>
