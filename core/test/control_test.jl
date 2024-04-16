@@ -37,11 +37,11 @@
     # Control times
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
-    @test level[1, t_1_index] <= discrete_control.greater_than[1]
+    @test level[1, t_1_index] <= discrete_control.greater_than[1][1]
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
-    @test level[2, t_2_index] >= discrete_control.greater_than[2]
+    @test level[2, t_2_index] >= discrete_control.greater_than[2][1]
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
@@ -60,7 +60,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1]
+    greater_than = discrete_control.greater_than[1][1]
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -84,7 +84,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1]
+    greater_than = discrete_control.greater_than[1][1]
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -167,8 +167,8 @@ end
     t_in = discrete_control.record.time[3]
     t_none_2 = discrete_control.record.time[4]
 
-    level_min = greater_than[1]
-    setpoint = greater_than[2]
+    level_min = greater_than[1][1]
+    setpoint = greater_than[1][2]
 
     t_1_none_index = findfirst(>=(t_none_1), t)
     t_in_index = findfirst(>=(t_in), t)

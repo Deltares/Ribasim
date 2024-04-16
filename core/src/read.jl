@@ -542,33 +542,79 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
 end
 
-function DiscreteControl(db::DB, config::Config)::DiscreteControl
-    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
-    condition = load_structvector(db, config, DiscreteControlConditionV1)
-
+function parse_variables_and_conditions(compound_variable, condition)
     node_id = NodeID[]
     listen_node_id = Vector{NodeID}[]
     variable = Vector{String}[]
     weight = Vector{Float64}[]
     look_ahead = Vector{Float64}[]
+    greater_than = Vector{Float64}[]
+    condition_value = BitVector[]
+    errors = false
 
     for id in unique(condition.node_id)
-        group_id = filter(row -> row.node_id == id, compound_variable)
-        for group_variable in
-            StructVector.(IterTools.groupby(row -> row.compound_variable_id, group_id))
-            first_row = first(group_variable)
-            push!(node_id, NodeID(NodeType.DiscreteControl, first_row.node_id))
-            push!(
-                listen_node_id,
-                NodeID.(group_variable.listen_node_type, group_variable.listen_node_id),
+        condition_group_id = filter(row -> row.node_id == id, condition)
+        variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        for compound_variable_id in unique(condition_group_id.compound_variable_id)
+            condition_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                condition_group_id,
             )
-            push!(variable, group_variable.variable)
-            push!(weight, coalesce.(group_variable.weight, 1.0))
-            push!(look_ahead, coalesce.(group_variable.look_ahead, 0.0))
+            variable_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                variable_group_id,
+            )
+            discrete_control_id = NodeID(NodeType.DiscreteControl, id)
+            if isempty(variable_group_variable)
+                errors = true
+                @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
+            else
+                push!(node_id, discrete_control_id)
+                push!(
+                    listen_node_id,
+                    NodeID.(
+                        variable_group_variable.listen_node_type,
+                        variable_group_variable.listen_node_id,
+                    ),
+                )
+                push!(variable, variable_group_variable.variable)
+                push!(weight, coalesce.(variable_group_variable.weight, 1.0))
+                push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
+                push!(greater_than, condition_group_variable.greater_than)
+                push!(
+                    condition_value,
+                    BitVector(zeros(length(condition_group_variable.greater_than))),
+                )
+            end
         end
     end
+    return node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    !errors
+end
 
-    condition_value = fill(false, length(condition.node_id))
+function DiscreteControl(db::DB, config::Config)::DiscreteControl
+    condition = load_structvector(db, config, DiscreteControlConditionV1)
+    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
+
+    node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    valid = parse_variables_and_conditions(compound_variable, condition)
+
+    if !valid
+        error("Problems encountered when parsing DiscreteControl variables and conditions.")
+    end
+
     control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
     rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
@@ -603,7 +649,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         variable,
         weight,
         look_ahead,
-        condition.greater_than,
+        greater_than,
         condition_value,
         control_state,
         logic_mapping,

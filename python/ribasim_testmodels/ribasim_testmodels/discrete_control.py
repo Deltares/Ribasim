@@ -299,6 +299,7 @@ def tabulated_rating_curve_control_model() -> Model:
             ),
             discrete_control.Condition(
                 greater_than=[0.5],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["low", "high"]

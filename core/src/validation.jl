@@ -102,12 +102,9 @@ sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
-sort_by_condition(row) =
-    (row.node_id, row.listen_node_type, row.listen_node_id, row.variable, row.greater_than)
 sort_by_variable(row) =
     (row.node_id, row.listen_node_type, row.listen_node_id, row.variable)
-sort_by_id_greater_than(row) = (row.node_id, row.greater_than)
-sort_by_truth_state(row) = (row.node_id, row.truth_state)
+sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -117,7 +114,7 @@ sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
-sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_id_greater_than
+sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -499,7 +496,8 @@ Check:
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
+    (; node_id, logic_mapping, look_ahead, variable, listen_node_id, greater_than) =
+        discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
@@ -512,7 +510,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         truth_states_wrong_length = String[]
 
         # The number of conditions of this DiscreteControl node
-        n_conditions = length(searchsorted(node_id, id))
+        n_conditions = sum(length(greater_than[i]) for i in searchsorted(node_id, id))
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key

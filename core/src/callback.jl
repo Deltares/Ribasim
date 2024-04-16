@@ -9,10 +9,17 @@ function set_initial_discrete_controlled_parameters!(
     (; p) = integrator
     (; discrete_control) = p
 
-    n_conditions = length(discrete_control.condition_value)
+    n_conditions = sum(length(vec) for vec in discrete_control.condition_value)
     condition_diffs = zeros(Float64, n_conditions)
     discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
-    discrete_control.condition_value .= (condition_diffs .> 0.0)
+
+    idx_start = 1
+    for (i, vec) in enumerate(discrete_control.condition_value)
+        l = length(vec)
+        idx_end = idx_start + l - 1
+        discrete_control.condition_value[i] .= (condition_diffs[idx_start:idx_end] .> 0)
+        idx_start += l
+    end
 
     # For every discrete_control node find a condition_idx it listens to
     for discrete_control_node_id in unique(discrete_control.node_id)
@@ -88,7 +95,7 @@ function create_callbacks(
 
     saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
 
-    n_conditions = length(discrete_control.node_id)
+    n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
     if n_conditions > 0
         discrete_control_cb = VectorContinuousCallback(
             discrete_control_condition,
@@ -193,23 +200,25 @@ Listens for changes in condition truths.
 function discrete_control_condition(out, u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
+    condition_idx = 0
 
-    for (i, (listen_node_ids, variables, weights, greater_than, look_aheads)) in enumerate(
-        zip(
-            discrete_control.listen_node_id,
-            discrete_control.variable,
-            discrete_control.weight,
-            discrete_control.greater_than,
-            discrete_control.look_ahead,
-        ),
+    for (listen_node_ids, variables, weights, greater_thans, look_aheads) in zip(
+        discrete_control.listen_node_id,
+        discrete_control.variable,
+        discrete_control.weight,
+        discrete_control.greater_than,
+        discrete_control.look_ahead,
     )
         value = 0.0
         for (listen_node_id, variable, weight, look_ahead) in
             zip(listen_node_ids, variables, weights, look_aheads)
             value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
         end
-        diff = value - greater_than
-        out[i] = diff
+        for greater_than in greater_thans
+            condition_idx += 1
+            diff = value - greater_than
+            out[condition_idx] = diff
+        end
     end
 end
 
@@ -259,6 +268,22 @@ function get_value(
     return value
 end
 
+function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
+    (; greater_than) = discrete_control
+    condition_idx_now = 1
+
+    for (compound_variable_idx, vec) in enumerate(greater_than)
+        l = length(vec)
+
+        if condition_idx_now + l > condition_idx
+            greater_than_idx = condition_idx - condition_idx_now + 1
+            return compound_variable_idx, greater_than_idx
+        end
+
+        condition_idx_now += l
+    end
+end
+
 """
 An upcrossing means that a condition (always greater than) becomes true.
 """
@@ -267,7 +292,9 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     (; discrete_control, basin) = p
     (; variable, condition_value, listen_node_id) = discrete_control
 
-    condition_value[condition_idx] = true
+    compound_variable_idx, greater_than_idx =
+        get_discrete_control_indices(discrete_control, condition_idx)
+    condition_value[compound_variable_idx][greater_than_idx] = true
 
     control_state_change = discrete_control_affect!(integrator, condition_idx, true)
 
@@ -277,7 +304,7 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    listen_node_ids = discrete_control.listen_node_id[condition_idx]
+    listen_node_ids = discrete_control.listen_node_id[compound_variable_idx]
     is_basin =
         length(listen_node_ids) == 1 ? id_index(basin.node_id, only(listen_node_ids))[1] :
         false
@@ -285,15 +312,16 @@ function discrete_control_affect_upcrossing!(integrator, condition_idx)
     # NOTE: The above no longer works when listen feature ids can be something other than node ids
     # I think the more durable option is to give all possible condition types a different variable string,
     # e.g. basin.level and level_boundary.level
-    if variable[condition_idx][1] == "level" && control_state_change && is_basin
+    if variable[compound_variable_idx][1] == "level" && control_state_change && is_basin
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
-        _, condition_basin_idx = id_index(basin.node_id, listen_node_id[condition_idx][1])
+        _, condition_basin_idx =
+            id_index(basin.node_id, listen_node_id[compound_variable_idx][1])
 
         if du[condition_basin_idx] < 0.0
-            condition_value[condition_idx] = false
+            condition_value[compound_variable_idx][greater_than_idx] = false
             discrete_control_affect!(integrator, condition_idx, false)
         end
     end
@@ -307,7 +335,9 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
     (; discrete_control, basin) = p
     (; variable, condition_value, listen_node_id) = discrete_control
 
-    condition_value[condition_idx] = false
+    compound_variable_idx, greater_than_idx =
+        get_discrete_control_indices(discrete_control, condition_idx)
+    condition_value[compound_variable_idx][greater_than_idx] = false
 
     control_state_change = discrete_control_affect!(integrator, condition_idx, false)
 
@@ -317,21 +347,23 @@ function discrete_control_affect_downcrossing!(integrator, condition_idx)
     # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
     # giving the possibility of logical paradoxes where certain parameter changes immediately
     # undo the truth state that caused that parameter change.
-    listen_node_ids = discrete_control.listen_node_id[condition_idx]
+    compound_variable_idx, greater_than_idx =
+        get_discrete_control_indices(discrete_control, condition_idx)
+    listen_node_ids = discrete_control.listen_node_id[compound_variable_idx]
     is_basin =
         length(listen_node_ids) == 1 ? id_index(basin.node_id, only(listen_node_ids))[1] :
         false
 
-    if variable[condition_idx][1] == "level" && control_state_change && is_basin
+    if variable[compound_variable_idx][1] == "level" && control_state_change && is_basin
         # Calling water_balance is expensive, but it is a sure way of getting
         # du for the basin of this level condition
         du = zero(u)
         water_balance!(du, u, p, t)
         has_index, condition_basin_idx =
-            id_index(basin.node_id, listen_node_id[condition_idx][1])
+            id_index(basin.node_id, listen_node_id[compound_variable_idx][1])
 
         if has_index && du[condition_basin_idx] > 0.0
-            condition_value[condition_idx] = true
+            condition_value[compound_variable_idx][greater_than_idx] = true
             discrete_control_affect!(integrator, condition_idx, true)
         end
     end
@@ -349,20 +381,34 @@ function discrete_control_affect!(
     (; discrete_control, graph) = p
 
     # Get the discrete_control node that listens to this condition
-    discrete_control_node_id = discrete_control.node_id[condition_idx]
+
+    compound_variable_idx, _ = get_discrete_control_indices(discrete_control, condition_idx)
+    discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
 
     # Get the indices of all conditions that this control node listens to
-    condition_ids = discrete_control.node_id .== discrete_control_node_id
+    where_node_id = searchsorted(discrete_control.node_id, discrete_control_node_id)
 
     # Get the truth state for this discrete_control node
-    truth_values = [ifelse(b, "T", "F") for b in discrete_control.condition_value]
-    truth_state = join(truth_values[condition_ids], "")
+    truth_values = cat(
+        [
+            [ifelse(b, "T", "F") for b in discrete_control.condition_value[i]] for
+            i in where_node_id
+        ]...;
+        dims = 1,
+    )
+    truth_state = join(truth_values, "")
 
     # Get the truth specific about the latest crossing
     if !ismissing(upcrossing)
-        truth_values[condition_idx] = upcrossing ? "U" : "D"
+        truth_value_idx =
+            condition_idx - sum(
+                length(vec) for
+                vec in discrete_control.condition_value[1:(where_node_id.start - 1)];
+                init = 0,
+            )
+        truth_values[truth_value_idx] = upcrossing ? "U" : "D"
     end
-    truth_state_crossing_specific = join(truth_values[condition_ids], "")
+    truth_state_crossing_specific = join(truth_values, "")
 
     # What the local control state should be
     control_state_new =
