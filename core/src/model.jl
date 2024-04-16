@@ -198,7 +198,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     # set over BMI at time t before calling this function.
     # Also, don't run allocation at t = 0 since there are no flows yet (#1389).
     ntimes = t / config.allocation.timestep
-    if ntimes > 0 && round(ntimes) ≈ ntimes
+    if t > 0 && round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
     step!(integrator, dt, true)
