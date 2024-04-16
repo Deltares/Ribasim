@@ -3,6 +3,9 @@
   <name>Os</name>
   <description>Template for agent that uses Windows OS</description>
   <settings>
+    <options>
+      <option name="cleanBuild" value="true" />
+    </options>
     <parameters />
     <build-runners />
     <vcs-settings />
