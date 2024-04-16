@@ -639,7 +639,7 @@ which can be for instance an average or a difference of variables. If a variable
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
 node_id              | Int32    | -       | sorted
-compound_variable_id | String   | -       | sorted per node_id
+compound_variable_id | Int32    | -       | sorted per node_id
 listen_node_type     | String   | -       | known node type
 listen_node_id       | Int32    | -       | sorted per node_id
 variable             | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
@@ -648,7 +648,7 @@ look_ahead           | Float64  | $s$     | Only on transient boundary condition
 
 ## DiscreteControl / condition
 
-The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id`listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied. Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
+The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id`listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'. Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------

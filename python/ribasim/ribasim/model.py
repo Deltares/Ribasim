@@ -326,7 +326,6 @@ class Model(FileModel):
             to_add = df_variable[
                 ["node_id", "listen_node_id", "listen_node_type"]
             ].drop_duplicates()
-            to_add = to_add[to_add["listen_node_type"] != "compound"]
             to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
             to_add["control_node_type"] = "DiscreteControl"
             df_listen_edge = pd.concat([df_listen_edge, to_add])
