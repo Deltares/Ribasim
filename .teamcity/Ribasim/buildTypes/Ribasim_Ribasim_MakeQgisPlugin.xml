@@ -6,6 +6,9 @@
     <options>
       <option name="artifactRules" value="ribasim_qgis.zip" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RQ_338" />
+    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_2193" name="" type="simpleRunner">
