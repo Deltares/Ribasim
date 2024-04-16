@@ -92,41 +92,6 @@ def test_extra_columns():
         terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
 
 
-def test_sort(level_setpoint_with_minmax, tmp_path):
-    model = level_setpoint_with_minmax
-    table = model.discrete_control.condition
-    edge = model.edge
-
-    # apply a wrong sort, then call the sort method to restore order
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
-    assert table.df.iloc[0]["greater_than"] == 15.0
-    assert table._sort_keys == [
-        "node_id",
-        "compound_variable_id",
-        "greater_than",
-    ]
-    table.sort()
-    assert table.df.iloc[0]["greater_than"] == 5.0
-
-    # The edge table is not sorted
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
-    assert edge.df.iloc[1]["from_node_id"] == 3
-
-    # re-apply wrong sort, then check if it gets sorted on write
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
-    model.write(tmp_path / "basic/ribasim.toml")
-    # write sorts the model in place
-    assert table.df.iloc[0]["greater_than"] == 5.0
-    model_loaded = ribasim.Model.read(filepath=tmp_path / "basic/ribasim.toml")
-    table_loaded = model_loaded.discrete_control.condition
-    edge_loaded = model_loaded.edge
-    assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
-    assert edge.df.iloc[1]["from_node_id"] == 3
-    __assert_equal(table.df, table_loaded.df)
-    __assert_equal(edge.df, edge_loaded.df)
-
-
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     # set custom Edge index

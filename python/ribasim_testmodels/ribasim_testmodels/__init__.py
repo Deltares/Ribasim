@@ -31,7 +31,6 @@ from ribasim_testmodels.discrete_control import (
     compound_variable_condition_model,
     flow_condition_model,
     level_boundary_condition_model,
-    level_setpoint_with_minmax_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
@@ -79,7 +78,6 @@ __all__ = [
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",
-    "level_setpoint_with_minmax_model",
     "linear_resistance_demand_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",

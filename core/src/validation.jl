@@ -552,7 +552,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
-                node_type = typeof(node).name.name
                 @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
             end

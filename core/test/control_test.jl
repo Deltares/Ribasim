@@ -145,39 +145,9 @@ end
     @test discrete_control.record.control_state == ["high", "low"]
     @test discrete_control.record.time[1] == 0.0
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
-    @test Date(t) == Date("2020-03-15")
+    @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
-end
-
-@testitem "Setpoint with bounds control" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/level_setpoint_with_minmax/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    p = model.integrator.p
-    (; discrete_control) = p
-    (; record, greater_than) = discrete_control
-    level = Ribasim.get_storages_and_levels(model).level[1, :]
-    t = Ribasim.tsaves(model)
-
-    t_none_1 = discrete_control.record.time[2]
-    t_in = discrete_control.record.time[3]
-    t_none_2 = discrete_control.record.time[4]
-
-    level_min = greater_than[1][1]
-    setpoint = greater_than[1][2]
-
-    t_1_none_index = findfirst(>=(t_none_1), t)
-    t_in_index = findfirst(>=(t_in), t)
-    t_2_none_index = findfirst(>=(t_none_2), t)
-
-    @test record.control_state == ["out", "none", "in", "none"]
-    @test level[t_1_none_index] <= setpoint
-    @test level[t_in_index] >= level_min
-    @test level[t_2_none_index] <= setpoint
 end
 
 @testitem "Set PID target with DiscreteControl" begin

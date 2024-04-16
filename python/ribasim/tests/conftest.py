@@ -40,10 +40,5 @@ def discrete_control_of_pid_control() -> ribasim.Model:
 
 
 @pytest.fixture()
-def level_setpoint_with_minmax() -> ribasim.Model:
-    return ribasim_testmodels.level_setpoint_with_minmax_model()
-
-
-@pytest.fixture()
 def trivial() -> ribasim.Model:
     return ribasim_testmodels.trivial_model()
