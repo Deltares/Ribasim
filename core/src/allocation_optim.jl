@@ -87,6 +87,7 @@ function set_objective_priority!(
     F_abs_level_demand = problem[:F_abs_level_demand]
     F_abs_flow_demand = problem[:F_abs_flow_demand]
 
+    # Add the absolute value terms to the objective function
     if !isempty(only(F_abs_user_demand.axes))
         ex += sum(F_abs_user_demand)
     end
@@ -254,7 +255,7 @@ function set_initial_capacities_source!(
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
     for edge_metadata in values(graph.edge_data)
-        edge = (edge_metadata.from_id, edge_metadata.to_id)
+        (; edge) = edge_metadata
         if graph[edge...].subnetwork_id_source == subnetwork_id
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
@@ -279,11 +280,11 @@ function adjust_capacities_source!(allocation_model::AllocationModel)::Nothing
     source_constraints = problem[:source]
     F = problem[:F]
 
-    for edge_id in only(source_constraints.axes)
+    for edge in only(source_constraints.axes)
         # Subtract the allocated flow from the source
         JuMP.set_normalized_rhs(
-            source_constraints[edge_id],
-            JuMP.normalized_rhs(source_constraints[edge_id]) - JuMP.value(F[edge_id]),
+            source_constraints[edge],
+            JuMP.normalized_rhs(source_constraints[edge]) - JuMP.value(F[edge]),
         )
     end
     return nothing

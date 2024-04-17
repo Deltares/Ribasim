@@ -125,8 +125,7 @@ struct EdgeMetadata
     id::Int32
     type::EdgeType.T
     subnetwork_id_source::Int32
-    from_id::NodeID
-    to_id::NodeID
+    edge::Tuple{NodeID, NodeID}
     node_ids::Vector{NodeID}
 end
 

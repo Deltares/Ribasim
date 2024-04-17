@@ -39,34 +39,33 @@ function get_subnetwork_capacity(
     capacity = JuMP.Containers.SparseAxisArray(dict)
 
     for edge_metadata in values(graph.edge_data)
-        if edge_metadata.from_id ∈ node_ids_subnetwork &&
-           edge_metadata.to_id ∈ node_ids_subnetwork
-            node_src = getfield(p, graph[edge_metadata.from_id].type)
-            node_dst = getfield(p, graph[edge_metadata.to_id].type)
+        if edge_metadata.edge ⊆ node_ids_subnetwork
+            node_src = getfield(p, graph[edge_metadata.edge[1]].type)
+            node_dst = getfield(p, graph[edge_metadata.edge[2]].type)
 
             capacity_edge = Inf
 
             if is_flow_constraining(node_src)
-                node_src_idx = findsorted(node_src.node_id, edge_metadata.from_id)
+                node_src_idx = findsorted(node_src.node_id, edge_metadata.edge[1])
                 capacity_node_src = node_src.max_flow_rate[node_src_idx]
                 capacity_edge = min(capacity_edge, capacity_node_src)
             end
             if is_flow_constraining(node_dst)
-                node_dst_idx = findsorted(node_dst.node_id, edge_metadata.to_id)
+                node_dst_idx = findsorted(node_dst.node_id, edge_metadata.edge[2])
                 capacity_node_dst = node_dst.max_flow_rate[node_dst_idx]
                 capacity_edge = min(capacity_edge, capacity_node_dst)
-            elseif edge_metadata.to_id.type == NodeType.Terminal
+            elseif edge_metadata.edge[2].type == NodeType.Terminal
                 # No flow to terminal nodes
                 capacity_edge = 0.0
             end
 
-            capacity[edge_metadata.from_id, edge_metadata.to_id] = capacity_edge
+            capacity[edge_metadata.edge] = capacity_edge
 
             if !(
                 is_flow_direction_constraining(node_src) |
                 is_flow_direction_constraining(node_dst)
             )
-                capacity[edge_metadata.from_id, edge_metadata.to_id] = capacity_edge
+                capacity[edge_metadata.edge] = capacity_edge
             end
         end
     end
@@ -318,30 +317,6 @@ function add_constraints_source!(
     return nothing
 end
 
-function get_basin_inflow(
-    problem::JuMP.Model,
-    node_id::NodeID,
-)::Union{JuMP.VariableRef, Float64}
-    F_basin_in = problem[:F_basin_in]
-    return if node_id in only(F_basin_in.axes)
-        F_basin_in[node_id]
-    else
-        0.0
-    end
-end
-
-function get_basin_outflow(
-    problem::JuMP.Model,
-    node_id::NodeID,
-)::Union{JuMP.VariableRef, Float64}
-    F_basin_out = problem[:F_basin_out]
-    return if node_id in only(F_basin_out.axes)
-        F_basin_out[node_id]
-    else
-        0.0
-    end
-end
-
 """
 Add the subnetwork inlet flow conservation constraints to the allocation problem.
 The constraint indices are node IDs subnetwork inlet edge dst IDs.
@@ -423,21 +398,63 @@ function add_constraints_conservation_node!(
 )::Nothing
     (; graph) = p
     F = problem[:F]
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
     node_ids = graph[].node_ids[subnetwork_id]
 
-    node_ids_conservation =
-        [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
-    problem[:flow_conservation_basin] = JuMP.@constraint(
+    inflows = Dict{NodeID, Vector{JuMP.VariableRef}}()
+    outflows = Dict{NodeID, Vector{JuMP.VariableRef}}()
+
+    edges = only(F.axes)
+
+    for node_id in node_ids
+
+        # No flow conservation constraint on boundary nodes
+        if node_id.type in [
+            NodeType.FlowBoundary,
+            NodeType.LevelBoundary,
+            NodeType.Terminal,
+            NodeType.UserDemand,
+        ]
+            continue
+        end
+
+        inflows_node = JuMP.VariableRef[]
+        outflows_node = JuMP.VariableRef[]
+        inflows[node_id] = inflows_node
+        outflows[node_id] = outflows_node
+
+        # Find in- and outflow allocation edges of this node
+        for neighbor_id in inoutflow_ids(graph, node_id)
+            edge_in = (neighbor_id, node_id)
+            if edge_in in edges
+                push!(inflows_node, F[edge_in])
+            end
+            edge_out = (node_id, neighbor_id)
+            if edge_out in edges
+                push!(outflows_node, F[edge_out])
+            end
+        end
+
+        # If the node is a basin, add basin in- and outflow
+        if node_id.type == NodeType.Basin
+            push!(inflows_node, F_basin_out[node_id])
+            push!(outflows_node, F_basin_in[node_id])
+        end
+    end
+
+    # Only the node IDs with conservation constraints on them
+    node_ids = keys(inflows)
+
+    @show inflows[first(node_ids)]
+
+    problem[:flow_conservation] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_basin],
-        get_basin_inflow(problem, node_id) + sum([
-            F[(node_id, outneighbor_id)] for outneighbor_id in outflow_ids(graph, node_id)
-        ]) ==
-        get_basin_outflow(problem, node_id) + sum([
-            F[(inneighbor_id, node_id)] for inneighbor_id in inflow_ids(graph, node_id)
-        ]),
-        base_name = "flow_conservation_basin"
+        [node_id = node_ids],
+        sum(inflows[node_id]) == sum(outflows[node_id]);
+        base_name = "flow_conservation"
     )
+
     return nothing
 end
 
@@ -674,9 +691,7 @@ function allocation_problem(
     add_variables_flow_buffer!(problem, p, subnetwork_id)
 
     # Add constraints to problem
-    add_constraints_conservation_basin!(problem, p, subnetwork_id)
-    add_constraints_conservation_flow_demand!(problem, p, subnetwork_id)
-    add_constraints_conservation_subnetwork!(problem, p, subnetwork_id)
+    add_constraints_conservation_node!(problem, p, subnetwork_id)
 
     add_constraints_absolute_value_user_demand!(problem, p)
     add_constraints_absolute_value_flow_demand!(problem)
