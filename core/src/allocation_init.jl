@@ -55,6 +55,9 @@ function get_subnetwork_capacity(
                 node_dst_idx = findsorted(node_dst.node_id, edge_metadata.to_id)
                 capacity_node_dst = node_dst.max_flow_rate[node_dst_idx]
                 capacity_edge = min(capacity_edge, capacity_node_dst)
+            elseif edge_metadata.to_id.type == NodeType.Terminal
+                # No flow to terminal nodes
+                capacity_edge = 0.0
             end
 
             capacity[edge_metadata.from_id, edge_metadata.to_id] = capacity_edge
@@ -413,7 +416,7 @@ The constraint indices are Basin node IDs.
 Constraint:
 sum(flows out of basin) == sum(flows into basin) + flow from storage and vertical fluxes
 """
-function add_constraints_conservation_basin!(
+function add_constraints_conservation_node!(
     problem::JuMP.Model,
     p::Parameters,
     subnetwork_id::Int32,
@@ -422,7 +425,8 @@ function add_constraints_conservation_basin!(
     F = problem[:F]
     node_ids = graph[].node_ids[subnetwork_id]
 
-    node_ids_basin = [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
+    node_ids_conservation =
+        [node_id for node_id in node_ids if node_id.type == NodeType.Basin]
     problem[:flow_conservation_basin] = JuMP.@constraint(
         problem,
         [node_id = node_ids_basin],
