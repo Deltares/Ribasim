@@ -573,8 +573,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         for (Δt, var, node_id) in zip(look_aheads, variables, listen_node_ids)
             if !iszero(Δt)
                 node_type = node_id.type
-                # TODO: If more transient listen variables must be supported, this validation must be more specific
-                # (e.g. for some node some variables are transient, some not).
                 if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                     errors = true
                     @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."

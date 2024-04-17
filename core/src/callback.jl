@@ -151,6 +151,7 @@ end
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
+    condition_idx = 0
 
     discrete_control_condition!(u, t, integrator)
 
