@@ -158,7 +158,7 @@ function assign_allocations!(
     priority_idx::Int,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, capacity) = allocation_model
     (; graph, user_demand, allocation) = p
     (;
         subnetwork_demands,
@@ -166,22 +166,21 @@ function assign_allocations!(
         subnetwork_ids,
         main_network_connections,
     ) = allocation
-    edge_ids = graph[].edge_ids[subnetwork_id]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
     F = problem[:F]
-    for edge_id in edge_ids
+    for edge in keys(capacity.data)
         # If this edge is a source edge from the main network to a subnetwork,
         # and demands are being collected, add its flow to the demand of this edge
         if optimization_type == OptimizationType.collect_demands
-            if graph[edge_id...].subnetwork_id_source == subnetwork_id &&
-               edge_id ∈ main_network_source_edges
-                allocated = JuMP.value(F[edge_id])
-                subnetwork_demands[edge_id][priority_idx] += allocated
+            if graph[edge...].subnetwork_id_source == subnetwork_id &&
+               edge ∈ main_network_source_edges
+                allocated = JuMP.value(F[edge])
+                subnetwork_demands[edge][priority_idx] += allocated
             end
         elseif optimization_type == OptimizationType.allocate
-            user_demand_node_id = edge_id[2]
+            user_demand_node_id = edge[2]
             if user_demand_node_id.type == NodeType.UserDemand
-                allocated = JuMP.value(F[edge_id])
+                allocated = JuMP.value(F[edge])
                 user_demand_idx = findsorted(user_demand.node_id, user_demand_node_id)
                 user_demand.allocated[user_demand_idx, priority_idx] = allocated
             end

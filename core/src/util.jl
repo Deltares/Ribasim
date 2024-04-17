@@ -578,12 +578,12 @@ function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
     else
-        first(allocation.allocation_network_ids) == 1
+        first(allocation.subnetwork_ids) == 1
     end
 end
 
-function is_main_network(allocation_network_id::Int32)::Bool
-    return allocation_network_id == 1
+function is_main_network(subnetwork_id::Int32)::Bool
+    return subnetwork_id == 1
 end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}

@@ -406,21 +406,21 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (allocation_network_id, subnetwork_node_ids) in node_ids
+    for (subnetwork_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
         if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
         end
     end
     return errors
 end
 
-function non_positive_allocation_network_id(graph::MetaGraph)::Bool
+function non_positive_subnetwork_id(graph::MetaGraph)::Bool
     errors = false
-    for allocation_network_id in keys(graph[].node_ids)
-        if (allocation_network_id <= 0)
-            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+    for subnetwork_id in keys(graph[].node_ids)
+        if (subnetwork_id <= 0)
+            @error "Allocation network id $subnetwork_id needs to be a positive integer."
             errors = true
         end
     end
