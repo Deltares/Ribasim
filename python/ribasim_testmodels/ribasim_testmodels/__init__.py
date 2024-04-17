@@ -36,7 +36,6 @@ from ribasim_testmodels.discrete_control import (
     tabulated_rating_curve_control_model,
 )
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
-from ribasim_testmodels.dutch_waterways import dutch_waterways_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -67,7 +66,6 @@ __all__ = [
     "bucket_model",
     "compound_variable_condition_model",
     "discrete_control_of_pid_control_model",
-    "dutch_waterways_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
