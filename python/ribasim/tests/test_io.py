@@ -92,8 +92,8 @@ def test_extra_columns():
         terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
 
 
-def test_sort(level_setpoint_with_minmax, tmp_path):
-    model = level_setpoint_with_minmax
+def test_sort(level_range, tmp_path):
+    model = level_range
     table = model.discrete_control.condition
     edge = model.edge
 

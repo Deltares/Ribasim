@@ -421,7 +421,7 @@ function expand_logic_mapping(
     logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
-        pattern = r"^[TFUD\*]+$"
+        pattern = r"^[TF\*]+$"
         if !occursin(pattern, truth_state)
             error("Truth state \'$truth_state\' contains illegal characters or is empty.")
         end

@@ -162,8 +162,6 @@ function Model(config::Config)::Model
         @show Ribasim.to
     end
 
-    set_initial_discrete_controlled_parameters!(integrator, storage)
-
     return Model(integrator, config, saved)
 end
 
