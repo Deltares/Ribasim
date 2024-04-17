@@ -1,1 +1,2 @@
-pixi run install code . | exit
+pixi run install
+code . | exit

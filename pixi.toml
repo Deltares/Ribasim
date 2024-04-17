@@ -13,9 +13,6 @@ documentation = "https://deltares.github.io/Ribasim/"
 repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
-install-ribasim-python ={ path = "python/ribasim", editable = true }
-install-ribasim-api ={ path = "python/ribasim_api", editable = true }
-install-ribasim-testmodels ={ path = "python/ribasim_testmodels", editable = true }
 # Installation
 # install-ribasim-python = "pip install --no-build-isolation --no-deps --disable-pip-version-check --editable python/ribasim"
 # install-ribasim-api = "pip install --no-build-isolation --no-deps --disable-pip-version-check --editable python/ribasim_api"
@@ -177,6 +174,10 @@ xmipy = "*"
 xugrid = "*"
 xarray = "*"
 
+[pypi-dependencies]
+install-ribasim-python ={ path = "python/ribasim", editable = true }
+install-ribasim-api ={ path = "python/ribasim_api", editable = true }
+install-ribasim-testmodels ={ path = "python/ribasim_testmodels", editable = true }
 
 [feature.dev.dependencies]
 build = "*"

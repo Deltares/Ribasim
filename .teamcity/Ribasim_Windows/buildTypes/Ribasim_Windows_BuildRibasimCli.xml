@@ -11,7 +11,7 @@
     <build-runners>
       <runner id="RUNNER_2418" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install install-ci" />
+          <param name="script.content" value="pixi run install-ci" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
