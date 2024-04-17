@@ -28,6 +28,7 @@ from ribasim_testmodels.basic import (
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.discrete_control import (
+    compound_variable_condition_model,
     flow_condition_model,
     level_boundary_condition_model,
     level_setpoint_with_minmax_model,
@@ -64,6 +65,7 @@ __all__ = [
     "basic_model",
     "basic_transient_model",
     "bucket_model",
+    "compound_variable_condition_model",
     "discrete_control_of_pid_control_model",
     "dutch_waterways_model",
     "flow_boundary_time_model",

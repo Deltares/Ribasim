@@ -54,11 +54,15 @@ def pump_discrete_control_model() -> Model:
     model.discrete_control.add(
         Node(5, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[1, 3],
                 variable="level",
+                compound_variable_id=[1, 2],
+            ),
+            discrete_control.Condition(
                 greater_than=[0.8, 0.4],
+                compound_variable_id=[1, 2],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "FT", "TT"],
@@ -69,11 +73,15 @@ def pump_discrete_control_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(2, -1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
-                listen_node_id=3,
+                listen_node_id=[3],
                 variable="level",
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
                 greater_than=[0.45],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"],
@@ -140,12 +148,16 @@ def flow_condition_model() -> Model:
     model.discrete_control.add(
         Node(5, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="FlowBoundary",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="flow_rate",
-                greater_than=[20 / (86400)],
                 look_ahead=60 * 86400,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[20 / (86400)],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["off", "on"]),
         ],
@@ -203,12 +215,16 @@ def level_boundary_condition_model() -> Model:
     model.discrete_control.add(
         Node(6, Point(1.5, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=6.0,
                 look_ahead=60 * 86400,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[6.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
         ],
@@ -275,11 +291,15 @@ def tabulated_rating_curve_control_model() -> Model:
     model.discrete_control.add(
         Node(4, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=0.5,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[0.5],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["low", "high"]
@@ -342,12 +362,16 @@ def level_setpoint_with_minmax_model() -> Model:
     model.discrete_control.add(
         Node(7, Point(1, 0)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="level",
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
                 # min, setpoint, max
                 greater_than=[5.0, 10.0, 15.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["FFF", "U**", "T*F", "**D", "TTT"],
@@ -388,5 +412,63 @@ def level_setpoint_with_minmax_model() -> Model:
         model.discrete_control[7],
         model.pump[3],
     )
+
+    return model
+
+
+def compound_variable_condition_model() -> Model:
+    """
+    Set up a minimal model containing a condition on a compound variable
+    for discrete control.
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(1, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+    model.flow_boundary.add(
+        Node(2, Point(0, 0)), [flow_boundary.Static(flow_rate=[0.0])]
+    )
+    model.flow_boundary.add(
+        Node(3, Point(0, 1)),
+        [flow_boundary.Time(time=["2020-01-01", "2021-01-01"], flow_rate=[0.0, 2.0])],
+    )
+    model.pump.add(
+        Node(4, Point(2, 0)),
+        [pump.Static(control_state=["Off", "On"], flow_rate=[0.0, 1.0])],
+    )
+    model.terminal.add(Node(5, Point(3, 0)))
+    model.discrete_control.add(
+        Node(6, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_type="FlowBoundary",
+                listen_node_id=[2, 3],
+                variable="flow_rate",
+                weight=0.5,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[0.5],
+                compound_variable_id=1,
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
+        ],
+    )
+
+    model.edge.add(model.flow_boundary[2], model.basin[1])
+    model.edge.add(model.flow_boundary[3], model.basin[1])
+    model.edge.add(model.basin[1], model.pump[4])
+    model.edge.add(model.pump[4], model.terminal[5])
+    model.edge.add(model.discrete_control[6], model.pump[4])
 
     return model
