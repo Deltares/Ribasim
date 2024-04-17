@@ -1,2 +1,1 @@
-pixi run install
-code . | exit
+pixi run --environment=dev code . | exit
