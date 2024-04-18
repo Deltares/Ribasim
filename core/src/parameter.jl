@@ -126,7 +126,6 @@ struct EdgeMetadata
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
-    node_ids::Vector{NodeID}
 end
 
 abstract type AbstractParameterNode end

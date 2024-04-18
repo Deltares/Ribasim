@@ -827,59 +827,58 @@ function save_allocation_flows!(
     priority::Int32,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, capacity) = allocation_model
     (; allocation, graph) = p
     (; record_flow) = allocation
     F = problem[:F]
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
-    # Edge flows
-    allocation_edge_idx = 1
-    allocation_edges = first(F.axes)
-    n_allocation_edges = length(allocation_edges)
+    edges_allocation = keys(capacity.data)
 
-    while allocation_edge_idx <= n_allocation_edges
-        allocation_edge = allocation_edges[allocation_edge_idx]
-        flow_rate = JuMP.value(F[allocation_edge])
+    skip = false
 
-        # Check whether the next allocation edge is the reverse of the current
-        # allocation edge
-        if allocation_edge_idx < n_allocation_edges &&
-           allocation_edges[allocation_edge_idx + 1] == reverse(allocation_edge)
-            # Combine the flow rates of bidirectional allocation edges
-            allocation_edge_idx += 1
-            flow_rate -= JuMP.value(F[allocation_edges[allocation_edge_idx]])
+    # Loop over all tuples of 2 consecutive edges so that they can be processed
+    # simultaneously if they represent the same edge in both directions
+    for (edge_1, edge_2) in IterTools.partition(edges_allocation, 2, 1)
+        if skip
+            skip = false
+            continue
         end
 
-        edge_metadata = graph[allocation_edge...]
-        (; node_ids) = edge_metadata
+        flow_rate = 0.0
 
-        for i in eachindex(node_ids)[1:(end - 1)]
-            # Check in which direction this edge in the physical layer exists
-            if haskey(graph, node_ids[i], node_ids[i + 1])
-                id_from = node_ids[i]
-                id_to = node_ids[i + 1]
-                flow_rate_signed = flow_rate
-            else
-                id_from = node_ids[i + 1]
-                id_to = node_ids[i]
-                flow_rate_signed = -flow_rate
-            end
-
-            push!(record_flow.time, t)
-            push!(record_flow.edge_id, edge_metadata.id)
-            push!(record_flow.from_node_type, string(id_from.type))
-            push!(record_flow.from_node_id, Int32(id_from))
-            push!(record_flow.to_node_type, string(id_to.type))
-            push!(record_flow.to_node_id, Int32(id_to))
-            push!(record_flow.subnetwork_id, subnetwork_id)
-            push!(record_flow.priority, priority)
-            push!(record_flow.flow_rate, flow_rate_signed)
-            push!(record_flow.optimization_type, string(optimization_type))
+        if haskey(graph, edge_1...)
+            flow_rate += JuMP.value(F[edge_1])
+            sign_2 = -1.0
+            edge_metadata = graph[edge_1...]
+        else
+            edge_1_reverse = reverse(edge_1)
+            flow_rate -= JuMP.value(F[edge_1_reverse])
+            sign_2 = 1.0
+            edge_metadata = graph[edge_1_reverse...]
         end
 
-        allocation_edge_idx += 1
+        # Check whether the next edge is the current one reversed
+        if edge_2 == reverse(edge_1)
+            # If so, these edges are both processed in this iteration
+            flow_rate += sign_2 * JuMP.value(F[edge_2])
+            skip = true
+        end
+
+        id_from = edge_metadata.edge[1]
+        id_to = edge_metadata.edge[2]
+
+        push!(record_flow.time, t)
+        push!(record_flow.edge_id, edge_metadata.id)
+        push!(record_flow.from_node_type, string(id_from.type))
+        push!(record_flow.from_node_id, Int32(id_from))
+        push!(record_flow.to_node_type, string(id_to.type))
+        push!(record_flow.to_node_id, Int32(id_to))
+        push!(record_flow.subnetwork_id, subnetwork_id)
+        push!(record_flow.priority, priority)
+        push!(record_flow.flow_rate, flow_rate)
+        push!(record_flow.optimization_type, string(optimization_type))
     end
 
     # Basin flows

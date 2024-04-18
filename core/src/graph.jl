@@ -66,8 +66,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
-        edge_metadata =
-            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, NodeID[])
+        edge_metadata = EdgeMetadata(fid, edge_type, subnetwork_id, (id_src, id_dst))
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst

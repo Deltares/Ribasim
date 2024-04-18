@@ -82,7 +82,7 @@ end
     graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
@@ -175,7 +175,7 @@ end
     graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
