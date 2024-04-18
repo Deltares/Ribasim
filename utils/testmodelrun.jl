@@ -27,6 +27,7 @@ function main(ARGS)
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
+        error("Model run failed")
     end
 end
 
