@@ -9,15 +9,16 @@ from shapely.geometry import Point
 
 
 def bucket_model() -> ribasim.Model:
-    """Bucket model with just a single basin."""
+    """Bucket model with just a single basin at Deltares' headquarter."""
 
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
-        Node(1, Point(400.0, 200.0)),
+        Node(1, Point(85825.6, 444613.9)),
         [
             basin.Profile(
                 area=[1000.0, 1000.0],
@@ -37,15 +38,16 @@ def bucket_model() -> ribasim.Model:
 
 
 def leaky_bucket_model() -> ribasim.Model:
-    """Bucket model with dynamic forcing with missings."""
+    """Bucket model with dynamic forcing with missings at Deltares' headquarter."""
 
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2020-01-05",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
-        Node(1, Point(400.0, 200.0)),
+        Node(1, Point(85825.6, 444613.9)),
         [
             basin.Profile(
                 area=[1000.0, 1000.0],

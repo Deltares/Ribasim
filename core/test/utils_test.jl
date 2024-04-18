@@ -43,6 +43,7 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
+        [2.0, 3.0],
         darea,
         area,
         level,
@@ -55,30 +56,6 @@ end
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5)) === 0.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7)) === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 6)) === nothing
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (0.0, 4.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 0),
-        NodeID(:Pump, 6),
-    ) === (0.0, 0.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (4.0, 4.0)
-    @test_throws "No bottom defined on either side of Pump #6" Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 1),
-        NodeID(:Pump, 6),
-    )
 end
 
 @testitem "Convert levels to storages" begin
@@ -115,6 +92,7 @@ end
     demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
+        zeros(1),
         zeros(1),
         zeros(1),
         zeros(1),
@@ -207,9 +185,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 7, 10]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
-    @test jac_prototype.nzval == ones(9)
+    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
+    @test jac_prototype.nzval == ones(10)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 

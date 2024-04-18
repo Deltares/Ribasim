@@ -46,6 +46,7 @@ website:
         - contribute/python.qmd
         - contribute/qgis.qmd
         - contribute/addnode.qmd
+        - contribute/ci.qmd
         - contribute/release.qmd
 
 format:
@@ -87,3 +88,5 @@ quartodoc:
         - nodes.terminal
         - nodes.discrete_control
         - nodes.pid_control
+        - nodes.flow_demand
+        - nodes.level_demand

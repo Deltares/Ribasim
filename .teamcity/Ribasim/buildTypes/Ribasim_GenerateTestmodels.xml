@@ -19,7 +19,7 @@ source /usr/share/Modules/init/bash
 
 module load pixi
 pixi --version
-pixi run install-ci]]></param>
+pixi run --environment=dev install-ci]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -39,13 +39,10 @@ pixi run generate-testmodels]]></param>
         </parameters>
       </runner>
     </build-runners>
-    <vcs-settings>
-      <vcs-entry-ref root-id="Ribasim_Ribasim">
-        <checkout-rule rule=". =&gt; ribasim" />
-      </vcs-entry-ref>
-    </vcs-settings>
+    <vcs-settings />
     <requirements>
       <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_339" name="teamcity.agent.name" value="Default Agent" />
     </requirements>
     <build-triggers>
       <build-trigger id="TRIGGER_646" type="vcsTrigger">
@@ -59,4 +56,3 @@ pixi run generate-testmodels]]></param>
     <cleanup />
   </settings>
 </build-type>
-

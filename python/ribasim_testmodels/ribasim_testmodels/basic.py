@@ -25,6 +25,7 @@ def basic_model() -> ribasim.Model:
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -270,6 +271,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     # Setup tabulated rating curve:
@@ -347,6 +349,7 @@ def outlet_model():
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         solver=ribasim.Solver(saveat=0),
     )
 

@@ -2,10 +2,10 @@
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Test ribasim_api</name>
   <description />
-  <settings>
+  <settings ref="Ribasim_Linux">
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
-      <option name="cleanBuild" value="true" />
+      <option name="executionTimeoutMin" value="120" />
     </options>
     <parameters>
       <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
@@ -19,7 +19,7 @@ source /usr/share/Modules/init/bash
 
 module load pixi
 pixi --version
-pixi run install-ci]]></param>
+pixi run install-python]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -74,19 +74,19 @@ pixi run test-ribasim-api]]></param>
       </build-trigger>
     </build-triggers>
     <build-extensions>
-      <extension id="BUILD_EXT_142" type="commit-status-publisher">
-        <parameters>
-          <param name="github_authentication_type" value="token" />
-          <param name="github_host" value="https://api.github.com" />
-          <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
-        </parameters>
-      </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
           <param name="xmlReportParsing.reportDirs" value="ribasim/report.xml" />
           <param name="xmlReportParsing.reportType" value="junit" />
           <param name="xmlReportParsing.verboseOutput" value="true" />
+        </parameters>
+      </extension>
+      <extension id="BUILD_EXT_295" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
         </parameters>
       </extension>
     </build-extensions>

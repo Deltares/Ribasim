@@ -9,7 +9,9 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
+    flow_demand,
     fractional_flow,
+    level_boundary,
     level_demand,
     linear_resistance,
     outlet,
@@ -26,6 +28,7 @@ def user_demand_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         solver=Solver(algorithm="Tsit5"),
     )
 
@@ -76,6 +79,7 @@ def subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-04-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -119,7 +123,7 @@ def subnetwork_model() -> Model:
         Node(11, Point(3, 3), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[5.0], return_factor=0.9, min_level=0.9, priority=1
+                demand=[5.0], return_factor=0.5, min_level=0.9, priority=1
             )
         ],
     )
@@ -160,6 +164,7 @@ def looped_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -286,6 +291,7 @@ def minimal_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -344,6 +350,7 @@ def fractional_flow_subnetwork_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -399,11 +406,15 @@ def fractional_flow_subnetwork_model() -> Model:
     model.discrete_control.add(
         Node(10, Point(-1, 2), subnetwork_id=2),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="FlowBoundary",
                 listen_node_id=[1],
                 variable="flow_rate",
-                greater_than=3e-3,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[3e-3],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
         ],
@@ -431,6 +442,7 @@ def allocation_example_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-01-20",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -492,11 +504,15 @@ def allocation_example_model() -> Model:
     model.discrete_control.add(
         Node(11, Point(4.5, 0.25), subnetwork_id=2),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[5],
                 variable="level",
-                greater_than=0.52,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[0.52],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["divert", "close"]
@@ -543,6 +559,7 @@ def main_network_with_subnetworks_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
     )
 
@@ -670,11 +687,15 @@ def main_network_with_subnetworks_model() -> Model:
     model.discrete_control.add(
         Node(33, Point(13, 5), subnetwork_id=5),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="Basin",
                 listen_node_id=[25],
                 variable="level",
-                greater_than=0.003,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[0.003],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
         ],
@@ -841,10 +862,33 @@ def main_network_with_subnetworks_model() -> Model:
     return model
 
 
+def subnetworks_with_sources_model() -> Model:
+    """Generate a model with subnetworks which contain sources."""
+
+    model = main_network_with_subnetworks_model()
+
+    model.flow_boundary.add(
+        Node(58, Point(3, 5), subnetwork_id=3),
+        [flow_boundary.Static(flow_rate=[0.003])],
+    )
+    model.flow_boundary.add(
+        Node(59, Point(28, 5), subnetwork_id=7),
+        [flow_boundary.Static(flow_rate=[0.003])],
+    )
+
+    model.edge.add(model.flow_boundary[58], model.basin[16], subnetwork_id=3)
+    model.edge.add(model.flow_boundary[59], model.basin[44], subnetwork_id=7)
+
+    return model
+
+
 def level_demand_model() -> Model:
+    """Small model with a LevelDemand."""
+
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
+        crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
     )
     model.flow_boundary.add(
@@ -883,5 +927,117 @@ def level_demand_model() -> Model:
     model.edge.add(model.level_demand[4], model.basin[2])
     model.edge.add(model.user_demand[3], model.basin[5])
     model.edge.add(model.level_demand[4], model.basin[5])
+
+    return model
+
+
+def flow_demand_model() -> Model:
+    """Small model with a FlowDemand."""
+
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        crs="EPSG:28992",
+        allocation=Allocation(use_allocation=True, timestep=1e5),
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
+    )
+
+    model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(node_id=[1], level=[1.0])],
+    )
+
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(7, Point(3, -1), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.user_demand.add(
+        Node(4, Point(3, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[3], demand=1e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+    model.user_demand.add(
+        Node(6, Point(2, -1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[1], demand=1e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+    model.user_demand.add(
+        Node(8, Point(3, -2), subnetwork_id=2),
+        [
+            user_demand.Static(
+                priority=[4], demand=2e-3, return_factor=1.0, min_level=0.2
+            )
+        ],
+    )
+
+    model.flow_demand.add(
+        Node(5, Point(1, -1), subnetwork_id=2),
+        [flow_demand.Static(demand=2e-3, priority=[2])],
+    )
+
+    model.edge.add(
+        model.level_boundary[1],
+        model.tabulated_rating_curve[2],
+        subnetwork_id=2,
+    )
+    model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
+    model.edge.add(model.basin[3], model.user_demand[4])
+    model.edge.add(model.user_demand[4], model.basin[7])
+    model.edge.add(model.basin[7], model.user_demand[8])
+    model.edge.add(model.user_demand[8], model.basin[7])
+    model.edge.add(model.basin[3], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[7])
+    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
+
+    return model
+
+
+def linear_resistance_demand_model():
+    """Small model with a FlowDemand for a node with a max flow rate."""
+
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        crs="EPSG:28992",
+        allocation=Allocation(use_allocation=True),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.linear_resistance.add(
+        Node(2, Point(0, 1), subnetwork_id=2),
+        [linear_resistance.Static(resistance=1.0, max_flow_rate=[2.0])],
+    )
+
+    model.flow_demand.add(
+        Node(4, Point(1, 1), subnetwork_id=2),
+        [flow_demand.Static(priority=[1], demand=2.0)],
+    )
+
+    model.edge.add(model.basin[1], model.linear_resistance[2], subnetwork_id=1)
+    model.edge.add(model.linear_resistance[2], model.basin[3])
+    model.edge.add(model.flow_demand[4], model.linear_resistance[2])
 
     return model

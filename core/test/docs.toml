@@ -3,11 +3,16 @@
 starttime = 2019-01-01 # required
 endtime = 2021-01-01   # required
 
+# Coordinate Reference System
+# The accepted strings are documented here:
+# https://proj.org/en/9.4/development/reference/functions.html#c.proj_create
+crs = "EPSG:4326"      # required
+
 # input files
 input_dir = "."         # required
 results_dir = "results" # required
 
-ribasim_version = "2024.4.0" # required
+ribasim_version = "2024.7.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.

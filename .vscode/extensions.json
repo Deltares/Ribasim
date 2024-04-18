@@ -7,6 +7,7 @@
         "njpwerner.autodocstring",
         "quarto.quarto",
         "tamasfe.even-better-toml",
-        "samuelcolvin.jinjahtml"
+        "samuelcolvin.jinjahtml",
+        "yy0931.vscode-sqlite3-editor"
     ]
 }

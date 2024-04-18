@@ -20,6 +20,11 @@ def basic_transient() -> ribasim.Model:
 
 
 @pytest.fixture()
+def bucket() -> ribasim.Model:
+    return ribasim_testmodels.bucket_model()
+
+
+@pytest.fixture()
 def tabulated_rating_curve() -> ribasim.Model:
     return ribasim_testmodels.tabulated_rating_curve_model()
 
@@ -35,8 +40,8 @@ def discrete_control_of_pid_control() -> ribasim.Model:
 
 
 @pytest.fixture()
-def level_setpoint_with_minmax() -> ribasim.Model:
-    return ribasim_testmodels.level_setpoint_with_minmax_model()
+def level_range() -> ribasim.Model:
+    return ribasim_testmodels.level_range_model()
 
 
 @pytest.fixture()

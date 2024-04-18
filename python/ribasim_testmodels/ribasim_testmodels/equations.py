@@ -24,6 +24,7 @@ def linear_resistance_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
@@ -54,6 +55,7 @@ def rating_curve_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.basin.add(
@@ -92,6 +94,7 @@ def manning_resistance_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0])
@@ -125,6 +128,7 @@ def misc_nodes_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
         solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
     )
 
@@ -179,8 +183,7 @@ def pid_control_equation_model() -> Model:
     """Set up a model with pid control for an analytical solution test"""
 
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-01 00:05:00",
+        starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
     )
     model.basin.add(
         Node(1, Point(0, 0)),

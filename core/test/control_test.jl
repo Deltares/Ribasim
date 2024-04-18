@@ -36,12 +36,12 @@
 
     # Control times
     t_1 = discrete_control.record.time[3]
-    t_1_index = findfirst(t .≈ t_1)
-    @test level[1, t_1_index] ≈ discrete_control.greater_than[1]
+    t_1_index = findfirst(>=(t_1), t)
+    @test level[1, t_1_index] <= discrete_control.greater_than[1][1]
 
     t_2 = discrete_control.record.time[4]
-    t_2_index = findfirst(t .≈ t_2)
-    @test level[2, t_2_index] ≈ discrete_control.greater_than[2]
+    t_2_index = findfirst(>=(t_2), t)
+    @test level[2, t_2_index] >= discrete_control.greater_than[2][1]
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
@@ -54,13 +54,13 @@ end
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
-    Δt = discrete_control.look_ahead[1]
+    Δt = discrete_control.look_ahead[1][1]
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1]
+    greater_than = discrete_control.greater_than[1][1]
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -78,13 +78,13 @@ end
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
-    Δt = discrete_control.look_ahead[1]
+    Δt = discrete_control.look_ahead[1][1]
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1]
+    greater_than = discrete_control.greater_than[1][1]
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -145,39 +145,9 @@ end
     @test discrete_control.record.control_state == ["high", "low"]
     @test discrete_control.record.time[1] == 0.0
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
-    @test Date(t) == Date("2020-03-15")
+    @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
     @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
-end
-
-@testitem "Setpoint with bounds control" begin
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/level_setpoint_with_minmax/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    p = model.integrator.p
-    (; discrete_control) = p
-    (; record, greater_than) = discrete_control
-    level = Ribasim.get_storages_and_levels(model).level[1, :]
-    t = Ribasim.tsaves(model)
-
-    t_none_1 = discrete_control.record.time[2]
-    t_in = discrete_control.record.time[3]
-    t_none_2 = discrete_control.record.time[4]
-
-    level_min = greater_than[1]
-    setpoint = greater_than[2]
-
-    t_1_none_index = findfirst(t .≈ t_none_1)
-    t_in_index = findfirst(t .≈ t_in)
-    t_2_none_index = findfirst(t .≈ t_none_2)
-
-    @test record.control_state == ["out", "none", "in", "none"]
-    @test level[t_1_none_index] ≈ setpoint
-    @test level[t_in_index] ≈ level_min
-    @test level[t_2_none_index] ≈ setpoint
 end
 
 @testitem "Set PID target with DiscreteControl" begin
@@ -205,4 +175,24 @@ end
 
     @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-1)
     @test isapprox(level[end], target_low, atol = 1e-1)
+end
+
+@testitem "Compound condition" begin
+    using Ribasim: NodeID
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/compound_variable_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; discrete_control) = model.integrator.p
+    (; listen_node_id, variable, weight, record) = discrete_control
+
+    @test listen_node_id == [[NodeID(:FlowBoundary, 2), NodeID(:FlowBoundary, 3)]]
+    @test variable == [["flow_rate", "flow_rate"]]
+    @test weight == [[0.5, 0.5]]
+    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
+    @test record.truth_state == ["F", "T"]
+    @test record.control_state == ["Off", "On"]
 end

@@ -50,7 +50,7 @@ problem: The JuMP.jl model for solving the allocation problem
 """
 struct AllocationModel
     allocation_network_id::Int32
-    capacity::SparseMatrixCSC{Float64, Int}
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
@@ -94,7 +94,7 @@ struct Allocation
         subnetwork_id::Vector{Int32},
         priority::Vector{Int32},
         flow_rate::Vector{Float64},
-        collect_demands::BitVector,
+        optimization_type::Vector{String},
     }
 end
 
@@ -135,6 +135,19 @@ end
 abstract type AbstractParameterNode end
 
 """
+In-memory storage of saved mean flows for writing to results.
+
+- `flow`: The mean flows on all edges
+- `inflow`: The sum of the mean flows coming into each basin
+- `outflow`: The sum of the mean flows going out of each basin
+"""
+@kwdef struct SavedFlow
+    flow::Vector{Float64}
+    inflow::Vector{Float64}
+    outflow::Vector{Float64}
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, evaporation, infiltration, drainage
@@ -151,12 +164,14 @@ else
     T = Vector{Float64}
 end
 """
-struct Basin{T, C} <: AbstractParameterNode
+struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Indices{NodeID}
-    precipitation::Vector{Float64}
-    potential_evaporation::Vector{Float64}
-    drainage::Vector{Float64}
-    infiltration::Vector{Float64}
+    # Vertical fluxes
+    vertical_flux_from_input::V1
+    vertical_flux::V2
+    vertical_flux_prev::V3
+    vertical_flux_integrated::V3
+    vertical_flux_bmi::V3
     # Cache this to avoid recomputation
     current_level::T
     current_area::T
@@ -164,17 +179,18 @@ struct Basin{T, C} <: AbstractParameterNode
     area::Vector{Vector{Float64}}
     level::Vector{Vector{Float64}}
     storage::Vector{Vector{Float64}}
-    # Demands and allocated flows for allocation if applicable
+    # Demands for allocation if applicable
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
 
     function Basin(
         node_id,
-        precipitation,
-        potential_evaporation,
-        drainage,
-        infiltration,
+        vertical_flux_from_input::V1,
+        vertical_flux::V2,
+        vertical_flux_prev::V3,
+        vertical_flux_integrated::V3,
+        vertical_flux_bmi::V3,
         current_level::T,
         current_area::T,
         area,
@@ -182,15 +198,16 @@ struct Basin{T, C} <: AbstractParameterNode
         storage,
         demand,
         time::StructVector{BasinTimeV1, C, Int},
-    ) where {T, C}
+    ) where {T, C, V1, V2, V3}
         is_valid = valid_profiles(node_id, level, area)
         is_valid || error("Invalid Basin / profile table.")
-        return new{T, C}(
+        return new{T, C, V1, V2, V3}(
             node_id,
-            precipitation,
-            potential_evaporation,
-            drainage,
-            infiltration,
+            vertical_flux_from_input,
+            vertical_flux,
+            vertical_flux_prev,
+            vertical_flux_integrated,
+            vertical_flux_bmi,
             current_level,
             current_area,
             area,
@@ -426,23 +443,28 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node; these are not unique but repeated
-    by the amount of conditions of this DiscreteControl node
-listen_node_id: the ID of the node being condition on
-variable: the name of the variable in the condition
-greater_than: The threshold value in the condition
-condition_value: The current value of each condition
+node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
+listen_node_id: the IDs of the nodes being condition on per compound variable
+variable: the names of the variables in the condition per compound variable
+weight: the weight of the variables in the condition per compound variable
+look_ahead: the look ahead of variables in the condition in seconds per compound_variable
+greater_than: The threshold values per compound variable
+condition_value: The current truth value of each condition per compound_variable per greater_than
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    listen_node_id::Vector{NodeID}
-    variable::Vector{String}
-    look_ahead::Vector{Float64}
-    greater_than::Vector{Float64}
-    condition_value::Vector{Bool}
+    # Definition of compound variables
+    listen_node_id::Vector{Vector{NodeID}}
+    variable::Vector{Vector{String}}
+    weight::Vector{Vector{Float64}}
+    look_ahead::Vector{Vector{Float64}}
+    # Definition of conditions (one or more greater_than per compound variable)
+    greater_than::Vector{Vector{Float64}}
+    condition_value::Vector{BitVector}
+    # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{NodeID, String}, String}
     record::@NamedTuple{
@@ -475,11 +497,15 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
-demand: water flux demand of UserDemand per priority over time.
+active: whether this node is active and thus demands water
+realized_bmi: Cumulative inflow volume, for read or reset by BMI only
+demand: water flux demand of UserDemand per priority over time
     Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
-realized_bmi: Cumulative inflow volume, for read or reset by BMI only.
-active: whether this node is active and thus demands water
+demand_reduced: the total demand reduced by allocated flows. This is used for goal programming,
+    and requires separate memory from `demand` since demands can come from the BMI
+demand_itp: Timeseries interpolation objects for demands
+demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per priority
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
@@ -488,10 +514,11 @@ struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::BitVector
     realized_bmi::Vector{Float64}
-    demand::Vector{Float64}
+    demand::Matrix{Float64}
+    demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::BitVector
-    allocated::Vector{Vector{Float64}}
+    allocated::Matrix{Float64}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
 
@@ -500,6 +527,7 @@ struct UserDemand <: AbstractParameterNode
         active,
         realized_bmi,
         demand,
+        demand_reduced,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -513,6 +541,7 @@ struct UserDemand <: AbstractParameterNode
                 active,
                 realized_bmi,
                 demand,
+                demand_reduced,
                 demand_itp,
                 demand_from_timeseries,
                 allocated,
@@ -538,6 +567,13 @@ struct LevelDemand
     priority::Vector{Int32}
 end
 
+struct FlowDemand
+    node_id::Vector{NodeID}
+    demand_itp::Vector{ScalarInterpolation}
+    demand::Vector{Float64}
+    priority::Vector{Int32}
+end
+
 "Subgrid linearly interpolates basin levels."
 struct Subgrid
     basin_index::Vector{Int32}
@@ -546,7 +582,7 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2}
+struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
     graph::MetaGraph{
         Int64,
@@ -562,17 +598,13 @@ struct Parameters{T, C1, C2}
             flow::T,
             flow_prev::Vector{Float64},
             flow_integrated::Vector{Float64},
-            flow_vertical_dict::Dict{NodeID, Int},
-            flow_vertical::T,
-            flow_vertical_prev::Vector{Float64},
-            flow_vertical_integrated::Vector{Float64},
             saveat::Float64,
         },
         MetaGraphsNext.var"#11#13",
         Float64,
     }
     allocation::Allocation
-    basin::Basin{T, C1}
+    basin::Basin{T, C1, V1, V2, V3}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}
@@ -586,5 +618,6 @@ struct Parameters{T, C1, C2}
     pid_control::PidControl{T}
     user_demand::UserDemand
     level_demand::LevelDemand
+    flow_demand::FlowDemand
     subgrid::Subgrid
 end

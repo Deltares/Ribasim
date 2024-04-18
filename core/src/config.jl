@@ -113,13 +113,14 @@ end
 end
 
 @option struct Allocation <: TableOption
-    timestep::Union{Float64, Nothing} = nothing
+    timestep::Float64 = 86400
     use_allocation::Bool = false
 end
 
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
+    crs::String
     ribasim_version::String
     input_dir::String
     results_dir::String

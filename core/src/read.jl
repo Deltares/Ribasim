@@ -488,15 +488,11 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     current_level = zeros(n)
     current_area = zeros(n)
 
-    if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_sizes)
-        current_area = DiffCache(current_area, chunk_sizes)
-    end
-
-    precipitation = zeros(length(node_id))
-    potential_evaporation = zeros(length(node_id))
-    drainage = zeros(length(node_id))
-    infiltration = zeros(length(node_id))
+    precipitation = zeros(n)
+    potential_evaporation = zeros(n)
+    evaporation = zeros(n)
+    drainage = zeros(n)
+    infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
     area, level, storage = create_storage_tables(db, config)
@@ -509,14 +505,33 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
+    vertical_flux_from_input =
+        ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
+    vertical_flux = ComponentVector(;
+        precipitation = copy(precipitation),
+        evaporation,
+        drainage = copy(drainage),
+        infiltration = copy(infiltration),
+    )
+    vertical_flux_prev = zero(vertical_flux)
+    vertical_flux_integrated = zero(vertical_flux)
+    vertical_flux_bmi = zero(vertical_flux)
+
+    if config.solver.autodiff
+        current_level = DiffCache(current_level, chunk_sizes)
+        current_area = DiffCache(current_area, chunk_sizes)
+        vertical_flux = DiffCache(vertical_flux, chunk_sizes)
+    end
+
     demand = zeros(length(node_id))
 
     return Basin(
         Indices(NodeID.(NodeType.Basin, node_id)),
-        precipitation,
-        potential_evaporation,
-        drainage,
-        infiltration,
+        vertical_flux_from_input,
+        vertical_flux,
+        vertical_flux_prev,
+        vertical_flux_integrated,
+        vertical_flux_bmi,
         current_level,
         current_area,
         area,
@@ -527,10 +542,81 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
 end
 
+function parse_variables_and_conditions(compound_variable, condition)
+    node_id = NodeID[]
+    listen_node_id = Vector{NodeID}[]
+    variable = Vector{String}[]
+    weight = Vector{Float64}[]
+    look_ahead = Vector{Float64}[]
+    greater_than = Vector{Float64}[]
+    condition_value = BitVector[]
+    errors = false
+
+    # Loop over unique discrete_control node IDs (on which at least one condition is defined)
+    for id in unique(condition.node_id)
+        condition_group_id = filter(row -> row.node_id == id, condition)
+        variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        # Loop over compound variables for this node ID
+        for compound_variable_id in unique(condition_group_id.compound_variable_id)
+            condition_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                condition_group_id,
+            )
+            variable_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                variable_group_id,
+            )
+            discrete_control_id = NodeID(NodeType.DiscreteControl, id)
+            if isempty(variable_group_variable)
+                errors = true
+                @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
+            else
+                push!(node_id, discrete_control_id)
+                push!(
+                    listen_node_id,
+                    NodeID.(
+                        variable_group_variable.listen_node_type,
+                        variable_group_variable.listen_node_id,
+                    ),
+                )
+                push!(variable, variable_group_variable.variable)
+                push!(weight, coalesce.(variable_group_variable.weight, 1.0))
+                push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
+                push!(greater_than, condition_group_variable.greater_than)
+                push!(
+                    condition_value,
+                    BitVector(zeros(length(condition_group_variable.greater_than))),
+                )
+            end
+        end
+    end
+    return node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    !errors
+end
+
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
+    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    condition_value = fill(false, length(condition.node_id))
+    node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    valid = parse_variables_and_conditions(compound_variable, condition)
+
+    if !valid
+        error("Problems encountered when parsing DiscreteControl variables and conditions.")
+    end
+
     control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
     rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
@@ -542,7 +628,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic = load_structvector(db, config, DiscreteControlLogicV1)
-
     logic_mapping = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state, control_state_) in
@@ -552,7 +637,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
-    look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
         time = Float64[],
@@ -562,11 +646,12 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
-        NodeID.(condition.listen_node_type, condition.listen_node_id),
-        condition.variable,
+        node_id, # Not unique
+        listen_node_id,
+        variable,
+        weight,
         look_ahead,
-        condition.greater_than,
+        greater_than,
         condition_value,
         control_state,
         logic_mapping,
@@ -637,7 +722,7 @@ end
 
 function user_demand_static!(
     active::BitVector,
-    demand::Vector{Float64},
+    demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     return_factor::Vector{Float64},
     min_level::Vector{Float64},
@@ -657,7 +742,7 @@ function user_demand_static!(
         for row in group
             priority_idx = findsorted(priorities, row.priority)
             demand_itp[user_demand_idx][priority_idx].u .= row.demand
-            demand[(user_demand_idx - 1) * length(priorities) + priority_idx] = row.demand
+            demand[user_demand_idx, priority_idx] = row.demand
         end
     end
     return nothing
@@ -665,7 +750,7 @@ end
 
 function user_demand_time!(
     active::BitVector,
-    demand::Vector{Float64},
+    demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::BitVector,
     return_factor::Vector{Float64},
@@ -697,8 +782,7 @@ function user_demand_time!(
             :demand;
             default_value = 0.0,
         )
-        demand[(user_demand_idx - 1) * length(priorities) + priority_idx] =
-            demand_p_itp(0.0)
+        demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
 
         if is_valid
             demand_itp[user_demand_idx][priority_idx] = demand_p_itp
@@ -726,13 +810,14 @@ function UserDemand(db::DB, config::Config)::UserDemand
     n_priority = length(priorities)
     active = BitVector(ones(Bool, n_user))
     realized_bmi = zeros(n_user)
-    demand = zeros(n_user * n_priority)
+    demand = zeros(n_user, n_priority)
+    demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = BitVector(zeros(Bool, n_user))
-    allocated = [fill(Inf, length(priorities)) for id in node_ids]
+    allocated = fill(Inf, n_user, n_priority)
     return_factor = zeros(n_user)
     min_level = zeros(n_user)
 
@@ -771,6 +856,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
         active,
         realized_bmi,
         demand,
+        demand_reduced,
         demand_itp,
         demand_from_timeseries,
         allocated,
@@ -801,6 +887,33 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         NodeID.(NodeType.LevelDemand, parsed_parameters.node_id),
         parsed_parameters.min_level,
         parsed_parameters.max_level,
+        parsed_parameters.priority,
+    )
+end
+
+function FlowDemand(db::DB, config::Config)::FlowDemand
+    static = load_structvector(db, config, FlowDemandStaticV1)
+    time = load_structvector(db, config, FlowDemandTimeV1)
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "FlowDemand";
+        static,
+        time,
+        time_interpolatables = [:demand],
+    )
+
+    if !valid
+        error("Errors occurred when parsing FlowDemand data.")
+    end
+
+    demand = zeros(length(parsed_parameters.node_id))
+
+    return FlowDemand(
+        NodeID.(NodeType.FlowDemand, parsed_parameters.node_id),
+        parsed_parameters.demand,
+        demand,
         parsed_parameters.priority,
     )
 end
@@ -860,7 +973,7 @@ function Allocation(db::DB, config::Config)::Allocation
         subnetwork_id = Int32[],
         priority = Int32[],
         flow_rate = Float64[],
-        collect_demands = BitVector(),
+        optimization_type = String[],
     )
 
     allocation = Allocation(
@@ -913,6 +1026,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config)
     level_demand = LevelDemand(db, config)
+    flow_demand = FlowDemand(db, config)
 
     basin = Basin(db, config, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
@@ -935,6 +1049,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
         user_demand,
         level_demand,
+        flow_demand,
         subgrid_level,
     )
 
@@ -965,12 +1080,21 @@ function exists(db::DB, tablename::String)
 end
 
 """
+    seconds(period::Millisecond)::Float64
+
+Convert a period of type Millisecond to a Float64 in seconds.
+You get Millisecond objects when subtracting two DateTime objects.
+Dates.value returns the number of milliseconds.
+"""
+seconds(period::Millisecond)::Float64 = 0.001 * Dates.value(period)
+
+"""
     seconds_since(t::DateTime, t0::DateTime)::Float64
 
 Convert a DateTime to a float that is the number of seconds since the start of the
 simulation. This is used to convert between the solver's inner float time, and the calendar.
 """
-seconds_since(t::DateTime, t0::DateTime)::Float64 = 0.001 * Dates.value(t - t0)
+seconds_since(t::DateTime, t0::DateTime)::Float64 = seconds(t - t0)
 
 """
     datetime_since(t::Real, t0::DateTime)::DateTime
