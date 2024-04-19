@@ -104,7 +104,7 @@ tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py", depends_on = [
     "initialize-julia",
-] , inputs = ["python/ribasim", "python/ribasim_testmodels"], outputs = ["generated_testmodels"]}
+] , inputs = ["core"], outputs = ["python/ribasim/ribasim/schemas.py"]}
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
