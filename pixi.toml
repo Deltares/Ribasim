@@ -53,7 +53,7 @@ initialize-julia = { depends_on = [
 # Docs
 build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
     "initialize-julia",
-], inputs = ["core"] , outputs = ["docs"]}
+], inputs = ["core", "docs/make.jl"] , outputs = ["docs/build"]}
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" , inputs = ["objects.json"], outputs = ["docs"]}
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build",
