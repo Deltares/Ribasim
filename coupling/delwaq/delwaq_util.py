@@ -6,8 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import ribasim
-import xugrid as xu
 
 
 def strfdelta(tdelta):
@@ -89,55 +87,3 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
         # Delwaq needs an extra timestep after the end
         f.write(struct.pack("<i", int(time + timestep.total_seconds())))
         f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
-
-
-def ugridify(model: ribasim.Model):
-    node_df = model.node_table().df
-
-    # this will need to be adopted for locally unique node ids
-    # otherwise the node_lookup with argsort is not correct
-    assert node_df.node_id.is_unique
-    node_df.sort_values("node_id", inplace=True)
-
-    edge_df = model.edge.df.copy()
-    # edge_df = edge_df[edge_df.edge_type == "flow"]
-    edge_df.set_crs(epsg=28992, inplace=True, allow_override=True)
-    node_df.set_crs(epsg=28992, inplace=True, allow_override=True)
-
-    node_id = node_df.node_id.to_numpy(dtype="int32")
-    edge_id = edge_df.index.to_numpy(dtype="int32")
-    from_node_id = edge_df.from_node_id.to_numpy(dtype="int32")
-    to_node_id = edge_df.to_node_id.to_numpy(dtype="int32")
-
-    # from node_id to the node_dim index
-    node_lookup = pd.Series(
-        index=node_id,
-        data=node_id.argsort().astype("int32"),
-        name="node_index",
-    )
-
-    grid = xu.Ugrid1d(
-        node_x=node_df.geometry.x,
-        node_y=node_df.geometry.y,
-        fill_value=-1,
-        edge_node_connectivity=np.column_stack(
-            (
-                node_lookup[from_node_id],
-                node_lookup[to_node_id],
-            )
-        ),
-        name="ribasim_network",
-        projected=node_df.crs.is_projected,
-        crs=node_df.crs,
-    )
-
-    edge_dim = grid.edge_dimension
-    node_dim = grid.node_dimension
-
-    uds = xu.UgridDataset(None, grid)
-    uds = uds.assign_coords(node_id=(node_dim, node_id))
-    uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
-    uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
-    uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
-
-    return uds

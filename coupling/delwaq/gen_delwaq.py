@@ -11,7 +11,6 @@ import pandas as pd
 import ribasim
 from delwaq_util import (
     strfdelta,
-    ugridify,
     write_flows,
     write_pointer,
     write_volumes,
@@ -52,10 +51,17 @@ edge.set_crs(epsg=28992, inplace=True, allow_override=True)
 # Flows on non-existing edges indicate where the boundaries are
 tg = flows.groupby("time")
 g = tg.get_group(flows.time[0])
-nboundary = g.edge_id.isna().sum()
-boundary_nodes = g.to_node_id[g.edge_id.isna()]
-new_boundary_ids = np.tile(-np.arange(1, nboundary + 1), tg.ngroups)
-flows.loc[flows.edge_id.isna(), "from_node_id"] = new_boundary_ids
+
+boundary_types = ["LevelBoundary", "FlowBoundary", "Terminal"]
+node = model.node_table().df
+bids = node.node_id[node.node_type.isin(boundary_types)]
+nboundary = len(bids)
+
+m = flows.from_node_type.isin(boundary_types)
+flows.from_node_id[m] = flows.from_node_id[m] * -1
+m = flows.to_node_type.isin(boundary_types)
+flows.to_node_id[m] = flows.to_node_id[m] * -1
+
 # flows.to_csv(output_folder / "flows.csv", index=False)  # not needed
 
 
@@ -67,8 +73,8 @@ pointer.drop(
 )
 write_pointer(output_folder / "ribasim.poi", pointer)
 
-total_segments = len(node.index)
-total_exchanges = len(edge.index) + nboundary
+total_segments = len(node) - nboundary
+total_exchanges = len(edge.index)
 
 
 # Write attributes template
@@ -81,7 +87,7 @@ with open(output_folder / "ribasim.atr", mode="w") as f:
     )
 
 # Generate mesh and write to NetCDF
-uds = ugridify(model)
+uds = model.to_xugrid()
 uds.ugrid.to_netcdf(output_folder / "ribasim.nc")
 
 # Generate area and flows
@@ -99,11 +105,11 @@ basins.time = (basins.time - basins.time[0]).dt.total_seconds().astype("int32")
 ntime = basins.time.unique()
 basins.drop(columns=["level"], inplace=True)
 
-non_basins = set(node.index) - set(basins.node_id)
+non_basins = set(node.index) - set(basins.node_id) - set(bids)
 rtime = ntime - ntime[0]
 volumes_nbasin = pd.DataFrame(
     {
-        "time": np.repeat(rtime, len(non_basins)),
+        "time": np.repeat(basins.time.unique(), len(non_basins)),
         "node_id": np.tile(list(non_basins), len(rtime)),
         "storage": fillvolume,
     }
@@ -129,7 +135,6 @@ lengths = pd.DataFrame(
 write_flows(output_folder / "ribasim.len", lengths, timestep)
 
 # Find our boundaries
-
 boundaries = []
 substances = set()
 
@@ -175,7 +180,7 @@ with open(output_folder / "B5_bounddata.inc", mode="w") as f:
         )
     )
 
-bnd = node[node.node_id.isin(boundary_nodes)].reset_index(drop=True)
+bnd = node[node.node_id.isin(bids)].reset_index(drop=True)
 bnd["fid"] = bnd["node_type"].str[:10] + "_" + bnd["node_id"].astype(str)
 bnd["comment"] = ""
 bnd = bnd[["fid", "comment", "node_type"]]
