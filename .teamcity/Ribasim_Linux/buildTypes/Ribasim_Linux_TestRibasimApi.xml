@@ -52,7 +52,8 @@ pixi run test-ribasim-api]]></param>
       <build-trigger id="TRIGGER_642" type="schedulingTrigger">
         <parameters>
           <param name="branchFilter"><![CDATA[+:<default>
-+:v*]]></param>
++:v*
++:release*]]></param>
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
