@@ -200,31 +200,31 @@ const nonconservative_nodetypes =
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
-    allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
+    (; subnetwork_ids, allocation_models, main_network_connections) = allocation
+    subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
-    if isempty(allocation_network_ids_)
+    if isempty(subnetwork_ids_)
         return nothing
     end
 
-    errors = non_positive_allocation_network_id(graph)
+    errors = non_positive_subnetwork_id(graph)
     if errors
         error("Allocation network initialization failed.")
     end
 
-    for allocation_network_id in allocation_network_ids_
-        push!(allocation_network_ids, allocation_network_id)
+    for subnetwork_id in subnetwork_ids_
+        push!(subnetwork_ids, subnetwork_id)
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
     end
 
-    if first(allocation_network_ids_) == 1
+    if first(subnetwork_ids_) == 1
         find_subnetwork_connections!(p)
     end
 
-    for allocation_network_id in allocation_network_ids_
+    for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(allocation_network_id, p, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p, config.allocation.timestep),
         )
     end
     return nothing
@@ -542,10 +542,81 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
     )
 end
 
+function parse_variables_and_conditions(compound_variable, condition)
+    node_id = NodeID[]
+    listen_node_id = Vector{NodeID}[]
+    variable = Vector{String}[]
+    weight = Vector{Float64}[]
+    look_ahead = Vector{Float64}[]
+    greater_than = Vector{Float64}[]
+    condition_value = BitVector[]
+    errors = false
+
+    # Loop over unique discrete_control node IDs (on which at least one condition is defined)
+    for id in unique(condition.node_id)
+        condition_group_id = filter(row -> row.node_id == id, condition)
+        variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        # Loop over compound variables for this node ID
+        for compound_variable_id in unique(condition_group_id.compound_variable_id)
+            condition_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                condition_group_id,
+            )
+            variable_group_variable = filter(
+                row -> row.compound_variable_id == compound_variable_id,
+                variable_group_id,
+            )
+            discrete_control_id = NodeID(NodeType.DiscreteControl, id)
+            if isempty(variable_group_variable)
+                errors = true
+                @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
+            else
+                push!(node_id, discrete_control_id)
+                push!(
+                    listen_node_id,
+                    NodeID.(
+                        variable_group_variable.listen_node_type,
+                        variable_group_variable.listen_node_id,
+                    ),
+                )
+                push!(variable, variable_group_variable.variable)
+                push!(weight, coalesce.(variable_group_variable.weight, 1.0))
+                push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
+                push!(greater_than, condition_group_variable.greater_than)
+                push!(
+                    condition_value,
+                    BitVector(zeros(length(condition_group_variable.greater_than))),
+                )
+            end
+        end
+    end
+    return node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    !errors
+end
+
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
+    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    condition_value = fill(false, length(condition.node_id))
+    node_id,
+    listen_node_id,
+    variable,
+    weight,
+    look_ahead,
+    greater_than,
+    condition_value,
+    valid = parse_variables_and_conditions(compound_variable, condition)
+
+    if !valid
+        error("Problems encountered when parsing DiscreteControl variables and conditions.")
+    end
+
     control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
 
     rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
@@ -557,7 +628,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic = load_structvector(db, config, DiscreteControlLogicV1)
-
     logic_mapping = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state, control_state_) in
@@ -567,7 +637,6 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
-    look_ahead = coalesce.(condition.look_ahead, 0.0)
 
     record = (
         time = Float64[],
@@ -577,11 +646,12 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     return DiscreteControl(
-        NodeID.(NodeType.DiscreteControl, condition.node_id), # Not unique
-        NodeID.(condition.listen_node_type, condition.listen_node_id),
-        condition.variable,
+        node_id, # Not unique
+        listen_node_id,
+        variable,
+        weight,
         look_ahead,
-        condition.greater_than,
+        greater_than,
         condition_value,
         control_state,
         logic_mapping,

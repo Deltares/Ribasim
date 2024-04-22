@@ -92,8 +92,8 @@ def test_extra_columns():
         terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
 
 
-def test_sort(level_setpoint_with_minmax, tmp_path):
-    model = level_setpoint_with_minmax
+def test_sort(level_range, tmp_path):
+    model = level_range
     table = model.discrete_control.condition
     edge = model.edge
 
@@ -102,8 +102,7 @@ def test_sort(level_setpoint_with_minmax, tmp_path):
     assert table.df.iloc[0]["greater_than"] == 15.0
     assert table._sort_keys == [
         "node_id",
-        "listen_node_id",
-        "variable",
+        "compound_variable_id",
         "greater_than",
     ]
     table.sort()

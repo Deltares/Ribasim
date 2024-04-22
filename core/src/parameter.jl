@@ -49,7 +49,7 @@ problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 struct AllocationModel
-    allocation_network_id::Int32
+    subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
     Δt_allocation::Float64
@@ -68,7 +68,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     output file
 """
 struct Allocation
-    allocation_network_ids::Vector{Int32}
+    subnetwork_ids::Vector{Int32}
     allocation_models::Vector{AllocationModel}
     main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
     priorities::Vector{Int32}
@@ -107,29 +107,22 @@ allocation_network_id: Allocation network ID (0 if not in subnetwork)
 """
 struct NodeMetadata
     type::Symbol
-    allocation_network_id::Int32
+    subnetwork_id::Int32
 end
 
 """
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
 type: type of the edge
-allocation_network_id_source: ID of allocation network where this edge is a source
+subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
-from_id: the node ID of the source node
-to_id: the node ID of the destination node
-allocation_flow: whether this edge has a flow in an allocation network
-node_ids: if this edge has allocation flow, these are all the
-    nodes from the physical layer this edge consists of
+edge: (from node ID, to node ID)
 """
 struct EdgeMetadata
     id::Int32
     type::EdgeType.T
-    allocation_network_id_source::Int32
-    from_id::NodeID
-    to_id::NodeID
-    allocation_flow::Bool
-    node_ids::Vector{NodeID}
+    subnetwork_id_source::Int32
+    edge::Tuple{NodeID, NodeID}
 end
 
 abstract type AbstractParameterNode end
@@ -443,23 +436,28 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node; these are not unique but repeated
-    by the amount of conditions of this DiscreteControl node
-listen_node_id: the ID of the node being condition on
-variable: the name of the variable in the condition
-greater_than: The threshold value in the condition
-condition_value: The current value of each condition
+node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
+listen_node_id: the IDs of the nodes being condition on per compound variable
+variable: the names of the variables in the condition per compound variable
+weight: the weight of the variables in the condition per compound variable
+look_ahead: the look ahead of variables in the condition in seconds per compound_variable
+greater_than: The threshold values per compound variable
+condition_value: The current truth value of each condition per compound_variable per greater_than
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    listen_node_id::Vector{NodeID}
-    variable::Vector{String}
-    look_ahead::Vector{Float64}
-    greater_than::Vector{Float64}
-    condition_value::Vector{Bool}
+    # Definition of compound variables
+    listen_node_id::Vector{Vector{NodeID}}
+    variable::Vector{Vector{String}}
+    weight::Vector{Vector{Float64}}
+    look_ahead::Vector{Vector{Float64}}
+    # Definition of conditions (one or more greater_than per compound variable)
+    greater_than::Vector{Vector{Float64}}
+    condition_value::Vector{BitVector}
+    # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{NodeID, String}, String}
     record::@NamedTuple{
@@ -587,7 +585,6 @@ struct Parameters{T, C1, C2, V1, V2, V3}
         EdgeMetadata,
         @NamedTuple{
             node_ids::Dict{Int32, Set{NodeID}},
-            edge_ids::Dict{Int32, Set{Tuple{NodeID, NodeID}}},
             edges_source::Dict{Int32, Set{EdgeMetadata}},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
             flow::T,

@@ -421,7 +421,7 @@ function expand_logic_mapping(
     logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
-        pattern = r"^[TFUD\*]+$"
+        pattern = r"^[TF\*]+$"
         if !occursin(pattern, truth_state)
             error("Truth state \'$truth_state\' contains illegal characters or is empty.")
         end
@@ -571,19 +571,21 @@ end
 is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
-is_flow_direction_constraining(node::AbstractParameterNode) =
-    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
+is_flow_direction_constraining(node::AbstractParameterNode) = (
+    node isa
+    Union{Pump, Outlet, TabulatedRatingCurve, FractionalFlow, Terminal, UserDemand}
+)
 
 function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
     else
-        first(allocation.allocation_network_ids) == 1
+        first(allocation.subnetwork_ids) == 1
     end
 end
 
-function is_main_network(allocation_network_id::Int32)::Bool
-    return allocation_network_id == 1
+function is_main_network(subnetwork_id::Int32)::Bool
+    return subnetwork_id == 1
 end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
@@ -708,4 +710,20 @@ function get_influx(basin::Basin, basin_idx::Int)::Float64
     (; precipitation, evaporation, drainage, infiltration) = vertical_flux
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
+end
+
+function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
+    (; greater_than) = discrete_control
+    condition_idx_now = 1
+
+    for (compound_variable_idx, vec) in enumerate(greater_than)
+        l = length(vec)
+
+        if condition_idx_now + l > condition_idx
+            greater_than_idx = condition_idx - condition_idx_now + 1
+            return compound_variable_idx, greater_than_idx
+        end
+
+        condition_idx_now += l
+    end
 end

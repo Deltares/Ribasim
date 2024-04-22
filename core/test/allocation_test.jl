@@ -14,16 +14,6 @@
     graph = p.graph
     close(db)
 
-    # Test compound allocation edge data
-    for edge_metadata in values(graph.edge_data)
-        if edge_metadata.allocation_flow
-            @test first(edge_metadata.node_ids) == edge_metadata.from_id
-            @test last(edge_metadata.node_ids) == edge_metadata.to_id
-        else
-            @test isempty(edge_metadata.node_ids)
-        end
-    end
-
     Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
@@ -31,10 +21,10 @@
 
     # Last priority (= 2) flows
     F = allocation_model.problem[:F]
-    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Basin, 6))]) ≈ 0.0
+    @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:Pump, 5))]) ≈ 0.0
     @test JuMP.value(F[(NodeID(:Basin, 2), NodeID(:UserDemand, 10))]) ≈ 0.5
     @test JuMP.value(F[(NodeID(:Basin, 8), NodeID(:UserDemand, 12))]) ≈ 2.0
-    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:Basin, 8))]) ≈ 2.0
+    @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:Outlet, 7))]) ≈ 2.0
     @test JuMP.value(F[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]) ≈ 0.5
     @test JuMP.value(F[(NodeID(:Basin, 6), NodeID(:UserDemand, 11))]) ≈ 0.0
 
@@ -69,7 +59,7 @@ end
 end
 
 @testitem "Allocation with controlled fractional flow" begin
-    using DataFrames
+    using DataFrames: DataFrame, groupby
     using Ribasim: NodeID
     using OrdinaryDiffEq: solve!
     using JuMP
@@ -81,12 +71,19 @@ end
     model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
     problem = model.integrator.p.allocation.allocation_models[1].problem
     F = problem[:F]
+    constraints_fractional_flow = problem[:fractional_flow]
     @test JuMP.normalized_coefficient(
-        problem[:fractional_flow][(NodeID(:TabulatedRatingCurve, 3), NodeID(:Basin, 5))],
+        constraints_fractional_flow[(
+            NodeID(:TabulatedRatingCurve, 3),
+            NodeID(:FractionalFlow, 4),
+        )],
         F[(NodeID(:Basin, 2), NodeID(:TabulatedRatingCurve, 3))],
     ) ≈ -0.75
     @test JuMP.normalized_coefficient(
-        problem[:fractional_flow][(NodeID(:TabulatedRatingCurve, 3), NodeID(:Basin, 8))],
+        constraints_fractional_flow[(
+            NodeID(:TabulatedRatingCurve, 3),
+            NodeID(:FractionalFlow, 7),
+        )],
         F[(NodeID(:Basin, 2), NodeID(:TabulatedRatingCurve, 3))],
     ) ≈ -0.25
 
@@ -128,14 +125,18 @@ end
     @test record_control.truth_state == ["F", "T"]
     @test record_control.control_state == ["A", "B"]
 
-    fractional_flow_constraints =
-        model.integrator.p.allocation.allocation_models[1].problem[:fractional_flow]
     @test JuMP.normalized_coefficient(
-        problem[:fractional_flow][(NodeID(:TabulatedRatingCurve, 3), NodeID(:Basin, 5))],
+        constraints_fractional_flow[(
+            NodeID(:TabulatedRatingCurve, 3),
+            NodeID(:FractionalFlow, 4),
+        )],
         F[(NodeID(:Basin, 2), NodeID(:TabulatedRatingCurve, 3))],
     ) ≈ -0.75
     @test JuMP.normalized_coefficient(
-        problem[:fractional_flow][(NodeID(:TabulatedRatingCurve, 3), NodeID(:Basin, 8))],
+        constraints_fractional_flow[(
+            NodeID(:TabulatedRatingCurve, 3),
+            NodeID(:FractionalFlow, 7),
+        )],
         F[(NodeID(:Basin, 2), NodeID(:TabulatedRatingCurve, 3))],
     ) ≈ -0.25
 end
@@ -155,9 +156,9 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
     (; allocation, graph) = p
-    (; main_network_connections, allocation_network_ids) = allocation
+    (; main_network_connections, subnetwork_ids, allocation_models) = allocation
     @test Ribasim.has_main_network(allocation)
-    @test Ribasim.is_main_network(first(allocation_network_ids))
+    @test Ribasim.is_main_network(first(subnetwork_ids))
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
@@ -166,16 +167,15 @@ end
     @test only(main_network_connections[4]) == (NodeID(:Basin, 10), NodeID(:Pump, 38))
 
     # main-sub connections are part of main network allocation network
-    allocation_edges_main_network = graph[].edge_ids[1]
+    allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
     @test [
         (NodeID(:Basin, 2), NodeID(:Pump, 11)),
         (NodeID(:Basin, 6), NodeID(:Pump, 24)),
         (NodeID(:Basin, 10), NodeID(:Pump, 38)),
-    ] ⊆ allocation_edges_main_network
+    ] ⊆ keys(allocation_model_main_network.capacity.data)
 
     # Subnetworks interpreted as user_demands require variables and constraints to
     # support absolute value expressions in the objective function
-    allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
     problem = allocation_model_main_network.problem
     @test problem[:F_abs_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
     @test problem[:abs_positive_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
@@ -300,12 +300,9 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0] atol =
-        1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0] atol =
-        1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001] atol =
-        1e-4
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.002]
 end
 
 @testitem "Allocation level control" begin
@@ -323,8 +320,8 @@ end
     ϕ = 1e-3 # precipitation
     q = Ribasim.get_flow(
         graph,
-        Ribasim.NodeID(Ribasim.NodeType.FlowBoundary, 1),
-        Ribasim.NodeID(Ribasim.NodeType.Basin, 2),
+        Ribasim.NodeID(:FlowBoundary, 1),
+        Ribasim.NodeID(:Basin, 2),
         0,
     )
     A = basin.area[1][1]
@@ -377,7 +374,7 @@ end
 
 @testitem "flow_demand" begin
     using JuMP
-    using Ribasim: NodeID, NodeType, OptimizationType
+    using Ribasim: NodeID, OptimizationType
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -392,7 +389,7 @@ end
     )
     @test Ribasim.has_external_demand(
         graph,
-        NodeID(NodeType.TabulatedRatingCurve, 2),
+        NodeID(:TabulatedRatingCurve, 2),
         :flow_demand,
     )[1]
 
@@ -404,23 +401,22 @@ end
     F_flow_buffer_out = problem[:F_flow_buffer_out]
     F_abs_flow_demand = problem[:F_abs_flow_demand]
 
-    node_id_with_flow_demand = NodeID(NodeType.TabulatedRatingCurve, 2)
+    node_id_with_flow_demand = NodeID(:TabulatedRatingCurve, 2)
     constraint_flow_out = problem[:flow_demand_outflow][node_id_with_flow_demand]
 
     # Test flow conservation constraint containing flow buffer
-    constraint_with_flow_buffer = JuMP.constraint_object(
-        problem[:flow_conservation_flow_demand][node_id_with_flow_demand],
-    )
+    constraint_with_flow_buffer =
+        JuMP.constraint_object(problem[:flow_conservation][node_id_with_flow_demand])
     @test constraint_with_flow_buffer.func ==
-          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] -
-          F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)] +
-          F_flow_buffer_in[node_id_with_flow_demand] -
+          F[(NodeID(:LevelBoundary, 1), node_id_with_flow_demand)] -
+          F[(node_id_with_flow_demand, NodeID(:Basin, 3))] -
+          F_flow_buffer_in[node_id_with_flow_demand] +
           F_flow_buffer_out[node_id_with_flow_demand]
 
     constraint_flow_demand_outflow =
         JuMP.constraint_object(problem[:flow_demand_outflow][node_id_with_flow_demand])
     @test constraint_flow_demand_outflow.func ==
-          F[(node_id_with_flow_demand, NodeID(NodeType.Basin, 3))] + 0.0
+          F[(node_id_with_flow_demand, NodeID(:Basin, 3))] + 0.0
     @test constraint_flow_demand_outflow.set.upper == 0.0
 
     t = 0.0
@@ -469,7 +465,7 @@ end
     )
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities
-    @test JuMP.value(F[(NodeID(NodeType.LevelBoundary, 1), node_id_with_flow_demand)]) == 0
+    @test JuMP.value(F[(NodeID(:LevelBoundary, 1), node_id_with_flow_demand)]) == 0
     # So flow from the flow buffer is used for UserDemand #4
     @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) == 0.001
     # Flow taken from buffer
@@ -488,12 +484,12 @@ end
     )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
-    @assert JuMP.value(F[(NodeID(NodeType.UserDemand, 4), NodeID(NodeType.Basin, 7))]) +
-            JuMP.value(F[(NodeID(NodeType.UserDemand, 6), NodeID(NodeType.Basin, 7))]) == d
+    @assert JuMP.value(F[(NodeID(:UserDemand, 4), NodeID(:Basin, 7))]) +
+            JuMP.value(F[(NodeID(:UserDemand, 6), NodeID(:Basin, 7))]) == d
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
-    using Ribasim: NodeID, NodeType
+    using Ribasim: NodeID
     using JuMP
 
     toml_path = normpath(
@@ -506,10 +502,7 @@ end
     # Test for pump max flow capacity constraint
     (; problem) = model.integrator.p.allocation.allocation_models[1]
     constraint = JuMP.constraint_object(
-        problem[:capacity][(
-            NodeID(NodeType.Basin, 1),
-            NodeID(NodeType.LinearResistance, 2),
-        )],
+        problem[:capacity][(NodeID(:Basin, 1), NodeID(:LinearResistance, 2))],
     )
     @test constraint.set.upper == 2.0
 end

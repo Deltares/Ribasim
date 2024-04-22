@@ -1,26 +1,3 @@
-"""
-Set parameters of nodes that are controlled by DiscreteControl to the
-values corresponding to the initial state of the model.
-"""
-function set_initial_discrete_controlled_parameters!(
-    integrator,
-    storage0::Vector{Float64},
-)::Nothing
-    (; p) = integrator
-    (; discrete_control) = p
-
-    n_conditions = length(discrete_control.condition_value)
-    condition_diffs = zeros(Float64, n_conditions)
-    discrete_control_condition(condition_diffs, storage0, integrator.t, integrator)
-    discrete_control.condition_value .= (condition_diffs .> 0.0)
-
-    # For every discrete_control node find a condition_idx it listens to
-    for discrete_control_node_id in unique(discrete_control.node_id)
-        condition_idx =
-            searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
-        discrete_control_affect!(integrator, condition_idx, missing)
-    end
-end
 
 """
 Create the different callbacks that are used to store results
@@ -78,15 +55,9 @@ function create_callbacks(
 
     saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
 
-    n_conditions = length(discrete_control.node_id)
+    n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
     if n_conditions > 0
-        discrete_control_cb = VectorContinuousCallback(
-            discrete_control_condition,
-            discrete_control_affect_upcrossing!,
-            discrete_control_affect_downcrossing!,
-            n_conditions;
-            save_positions = (false, false),
-        )
+        discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
         push!(callbacks, discrete_control_cb)
     end
     callback = CallbackSet(callbacks...)
@@ -177,24 +148,50 @@ function save_vertical_flux(u, t, integrator)
     return vertical_flux_mean
 end
 
+function apply_discrete_control!(u, t, integrator)::Nothing
+    (; p) = integrator
+    (; discrete_control) = p
+    condition_idx = 0
+
+    discrete_control_condition!(u, t, integrator)
+
+    # For every compound variable see whether it changes a control state
+    for compound_variable_idx in eachindex(discrete_control.node_id)
+        discrete_control_affect!(integrator, compound_variable_idx)
+    end
+end
+
 """
-Listens for changes in condition truths.
+Update discrete control condition truths.
 """
-function discrete_control_condition(out, u, t, integrator)
+function discrete_control_condition!(u, t, integrator)
     (; p) = integrator
     (; discrete_control) = p
 
-    for (i, (listen_node_id, variable, greater_than, look_ahead)) in enumerate(
-        zip(
-            discrete_control.listen_node_id,
-            discrete_control.variable,
-            discrete_control.greater_than,
-            discrete_control.look_ahead,
-        ),
+    # Loop over compound variables
+    for (
+        listen_node_ids,
+        variables,
+        weights,
+        greater_thans,
+        look_aheads,
+        condition_values,
+    ) in zip(
+        discrete_control.listen_node_id,
+        discrete_control.variable,
+        discrete_control.weight,
+        discrete_control.greater_than,
+        discrete_control.look_ahead,
+        discrete_control.condition_value,
     )
-        value = get_value(p, listen_node_id, variable, look_ahead, u, t)
-        diff = value - greater_than
-        out[i] = diff
+        value = 0.0
+        for (listen_node_id, variable, weight, look_ahead) in
+            zip(listen_node_ids, variables, weights, look_aheads)
+            value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+        end
+
+        condition_values .= false
+        condition_values[1:searchsortedlast(greater_thans, value)] .= true
     end
 end
 
@@ -245,139 +242,46 @@ function get_value(
 end
 
 """
-An upcrossing means that a condition (always greater than) becomes true.
-"""
-function discrete_control_affect_upcrossing!(integrator, condition_idx)
-    (; p, u, t) = integrator
-    (; discrete_control, basin) = p
-    (; variable, condition_value, listen_node_id) = discrete_control
-
-    condition_value[condition_idx] = true
-
-    control_state_change = discrete_control_affect!(integrator, condition_idx, true)
-
-    # Check whether the control state change changed the direction of the crossing
-    # NOTE: This works for level conditions, but not for flow conditions on an
-    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
-    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
-    # giving the possibility of logical paradoxes where certain parameter changes immediately
-    # undo the truth state that caused that parameter change.
-    is_basin = id_index(basin.node_id, discrete_control.listen_node_id[condition_idx])[1]
-    # NOTE: The above no longer works when listen feature ids can be something other than node ids
-    # I think the more durable option is to give all possible condition types a different variable string,
-    # e.g. basin.level and level_boundary.level
-    if variable[condition_idx] == "level" && control_state_change && is_basin
-        # Calling water_balance is expensive, but it is a sure way of getting
-        # du for the basin of this level condition
-        du = zero(u)
-        water_balance!(du, u, p, t)
-        _, condition_basin_idx = id_index(basin.node_id, listen_node_id[condition_idx])
-
-        if du[condition_basin_idx] < 0.0
-            condition_value[condition_idx] = false
-            discrete_control_affect!(integrator, condition_idx, false)
-        end
-    end
-end
-
-"""
-An downcrossing means that a condition (always greater than) becomes false.
-"""
-function discrete_control_affect_downcrossing!(integrator, condition_idx)
-    (; p, u, t) = integrator
-    (; discrete_control, basin) = p
-    (; variable, condition_value, listen_node_id) = discrete_control
-
-    condition_value[condition_idx] = false
-
-    control_state_change = discrete_control_affect!(integrator, condition_idx, false)
-
-    # Check whether the control state change changed the direction of the crossing
-    # NOTE: This works for level conditions, but not for flow conditions on an
-    # arbitrary edge. That is because parameter changes do not change the instantaneous level,
-    # only possibly the du. Parameter changes can change the flow on an edge discontinuously,
-    # giving the possibility of logical paradoxes where certain parameter changes immediately
-    # undo the truth state that caused that parameter change.
-    if variable[condition_idx] == "level" && control_state_change
-        # Calling water_balance is expensive, but it is a sure way of getting
-        # du for the basin of this level condition
-        du = zero(u)
-        water_balance!(du, u, p, t)
-        has_index, condition_basin_idx =
-            id_index(basin.node_id, listen_node_id[condition_idx])
-
-        if has_index && du[condition_basin_idx] > 0.0
-            condition_value[condition_idx] = true
-            discrete_control_affect!(integrator, condition_idx, true)
-        end
-    end
-end
-
-"""
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(
-    integrator,
-    condition_idx::Int,
-    upcrossing::Union{Bool, Missing},
-)::Bool
+function discrete_control_affect!(integrator, compound_variable_idx)
     p = integrator.p
     (; discrete_control, graph) = p
 
-    # Get the discrete_control node that listens to this condition
-    discrete_control_node_id = discrete_control.node_id[condition_idx]
+    # Get the discrete_control node to which this compound variable belongs
+    discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
 
     # Get the indices of all conditions that this control node listens to
-    condition_ids = discrete_control.node_id .== discrete_control_node_id
+    where_node_id = searchsorted(discrete_control.node_id, discrete_control_node_id)
 
     # Get the truth state for this discrete_control node
-    truth_values = [ifelse(b, "T", "F") for b in discrete_control.condition_value]
-    truth_state = join(truth_values[condition_ids], "")
-
-    # Get the truth specific about the latest crossing
-    if !ismissing(upcrossing)
-        truth_values[condition_idx] = upcrossing ? "U" : "D"
-    end
-    truth_state_crossing_specific = join(truth_values[condition_ids], "")
+    truth_values = cat(
+        [
+            [ifelse(b, "T", "F") for b in discrete_control.condition_value[i]] for
+            i in where_node_id
+        ]...;
+        dims = 1,
+    )
+    truth_state = join(truth_values, "")
 
     # What the local control state should be
     control_state_new =
-        if haskey(
-            discrete_control.logic_mapping,
-            (discrete_control_node_id, truth_state_crossing_specific),
-        )
-            truth_state_used = truth_state_crossing_specific
-            discrete_control.logic_mapping[(
-                discrete_control_node_id,
-                truth_state_crossing_specific,
-            )]
-        elseif haskey(
-            discrete_control.logic_mapping,
-            (discrete_control_node_id, truth_state),
-        )
-            truth_state_used = truth_state
+        if haskey(discrete_control.logic_mapping, (discrete_control_node_id, truth_state))
             discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
         else
             error(
-                "Control state specified for neither $truth_state_crossing_specific nor $truth_state for DiscreteControl node $discrete_control_node_id.",
+                "No control state specified for $discrete_control_node_id for truth state $truth_state.",
             )
         end
 
-    # What the local control state is
-    # TODO: Check time elapsed since control change
     control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
-
-    control_state_change = false
-
     if control_state_now != control_state_new
-        control_state_change = true
-
         # Store control action in record
         record = discrete_control.record
 
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_node_id))
-        push!(record.truth_state, truth_state_used)
+        push!(record.truth_state, truth_state)
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
@@ -389,15 +293,15 @@ function discrete_control_affect!(
         discrete_control.control_state[discrete_control_node_id] =
             (control_state_new, integrator.t)
     end
-    return control_state_change
+    return nothing
 end
 
-function get_allocation_model(p::Parameters, allocation_network_id::Int32)::AllocationModel
+function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel
     (; allocation) = p
-    (; allocation_network_ids, allocation_models) = allocation
-    idx = findsorted(allocation_network_ids, allocation_network_id)
+    (; subnetwork_ids, allocation_models) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
-        error("Invalid allocation network ID $allocation_network_id.")
+        error("Invalid allocation network ID $subnetwork_id.")
     else
         return allocation_models[idx]
     end
@@ -405,13 +309,13 @@ end
 
 function get_main_network_connections(
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Vector{Tuple{NodeID, NodeID}}
     (; allocation) = p
-    (; allocation_network_ids, main_network_connections) = allocation
-    idx = findsorted(allocation_network_ids, allocation_network_id)
+    (; subnetwork_ids, main_network_connections) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
-        error("Invalid allocation network ID $allocation_network_id.")
+        error("Invalid allocation network ID $subnetwork_id.")
     else
         return main_network_connections[idx]
     end
@@ -428,9 +332,9 @@ function set_fractional_flow_in_allocation!(
 )::Nothing
     (; graph) = p
 
-    allocation_network_id = graph[node_id].allocation_network_id
+    subnetwork_id = graph[node_id].subnetwork_id
     # Get the allocation model this fractional flow node is in
-    allocation_model = get_allocation_model(p, allocation_network_id)
+    allocation_model = get_allocation_model(p, subnetwork_id)
     if !isnothing(allocation_model)
         problem = allocation_model.problem
         # The allocation edge which jumps over the fractional flow node
