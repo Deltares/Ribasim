@@ -26,7 +26,6 @@ end
 
 """
 Set the objective for the given priority.
-For an objective with absolute values this also involves adjusting constraints.
 """
 function set_objective_priority!(
     allocation_model::AllocationModel,

@@ -156,7 +156,7 @@ When performing main network allocation, the connections to subnetworks are also
 
 This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
 
-Likewise, the error of level demands from basins is the absolute difference between flows consumed by basins and basin demands.
+Likewise, the error of level demands from basins is the squared relative difference between flows consumed by basins and basin demands.
 $$
     E_{\text{level demand}} = \sum_{i \in B_S} d_i^p(t)\left(1 - \frac{F_i^\text{basin in}}{d_i^p(t)}\right)^2
 $$
