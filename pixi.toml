@@ -207,6 +207,7 @@ qgis-plugin-manager = "*"
 quarto = "*"
 quartodoc = "*"
 ruff = "*"
+rust = "*"
 twine = "*"
 
 [feature.py312.dependencies]

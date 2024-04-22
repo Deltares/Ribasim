@@ -29,31 +29,22 @@ function build_app()
     output_dir = "ribasim_cli"
     git_repo = ".."
 
-    create_app(
-        project_dir,
-        output_dir;
-        # map from binary name to julia function name
-        executables = ["ribasim" => "main"],
-        precompile_execution_file = "precompile.jl",
-        include_lazy_artifacts = false,
-        include_transitive_dependencies = false,
-        include_preferences = true,
-        force = true,
-    )
+    # create_app(
+    #     project_dir,
+    #     output_dir;
+    #     # map from binary name to julia function name
+    #     executables = ["ribasim" => "main"],
+    #     precompile_execution_file = "precompile.jl",
+    #     include_lazy_artifacts = false,
+    #     include_transitive_dependencies = false,
+    #     include_preferences = true,
+    #     force = true,
+    # )
 
-    readme = @doc(build_app)
-    add_metadata(project_dir, license_file, output_dir, git_repo, readme)
+    # readme = @doc(build_app)
+    # add_metadata(project_dir, license_file, output_dir, git_repo, readme)
 
-    # On Windows, write ribasim.cmd in the output_dir, that starts ribasim.exe.
-    # Since the bin dir contains a julia.exe and many DLLs that you may not want in your path,
-    # with this script you can put output_dir in your path instead.
-    if Sys.iswindows()
-        cmd = raw"""
-        @echo off
-        "%~dp0bin\ribasim.exe" %*
-        """
-        open(normpath(output_dir, "ribasim.cmd"); write = true) do io
-            print(io, cmd)
-        end
-    end
+    run(Cmd(`cargo build --release`; dir = "cli_wrapper"))
+    ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
+    cp("cli_wrapper/target/release/$ribasim", "libribasim/$ribasim"; force = true)
 end
