@@ -624,8 +624,6 @@ node_id               | Int32   | -            | sorted
 
 # DisceteControl {#sec-discrete-control}
 
-DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
-
 ## DiscreteControl / variable
 
 The compound variable schema defines linear combinations of variables which can be used in conditions. This means that

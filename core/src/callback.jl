@@ -296,12 +296,12 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     return nothing
 end
 
-function get_allocation_model(p::Parameters, allocation_network_id::Int32)::AllocationModel
+function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel
     (; allocation) = p
-    (; allocation_network_ids, allocation_models) = allocation
-    idx = findsorted(allocation_network_ids, allocation_network_id)
+    (; subnetwork_ids, allocation_models) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
-        error("Invalid allocation network ID $allocation_network_id.")
+        error("Invalid allocation network ID $subnetwork_id.")
     else
         return allocation_models[idx]
     end
@@ -309,13 +309,13 @@ end
 
 function get_main_network_connections(
     p::Parameters,
-    allocation_network_id::Int32,
+    subnetwork_id::Int32,
 )::Vector{Tuple{NodeID, NodeID}}
     (; allocation) = p
-    (; allocation_network_ids, main_network_connections) = allocation
-    idx = findsorted(allocation_network_ids, allocation_network_id)
+    (; subnetwork_ids, main_network_connections) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
-        error("Invalid allocation network ID $allocation_network_id.")
+        error("Invalid allocation network ID $subnetwork_id.")
     else
         return main_network_connections[idx]
     end
@@ -332,9 +332,9 @@ function set_fractional_flow_in_allocation!(
 )::Nothing
     (; graph) = p
 
-    allocation_network_id = graph[node_id].allocation_network_id
+    subnetwork_id = graph[node_id].subnetwork_id
     # Get the allocation model this fractional flow node is in
-    allocation_model = get_allocation_model(p, allocation_network_id)
+    allocation_model = get_allocation_model(p, subnetwork_id)
     if !isnothing(allocation_model)
         problem = allocation_model.problem
         # The allocation edge which jumps over the fractional flow node

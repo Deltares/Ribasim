@@ -406,21 +406,21 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (allocation_network_id, subnetwork_node_ids) in node_ids
+    for (subnetwork_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
         if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
         end
     end
     return errors
 end
 
-function non_positive_allocation_network_id(graph::MetaGraph)::Bool
+function non_positive_subnetwork_id(graph::MetaGraph)::Bool
     errors = false
-    for allocation_network_id in keys(graph[].node_ids)
-        if (allocation_network_id <= 0)
-            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+    for subnetwork_id in keys(graph[].node_ids)
+        if (subnetwork_id <= 0)
+            @error "Allocation network id $subnetwork_id needs to be a positive integer."
             errors = true
         end
     end
@@ -603,29 +603,35 @@ end
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
-function valid_sources(p::Parameters, allocation_network_id::Int32)::Bool
+function valid_sources(
+    p::Parameters,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+    subnetwork_id::Int32,
+)::Bool
     (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
 
     errors = false
 
-    for edge in edge_ids
+    for edge in keys(capacity.data)
+        if !haskey(graph, edge...)
+            edge = reverse(edge)
+        end
+
         (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
+        if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
-            if is_main_network(allocation_network_id)
+            if is_main_network(subnetwork_id)
                 if !from_source_node
                     errors = true
                     @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
+                from_main_network = is_main_network(graph[id_source].subnetwork_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
                 end
             end
         end

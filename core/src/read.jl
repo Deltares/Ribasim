@@ -200,31 +200,31 @@ const nonconservative_nodetypes =
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
-    allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
+    (; subnetwork_ids, allocation_models, main_network_connections) = allocation
+    subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
-    if isempty(allocation_network_ids_)
+    if isempty(subnetwork_ids_)
         return nothing
     end
 
-    errors = non_positive_allocation_network_id(graph)
+    errors = non_positive_subnetwork_id(graph)
     if errors
         error("Allocation network initialization failed.")
     end
 
-    for allocation_network_id in allocation_network_ids_
-        push!(allocation_network_ids, allocation_network_id)
+    for subnetwork_id in subnetwork_ids_
+        push!(subnetwork_ids, subnetwork_id)
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
     end
 
-    if first(allocation_network_ids_) == 1
+    if first(subnetwork_ids_) == 1
         find_subnetwork_connections!(p)
     end
 
-    for allocation_network_id in allocation_network_ids_
+    for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(allocation_network_id, p, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p, config.allocation.timestep),
         )
     end
     return nothing

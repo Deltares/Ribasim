@@ -571,19 +571,21 @@ end
 is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
-is_flow_direction_constraining(node::AbstractParameterNode) =
-    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
+is_flow_direction_constraining(node::AbstractParameterNode) = (
+    node isa
+    Union{Pump, Outlet, TabulatedRatingCurve, FractionalFlow, Terminal, UserDemand}
+)
 
 function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
     else
-        first(allocation.allocation_network_ids) == 1
+        first(allocation.subnetwork_ids) == 1
     end
 end
 
-function is_main_network(allocation_network_id::Int32)::Bool
-    return allocation_network_id == 1
+function is_main_network(subnetwork_id::Int32)::Bool
+    return subnetwork_id == 1
 end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
