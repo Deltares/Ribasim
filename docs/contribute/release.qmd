@@ -32,6 +32,8 @@ Now submit a pull request to update the version numbers.
 
 ## Create a new release
 
+After updating the version number, Create a pull request start with `release`, follow by the new version number, for example `release-2023-8-0`.
+
 When the pull request is merged to main, checkout the commit that updates the version numbers.
 
 Create a new tag, which is the letter `v` followed by the version number, like, `v2023.8.0`.
