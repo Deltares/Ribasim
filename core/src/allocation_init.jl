@@ -628,8 +628,6 @@ function add_constraints_flow_demand_outflow!(
         node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
     ]
 
-    @show node_ids
-    @show node_ids_flow_demand
     problem[:flow_demand_outflow] = JuMP.@constraint(
         problem,
         [node_id = node_ids_flow_demand],
