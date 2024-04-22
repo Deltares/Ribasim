@@ -38,3 +38,5 @@ def main():
 if __name__ == "__main__":
     if current_git_branch().startswith("v20"):
         main()
+    else:
+        print("Branch doesn't start with 'v20', no release made.")
