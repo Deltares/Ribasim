@@ -170,6 +170,11 @@ function assign_allocations!(
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
     F = problem[:F]
     for edge in keys(capacity.data)
+        # If this edge does not exist in the physical model then it comes from a
+        # bidirectional edge, and thus does not have directly allocating flow
+        if !haskey(graph, edge...)
+            continue
+        end
         # If this edge is a source edge from the main network to a subnetwork,
         # and demands are being collected, add its flow to the demand of this edge
         if optimization_type == OptimizationType.collect_demands

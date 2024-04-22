@@ -613,8 +613,12 @@ function valid_sources(
     errors = false
 
     for edge in keys(capacity.data)
+        if !haskey(graph, edge...)
+            edge = reverse(edge)
+        end
+
         (id_source, id_dst) = edge
-        if graph[id_source, id_dst].subnetwork_id_source == subnetwork_id
+        if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
             if is_main_network(subnetwork_id)

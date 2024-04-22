@@ -114,12 +114,9 @@ end
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
 type: type of the edge
-allocation_network_id_source: ID of allocation network where this edge is a source
+subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
-from_id: the node ID of the source node
-to_id: the node ID of the destination node
-node_ids: if this edge has allocation flow, these are all the
-    nodes from the physical layer this edge consists of
+edge: (from node ID, to node ID)
 """
 struct EdgeMetadata
     id::Int32

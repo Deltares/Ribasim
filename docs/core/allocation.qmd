@@ -93,10 +93,10 @@ for all $i \in B_S$. Here $\Delta t_{\text{alloc}}$ is the simulated time betwee
 ### Constraining factors
 
 #### Flow magnitude and direction constraints
-Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps, outlets and linear resistances, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like pumps, outlets and tabulated rating curves.
+Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
 #### FractionalFlow and UserDemand return flows
-Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$. and Fractional Flow nodes have an associated fraction $f_j$ which can be updated by DiscreteControl.
+Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$, and FractionalFlow nodes have an associated fraction $f_j$ which can be updated by DiscreteControl.
 
 ## The subnetwork
 The subnetwork consists of a set of nodes $S \subset V$ and edges
@@ -110,7 +110,7 @@ The nodes in $S$ together with the connected nodes outside the subnetwork are ca
 
 ### Capacities
 
-Each edge in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. The capacities can be infinite, if there is nothing in the model constraining the capacity of the edge.
+Each edge in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An edge capacity is infinite if there is nothing in the model constraining the capacity.
 
 The capacities are determined in different ways:
 
@@ -177,7 +177,7 @@ For convenience, we use the notation
     V^{\text{in}}_S(j) = \left\{i \in V : (i,j) \in E_S\right\}
 \end{align}
 
-for the set of in-neighbors and out-neighbors of a node in the allocation network respectively.
+for the set of in-neighbors and out-neighbors of a node in the network respectively.
 
 - Flow conservation: For the basins in the allocation network we have that
 $$
