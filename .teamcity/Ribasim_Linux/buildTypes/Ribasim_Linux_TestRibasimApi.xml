@@ -53,7 +53,7 @@ pixi run test-ribasim-api]]></param>
         <parameters>
           <param name="branchFilter"><![CDATA[+:<default>
 +:v*
-+:release*]]></param>
++pr:release*]]></param>
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
