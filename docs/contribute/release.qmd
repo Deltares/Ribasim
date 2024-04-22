@@ -36,6 +36,8 @@ After updating the version number, Create a pull request start with `release`, f
 
 When the pull request is merged to main, checkout the commit that updates the version numbers.
 
+Test PR trigger
+
 Create a new tag, which is the letter `v` followed by the version number, like, `v2023.8.0`.
 
 This can be done by executing:
