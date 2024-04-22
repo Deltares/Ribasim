@@ -69,7 +69,7 @@ function get_subnetwork_capacity(
                 is_flow_direction_constraining(node_src) |
                 is_flow_direction_constraining(node_dst)
             )
-                capacity[edge_metadata.edge] = capacity_edge
+                capacity[reverse(edge_metadata.edge)] = capacity_edge
             end
         end
     end
@@ -137,7 +137,7 @@ function add_variables_flow!(
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
 )::Nothing
     edges = keys(capacity.data)
-    problem[:F] = JuMP.@variable(problem, F[edge = edges] ≥ 0.0)
+    problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
     return nothing
 end
 
@@ -156,9 +156,9 @@ function add_variables_basin!(
         node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin
     ]
     problem[:F_basin_in] =
-        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] ≥ 0.0)
+        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
     problem[:F_basin_out] =
-        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] ≥ 0.0)
+        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
     return nothing
 end
 
@@ -182,9 +182,9 @@ function add_variables_flow_buffer!(
     end
 
     problem[:F_flow_buffer_in] =
-        JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] ≥ 0.0)
+        JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] >= 0.0)
     problem[:F_flow_buffer_out] =
-        JuMP.@variable(problem, F_flow_buffer_out[node_id = node_ids_flow_demand,] ≥ 0.0)
+        JuMP.@variable(problem, F_flow_buffer_out[node_id = node_ids_flow_demand,] >= 0.0)
     return nothing
 end
 
@@ -243,7 +243,7 @@ Only finite capacities get a constraint.
 The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
-flow over edge ≤ edge capacity
+flow over edge <= edge capacity
 """
 function add_constraints_capacity!(
     problem::JuMP.Model,
@@ -265,7 +265,7 @@ function add_constraints_capacity!(
     problem[:capacity] = JuMP.@constraint(
         problem,
         [edge = edge_ids_finite_capacity],
-        F[edge] ≤ capacity[edge...],
+        F[edge] <= capacity[edge...],
         base_name = "capacity"
     )
     return nothing
@@ -276,7 +276,7 @@ Add capacity constraints to the outflow edge of UserDemand nodes.
 The constraint indices are the UserDemand node IDs.
 
 Constraint:
-flow over UserDemand edge outflow edge ≤ cumulative return flow from previous priorities
+flow over UserDemand edge outflow edge <= cumulative return flow from previous priorities
 """
 function add_constraints_user_source!(
     problem::JuMP.Model,
@@ -293,7 +293,7 @@ function add_constraints_user_source!(
     problem[:source_user] = JuMP.@constraint(
         problem,
         [node_id = node_ids_user],
-        F[(node_id, outflow_id(graph, node_id))] ≤ 0.0,
+        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
         base_name = "source_user"
     )
     return nothing
@@ -305,7 +305,7 @@ The actual threshold values will be set before each allocation solve.
 The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
-flow over source edge ≤ source flow in subnetwork
+flow over source edge <= source flow in subnetwork
 """
 function add_constraints_source!(
     problem::JuMP.Model,
@@ -328,7 +328,7 @@ function add_constraints_source!(
     problem[:source] = JuMP.@constraint(
         problem,
         [edge_id = edges_source],
-        F[edge_id] ≤ 0.0,
+        F[edge_id] <= 0.0,
         base_name = "source"
     )
     return nothing
@@ -365,7 +365,7 @@ function add_constraints_conservation_node!(
         is_source_sink = node_id.type in
         [NodeType.FlowBoundary, NodeType.LevelBoundary, NodeType.UserDemand]
 
-        # No flow conservation on nodes with fractional flow outneighbors
+        # No flow conservation on nodes with FractionalFlow outneighbors
         has_fractional_flow_outneighbors = any(
             outneighbor_id.type == NodeType.FractionalFlow for
             outneighbor_id in outflow_ids(graph, node_id)
@@ -392,7 +392,7 @@ function add_constraints_conservation_node!(
             end
         end
 
-        # If the node is a basin, add basin in- and outflow
+        # If the node is a Basin, add basin in- and outflow
         if node_id.type == NodeType.Basin
             push!(inflows_node, F_basin_out[node_id])
             push!(outflows_node, F_basin_in[node_id])
@@ -421,8 +421,8 @@ end
 """
 Minimizing |expr| can be achieved by introducing a new variable expr_abs
 and posing the following constraints:
-expr_abs ≥ expr
-expr_abs ≥ -expr
+expr_abs >= expr
+expr_abs >= -expr
 """
 function add_constraints_absolute_value!(
     problem::JuMP.Model,
@@ -441,14 +441,14 @@ function add_constraints_absolute_value!(
     problem[Symbol(base_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
-        F_abs[node_id] ≥ (flow_per_node[node_id] - d),
+        F_abs[node_id] >= (flow_per_node[node_id] - d),
         base_name = base_name
     )
     base_name = "abs_negative_$variable_type"
     problem[Symbol(base_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
-        F_abs[node_id] ≥ -(flow_per_node[node_id] - d),
+        F_abs[node_id] >= -(flow_per_node[node_id] - d),
         base_name = base_name
     )
 
@@ -528,7 +528,7 @@ Add the fractional flow constraints to the allocation problem.
 The constraint indices are allocation edges over a fractional flow node.
 
 Constraint:
-flow after fractional_flow node ≤ fraction * inflow
+flow after fractional_flow node <= fraction * inflow
 """
 function add_constraints_fractional_flow!(
     problem::JuMP.Model,
@@ -563,7 +563,7 @@ function add_constraints_fractional_flow!(
         problem[:fractional_flow] = JuMP.@constraint(
             problem,
             [edge = edges_to_fractional_flow],
-            F[edge] ≤ fractions[edge] * inflows[edge[1]],
+            F[edge] <= fractions[edge] * inflows[edge[1]],
             base_name = "fractional_flow"
         )
     end
@@ -575,14 +575,14 @@ Add the Basin flow constraints to the allocation problem.
 The constraint indices are the Basin node IDs.
 
 Constraint:
-flow out of basin ≤ basin capacity
+flow out of basin <= basin capacity
 """
 function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
     F_basin_out = problem[:F_basin_out]
     problem[:basin_outflow] = JuMP.@constraint(
         problem,
         [node_id = only(F_basin_out.axes)],
-        F_basin_out[node_id] ≤ 0.0,
+        F_basin_out[node_id] <= 0.0,
         base_name = "basin_outflow"
     )
     return nothing
@@ -593,14 +593,14 @@ Add the buffer outflow constraints to the allocation problem.
 The constraint indices are the node IDs of the nodes that have a flow demand.
 
 Constraint:
-flow out of buffer ≤ flow buffer capacity
+flow out of buffer <= flow buffer capacity
 """
 function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     F_flow_buffer_out = problem[:F_flow_buffer_out]
     problem[:flow_buffer_outflow] = JuMP.@constraint(
         problem,
         [node_id = only(F_flow_buffer_out.axes)],
-        F_flow_buffer_out[node_id] ≤ 0.0,
+        F_flow_buffer_out[node_id] <= 0.0,
         base_name = "flow_buffer_outflow"
     )
     return nothing
@@ -611,7 +611,7 @@ Add the flow demand node outflow constraints to the allocation problem.
 The constraint indices are the node IDs of the nodes that have a flow demand.
 
 Constraint:
-flow out of node with flow demand ≤ ∞ if not at flow demand priority, 0.0 otherwise
+flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 otherwise
 """
 function add_constraints_flow_demand_outflow!(
     problem::JuMP.Model,
@@ -631,7 +631,7 @@ function add_constraints_flow_demand_outflow!(
     problem[:flow_demand_outflow] = JuMP.@constraint(
         problem,
         [node_id = node_ids_flow_demand],
-        F[(node_id, outflow_id(graph, node_id))] ≤ 0.0,
+        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
         base_name = "flow_demand_outflow"
     )
     return nothing
