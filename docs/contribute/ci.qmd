@@ -55,13 +55,11 @@ We have the following pipeline to generate artifects for releasing:
 
 * Generate Testmodels: produces generated_testmodels artifact which is part of the release.
 * Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the GitHub repository. When a tag starts with `v20` is added, it triggers the release process.
-* Build libribasim: builds library of Ribasim on Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
-* Build ribasim_cli: builds CLI application on Linux and Windows, its artifact is tested in `Test ribasim_cli` and used by release
-* Test ribasim_api: tests libribasim artifact on Linux and Windows
-* Test ribasim_cli: tests ribasim_cli artifact on Linux and Windows
+* Build Ribasim: builds library and executable of Ribasim on Linux and Windows. The artifacts are tested in `Test Ribasim Binaries` and used by iMOD Coupler.
+* Test Ribasim Binaries: tests libribasim artifact and ribasim_cli artifact on Linux and Windows
 
 ::: {.callout-note}
-Make GitHub Release does not publish artifacts of "Test libribasim" and "Test ribasim_cli". It only publishes artifacts of "Build libribasim" and "Build ribasim_cli" if the beforementioned tests pass.
+Make GitHub Release does not publish artifacts of "Test Ribasim Binaries". It only publishes artifacts of "Build Ribasim" if the beforementioned tests pass.
 :::
 
 ```{mermaid}
@@ -69,8 +67,6 @@ graph LR
     A[Make GitHub Release]-->B(Release)
     F[Generate Testmodels]-->A
     G[Make QGIS plugin]-->A
-    H[Build libribasim]---D[Test libribasim]
+    H[Build Ribasim]---D[Test Ribasim Binaries]
     D-->A
-    C[Build ribasim_cli] --- E[Test ribasim_cli]
-    E-->A
 ```
