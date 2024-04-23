@@ -891,9 +891,7 @@ function allocate_priority!(
         F = problem[:F]
         @show optimization_type
         @show priority_idx
-        for i in only(F.axes)
-            @show JuMP.value.(F)
-        end
+        @show JuMP.value.(F)
     end
 
     # Assign the allocations to the UserDemand for this priority
