@@ -438,3 +438,23 @@ end
     @test logger.logs[1].message ==
           "Demand of UserDemand #1 with priority 1 should be non-negative"
 end
+
+@testitem "negative storage" begin
+    import BasicModelInterface as BMI
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
+    @test ispath(toml_path)
+    dt = 1e10
+
+    config = Ribasim.Config(
+        toml_path;
+        solver_algorithm = "Euler",
+        solver_dt = dt,
+        solver_saveat = Inf,
+    )
+    model = Ribasim.Model(config)
+    @test_throws "Negative storages found at 2021-01-01T00:00:00." BMI.update_until(
+        model,
+        dt,
+    )
+end
