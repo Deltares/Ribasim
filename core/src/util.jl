@@ -572,8 +572,15 @@ is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
 is_flow_direction_constraining(node::AbstractParameterNode) = (
-    node isa
-    Union{Pump, Outlet, TabulatedRatingCurve, FractionalFlow, Terminal, UserDemand}
+    node isa Union{
+        Pump,
+        Outlet,
+        TabulatedRatingCurve,
+        FractionalFlow,
+        Terminal,
+        UserDemand,
+        FlowBoundary,
+    }
 )
 
 function has_main_network(allocation::Allocation)::Bool
