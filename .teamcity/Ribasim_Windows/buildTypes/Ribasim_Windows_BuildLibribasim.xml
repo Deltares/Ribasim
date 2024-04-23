@@ -25,7 +25,7 @@ pixi run --environment=dev install-ci]]></param>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[pixi run remove-artifacts
-pixi run build-libribasim]]></param>
+pixi run build]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -54,4 +54,3 @@ pixi run build-libribasim]]></param>
     <cleanup />
   </settings>
 </build-type>
-
