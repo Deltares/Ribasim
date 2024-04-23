@@ -1,6 +1,11 @@
-use std::{env, path::PathBuf};
+use std::{
+    env::{self, consts::OS},
+    ffi::CString,
+    path::PathBuf,
+};
 
-use clap::{CommandFactory, Parser};
+use clap::Parser;
+use libloading::{Library, Symbol};
 use std::process::ExitCode;
 
 #[derive(Parser)]
@@ -15,7 +20,7 @@ fn main() -> ExitCode {
     let exe_dir = env::current_exe().unwrap().parent().unwrap().to_owned();
 
     // Set the appropriate environment variable for the current platform
-    if std::env::consts::OS == "windows" {
+    if OS == "windows" {
         env::set_var(
             "PATH",
             format!(
@@ -26,7 +31,7 @@ fn main() -> ExitCode {
         );
     }
 
-    // TODO: Do I need to set LD_LIBRARY_PATH on linux?
+    // TODO: Do we need to set LD_LIBRARY_PATH on linux?
 
     // Parse command line arguments
     let cli = Cli::parse();
@@ -36,6 +41,27 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Call ribasim shared library and check for errors
-    todo!()
+    let shared_lib_path = match OS {
+        "windows" => exe_dir.join("bin/libribasim.dll"),
+        "linux" => exe_dir.join("lib/libribasim.so"),
+        _ => unimplemented!(),
+    };
+
+    unsafe {
+        // Load the library
+        let lib = Library::new(shared_lib_path).unwrap();
+
+        // Load the function from the library
+        let execute: Symbol<unsafe extern "C" fn(*const libc::c_char) -> i32> =
+            lib.get(b"execute").unwrap();
+
+        // Convert the path to a CString
+        let toml_path_c = CString::new(cli.toml_path.to_str().unwrap()).unwrap();
+
+        // Call the function
+        let exit_code = execute(toml_path_c.as_ptr());
+
+        // Return with same exit code as `execute` did
+        ExitCode::from(exit_code as u8)
+    }
 }
