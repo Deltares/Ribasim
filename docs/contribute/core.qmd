@@ -121,7 +121,7 @@ This is a very convenient way of executing only parts of your source file.
 
 ## Build Ribasim
 
-The Ribasim core can be built into a command line interface (CLI) and a shared library, libribasim.
+The Ribasim core can be built into an executable with a command line interface (CLI) and a shared library, libribasim.
 These products will run without a Julia installation.
 To create both these products at once, run:
 
