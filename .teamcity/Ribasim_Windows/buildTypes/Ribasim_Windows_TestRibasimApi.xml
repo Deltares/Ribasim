@@ -6,9 +6,6 @@
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
     </options>
-    <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
-    </parameters>
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
@@ -78,13 +75,13 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildLibribasim" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasim" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/libribasim&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_windows.zip!** =&gt; ribasim/build/ribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildLibribasim">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasim">
         <options>
           <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
@@ -95,4 +92,3 @@
     <cleanup />
   </settings>
 </build-type>
-

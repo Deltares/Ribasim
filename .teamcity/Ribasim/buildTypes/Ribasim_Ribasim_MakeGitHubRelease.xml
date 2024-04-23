@@ -56,17 +56,17 @@ pixi run github-release]]></param>
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim_qgis.zip" />
       </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasim" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_linux.zip" />
+        <artifact sourcePath="ribasim_linux.zip" />
       </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasim" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_windows.zip" />
+        <artifact sourcePath="ribasim_windows.zip" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasim">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -90,7 +90,7 @@ pixi run github-release]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasim">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -110,4 +110,3 @@ pixi run github-release]]></param>
     </cleanup>
   </settings>
 </build-type>
-

@@ -132,3 +132,9 @@ def test_get_version(libribasim):
         config = tomli.load(fp)
 
     assert libribasim.get_version() == config["version"]
+
+
+def test_execute(libribasim, basic, tmp_path):
+    basic.write(tmp_path / "ribasim.toml")
+    config_file = str(tmp_path / "ribasim.toml")
+    libribasim.execute(config_file)
