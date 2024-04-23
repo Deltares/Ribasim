@@ -88,15 +88,7 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build", depends_on = [
-    "generate-testmodels",
-    "initialize-julia",
-] }
-build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build", depends_on = [
-    "generate-testmodels",
-    "initialize-julia",
-] }
-build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build", depends_on = [
+build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }

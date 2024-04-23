@@ -1,6 +1,16 @@
-use std::env;
+use std::{env, path::PathBuf};
 
-fn main() {
+use clap::{CommandFactory, Parser};
+use std::process::ExitCode;
+
+#[derive(Parser)]
+#[command(version)]
+struct Cli {
+    /// Path to the TOML file
+    toml_path: PathBuf,
+}
+
+fn main() -> ExitCode {
     // Get the path to the directory containing the current executable
     let exe_dir = env::current_exe().unwrap().parent().unwrap().to_owned();
 
@@ -18,11 +28,13 @@ fn main() {
 
     // TODO: Do I need to set LD_LIBRARY_PATH on linux?
 
-    // Get the command line arguments
-    let args: Vec<String> = std::env::args().skip(1).collect();
-
     // Parse command line arguments
-    todo!();
+    let cli = Cli::parse();
+
+    if !cli.toml_path.is_file() {
+        eprintln!("File not found {:?}", cli.toml_path);
+        return ExitCode::FAILURE;
+    }
 
     // Call ribasim shared library and check for errors
     todo!()

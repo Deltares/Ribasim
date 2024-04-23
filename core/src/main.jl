@@ -14,12 +14,6 @@ function run(config::Config)::Model
     return model
 end
 
-function help(x::AbstractString)::Cint
-    println(x)
-    println("Usage: ribasim path/to/model/ribasim.toml")
-    return 1
-end
-
 main(toml_path::AbstractString)::Cint = main([toml_path])
 main()::Cint = main(ARGS)
 
@@ -32,26 +26,10 @@ This is the main entry point of the application.
 Performs argument parsing and sets up logging for both terminal and file.
 Calls Ribasim.run() and handles exceptions to convert to exit codes.
 """
-function main(ARGS::Vector{String})::Cint
-    n = length(ARGS)
-    if n != 1
-        return help("Exactly 1 argument expected, got $n")
-    end
-    arg = only(ARGS)
-
-    if arg == "--version"
-        version = pkgversion(Ribasim)
-        print(version)
-        return 0
-    end
-
-    if !isfile(arg)
-        return help("File not found: $arg")
-    end
-
+function main(toml_path::String)::Cint
     try
         # show progress bar in terminal
-        config = Config(arg)
+        config = Config(toml_path)
         mkpath(results_path(config, "."))
         open(results_path(config, "ribasim.log"), "w") do io
             logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
