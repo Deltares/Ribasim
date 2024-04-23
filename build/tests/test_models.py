@@ -15,7 +15,7 @@ def test_ribasim_cli(model_constructor, tmp_path):
     assert isinstance(model, ribasim.Model)
     model.write(tmp_path / "ribasim.toml")
 
-    executable = Path(__file__).parents[1] / "ribasim_cli" / "bin" / "ribasim"
+    executable = Path(__file__).parents[1] / "ribasim" / "ribasim"
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
     if model_constructor.__name__.startswith("invalid_"):
