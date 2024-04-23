@@ -186,6 +186,10 @@ Base.@ccallable function get_last_bmi_error(error_message::Cstring)::Cint
     end
 end
 
+Base.@ccallable function execute(toml_path::Cstring)::Cint
+    Ribasim.main(unsafe_string(toml_path))
+end
+
 Base.@ccallable function get_value_ptr_double(
     name::Cstring,
     value_ptr::Ptr{Ptr{Cvoid}},

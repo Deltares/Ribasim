@@ -78,13 +78,13 @@
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasim" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_windows.zip!** =&gt; ribasim/build/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_windows.zip!** =&gt; ribasim/build/ribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasim">
         <options>
           <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
@@ -95,4 +95,3 @@
     <cleanup />
   </settings>
 </build-type>
-
