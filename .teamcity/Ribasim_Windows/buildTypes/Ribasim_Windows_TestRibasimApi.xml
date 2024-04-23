@@ -6,6 +6,7 @@
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
     </options>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
@@ -17,7 +18,8 @@
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run test-ribasim-api" />
+          <param name="script.content"><![CDATA[pixi run test-ribasim-api
+pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -35,7 +37,7 @@
     <build-triggers>
       <build-trigger id="TRIGGER_631" type="schedulingTrigger">
         <parameters>
-          <param name="branchFilter"><![CDATA[+:<default>]]></param>
+          <param name="branchFilter" value="+:&lt;default&gt;" />
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
@@ -92,3 +94,4 @@
     <cleanup />
   </settings>
 </build-type>
+
