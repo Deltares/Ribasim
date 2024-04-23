@@ -4,7 +4,7 @@
   <description />
   <settings ref="Ribasim_Windows">
     <options>
-      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output_api.zip&#xA;ribasim\build\tests\temp =&gt; test_output_cli.zip" />
     </options>
     <parameters />
     <build-runners>
