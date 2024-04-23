@@ -59,7 +59,7 @@ We have the following pipeline to generate artifects for releasing:
 * Test Ribasim Binaries: tests libribasim artifact and ribasim_cli artifact on Linux and Windows
 
 ::: {.callout-note}
-Make Github Release does not publish artifacts of "Test libribasim" and "Test ribasim_cli". It only publishes artifacts of "Build libribasim" and "Build ribasim_cli" if the beforementioned tests pass.
+Make Github Release does not publish artifacts of "Test Ribasim Binaries". It only publishes artifacts of "Build Ribasim" if the beforementioned tests pass.
 :::
 
 ```{mermaid}
@@ -67,6 +67,6 @@ graph LR
     A[Make Github Release]-->B(Release)
     F[Generate Testmodels]-->A
     G[Make QGIS plugin]-->A
-    H[Build libribasim]---D[Test Ribasim Binaries]
+    H[Build Ribasim]---D[Test Ribasim Binaries]
     D-->A
 ```
