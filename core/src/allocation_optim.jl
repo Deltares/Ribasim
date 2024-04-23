@@ -887,6 +887,15 @@ function allocate_priority!(
         )
     end
 
+    if allocation_model.subnetwork_id == 7
+        F = problem[:F]
+        @show optimization_type
+        @show priority_idx
+        for i in only(F.axes)
+            @show JuMP.value.(F)
+        end
+    end
+
     # Assign the allocations to the UserDemand for this priority
     assign_allocations!(allocation_model, p, priority_idx, optimization_type)
 
