@@ -46,19 +46,19 @@ fn main() -> ExitCode {
         "linux" => exe_dir.join("lib/libribasim.so"),
         _ => unimplemented!(),
     };
-
     unsafe {
         // Load the library
         let lib = Library::new(shared_lib_path).unwrap();
 
-        // Load the function from the library
+        // Init Julia
+        let init_julia: Symbol<unsafe extern "C" fn(i32, *const libc::c_char) -> i32> =
+            lib.get(b"init_julia").unwrap();
+        init_julia(0, CString::default().as_ptr());
+
+        // Execute
         let execute: Symbol<unsafe extern "C" fn(*const libc::c_char) -> i32> =
             lib.get(b"execute").unwrap();
-
-        // Convert the path to a CString
         let toml_path_c = CString::new(cli.toml_path.to_str().unwrap()).unwrap();
-
-        // Call the function
         let exit_code = execute(toml_path_c.as_ptr());
 
         // Return with same exit code as `execute` did

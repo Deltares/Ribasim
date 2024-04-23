@@ -67,7 +67,7 @@ function main()
     add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     run(Cmd(`cargo build --release`; dir = "cli_wrapper"))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
-    cp("cli_wrapper/target/release/$ribasim", "libribasim/$ribasim"; force = true)
+    cp("cli_wrapper/target/release/$ribasim", "ribasim/$ribasim"; force = true)
 end
 
 
