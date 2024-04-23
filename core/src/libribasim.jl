@@ -188,7 +188,7 @@ end
 
 Base.@ccallable function execute(toml_path::Cstring)::Cint
     @try_c_uninitialized begin
-        Ribasim.main(unsafe_string(name))
+        Ribasim.main(unsafe_string(toml_path))
     end
 end
 
