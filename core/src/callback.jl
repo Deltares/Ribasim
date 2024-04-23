@@ -13,6 +13,9 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
+    push!(callbacks, negative_storage_cb)
+
     integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
 
@@ -63,6 +66,24 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function check_negative_storage(u, t, integrator)::Nothing
+    (; basin) = integrator.p
+    (; node_id) = basin
+    errors = false
+    for (i, id) in enumerate(node_id)
+        if u.storage[i] < 0
+            @error "Negative storage detected in $id"
+            errors = true
+        end
+    end
+
+    if errors
+        t_datetime = datetime_since(integrator.t, integrator.p.starttime)
+        error("Negative storages found at $t_datetime.")
+    end
+    return nothing
 end
 
 """
