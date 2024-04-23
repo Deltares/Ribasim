@@ -78,12 +78,19 @@ function Model(config::Config)::Model
         end
 
         # tell the solver to stop when new data comes in
-        # TODO add all time tables here
-        time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
         tstops = Vector{Float64}[]
-        push!(tstops, get_tstops(time_flow_boundary.time, config.starttime))
-        time_user_demand = load_structvector(db, config, UserDemandTimeV1)
-        push!(tstops, get_tstops(time_user_demand.time, config.starttime))
+        for schema_version in [
+            FlowBoundaryTimeV1,
+            LevelBoundaryTimeV1,
+            UserDemandTimeV1,
+            LevelDemandTimeV1,
+            FlowDemandTimeV1,
+            TabulatedRatingCurveTimeV1,
+            PidControlTimeV1,
+        ]
+            time_schema = load_structvector(db, config, schema_version)
+            push!(tstops, get_tstops(time_schema.time, config.starttime))
+        end
 
         # use state
         state = load_structvector(db, config, BasinStateV1)

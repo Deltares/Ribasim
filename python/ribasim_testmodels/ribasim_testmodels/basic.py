@@ -323,7 +323,6 @@ def outlet_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=ribasim.Solver(saveat=0),
     )
 
     # Set up the basins
@@ -331,7 +330,7 @@ def outlet_model():
         Node(3, Point(2.0, 0.0)),
         [
             basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
-            basin.State(level=[1e-3]),
+            basin.State(level=[0.0]),
         ],
     )
 
