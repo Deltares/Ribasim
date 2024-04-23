@@ -1,18 +1,6 @@
 # Create Binaries
 
-Build the app with:
-
-```sh
-pixi run build-ribasim-cli
-```
-
-Build the shared library with:
-
-```sh
-pixi run build-libribasim
-```
-
-Build both with:
+Build the app and shared library with:
 
 ```sh
 pixi run build

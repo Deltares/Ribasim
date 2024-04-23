@@ -57,7 +57,7 @@ The possibly long list of generated release notes can put below an "All changes"
 All changes
 </summary>
 
-# Put Github flavored markdown here
+# Put GitHub flavored markdown here
 
 </details>
 
