@@ -25,9 +25,9 @@
     <extension id="PROJECT_EXT_107" type="IssueTracker">
       <parameters>
         <param name="authType" value="anonymous" />
-        <param name="name" value="Ribasim Github Issues" />
+        <param name="name" value="Ribasim GitHub Issues" />
         <param name="pattern" value="#(\d+)" />
-        <param name="repository" value="https://github.com/Deltares/Ribasim.jl" />
+        <param name="repository" value="https://github.com/Deltares/Ribasim" />
         <param name="secure:accessToken" value="" />
         <param name="secure:password" value="" />
         <param name="type" value="GithubIssues" />
