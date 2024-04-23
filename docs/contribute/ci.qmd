@@ -55,7 +55,7 @@ We have the following pipeline to generate artifects for releasing:
 
 * Generate Testmodels: produces generated_testmodels artifact which is part of the release.
 * Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the Github repository. When a tag starts with `v20` is added, it triggers the release process.
-* Build Ribasim: builds library of Ribasim on Linux and Windows. The artifact is tested in `Test Ribasim Binaries` and used by iMOD Coupler. And it builds CLI application on Linux and Windows, its artifact is tested in `Test Ribasim Binaries` and used by release
+* Build Ribasim: builds library and executable of Ribasim on Linux and Windows. The artifacts are tested in `Test Ribasim Binaries` and used by iMOD Coupler.
 * Test Ribasim Binaries: tests libribasim artifact and ribasim_cli artifact on Linux and Windows
 
 ::: {.callout-note}
