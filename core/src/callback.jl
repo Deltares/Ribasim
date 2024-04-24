@@ -114,11 +114,21 @@ function integrate_flows!(u, t, integrator)::Nothing
     end
 
     # Allocation source flows
-    for (edge, value) in allocation.mean_source_flows
-        value[] +=
-            0.5 *
-            (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
-            dt
+    for (edge, value) in allocation.mean_flows
+        if edge[1] == edge[2]
+            # Vertical fluxes
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            value[] +=
+                0.5 *
+                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
+                dt
+        else
+            # Horizontal flows
+            value[] +=
+                0.5 *
+                (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
+                dt
+        end
     end
 
     copyto!(flow_prev, flow)
@@ -455,12 +465,12 @@ end
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
-    (; allocation_models, mean_source_flows) = allocation
+    (; allocation_models, mean_flows) = allocation
     (; Δt_allocation) = allocation_models[1]
 
     # Divide by the allocation Δt to obtain the mean flows
     # from the integrated flows
-    for value in values(mean_source_flows)
+    for value in values(mean_flows)
         value[] /= Δt_allocation
     end
 
@@ -480,7 +490,7 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean source flows
-    for value in values(mean_source_flows)
+    for value in values(mean_flows)
         value[] = 0.0
     end
 end
