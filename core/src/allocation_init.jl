@@ -492,7 +492,15 @@ function allocation_problem(
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
 )::JuMP.Model
-    optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
+    optimizer = JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "objective_bound" => 0.0,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
     problem = JuMP.direct_model(optimizer)
 
     # Add variables to problem

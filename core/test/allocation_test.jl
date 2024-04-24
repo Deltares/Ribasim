@@ -307,9 +307,10 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0] atol =
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.9, 0.0] atol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    # Insufficiently constrained (#1208)
+    # @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001] rtol =
         1e-4
 end
