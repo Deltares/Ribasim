@@ -865,7 +865,9 @@ function save_allocation_flows!(
         end
 
         # Check whether the next edge is the current one reversed
-        if edge_2 == reverse(edge_1)
+        # and the edge does not have a UserDemand end
+        if edge_2 == reverse(edge_1) &&
+           !(edge_1[1].type == NodeType.UserDemand || edge_1[2].type == NodeType.UserDemand)
             # If so, these edges are both processed in this iteration
             flow_rate += sign_2 * JuMP.value(F[edge_2])
             skip = true

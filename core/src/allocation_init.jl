@@ -7,7 +7,7 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     # destination node subnetwork id ≠1
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
-            if graph[outflow_id].subnetwork_id != 1
+            if (graph[outflow_id].subnetwork_id != 1)
                 main_network_source_edges =
                     get_main_network_connections(p, graph[outflow_id].subnetwork_id)
                 edge = (node_id, outflow_id)
