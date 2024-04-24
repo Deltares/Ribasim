@@ -43,7 +43,7 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
-allocation_network_id: The ID of this allocation network
+subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
@@ -57,13 +57,15 @@ end
 
 """
 Object for all information about allocation
-allocation_network_ids: The unique sorted allocation network IDs
+subnetwork_ids: The unique sorted allocation network IDs
 allocation models: The allocation models for the main network and subnetworks corresponding to
-    allocation_network_ids
+    subnetwork_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
-record_demand: A record of demands and allocated flows for nodes that have these.
+subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
+mean_source_flows: Flows averaged over Δt_allocation over edges that are allocation sources
+record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
@@ -74,6 +76,7 @@ struct Allocation
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    mean_source_flows::Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
@@ -103,7 +106,7 @@ is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 """
 Type for storing metadata of nodes in the graph
 type: type of the node
-allocation_network_id: Allocation network ID (0 if not in subnetwork)
+subnetwork_id: Allocation network ID (0 if not in subnetwork)
 """
 struct NodeMetadata
     type::Symbol

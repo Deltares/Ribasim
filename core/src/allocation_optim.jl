@@ -254,7 +254,8 @@ function set_initial_capacities_source!(
     p::Parameters,
 )::Nothing
     (; problem) = allocation_model
-    (; graph) = p
+    (; graph, allocation) = p
+    (; mean_source_flows) = allocation
     (; subnetwork_id) = allocation_model
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
@@ -264,8 +265,8 @@ function set_initial_capacities_source!(
         if graph[edge...].subnetwork_id_source == subnetwork_id
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
-                # Reset the source to the current flow from the physical layer.
-                source_capacity = get_flow(graph, edge..., 0)
+                # Reset the source to the averaged flow over the last allocation period
+                source_capacity = mean_source_flows[edge][]
                 JuMP.set_normalized_rhs(
                     source_constraints[edge],
                     # It is assumed that the allocation procedure does not have to be differentiated.

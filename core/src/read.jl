@@ -951,7 +951,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
-function Allocation(db::DB, config::Config)::Allocation
+function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     record_demand = (
         time = Float64[],
         subnetwork_id = Int32[],
@@ -976,18 +976,27 @@ function Allocation(db::DB, config::Config)::Allocation
         optimization_type = String[],
     )
 
-    allocation = Allocation(
+    mean_source_flows = Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}()
+
+    # Find edges which serve as sources in allocation
+    for edge_metadata in values(graph.edge_data)
+        (; subnetwork_id_source, edge) = edge_metadata
+        if subnetwork_id_source != 0
+            mean_source_flows[edge] = Ref(0.0)
+        end
+    end
+
+    return Allocation(
         Int32[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         get_all_priorities(db, config),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
+        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
+        mean_source_flows,
         record_demand,
         record_flow,
     )
-
-    return allocation
 end
 
 """
@@ -1007,7 +1016,7 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation = Allocation(db, config)
+    allocation = Allocation(db, config, graph)
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
