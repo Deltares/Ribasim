@@ -68,7 +68,7 @@ end
         @__DIR__,
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
-    model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
+    model = Ribasim.Model(toml_path)
     problem = model.integrator.p.allocation.allocation_models[1].problem
     F = problem[:F]
     constraints_fractional_flow = problem[:fractional_flow]
