@@ -11,10 +11,10 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    graph = p.graph
+    (; graph, allocation) = p
     close(db)
 
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
+    allocation.mean_source_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
@@ -210,8 +210,13 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, record_flow) =
-        allocation
+    (;
+        allocation_models,
+        subnetwork_demands,
+        subnetwork_allocateds,
+        record_flow,
+        mean_source_flows,
+    ) = allocation
     t = 0.0
 
     # Collecting demands
@@ -241,7 +246,8 @@ end
     @test F_abs_user_demand[NodeID(:Pump, 38)] ∈ objective_variables
 
     # Running full allocation algorithm
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
+    (; Δt_allocation) = allocation_models[1]
+    mean_source_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5 * Δt_allocation
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
@@ -283,12 +289,13 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_source_flows) =
+        allocation
     t = 0.0
 
-    # Set flows of sources in subnetworks
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 58), NodeID(:Basin, 16), 1.0)
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 59), NodeID(:Basin, 44), 1e-3)
+    # Set flows of sources in
+    mean_source_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))][] = 1.0
+    mean_source_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))][] = 1e-3
 
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
@@ -372,7 +379,7 @@ end
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
 end
 
-@testitem "flow_demand" begin
+@testitem "Flow demand" begin
     using JuMP
     using Ribasim: NodeID, OptimizationType
 
@@ -422,6 +429,9 @@ end
     t = 0.0
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
+    for (edge, value) in allocation.mean_source_flows
+        value[] = Ribasim.get_flow(graph, edge..., 0)
+    end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1
@@ -484,8 +494,8 @@ end
     )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
-    @assert JuMP.value(F[(NodeID(:UserDemand, 4), NodeID(:Basin, 7))]) +
-            JuMP.value(F[(NodeID(:UserDemand, 6), NodeID(:Basin, 7))]) == d
+    @test JuMP.value(F[(NodeID(:UserDemand, 4), NodeID(:Basin, 7))]) +
+          JuMP.value(F[(NodeID(:UserDemand, 6), NodeID(:Basin, 7))]) == d
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
