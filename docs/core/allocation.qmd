@@ -42,7 +42,11 @@ Sources are indicated by a set of edges in the subnetwork
 $$
 E_S^\text{source} \subset E.
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model description](equations.qmd#formal-model-description)) is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork.
+That is, if $(i,j) \in E_S^\text{source}$, then the average over the allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
+$$
+    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
+$$
+ is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -71,12 +75,12 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ### Vertical fluxes and local storage
 
-Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the sum of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin
+Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the average over the allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
 $$
-    \phi_i(t), \quad \forall i \in B_S.
+    \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$
 
-We consider fluxes into the basin to be positive and out of the basin to be negative.
+We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](equations.qmd#natural-water-balance-terms).
 
 Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
@@ -88,7 +92,7 @@ $$
     d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right),
 $$
 
-for all $i \in B_S$. Here $\Delta t_{\text{alloc}}$ is the simulated time between two consecutive allocation solves. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
+for all $i \in B_S$. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
 
 ### Constraining factors
 

@@ -393,9 +393,8 @@ function add_constraints_conservation_node!(
             end
         end
 
-        # If the node is a Basin, add basin in- and outflow
-        if node_id.type == NodeType.Basin &&
-           has_external_demand(graph, node_id, :level_demand)[1]
+        # If the node is a Basin with a level demand, add basin in- and outflow
+        if has_external_demand(graph, node_id, :level_demand)[1]
             push!(inflows_node, F_basin_out[node_id])
             push!(outflows_node, F_basin_in[node_id])
         end

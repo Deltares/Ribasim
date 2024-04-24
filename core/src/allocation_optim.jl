@@ -768,8 +768,7 @@ function save_demands_and_allocations!(
             #NOTE: instantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
-        elseif node_id.type == NodeType.Basin &&
-               has_external_demand(graph, node_id, :level_demand)[1]
+        elseif has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
 
             if priority_idx == 1 || basin_priority_idx == priority_idx

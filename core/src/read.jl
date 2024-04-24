@@ -988,8 +988,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
 
     # Find basins with a level demand
     for node_id in values(graph.vertex_labels)
-        if node_id.type == NodeType.Basin &&
-           has_external_demand(graph, node_id, :level_demand)[1]
+        if has_external_demand(graph, node_id, :level_demand)[1]
             mean_flows[(node_id, node_id)] = Ref(0.0)
         end
     end

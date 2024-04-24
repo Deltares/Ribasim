@@ -137,7 +137,7 @@ ax.hlines([0,1],x_min,x_max, color = "k", ls = ":", zorder=-1)
 ax.vlines([0,p], *y_lim, color = "k", ls = ":")
 ax.set_xlim(x_min,x_max)
 ax.set_xlabel("$x$", fontsize=fontsize)
-ax.set_ylabel("$\phi(x;p)$", fontsize=fontsize)
+ax.set_ylabel(r"$\phi(x;p)$", fontsize=fontsize)
 ax.set_ylim(y_lim)
 
 fig.tight_layout()
