@@ -93,7 +93,7 @@ function parse_static_and_time(
 
     errors = false
     t_end = seconds_since(config.endtime, config.starttime)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
 
     for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
@@ -812,7 +812,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
@@ -877,6 +877,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
+        defaults = (; min_level = -Inf, max_level = Inf),
     )
 
     if !valid
