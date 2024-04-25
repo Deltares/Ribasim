@@ -711,10 +711,11 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, basin_idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Int)::Float64
-    (; vertical_flux) = basin
+function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
+    (; vertical_flux, vertical_flux_prev) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
-    (; precipitation, evaporation, drainage, infiltration) = vertical_flux
+    flux_vector = prev ? vertical_flux_prev : vertical_flux
+    (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end

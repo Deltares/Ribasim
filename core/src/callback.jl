@@ -91,7 +91,7 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph, user_demand, basin) = p
+    (; graph, user_demand, basin, allocation) = p
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
@@ -106,10 +106,29 @@ function integrate_flows!(u, t, integrator)::Nothing
     @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
     @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
+    # UserDemand realized flows for BMI
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
         flow_idx = flow_dict[src_id, id]
         user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    end
+
+    # Allocation source flows
+    for (edge, value) in allocation.mean_flows
+        if edge[1] == edge[2]
+            # Vertical fluxes
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            value[] +=
+                0.5 *
+                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
+                dt
+        else
+            # Horizontal flows
+            value[] +=
+                0.5 *
+                (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
+                dt
+        end
     end
 
     copyto!(flow_prev, flow)
@@ -446,7 +465,14 @@ end
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
-    (; allocation_models) = allocation
+    (; allocation_models, mean_flows) = allocation
+    (; Δt_allocation) = allocation_models[1]
+
+    # Divide by the allocation Δt to obtain the mean flows
+    # from the integrated flows
+    for value in values(mean_flows)
+        value[] /= Δt_allocation
+    end
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
@@ -461,6 +487,11 @@ function update_allocation!(integrator)::Nothing
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
         allocate!(p, allocation_model, t, u, OptimizationType.allocate)
+    end
+
+    # Reset the mean source flows
+    for value in values(mean_flows)
+        value[] = 0.0
     end
 end
 

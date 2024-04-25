@@ -254,7 +254,8 @@ function set_initial_capacities_source!(
     p::Parameters,
 )::Nothing
     (; problem) = allocation_model
-    (; graph) = p
+    (; graph, allocation) = p
+    (; mean_flows) = allocation
     (; subnetwork_id) = allocation_model
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
@@ -264,8 +265,8 @@ function set_initial_capacities_source!(
         if graph[edge...].subnetwork_id_source == subnetwork_id
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
-                # Reset the source to the current flow from the physical layer.
-                source_capacity = get_flow(graph, edge..., 0)
+                # Reset the source to the averaged flow over the last allocation period
+                source_capacity = mean_flows[edge][]
                 JuMP.set_normalized_rhs(
                     source_constraints[edge],
                     # It is assumed that the allocation procedure does not have to be differentiated.
@@ -357,14 +358,14 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, level_demand) = p
+    (; graph, basin, level_demand, allocation) = p
     (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
+    (; mean_flows) = allocation
     @assert node_id.type == NodeType.Basin
     vertical_flux = get_tmp(vertical_flux, 0)
     _, basin_idx = id_index(basin.node_id, node_id)
-    # NOTE: Instantaneous
-    influx = get_influx(basin, node_id)
+    influx = mean_flows[(node_id, node_id)][]
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
@@ -511,12 +512,15 @@ function set_initial_demands_level!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; subnetwork_id) = allocation_model
+    (; subnetwork_id, problem) = allocation_model
     (; graph, basin) = p
     (; node_id, demand) = basin
 
-    for (i, id) in enumerate(node_id)
+    node_ids_level_demand = only(problem[:basin_outflow].axes)
+
+    for id in node_ids_level_demand
         if graph[id].subnetwork_id == subnetwork_id
+            _, i = id_index(node_id, id)
             demand[i] = get_basin_demand(allocation_model, u, p, t, id)
         end
     end
@@ -606,8 +610,9 @@ function adjust_demands_level!(allocation_model::AllocationModel, p::Parameters)
     F_basin_in = problem[:F_basin_in]
 
     # Reduce the demand by what was allocated
-    for (i, id) in enumerate(node_id)
+    for id in only(F_basin_in.axes)
         if graph[id].subnetwork_id == subnetwork_id
+            _, i = id_index(basin.node_id, id)
             demand[i] -= JuMP.value(F_basin_in[id])
         end
     end
@@ -763,8 +768,7 @@ function save_demands_and_allocations!(
             #NOTE: instantaneous
             realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
 
-        elseif node_id.type == NodeType.Basin &&
-               has_external_demand(graph, node_id, :level_demand)[1]
+        elseif has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
 
             if priority_idx == 1 || basin_priority_idx == priority_idx

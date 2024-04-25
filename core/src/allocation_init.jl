@@ -153,7 +153,8 @@ function add_variables_basin!(
     (; graph) = p
     node_ids_basin = [
         node_id for
-        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin
+        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
+        has_external_demand(graph, node_id, :level_demand)[1]
     ]
     problem[:F_basin_in] =
         JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
@@ -211,7 +212,7 @@ function add_variables_absolute_value!(
         type = node_id.type
         if type == NodeType.UserDemand
             push!(node_ids_user_demand, node_id)
-        elseif type == NodeType.Basin
+        elseif has_external_demand(graph, node_id, :level_demand)[1]
             push!(node_ids_level_demand, node_id)
         elseif has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
@@ -392,8 +393,8 @@ function add_constraints_conservation_node!(
             end
         end
 
-        # If the node is a Basin, add basin in- and outflow
-        if node_id.type == NodeType.Basin
+        # If the node is a Basin with a level demand, add basin in- and outflow
+        if has_external_demand(graph, node_id, :level_demand)[1]
             push!(inflows_node, F_basin_out[node_id])
             push!(outflows_node, F_basin_in[node_id])
         end
