@@ -70,7 +70,10 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        if isnan(storage)
+        bottom = first(basin.level[i])
+        node_id = basin.node_id.values[i]
+        if level < bottom
+            @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
         end
         storages[i] = storage
