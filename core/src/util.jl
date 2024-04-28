@@ -486,15 +486,15 @@ function get_fractional_flow_connected_basins(
 
     has_fractional_flow_outneighbors = false
 
-    for first_outneighbor_id in outflow_ids(graph, node_id)
-        if first_outneighbor_id in fractional_flow.node_id
+    for first_outflow_id in outflow_ids(graph, node_id)
+        if first_outflow_id in fractional_flow.node_id
             has_fractional_flow_outneighbors = true
-            second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
-            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            second_outflow_id = outflow_id(graph, first_outflow_id)
+            has_index, basin_idx = id_index(basin.node_id, second_outflow_id)
             if has_index
                 push!(
                     fractional_flow_idxs,
-                    searchsortedfirst(fractional_flow.node_id, first_outneighbor_id),
+                    searchsortedfirst(fractional_flow.node_id, first_outflow_id),
                 )
                 push!(basin_idxs, basin_idx)
             end

@@ -368,8 +368,8 @@ function add_constraints_conservation_node!(
 
         # No flow conservation on nodes with FractionalFlow outneighbors
         has_fractional_flow_outneighbors = any(
-            outneighbor_id.type == NodeType.FractionalFlow for
-            outneighbor_id in outflow_ids(graph, node_id)
+            outflow_id.type == NodeType.FractionalFlow for
+            outflow_id in outflow_ids(graph, node_id)
         )
 
         if is_source_sink | has_fractional_flow_outneighbors

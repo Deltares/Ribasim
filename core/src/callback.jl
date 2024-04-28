@@ -153,16 +153,16 @@ function save_flow(u, t, integrator)
     outflow_mean = zeros(length(node_id))
 
     for (i, basin_id) in enumerate(node_id)
-        for in_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[in_id, basin_id]]
+        for inflow_id in inflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[inflow_id, basin_id]]
             if q > 0
                 inflow_mean[i] += q
             else
                 outflow_mean[i] -= q
             end
         end
-        for out_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, out_id]]
+        for outflow_id in outflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[basin_id, outflow_id]]
             if q > 0
                 outflow_mean[i] += q
             else

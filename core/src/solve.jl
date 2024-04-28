@@ -515,7 +515,7 @@ function formulate_flow!(
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for dst_id in outflow_ids(graph, id)
+        for outflow_id in outflow_ids(graph, id)
             if !active[i]
                 continue
             end
@@ -523,7 +523,7 @@ function formulate_flow!(
             rate = flow_rate[i](t)
 
             # Adding water is always possible
-            set_flow!(graph, id, dst_id, rate)
+            set_flow!(graph, id, outflow_id, rate)
         end
     end
 end
@@ -605,11 +605,11 @@ function formulate_du!(
     # subtract all outgoing flows
     # add all ingoing flows
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inflow_ids(graph, basin_id)
-            du[i] += get_flow(graph, in_id, basin_id, storage)
+        for inflow_id in inflow_ids(graph, basin_id)
+            du[i] += get_flow(graph, inflow_id, basin_id, storage)
         end
-        for out_id in outflow_ids(graph, basin_id)
-            du[i] -= get_flow(graph, basin_id, out_id, storage)
+        for outflow_id in outflow_ids(graph, basin_id)
+            du[i] -= get_flow(graph, basin_id, outflow_id, storage)
         end
     end
     return nothing

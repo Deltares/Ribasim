@@ -239,7 +239,7 @@ end
     @test length(logger.logs) == 4
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "TabulatedRatingCurve #7 combines fractional flow outneighbors with other outneigbor types."
+          "TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
