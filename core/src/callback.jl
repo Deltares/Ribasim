@@ -452,9 +452,7 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
-    for (i, id) in enumerate(basin.node_id)
-        update_vertical_flux!(basin, storage, i)
-    end
+    update_vertical_flux!(basin, storage)
 
     # Forget about vertical fluxes to handle discontinuous forcing from basin_update
     copyto!(vertical_flux_prev, vertical_flux)
