@@ -4,8 +4,18 @@ project:
 book:
   title: "Ribasim User Guide"
   chapters:
-    - index.qmd
-
-format:
-  typst:
-    toc: true
+    - part: index.qmd
+    - part: core/index.qmd
+      chapters:
+        - core/modelconcept.qmd
+        - core/usage.qmd
+        - core/validation.qmd
+        - core/equations.qmd
+        - core/allocation.qmd
+        - core/numerics.qmd
+    - part: python/index.qmd
+      chapters:
+        - python/examples.ipynb
+        - python/reference/index.qmd
+        - python/test-models.qmd
+    - part: qgis/index.qmd
