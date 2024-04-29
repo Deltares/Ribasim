@@ -560,14 +560,14 @@ min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct LevelDemand
+struct LevelDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     min_level::Vector{LinearInterpolation}
     max_level::Vector{LinearInterpolation}
     priority::Vector{Int32}
 end
 
-struct FlowDemand
+struct FlowDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}
