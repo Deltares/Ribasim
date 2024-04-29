@@ -93,7 +93,7 @@ function parse_static_and_time(
 
     errors = false
     t_end = seconds_since(config.endtime, config.starttime)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
 
     for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
@@ -490,7 +490,7 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(NodeType.Terminal, static.node_id))
 end
 
-function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
+function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
@@ -533,8 +533,12 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
 
     demand = zeros(length(node_id))
 
+    node_id = NodeID.(NodeType.Basin, node_id)
+
     return Basin(
-        Indices(NodeID.(NodeType.Basin, node_id)),
+        Indices(node_id),
+        [collect(inflow_ids(graph, id)) for id in node_id],
+        [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
@@ -820,7 +824,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
@@ -885,6 +889,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
+        defaults = (; min_level = -Inf, max_level = Inf),
     )
 
     if !valid
@@ -1052,7 +1057,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, chunk_sizes)
+    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(

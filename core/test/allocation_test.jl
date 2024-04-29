@@ -313,6 +313,8 @@ end
 end
 
 @testitem "Allocation level control" begin
+    import JuMP
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -377,6 +379,14 @@ end
     stage_6_start_idx = findfirst(stage_6)
     u_stage_6(τ) = storage[stage_6_start_idx]
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
+
+    # Isolated LevelDemand + Basin pair to test optional min_level
+    problem = allocation.allocation_models[2].problem
+    @test JuMP.value(only(problem[:F_basin_in])) == 0.0
+    @test JuMP.value(only(problem[:F_basin_out])) == 0.0
+    q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
+    storage_surplus = 1000.0  # Basin #7 is 1000 m2 and 1 m above LevelDemand max_level
+    @test q ≈ storage_surplus / Δt_allocation
 end
 
 @testitem "Flow demand" begin
