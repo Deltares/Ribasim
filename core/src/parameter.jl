@@ -241,12 +241,9 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
 end
 
 """
-Requirements:
-
-* from: must be (Basin,) node
-* to: must be (Basin,) node
-
 node_id: node ID of the LinearResistance node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -254,6 +251,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
@@ -263,8 +262,11 @@ end
 """
 This is a simple Manning-Gauckler reach connection.
 
-* Length describes the reach length.
-* roughness describes Manning's n in (SI units).
+node_id: node ID of the ManningResistance node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
+length: reach length
+manning_n: roughness; Manning's n in (SI units).
 
 The profile is described by a trapezoid:
 
@@ -288,13 +290,15 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 * length > 0
-* roughess > 0
+* manning_n > 0
 * profile_width >= 0
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
 """
 struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}

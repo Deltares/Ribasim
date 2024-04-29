@@ -336,24 +336,24 @@ function formulate_flow!(
     (; graph) = p
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = inflow_id(graph, id)
-        basin_b_id = outflow_id(graph, id)
+        inflow_id = linear_resistance.inflow_id[i]
+        outflow_id = linear_resistance.outflow_id[i]
 
         if active[i]
-            h_a = get_level(p, basin_a_id, t; storage)
-            h_b = get_level(p, basin_b_id, t; storage)
+            h_a = get_level(p, inflow_id, t; storage)
+            h_b = get_level(p, outflow_id, t; storage)
             q_unlimited = (h_a - h_b) / resistance[i]
             q = clamp(q_unlimited, -max_flow_rate[i], max_flow_rate[i])
 
             # add reduction_factor on highest level
             if q > 0
-                q *= low_storage_factor(storage, p.basin.node_id, basin_a_id, 10.0)
+                q *= low_storage_factor(storage, p.basin.node_id, inflow_id, 10.0)
             else
-                q *= low_storage_factor(storage, p.basin.node_id, basin_b_id, 10.0)
+                q *= low_storage_factor(storage, p.basin.node_id, outflow_id, 10.0)
             end
 
-            set_flow!(graph, basin_a_id, id, q)
-            set_flow!(graph, id, basin_b_id, q)
+            set_flow!(graph, inflow_id, id, q)
+            set_flow!(graph, id, outflow_id, q)
         end
     end
     return nothing
@@ -438,17 +438,17 @@ function formulate_flow!(
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = inflow_id(graph, id)
-        basin_b_id = outflow_id(graph, id)
+        inflow_id = manning_resistance.inflow_id[i]
+        outflow_id = manning_resistance.outflow_id[i]
 
         if !active[i]
             continue
         end
 
-        h_a = get_level(p, basin_a_id, t; storage)
-        h_b = get_level(p, basin_b_id, t; storage)
-        bottom_a = basin_bottom(basin, basin_a_id)
-        bottom_b = basin_bottom(basin, basin_b_id)
+        h_a = get_level(p, inflow_id, t; storage)
+        h_b = get_level(p, outflow_id, t; storage)
+        bottom_a = basin_bottom(basin, inflow_id)
+        bottom_b = basin_bottom(basin, outflow_id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]
@@ -478,8 +478,8 @@ function formulate_flow!(
 
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
-        set_flow!(graph, basin_a_id, id, q)
-        set_flow!(graph, id, basin_b_id, q)
+        set_flow!(graph, inflow_id, id, q)
+        set_flow!(graph, id, outflow_id, q)
     end
     return nothing
 end
