@@ -54,7 +54,7 @@ from ribasim_testmodels.pid_control import (
     pid_control_model,
 )
 from ribasim_testmodels.time import flow_boundary_time_model
-from ribasim_testmodels.trivial import trivial_model
+from ribasim_testmodels.trivial import trivial_model, unstable_model
 from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
@@ -97,6 +97,7 @@ __all__ = [
     "tabulated_rating_curve_model",
     "trivial_model",
     "two_basin_model",
+    "unstable_model",
     "user_demand_model",
 ]
 
