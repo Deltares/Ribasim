@@ -307,19 +307,17 @@ function valid_fractional_flow(
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outflow_ids(graph, src_id))
-        if src_outneighbor_ids ⊈ node_id_set
+        src_outflow_ids = Set(outflow_ids(graph, src_id))
+        if src_outflow_ids ⊈ node_id_set
             errors = true
-            @error(
-                "$src_id combines fractional flow outneighbors with other outneigbor types."
-            )
+            @error("$src_id has outflow to FractionalFlow and other node types.")
         end
 
         # Each control state (including missing) must sum to 1
         for control_state in control_states
             fraction_sum = 0.0
 
-            for ff_id in intersect(src_outneighbor_ids, node_id_set)
+            for ff_id in intersect(src_outflow_ids, node_id_set)
                 parameter_values = get(control_mapping, (ff_id, control_state), nothing)
                 if parameter_values === nothing
                     continue

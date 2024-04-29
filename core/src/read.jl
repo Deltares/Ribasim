@@ -230,7 +230,7 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     return nothing
 end
 
-function LinearResistance(db::DB, config::Config)::LinearResistance
+function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
     parsed_parameters, valid =
@@ -242,8 +242,12 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
         )
     end
 
+    node_id = NodeID.(NodeType.LinearResistance, parsed_parameters.node_id)
+
     return LinearResistance(
-        NodeID.(NodeType.LinearResistance, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        outflow_id.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -321,7 +325,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 
-function ManningResistance(db::DB, config::Config)::ManningResistance
+function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     parsed_parameters, valid =
         parse_static_and_time(db, config, "ManningResistance"; static)
@@ -330,8 +334,12 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
         error("Errors occurred when parsing ManningResistance data.")
     end
 
+    node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+
     return ManningResistance(
-        NodeID.(NodeType.ManningResistance, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        outflow_id.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
@@ -1029,8 +1037,8 @@ function Parameters(db::DB, config::Config)::Parameters
         error("Invalid edge(s) found.")
     end
 
-    linear_resistance = LinearResistance(db, config)
-    manning_resistance = ManningResistance(db, config)
+    linear_resistance = LinearResistance(db, config, graph)
+    manning_resistance = ManningResistance(db, config, graph)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_boundary = LevelBoundary(db, config)
