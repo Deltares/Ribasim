@@ -164,8 +164,9 @@ function add_variables_basin!(
 end
 
 """
-Add the variables for supply/demand of the buffer of a node with a flow demand to the problem.
-The variable indices are the node IDs of the nodes with a flow demand in the subnetwork.
+Add the variables for supply/demand of the buffer of a node with a flow demand
+or fractional flow outneighbors to the problem.
+The variable indices are the node IDs of the nodes with a buffer in the subnetwork.
 """
 function add_variables_flow_buffer!(
     problem::JuMP.Model,
@@ -175,9 +176,11 @@ function add_variables_flow_buffer!(
     (; graph) = p
 
     # Collect the nodes in the subnetwork that have a flow demand
+    # or fractional flow outneighbors
     node_ids_flow_demand = NodeID[]
     for node_id in graph[].node_ids[subnetwork_id]
-        if has_external_demand(graph, node_id, :flow_demand)[1]
+        if has_external_demand(graph, node_id, :flow_demand)[1] ||
+           has_fractional_flow_outneighbors(graph, node_id)
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -366,13 +369,7 @@ function add_constraints_conservation_node!(
         is_source_sink = node_id.type in
         [NodeType.FlowBoundary, NodeType.LevelBoundary, NodeType.UserDemand]
 
-        # No flow conservation on nodes with FractionalFlow outneighbors
-        has_fractional_flow_outneighbors = any(
-            outflow_id.type == NodeType.FractionalFlow for
-            outflow_id in outflow_ids(graph, node_id)
-        )
-
-        if is_source_sink | has_fractional_flow_outneighbors
+        if is_source_sink
             continue
         end
 
@@ -399,8 +396,9 @@ function add_constraints_conservation_node!(
             push!(outflows_node, F_basin_in[node_id])
         end
 
-        # If the node has a flow demand
-        if has_external_demand(graph, node_id, :flow_demand)[1]
+        # If the node has a buffer
+        if has_external_demand(graph, node_id, :flow_demand)[1] ||
+           has_fractional_flow_outneighbors(graph, node_id)
             push!(inflows_node, F_flow_buffer_out[node_id])
             push!(outflows_node, F_flow_buffer_in[node_id])
         end

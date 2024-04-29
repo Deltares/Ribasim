@@ -42,7 +42,7 @@ Sources are indicated by a set of edges in the subnetwork
 $$
 E_S^\text{source} \subset E.
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then the average over the allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
+That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
@@ -75,7 +75,7 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ### Vertical fluxes and local storage
 
-Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the average over the allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
+Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
 $$
     \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$
@@ -138,8 +138,8 @@ The optimization problem for a subnetwork is a linear optimization problem consi
 There are several types of variable whose value has to be determined to solve the allocation problem:
 
 - The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the edges in the allocation network;
-- The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins respectively;
-- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S$ supplied and consumed by the flow buffers of nodes with a flow demand respectively.
+- The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
+- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand or fractional flow outneighbors.
 
 ## The optimization objective
 
@@ -183,19 +183,18 @@ For convenience, we use the notation
 
 for the set of in-neighbors and out-neighbors of a node in the network respectively.
 
-- Flow conservation: For the basins in the allocation network we have that
+- Flow conservation: For all nodes $k$ that are not a source or a sink (i.e. `FlowBoundary`, `LevelBoundary`, `UserDemand`) we have a flow conservation constraint:
 $$
-    F^\text{basin in}_k + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = F^\text{basin out}_k + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S .
+    \sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S.
 $$  {#eq-flowconservationconstraintbasin}
-We have the same constraint without the basin terms for nodes that have flow edges as inneighbors (except if this node also happens to be a basin).
-For nodes which have a flow demand we have
-$$
-F_{kj} + F^\text{buffer in}_k  = F^\text{flow in}_k + F_{ik}, \quad \forall k \in FD_S, \quad V^{\text{in}}_S(k) = \{i\},\;
-     V^{\text{out}}_S(k) = \{j\}.
-$$ {#eq-flowconservationconstraintflowdemand}
+
+In here, we have the following special flows:
+
+- If $k$ is a basin with a flow demand, there is a special outflow $F^{\text{basin in}}_k$ and a special inflow $F^{\text{basin out}}_k$;
+- If the node has a buffer (see [here](#the-optimization-variables)) there is a special outflow $F^{\text{buffer in}}_k$ and a special inflow $F^{\text{buffer out}}_k$.
 
 :::{.callout-note}
-In @eq-flowconservationconstraintbasin and @eq-flowconservationconstraintflowdemand, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
+In the above, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
 :::
 
 - Capacity: the flows over the edges are bounded by the edge capacity:
@@ -209,7 +208,7 @@ $$
 $$
 
 :::{.callout-note}
-When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork.
+When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork. For all other sources the capacity is set to $0$, so that demand collection only uses flow from the main network inlet.
 :::
 
 Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:

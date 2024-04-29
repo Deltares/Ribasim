@@ -247,7 +247,7 @@ end
 
 """
 Set the capacities of the sources in the subnetwork
-as the latest instantaneous flow out of the source in the physical layer
+as the average flow over the last Δt_allocation of the source in the physical layer
 """
 function set_initial_capacities_source!(
     allocation_model::AllocationModel,
@@ -997,6 +997,26 @@ function set_initial_values!(
 end
 
 """
+Set the capacities of all edges that denote a source to 0.0.
+"""
+function empty_sources!(allocation_model::AllocationModel, allocation::Allocation)::Nothing
+    (; problem) = allocation_model
+    (; subnetwork_demands) = allocation
+
+    for constraint_set_name in [:source, :source_user, :basin_outflow, :flow_buffer_outflow]
+        constraint_set = problem[constraint_set_name]
+        for key in only(constraint_set.axes)
+            # Do not set the capacity to 0.0 if the edge
+            # is a main to subnetwork connection edge
+            if key ∉ keys(subnetwork_demands)
+                JuMP.set_normalized_rhs(constraint_set[key], 0.0)
+            end
+        end
+    end
+    return nothing
+end
+
+"""
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
@@ -1027,7 +1047,11 @@ function allocate!(
 
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
-    if optimization_type != OptimizationType.collect_demands
+    if optimization_type == OptimizationType.collect_demands
+        # When collecting demands, only flow should be available
+        # from the main to subnetwork connections
+        empty_sources!(allocation_model, allocation)
+    else
         set_initial_values!(allocation_model, p, u, t)
     end
 

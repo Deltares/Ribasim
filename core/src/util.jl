@@ -731,3 +731,8 @@ function get_discrete_control_indices(discrete_control::DiscreteControl, conditi
         condition_idx_now += l
     end
 end
+
+has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
+    outneighbor_id.type == NodeType.FractionalFlow for
+    outneighbor_id in outflow_ids(graph, node_id)
+)
