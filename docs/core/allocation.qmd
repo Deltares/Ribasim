@@ -189,8 +189,9 @@ $$
 $$  {#eq-flowconservationconstraintbasin}
 
 In here, we have the following special flows:
-- If $k$ is a basin with a flow demand, there is the special outflow $F^{basin in}_k$ and the special inflow $F^{basin out}_k$;
-- If the node has a buffer (see [here](#the-optimization-variables)) we have the special outflow $F^{buffer in}_k$ and the special inflow $F^{basin out}_k$.
+
+- If $k$ is a basin with a flow demand, there is a special outflow $F^{\text{basin in}}_k$ and a special inflow $F^{\text{basin out}}_k$;
+- If the node has a buffer (see [here](#the-optimization-variables)) there is a special outflow $F^{\text{buffer in}}_k$ and a special inflow $F^{\text{buffer out}}_k$.
 
 :::{.callout-note}
 In the above, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
