@@ -11,10 +11,10 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    graph = p.graph
+    (; graph, allocation) = p
     close(db)
 
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5) # Source flow
+    allocation.mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
@@ -76,7 +76,7 @@ end
         @__DIR__,
         "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
     )
-    model = Ribasim.BMI.initialize(Ribasim.Model, toml_path)
+    model = Ribasim.Model(toml_path)
     problem = model.integrator.p.allocation.allocation_models[1].problem
     F = problem[:F]
     constraints_fractional_flow = problem[:fractional_flow]
@@ -169,7 +169,7 @@ end
     @test Ribasim.is_main_network(first(subnetwork_ids))
 
     # Connections from main network to subnetworks
-    @test only(main_network_connections[1]) == (NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))
+    @test isempty(main_network_connections[1])
     @test only(main_network_connections[2]) == (NodeID(:Basin, 2), NodeID(:Pump, 11))
     @test only(main_network_connections[3]) == (NodeID(:Basin, 6), NodeID(:Pump, 24))
     @test only(main_network_connections[4]) == (NodeID(:Basin, 10), NodeID(:Pump, 38))
@@ -211,8 +211,13 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, record_flow) =
-        allocation
+    (;
+        allocation_models,
+        subnetwork_demands,
+        subnetwork_allocateds,
+        record_flow,
+        mean_flows,
+    ) = allocation
     t = 0.0
 
     # Collecting demands
@@ -247,7 +252,8 @@ end
     @test JuMP.UnorderedPair(F_3, F_3) ∈ objective_edges
 
     # Running full allocation algorithm
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 4.5)
+    (; Δt_allocation) = allocation_models[1]
+    mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5 * Δt_allocation
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
@@ -290,12 +296,13 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds) = allocation
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_flows) =
+        allocation
     t = 0.0
 
-    # Set flows of sources in subnetworks
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 58), NodeID(:Basin, 16), 1.0)
-    Ribasim.set_flow!(graph, NodeID(:FlowBoundary, 59), NodeID(:Basin, 44), 1e-3)
+    # Set flows of sources in
+    mean_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))][] = 1.0
+    mean_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))][] = 1e-3
 
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
@@ -307,15 +314,14 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.9, 0.0] atol =
-        1e-4
-    # Insufficiently constrained (#1208)
-    # @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001] rtol =
-        1e-4
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001]
 end
 
 @testitem "Allocation level control" begin
+    import JuMP
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -380,9 +386,17 @@ end
     stage_6_start_idx = findfirst(stage_6)
     u_stage_6(τ) = storage[stage_6_start_idx]
     @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
+
+    # Isolated LevelDemand + Basin pair to test optional min_level
+    problem = allocation.allocation_models[2].problem
+    @test JuMP.value(only(problem[:F_basin_in])) == 0.0
+    @test JuMP.value(only(problem[:F_basin_out])) == 0.0
+    q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
+    storage_surplus = 1000.0  # Basin #7 is 1000 m2 and 1 m above LevelDemand max_level
+    @test q ≈ storage_surplus / Δt_allocation
 end
 
-@testitem "flow_demand" begin
+@testitem "Flow demand" begin
     using JuMP
     using Ribasim: NodeID, OptimizationType
 
@@ -431,6 +445,9 @@ end
     t = 0.0
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
+    for (edge, value) in allocation.mean_flows
+        value[] = Ribasim.get_flow(graph, edge..., 0)
+    end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1

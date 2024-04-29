@@ -4,7 +4,7 @@
   <description />
   <settings ref="Ribasim_Linux">
     <options>
-      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output_api.zip&#xA;ribasim\build\tests\temp =&gt; test_output_cli.zip" />
       <option name="executionTimeoutMin" value="120" />
     </options>
     <parameters />
@@ -30,6 +30,7 @@ pixi run install-python]]></param>
 source /usr/share/Modules/init/bash
 
 module load pixi
+pixi run --environment=dev install
 pixi run test-ribasim-api
 pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />

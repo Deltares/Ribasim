@@ -250,16 +250,16 @@ end
 
 @version LevelDemandStaticV1 begin
     node_id::Int32
-    min_level::Float64
-    max_level::Float64
+    min_level::Union{Missing, Float64}
+    max_level::Union{Missing, Float64}
     priority::Int32
 end
 
 @version LevelDemandTimeV1 begin
     node_id::Int32
     time::DateTime
-    min_level::Float64
-    max_level::Float64
+    min_level::Union{Missing, Float64}
+    max_level::Union{Missing, Float64}
     priority::Int32
 end
 

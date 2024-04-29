@@ -11,7 +11,7 @@ docs/site/
 
 /generated_testmodels
 build/ribasim/
-build/cli_wrapper/target
+build/cli/target
 
 JuliaSysimage.dll
 LocalPreferences.toml

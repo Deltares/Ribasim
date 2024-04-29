@@ -43,7 +43,7 @@ const VectorInterpolation =
 """
 Store information for a subnetwork used for allocation.
 
-allocation_network_id: The ID of this allocation network
+subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
@@ -57,13 +57,15 @@ end
 
 """
 Object for all information about allocation
-allocation_network_ids: The unique sorted allocation network IDs
+subnetwork_ids: The unique sorted allocation network IDs
 allocation models: The allocation models for the main network and subnetworks corresponding to
-    allocation_network_ids
+    subnetwork_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
-record_demand: A record of demands and allocated flows for nodes that have these.
+subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
+mean_flows: Flows averaged over Δt_allocation over edges that are allocation sources
+record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
@@ -74,6 +76,7 @@ struct Allocation
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    mean_flows::Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
@@ -103,7 +106,7 @@ is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 """
 Type for storing metadata of nodes in the graph
 type: type of the node
-allocation_network_id: Allocation network ID (0 if not in subnetwork)
+subnetwork_id: Allocation network ID (0 if not in subnetwork)
 """
 struct NodeMetadata
     type::Symbol
@@ -159,6 +162,8 @@ end
 """
 struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Indices{NodeID}
+    inflow_ids::Vector{Vector{NodeID}}
+    outflow_ids::Vector{Vector{NodeID}}
     # Vertical fluxes
     vertical_flux_from_input::V1
     vertical_flux::V2
@@ -179,6 +184,8 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
 
     function Basin(
         node_id,
+        inflow_ids,
+        outflow_ids,
         vertical_flux_from_input::V1,
         vertical_flux::V2,
         vertical_flux_prev::V3,
@@ -196,6 +203,8 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
         is_valid || error("Invalid Basin / profile table.")
         return new{T, C, V1, V2, V3}(
             node_id,
+            inflow_ids,
+            outflow_ids,
             vertical_flux_from_input,
             vertical_flux,
             vertical_flux_prev,
@@ -238,12 +247,9 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
 end
 
 """
-Requirements:
-
-* from: must be (Basin,) node
-* to: must be (Basin,) node
-
 node_id: node ID of the LinearResistance node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -251,6 +257,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
@@ -260,8 +268,11 @@ end
 """
 This is a simple Manning-Gauckler reach connection.
 
-* Length describes the reach length.
-* roughness describes Manning's n in (SI units).
+node_id: node ID of the ManningResistance node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
+length: reach length
+manning_n: roughness; Manning's n in (SI units).
 
 The profile is described by a trapezoid:
 
@@ -285,13 +296,15 @@ Requirements:
 * from: must be (Basin,) node
 * to: must be (Basin,) node
 * length > 0
-* roughess > 0
+* manning_n > 0
 * profile_width >= 0
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
 """
 struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
@@ -553,14 +566,14 @@ min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct LevelDemand
+struct LevelDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     min_level::Vector{LinearInterpolation}
     max_level::Vector{LinearInterpolation}
     priority::Vector{Int32}
 end
 
-struct FlowDemand
+struct FlowDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}

@@ -13,6 +13,9 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
+    push!(callbacks, negative_storage_cb)
+
     integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
 
@@ -65,12 +68,30 @@ function create_callbacks(
     return callback, saved
 end
 
+function check_negative_storage(u, t, integrator)::Nothing
+    (; basin) = integrator.p
+    (; node_id) = basin
+    errors = false
+    for (i, id) in enumerate(node_id)
+        if u.storage[i] < 0
+            @error "Negative storage detected in $id"
+            errors = true
+        end
+    end
+
+    if errors
+        t_datetime = datetime_since(integrator.t, integrator.p.starttime)
+        error("Negative storages found at $t_datetime.")
+    end
+    return nothing
+end
+
 """
 Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
-    (; graph, user_demand, basin) = p
+    (; graph, user_demand, basin, allocation) = p
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
@@ -85,10 +106,29 @@ function integrate_flows!(u, t, integrator)::Nothing
     @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
     @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
+    # UserDemand realized flows for BMI
     for (i, id) in enumerate(user_demand.node_id)
         src_id = inflow_id(graph, id)
         flow_idx = flow_dict[src_id, id]
         user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+    end
+
+    # Allocation source flows
+    for (edge, value) in allocation.mean_flows
+        if edge[1] == edge[2]
+            # Vertical fluxes
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            value[] +=
+                0.5 *
+                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
+                dt
+        else
+            # Horizontal flows
+            value[] +=
+                0.5 *
+                (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
+                dt
+        end
     end
 
     copyto!(flow_prev, flow)
@@ -113,16 +153,16 @@ function save_flow(u, t, integrator)
     outflow_mean = zeros(length(node_id))
 
     for (i, basin_id) in enumerate(node_id)
-        for in_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[in_id, basin_id]]
+        for inflow_id in inflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[inflow_id, basin_id]]
             if q > 0
                 inflow_mean[i] += q
             else
                 outflow_mean[i] -= q
             end
         end
-        for out_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, out_id]]
+        for outflow_id in outflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[basin_id, outflow_id]]
             if q > 0
                 outflow_mean[i] += q
             else
@@ -412,9 +452,7 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
-    for (i, id) in enumerate(basin.node_id)
-        update_vertical_flux!(basin, storage, i)
-    end
+    update_vertical_flux!(basin, storage)
 
     # Forget about vertical fluxes to handle discontinuous forcing from basin_update
     copyto!(vertical_flux_prev, vertical_flux)
@@ -425,7 +463,21 @@ end
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
-    (; allocation_models) = allocation
+    (; allocation_models, mean_flows) = allocation
+
+    # Don't run the allocation algorithm if allocation is not active
+    # (Specifically for running Ribasim via the BMI)
+    if !is_active(allocation)
+        return nothing
+    end
+
+    (; Δt_allocation) = allocation_models[1]
+
+    # Divide by the allocation Δt to obtain the mean flows
+    # from the integrated flows
+    for value in values(mean_flows)
+        value[] /= Δt_allocation
+    end
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
@@ -440,6 +492,11 @@ function update_allocation!(integrator)::Nothing
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
         allocate!(p, allocation_model, t, u, OptimizationType.allocate)
+    end
+
+    # Reset the mean source flows
+    for value in values(mean_flows)
+        value[] = 0.0
     end
 end
 

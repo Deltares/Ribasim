@@ -87,7 +87,7 @@ def invalid_fractional_flow_model() -> Model:
         model.basin[1],
         model.tabulated_rating_curve[7],
     )
-    # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
+    # Invalid: TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types.
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.basin[2],

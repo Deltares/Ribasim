@@ -31,17 +31,10 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
-    bottom = first(level_discrete)
-
-    if level < bottom
-        node_id = basin.node_id.values[state_idx]
-        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
-        return NaN
-    end
 
     level_lower_index = searchsortedlast(level_discrete, level)
 
-    # If the level is equal to the bottom then the storage is 0
+    # If the level is at or below the bottom then the storage is 0
     if level_lower_index == 0
         return 0.0
     end
@@ -77,7 +70,10 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        if isnan(storage)
+        bottom = first(basin.level[i])
+        node_id = basin.node_id.values[i]
+        if level < bottom
+            @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
         end
         storages[i] = storage
@@ -486,15 +482,15 @@ function get_fractional_flow_connected_basins(
 
     has_fractional_flow_outneighbors = false
 
-    for first_outneighbor_id in outflow_ids(graph, node_id)
-        if first_outneighbor_id in fractional_flow.node_id
+    for first_outflow_id in outflow_ids(graph, node_id)
+        if first_outflow_id in fractional_flow.node_id
             has_fractional_flow_outneighbors = true
-            second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
-            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            second_outflow_id = outflow_id(graph, first_outflow_id)
+            has_index, basin_idx = id_index(basin.node_id, second_outflow_id)
             if has_index
                 push!(
                     fractional_flow_idxs,
-                    searchsortedfirst(fractional_flow.node_id, first_outneighbor_id),
+                    searchsortedfirst(fractional_flow.node_id, first_outflow_id),
                 )
                 push!(basin_idxs, basin_idx)
             end
@@ -711,10 +707,11 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, basin_idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Int)::Float64
-    (; vertical_flux) = basin
+function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
+    (; vertical_flux, vertical_flux_prev) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
-    (; precipitation, evaporation, drainage, infiltration) = vertical_flux
+    flux_vector = prev ? vertical_flux_prev : vertical_flux
+    (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
@@ -734,3 +731,8 @@ function get_discrete_control_indices(discrete_control::DiscreteControl, conditi
         condition_idx_now += l
     end
 end
+
+has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
+    outneighbor_id.type == NodeType.FractionalFlow for
+    outneighbor_id in outflow_ids(graph, node_id)
+)

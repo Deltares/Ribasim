@@ -4,6 +4,7 @@
   <description />
   <settings ref="Ribasim_Windows">
     <options>
+      <option name="artifactRules" value="ribasim\build\ribasim =&gt; ribasim_windows.zip" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
@@ -53,3 +54,4 @@ pixi run build]]></param>
     <cleanup />
   </settings>
 </build-type>
+

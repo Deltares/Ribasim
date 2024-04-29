@@ -115,16 +115,16 @@ class LevelBoundaryTimeSchema(_BaseSchema):
 
 class LevelDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=True)
+    max_level: Series[float] = pa.Field(nullable=True)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
 class LevelDemandTimeSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=True)
+    max_level: Series[float] = pa.Field(nullable=True)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 

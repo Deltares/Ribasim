@@ -16,9 +16,9 @@ graph LR
 
 This page contains an extensive explanation on how the Ribasim continuous integration works.
 
-# Github actions
+# GitHub Actions
 
-With [GitHub Actions](https://docs.github.com/en/actions), Github provides their own continuous integration service.
+With [GitHub Actions](https://docs.github.com/en/actions), GitHub provides their own continuous integration service.
 They include the following checks:
 
 * Julia Run Testmodels: This is to make sure all the test models can be run successfully
@@ -33,18 +33,18 @@ They include the following checks:
 
 # TeamCity
 Ribasim has another cloud-based CI service based on [TeamCity](https://www.jetbrains.com/teamcity/).
-TeamCity interacts with Github and manages the release process.
+TeamCity interacts with GitHub and manages the release process.
 
 ```{mermaid}
 graph LR
-    A[TeamCity]-->|Monitoring|B[Github]
+    A[TeamCity]-->|Monitoring|B[GitHub]
     A-->C(Release)
 ```
 
 ## Conditions of using TeamCity
 TeamCity only runs workflows with the following conditions:
 
-* When the workflow would take too long to run on Github Action
+* When the workflow would take too long to run on GitHub Action
 * When the release depends on the artifacts of the workflow.
 * When other TeamCity projects depend on artifacts of Ribasim (e.g. iMOD coupler)
 
@@ -54,23 +54,19 @@ In the release, we include the generated testmodels, Ribasim CLI on Windows and 
 We have the following pipeline to generate artifects for releasing:
 
 * Generate Testmodels: produces generated_testmodels artifact which is part of the release.
-* Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the Github repository. When a tag starts with `v20` is added, it triggers the release process.
-* Build libribasim: builds library of Ribasim on Linux and Windows. The artifact is tested in `Test ribasim_api` and used by iMOD Coupler
-* Build ribasim_cli: builds CLI application on Linux and Windows, its artifact is tested in `Test ribasim_cli` and used by release
-* Test ribasim_api: tests libribasim artifact on Linux and Windows
-* Test ribasim_cli: tests ribasim_cli artifact on Linux and Windows
+* Make GitHub Release: uses artifacts and makes the release. TeamCity constantly monitors the GitHub repository. When a tag starts with `v20` is added, it triggers the release process.
+* Build Ribasim: builds library and executable of Ribasim on Linux and Windows. The artifacts are tested in `Test Ribasim Binaries` and used by iMOD Coupler.
+* Test Ribasim Binaries: tests libribasim artifact and ribasim_cli artifact on Linux and Windows
 
 ::: {.callout-note}
-Make Github Release does not publish artifacts of "Test libribasim" and "Test ribasim_cli". It only publishes artifacts of "Build libribasim" and "Build ribasim_cli" if the beforementioned tests pass.
+Make GitHub Release does not publish artifacts of "Test Ribasim Binaries". It only publishes artifacts of "Build Ribasim" if the beforementioned tests pass.
 :::
 
 ```{mermaid}
 graph LR
-    A[Make Github Release]-->B(Release)
+    A[Make GitHub Release]-->B(Release)
     F[Generate Testmodels]-->A
     G[Make QGIS plugin]-->A
-    H[Build libribasim]---D[Test libribasim]
+    H[Build Ribasim]---D[Test Ribasim Binaries]
     D-->A
-    C[Build ribasim_cli] --- E[Test ribasim_cli]
-    E-->A
 ```

@@ -78,12 +78,6 @@ pixi run github-release]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimCli">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_GenerateTestmodels">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
@@ -96,7 +90,13 @@ pixi run github-release]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimBinaries">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -110,3 +110,4 @@ pixi run github-release]]></param>
     </cleanup>
   </settings>
 </build-type>
+
