@@ -466,6 +466,13 @@ function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
     (; allocation_models, mean_flows) = allocation
+
+    # Don't run the allocation algorithm if allocation is not active
+    # (Specifically for running Ribasim via the BMI)
+    if !is_active(allocation)
+        return nothing
+    end
+
     (; Δt_allocation) = allocation_models[1]
 
     # Divide by the allocation Δt to obtain the mean flows
