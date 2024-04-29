@@ -162,6 +162,8 @@ end
 """
 struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Indices{NodeID}
+    inflow_ids::Vector{Vector{NodeID}}
+    outflow_ids::Vector{Vector{NodeID}}
     # Vertical fluxes
     vertical_flux_from_input::V1
     vertical_flux::V2
@@ -182,6 +184,8 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
 
     function Basin(
         node_id,
+        inflow_ids,
+        outflow_ids,
         vertical_flux_from_input::V1,
         vertical_flux::V2,
         vertical_flux_prev::V3,
@@ -199,6 +203,8 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
         is_valid || error("Invalid Basin / profile table.")
         return new{T, C, V1, V2, V3}(
             node_id,
+            inflow_ids,
+            outflow_ids,
             vertical_flux_from_input,
             vertical_flux,
             vertical_flux_prev,
