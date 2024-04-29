@@ -153,16 +153,16 @@ function save_flow(u, t, integrator)
     outflow_mean = zeros(length(node_id))
 
     for (i, basin_id) in enumerate(node_id)
-        for in_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[in_id, basin_id]]
+        for inflow_id in inflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[inflow_id, basin_id]]
             if q > 0
                 inflow_mean[i] += q
             else
                 outflow_mean[i] -= q
             end
         end
-        for out_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, out_id]]
+        for outflow_id in outflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[basin_id, outflow_id]]
             if q > 0
                 outflow_mean[i] += q
             else
@@ -452,9 +452,7 @@ function update_basin(integrator)::Nothing
         set_table_row!(table, row, i)
     end
 
-    for (i, id) in enumerate(basin.node_id)
-        update_vertical_flux!(basin, storage, i)
-    end
+    update_vertical_flux!(basin, storage)
 
     # Forget about vertical fluxes to handle discontinuous forcing from basin_update
     copyto!(vertical_flux_prev, vertical_flux)
@@ -466,6 +464,13 @@ function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
     (; allocation_models, mean_flows) = allocation
+
+    # Don't run the allocation algorithm if allocation is not active
+    # (Specifically for running Ribasim via the BMI)
+    if !is_active(allocation)
+        return nothing
+    end
+
     (; Δt_allocation) = allocation_models[1]
 
     # Divide by the allocation Δt to obtain the mean flows
