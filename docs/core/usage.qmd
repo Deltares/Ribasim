@@ -204,7 +204,8 @@ name it must have in the database if it is stored there.
 - Terminal: Water sink without state or properties
   - `Terminal / static`: - (only node IDs)
 - DiscreteControl: Set parameters of other nodes based on model state conditions (e.g. basin level)
-  - `DisceteControl / condition`: Conditions of the form 'the level in the basin with node id `n` is bigger than 2.0 m'
+  - `DiscreteControl / variable` : Linear combinations of variables, e.g. averages or differences of levels
+  - `DisceteControl / condition`: Conditions of the form 'the compound variable with ID `n` is bigger than 2.0'
   - `DisceteControl / logic`: Translates the truth value of a set of conditions to parameter values for a controlled node
 - PidControl: Controls the level in a basin by continuously controlling the flow rate of a connected pump or outlet. See also [Wikipedia](https://en.wikipedia.org/wiki/PID_controller) and [PID controller in equations](equations.qmd#sec-PID).
   - `PidControl / static`: The proportional, integral, and derivative parameters, the target value and which basin should be controlled
@@ -478,14 +479,17 @@ min_level     | Float64  | $m$          | -
 
 A `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
-above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
-The same `LevelDemand` node can be used for basins in different subnetworks.
+above the maximum level the basin has a surplus and acts as a source, used by all nodes with demands in order of priority.
+The same `LevelDemand` node can be used for Basins in different subnetworks.
+
+Both `min_level` and `max_level` are optional, to be able to handle only the demand or surplus side.
+If both are missing, `LevelDemand` won't have any effects on allocation.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int32   | -            | sorted
-min_level     | Float64 | $m$          | -
-max_level     | Float64 | $m$          | -
+min_level     | Float64 | $m$          | (optional, default -Inf)
+max_level     | Float64 | $m$          | (optional, default Inf)
 priority      | Int32   | -            | positive
 
 ## LevelDemand / time
@@ -501,7 +505,7 @@ min_level     | Float64  | $m$          | -
 max_level     | Float64  | $m$          | -
 priority      | Int32    | -            | positive
 
-# FlowDemand {#sec-level_demand}
+# FlowDemand {#sec-flow_demand}
 
 A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one single priority.
 FlowDemand nodes can set a flow demand only for a single connector node.
@@ -623,20 +627,35 @@ node_id               | Int32   | -            | sorted
 
 # DisceteControl {#sec-discrete-control}
 
-DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
+## DiscreteControl / variable
+
+The compound variable schema defines linear combinations of variables which can be used in conditions. This means that
+this schema defines new variables with the given `compound_variable_id` that look like
+$$
+\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
+$$
+
+which can be for instance an average or a difference of variables. If a variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+
+column               | type     | unit    | restriction
+-------------------- | -------- | ------- | -----------
+node_id              | Int32    | -       | sorted
+compound_variable_id | Int32    | -       | sorted per node_id
+listen_node_type     | String   | -       | known node type
+listen_node_id       | Int32    | -       | sorted per node_id
+variable             | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
+weight               | Float64  | -       | (optional, default 1.0)
+look_ahead           | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 ## DiscreteControl / condition
 
-The condition schema defines conditions of the form 'the discrete_control node with this node id listens to whether the given variable of the node with the given listen feature id is grater than the given value'. If the condition variable comes from a time-series, a look ahead $\Delta t$ can be supplied.
+The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id`listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'. Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
 
-column            | type     | unit    | restriction
------------------ | -------- | ------- | -----------
-node_id           | Int32    | -       | sorted
-listen_node_type  | String   | -       | known node type
-listen_node_id    | Int32    | -       | sorted per node_id
-variable          | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
-greater_than      | Float64  | various | sorted per variable
-look_ahead        | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0)
+column               | type     | unit    | restriction
+-------------------- | -------- | ------- | -----------
+node_id              | Int32    | -       | sorted
+compound_variable_id | Int32    | -       | -
+greater_than         | Float64  | various | sorted per variable
 
 ## DiscreteControl / logic
 
@@ -705,27 +724,47 @@ derivative       | Float64  | -        | -
 
 ## Basin - `basin.arrow`
 
-The basin table contains results of the storage and level of each basin at every solver
-timestep. The initial condition is also written to the file.
+The Basin table contains:
 
-column   | type     | unit
--------- | -------- | ----
-time     | DateTime | -
-node_id  | Int32    | -
-storage  | Float64  | $m^3$
-level    | Float64  | $m$
+- Results of the storage and level of each Basin, which are instantaneous values;
+- Results of the fluxes on each Basin, which are mean values over the `saveat` intervals.
+  In the time column the start of the period is indicated.
+- The initial condition is written to the file, but the final state is not.
+  It will be placed in a separate output state file in the future.
+- The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
+  The actual flows determine in which term they are counted, not the edge direction.
+- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level. In the equations below this number is split out into two non-negative numbers, `storage_increase` and `storage_decrease`.
+- The `balance_error` is the difference of all Basin inflows (`total_inflow`) and outflows (`total_outflow`), that is (`inflow_rate` + `precipitation` + `drainage` - `storage_increase`) - (`outflow_rate` + `evaporation` + `infiltration` - `storage_decrease`).
+  It can be used to check if the numerical error when solving the water balance is sufficiently small.
+- The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
+
+column         | type     | unit
+-------------- | ---------| ----
+time           | DateTime | -
+node_id        | Int32    | -
+storage        | Float64  | $m^3$
+level          | Float64  | $m$
+inflow_rate    | Float64  | $m^3 s^{-1}$
+outflow_rate   | Float64  | $m^3 s^{-1}$
+storage_rate   | Float64  | $m^3 s^{-1}$
+precipitation  | Float64  | $m^3 s^{-1}$
+evaporation    | Float64  | $m^3 s^{-1}$
+drainage       | Float64  | $m^3 s^{-1}$
+infiltration   | Float64  | $m^3 s^{-1}$
+balance_error  | Float64  | $m^3 s^{-1}$
+relative_error | Float64  | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 
 ## Flow - `flow.arrow`
 
-The flow table contains calculated mean flows for every flow edge in the model.
+The flow table contains calculated mean flows over the `saveat` intervals for every flow edge in the model.
 In the time column the start of the period is indicated.
 
 column         | type                  | unit
 -------------- | --------------------- | ----
 time           | DateTime              | -
-edge_id        | Union{Int32, Missing} | -
+edge_id        | Int32                 | -
 from_node_type | String                | -
 from_node_id   | Int32                 | -
 to_node_type   | String                | -
@@ -734,8 +773,7 @@ flow_rate      | Float64               | $m^3 s^{-1}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
-Flows that are added to the model at a node, have a missing `edge_id`, and identical `from_node_id` and `to_node_id`.
-Flows out of the model always have a negative sign, and additions a positive sign.
+Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 
 ## DiscreteControl - `control.arrow`
 

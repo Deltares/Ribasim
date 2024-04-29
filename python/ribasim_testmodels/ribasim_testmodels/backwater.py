@@ -4,7 +4,6 @@ from ribasim.config import Node
 from ribasim.nodes import (
     basin,
     flow_boundary,
-    level_boundary,
     manning_resistance,
 )
 from shapely.geometry import Point
@@ -18,11 +17,12 @@ def backwater_model():
     node_type[0] = "FlowBoundary"
     node_type[-1] = "LevelBoundary"
 
-    ids = np.arange(1, node_type.size + 1, dtype=int)
+    ids = np.arange(1, node_type.size + 1, dtype=np.int32)
 
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -67,12 +67,13 @@ def backwater_model():
             model.manning_resistance[id + 1],
         )
 
-    model.level_boundary.add(
-        Node(102, Point(1010.0, 0.0)), [level_boundary.Static(level=[2.0])]
+    model.basin.add(
+        Node(102, Point(1010.0, 0.0)),
+        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e20)],
     )
     model.edge.add(
         model.manning_resistance[101],
-        model.level_boundary[102],
+        model.basin[102],
     )
 
     return model

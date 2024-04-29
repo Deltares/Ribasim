@@ -5,7 +5,7 @@ title: "QGIS plugin development"
 # Set up the developer environment
 
 After you have installed the environment as described [here](index.qmd) you must still activate the QGIS plugins.
-The simplest way to do this is by running `pixi run install-qgis-plugins`.
+The simplest way to do this is by running `pixi run --environment=dev install-qgis-plugins`.
 It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it.
 It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.
 
@@ -36,7 +36,7 @@ Then simply call `pixi run test-ribasim-qgis`.
 
 # Debugging
 
-After installing the plugins via `pixi run install-qgis-plugins`.
+After installing the plugins via `pixi run --environment=dev install-qgis-plugins`.
 Extra debugging tools are also installed in QGIS that is installed within your pixi environment.
 
 After you have started `pixi run qgis`, you can make alterations to the Python code and use the [Plugin Reloader](https://github.com/borysiasty/plugin_reloader) to reload the plugin without restarting QGIS.

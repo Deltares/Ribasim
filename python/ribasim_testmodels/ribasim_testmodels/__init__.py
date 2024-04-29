@@ -15,6 +15,7 @@ from ribasim_testmodels.allocation import (
     main_network_with_subnetworks_model,
     minimal_subnetwork_model,
     subnetwork_model,
+    subnetworks_with_sources_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -27,13 +28,14 @@ from ribasim_testmodels.basic import (
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.discrete_control import (
+    compound_variable_condition_model,
     flow_condition_model,
     level_boundary_condition_model,
-    level_setpoint_with_minmax_model,
+    level_range_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
 )
-from ribasim_testmodels.dutch_waterways import dutch_waterways_model
+from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
     manning_resistance_model,
@@ -62,8 +64,8 @@ __all__ = [
     "basic_model",
     "basic_transient_model",
     "bucket_model",
+    "compound_variable_condition_model",
     "discrete_control_of_pid_control_model",
-    "dutch_waterways_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
@@ -75,9 +77,10 @@ __all__ = [
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",
-    "level_setpoint_with_minmax_model",
+    "level_range_model",
     "linear_resistance_demand_model",
     "linear_resistance_model",
+    "local_pidcontrolled_cascade_model",
     "looped_subnetwork_model",
     "main_network_with_subnetworks_model",
     "manning_resistance_model",
@@ -89,6 +92,7 @@ __all__ = [
     "pump_discrete_control_model",
     "rating_curve_model",
     "subnetwork_model",
+    "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "trivial_model",

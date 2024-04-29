@@ -8,6 +8,7 @@
         database = "path/to/file",
         input_dir = ".",
         results_dir = "results",
+        crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
@@ -21,6 +22,7 @@
         database = "path/to/file",
         input_dir = "input",
         results_dir = "results",
+        crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
@@ -34,6 +36,7 @@
         database = "/path/to/file",
         input_dir = ".",
         results_dir = "results",
+        crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml)

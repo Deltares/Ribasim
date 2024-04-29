@@ -35,7 +35,7 @@ First, set up pixi as described on their getting started [page](https://prefix.d
 Then set up the environment by running the following commands:
 
 ```sh
-pixi run install
+pixi run --environment=dev install
 ```
 
 This will automatically install all required packages for development.

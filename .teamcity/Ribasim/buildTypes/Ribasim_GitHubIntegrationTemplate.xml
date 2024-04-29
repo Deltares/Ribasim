@@ -6,7 +6,7 @@
     <build-runners />
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim">
-        <checkout-rule rule="ribasim" />
+        <checkout-rule rule=". =&gt; ribasim" />
       </vcs-entry-ref>
     </vcs-settings>
     <requirements />
@@ -17,7 +17,7 @@
           <param name="github_authentication_type" value="token" />
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:558df52e-822f-4d9d-825a-854846a9a2ff" />
+          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
           <param name="vcsRootId" value="Ribasim_Ribasim" />
         </parameters>
       </extension>

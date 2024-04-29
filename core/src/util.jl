@@ -31,17 +31,10 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
-    bottom = first(level_discrete)
-
-    if level < bottom
-        node_id = basin.node_id.values[state_idx]
-        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
-        return NaN
-    end
 
     level_lower_index = searchsortedlast(level_discrete, level)
 
-    # If the level is equal to the bottom then the storage is 0
+    # If the level is at or below the bottom then the storage is 0
     if level_lower_index == 0
         return 0.0
     end
@@ -77,7 +70,10 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        if isnan(storage)
+        bottom = first(basin.level[i])
+        node_id = basin.node_id.values[i]
+        if level < bottom
+            @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
         end
         storages[i] = storage
@@ -411,23 +407,6 @@ function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
     end
 end
 
-"Get the bottom on both ends of a node. If only one has a bottom, use that for both."
-function basin_bottoms(
-    basin::Basin,
-    basin_a_id::NodeID,
-    basin_b_id::NodeID,
-    id::NodeID,
-)::Tuple{Float64, Float64}
-    bottom_a = basin_bottom(basin, basin_a_id)
-    bottom_b = basin_bottom(basin, basin_b_id)
-    if bottom_a === bottom_b === nothing
-        error(lazy"No bottom defined on either side of $id")
-    end
-    bottom_a = something(bottom_a, bottom_b)
-    bottom_b = something(bottom_b, bottom_a)
-    return bottom_a, bottom_b
-end
-
 """
 Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
@@ -438,7 +417,7 @@ function expand_logic_mapping(
     logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
-        pattern = r"^[TFUD\*]+$"
+        pattern = r"^[TF\*]+$"
         if !occursin(pattern, truth_state)
             error("Truth state \'$truth_state\' contains illegal characters or is empty.")
         end
@@ -503,15 +482,15 @@ function get_fractional_flow_connected_basins(
 
     has_fractional_flow_outneighbors = false
 
-    for first_outneighbor_id in outflow_ids(graph, node_id)
-        if first_outneighbor_id in fractional_flow.node_id
+    for first_outflow_id in outflow_ids(graph, node_id)
+        if first_outflow_id in fractional_flow.node_id
             has_fractional_flow_outneighbors = true
-            second_outneighbor_id = outflow_id(graph, first_outneighbor_id)
-            has_index, basin_idx = id_index(basin.node_id, second_outneighbor_id)
+            second_outflow_id = outflow_id(graph, first_outflow_id)
+            has_index, basin_idx = id_index(basin.node_id, second_outflow_id)
             if has_index
                 push!(
                     fractional_flow_idxs,
-                    searchsortedfirst(fractional_flow.node_id, first_outneighbor_id),
+                    searchsortedfirst(fractional_flow.node_id, first_outflow_id),
                 )
                 push!(basin_idxs, basin_idx)
             end
@@ -551,6 +530,9 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
+"Construct a FlatVector from one of the fields of SavedFlow."
+FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
@@ -585,65 +567,28 @@ end
 is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
-is_flow_direction_constraining(node::AbstractParameterNode) =
-    (nameof(typeof(node)) ∈ [:Pump, :Outlet, :TabulatedRatingCurve, :FractionalFlow])
-
-"""Find out whether a path exists between a start node and end node in the given allocation network."""
-function allocation_path_exists_in_graph(
-    graph::MetaGraph,
-    start_node_id::NodeID,
-    end_node_id::NodeID,
-)::Bool
-    node_ids_visited = Set{NodeID}()
-    stack = [start_node_id]
-
-    while !isempty(stack)
-        current_node_id = pop!(stack)
-        if current_node_id == end_node_id
-            return true
-        end
-        if !(current_node_id in node_ids_visited)
-            push!(node_ids_visited, current_node_id)
-            for outneighbor_node_id in outflow_ids_allocation(graph, current_node_id)
-                push!(stack, outneighbor_node_id)
-            end
-        end
-    end
-    return false
-end
+is_flow_direction_constraining(node::AbstractParameterNode) = (
+    node isa Union{
+        Pump,
+        Outlet,
+        TabulatedRatingCurve,
+        FractionalFlow,
+        Terminal,
+        UserDemand,
+        FlowBoundary,
+    }
+)
 
 function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
     else
-        first(allocation.allocation_network_ids) == 1
+        first(allocation.subnetwork_ids) == 1
     end
 end
 
-function is_main_network(allocation_network_id::Int32)::Bool
-    return allocation_network_id == 1
-end
-
-function get_user_demand(p::Parameters, node_id::NodeID, priority_idx::Int)::Float64
-    (; user_demand, allocation) = p
-    (; demand) = user_demand
-    user_demand_idx = findsorted(user_demand.node_id, node_id)
-    n_priorities = length(allocation.priorities)
-    return demand[(user_demand_idx - 1) * n_priorities + priority_idx]
-end
-
-function set_user_demand!(
-    p::Parameters,
-    node_id::NodeID,
-    priority_idx::Int,
-    value::Float64,
-)::Nothing
-    (; user_demand, allocation) = p
-    (; demand) = user_demand
-    user_demand_idx = findsorted(user_demand.node_id, node_id)
-    n_priorities = length(allocation.priorities)
-    demand[(user_demand_idx - 1) * n_priorities + priority_idx] = value
-    return nothing
+function is_main_network(subnetwork_id::Int32)::Bool
+    return subnetwork_id == 1
 end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
@@ -731,3 +676,63 @@ function Base.get(
         nothing
     end
 end
+
+"""
+Get the time interval between (flow) saves
+"""
+function get_Δt(integrator)::Float64
+    (; p, t, dt) = integrator
+    (; saveat) = p.graph[]
+    if iszero(saveat)
+        dt
+    elseif isinf(saveat)
+        t
+    else
+        t_end = integrator.sol.prob.tspan[end]
+        if t_end - t > saveat
+            saveat
+        else
+            # The last interval might be shorter than saveat
+            rem = t % saveat
+            iszero(rem) ? saveat : rem
+        end
+    end
+end
+
+function get_influx(basin::Basin, node_id::NodeID)::Float64
+    has_index, basin_idx = id_index(basin.node_id, node_id)
+    if !has_index
+        error("Sum of vertical fluxes requested for non-basin $id.")
+    end
+    return get_influx(basin, basin_idx)
+end
+
+function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
+    (; vertical_flux, vertical_flux_prev) = basin
+    vertical_flux = get_tmp(vertical_flux, 0)
+    flux_vector = prev ? vertical_flux_prev : vertical_flux
+    (; precipitation, evaporation, drainage, infiltration) = flux_vector
+    return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
+           infiltration[basin_idx]
+end
+
+function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
+    (; greater_than) = discrete_control
+    condition_idx_now = 1
+
+    for (compound_variable_idx, vec) in enumerate(greater_than)
+        l = length(vec)
+
+        if condition_idx_now + l > condition_idx
+            greater_than_idx = condition_idx - condition_idx_now + 1
+            return compound_variable_idx, greater_than_idx
+        end
+
+        condition_idx_now += l
+    end
+end
+
+has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
+    outneighbor_id.type == NodeType.FractionalFlow for
+    outneighbor_id in outflow_ids(graph, node_id)
+)

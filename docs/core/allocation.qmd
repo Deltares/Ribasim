@@ -5,16 +5,26 @@ title: "Allocation"
 # Introduction
 Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
-The allocation problem is solved per subnetwork of the Ribasim model. The subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+
+:::{.callout-note}
+within this *Allocation* section the main network is also considered to be a subnetwork.
+:::
 
 # The high level algorithm
-The allocation algorithm consists of 3 types of optimization problems:
+The allocation algorithm contains 3 types of optimization:
 
-1. **Subnetwork demand collection**: Collect the demands of a subnetwork from the main network by optimizing with unlimited capacity from the main network;
-2. **Main network allocation**: Allocate to subnetworks with the above collected demand, and demands in the main network;
-3. **Subnetwork allocation**: Allocate to demands in the subnetworks with the flows allocated to the subnetwork in the main network allocation.
+- `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;
+- `collect_demands`, where flows are allocated within a subnetwork by only using the main network inlet(s) as a source, with demands reduced by allocations in `internal_sources`. The allocated flows in this optimization type are not used. The goal is to see the flow through the main network inlet(s), which is interpreted as the subnetwork demand;
+- `allocate`, where all available sources are used and the final allocated flows for the users are determined.
 
-The total allocation algorithm consists of performing 1 for all subnetworks, then performing 2, then performing 3 for all subnetworks. Not having a main network is also supported, then 1 and 2 are skipped.
+The full algorithm goes through the following steps:
+
+1. Perform `internal_sources` followed by `collect_demands` for all subnetworks apart from the main network;
+2. Perform `allocate` for the main network;
+3. Perform `allocate` for the other subnetworks.
+
+If no main network is present, then 1 and 2 are skipped.
 
 # Elements of allocation
 
@@ -30,24 +40,28 @@ The allocation problem is solved per subnetwork, which is given by a subset $S \
 
 Sources are indicated by a set of edges in the subnetwork
 $$
-E_S^\text{source} \subset \left(S \times S\right) \cap E.
+E_S^\text{source} \subset E.
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then $Q_{ij}$ (see the [formal model description](equations.qmd#formal-model-description)) is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork.
+That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
+$$
+    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
+$$
+ is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](equations.qmd#formal-model-description).
 
 ### User demands
 
 The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have static or time varying demands over various priorities $p$:
 $$
     d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}.
-$$ However, in
+$$
 
 :::{.callout-note}
-On this page we assume that the priorities are given by all integers from $1$ to some $p_{\max} \in \mathbb{N}$.the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
+On this page we assume that the priorities are given by all integers from $1$ to some $p_{\max} \in \mathbb{N}$. For the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
 :::
 
 ### Flow demands
 
-The subnetwork contains a subset of nodes $FD_S \in S$ which have a demand of a single priority $p_{\text{fd}}$. With this we define
+The subnetwork contains a subset of nodes $FD_S \subset S$ which have a demand of a single priority $p_{\text{fd}}$. With this we define
 $$
     d^p_i(t) =
     \begin{cases}
@@ -61,12 +75,12 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ### Vertical fluxes and local storage
 
-Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the sum of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin
+Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
 $$
-    \phi_i(t), \quad \forall i \in B_S.
+    \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$
 
-We consider fluxes into the basin to be positive and out of the basin to be negative.
+We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](equations.qmd#natural-water-balance-terms).
 
 Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
@@ -78,40 +92,29 @@ $$
     d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right),
 $$
 
-for all $i \in B_S$. Here $\Delta t_{\text{alloc}}$ is the simulated time between two consecutive allocation solves. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
+for all $i \in B_S$. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
 
 ### Constraining factors
 
 #### Flow magnitude and direction constraints
-Nodes in the Ribasim model that have a `max_flow_rate`, i.e. pumps and outlets, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like pumps, outlets and tabulated rating curves.
+Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
 #### FractionalFlow and UserDemand return flows
-Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$.
+Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$, and FractionalFlow nodes have an associated fraction $f_j$ which can be updated by DiscreteControl.
 
-## The allocation network
+## The subnetwork
+The subnetwork consists of a set of nodes $S \subset V$ and edges
 
-A new graph is created from the subnetwork, which we call an allocation network. The allocation network is almost a subgraph of the main (flow) model, apart from the fact that an allocation network can contain edges which are a combination of multiple edges in the main model.
+$$
+    E_S = (S \times S) \cup E_S^\text{source},
+$$
 
-### Nodes and edges
-
-The allocation network consists of:
-
-- Nodes $V'_S \subset V_S$. Nodes that are represented in the allocation network are:
-nodes of type `Basin`, `UserDemand` and `Terminal`, nodes that have `FractionalFlow` downstream neighbors, nodes that have a flow demand and nodes that are connected to a source edge.
-- Edges $E_S$, which are either edges that also appear between nodes in the subnetwork or represent a sequence of those, creating a shortcut.
-
-For notational convenience, we use the notation
-
-\begin{align}
-    V^{\text{out}}_S(i) = \left\{j \in V'_S : (i,j) \in E_S\right\} \\
-    V^{\text{in}}_S(j) = \left\{i \in V'_S : (i,j) \in E_S\right\}
-\end{align}
-
-for the set of in-neighbors and out-neighbors of a node in the allocation network respectively.
+i.e. the edges that lie within the subnetwork together with the source edges (which can be partially outside the subnetwork).
+The nodes in $S$ together with the connected nodes outside the subnetwork are called the extended subnetwork.
 
 ### Capacities
 
-Each edge in the allocation network has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n'\times n'}$ where $n' = \#V'_S$ is the number of nodes in the allocation network. The capacities can be infinite, if there is nothing in the model constraining the capacity of the edge.
+Each edge in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An edge capacity is infinite if there is nothing in the model constraining the capacity.
 
 The capacities are determined in different ways:
 
@@ -122,8 +125,9 @@ The capacities are determined in different ways:
 
 There are also capacities for special edges:
 
-- $C^B_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins.
+- $C^{LD}_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins based on level demand (this capacity is 0 for basins that have no level demand).
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
+- $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
 
 # The optimization problem
 
@@ -133,9 +137,9 @@ The optimization problem for a subnetwork is a linear optimization problem consi
 
 There are several types of variable whose value has to be determined to solve the allocation problem:
 
-- The flows $F \in \mathbb{R}_{\ge 0}^{n'\times n'}$ over the edges in the allocation network;
-- The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins respectively;
-- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S$ supplied and consumed by the flow buffers of nodes with a flow demand respectively.
+- The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the edges in the allocation network;
+- The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
+- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand or fractional flow outneighbors.
 
 ## The optimization objective
 
@@ -151,7 +155,7 @@ $$
 $$
 
 :::{.callout-note}
-When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand with demands determined by subnetwork demand collection.
+When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
 :::
 
 This type of objective cares about the absolute amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment per flow unit if deviations increase.
@@ -169,19 +173,28 @@ $$
 $$
 
 ## The optimization constraints
-- Flow conservation: For the basins in the allocation network we have that
+
+For convenience, we use the notation
+
+\begin{align}
+    V^{\text{out}}_S(i) = \left\{j \in V : (i,j) \in E_S\right\} \\
+    V^{\text{in}}_S(j) = \left\{i \in V : (i,j) \in E_S\right\}
+\end{align}
+
+for the set of in-neighbors and out-neighbors of a node in the network respectively.
+
+- Flow conservation: For all nodes $k$ that are not a source or a sink (i.e. `FlowBoundary`, `LevelBoundary`, `UserDemand`) we have a flow conservation constraint:
 $$
-    F^\text{basin in}_k + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = F^\text{basin out}_k + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S .
+    \sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S.
 $$  {#eq-flowconservationconstraintbasin}
-We have the same constraint without the basin terms for nodes that have flow edges as inneighbors (except if this node also happens to be a basin).
-For nodes which have a flow demand we have
-$$
-F_{kj} + F^\text{buffer in}_k  = F^\text{flow in}_k + F_{ik}, \quad \forall k \in FD_S, \quad V^{\text{in}}_S(k) = \{i\},\;
-     V^{\text{out}}_S(k) = \{j\}.
-$$ {#eq-flowconservationconstraintflowdemand}
+
+In here, we have the following special flows:
+
+- If $k$ is a basin with a flow demand, there is a special outflow $F^{\text{basin in}}_k$ and a special inflow $F^{\text{basin out}}_k$;
+- If the node has a buffer (see [here](#the-optimization-variables)) there is a special outflow $F^{\text{buffer in}}_k$ and a special inflow $F^{\text{buffer out}}_k$.
 
 :::{.callout-note}
-In @eq-flowconservationconstraintbasin and @eq-flowconservationconstraintflowdemand, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
+In the above, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
 :::
 
 - Capacity: the flows over the edges are bounded by the edge capacity:
@@ -195,28 +208,26 @@ $$
 $$
 
 :::{.callout-note}
-When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork.
+When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork. For all other sources the capacity is set to $0$, so that demand collection only uses flow from the main network inlet.
 :::
 
-Similar constraints hold for the flow out of basins and flow demand buffers:
+Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
 $$
-F^\text{basin out}_{i} \le (C^B_S)_i, \quad \forall i \in B_S,
+F^\text{basin out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in B_S,
+$$
+
+$$
+F^\text{buffer out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in FD_S,
 $$
 
 $$
-F^\text{buffer out}_{i} \le (C^FD_S)_i, \quad \forall i \in FD_S.
+F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{j\}.
+$$
+Here we use that each UserDemand node in the allocation network has a unique  outflow edge. The user outflow source capacities are increased after each optimization solve by the return fraction:
+$$
+    r_i \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
 $$
 
-
-- `UserDemand` outflow: The outflow of the UserDemand is dictated by the inflow and the return factor:
-$$
-    F_{ik} = r_k \cdot F_{kj} \quad
-    \quad \forall k \in U_S, \quad
-    V^{\text{in}}_S(k) = \{i\},\;
-     V^{\text{out}}_S(k) = \{j\}.
-$$ {#eq-returnflowconstraint}
-Here we use that each UserDemand node in the allocation network has a unique in-edge and out-edge.
-- User demand: UserDemand demand constraints are discussed in [the next section](allocation.qmd#sec-solving-allocation).
 - Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
 $$
     F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
@@ -226,41 +237,10 @@ $$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
 
-## Final notes on the allocation problem
-
-### UserDemands using their own return flow
-
-If not explicitly avoided, UserDemands can use their own return flow in this allocation problem formulation.
-Therefore, return flow of UserDemand is only taken into account by allocation if that return flow is downstream of the UserDemand where it comes from. That is, if there is no path in the directed allocation network from the UserDemand outflow node back to the UserDemand.
-
-# Solving the allocation problem {#sec-solving-allocation}
-
-The allocation problem for an allocation network at time $t$ is solved per priority, as follows:
-
-1. Define a capacity matrix with capacities as described above, that will be updated for each priority:
-$$
-    C_S^p \leftarrow C_S;
-$$
-2. Set the capacities of the edges that end in a UserDemand to their priority 1 demands:
-$$
-    (C_S^p)_{i,j} \leftarrow d_j^1(t) \quad\text{ for all } (i,j) \in U_S;
-$$
-3. Maximize the objective function given the constraints;
-4. Subtract the used flows from the edge capacities:
-$$
-    C_S^p \leftarrow C_S^p - F;
-$$
-5. Repeat steps 2-4 for the remaining priorities up to $p_{\max}$.
-
-:::{.callout-note}
-In the future there will be 2 more optimization solves:
-- One before optimizing for demands, taking the demand/supply from basins into account;
-- One after optimizing for demands, taking preferences over sources into account.
-:::
 
 ## Example
 
-The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation):
+The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation-user-demand):
 
 
 ```{julia}
@@ -279,10 +259,8 @@ t = 0.0
 priority_idx = 1
 
 Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 1.0)
-
-Ribasim.adjust_capacities_edge!(allocation_model, p, priority_idx)
-Ribasim.adjust_capacities_source!(allocation_model, p, priority_idx)
 Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
+Ribasim.set_initial_values!(allocation_model, p, u, t)
 
 println(p.allocation.allocation_models[1].problem)
 ```

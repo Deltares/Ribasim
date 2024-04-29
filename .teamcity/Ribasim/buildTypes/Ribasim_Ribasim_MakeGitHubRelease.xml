@@ -2,9 +2,9 @@
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="5fa3a42d-6a7b-4820-95c1-c550d6648ae7" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
   <name>Make GitHub Release</name>
   <description />
-  <settings>
+  <settings ref="Ribasim_Linux">
     <parameters>
-      <param name="env.GITHUB_TOKEN" value="%github_teamcity-deltares_public_access_token%" />
+      <param name="env.GITHUB_TOKEN" value="%github_deltares-service-account_access_token%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_2523" name="Push release to GitHub" type="simpleRunner">
@@ -14,8 +14,7 @@ set -euxo pipefail
 . /usr/share/Modules/init/bash
 
 module load pixi
-pixi run github-release
-]]></param>
+pixi run github-release]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -24,13 +23,12 @@ pixi run github-release
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim" />
     </vcs-settings>
-    <requirements>
-      <equals id="RQ_294" name="teamcity.agent.jvm.os.name" value="Linux" />
-    </requirements>
+    <requirements />
     <build-triggers>
       <build-trigger id="TRIGGER_637" type="vcsTrigger">
         <parameters>
-          <param name="branchFilter" value="+:v20*" />
+          <param name="branchFilter"><![CDATA[+:v20*
++:release*]]></param>
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
@@ -58,17 +56,17 @@ pixi run github-release
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="ribasim_qgis.zip" />
       </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_684" sourceBuildTypeId="Ribasim_Linux_BuildRibasim" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_linux.zip" />
+        <artifact sourcePath="ribasim_linux.zip" />
       </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_157" sourceBuildTypeId="Ribasim_Windows_BuildRibasim" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_windows.zip" />
+        <artifact sourcePath="ribasim_windows.zip" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasim">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -80,25 +78,25 @@ pixi run github-release
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimCli">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="Ribasim_GenerateTestmodels">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasim">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Linux_TestRibasimBinaries">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -112,3 +110,4 @@ pixi run github-release
     </cleanup>
   </settings>
 </build-type>
+

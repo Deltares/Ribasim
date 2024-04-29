@@ -19,6 +19,7 @@ def pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -92,6 +93,7 @@ def discrete_control_of_pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.level_boundary.add(
@@ -127,11 +129,15 @@ def discrete_control_of_pid_control_model() -> Model:
     model.discrete_control.add(
         Node(7, Point(0, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=5.0,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[5.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["target_high", "target_low"]

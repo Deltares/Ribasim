@@ -120,6 +120,7 @@ end
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
+    crs::String
     ribasim_version::String
     input_dir::String
     results_dir::String

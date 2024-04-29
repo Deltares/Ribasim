@@ -6,7 +6,7 @@ using OteraEngine
 using Ribasim
 
 pythontype(::Type{<:AbstractString}) = "Series[str]"
-pythontype(::Type{<:Integer}) = "Series[int]"
+pythontype(::Type{<:Integer}) = "Series[Int32]"
 pythontype(::Type{<:AbstractFloat}) = "Series[float]"
 pythontype(::Type{<:Number}) = "Series[float]"
 pythontype(::Type{<:Bool}) = "Series[pa.BOOL]" # pa.BOOL is a nullable boolean type, bool is not nullable

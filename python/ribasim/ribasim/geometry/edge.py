@@ -7,9 +7,9 @@ import pandera as pa
 import shapely
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
+from pandera.dtypes import Int32
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
-from pydantic import model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
@@ -28,11 +28,11 @@ class NodeData(NamedTuple):
 class EdgeSchema(pa.SchemaModel):
     name: Series[str] = pa.Field(default="")
     from_node_type: Series[str] = pa.Field(nullable=True)
-    from_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     to_node_type: Series[str] = pa.Field(nullable=True)
-    to_node_id: Series[int] = pa.Field(default=0, coerce=True)
+    to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
-    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
+    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
@@ -43,13 +43,6 @@ class EdgeSchema(pa.SchemaModel):
 
 class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
-
-    @model_validator(mode="after")
-    def empty_table(self) -> "EdgeTable":
-        if self.df is None:
-            self.df = GeoDataFrame[EdgeSchema]()
-        self.df.set_geometry("geometry", inplace=True)
-        return self
 
     def add(
         self,
@@ -67,37 +60,36 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_type = (
             "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
+        assert self.df is not None
+
         table_to_append = GeoDataFrame[EdgeSchema](
             data={
                 "from_node_type": pd.Series([from_node.node_type], dtype=str),
-                "from_node_id": pd.Series([from_node.node_id], dtype=int),
+                "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
                 "to_node_type": pd.Series([to_node.node_type], dtype=str),
-                "to_node_id": pd.Series([to_node.node_id], dtype=int),
+                "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
                 "edge_type": pd.Series([edge_type], dtype=str),
                 "name": pd.Series([name], dtype=str),
-                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int64Dtype()),
+                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int32Dtype()),
             },
             geometry=geometry_to_append,
+            crs=self.df.crs,
         )
 
-        if self.df is None:
-            self.df = table_to_append
-        else:
-            self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
+        self.df = GeoDataFrame[EdgeSchema](
+            pd.concat([self.df, table_to_append], ignore_index=True)
+        )
+        self.df.index.name = "fid"
 
     def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
     def sort(self):
-        assert self.df is not None
-        sort_keys = [
-            "from_node_type",
-            "from_node_id",
-            "to_node_type",
-            "to_node_id",
-        ]
-        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
+        # Only sort the index (fid / edge_id) since this needs to be sorted in a GeoPackage.
+        # Under most circumstances, this retains the input order,
+        # making the edge_id as stable as possible; useful for post-processing.
+        self.df.sort_index(inplace=True)
 
     def plot(self, **kwargs) -> Axes:
         assert self.df is not None
@@ -159,3 +151,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             )
 
         return ax
+
+    def __getitem__(self, _):
+        raise NotImplementedError

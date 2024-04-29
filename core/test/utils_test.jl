@@ -38,6 +38,9 @@ end
     demand = zeros(2)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [5, 7])),
+        [NodeID[]],
+        [NodeID[]],
+        [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
@@ -55,30 +58,6 @@ end
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5)) === 0.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7)) === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 6)) === nothing
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (0.0, 4.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 5),
-        NodeID(:Basin, 0),
-        NodeID(:Pump, 6),
-    ) === (0.0, 0.0)
-    @test Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 7),
-        NodeID(:Pump, 6),
-    ) === (4.0, 4.0)
-    @test_throws "No bottom defined on either side of Pump #6" Ribasim.basin_bottoms(
-        basin,
-        NodeID(:Basin, 0),
-        NodeID(:Basin, 1),
-        NodeID(:Pump, 6),
-    )
 end
 
 @testitem "Convert levels to storages" begin
@@ -115,6 +94,9 @@ end
     demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
+        [NodeID[]],
+        [NodeID[]],
+        zeros(1),
         zeros(1),
         zeros(1),
         zeros(1),
@@ -136,14 +118,17 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "The level -1.0 of Basin #1 is lower than the bottom of this basin; 0.0."
+          "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage[end], 50)
     levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
-
     @test storages ≈ storages_
+
+    # At or below bottom the storage is 0
+    @test Ribasim.get_storage_from_level(basin, 1, 0.0) == 0.0
+    @test Ribasim.get_storage_from_level(basin, 1, -1.0) == 0.0
 end
 
 @testitem "Expand logic_mapping" begin
@@ -207,9 +192,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 7, 10]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 2, 3, 4]
-    @test jac_prototype.nzval == ones(9)
+    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
+    @test jac_prototype.nzval == ones(10)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 

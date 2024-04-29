@@ -10,8 +10,8 @@ docs/build/
 docs/site/
 
 /generated_testmodels
-build/ribasim_cli/
-build/libribasim/
+build/ribasim/
+build/cli/target
 
 JuliaSysimage.dll
 LocalPreferences.toml

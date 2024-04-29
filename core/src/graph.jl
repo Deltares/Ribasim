@@ -16,18 +16,12 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()
-    # Allocation edges per subnetwork
-    edge_ids = Dict{Int32, Set{Tuple{NodeID, NodeID}}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
     # The number of flow edges
     flow_counter = 0
     # Dictionary from flow edge to index in flow vector
     flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
-    # The number of nodes with vertical flow (interaction with outside of model)
-    flow_vertical_counter = 0
-    # Dictionary from node ID to index in vertical flow vector
-    flow_vertical_dict = Dict{NodeID, Int}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
@@ -39,20 +33,15 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         node_id = NodeID(row.node_type, row.node_id)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
-            allocation_network_id = 0
+            subnetwork_id = 0
         else
-            allocation_network_id = row.subnetwork_id
-            if !haskey(node_ids, allocation_network_id)
-                node_ids[allocation_network_id] = Set{NodeID}()
+            subnetwork_id = row.subnetwork_id
+            if !haskey(node_ids, subnetwork_id)
+                node_ids[subnetwork_id] = Set{NodeID}()
             end
-            push!(node_ids[allocation_network_id], node_id)
+            push!(node_ids[subnetwork_id], node_id)
         end
-        graph[node_id] =
-            NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
-        if row.node_type in nonconservative_nodetypes
-            flow_vertical_counter += 1
-            flow_vertical_dict[node_id] = flow_vertical_counter
-        end
+        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id)
     end
 
     errors = false
@@ -76,8 +65,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
-        edge_metadata =
-            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
+        edge_metadata = EdgeMetadata(fid, edge_type, subnetwork_id, (id_src, id_dst))
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
@@ -105,25 +93,16 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     flow = zeros(flow_counter)
     flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
-    flow_vertical = zeros(flow_vertical_counter)
-    flow_vertical_prev = fill(NaN, flow_vertical_counter)
-    flow_vertical_integrated = zeros(flow_vertical_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
-        flow_vertical = DiffCache(flow_vertical, chunk_sizes)
     end
     graph_data = (;
         node_ids,
-        edge_ids,
         edges_source,
         flow_dict,
         flow,
         flow_prev,
         flow_integrated,
-        flow_vertical_dict,
-        flow_vertical,
-        flow_vertical_prev,
-        flow_vertical_integrated,
         config.solver.saveat,
     )
     graph = @set graph.graph_data = graph_data
@@ -196,46 +175,18 @@ function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number):
 end
 
 """
-Set the given flow q on the horizontal (self-loop) edge from id to id.
-"""
-function set_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
-    (; flow_vertical_dict, flow_vertical) = graph[]
-    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] = q
-    return nothing
-end
-
-"""
-Add the given flow q to the existing flow over the edge between the given nodes.
-"""
-function add_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow) = graph[]
-    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] += q
-    return nothing
-end
-
-"""
-Add the given flow q to the flow over the edge on the horizontal (self-loop) edge from id to id.
-"""
-function add_flow!(graph::MetaGraph, id::NodeID, q::Number)::Nothing
-    (; flow_vertical_dict, flow_vertical) = graph[]
-    get_tmp(flow_vertical, q)[flow_vertical_dict[id]] += q
-    return nothing
-end
-
-"""
 Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
-    (; flow_dict, flow) = graph[]
-    return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
-end
-
-"""
-Get the flow over the given horizontal (selfloop) edge (val is needed for get_tmp from ForwardDiff.jl).
-"""
-function get_flow(graph::MetaGraph, id::NodeID, val)::Number
-    (; flow_vertical_dict, flow_vertical) = graph[]
-    return get_tmp(flow_vertical, val)[flow_vertical_dict[id]]
+function get_flow(
+    graph::MetaGraph,
+    id_src::NodeID,
+    id_dst::NodeID,
+    val;
+    prev::Bool = false,
+)::Number
+    (; flow_dict, flow, flow_prev) = graph[]
+    flow_vector = prev ? flow_prev : flow
+    return get_tmp(flow_vector, val)[flow_dict[id_src, id_dst]]
 end
 
 """

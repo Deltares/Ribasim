@@ -24,11 +24,11 @@ jobs:
         with:
           cache-compiled: "true"
           cache-registries: "true"
-      - uses: prefix-dev/setup-pixi@v0.5.1
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run install-ci
+        run: pixi run --environment=dev install-ci
 
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
@@ -41,7 +41,7 @@ jobs:
 
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/_site

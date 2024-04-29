@@ -56,6 +56,7 @@ using SciMLBase:
     solve!,
     step!,
     SciMLBase,
+    ReturnCode,
     successful_retcode,
     CallbackSet,
     ODEFunction,

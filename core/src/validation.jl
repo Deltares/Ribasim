@@ -18,9 +18,9 @@ neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary
 neighbortypes(::Val{:flow_boundary}) =
     Set((:basin, :fractional_flow, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
-    Set((:linear_resistance, :manning_resistance, :pump, :outlet, :tabulated_rating_curve))
+    Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
-neighbortypes(::Val{:manning_resistance}) = Set((:basin, :level_boundary))
+neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
     :outlet,
@@ -47,8 +47,8 @@ end
 
 n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
 n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
-n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) =
     n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
@@ -67,7 +67,7 @@ n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
 n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
-n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, typemax(Int))
+n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -102,6 +102,9 @@ sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
+sort_by_variable(row) =
+    (row.node_id, row.listen_node_type, row.listen_node_id, row.variable)
+sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -110,6 +113,8 @@ sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
+sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
+sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -144,6 +149,17 @@ function sorted_table!(
         sort!(table; by)
     end
     return table
+end
+
+function valid_config(config::Config)::Bool
+    errors = false
+
+    if config.starttime >= config.endtime
+        errors = true
+        @error "The model starttime must be before the endtime."
+    end
+
+    return !errors
 end
 
 """
@@ -291,19 +307,17 @@ function valid_fractional_flow(
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outflow_ids(graph, src_id))
-        if src_outneighbor_ids ⊈ node_id_set
+        src_outflow_ids = Set(outflow_ids(graph, src_id))
+        if src_outflow_ids ⊈ node_id_set
             errors = true
-            @error(
-                "$src_id combines fractional flow outneighbors with other outneigbor types."
-            )
+            @error("$src_id has outflow to FractionalFlow and other node types.")
         end
 
         # Each control state (including missing) must sum to 1
         for control_state in control_states
             fraction_sum = 0.0
 
-            for ff_id in intersect(src_outneighbor_ids, node_id_set)
+            for ff_id in intersect(src_outflow_ids, node_id_set)
                 parameter_values = get(control_mapping, (ff_id, control_state), nothing)
                 if parameter_values === nothing
                     continue
@@ -390,21 +404,21 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (allocation_network_id, subnetwork_node_ids) in node_ids
+    for (subnetwork_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
         if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
         end
     end
     return errors
 end
 
-function non_positive_allocation_network_id(graph::MetaGraph)::Bool
+function non_positive_subnetwork_id(graph::MetaGraph)::Bool
     errors = false
-    for allocation_network_id in keys(graph[].node_ids)
-        if (allocation_network_id <= 0)
-            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+    for subnetwork_id in keys(graph[].node_ids)
+        if (subnetwork_id <= 0)
+            @error "Allocation network id $subnetwork_id needs to be a positive integer."
             errors = true
         end
     end
@@ -491,7 +505,8 @@ Check:
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping, look_ahead, variable, listen_node_id) = discrete_control
+    (; node_id, logic_mapping, look_ahead, variable, listen_node_id, greater_than) =
+        discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
@@ -504,7 +519,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         truth_states_wrong_length = String[]
 
         # The number of conditions of this DiscreteControl node
-        n_conditions = length(searchsorted(node_id, id))
+        n_conditions = sum(length(greater_than[i]) for i in searchsorted(node_id, id))
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key
@@ -546,35 +561,35 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
-                node_type = typeof(node).name.name
                 @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
             end
         end
     end
-    for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
-        if !iszero(Δt)
-            node_type = node_id.type
-            # TODO: If more transient listen variables must be supported, this validation must be more specific
-            # (e.g. for some node some variables are transient, some not).
-            if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
-                errors = true
-                @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
-            else
-                if Δt < 0
+    for (look_aheads, variables, listen_node_ids) in
+        zip(look_ahead, variable, listen_node_id)
+        for (Δt, var, node_id) in zip(look_aheads, variables, listen_node_ids)
+            if !iszero(Δt)
+                node_type = node_id.type
+                if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                     errors = true
-                    @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                    @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
                 else
-                    node = getfield(p, graph[node_id].type)
-                    idx = if node_type == NodeType.Basin
-                        id_index(node.node_id, node_id)
-                    else
-                        searchsortedfirst(node.node_id, node_id)
-                    end
-                    interpolation = getfield(node, Symbol(var))[idx]
-                    if t_end + Δt > interpolation.t[end]
+                    if Δt < 0
                         errors = true
-                        @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                        @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                    else
+                        node = getfield(p, graph[node_id].type)
+                        idx = if node_type == NodeType.Basin
+                            id_index(node.node_id, node_id)
+                        else
+                            searchsortedfirst(node.node_id, node_id)
+                        end
+                        interpolation = getfield(node, Symbol(var))[idx]
+                        if t_end + Δt > interpolation.t[end]
+                            errors = true
+                            @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                        end
                     end
                 end
             end
@@ -586,29 +601,35 @@ end
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
-function valid_sources(p::Parameters, allocation_network_id::Int32)::Bool
+function valid_sources(
+    p::Parameters,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+    subnetwork_id::Int32,
+)::Bool
     (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
 
     errors = false
 
-    for edge in edge_ids
+    for edge in keys(capacity.data)
+        if !haskey(graph, edge...)
+            edge = reverse(edge)
+        end
+
         (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
+        if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
-            if is_main_network(allocation_network_id)
+            if is_main_network(subnetwork_id)
                 if !from_source_node
                     errors = true
                     @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
+                from_main_network = is_main_network(graph[id_source].subnetwork_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
                 end
             end
         end

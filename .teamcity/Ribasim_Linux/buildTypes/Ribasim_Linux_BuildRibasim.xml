@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="cf391998-fed9-4a22-ae44-8877d1028c10" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Build libribasim</name>
+  <name>Build Ribasim</name>
   <description />
-  <settings>
+  <settings ref="Ribasim_Linux">
     <options>
-      <option name="artifactRules" value="ribasim\build\libribasim =&gt; libribasim.zip" />
-      <option name="cleanBuild" value="true" />
+      <option name="artifactRules" value="ribasim\build\ribasim =&gt; ribasim_linux.zip" />
       <option name="executionTimeoutMin" value="120" />
-      <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
     <parameters />
     <build-runners>
@@ -19,7 +17,7 @@ source /usr/share/Modules/init/bash
 
 module load pixi
 pixi --version
-pixi run install-ci]]></param>
+pixi run --environment=dev install-ci]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -34,7 +32,7 @@ source /usr/share/Modules/init/bash
 module load pixi
 module load gcc/11.3.0
 pixi run remove-artifacts
-pixi run build-libribasim]]></param>
+pixi run build]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -46,9 +44,7 @@ pixi run build-libribasim]]></param>
         <checkout-rule rule=". =&gt; ribasim" />
       </vcs-entry-ref>
     </vcs-settings>
-    <requirements>
-      <does-not-equal id="RQ_275" name="env.OS" value="Windows_NT" />
-    </requirements>
+    <requirements />
     <build-triggers />
     <build-extensions>
       <extension id="BUILD_EXT_295" type="commit-status-publisher">
@@ -56,11 +52,10 @@ pixi run build-libribasim]]></param>
           <param name="github_authentication_type" value="token" />
           <param name="github_host" value="https://api.github.com" />
           <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:71420214-373c-4ccd-ba32-2ea886843f62" />
+          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
         </parameters>
       </extension>
     </build-extensions>
     <cleanup />
   </settings>
 </build-type>
-

@@ -25,6 +25,7 @@ def basic_model() -> ribasim.Model:
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -243,6 +244,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     # Setup tabulated rating curve:
@@ -320,7 +322,7 @@ def outlet_model():
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
-        solver=ribasim.Solver(saveat=0),
+        crs="EPSG:28992",
     )
 
     # Set up the basins
@@ -328,7 +330,7 @@ def outlet_model():
         Node(3, Point(2.0, 0.0)),
         [
             basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
-            basin.State(level=[1e-3]),
+            basin.State(level=[0.0]),
         ],
     )
 
