@@ -31,17 +31,10 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
-    bottom = first(level_discrete)
-
-    if level < bottom
-        node_id = basin.node_id.values[state_idx]
-        @error "The level $level of $node_id is lower than the bottom of this basin; $bottom."
-        return NaN
-    end
 
     level_lower_index = searchsortedlast(level_discrete, level)
 
-    # If the level is equal to the bottom then the storage is 0
+    # If the level is at or below the bottom then the storage is 0
     if level_lower_index == 0
         return 0.0
     end
@@ -77,7 +70,10 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        if isnan(storage)
+        bottom = first(basin.level[i])
+        node_id = basin.node_id.values[i]
+        if level < bottom
+            @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
         end
         storages[i] = storage

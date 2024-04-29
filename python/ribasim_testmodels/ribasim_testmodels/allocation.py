@@ -883,7 +883,7 @@ def subnetworks_with_sources_model() -> Model:
 
 
 def level_demand_model() -> Model:
-    """Small model with a LevelDemand."""
+    """Small model with LevelDemand nodes."""
 
     model = Model(
         starttime="2020-01-01",
@@ -922,11 +922,23 @@ def level_demand_model() -> Model:
         [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[0.5])],
     )
 
+    # Isolated LevelDemand + Basin pair to test optional min_level
+    model.level_demand.add(
+        Node(6, Point(3, -1), subnetwork_id=3),
+        [level_demand.Static(max_level=[1.0], priority=1)],
+    )
+    model.basin.add(
+        Node(7, Point(3, 0), subnetwork_id=3),
+        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[2.0])],
+    )
+
     model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
     model.edge.add(model.basin[2], model.user_demand[3])
     model.edge.add(model.level_demand[4], model.basin[2])
     model.edge.add(model.user_demand[3], model.basin[5])
     model.edge.add(model.level_demand[4], model.basin[5])
+
+    model.edge.add(model.level_demand[6], model.basin[7])
 
     return model
 
