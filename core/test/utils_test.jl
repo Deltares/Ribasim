@@ -38,6 +38,8 @@ end
     demand = zeros(2)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [5, 7])),
+        [NodeID[]],
+        [NodeID[]],
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
@@ -92,6 +94,8 @@ end
     demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
+        [NodeID[]],
+        [NodeID[]],
         zeros(1),
         zeros(1),
         zeros(1),

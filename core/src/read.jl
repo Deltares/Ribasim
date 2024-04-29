@@ -490,7 +490,7 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(NodeType.Terminal, static.node_id))
 end
 
-function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
+function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
@@ -533,8 +533,12 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
 
     demand = zeros(length(node_id))
 
+    node_id = NodeID.(NodeType.Basin, node_id)
+
     return Basin(
-        Indices(NodeID.(NodeType.Basin, node_id)),
+        Indices(node_id),
+        [collect(inflow_ids(graph, id)) for id in node_id],
+        [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
@@ -1052,7 +1056,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, chunk_sizes)
+    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(
