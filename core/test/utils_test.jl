@@ -114,14 +114,17 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "The level -1.0 of Basin #1 is lower than the bottom of this basin; 0.0."
+          "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage[end], 50)
     levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
-
     @test storages ≈ storages_
+
+    # At or below bottom the storage is 0
+    @test Ribasim.get_storage_from_level(basin, 1, 0.0) == 0.0
+    @test Ribasim.get_storage_from_level(basin, 1, -1.0) == 0.0
 end
 
 @testitem "Expand logic_mapping" begin
