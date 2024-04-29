@@ -48,13 +48,14 @@ from ribasim_testmodels.invalid import (
     invalid_edge_types_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
+    invalid_unstable_model,
 )
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
 )
 from ribasim_testmodels.time import flow_boundary_time_model
-from ribasim_testmodels.trivial import trivial_model, unstable_model
+from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
@@ -74,6 +75,7 @@ __all__ = [
     "invalid_edge_types_model",
     "invalid_fractional_flow_model",
     "invalid_qh_model",
+    "invalid_unstable_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",
@@ -97,7 +99,6 @@ __all__ = [
     "tabulated_rating_curve_model",
     "trivial_model",
     "two_basin_model",
-    "unstable_model",
     "user_demand_model",
 ]
 

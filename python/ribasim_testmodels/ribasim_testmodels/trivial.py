@@ -1,6 +1,6 @@
-from ribasim.config import Node, Results, Solver
+from ribasim.config import Node, Results
 from ribasim.model import Model
-from ribasim.nodes import basin, pump, tabulated_rating_curve
+from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point
 
 
@@ -57,26 +57,4 @@ def trivial_model() -> Model:
         model.terminal[terminal_id],
     )
 
-    return model
-
-
-def unstable_model() -> Model:
-    """Model with an extremely quickly emptying basin."""
-
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
-        crs="EPSG:28992",
-        solver=Solver(dtmin=1.0),
-    )
-
-    model.basin.add(
-        Node(1, Point(0, 0)),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
-    model.pump.add(Node(2, Point(0, 1)), [pump.Static(flow_rate=[1e15])])
-    model.terminal.add(Node(3, Point(0, 2)))
-
-    model.edge.add(model.basin[1], model.pump[2])
-    model.edge.add(model.pump[2], model.terminal[3])
     return model
