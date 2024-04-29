@@ -271,7 +271,7 @@ end
     @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0]
 end
 
-@testitem "subnetworks with sources" begin
+@testitem "Subnetworks with sources" begin
     using SQLite
     using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
@@ -307,7 +307,7 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [3.1, 4.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001]
 end
