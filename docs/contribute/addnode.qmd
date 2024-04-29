@@ -11,7 +11,7 @@ Several parts of the code have to be made aware of the new node type. In the res
 The parameters object (defined in `parameter.jl`) passed to the ODE solver must be made aware of the new node type. Therefore define a struct in `parameter.jl` which holds the data for each node of the new node type:
 
 ```julia
-struct NewNodeType
+struct NewNodeType <: AbstractParameterNode
     node_id::Vector{NodeID}
     # Other fields
 end
