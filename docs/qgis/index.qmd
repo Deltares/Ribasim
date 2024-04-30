@@ -34,7 +34,7 @@ In the search bar, type: "iMOD". Select the iMOD plugin, and click "Install".
 
 At least version 0.4.0 of the iMOD plugin is required.
 
-The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in @sec-results.
+The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the [results section](#sec-results).
 Documentation on the Time Series widget can be found in the [iMOD documentation](https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series).
 
 ### Prepare your model
