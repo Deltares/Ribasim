@@ -170,6 +170,7 @@ class Model(FileModel):
         self.edge._save(directory, input_dir)
 
         node = self.node_table()
+        assert node.df is not None
         # Temporarily require unique node_id for #1262
         # and copy them to the fid for #1306.
         if not node.df["node_id"].is_unique:
@@ -203,10 +204,11 @@ class Model(FileModel):
 
     def node_table(self) -> NodeTable:
         """Compute the full NodeTable from all node types."""
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
+        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type: ignore
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
         node_table.sort()
+        assert node_table.df is not None
         node_table.df.index.name = "fid"
         return node_table
 
@@ -403,6 +405,7 @@ class Model(FileModel):
         if the optional dependency `xugrid` isn't installed.
         """
         node_df = self.node_table().df
+        assert node_df is not None
 
         # This will need to be adopted for locally unique node IDs,
         # otherwise the `node_lookup` with `argsort` is not correct.
@@ -410,6 +413,7 @@ class Model(FileModel):
             raise ValueError("node_id must be unique")
         node_df.sort_values("node_id", inplace=True)
 
+        assert self.edge.df is not None
         edge_df = self.edge.df.copy()
         # We assume only the flow network is of interest.
         edge_df = edge_df[edge_df.edge_type == "flow"]
