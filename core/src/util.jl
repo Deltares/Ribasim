@@ -736,3 +736,12 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
     outneighbor_id.type == NodeType.FractionalFlow for
     outneighbor_id in outflow_ids(graph, node_id)
 )
+
+internalnorm(u::ComponentVector, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u.storage, t)
+internalnorm(u::Number, t) = 0.0
+
+function get_n_flows(db::DB)::Int
+    result =
+        execute(columntable, db, "SELECT COUNT(*) FROM `Edge` WHERE edge_type = 'flow'")
+    return only(only(result))
+end

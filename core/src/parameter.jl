@@ -601,8 +601,6 @@ struct Parameters{T, C1, C2, V1, V2, V3}
             edges_source::Dict{Int32, Set{EdgeMetadata}},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
             flow::T,
-            flow_prev::Vector{Float64},
-            flow_integrated::Vector{Float64},
             saveat::Float64,
         },
         MetaGraphsNext.var"#11#13",

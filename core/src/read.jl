@@ -1033,7 +1033,8 @@ function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
+    n_states =
+        length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl")) + get_n_flows(db)
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
     allocation = Allocation(db, config, graph)

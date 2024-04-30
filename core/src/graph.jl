@@ -91,20 +91,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
 
     flow = zeros(flow_counter)
-    flow_prev = fill(NaN, flow_counter)
-    flow_integrated = zeros(flow_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
     end
-    graph_data = (;
-        node_ids,
-        edges_source,
-        flow_dict,
-        flow,
-        flow_prev,
-        flow_integrated,
-        config.solver.saveat,
-    )
+    graph_data = (; node_ids, edges_source, flow_dict, flow, config.solver.saveat)
     graph = @set graph.graph_data = graph_data
 
     return graph
@@ -177,16 +167,9 @@ end
 """
 Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
 """
-function get_flow(
-    graph::MetaGraph,
-    id_src::NodeID,
-    id_dst::NodeID,
-    val;
-    prev::Bool = false,
-)::Number
-    (; flow_dict, flow, flow_prev) = graph[]
-    flow_vector = prev ? flow_prev : flow
-    return get_tmp(flow_vector, val)[flow_dict[id_src, id_dst]]
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
+    (; flow_dict, flow) = graph[]
+    return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
 end
 
 """

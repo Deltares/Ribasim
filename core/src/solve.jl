@@ -608,12 +608,13 @@ function formulate_du!(
     # add all ingoing flows
     for (i, basin_id) in enumerate(basin.node_id)
         for inflow_id in basin.inflow_ids[i]
-            du[i] += get_flow(graph, inflow_id, basin_id, storage)
+            du.storage[i] += get_flow(graph, inflow_id, basin_id, storage)
         end
         for outflow_id in basin.outflow_ids[i]
-            du[i] -= get_flow(graph, basin_id, outflow_id, storage)
+            du.storage[i] -= get_flow(graph, basin_id, outflow_id, storage)
         end
     end
+    du.flow .= get_tmp(graph[].flow, storage)
     return nothing
 end
 

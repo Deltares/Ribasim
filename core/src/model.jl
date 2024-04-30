@@ -35,6 +35,23 @@ function Model(config_path::AbstractString)::Model
     return Model(config)
 end
 
+function get_u0(p::Parameters, state::StructVector)::ComponentVector
+    (; basin, pid_control, graph) = p
+
+    storage = get_storages_from_levels(basin, state.level)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(basin, storage)
+
+    # Integrals for PID control
+    integral = zeros(length(pid_control.node_id))
+
+    n_flows = length(graph[].flow_dict)
+    flow = zeros(n_flows)
+
+    return ComponentVector{Float64}(; storage, integral, flow)
+end
+
 function Model(config::Config)::Model
     alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
@@ -109,15 +126,9 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    storage = get_storages_from_levels(parameters.basin, state.level)
+    u0 = get_u0(parameters, state)
+    @assert length(u0.storage) == n "Basin / state length differs from number of Basins"
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
-
-    @assert length(storage) == n "Basin / state length differs from number of Basins"
-    # Integrals for PID control
-    integral = zeros(length(parameters.pid_control.node_id))
-    u0 = ComponentVector{Float64}(; storage, integral)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -162,6 +173,7 @@ function Model(config::Config)::Model
         config.solver.abstol,
         config.solver.reltol,
         config.solver.maxiters,
+        internalnorm,
     )
     @debug "Setup integrator."
 

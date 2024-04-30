@@ -16,9 +16,6 @@ function create_callbacks(
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
-    push!(callbacks, integrating_flows_cb)
-
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
     push!(callbacks, basin_cb)
@@ -86,67 +83,17 @@ function check_negative_storage(u, t, integrator)::Nothing
     return nothing
 end
 
-"""
-Integrate flows over the last timestep
-"""
-function integrate_flows!(u, t, integrator)::Nothing
-    (; p, dt) = integrator
-    (; graph, user_demand, basin, allocation) = p
-    (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
-    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
-        basin
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
-    if !isempty(flow_prev) && isnan(flow_prev[1])
-        # If flow_prev is not populated yet
-        copyto!(flow_prev, flow)
-    end
-
-    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
-    @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-
-    # UserDemand realized flows for BMI
-    for (i, id) in enumerate(user_demand.node_id)
-        src_id = inflow_id(graph, id)
-        flow_idx = flow_dict[src_id, id]
-        user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
-    end
-
-    # Allocation source flows
-    for (edge, value) in allocation.mean_flows
-        if edge[1] == edge[2]
-            # Vertical fluxes
-            _, basin_idx = id_index(basin.node_id, edge[1])
-            value[] +=
-                0.5 *
-                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
-                dt
-        else
-            # Horizontal flows
-            value[] +=
-                0.5 *
-                (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
-                dt
-        end
-    end
-
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
-    return nothing
-end
-
 "Compute the average flows over the last saveat interval and write
 them to SavedValues"
 function save_flow(u, t, integrator)
     (; graph) = integrator.p
-    (; flow_integrated, flow_dict) = graph[]
+    (; flow_dict) = graph[]
     (; node_id) = integrator.p.basin
 
     Δt = get_Δt(integrator)
-    flow_mean = copy(flow_integrated)
+    flow_mean = copy(u.flow)
     flow_mean ./= Δt
-    fill!(flow_integrated, 0.0)
+    fill!(u.flow, 0.0)
 
     # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
     inflow_mean = zeros(length(node_id))
