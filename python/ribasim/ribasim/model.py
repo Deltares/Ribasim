@@ -230,6 +230,8 @@ class Model(FileModel):
         }
 
     def validate_model_node_field_ids(self):
+        """Check whether the node IDs of the node_type fields are valid."""
+
         raise NotImplementedError()
 
     def validate_model_node_ids(self):
