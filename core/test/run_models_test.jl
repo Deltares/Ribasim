@@ -312,14 +312,15 @@ end
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
-    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test dense_ad.integrator.sol.u[end].storage ≈ sparse_ad.integrator.sol.u[end].storage
+    @test sparse_fdm.integrator.sol.u[end].storage ≈ sparse_ad.integrator.sol.u[end].storage
+    @test dense_fdm.integrator.sol.u[end].storage ≈ sparse_ad.integrator.sol.u[end].storage
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
-    @test time_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1
+    @test time_ad.integrator.sol.u[end].storage ≈ sparse_ad.integrator.sol.u[end].storage atol =
+        1
 end
 
 @testitem "TabulatedRatingCurve model" begin
