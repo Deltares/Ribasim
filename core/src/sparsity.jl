@@ -13,8 +13,7 @@ differentialequations.jl docs.
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control, graph) = p
 
-    n_basins = length(basin.node_id)
-    n_states = n_basins + length(pid_control.node_id) + length(graph[].flow_dict)
+    n_states = get_n_states(p)
     jac_prototype = spzeros(n_states, n_states)
 
     update_jac_prototype!(jac_prototype, p)

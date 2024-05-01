@@ -75,6 +75,10 @@ end
     )
     transform!(time_table, :node_id => ByRow(id -> fixed_area[id]) => :fixed_area)
     @test all(
-        basin_table.precipitation .≈ time_table.fixed_area .* time_table.precipitation,
+        isapprox.(
+            basin_table.precipitation,
+            time_table.fixed_area .* time_table.precipitation,
+            rtol = 1e-4,
+        ),
     )
 end

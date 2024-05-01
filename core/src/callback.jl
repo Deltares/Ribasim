@@ -8,6 +8,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
+    u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
@@ -31,7 +32,7 @@ function create_callbacks(
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
-    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
+    saved_vertical_flux = SavedValues(Float64, typeof(copy(forcings_integrated(u0))))
     save_vertical_flux_cb =
         SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
     push!(callbacks, save_vertical_flux_cb)
@@ -86,14 +87,16 @@ end
 "Compute the average flows over the last saveat interval and write
 them to SavedValues"
 function save_flow(u, t, integrator)
-    (; graph) = integrator.p
+    (; uprev, p) = integrator
+    (; graph) = p
     (; flow_dict) = graph[]
     (; node_id) = integrator.p.basin
 
     Δt = get_Δt(integrator)
-    flow_mean = copy(u.flow)
+    flow_mean = copy(u.flow_integrated)
     flow_mean ./= Δt
-    fill!(u.flow, 0.0)
+    fill!(u.flow_integrated, 0.0)
+    fill!(uprev.flow_integrated, 0.0)
 
     # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
     inflow_mean = zeros(length(node_id))
@@ -124,13 +127,10 @@ end
 "Compute the average vertical fluxes over the last saveat interval and write
 them to SavedValues"
 function save_vertical_flux(u, t, integrator)
-    (; basin) = integrator.p
-    (; vertical_flux_integrated) = basin
-
     Δt = get_Δt(integrator)
-    vertical_flux_mean = copy(vertical_flux_integrated)
+    vertical_flux_mean = copy(forcings_integrated(u))
     vertical_flux_mean ./= Δt
-    fill!(vertical_flux_integrated, 0.0)
+    forcings_integrated(u) .= 0.0
 
     return vertical_flux_mean
 end
@@ -138,8 +138,6 @@ end
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    condition_idx = 0
-
     discrete_control_condition!(u, t, integrator)
 
     # For every compound variable see whether it changes a control state
@@ -379,7 +377,7 @@ function update_basin(integrator)::Nothing
     (; p, u) = integrator
     (; basin) = p
     (; storage) = u
-    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
+    (; node_id, time, vertical_flux_from_input, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
     vertical_flux = get_tmp(vertical_flux, integrator.u)
 
@@ -400,9 +398,6 @@ function update_basin(integrator)::Nothing
     end
 
     update_vertical_flux!(basin, storage)
-
-    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 

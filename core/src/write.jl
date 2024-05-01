@@ -116,8 +116,12 @@ function basin_table(
 
     idx_row = 0
     for cvec in saved.vertical_flux.saveval
-        for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
+        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
+            cvec.precipitation_integrated,
+            cvec.evaporation_integrated,
+            cvec.drainage_integrated,
+            cvec.infiltration_integrated,
+        )
             idx_row += 1
             precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_

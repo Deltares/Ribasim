@@ -573,7 +573,7 @@ end
 """
 Set the demand of the flow demand nodes. 2 cases:
 - Before the first allocation solve, set the demands to their full value;
-- Before an allocation solve, subtract the flow trough the node with a flow demand
+- Before an allocation solve, subtract the flow through the node with a flow demand
   from the total flow demand (which will be used at the priority of the flow demand only).
 """
 function adjust_demands_user!(
@@ -642,7 +642,7 @@ function set_initial_demands_flow!(
 end
 
 """
-Reduce the flow demand based on flow trough the node with the demand.
+Reduce the flow demand based on flow through the node with the demand.
 Flow from any priority counts.
 """
 function adjust_demands_flow!(allocation_model::AllocationModel, p::Parameters)::Nothing

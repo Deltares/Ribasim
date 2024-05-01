@@ -707,11 +707,10 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, basin_idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev) = basin
+function get_influx(basin::Basin, basin_idx::Int)::Float64
+    (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
-    flux_vector = prev ? vertical_flux_prev : vertical_flux
-    (; precipitation, evaporation, drainage, infiltration) = flux_vector
+    (; precipitation, evaporation, drainage, infiltration) = vertical_flux
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
@@ -740,8 +739,36 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
 internalnorm(u::ComponentVector, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u.storage, t)
 internalnorm(u::Number, t) = 0.0
 
-function get_n_flows(db::DB)::Int
-    result =
-        execute(columntable, db, "SELECT COUNT(*) FROM `Edge` WHERE edge_type = 'flow'")
+function get_n_node(db::DB, type::String)::Int
+    result = execute(columntable, db, "SELECT COUNT(*) From Node WHERE node_type = '$type'")
     return only(only(result))
+end
+
+function get_n_flows(db::DB)::Int
+    result = execute(columntable, db, "SELECT COUNT(*) FROM Edge WHERE edge_type = 'flow'")
+    return only(only(result))
+end
+
+function get_n_states(db::DB)::Int
+    return 9 * get_n_node(db, "Basin") + get_n_node(db, "PidControl") + get_n_flows(db)
+end
+
+function get_n_states(p::Parameters)::Int
+    (; basin, pid_control, graph) = p
+    return 9 * length(basin.node_id) +
+           length(pid_control.node_id) +
+           length(graph[].flow_dict)
+end
+
+function forcings_integrated(u::ComponentVector)
+    return @view u[(
+        :precipitation_integrated,
+        :evaporation_integrated,
+        :drainage_integrated,
+        :infiltration_integrated,
+    )]
+end
+
+function forcings_bmi(u::ComponentVector)
+    return @view u[(:precipitation_bmi, :evaporation_bmi, :drainage_bmi, :infiltration_bmi)]
 end

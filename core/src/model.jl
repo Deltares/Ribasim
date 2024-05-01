@@ -47,9 +47,35 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
     integral = zeros(length(pid_control.node_id))
 
     n_flows = length(graph[].flow_dict)
-    flow = zeros(n_flows)
+    n_basins = length(basin.node_id)
 
-    return ComponentVector{Float64}(; storage, integral, flow)
+    # Flows over edges
+    flow_integrated = zeros(n_flows)
+
+    # Basin forcings
+    precipitation_integrated = zeros(n_basins)
+    evaporation_integrated = zeros(n_basins)
+    drainage_integrated = zeros(n_basins)
+    infiltration_integrated = zeros(n_basins)
+
+    precipitation_bmi = zeros(n_basins)
+    evaporation_bmi = zeros(n_basins)
+    drainage_bmi = zeros(n_basins)
+    infiltration_bmi = zeros(n_basins)
+
+    return ComponentVector{Float64}(;
+        storage,
+        integral,
+        flow_integrated,
+        precipitation_integrated,
+        evaporation_integrated,
+        drainage_integrated,
+        infiltration_integrated,
+        precipitation_bmi,
+        evaporation_bmi,
+        drainage_bmi,
+        infiltration_bmi,
+    )
 end
 
 function Model(config::Config)::Model
@@ -148,8 +174,16 @@ function Model(config::Config)::Model
     end
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, saveat)
+    callback, saved = create_callbacks(parameters, config, u0, saveat)
     @debug "Created callbacks."
+
+    # Only have finite tolerance on storage states
+    abstol = copy(u0)
+    reltol = copy(u0)
+    abstol .= Inf
+    reltol .= Inf
+    abstol.storage .= config.solver.abstol
+    reltol.storage .= config.solver.reltol
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
@@ -170,8 +204,8 @@ function Model(config::Config)::Model
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
-        config.solver.abstol,
-        config.solver.reltol,
+        abstol,
+        reltol,
         config.solver.maxiters,
         internalnorm,
     )

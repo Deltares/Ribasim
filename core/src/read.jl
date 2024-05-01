@@ -521,9 +521,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_prev = zero(vertical_flux)
-    vertical_flux_integrated = zero(vertical_flux)
-    vertical_flux_bmi = zero(vertical_flux)
 
     if config.solver.autodiff
         current_level = DiffCache(current_level, chunk_sizes)
@@ -541,9 +538,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
         vertical_flux,
-        vertical_flux_prev,
-        vertical_flux_integrated,
-        vertical_flux_bmi,
         current_level,
         current_area,
         area,
@@ -1033,8 +1027,7 @@ function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states =
-        length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl")) + get_n_flows(db)
+    n_states = get_n_states(db)
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
     allocation = Allocation(db, config, graph)

@@ -65,7 +65,6 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector)::Nothing
         fixed_area = basin.area[i][end]
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
-
         precipitation = fixed_area * vertical_flux_from_input.precipitation[i]
         evaporation = area * factor * vertical_flux_from_input.potential_evaporation[i]
         drainage = vertical_flux_from_input.drainage[i]
@@ -597,6 +596,24 @@ function formulate_flow!(
     return nothing
 end
 
+function formulate_integration_flows!(
+    du::ComponentVector,
+    graph::MetaGraph,
+    basin::Basin,
+    storage::AbstractVector,
+)::Nothing
+    # Flows over edges
+    flow = get_tmp(graph[].flow, storage)
+    du.flow_integrated .= flow
+
+    # Basin forcings
+    vertical_flux = get_tmp(basin.vertical_flux, storage)
+    forcings_integrated(du) .= vertical_flux
+    forcings_bmi(du) .= vertical_flux
+
+    return nothing
+end
+
 function formulate_du!(
     du::ComponentVector,
     graph::MetaGraph,
@@ -614,7 +631,7 @@ function formulate_du!(
             du.storage[i] -= get_flow(graph, basin_id, outflow_id, storage)
         end
     end
-    du.flow .= get_tmp(graph[].flow, storage)
+    formulate_integration_flows!(du, graph, basin, storage)
     return nothing
 end
 
