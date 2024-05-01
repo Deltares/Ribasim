@@ -815,7 +815,6 @@ function UserDemand(db::DB, config::Config)::UserDemand
     n_user = length(node_ids)
     n_priority = length(priorities)
     active = BitVector(ones(Bool, n_user))
-    realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
@@ -860,7 +859,6 @@ function UserDemand(db::DB, config::Config)::UserDemand
     return UserDemand(
         node_ids,
         active,
-        realized_bmi,
         demand,
         demand_reduced,
         demand_itp,

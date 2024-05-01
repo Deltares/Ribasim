@@ -35,8 +35,8 @@ function Model(config_path::AbstractString)::Model
     return Model(config)
 end
 
-function get_u0(p::Parameters, state::StructVector)::ComponentVector
-    (; basin, pid_control, graph, allocation) = p
+function initialize_state(p::Parameters, state::StructVector)::ComponentVector
+    (; basin, pid_control, graph, allocation, user_demand) = p
 
     storage = get_storages_from_levels(basin, state.level)
 
@@ -46,13 +46,12 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
     # Integrals for PID control
     integral = zeros(length(pid_control.node_id))
 
-    n_flows = length(graph[].flow_dict)
-    n_basins = length(basin.node_id)
-
     # Flows over edges
+    n_flows = length(graph[].flow_dict)
     flow_integrated = zeros(n_flows)
 
     # Basin forcings
+    n_basins = length(basin.node_id)
     precipitation_integrated = zeros(n_basins)
     evaporation_integrated = zeros(n_basins)
     drainage_integrated = zeros(n_basins)
@@ -64,7 +63,12 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
     infiltration_bmi = zeros(n_basins)
 
     # Flows for allocation
-    flow_allocation_input = zeros(length(allocation.flow_dict))
+    n_allocation_input_flows = length(allocation.flow_dict)
+    flow_allocation_input = zeros(n_allocation_input_flows)
+
+    # Realized user demand
+    n_user_demands = length(user_demand.node_id)
+    realized_user_demand_bmi = zeros(n_user_demands)
 
     # NOTE: This is the source of truth for the state component names
     return ComponentVector{Float64}(;
@@ -80,6 +84,7 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
         drainage_bmi,
         infiltration_bmi,
         flow_allocation_input,
+        realized_user_demand_bmi,
     )
 end
 
@@ -157,7 +162,7 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = get_u0(parameters, state)
+    u0 = initialize_state(parameters, state)
     @assert length(u0.storage) == n "Basin / state length differs from number of Basins"
 
     # for Float32 this method allows max ~1000 year simulations without accuracy issues

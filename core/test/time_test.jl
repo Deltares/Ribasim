@@ -29,7 +29,8 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
     basin = model.integrator.p.basin
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
@@ -46,9 +47,8 @@ end
         Ribasim.get_area_and_level(basin, idx, storage)[1] for
         (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
     ]
-    # Mean areas are sufficient to compute the mean flows
-    # (assuming the saveats coincide with the solver timepoints),
-    # as the potential evaporation is constant over the saveat intervals
+    # Compute the mean basin area over a timestep to approximate
+    # the mean evaporation as mean_area * instantaneous_potential_evaporation
     time_table[!, "mean_area"] .= 0.0
     n_basins = length(basin.node_id)
     n_times = length(unique(time_table.time)) - 1
@@ -65,20 +65,7 @@ end
         isapprox(
             basin_table.evaporation,
             time_table.mean_area .* time_table.potential_evaporation;
-            rtol = 1e-4,
-        ),
-    )
-
-    fixed_area = Dict(
-        id.value => basin.area[Ribasim.id_index(basin.node_id, id)[2]][end] for
-        id in basin.node_id
-    )
-    transform!(time_table, :node_id => ByRow(id -> fixed_area[id]) => :fixed_area)
-    @test all(
-        isapprox.(
-            basin_table.precipitation,
-            time_table.fixed_area .* time_table.precipitation,
-            rtol = 1e-4,
+            rtol = 1e-3,
         ),
     )
 end

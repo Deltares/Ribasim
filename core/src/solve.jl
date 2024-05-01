@@ -603,7 +603,7 @@ function formulate_du_integration_flows!(
     p::Parameters,
     storage::AbstractVector,
 )::Nothing
-    (; basin, allocation) = p
+    (; basin, allocation, user_demand) = p
 
     # Flows over edges
     flow = get_tmp(graph[].flow, storage)
@@ -615,12 +615,17 @@ function formulate_du_integration_flows!(
     forcings_bmi(du) .= vertical_flux
 
     # Allocation_flows
-    for (edge, idx) in allocation.flow_dict
-        du.flow_allocation_input[idx] = if edge[1] == edge[2]
+    for (edge, i) in allocation.flow_dict
+        du.flow_allocation_input[i] = if edge[1] == edge[2]
             get_influx(basin, edge[1])
         else
             get_flow(graph, edge..., 0)
         end
+    end
+
+    # Realized user demand
+    for (i, id) in enumerate(user_demand.node_id)
+        du.realized_user_demand_bmi[i] = get_flow(graph, inflow_id(graph, id), id, storage)
     end
 
     return nothing
