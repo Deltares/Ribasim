@@ -739,11 +739,6 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
 internalnorm(u::ComponentVector, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u.storage, t)
 internalnorm(u::Number, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u, t)
 
-function get_n_node(db::DB, type::String)::Int
-    result = execute(columntable, db, "SELECT COUNT(*) From Node WHERE node_type = '$type'")
-    return only(only(result))
-end
-
 function get_n_flows(db::DB)::Int
     result = execute(columntable, db, "SELECT COUNT(*) FROM Edge WHERE edge_type = 'flow'")
     return only(only(result))
@@ -755,7 +750,7 @@ function get_n_allocation_flow_inputs(db::DB)::Int
             execute(
                 columntable,
                 db,
-                "SELECT COUNT(*) From Edge where 'subnetwork_id' != 0",
+                "SELECT COUNT(*) From Edge where subnetwork_id IS NOT NULL",
             ),
         ),
     )
@@ -764,28 +759,36 @@ function get_n_allocation_flow_inputs(db::DB)::Int
             execute(
                 columntable,
                 db,
-                "SELECT COUNT(*) FROM Edge WHERE from_node_type = 'level_demand'",
+                "SELECT COUNT(*) FROM Edge WHERE from_node_type = 'LevelDemand'",
             ),
         ),
     )
     return n_sources + n_level_demands
 end
 
-function get_n_states(db::DB)::Int
-    return 9 * get_n_node(db, "Basin") +
-           get_n_node(db, "PidControl") +
-           get_n_flows(db) +
-           get_n_allocation_flow_inputs(db) +
-           get_n_node(db, "UserDemand")
-end
-
-function get_n_states(p::Parameters)::Int
-    (; basin, pid_control, graph, allocation, user_demand) = p
-    return 9 * length(basin.node_id) +
-           length(pid_control.node_id) +
-           length(graph[].flow_dict) +
-           length(allocation.flow_dict) +
-           length(user_demand.node_id)
+function get_n_states(db::DB, config::Config)::NamedTuple
+    n_basins = length(get_ids(db, "Basin"))
+    n_pid_controls = length(get_ids(db, "PidControl"))
+    n_user_demands = length(get_ids(db, "UserDemand"))
+    n_flows = get_n_flows(db)
+    n_allocation_flow_inputs =
+        config.allocation.use_allocation ? get_n_allocation_flow_inputs(db) : 0
+    # NOTE: This is the source of truth for the state component names
+    return (;
+        storage = n_basins,
+        integral = n_pid_controls,
+        flow_integrated = n_flows,
+        precipitation_integrated = n_basins,
+        evaporation_integrated = n_basins,
+        drainage_integrated = n_basins,
+        infiltration_integrated = n_basins,
+        precipitation_bmi = n_basins,
+        evaporation_bmi = n_basins,
+        drainage_bmi = n_basins,
+        infiltration_bmi = n_basins,
+        flow_allocation_input = n_allocation_flow_inputs,
+        realized_user_demand_bmi = n_user_demands,
+    )
 end
 
 function forcings_integrated(u::ComponentVector)

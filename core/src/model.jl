@@ -35,57 +35,14 @@ function Model(config_path::AbstractString)::Model
     return Model(config)
 end
 
-function initialize_state(p::Parameters, state::StructVector)::ComponentVector
-    (; basin, pid_control, graph, allocation, user_demand) = p
-
-    storage = get_storages_from_levels(basin, state.level)
-
-    # Synchronize level with storage
-    set_current_basin_properties!(basin, storage)
-
-    # Integrals for PID control
-    integral = zeros(length(pid_control.node_id))
-
-    # Flows over edges
-    n_flows = length(graph[].flow_dict)
-    flow_integrated = zeros(n_flows)
-
-    # Basin forcings
-    n_basins = length(basin.node_id)
-    precipitation_integrated = zeros(n_basins)
-    evaporation_integrated = zeros(n_basins)
-    drainage_integrated = zeros(n_basins)
-    infiltration_integrated = zeros(n_basins)
-
-    precipitation_bmi = zeros(n_basins)
-    evaporation_bmi = zeros(n_basins)
-    drainage_bmi = zeros(n_basins)
-    infiltration_bmi = zeros(n_basins)
-
-    # Flows for allocation
-    n_allocation_input_flows = length(allocation.flow_dict)
-    flow_allocation_input = zeros(n_allocation_input_flows)
-
-    # Realized user demand
-    n_user_demands = length(user_demand.node_id)
-    realized_user_demand_bmi = zeros(n_user_demands)
-
-    # NOTE: This is the source of truth for the state component names
-    return ComponentVector{Float64}(;
-        storage,
-        integral,
-        flow_integrated,
-        precipitation_integrated,
-        evaporation_integrated,
-        drainage_integrated,
-        infiltration_integrated,
-        precipitation_bmi,
-        evaporation_bmi,
-        drainage_bmi,
-        infiltration_bmi,
-        flow_allocation_input,
-        realized_user_demand_bmi,
+function initialize_state(db::DB, config::Config, basin::Basin)::ComponentVector
+    n_states = get_n_states(db, config)
+    u0 = ComponentVector{Float64}(
+        NamedTuple{keys(n_states)}([zeros(n) for n in values(n_states)]),
     )
+    state = load_structvector(db, config, BasinStateV1)
+    u0.storage = get_storages_from_levels(basin, state.level)
+    return u0
 end
 
 function Model(config::Config)::Model
@@ -103,7 +60,7 @@ function Model(config::Config)::Model
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
-    local parameters, state, n, tstops
+    local parameters, u0, tstops
     try
         parameters = Parameters(db, config)
 
@@ -145,9 +102,9 @@ function Model(config::Config)::Model
             push!(tstops, get_tstops(time_schema.time, config.starttime))
         end
 
-        # use state
-        state = load_structvector(db, config, BasinStateV1)
-        n = length(get_ids(db, "Basin"))
+        # initial state
+        u0 = initialize_state(db, config, parameters.basin)
+        @assert length(u0.flow_allocation_input) == length(parameters.allocation.flow_dict) "Unexpected number of flows to integrate for allocation input."
 
         sql = "SELECT node_id FROM Node ORDER BY node_id"
         node_id = only(execute(columntable, db, sql))
@@ -162,8 +119,8 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = initialize_state(parameters, state)
-    @assert length(u0.storage) == n "Basin / state length differs from number of Basins"
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, u0.storage)
 
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
@@ -176,7 +133,8 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype =
+        config.solver.sparse ? get_jac_prototype(parameters, length(u0)) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin

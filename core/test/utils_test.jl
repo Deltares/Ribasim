@@ -182,8 +182,10 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    n_states = sum(Ribasim.get_n_states(db, cfg))
+    close(db)
 
+    jac_prototype = Ribasim.get_jac_prototype(p, n_states)
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
     @test jac_prototype.colptr == [1, 3, 5, 8, 11]
@@ -197,8 +199,10 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    n_states = sum(Ribasim.get_n_states(db, config))
+    close(db)
 
+    jac_prototype = Ribasim.get_jac_prototype(p, n_states)
     @test jac_prototype.m == 3
     @test jac_prototype.n == 3
     @test jac_prototype.colptr == [1, 4, 5, 6]

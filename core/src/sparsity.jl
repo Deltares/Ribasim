@@ -10,10 +10,8 @@ Note: the name 'prototype' does not mean this code is a prototype, it comes
 from the naming convention of this sparsity structure in the
 differentialequations.jl docs.
 """
-function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
+function get_jac_prototype(p::Parameters, n_states::Int)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control, graph) = p
-
-    n_states = get_n_states(p)
     jac_prototype = spzeros(n_states, n_states)
 
     update_jac_prototype!(jac_prototype, p)

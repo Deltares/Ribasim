@@ -1029,7 +1029,7 @@ function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states = get_n_states(db)
+    n_states = sum(get_n_states(db, config))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
     allocation = Allocation(db, config, graph)
