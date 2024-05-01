@@ -737,7 +737,7 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
 )
 
 internalnorm(u::ComponentVector, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u.storage, t)
-internalnorm(u::Number, t) = 0.0
+internalnorm(u::Number, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u, t)
 
 function get_n_node(db::DB, type::String)::Int
     result = execute(columntable, db, "SELECT COUNT(*) From Node WHERE node_type = '$type'")

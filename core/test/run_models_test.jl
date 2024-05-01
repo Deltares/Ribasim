@@ -435,7 +435,7 @@ end
     @test only(model.integrator.sol(180day).storage) ≈ 509 atol = 1
 end
 
-@testitem "ManningResistance" skip = true begin
+@testitem "ManningResistance" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
