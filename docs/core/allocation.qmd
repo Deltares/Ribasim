@@ -251,11 +251,9 @@ using SQLite
 using ComponentArrays: ComponentVector
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-p = Ribasim.Model(toml_path).integrator.p
-u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+(; p, u, t) = Ribasim.Model(toml_path).integrator
 
 allocation_model = p.allocation.allocation_models[1]
-t = 0.0
 priority_idx = 1
 
 Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 1.0)
