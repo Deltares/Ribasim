@@ -82,39 +82,39 @@ end
 # Solution: (implicit, given by Wolfram Alpha).
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
-# @testitem "ManningResistance" begin
-#     using SciMLBase: successful_retcode
+@testitem "ManningResistance" begin
+    using SciMLBase: successful_retcode
 
-#     toml_path =
-#         normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
-#     @test ispath(toml_path)
-#     model = Ribasim.run(toml_path)
-#     @test successful_retcode(model)
-#     p = model.integrator.p
-#     (; manning_resistance) = p
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test successful_retcode(model)
+    p = model.integrator.p
+    (; manning_resistance) = p
 
-#     t = Ribasim.tsaves(model)
-#     storage_both = Ribasim.get_storages_and_levels(model).storage
-#     storage = storage_both[1, :]
-#     storage_min = 50.005
-#     level_min = 1.0
-#     basin_area = p.basin.area[1][2]
-#     level = @. level_min + (storage - storage_min) / basin_area
-#     C = sum(storage_both[:, 1])
-#     Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
-#     w = manning_resistance.profile_width[1]
-#     L = manning_resistance.length[1]
-#     n = manning_resistance.manning_n[1]
-#     K = -((w * Λ / 2)^(5 / 3)) * ((w + Λ)^(2 / 3)) / (basin_area * n * sqrt(L))
+    t = Ribasim.tsaves(model)
+    storage_both = Ribasim.get_storages_and_levels(model).storage
+    storage = storage_both[1, :]
+    storage_min = 50.005
+    level_min = 1.0
+    basin_area = p.basin.area[1][2]
+    level = @. level_min + (storage - storage_min) / basin_area
+    C = sum(storage_both[:, 1])
+    Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
+    w = manning_resistance.profile_width[1]
+    L = manning_resistance.length[1]
+    n = manning_resistance.manning_n[1]
+    K = -((w * Λ / 2)^(5 / 3)) * ((w + Λ)^(2 / 3)) / (basin_area * n * sqrt(L))
 
-#     RHS = @. sqrt(2 * level - Λ)
-#     RHS ./= @. ((2 * level + w) * (2 * Λ - 2 * level + w) / ((Λ + w)^2))^(2 / 3)
-#     RHS ./= @. (1 / (4 * Λ * level + 2 * Λ * w - 4 * level^2 + w^2))^(2 / 3)
+    RHS = @. sqrt(2 * level - Λ)
+    RHS ./= @. ((2 * level + w) * (2 * Λ - 2 * level + w) / ((Λ + w)^2))^(2 / 3)
+    RHS ./= @. (1 / (4 * Λ * level + 2 * Λ * w - 4 * level^2 + w^2))^(2 / 3)
 
-#     LHS = @. RHS[1] + t * K
+    LHS = @. RHS[1] + t * K
 
-#     @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
-# end
+    @test all(isapprox.(LHS, RHS; rtol = 0.005)) # Fails with '≈'
+end
 
 # The second order linear inhomogeneous ODE for this model is derived by
 # differentiating the equation for the storage of the controlled basin
