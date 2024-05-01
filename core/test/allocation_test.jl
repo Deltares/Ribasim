@@ -6,17 +6,12 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
+    model = Ribasim.Model(toml_path)
+    (; u, p) = model.integrator
+    (; flow_dict) = p.allocation
 
-    p = Ribasim.Parameters(db, cfg)
-    (; graph, allocation) = p
-    close(db)
-
-    allocation.mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
+    u.flow_allocation_input[flow_dict[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] = 4.5
     allocation_model = p.allocation.allocation_models[1]
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
 
     # Last priority (= 2) flows
@@ -203,24 +198,18 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
-
+    model = Ribasim.Model(toml_path)
+    (; u, p, t) = model.integrator
     (; allocation, user_demand, graph, basin) = p
     (;
         allocation_models,
         subnetwork_demands,
         subnetwork_allocateds,
         record_flow,
-        mean_flows,
+        flow_dict,
     ) = allocation
-    t = 0.0
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
@@ -247,8 +236,8 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5 * Δt_allocation
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+    u.flow_allocation_input[flow_dict[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))]] =
+        4.5 * Δt_allocation
     Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈
@@ -282,23 +271,18 @@ end
         "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
-
+    model = Ribasim.Model(toml_path)
+    (; p, u, t) = model.integrator
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_flows) =
-        allocation
-    t = 0.0
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds, flow_dict) = allocation
 
     # Set flows of sources in
-    mean_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))][] = 1.0
-    mean_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))][] = 1e-3
+    u.flow_allocation_input[flow_dict[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))]] =
+        1.0
+    u.flow_allocation_input[flow_dict[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))]] =
+        1e-3
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
         Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
@@ -396,7 +380,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; p, u, t) = model.integrator
     (; graph, allocation, flow_demand, user_demand, level_boundary) = p
 
     # Test has_external_demand
@@ -436,11 +420,9 @@ end
           F[(node_id_with_flow_demand, NodeID(:Basin, 3))] + 0.0
     @test constraint_flow_demand_outflow.set.upper == 0.0
 
-    t = 0.0
-    (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
-    for (edge, value) in allocation.mean_flows
-        value[] = Ribasim.get_flow(graph, edge..., 0)
+    for (edge, idx) in allocation.flow_dict
+        u.flow_allocation_input[idx] = Ribasim.get_flow(graph, edge..., 0)
     end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 

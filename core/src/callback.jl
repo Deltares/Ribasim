@@ -405,7 +405,7 @@ end
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
-    (; allocation_models, mean_flows) = allocation
+    (; allocation_models) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -417,9 +417,7 @@ function update_allocation!(integrator)::Nothing
 
     # Divide by the allocation Δt to obtain the mean flows
     # from the integrated flows
-    for value in values(mean_flows)
-        value[] /= Δt_allocation
-    end
+    u.flow_allocation_input /= Δt_allocation
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
@@ -437,9 +435,9 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean source flows
-    for value in values(mean_flows)
-        value[] = 0.0
-    end
+    u.flow_allocation_input .= 0.0
+
+    return nothing
 end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"

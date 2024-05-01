@@ -25,7 +25,8 @@ function water_balance!(
     formulate_flows!(p, storage, t)
 
     # Now formulate du
-    formulate_du!(du, graph, basin, storage)
+    formulate_du_storage!(du, graph, basin, storage)
+    formulate_du_integration_flows!(du, graph, p, storage)
 
     # PID control (changes the du of PID controlled basins)
     continuous_control!(u, du, pid_control, p, integral, t)
@@ -596,12 +597,14 @@ function formulate_flow!(
     return nothing
 end
 
-function formulate_integration_flows!(
+function formulate_du_integration_flows!(
     du::ComponentVector,
     graph::MetaGraph,
-    basin::Basin,
+    p::Parameters,
     storage::AbstractVector,
 )::Nothing
+    (; basin, allocation) = p
+
     # Flows over edges
     flow = get_tmp(graph[].flow, storage)
     du.flow_integrated .= flow
@@ -611,10 +614,19 @@ function formulate_integration_flows!(
     forcings_integrated(du) .= vertical_flux
     forcings_bmi(du) .= vertical_flux
 
+    # Allocation_flows
+    for (edge, idx) in allocation.flow_dict
+        du.flow_allocation_input[idx] = if edge[1] == edge[2]
+            get_influx(basin, edge[1])
+        else
+            get_flow(graph, edge..., 0)
+        end
+    end
+
     return nothing
 end
 
-function formulate_du!(
+function formulate_du_storage!(
     du::ComponentVector,
     graph::MetaGraph,
     basin::Basin,
@@ -631,7 +643,6 @@ function formulate_du!(
             du.storage[i] -= get_flow(graph, basin_id, outflow_id, storage)
         end
     end
-    formulate_integration_flows!(du, graph, basin, storage)
     return nothing
 end
 

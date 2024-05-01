@@ -983,20 +983,24 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         optimization_type = String[],
     )
 
-    mean_flows = Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}()
+    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    flow_counter = 0
 
     # Find edges which serve as sources in allocation
     for edge_metadata in values(graph.edge_data)
         (; subnetwork_id_source, edge) = edge_metadata
         if subnetwork_id_source != 0
-            mean_flows[edge] = Ref(0.0)
+            flow_counter += 1
+            flow_dict[edge] = flow_counter
         end
     end
 
     # Find basins with a level demand
     for node_id in values(graph.vertex_labels)
         if has_external_demand(graph, node_id, :level_demand)[1]
-            mean_flows[(node_id, node_id)] = Ref(0.0)
+            edge = (node_id, node_id)
+            flow_counter += 1
+            flow_dict[edge] = flow_counter
         end
     end
 
@@ -1007,7 +1011,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         get_all_priorities(db, config),
         Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
         Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
-        mean_flows,
+        flow_dict,
         record_demand,
         record_flow,
     )

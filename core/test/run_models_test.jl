@@ -235,7 +235,7 @@ end
     @test model.integrator.sol.u[end].storage ≈
           Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip = Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) == 14
+    @test length(logger.logs) == 11
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 

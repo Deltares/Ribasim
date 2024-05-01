@@ -749,15 +749,41 @@ function get_n_flows(db::DB)::Int
     return only(only(result))
 end
 
+function get_n_allocation_flow_inputs(db::DB)::Int
+    n_sources = only(
+        only(
+            execute(
+                columntable,
+                db,
+                "SELECT COUNT(*) From Edge where 'subnetwork_id' != 0",
+            ),
+        ),
+    )
+    n_level_demands = only(
+        only(
+            execute(
+                columntable,
+                db,
+                "SELECT COUNT(*) FROM Edge WHERE from_node_type = 'level_demand'",
+            ),
+        ),
+    )
+    return n_sources + n_level_demands
+end
+
 function get_n_states(db::DB)::Int
-    return 9 * get_n_node(db, "Basin") + get_n_node(db, "PidControl") + get_n_flows(db)
+    return 9 * get_n_node(db, "Basin") +
+           get_n_node(db, "PidControl") +
+           get_n_flows(db) +
+           get_n_allocation_flow_inputs(db)
 end
 
 function get_n_states(p::Parameters)::Int
-    (; basin, pid_control, graph) = p
+    (; basin, pid_control, graph, allocation) = p
     return 9 * length(basin.node_id) +
            length(pid_control.node_id) +
-           length(graph[].flow_dict)
+           length(graph[].flow_dict) +
+           length(allocation.flow_dict)
 end
 
 function forcings_integrated(u::ComponentVector)

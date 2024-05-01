@@ -36,7 +36,7 @@ function Model(config_path::AbstractString)::Model
 end
 
 function get_u0(p::Parameters, state::StructVector)::ComponentVector
-    (; basin, pid_control, graph) = p
+    (; basin, pid_control, graph, allocation) = p
 
     storage = get_storages_from_levels(basin, state.level)
 
@@ -63,6 +63,10 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
     drainage_bmi = zeros(n_basins)
     infiltration_bmi = zeros(n_basins)
 
+    # Flows for allocation
+    flow_allocation_input = zeros(length(allocation.flow_dict))
+
+    # NOTE: This is the source of truth for the state component names
     return ComponentVector{Float64}(;
         storage,
         integral,
@@ -75,6 +79,7 @@ function get_u0(p::Parameters, state::StructVector)::ComponentVector
         evaporation_bmi,
         drainage_bmi,
         infiltration_bmi,
+        flow_allocation_input,
     )
 end
 
