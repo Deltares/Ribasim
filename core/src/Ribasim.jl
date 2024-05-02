@@ -24,7 +24,7 @@ import TranscodingStreams
 using Accessors: @set
 using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
-using ComponentArrays: ComponentVector
+using ComponentArrays: ComponentVector, ComponentMatrix
 using DataInterpolations: LinearInterpolation, derivative
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 using DBInterface: execute

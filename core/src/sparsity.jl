@@ -17,20 +17,81 @@ Note: the name 'prototype' does not mean this code is a prototype, it comes
 from the naming convention of this sparsity structure in the
 differentialequations.jl docs.
 """
-function get_jac_prototype(p::Parameters, n_states::Int)::SparseMatrixCSC{Float64, Int64}
+function get_jac_prototype(
+    p::Parameters,
+    u::ComponentVector,
+)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control, graph) = p
-    jac_prototype = spzeros(n_states, n_states)
+    n_states = length(u)
+    axis = only(getfield(u, :axes))
+    jac_prototype = ComponentMatrix(spzeros(n_states, n_states), (axis, axis))
 
     update_jac_prototype!(jac_prototype, p)
     update_jac_prototype!(jac_prototype, basin, graph)
     update_jac_prototype!(jac_prototype, pid_control, basin, graph)
-    return jac_prototype
+    return jac_prototype.data
 end
 
-function update_jac_prototype!(jac_prototype::SparseMatrixCSC, p::Parameters)::Nothing
-    (; graph, basin, pid_control) = p
+"""
+Add nonzeros for basins connected to eachother via 1 node and possibly a fractional flow node.
+Basins are also assumed to depend on themselves (main diagonal terms)
+"""
+function update_jac_prototype!(
+    jac_prototype::ComponentMatrix,
+    basin::Basin,
+    graph::MetaGraph,
+)::Nothing
+    jac_prototype_storage = @view jac_prototype[:storage, :storage]
+    for (idx_1, id) in enumerate(basin.node_id)
+        for id_neighbor in inoutflow_ids(graph, id)
+            for id_neighbor_neighbor in inoutflow_ids(graph, id_neighbor)
+                if id_neighbor_neighbor.type == NodeType.FractionalFlow
+                    id_neighbor_neighbor = outflow_id(graph, id_neighbor_neighbor)
+                end
+                if id_neighbor_neighbor.type == NodeType.Basin
+                    _, idx_2 = id_index(basin.node_id, id_neighbor_neighbor)
+                    jac_prototype_storage[idx_1, idx_2] = 1.0
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+Add nonzeros for the integral term and the basins on either side of the controlled node
+"""
+function update_jac_prototype!(
+    jac_prototype::ComponentMatrix,
+    pid_control::PidControl,
+    basin::Basin,
+    graph::MetaGraph,
+)::Nothing
+    jac_prototype_storage_integral = @view jac_prototype[:storage, :integral]
+    jac_prototype_integral_storage = @view jac_prototype[:integral, :storage]
+    for (idx_integral, id) in enumerate(pid_control.node_id)
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        for id_basin in inoutflow_ids(graph, id_controlled)
+            if id_basin.type == NodeType.Basin
+                _, idx_basin = id_index(basin.node_id, id_basin)
+                jac_prototype_storage_integral[idx_basin, idx_integral] = 1.0
+                jac_prototype_integral_storage[idx_integral, idx_basin] = 1.0
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+Add nonzeros for flows depending on storages.
+"""
+function update_jac_prototype!(jac_prototype::ComponentMatrix, p::Parameters)::Nothing
+    (; graph, basin) = p
     (; flow_dict) = graph[]
-    idx_shift = length(basin.node_id) + length(pid_control.node_id)
+    jac_prototype_storage_flow = @view jac_prototype[:storage, :flow_integrated]
+    # Per node, find the connected edges and basins
+    # (possibly via FractionalFlow), and assume
+    # that all found edges depend on all found storages
     for node_id in values(graph.vertex_labels)
         if node_id.type in [NodeType.Basin, NodeType.FractionalFlow]
             continue
@@ -54,64 +115,25 @@ function update_jac_prototype!(jac_prototype::SparseMatrixCSC, p::Parameters)::N
         end
         for (basin_id, edge) in Iterators.product(basin_ids, edges)
             _, basin_idx = id_index(basin.node_id, basin_id)
-            edge_idx = idx_shift + flow_dict[edge]
-            jac_prototype[basin_idx, edge_idx] = 1.0
-        end
-        for (edge_1, edge_2) in Iterators.product(edges, edges)
-            edge_ids_1 = idx_shift + flow_dict[edge_1]
-            edge_ids_2 = idx_shift + flow_dict[edge_2]
-            jac_prototype[edge_ids_1, edge_ids_2] = 1.0
-            jac_prototype[edge_ids_2, edge_ids_1] = 1.0
+            edge_idx = flow_dict[edge]
+            jac_prototype_storage_flow[basin_idx, edge_idx] = 1.0
         end
     end
     return nothing
 end
 
 """
-Add nonzeros for basins connected to eachother via 1 node and possibly a fractional flow node.
-Basins are also assumed to depend on themselves (main diagonal terms)
+Allocation flow inputs depending on storages
+(get from above)
 """
-function update_jac_prototype!(
-    jac_prototype::SparseMatrixCSC{Float64, Int64},
-    basin::Basin,
-    graph::MetaGraph,
-)::Nothing
-    for (idx_1, id) in enumerate(basin.node_id)
-        for id_neighbor in inoutflow_ids(graph, id)
-            for id_neighbor_neighbor in inoutflow_ids(graph, id_neighbor)
-                if id_neighbor_neighbor.type == NodeType.FractionalFlow
-                    id_neighbor_neighbor = outflow_id(graph, id_neighbor_neighbor)
-                end
-                if id_neighbor_neighbor.type == NodeType.Basin
-                    _, idx_2 = id_index(basin.node_id, id_neighbor_neighbor)
-                    jac_prototype[idx_1, idx_2] = 1.0
-                end
-            end
-        end
-    end
+function update_jac_prototype!()::Nothing
     return nothing
 end
 
 """
-Add nonzeros for the integral term and the basins on either side of the controlled node
+Realized user demands depending on storages
+(get from above)
 """
-function update_jac_prototype!(
-    jac_prototype::SparseMatrixCSC{Float64, Int64},
-    pid_control::PidControl,
-    basin::Basin,
-    graph::MetaGraph,
-)::Nothing
-    idx_shift = length(basin.node_id)
-    for (i, id) in enumerate(pid_control.node_id)
-        idx_integral = idx_shift + i
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        for id_basin in inoutflow_ids(graph, id_controlled)
-            if id_basin.type == NodeType.Basin
-                _, idx_basin = id_index(basin.node_id, id_basin)
-                jac_prototype[idx_basin, idx_integral] = 1.0
-                jac_prototype[idx_integral, idx_basin] = 1.0
-            end
-        end
-    end
+function update_jac_prototype!()::Nothing
     return nothing
 end

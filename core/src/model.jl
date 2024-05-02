@@ -137,8 +137,7 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype =
-        config.solver.sparse ? get_jac_prototype(parameters, length(u0)) : nothing
+    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters, u0) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
