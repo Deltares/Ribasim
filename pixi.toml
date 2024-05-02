@@ -29,7 +29,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.10.0 && juliaup default 1.10.0"
+install-julia = "juliaup add 1.10.3 && juliaup default 1.10.3"
 install-pre-commit = "pre-commit install"
 install-ci = { depends_on = [
     "install-python",
