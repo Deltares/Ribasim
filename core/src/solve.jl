@@ -271,13 +271,15 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph, basin, allocation) = p
-    i = 0
+
     for (
         node_id,
         inflow_id,
         outflow_id,
         active,
         demand_itp,
+        demand,
+        allocated,
         return_factor,
         min_level,
         demand_from_timeseries,
@@ -287,12 +289,13 @@ function formulate_flow!(
         user_demand.outflow_id,
         user_demand.active,
         user_demand.demand_itp,
+        # TODO permute these so the nodes are the last dimension, for performance
+        eachrow(user_demand.demand),
+        eachrow(user_demand.allocated),
         user_demand.return_factor,
         user_demand.min_level,
         user_demand.demand_from_timeseries,
     )
-        i += 1
-
         if !active
             continue
         end
@@ -304,11 +307,11 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for priority_idx in eachindex(allocation.priorities)
-            alloc_prio = user_demand.allocated[i, priority_idx]
+            alloc_prio = allocated[priority_idx]
             demand_prio = if demand_from_timeseries
                 demand_itp[priority_idx](t)
             else
-                user_demand.demand[i, priority_idx]
+                demand[priority_idx]
             end
             alloc = min(alloc_prio, demand_prio)
             q += alloc
