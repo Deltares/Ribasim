@@ -349,7 +349,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
     )
 end
 
-function FractionalFlow(db::DB, config::Config)::FractionalFlow
+function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
     parsed_parameters, valid = parse_static_and_time(db, config, "FractionalFlow"; static)
 
@@ -357,8 +357,12 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
         error("Errors occurred when parsing FractionalFlow data.")
     end
 
+    node_id = NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id)
+
     return FractionalFlow(
-        NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        outflow_id.(Ref(graph), node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -427,7 +431,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
 end
 
-function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
+function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
@@ -444,8 +448,12 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
         parsed_parameters.flow_rate
     end
 
+    node_id = NodeID.(NodeType.Pump, parsed_parameters.node_id)
+
     return Pump(
-        NodeID.(NodeType.Pump, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        [collect(outflow_ids(graph, id)) for id in node_id],
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -455,7 +463,7 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
     )
 end
 
-function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
+function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
@@ -473,8 +481,12 @@ function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
         parsed_parameters.flow_rate
     end
 
+    node_id = NodeID.(NodeType.Outlet, parsed_parameters.node_id)
+
     return Outlet(
-        NodeID.(NodeType.Outlet, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        [collect(outflow_ids(graph, id)) for id in node_id],
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -806,7 +818,7 @@ function user_demand_time!(
     return errors
 end
 
-function UserDemand(db::DB, config::Config)::UserDemand
+function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
 
@@ -865,6 +877,8 @@ function UserDemand(db::DB, config::Config)::UserDemand
 
     return UserDemand(
         node_ids,
+        inflow_id.(Ref(graph), node_ids),
+        outflow_id.(Ref(graph), node_ids),
         active,
         realized_bmi,
         demand,
@@ -1045,15 +1059,15 @@ function Parameters(db::DB, config::Config)::Parameters
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
-    fractional_flow = FractionalFlow(db, config)
+    fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
-    pump = Pump(db, config, chunk_sizes)
-    outlet = Outlet(db, config, chunk_sizes)
+    pump = Pump(db, config, graph, chunk_sizes)
+    outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
-    user_demand = UserDemand(db, config)
+    user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
