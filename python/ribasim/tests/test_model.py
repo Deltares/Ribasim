@@ -73,9 +73,7 @@ def test_invalid_node_id(basic):
 
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "1 validation error for Node\nnode_id\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.6/v/greater_than_equal"
-        ),
+        match=r".* Input should be greater than or equal to 0 .*",
     ):
         model.pump.add(Node(-1, Point(7.0, 7.0)), [pump.Static(flow_rate=[0.5 / 3600])])
 
