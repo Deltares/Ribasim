@@ -766,6 +766,10 @@ function get_n_allocation_flow_inputs(db::DB)::Int
     return n_sources + n_level_demands
 end
 
+"""
+Get the number of states for each component of the
+state vector, and define the state names.
+"""
 function get_n_states(db::DB, config::Config)::NamedTuple
     n_basins = length(get_ids(db, "Basin"))
     n_pid_controls = length(get_ids(db, "PidControl"))
@@ -775,18 +779,25 @@ function get_n_states(db::DB, config::Config)::NamedTuple
         config.allocation.use_allocation ? get_n_allocation_flow_inputs(db) : 0
     # NOTE: This is the source of truth for the state component names
     return (;
+        # Basin storages
         storage = n_basins,
+        # PID control integral terms
         integral = n_pid_controls,
+        # Integrated flows for mean computation
         flow_integrated = n_flows,
+        # Integrated basin forcings for mean computation
         precipitation_integrated = n_basins,
         evaporation_integrated = n_basins,
         drainage_integrated = n_basins,
         infiltration_integrated = n_basins,
+        # Cumulative basin forcings for, for read or reset by BMI only
         precipitation_bmi = n_basins,
         evaporation_bmi = n_basins,
         drainage_bmi = n_basins,
         infiltration_bmi = n_basins,
+        # Flows averaged over Δt_allocation over edges that are allocation sources
         flow_allocation_input = n_allocation_flow_inputs,
+        # Cumulative UserDemand inflow volume, for read or reset by BMI only
         realized_user_demand_bmi = n_user_demands,
     )
 end

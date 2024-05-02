@@ -35,6 +35,9 @@ function Model(config_path::AbstractString)::Model
     return Model(config)
 end
 
+"""
+Create the component state vector with the initial basin storages
+"""
 function initialize_state(db::DB, config::Config, basin::Basin)::ComponentVector
     n_states = get_n_states(db, config)
     u0 = ComponentVector{Float64}(
@@ -104,7 +107,8 @@ function Model(config::Config)::Model
 
         # initial state
         u0 = initialize_state(db, config, parameters.basin)
-        @assert length(u0.flow_allocation_input) == length(parameters.allocation.flow_dict) "Unexpected number of flows to integrate for allocation input."
+        @assert length(u0.flow_allocation_input) ==
+                length(parameters.allocation.input_flow_dict) "Unexpected number of flows to integrate for allocation input."
 
         sql = "SELECT node_id FROM Node ORDER BY node_id"
         node_id = only(execute(columntable, db, sql))

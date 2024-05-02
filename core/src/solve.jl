@@ -614,8 +614,8 @@ function formulate_du_integration_flows!(
     forcings_integrated(du) .= vertical_flux
     forcings_bmi(du) .= vertical_flux
 
-    # Allocation_flows
-    for (edge, i) in allocation.flow_dict
+    # Allocation input flows
+    for (edge, i) in allocation.input_flow_dict
         du.flow_allocation_input[i] = if edge[1] == edge[2]
             get_influx(basin, edge[1])
         else

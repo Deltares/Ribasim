@@ -64,7 +64,7 @@ main_network_connections: (from_id, to_id) from the main network to the subnetwo
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
 subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
-flow_dict: ...
+input_flow_dict: Mapping from an edge (or basin forcings with a self loop) to an index in u.flow_allocation_input
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -76,7 +76,7 @@ struct Allocation
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    flow_dict::Dict{Tuple{NodeID, NodeID}, Int}
+    input_flow_dict::Dict{Tuple{NodeID, NodeID}, Int}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},

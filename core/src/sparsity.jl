@@ -6,6 +6,13 @@ that are inactive.
 In Ribasim the Jacobian is typically sparse because each state only depends on a small
 number of other states.
 
+The aim is that jac_prototype[i,j] = 1.0 if and only if
+there is the possibility that at some point in the simulation:
+
+∂water_balance![j]/∂u[i] ≠ 0.0
+
+which means that du[j] depends on u[i].
+
 Note: the name 'prototype' does not mean this code is a prototype, it comes
 from the naming convention of this sparsity structure in the
 differentialequations.jl docs.

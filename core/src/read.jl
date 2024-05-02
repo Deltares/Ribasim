@@ -981,7 +981,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         optimization_type = String[],
     )
 
-    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    input_flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
     flow_counter = 0
 
     # Find edges which serve as sources in allocation
@@ -989,7 +989,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         (; subnetwork_id_source, edge) = edge_metadata
         if subnetwork_id_source != 0
             flow_counter += 1
-            flow_dict[edge] = flow_counter
+            input_flow_dict[edge] = flow_counter
         end
     end
 
@@ -998,7 +998,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         if has_external_demand(graph, node_id, :level_demand)[1]
             edge = (node_id, node_id)
             flow_counter += 1
-            flow_dict[edge] = flow_counter
+            input_flow_dict[edge] = flow_counter
         end
     end
 
@@ -1009,7 +1009,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         get_all_priorities(db, config),
         Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
         Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
-        flow_dict,
+        input_flow_dict,
         record_demand,
         record_flow,
     )

@@ -199,7 +199,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    n_states = sum(Ribasim.get_n_states(db, config))
+    n_states = sum(Ribasim.get_n_states(db, cfg))
     close(db)
 
     jac_prototype = Ribasim.get_jac_prototype(p, n_states)
