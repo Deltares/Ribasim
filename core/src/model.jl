@@ -50,6 +50,11 @@ function Model(config::Config)::Model
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
+
+    if !valid_edge_types(db)
+        error("Invalid edge types found.")
+    end
+
     local parameters, state, n, tstops
     try
         parameters = Parameters(db, config)
