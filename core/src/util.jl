@@ -461,12 +461,6 @@ function expand_logic_mapping(
     return logic_mapping_expanded
 end
 
-"""Get all node fieldnames of the parameter object."""
-nodefields(p::Parameters) = (
-    name for
-    name in fieldnames(typeof(p)) if fieldtype(typeof(p), name) <: AbstractParameterNode
-)
-
 """
 Get the node type specific indices of the fractional flows and basins,
 that are consecutively connected to a node of given id.

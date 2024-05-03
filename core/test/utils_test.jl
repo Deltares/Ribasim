@@ -290,14 +290,46 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    constraining_types = (:pump, :outlet, :linear_resistance)
+    constraining_types = (:Pump, :Outlet, :LinearResistance)
 
-    for type in Ribasim.nodefields(p)
-        node = getfield(p, type)
+    for type in Ribasim.nodetypes
+        type == :Terminal && continue  # has no parameter field
+        node = getfield(p, snake_case(type))
         if type in constraining_types
             @test Ribasim.is_flow_constraining(node)
         else
             @test !Ribasim.is_flow_constraining(node)
+        end
+    end
+end
+
+@testitem "Node types" begin
+    using Ribasim: nodetypes, NodeType, Parameters, AbstractParameterNode
+
+    @test Set(nodetypes) == Set([
+        :Terminal,
+        :PidControl,
+        :LevelBoundary,
+        :Pump,
+        :UserDemand,
+        :TabulatedRatingCurve,
+        :FlowDemand,
+        :FlowBoundary,
+        :Basin,
+        :ManningResistance,
+        :LevelDemand,
+        :DiscreteControl,
+        :Outlet,
+        :LinearResistance,
+        :FractionalFlow,
+    ])
+    for nodetype in nodetypes
+        NodeType.T(nodetype)
+        if nodetype != :Terminal
+            # It has a struct which is added to Parameters
+            T = getproperty(Ribasim, nodetype)
+            @test T <: AbstractParameterNode
+            @test hasfield(Parameters, snake_case(nodetype))
         end
     end
 end

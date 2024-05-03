@@ -1055,6 +1055,9 @@ function Parameters(db::DB, config::Config)::Parameters
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
     end
+    if !valid_n_neighbors(graph)
+        error("Invalid number of connections for certain node types.")
+    end
 
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph)
@@ -1097,10 +1100,6 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     set_is_pid_controlled!(p)
-
-    if !valid_n_neighbors(p)
-        error("Invalid number of connections for certain node types.")
-    end
 
     # Allocation data structures
     if config.allocation.use_allocation
