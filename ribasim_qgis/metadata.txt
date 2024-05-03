@@ -4,7 +4,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Ribasim-QGIS
+name=Ribasim
 qgisMinimumVersion=3.0
 description=QGIS plugin to setup Ribasim models
 version=2024.7.0
