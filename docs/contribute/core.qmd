@@ -75,11 +75,6 @@ The first run will be slow.
 ## Render documentation
 
 Example models are created and simulated as part of the rendering of the documentation.
-The Julia API reference is created using Documenter.jl by running this command:
-
-```bash
-pixi run build-julia-docs
-```
 
 In order to preview documentation you can run the following command from the `docs/` folder.
 Afterwards, a browser tab will open with the rendered documentation, updating it as you
