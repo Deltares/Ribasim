@@ -12,7 +12,6 @@ from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim.nodes import pump
 from shapely import Point
 
 
@@ -67,15 +66,12 @@ def test_exclude_unset(basic):
     assert d["solver"]["saveat"] == 86400.0
 
 
-# @pytest.mark.xfail(reason="Needs implementation")
-def test_invalid_node_id(basic):
-    model = basic
-
+def test_invalid_node_id():
     with pytest.raises(
         ValueError,
         match=r".* Input should be greater than or equal to 0 .*",
     ):
-        model.pump.add(Node(-1, Point(7.0, 7.0)), [pump.Static(flow_rate=[0.5 / 3600])])
+        Node(-1, Point(7.0, 7.0))
 
 
 @pytest.mark.xfail(reason="Should be reimplemented by the .add() API.")
