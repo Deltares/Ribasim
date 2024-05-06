@@ -28,7 +28,6 @@ class BasinConcentrationSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
-    basin: Series[float] = pa.Field(nullable=True)
     drainage: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
 

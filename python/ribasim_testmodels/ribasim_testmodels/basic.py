@@ -41,7 +41,6 @@ def basic_model() -> ribasim.Model:
         basin.Concentration(
             time="2020-01-01 00:00:00",
             substance=["Cl"],
-            basin=[0.0],
             drainage=[0.0],
             precipitation=[0.0],
         ),

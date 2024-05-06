@@ -108,7 +108,6 @@ end
     node_id::Int32
     time::DateTime
     substance::String
-    basin::Union{Missing, Float64}
     drainage::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
 end
