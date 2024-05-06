@@ -1,5 +1,6 @@
-struct SavedResults
-    flow::SavedValues{Float64, Vector{Float64}}
+struct SavedResults{V1 <: ComponentVector{Float64}}
+    flow::SavedValues{Float64, SavedFlow}
+    vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
 end
 
@@ -28,6 +29,9 @@ end
 
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
+    if !valid_config(config)
+        error("Invalid configuration in TOML.")
+    end
     return Model(config)
 end
 
@@ -74,17 +78,31 @@ function Model(config::Config)::Model
         end
 
         # tell the solver to stop when new data comes in
-        # TODO add all time tables here
-        time_flow_boundary = load_structvector(db, config, FlowBoundaryTimeV1)
         tstops = Vector{Float64}[]
-        push!(tstops, get_tstops(time_flow_boundary.time, config.starttime))
-        time_user_demand = load_structvector(db, config, UserDemandTimeV1)
-        push!(tstops, get_tstops(time_user_demand.time, config.starttime))
+        for schema_version in [
+            FlowBoundaryTimeV1,
+            LevelBoundaryTimeV1,
+            UserDemandTimeV1,
+            LevelDemandTimeV1,
+            FlowDemandTimeV1,
+            TabulatedRatingCurveTimeV1,
+            PidControlTimeV1,
+        ]
+            time_schema = load_structvector(db, config, schema_version)
+            push!(tstops, get_tstops(time_schema.time, config.starttime))
+        end
 
         # use state
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
 
+        sql = "SELECT node_id FROM Node ORDER BY node_id"
+        node_id = only(execute(columntable, db, sql))
+        if !allunique(node_id)
+            error(
+                "Node IDs need to be globally unique until https://github.com/Deltares/Ribasim/issues/1262 is fixed.",
+            )
+        end
     finally
         # always close the database, also in case of an error
         close(db)
@@ -100,8 +118,8 @@ function Model(config::Config)::Model
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
-    t_end = seconds_since(config.endtime, config.starttime)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
@@ -151,8 +169,6 @@ function Model(config::Config)::Model
         @show Ribasim.to
     end
 
-    set_initial_discrete_controlled_parameters!(integrator, storage)
-
     return Model(integrator, config, saved)
 end
 
@@ -176,10 +192,51 @@ function SciMLBase.successful_retcode(model::Model)::Bool
 end
 
 """
-    solve!(model::Model)::ODESolution
+    step!(model::Model, dt::Float64)::Model
+
+Take Model timesteps until `t + dt` is reached exactly.
+"""
+function SciMLBase.step!(model::Model, dt::Float64)::Model
+    (; config, integrator) = model
+    (; t) = integrator
+    # If we are at an allocation time, run allocation before the next physical
+    # layer timestep. This allows allocation over period (t, t + dt) to use variables
+    # set over BMI at time t before calling this function.
+    # Also, don't run allocation at t = 0 since there are no flows yet (#1389).
+    ntimes = t / config.allocation.timestep
+    if t > 0 && round(ntimes) ≈ ntimes
+        update_allocation!(integrator)
+    end
+    step!(integrator, dt, true)
+    return model
+end
+
+"""
+    solve!(model::Model)::Model
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::ODESolution
-    return solve!(model.integrator)
+function SciMLBase.solve!(model::Model)::Model
+    (; config, integrator) = model
+    if config.allocation.use_allocation
+        (; tspan) = integrator.sol.prob
+        (; timestep) = config.allocation
+        allocation_times = timestep:timestep:(tspan[end] - timestep)
+        n_allocation_times = length(allocation_times)
+        # Don't run allocation at t = 0 since there are no flows yet (#1389).
+        step!(integrator, timestep, true)
+        for _ in 1:n_allocation_times
+            update_allocation!(integrator)
+            step!(integrator, timestep, true)
+        end
+
+        if integrator.sol.retcode != ReturnCode.Default
+            return model
+        end
+        # TODO replace with `check_error!` https://github.com/SciML/SciMLBase.jl/issues/669
+        integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
+    else
+        solve!(integrator)
+    end
+    return model
 end

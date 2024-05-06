@@ -8,10 +8,10 @@ Several parts of the code have to be made aware of the new node type. In the res
 
 ## Parameters
 
-The parameters object (defined in `solve.jl`) passed to the ODE solver must be made aware of the new node type. Therefore define a struct in `solve.jl` which holds the data for each node of the new node type:
+The parameters object (defined in `parameter.jl`) passed to the ODE solver must be made aware of the new node type. Therefore define a struct in `parameter.jl` which holds the data for each node of the new node type:
 
 ```julia
-struct NewNodeType
+struct NewNodeType <: AbstractParameterNode
     node_id::Vector{NodeID}
     # Other fields
 end
@@ -20,11 +20,11 @@ end
 These fields do not have to correspond 1:1 with the input tables (see below). The vector with all node IDs that are of the new type in a given model is a mandatory field. Now you can:
 
 - Add `new_node_type::NewNodeType` to the Parameters object;
-- Add `new_node_type = NewNodeType(db,config)` to the function `Parameters` in `create.jl` and add new_node_type at the proper location in the `Parameters` constructor call.
+- Add `new_node_type = NewNodeType(db,config)` to the function `Parameters` in `read.jl` and add new_node_type at the proper location in the `Parameters` constructor call.
 
 ## Reading from configuration
 
-There can be several schemas associated with a single node type. To define a schema for the new node type, add the following to `validation.jl`:
+There can be several schemas associated with a single node type. To define a schema for the new node type, add the following to `schema.jl`:
 
 ```julia
 @schema "ribasim.newnodetype.static" NewNodeTypeStatic
@@ -38,18 +38,18 @@ node_id: node ID of the NewNodeType node
 end
 ```
 
-Here `Static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](../core/usage.qmd#sec-node).
+Here `static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](../core/usage.qmd#sec-node). If a new schema contains a `priority` column for allocation, it must also be added to the list of all such schemas in the function `get_all_priorities` in `util.jl`.
 
-`validation.jl` also deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see `sort_by_function` and `sorted_table!`.
+`validation.jl` deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see `sort_by_function` and `sorted_table!`.
 
-Now we define the function that is called in the second bullet above, in `create.jl`:
+Now we define the function that is called in the second bullet above, in `read.jl`:
 
 ```julia
 function NewNodeType(db::DB, config::Config)::NewNodeType
     static = load_structvector(db, config, NewNodeTypeStaticV1)
     defaults = (; foo = 1, bar = false)
     # Process potential control states in the static data
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, "NewNodeType"; static, defaults)
 
     if !valid
         error("Errors occurred when parsing NewNodeType data.")
@@ -90,7 +90,7 @@ Non-conservative node types need to be added to the `nonconservative_nodetypes` 
 
 See [Equations](../core/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
 
-Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `utils.jl`. This function runs trough all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$.
+Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `sparsity.jl`. This function runs trough all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$. Note that only nodes that set flows in the physical layer (or have their own state like `PidControl`) affect the sparsity structure.
 
 We divide the various node types in groups based on what type of state dependencies they yield, and these groups are discussed below. Each group has its own method `update_jac_prototype!` in `utils.jl` for the sparsity structure induced by nodes of that group. `NewNodeType` should be added to the signature of one these methods, or to the list of node types that do not contribute to the Jacobian in the method of `update_jac_prototype!` whose signature contains `node::AbstractParameterNode`. Of course it is also possible that a new method of `update_jac_prototype!` has to be introduced.
 
@@ -106,61 +106,27 @@ Using `jac_prototype` the Jacobian of `water_balance!` is computed automatically
 
 ## Python class
 
-Create a new file `python/ribasim/ribasim/node_types/new_node_type.py` which is structured as follows:
+In `python/ribasim/ribasim/config.py` add
+
+- the above defined schemas to the imports from `ribasim.schemas`. This requires code generation to work, see [Finishing up](#finishing-up);
+- a class of the following form with all schemas associated with the node type:
 
 ```python
-from typing import Optional
-
-import pandera as pa
-from pandera.engines.pandas_engine import PydanticModel
-from pandera.typing import DataFrame
-from pydantic import ConfigDict
-
-from ribasim import models
-from ribasim.input_base import TableModel
-
-__all__ = ("NewNodeType",)
-
-class StaticSchema(pa.SchemaModel):
-    class Config:
-        """Config with dataframe-level data type."""
-
-        dtype = PydanticModel(models.NewNodeTypeStatic)
-
-# Possible other schemas
-
-
-class NewNodeType(TableModel):
-    """
-    Description of this node type.
-
-    Parameters
-    ----------
-    static: pandas.DataFrame
-        table with data for this node type.
-
-    possible other schemas
-    """
-
-    static: DataFrame[StaticSchema] | None
-    # possible other schemas
-
-    model_config = ConfigDict(validate_assignment=True)
-
-    def sort(self):
-        self.static.sort_values("node_id", ignore_index=True, inplace=True)
-
+class NewNodeType(NodeModel):
+    static: TableModel[NewNodeTypeStaticSchema] = Field(
+        default_factory=TableModel[NewNodeTypeStaticSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
 ```
-The `sort` method should implement the same sorting as in `validation.jl`.
 
-Now in both `python/ribasim/ribasim/__init__.py` and `python/ribasim/ribasim/node_types/__init__.py` add
+In `python/ribasim/ribasim/__init__.py` add
 
-- `from ribasim.node_types.new_node_type import NewNodeType`;
+- `NewNodeType` to the imports from `ribasim.config`;
 - `"NewNodeType"` to `__all__`.
 
 In `python/ribasim/ribasim/model.py`, add
 
-- `from ribasim.new_node_type import NewNodeType`;
+- `NewNodeType` to the imports from `ribasim.config`;
 - new_node_type as a parameter and in the docstring of the `Model` class.
 
 In `python/ribasim/ribasim/geometry/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
@@ -235,7 +201,8 @@ If the new node type introduces new (somewhat) complex behaviour, a good test is
 
 There are several parts of the documentation which should be updated with the new node type:
 
-- `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behaviour of the new node;
+- If the node has a rol in the physical layer, `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behaviour of the new node;
+- If the node has a role in allocation, `docs/core/allocation` should make this role clear;
 - `docs/core/usage.qmd` should contain a short explanation of the node and the possible schemas associated with it;
 - The example models constructed in `docs/python/examples.ipynb` should be extended with the new node type or a new example model with the new node type should be made.
 - In `_quarto.yml` add `NewNodeType` to the "Node types" contents for the Python API reference.

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 from matplotlib.patches import Patch
+from pandera.dtypes import Int32
 from pandera.typing import Series
 from pandera.typing.geopandas import GeoSeries
 
@@ -15,10 +16,10 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.SchemaModel):
-    node_id: Series[int]
+    node_id: Series[Int32] = pa.Field(ge=0)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
-    subnetwork_id: Series[pd.Int64Dtype] = pa.Field(
+    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
@@ -37,6 +38,11 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             mask = self.df[self.df["node_type"] != nodetype].index
             self.df.drop(mask, inplace=True)
             self.df.reset_index(inplace=True, drop=True)
+
+    def sort(self):
+        assert self.df is not None
+        sort_keys = ["node_type", "node_id"]
+        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
 
     def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
         if ax is None:
@@ -110,6 +116,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "PidControl": "x",
             "UserDemand": "s",
             "LevelDemand": "o",
+            "FlowDemand": "h",
             "": "o",
         }
 
@@ -128,6 +135,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "PidControl": "k",
             "UserDemand": "g",
             "LevelDemand": "k",
+            "FlowDemand": "r",
             "": "k",
         }
         if self.df is None:

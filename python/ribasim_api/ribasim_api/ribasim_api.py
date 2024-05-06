@@ -30,3 +30,6 @@ class RibasimApi(XmiWrapper):
 
     def update_subgrid_level(self) -> None:
         self.lib.update_subgrid_level()
+
+    def execute(self, config_file: str) -> None:
+        self._execute_function(self.lib.execute, config_file.encode())

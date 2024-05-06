@@ -12,6 +12,7 @@ def flow_boundary_time_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -42,12 +43,10 @@ def flow_boundary_time_model() -> Model:
     model.edge.add(
         model.flow_boundary[1],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[3],
         model.basin[2],
-        "flow",
     )
 
     return model

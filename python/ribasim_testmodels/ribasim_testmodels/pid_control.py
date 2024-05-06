@@ -19,6 +19,7 @@ def pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.flow_boundary.add(
@@ -75,13 +76,13 @@ def pid_control_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], "flow")
-    model.edge.add(model.basin[2], model.pump[3], "flow")
-    model.edge.add(model.pump[3], model.level_boundary[4], "flow")
-    model.edge.add(model.level_boundary[4], model.outlet[6], "flow")
-    model.edge.add(model.pid_control[5], model.pump[3], "control")
-    model.edge.add(model.outlet[6], model.basin[2], "flow")
-    model.edge.add(model.pid_control[7], model.outlet[6], "control")
+    model.edge.add(model.flow_boundary[1], model.basin[2])
+    model.edge.add(model.basin[2], model.pump[3])
+    model.edge.add(model.pump[3], model.level_boundary[4])
+    model.edge.add(model.level_boundary[4], model.outlet[6])
+    model.edge.add(model.pid_control[5], model.pump[3])
+    model.edge.add(model.outlet[6], model.basin[2])
+    model.edge.add(model.pid_control[7], model.outlet[6])
 
     return model
 
@@ -92,6 +93,7 @@ def discrete_control_of_pid_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.level_boundary.add(
@@ -127,11 +129,15 @@ def discrete_control_of_pid_control_model() -> Model:
     model.discrete_control.add(
         Node(7, Point(0, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
-                greater_than=5.0,
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                greater_than=[5.0],
+                compound_variable_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["target_high", "target_low"]
@@ -142,32 +148,26 @@ def discrete_control_of_pid_control_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.outlet[2],
-        "flow",
     )
     model.edge.add(
         model.outlet[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[4],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.pid_control[6],
         model.outlet[2],
-        "control",
     )
     model.edge.add(
         model.discrete_control[7],
         model.pid_control[6],
-        "control",
     )
 
     return model

@@ -19,6 +19,7 @@ def invalid_qh_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     model.tabulated_rating_curve.add(
@@ -55,6 +56,7 @@ def invalid_fractional_flow_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -84,38 +86,31 @@ def invalid_fractional_flow_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.tabulated_rating_curve[7],
-        "flow",
     )
-    # Invalid: TabulatedRatingCurve #7 combines FractionalFlow outneighbors with other outneigbor types.
+    # Invalid: TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types.
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.basin[2],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[3],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[3],
         model.terminal[5],
-        "flow",
     )
     model.edge.add(
         model.tabulated_rating_curve[7],
         model.fractional_flow[4],
-        "flow",
     )
     model.edge.add(
         model.fractional_flow[4],
         model.terminal[6],
-        "flow",
     )
     model.edge.add(
         model.basin[2],
         model.fractional_flow[8],
-        "flow",
     )
 
     return model
@@ -125,6 +120,7 @@ def invalid_discrete_control_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -152,15 +148,19 @@ def invalid_discrete_control_model() -> Model:
     model.discrete_control.add(
         Node(5, Point(1, 1)),
         [
-            discrete_control.Condition(
+            discrete_control.Variable(
                 listen_node_type=["Basin", "FlowBoundary", "FlowBoundary"],
                 listen_node_id=[1, 4, 4],
                 variable=["level", "flow_rate", "flow_rate"],
-                greater_than=[0.5, 1.5, 1.5],
                 # Invalid: look_ahead can only be specified for timeseries variables.
                 # Invalid: this look_ahead will go past the provided timeseries during simulation.
                 # Invalid: look_ahead must be non-negative.
                 look_ahead=[100.0, 40 * 24 * 60 * 60, -10.0],
+                compound_variable_id=[1, 2, 3],
+            ),
+            discrete_control.Condition(
+                greater_than=[0.5, 1.5, 1.5],
+                compound_variable_id=[1, 2, 3],
             ),
             # Invalid: DiscreteControl node #4 has 2 conditions so
             # truth states have to be of length 2
@@ -171,22 +171,18 @@ def invalid_discrete_control_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "flow",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.flow_boundary[4],
         model.basin[3],
-        "flow",
     )
     model.edge.add(
         model.discrete_control[5],
         model.pump[2],
-        "control",
     )
 
     return model
@@ -198,6 +194,7 @@ def invalid_edge_types_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
+        crs="EPSG:28992",
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -212,12 +209,13 @@ def invalid_edge_types_model() -> Model:
     model.edge.add(
         model.basin[1],
         model.pump[2],
-        "foo",
     )
     model.edge.add(
         model.pump[2],
         model.basin[3],
-        "bar",
     )
+
+    assert model.edge.df is not None
+    model.edge.df["edge_type"] = ["foo", "bar"]
 
     return model

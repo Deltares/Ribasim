@@ -14,13 +14,12 @@ function water_balance!(
 
     du .= 0.0
     get_tmp(graph[].flow, storage) .= 0.0
-    get_tmp(graph[].flow_vertical, storage) .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
     # Basin forcings
-    formulate_basins!(du, basin, graph, storage)
+    formulate_basins!(du, basin, storage)
 
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
@@ -52,18 +51,13 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function formulate_basins!(
-    du::AbstractVector,
-    basin::Basin,
-    graph::MetaGraph,
-    storage::AbstractVector,
-)::Nothing
-    (; node_id, current_level, current_area) = basin
+function update_vertical_flux!(basin::Basin, storage::AbstractVector)::Nothing
+    (; current_level, current_area, vertical_flux_from_input, vertical_flux) = basin
     current_level = get_tmp(current_level, storage)
     current_area = get_tmp(current_area, storage)
+    vertical_flux = get_tmp(vertical_flux, storage)
 
-    for (i, id) in enumerate(node_id)
-        # add all precipitation that falls within the profile
+    for (i, id) in enumerate(basin.node_id)
         level = current_level[i]
         area = current_area[i]
 
@@ -72,14 +66,29 @@ function formulate_basins!(
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
 
-        precipitation = fixed_area * basin.precipitation[i]
-        evaporation = area * factor * basin.potential_evaporation[i]
-        drainage = basin.drainage[i]
-        infiltration = factor * basin.infiltration[i]
+        precipitation = fixed_area * vertical_flux_from_input.precipitation[i]
+        evaporation = area * factor * vertical_flux_from_input.potential_evaporation[i]
+        drainage = vertical_flux_from_input.drainage[i]
+        infiltration = factor * vertical_flux_from_input.infiltration[i]
 
-        influx = precipitation - evaporation + drainage - infiltration
-        du.storage[i] += influx
-        set_flow!(graph, id, influx)
+        vertical_flux.precipitation[i] = precipitation
+        vertical_flux.evaporation[i] = evaporation
+        vertical_flux.drainage[i] = drainage
+        vertical_flux.infiltration[i] = infiltration
+    end
+
+    return nothing
+end
+
+function formulate_basins!(
+    du::AbstractVector,
+    basin::Basin,
+    storage::AbstractVector,
+)::Nothing
+    update_vertical_flux!(basin, storage)
+    for (i, id) in enumerate(basin.node_id)
+        # add all vertical fluxes that enter the Basin
+        du.storage[i] += get_influx(basin, i)
     end
     return nothing
 end
@@ -116,8 +125,6 @@ function continuous_control!(
 
     current_area = get_tmp(current_area, u)
     storage = u.storage
-    outlet_flow_rate = get_tmp(outlet.flow_rate, u)
-    pump_flow_rate = get_tmp(pump.flow_rate, u)
     error = get_tmp(error, u)
 
     set_error!(pid_control, p, u, t)
@@ -136,8 +143,10 @@ function continuous_control!(
 
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         controls_pump = (controlled_node_id in pump.node_id)
+        controlled_node_idx =
+            controls_pump ? findsorted(pump.node_id, controlled_node_id) :
+            findsorted(outlet.node_id, controlled_node_id)
 
-        # No flow of outlet if source level is lower than target level
         if !controls_pump
             src_id = inflow_id(graph, controlled_node_id)
             dst_id = outflow_id(graph, controlled_node_id)
@@ -145,28 +154,29 @@ function continuous_control!(
             src_level = get_level(p, src_id, t; storage)
             dst_level = get_level(p, dst_id, t; storage)
 
-            if src_level === nothing || dst_level === nothing
-                factor_outlet = 1.0
-            else
+            factor_outlet = 1.0
+
+            # No flow out of outlet if source level is lower than reference level
+            if !(src_level === nothing || dst_level === nothing)
                 Δlevel = src_level - dst_level
-                factor_outlet = reduction_factor(Δlevel, 0.1)
+                factor_outlet *= reduction_factor(Δlevel, 0.1)
+            end
+
+            # No flow out of outlet if source level is lower than minimum crest level
+            if src_level !== nothing
+                controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
+
+                factor_outlet *= reduction_factor(
+                    src_level - outlet.min_crest_level[controlled_node_idx],
+                    0.1,
+                )
             end
         else
             factor_outlet = 1.0
         end
 
-        if controls_pump
-            controlled_node_idx = findsorted(pump.node_id, controlled_node_id)
-            factor_basin =
-                low_storage_factor(storage, basin.node_id, listened_node_id, 10.0)
-        else
-            controlled_node_idx = findsorted(outlet.node_id, controlled_node_id)
-
-            # Upstream node of outlet does not have to be a basin
-            upstream_node_id = inflow_id(graph, controlled_node_id)
-            factor_basin =
-                low_storage_factor(storage, basin.node_id, upstream_node_id, 10.0)
-        end
+        id_inflow = inflow_id(graph, controlled_node_id)
+        factor_basin = low_storage_factor(storage, basin.node_id, id_inflow, 10.0)
 
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
@@ -213,17 +223,6 @@ function continuous_control!(
             max_flow_rate[controlled_node_idx],
         )
 
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
-        if controls_pump
-            pump_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] -= flow_rate
-        else
-            outlet_flow_rate[controlled_node_idx] = flow_rate
-            du.storage[listened_node_idx] += flow_rate
-        end
-
         # Set flow for connected edges
         src_id = inflow_id(graph, controlled_node_id)
         dst_id = outflow_id(graph, controlled_node_id)
@@ -231,9 +230,17 @@ function continuous_control!(
         set_flow!(graph, src_id, controlled_node_id, flow_rate)
         set_flow!(graph, controlled_node_id, dst_id, flow_rate)
 
+        # Below du.storage is updated. This is normally only done
+        # in formulate!(du, connectivity, basin), but in this function
+        # flows are set so du has to be updated too.
         has_index, dst_idx = id_index(basin.node_id, dst_id)
         if has_index
             du.storage[dst_idx] += flow_rate
+        end
+
+        has_index, src_idx = id_index(basin.node_id, src_id)
+        if has_index
+            du.storage[src_idx] -= flow_rate
         end
 
         # When the controlled pump flows out into fractional flow nodes
@@ -263,9 +270,17 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Number,
 )::Nothing
-    (; graph, basin) = p
-    (; node_id, allocated, active, demand, demand_itp, return_factor, min_level) =
-        user_demand
+    (; graph, basin, allocation) = p
+    (;
+        node_id,
+        allocated,
+        active,
+        demand_itp,
+        demand,
+        return_factor,
+        min_level,
+        demand_from_timeseries,
+    ) = user_demand
 
     for (i, id) in enumerate(node_id)
         src_id = inflow_id(graph, id)
@@ -281,9 +296,13 @@ function formulate_flow!(
         # and the current demand.
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
-        for priority_idx in eachindex(allocated[i])
-            alloc_prio = allocated[i][priority_idx]
-            demand_prio = demand_itp[i][priority_idx](t)
+        for priority_idx in eachindex(allocation.priorities)
+            alloc_prio = allocated[i, priority_idx]
+            demand_prio = if demand_from_timeseries[i]
+                demand_itp[i][priority_idx](t)
+            else
+                demand[i, priority_idx]
+            end
             alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
@@ -303,7 +322,6 @@ function formulate_flow!(
 
         # Return flow is immediate
         set_flow!(graph, id, dst_id, q * return_factor[i])
-        set_flow!(graph, id, -q * (1 - return_factor[i]))
     end
     return nothing
 end
@@ -320,24 +338,24 @@ function formulate_flow!(
     (; graph) = p
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = inflow_id(graph, id)
-        basin_b_id = outflow_id(graph, id)
+        inflow_id = linear_resistance.inflow_id[i]
+        outflow_id = linear_resistance.outflow_id[i]
 
         if active[i]
-            h_a = get_level(p, basin_a_id, t; storage)
-            h_b = get_level(p, basin_b_id, t; storage)
+            h_a = get_level(p, inflow_id, t; storage)
+            h_b = get_level(p, outflow_id, t; storage)
             q_unlimited = (h_a - h_b) / resistance[i]
             q = clamp(q_unlimited, -max_flow_rate[i], max_flow_rate[i])
 
             # add reduction_factor on highest level
             if q > 0
-                q *= low_storage_factor(storage, p.basin.node_id, basin_a_id, 10.0)
+                q *= low_storage_factor(storage, p.basin.node_id, inflow_id, 10.0)
             else
-                q *= low_storage_factor(storage, p.basin.node_id, basin_b_id, 10.0)
+                q *= low_storage_factor(storage, p.basin.node_id, outflow_id, 10.0)
             end
 
-            set_flow!(graph, basin_a_id, id, q)
-            set_flow!(graph, id, basin_b_id, q)
+            set_flow!(graph, inflow_id, id, q)
+            set_flow!(graph, id, outflow_id, q)
         end
     end
     return nothing
@@ -422,16 +440,17 @@ function formulate_flow!(
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     for (i, id) in enumerate(node_id)
-        basin_a_id = inflow_id(graph, id)
-        basin_b_id = outflow_id(graph, id)
+        inflow_id = manning_resistance.inflow_id[i]
+        outflow_id = manning_resistance.outflow_id[i]
 
         if !active[i]
             continue
         end
 
-        h_a = get_level(p, basin_a_id, t; storage)
-        h_b = get_level(p, basin_b_id, t; storage)
-        bottom_a, bottom_b = basin_bottoms(basin, basin_a_id, basin_b_id, id)
+        h_a = get_level(p, inflow_id, t; storage)
+        h_b = get_level(p, outflow_id, t; storage)
+        bottom_a = basin_bottom(basin, inflow_id)
+        bottom_b = basin_bottom(basin, outflow_id)
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]
@@ -461,8 +480,8 @@ function formulate_flow!(
 
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
-        set_flow!(graph, basin_a_id, id, q)
-        set_flow!(graph, id, basin_b_id, q)
+        set_flow!(graph, inflow_id, id, q)
+        set_flow!(graph, id, outflow_id, q)
     end
     return nothing
 end
@@ -488,46 +507,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    terminal::Terminal,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-    (; node_id) = terminal
-
-    for id in node_id
-        for upstream_id in inflow_ids(graph, id)
-            q = get_flow(graph, upstream_id, id, storage)
-            add_flow!(graph, id, -q)
-        end
-    end
-    return nothing
-end
-
-function formulate_flow!(
-    level_boundary::LevelBoundary,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-    (; node_id) = level_boundary
-
-    for id in node_id
-        for in_id in inflow_ids(graph, id)
-            q = get_flow(graph, in_id, id, storage)
-            add_flow!(graph, id, -q)
-        end
-        for out_id in outflow_ids(graph, id)
-            q = get_flow(graph, id, out_id, storage)
-            add_flow!(graph, id, q)
-        end
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -538,7 +517,7 @@ function formulate_flow!(
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for dst_id in outflow_ids(graph, id)
+        for outflow_id in outflow_ids(graph, id)
             if !active[i]
                 continue
             end
@@ -546,8 +525,7 @@ function formulate_flow!(
             rate = flow_rate[i](t)
 
             # Adding water is always possible
-            set_flow!(graph, id, dst_id, rate)
-            set_flow!(graph, id, rate)
+            set_flow!(graph, id, outflow_id, rate)
         end
     end
 end
@@ -629,11 +607,11 @@ function formulate_du!(
     # subtract all outgoing flows
     # add all ingoing flows
     for (i, basin_id) in enumerate(basin.node_id)
-        for in_id in inflow_ids(graph, basin_id)
-            du[i] += get_flow(graph, in_id, basin_id, storage)
+        for inflow_id in basin.inflow_ids[i]
+            du[i] += get_flow(graph, inflow_id, basin_id, storage)
         end
-        for out_id in outflow_ids(graph, basin_id)
-            du[i] -= get_flow(graph, basin_id, out_id, storage)
+        for outflow_id in basin.outflow_ids[i]
+            du[i] -= get_flow(graph, basin_id, outflow_id, storage)
         end
     end
     return nothing
@@ -645,12 +623,10 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         manning_resistance,
         tabulated_rating_curve,
         flow_boundary,
-        level_boundary,
         pump,
         outlet,
         user_demand,
         fractional_flow,
-        terminal,
     ) = p
 
     formulate_flow!(linear_resistance, p, storage, t)
@@ -661,8 +637,6 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(outlet, p, storage, t)
     formulate_flow!(user_demand, p, storage, t)
 
-    # do these last since they rely on formulated input flows
+    # do this last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)
-    formulate_flow!(level_boundary, p, storage, t)
-    formulate_flow!(terminal, p, storage, t)
 end

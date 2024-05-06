@@ -3,18 +3,18 @@
   <name>Ribasim</name>
   <param name="agentCleanFilesPolicy" value="ALL_UNTRACKED" />
   <param name="agentCleanPolicy" value="ON_BRANCH_CHANGE" />
-  <param name="authMethod" value="ACCESS_TOKEN" />
+  <param name="authMethod" value="PASSWORD" />
   <param name="branch" value="main" />
   <param name="ignoreKnownHosts" value="true" />
   <param name="reportTagRevisions" value="true" />
+  <param name="secure:password" value="credentialsJSON:abf605ce-e382-4b10-b5de-8a7640dc58d9" />
   <param name="submoduleCheckout" value="CHECKOUT" />
   <param name="teamcity:branchSpec"><![CDATA[+:refs/heads/*
 +:refs/tags/*
 -:refs/heads/gh-pages]]></param>
-  <param name="tokenId" value="tc_token_id:CID_96d1eedfd6e8bb3ca5e1dcd3ad2e3fe9:-1:80c953f8-a7b4-4c2c-8860-1279fc1f86e4" />
   <param name="url" value="https://github.com/Deltares/Ribasim" />
   <param name="useAlternates" value="AUTO" />
-  <param name="username" value="oauth2" />
+  <param name="username" value="teamcity-deltares" />
   <param name="usernameStyle" value="USERID" />
 </vcs-root>
 

@@ -1,5 +1,4 @@
 import re
-import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -14,6 +13,7 @@ from typing import (
 )
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pandera as pa
 from pandera.typing import DataFrame
@@ -31,14 +31,13 @@ from pydantic import (
     validate_call,
 )
 
-from ribasim.types import FilePath
+import ribasim
 
 __all__ = ("TableModel",)
 
 delimiter = " / "
 
 gpd.options.io_engine = "pyogrio"
-warnings.filterwarnings("ignore", category=UserWarning, module="pyogrio")
 
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
@@ -133,15 +132,6 @@ class FileModel(BaseModel, ABC):
         self.filepath = filepath
         self.model_config["validate_assignment"] = True
 
-    @abstractmethod
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        """Save this instance to disk.
-
-        This method needs to be implemented by any class deriving from
-        FileModel.
-        """
-        raise NotImplementedError()
-
     @classmethod
     @abstractmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -226,21 +216,17 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {}
 
-    def _save(
-        self,
-        directory: DirectoryPath,
-        input_dir: DirectoryPath,
-    ) -> None:
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
         # TODO directory could be used to save an arrow file
         db_path = context_file_loading.get().get("database")
-        if self.df is not None and self.filepath is not None:
+        if self.filepath is not None:
             self.sort()
             self._write_arrow(self.filepath, directory, input_dir)
-        elif self.df is not None and db_path is not None:
+        elif db_path is not None:
             self.sort()
-            self._write_table(db_path)
+            self._write_geopackage(db_path)
 
-    def _write_table(self, temp_path: Path) -> None:
+    def _write_geopackage(self, temp_path: Path) -> None:
         """
         Write the contents of the input to a database.
 
@@ -249,9 +235,8 @@ class TableModel(FileModel, Generic[TableT]):
         connection : Connection
             SQLite connection to the database.
         """
+        assert self.df is not None
         table = self.tablename()
-        if self.df is None:
-            return
 
         # Add `fid` to all tables as primary key
         # Enables editing values manually in QGIS
@@ -285,7 +270,7 @@ class TableModel(FileModel, Generic[TableT]):
         )
 
     @classmethod
-    def _from_db(cls, path: FilePath, table: str) -> pd.DataFrame | None:
+    def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
         with connect(path) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
@@ -298,7 +283,7 @@ class TableModel(FileModel, Generic[TableT]):
             return df
 
     @classmethod
-    def _from_arrow(cls, path: FilePath) -> pd.DataFrame:
+    def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
 
@@ -338,36 +323,46 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return f"<div>{self.tablename()}</div>" + self.df._repr_html_()
 
+    def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
+        tablename = self.tablename()
+        if self.df is None:
+            raise ValueError(f"Cannot index into {tablename}: it contains no data.")
+
+        # Allow for indexing with multiple values.
+        np_index = np.atleast_1d(index)
+        missing = np.setdiff1d(np_index, self.df["node_id"].unique())
+        if missing.size > 0:
+            raise IndexError(f"{tablename} does not contain node_id: {missing}")
+
+        # Index with .loc[..., :] to always return a DataFrame.
+        return self.df.loc[self.df["node_id"].isin(np_index), :]
+
 
 class SpatialTableModel(TableModel[TableT], Generic[TableT]):
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     @classmethod
-    def _from_db(cls, path: FilePath, table: str):
+    def _from_db(cls, path: Path, table: str):
         with connect(path) as connection:
             if exists(connection, table):
                 df = gpd.read_file(path, layer=table, fid_as_index=True)
             else:
-                print(f"Can't read from {path}:{table}")
                 df = None
 
             return df
 
-    def _write_table(self, path: FilePath) -> None:
+    def _write_geopackage(self, path: Path) -> None:
         """
-        Write the contents of the input to a database.
+        Write the contents of the input to the GeoPackage.
 
         Parameters
         ----------
-        path : FilePath
+        path : Path
         """
-        if self.df is None:
-            return
-        self.df.to_file(path, layer=self.tablename(), driver="GPKG", mode="a")
-
-    def sort(self):
-        if self.df is not None:
-            self.df.sort_index(inplace=True)
+        assert self.df is not None
+        # the index name must be fid otherwise it will generate a separate fid column
+        self.df.index.name = "fid"
+        self.df.to_file(path, layer=self.tablename(), index=True, driver="GPKG")
 
 
 class ChildModel(BaseModel):
@@ -412,28 +407,25 @@ class NodeModel(ChildModel):
     def _layername(cls, field: str) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def tables(self) -> Generator[TableModel[Any], Any, None]:
+    def _tables(self) -> Generator[TableModel[Any], Any, None]:
         for key in self.fields():
             attr = getattr(self, key)
-            if isinstance(attr, TableModel):
+            if (
+                isinstance(attr, TableModel)
+                and (attr.df is not None)
+                and not (isinstance(attr, ribasim.geometry.node.NodeTable))
+            ):
                 yield attr
 
     def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
-        for table in self.tables():
+        for table in self._tables():
             node_ids.update(table.node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath, **kwargs):
-        # TODO: stop sorting loop so that "node" comes first
-        for field in sorted(self.fields(), key=lambda x: x != "node"):
-            attr = getattr(self, field)
-            # TODO
-            if hasattr(attr, "_save"):
-                attr._save(
-                    directory,
-                    input_dir,
-                )
+    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+        for table in self._tables():
+            table._save(directory, input_dir)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

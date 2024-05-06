@@ -1,7 +1,7 @@
 # Automatically generated file. Do not modify.
 
 import pandera as pa
-from pandera.dtypes import Timestamp
+from pandera.dtypes import Int32, Timestamp
 from pandera.typing import Series
 
 
@@ -14,7 +14,7 @@ class _BaseSchema(pa.DataFrameModel):
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
   {% for f in m[:fields] %}
-    {% if (f[2] == "Series[int]") %}
+    {% if (f[2] == "Series[Int32]") %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }}, default=0)
     {% else %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})

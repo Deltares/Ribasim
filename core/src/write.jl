@@ -84,15 +84,83 @@ function basin_table(
     node_id::Vector{Int32},
     storage::Vector{Float64},
     level::Vector{Float64},
+    inflow_rate::Vector{Float64},
+    outflow_rate::Vector{Float64},
+    storage_rate::Vector{Float64},
+    precipitation::Vector{Float64},
+    evaporation::Vector{Float64},
+    drainage::Vector{Float64},
+    infiltration::Vector{Float64},
+    balance_error::Vector{Float64},
+    relative_error::Vector{Float64},
 }
+    (; saved) = model
+    # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
+    storage = vec(data.storage[:, begin:(end - 1)])
+    level = vec(data.level[:, begin:(end - 1)])
+    Δstorage = vec(diff(data.storage; dims = 2))
+
     nbasin = length(data.node_id)
-    ntsteps = length(data.time)
+    ntsteps = length(data.time) - 1
+    nrows = nbasin * ntsteps
 
-    time = repeat(data.time; inner = nbasin)
+    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
+    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
+    precipitation = zeros(nrows)
+    evaporation = zeros(nrows)
+    drainage = zeros(nrows)
+    infiltration = zeros(nrows)
+    balance_error = zeros(nrows)
+    relative_error = zeros(nrows)
+
+    idx_row = 0
+    for cvec in saved.vertical_flux.saveval
+        for (precipitation_, evaporation_, drainage_, infiltration_) in
+            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
+            idx_row += 1
+            precipitation[idx_row] = precipitation_
+            evaporation[idx_row] = evaporation_
+            drainage[idx_row] = drainage_
+            infiltration[idx_row] = infiltration_
+        end
+    end
+
+    time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
+    Δtime_seconds = seconds.(diff(data.time))
+    Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
+    storage_rate = Δstorage ./ Δtime
 
-    return (; time, node_id, storage = vec(data.storage), level = vec(data.level))
+    for i in 1:nrows
+        storage_flow = storage_rate[i]
+        storage_increase = max(storage_flow, 0.0)
+        storage_decrease = max(-storage_flow, 0.0)
+
+        total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
+        total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
+        balance_error[i] = total_in - total_out
+        mean_flow_rate = 0.5 * (total_in + total_out)
+        if mean_flow_rate != 0
+            relative_error[i] = balance_error[i] / mean_flow_rate
+        end
+    end
+
+    return (;
+        time,
+        node_id,
+        storage,
+        level,
+        inflow_rate,
+        outflow_rate,
+        storage_rate,
+        precipitation,
+        evaporation,
+        drainage,
+        infiltration,
+        balance_error,
+        relative_error,
+    )
 end
 
 "Create a flow result table from the saved data"
@@ -110,27 +178,13 @@ function flow_table(
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; graph) = integrator.p
-    (; flow_dict, flow_vertical_dict) = graph[]
+    (; flow_dict) = graph[]
 
-    # self-loops have no edge ID
     from_node_type = String[]
     from_node_id = Int32[]
     to_node_type = String[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
-
-    vertical_flow_node_ids = Vector{NodeID}(undef, length(flow_vertical_dict))
-    for (node_id, index) in flow_vertical_dict
-        vertical_flow_node_ids[index] = node_id
-    end
-
-    for id in vertical_flow_node_ids
-        push!(from_node_type, string(id.type))
-        push!(from_node_id, id.value)
-        push!(to_node_type, string(id.type))
-        push!(to_node_id, id.value)
-        push!(unique_edge_ids_flow, missing)
-    end
 
     flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
     for (edge_id, index) in flow_dict
@@ -159,7 +213,7 @@ function flow_table(
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval)
+    flow_rate = FlatVector(saveval, :flow)
 
     return (;
         time,
@@ -229,7 +283,7 @@ function allocation_flow_table(
     subnetwork_id::Vector{Int32},
     priority::Vector{Int32},
     flow_rate::Vector{Float64},
-    collect_demands::BitVector,
+    optimization_type::Vector{String},
 }
     (; config) = model
     (; record_flow) = model.integrator.p.allocation
@@ -246,7 +300,7 @@ function allocation_flow_table(
         record_flow.subnetwork_id,
         record_flow.priority,
         record_flow.flow_rate,
-        record_flow.collect_demands,
+        record_flow.optimization_type,
     )
 end
 

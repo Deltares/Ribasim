@@ -8,7 +8,8 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
@@ -44,8 +45,36 @@
             (DateTime, Union{Int32, Missing}, String, Int32, String, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
-            (:time, :node_id, :storage, :level),
-            (DateTime, Int32, Float64, Float64),
+            (
+                :time,
+                :node_id,
+                :storage,
+                :level,
+                :inflow_rate,
+                :outflow_rate,
+                :storage_rate,
+                :precipitation,
+                :evaporation,
+                :drainage,
+                :infiltration,
+                :balance_error,
+                :relative_error,
+            ),
+            (
+                DateTime,
+                Int32,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+                Float64,
+            ),
         )
         @test Tables.schema(control) == Tables.Schema(
             (:time, :control_node_id, :truth_state, :control_state),
@@ -75,9 +104,9 @@
                 :subnetwork_id,
                 :priority,
                 :flow_rate,
-                :collect_demands,
+                :optimization_type,
             ),
-            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, Bool),
+            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
         )
         @test Tables.schema(subgrid) == Tables.Schema(
             (:time, :subgrid_id, :subgrid_level),
@@ -88,9 +117,9 @@
     @testset "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
-        # t0 has no flow, 2 flow edges and 2 boundary condition flows
-        @test nrow(flow) == (nsaved - 1) * 4
-        @test nrow(basin) == nsaved
+        # t0 has no flow, 2 flow edges
+        @test nrow(flow) == (nsaved - 1) * 2
+        @test nrow(basin) == nsaved - 1
         @test nrow(control) == 0
         @test nrow(allocation) == 0
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
@@ -98,12 +127,21 @@
 
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:4], -1) == [-1, -1, 1, 2]
-        @test flow.from_node_id[1:4] == [6, 922, 6, 0]
-        @test flow.to_node_id[1:4] == [6, 922, 0, 922]
+        @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
+        @test flow.from_node_id[1:2] == [6, 0]
+        @test flow.to_node_id[1:2] == [0, 922]
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
+        @test basin.storage_rate[1] ≈
+              (basin.storage[2] - basin.storage[1]) / config.solver.saveat
+        @test all(==(0), basin.inflow_rate)
+        @test all(>(0), basin.outflow_rate)
+        @test flow.flow_rate[1] == basin.outflow_rate[1]
+        @test all(==(0), basin.drainage)
+        @test all(==(0), basin.infiltration)
+        @test all(q -> abs(q) < 1e-7, basin.balance_error)
+        @test all(q -> abs(q) < 0.01, basin.relative_error)
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]
@@ -125,10 +163,11 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.u.storage ≈ [1000]
-    @test model.integrator.p.basin.precipitation == [0.0]
-    @test model.integrator.p.basin.potential_evaporation == [0.0]
-    @test model.integrator.p.basin.drainage == [0.0]
-    @test model.integrator.p.basin.infiltration == [0.0]
+    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    @test vertical_flux.precipitation == [0.0]
+    @test vertical_flux.evaporation == [0.0]
+    @test vertical_flux.drainage == [0.0]
+    @test vertical_flux.infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -142,10 +181,11 @@ end
     @test model isa Ribasim.Model
 
     stor = model.integrator.u.storage
-    prec = model.integrator.p.basin.precipitation
-    evap = model.integrator.p.basin.potential_evaporation
-    drng = model.integrator.p.basin.drainage
-    infl = model.integrator.p.basin.infiltration
+    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    prec = vertical_flux.precipitation
+    evap = vertical_flux.evaporation
+    drng = vertical_flux.drainage
+    infl = vertical_flux.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -234,7 +274,9 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test length(model.integrator.p.basin.precipitation) == 4
+    @test allunique(Ribasim.tsaves(model))
+    precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
+    @test length(precipitation) == 4
     @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()
 end
@@ -458,7 +500,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = get_tmp(p.basin.current_level, u)
+    h_actual = get_tmp(p.basin.current_level, u)[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -474,7 +516,7 @@ end
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:ManningResistance, 101),
-        NodeID(:LevelBoundary, 102),
+        NodeID(:Basin, 102),
         0,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
