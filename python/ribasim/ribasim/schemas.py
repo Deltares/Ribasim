@@ -11,6 +11,19 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
+class BasinConcentrationExternalSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
+
+
+class BasinConcentrationStateSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
+
+
 class BasinConcentrationSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
@@ -18,7 +31,6 @@ class BasinConcentrationSchema(_BaseSchema):
     basin: Series[float] = pa.Field(nullable=True)
     drainage: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class BasinProfileSchema(_BaseSchema):

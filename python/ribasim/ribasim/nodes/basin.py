@@ -4,7 +4,9 @@ from pandas import DataFrame
 from ribasim.geometry.area import BasinAreaSchema
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
+    BasinConcentrationExternalSchema,
     BasinConcentrationSchema,
+    BasinConcentrationStateSchema,
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
@@ -54,5 +56,15 @@ class Area(TableModel[BasinAreaSchema]):
 
 
 class Concentration(TableModel[BasinConcentrationSchema]):
+    def __init__(self, **kwargs):
+        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+
+
+class ConcentrationExternal(TableModel[BasinConcentrationExternalSchema]):
+    def __init__(self, **kwargs):
+        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+
+
+class ConcentrationState(TableModel[BasinConcentrationStateSchema]):
     def __init__(self, **kwargs):
         super().__init__(df=GeoDataFrame(dict(**kwargs)))

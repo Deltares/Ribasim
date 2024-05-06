@@ -9,6 +9,8 @@
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.basin.subgrid" BasinSubgrid
 @schema "ribasim.basin.concentration" BasinConcentration
+@schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
+@schema "ribasim.basin.concentrationstate" BasinConcentrationState
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
@@ -109,7 +111,13 @@ end
     basin::Union{Missing, Float64}
     drainage::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
+end
+
+@version BasinConcentrationExternalV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Union{Missing, Float64}
 end
 
 @version BasinProfileV1 begin
@@ -121,6 +129,12 @@ end
 @version BasinStateV1 begin
     node_id::Int32
     level::Float64
+end
+
+@version BasinConcentrationStateV1 begin
+    node_id::Int32
+    substance::String
+    concentration::Union{Missing, Float64}
 end
 
 @version BasinSubgridV1 begin
