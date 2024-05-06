@@ -236,7 +236,7 @@ def invalid_unstable_model() -> Model:
             Node(1 + id_shift * i, Point(i, 0)),
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
-        flow_rate = 1.0 if (i % 2 == 0) else 1e15
+        flow_rate = 1.0 if (i % 2 == 0) else 1e10
         model.pump.add(
             Node(2 + id_shift * i, Point(i, 1)), [pump.Static(flow_rate=[flow_rate])]
         )

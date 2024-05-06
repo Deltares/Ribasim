@@ -460,12 +460,14 @@ end
 end
 
 @testitem "Convergence bottleneck" begin
-    using Suppressor: @capture_out
+    using IOCapture: capture
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
     @test ispath(toml_path)
-    output = @capture_out Ribasim.main(toml_path)
-    output = split(output, "\n")
+    (; output) = capture() do
+        Ribasim.main(toml_path)
+    end
+    output = split(output, "\n")[(end - 4):end]
     @test startswith(
         output[1],
         "The following basins were identified as convergence bottlenecks",
