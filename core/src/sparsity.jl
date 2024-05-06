@@ -21,14 +21,30 @@ function get_jac_prototype(
     p::Parameters,
     u::ComponentVector,
 )::SparseMatrixCSC{Float64, Int64}
-    (; basin, pid_control, graph) = p
+    (; basin, pid_control, graph, user_demand, allocation) = p
     n_states = length(u)
     axis = only(getfield(u, :axes))
     jac_prototype = ComponentMatrix(spzeros(n_states, n_states), (axis, axis))
 
-    update_jac_prototype!(jac_prototype, p)
+    # Storages depending on storages
     update_jac_prototype!(jac_prototype, basin, graph)
+
+    # PID control states depending on storages (and the other way around)
     update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+
+    # Flows depending on storages
+    update_jac_prototype!(jac_prototype, p)
+
+    # Evaporation and infiltration depending on storages
+    update_jac_prototype!(jac_prototype, basin)
+
+    # Allocation input flows depending on storages
+    # Note, this is copied from the update_jac_prototype!(jac_prototype, p)
+    # result so the other is important
+    update_jac_prototype!(jac_prototype, allocation, graph)
+
+    # UserDemand inflows depending on storages
+    update_jac_prototype!(jac_prototype, user_demand, graph, basin)
     return jac_prototype.data
 end
 
@@ -123,17 +139,63 @@ function update_jac_prototype!(jac_prototype::ComponentMatrix, p::Parameters)::N
 end
 
 """
-Allocation flow inputs depending on storages
-(get from above)
+Add nonzeros for evaporation and infiltration depending on storages
 """
-function update_jac_prototype!()::Nothing
+function update_jac_prototype!(jac_prototype::ComponentMatrix, basin::Basin)::Nothing
+    jac_prototype_evaporation = @view jac_prototype[:storage, :evaporation_integrated]
+    jac_prototype_infiltration = @view jac_prototype[:storage, :infiltration_integrated]
+    jac_prototype_evaporation_bmi = @view jac_prototype[:storage, :evaporation_integrated]
+    jac_prototype_infiltration_bmi = @view jac_prototype[:storage, :infiltration_integrated]
+    for (i, id) in enumerate(basin.node_id)
+        jac_prototype_evaporation[i, i] = 1.0
+        jac_prototype_infiltration[i, i] = 1.0
+        jac_prototype_evaporation_bmi[i, i] = 1.0
+        jac_prototype_infiltration_bmi[i, i] = 1.0
+    end
     return nothing
 end
 
 """
-Realized user demands depending on storages
-(get from above)
+Add nonzeros for allocation input flows depending on storages.
 """
-function update_jac_prototype!()::Nothing
+function update_jac_prototype!(
+    jac_prototype::ComponentMatrix,
+    allocation::Allocation,
+    graph::MetaGraph,
+)::Nothing
+    (; input_flow_dict) = allocation
+    (; flow_dict) = graph[]
+    jac_prototype_storage_flow = @view jac_prototype[:storage, :flow_integrated]
+    jac_prototype_storage_flow_allocation =
+        @view jac_prototype[:storage, :flow_allocation_input]
+    # Copy which storages a flow depends on
+    for (edge, i) in input_flow_dict
+        # A self-loop indicates basin forcing
+        if edge[1] == edge[2]
+            continue
+        end
+        jac_prototype_storage_flow_allocation[:, i] =
+            jac_prototype_storage_flow[:, flow_dict[edge]]
+    end
+    return nothing
+end
+
+"""
+Add nonzeros for UserDemand intake flows depending on storages.
+"""
+function update_jac_prototype!(
+    jac_prototype::ComponentMatrix,
+    user_demand::UserDemand,
+    graph::MetaGraph,
+    basin::Basin,
+)::Nothing
+    jac_prototype_storage_realized_demand =
+        @view jac_prototype[:storage, :realized_user_demand_bmi]
+    for (user_demand_idx, node_id) in enumerate(user_demand.node_id)
+        basin_node_id = inflow_id(graph, node_id)
+        has_index, i = id_index(basin.node_id, basin_node_id)
+        @assert has_index "UserDemand inflow node is not a basin."
+        jac_prototype_storage_realized_demand[i, user_demand_idx] = 1.0
+    end
     return nothing
 end

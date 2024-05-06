@@ -176,38 +176,126 @@ end
     import SQLite
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; p, u) = model.integrator
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, cfg)
-    n_states = sum(Ribasim.get_n_states(db, cfg))
-    close(db)
-
-    jac_prototype = Ribasim.get_jac_prototype(p, n_states)
-    @test jac_prototype.m == 4
-    @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
-    @test jac_prototype.nzval == ones(10)
+    jac_prototype = Ribasim.get_jac_prototype(p, u)
+    @test jac_prototype.m == 53
+    @test jac_prototype.n == 53
+    @test jac_prototype.colptr == [
+        1,
+        3,
+        5,
+        8,
+        11,
+        13,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        32,
+        32,
+        32,
+        32,
+        33,
+        34,
+        35,
+        36,
+        36,
+        36,
+        36,
+        36,
+        37,
+        38,
+        39,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+    ]
+    @test jac_prototype.rowval == [
+        1,
+        2,
+        1,
+        2,
+        2,
+        3,
+        4,
+        2,
+        3,
+        4,
+        1,
+        2,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        4,
+        2,
+        3,
+        4,
+        4,
+        2,
+        2,
+        2,
+        2,
+        3,
+        1,
+        4,
+        1,
+        2,
+        3,
+        4,
+        1,
+        2,
+        3,
+        4,
+    ]
+    @test jac_prototype.nzval == ones(39)
+    # States do not depend on non-storage states
+    @test sum(jac_prototype[(length(p.basin.node_id) + 1):end, :]) == 0
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; p, u) = model.integrator
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, cfg)
-    n_states = sum(Ribasim.get_n_states(db, cfg))
-    close(db)
-
-    jac_prototype = Ribasim.get_jac_prototype(p, n_states)
-    @test jac_prototype.m == 3
-    @test jac_prototype.n == 3
-    @test jac_prototype.colptr == [1, 4, 5, 6]
-    @test jac_prototype.rowval == [1, 2, 3, 1, 1]
-    @test jac_prototype.nzval == ones(5)
+    jac_prototype = Ribasim.get_jac_prototype(p, u)
+    @test jac_prototype.m == 16
+    @test jac_prototype.n == 16
+    @test jac_prototype.colptr ==
+          [1, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 12, 13, 13, 13, 13, 13]
+    @test jac_prototype.rowval == [1, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    @test jac_prototype.nzval == ones(12)
+    # Some states depend on non-storage states (PID integral term)
+    @test sum(jac_prototype[(length(p.basin.node_id) + 1):end, :]) == 2
 end
 
 @testitem "FlatVector" begin
