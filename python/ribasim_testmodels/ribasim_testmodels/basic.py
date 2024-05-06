@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,16 @@ def basic_model() -> ribasim.Model:
             potential_evaporation=[0.001 / 86400], precipitation=[0.002 / 86400]
         ),
         basin.State(level=[0.04471158417652035]),
+        basin.Concentration(
+            time="2020-01-01 00:00:00",
+            substance=["Cl"],
+            drainage=[0.0],
+            precipitation=[0.0],
+        ),
+        basin.ConcentrationState(substance=["Cl"], concentration=[0.0]),
+        basin.ConcentrationExternal(
+            time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
+        ),
     ]
     node_ids = [1, 3, 6, 9]
     node_geometries = [
@@ -107,16 +118,33 @@ def basic_model() -> ribasim.Model:
     model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
 
     # Setup flow boundary
-    flow_boundary_data = [flow_boundary.Static(flow_rate=[1e-4])]
+    flow_boundary_data: Sequence[TableModel[Any]] = [
+        flow_boundary.Static(flow_rate=[1e-4]),
+        flow_boundary.Concentration(
+            time="2020-01-01 00:00:00", substance=["Tracer"], concentration=[1.0]
+        ),
+    ]
     model.flow_boundary.add(Node(15, Point(3.0, 3.0)), flow_boundary_data)
     model.flow_boundary.add(Node(16, Point(0.0, 1.0)), flow_boundary_data)
 
     # Setup level boundary
     model.level_boundary.add(
-        Node(11, Point(2.0, 2.0)), [level_boundary.Static(level=[1.0])]
+        Node(11, Point(2.0, 2.0)),
+        [
+            level_boundary.Static(level=[1.0]),
+            level_boundary.Concentration(
+                time="2020-01-01 00:00:00", substance=["Cl"], concentration=[34.0]
+            ),
+        ],
     )
     model.level_boundary.add(
-        Node(17, Point(6.0, 1.0)), [level_boundary.Static(level=[1.5])]
+        Node(17, Point(6.0, 1.0)),
+        [
+            level_boundary.Static(level=[1.5]),
+            level_boundary.Concentration(
+                time="2020-01-01 00:00:00", substance=["Cl"], concentration=[34.0]
+            ),
+        ],
     )
 
     # Setup terminal
@@ -340,9 +368,9 @@ def outlet_model():
         [
             level_boundary.Time(
                 time=[
-                    "2020-01-01",
-                    "2020-06-01",
-                    "2021-01-01",
+                    "2020-01-01 00:00:00",
+                    "2020-06-01 00:00:00",
+                    "2021-01-01 00:00:00",
                 ],
                 level=[1.0, 3.0, 3.0],
             )
