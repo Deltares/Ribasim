@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -87,7 +87,7 @@ class Logging(ChildModel):
 
 
 class Node(pydantic.BaseModel):
-    node_id: int
+    node_id: NonNegativeInt
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
