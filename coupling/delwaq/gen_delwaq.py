@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader
 delwaq_dir = Path(__file__).parent
 repo_dir = delwaq_dir.parents[1]
 
-env = Environment(loader=FileSystemLoader(delwaq_dir / "template"))
+env = Environment(autoescape=True, loader=FileSystemLoader(delwaq_dir / "template"))
 
 fillvolume = 1.0
 
