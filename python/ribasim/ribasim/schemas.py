@@ -12,7 +12,7 @@ class _BaseSchema(pa.DataFrameModel):
 
 
 class BasinBoundaryconcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
     drainage_concentration: Series[float] = pa.Field(nullable=True)
@@ -21,7 +21,7 @@ class BasinBoundaryconcentrationSchema(_BaseSchema):
 
 
 class BasinConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
     concentration: Series[float] = pa.Field(nullable=False)
@@ -76,13 +76,6 @@ class DiscreteControlLogicSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=False)
 
 
-class FlowBoundaryConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    substance: Series[str] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=False)
-
-
 class DiscreteControlVariableSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     compound_variable_id: Series[Int32] = pa.Field(nullable=False, default=0)
@@ -91,6 +84,13 @@ class DiscreteControlVariableSchema(_BaseSchema):
     variable: Series[str] = pa.Field(nullable=False)
     weight: Series[float] = pa.Field(nullable=True)
     look_ahead: Series[float] = pa.Field(nullable=True)
+
+
+class FlowBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):
@@ -125,7 +125,7 @@ class FractionalFlowStaticSchema(_BaseSchema):
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
     concentration: Series[float] = pa.Field(nullable=False)
