@@ -472,7 +472,7 @@ end
         output[1],
         "The following basins were identified as convergence bottlenecks",
     )
-    @test startswith(output[2], "Basin #1")
-    @test startswith(output[3], "Basin #21")
-    @test startswith(output[4], "Basin #41")
+    @test startswith(output[2], "Basin #11")
+    @test startswith(output[3], "Basin #31")
+    @test startswith(output[4], "Basin #51")
 end
