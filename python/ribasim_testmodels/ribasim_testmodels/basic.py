@@ -39,14 +39,12 @@ def basic_model() -> ribasim.Model:
         ),
         basin.State(level=[0.04471158417652035]),
         basin.Concentration(
-            time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
-        ),
-        basin.BoundaryConcentration(
             time="2020-01-01 00:00:00",
             substance=["Cl"],
-            drainage_concentration=[0.0],
-            precipitation_concentration=[0.0],
-            urban_runoff_concentration=[0.0],
+            basin=[0.0],
+            drainage=[0.0],
+            precipitation=[0.0],
+            urban_runoff=[0.0],
         ),
     ]
     node_ids = [1, 3, 6, 9]
