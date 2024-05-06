@@ -27,7 +27,7 @@ jobs:
           pixi-version: "latest"
       - name: Prepare pixi
         run: |
-          pixi run --environment=dev install-ci
+          pixi run install-ci
       - name: Run tests
         run: pixi run test-ribasim-qgis-cov
       - name: Upload coverage to Codecov

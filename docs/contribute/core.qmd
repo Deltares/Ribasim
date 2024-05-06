@@ -37,7 +37,7 @@ You can let it start automatically by following these [instructions](https://tim
 There is a section on editors and IDEs for Julia on <https://julialang.org/>, scroll down to see it.
 We use and recommend Microsoft's free editor [Visual Studio Code](https://code.visualstudio.com/).
 When combined with the [Julia extension](https://www.julia-vscode.org/) it provides a powerful and interactive development experience.
-Make sure to have the correct environment when opening your IDE by running `open-vscode.bat`, or opening a `pixi --environment=dev shell` and then calling the command to open the editor of your choice.
+Make sure to have the correct environment when opening your IDE by running `open-vscode.bat`, or opening a `pixi shell` and then calling the command to open the editor of your choice.
 
 # Developing on Ribasim
 

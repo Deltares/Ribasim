@@ -20,7 +20,7 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run --environment=dev install-ci
+        run: pixi run install-ci
       - name: Test if codegen runs without errors
         run: pixi run codegen
       - name: Ensure that no code has been generated

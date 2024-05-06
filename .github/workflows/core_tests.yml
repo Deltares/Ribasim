@@ -37,7 +37,7 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run --environment=dev install-ci
+        run: pixi run install-ci
       - name: Test Ribasim Core
         run: |
           pixi run test-ribasim-core-cov

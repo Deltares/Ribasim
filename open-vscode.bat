@@ -1,1 +1,1 @@
-pixi run --environment=dev code . | exit
+pixi run code . | exit
