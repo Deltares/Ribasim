@@ -11,7 +11,7 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
-class BasinBoundaryconcentrationSchema(_BaseSchema):
+class BasinBoundaryConcentrationSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)

@@ -8,7 +8,7 @@
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.basin.subgrid" BasinSubgrid
-@schema "ribasim.basin.boundaryconcentration" BasinBoundaryconcentration
+@schema "ribasim.basin.boundaryconcentration" BasinBoundaryConcentration
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
@@ -103,7 +103,7 @@ end
     urban_runoff::Union{Missing, Float64}
 end
 
-@version BasinBoundaryconcentrationV1 begin
+@version BasinBoundaryConcentrationV1 begin
     node_id::Int32
     time::DateTime
     substance::String
